@@ -9,7 +9,9 @@ import {
   inventAttribute,
 } from '../../../../../testing/attributePicker.ts';
 import { enIntl, readMessage } from '../../../../../testing/i18n.ts';
+import { loadFixtureStage } from '../../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../../../testing/testId.ts';
 import { sociogramPromptMessages } from '../sociogramPromptMessages.ts';
 import {
   collectInAForm,
@@ -62,6 +64,14 @@ const switchTapping = async (
   await harness.user.click(toggle);
 };
 
+/** The id the fixture gives its first prompt, read from the fixture itself. */
+const fixturePromptId = (): unknown => {
+  const [first] = [loadFixtureStage('sociogram-1').fields.prompts].flat();
+  return typeof first === 'object' && first !== null && 'id' in first
+    ? first.id
+    : undefined;
+};
+
 const openEditor = () => ({
   stageId: 'sociogram-1' as const,
   sections: sociogramSections,
@@ -99,7 +109,7 @@ describe('the tasks a sociogram sets', () => {
 
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual({
-      id: 'sociogram-prompt-1',
+      id: fixturePromptId(),
       text: { 'en-US': 'Place the people who know each other close together' },
       layout: { layoutVariable: 'layout' },
       edges: { display: ['knows'] },
@@ -138,7 +148,7 @@ describe('the tasks a sociogram sets', () => {
   /** A prompt that says nothing about tapping opens with the section off. */
   it('opens a prompt that taps do nothing on with the section off, and saves it unchanged', async () => {
     const SILENT_PROMPT = {
-      id: 'sociogram-prompt-1',
+      id: testId('sociogram-prompt-1'),
       text: { 'en-US': 'Place the people who know each other close together' },
       layout: { layoutVariable: 'layout' },
     };
@@ -168,7 +178,7 @@ describe('the tasks a sociogram sets', () => {
     // holds is this edit alone.
     const harness = renderStageEditor(
       sociogramHolding({
-        id: 'sociogram-prompt-1',
+        id: testId('sociogram-prompt-1'),
         text: {
           'en-US': 'Place the people who know each other close together',
         },
@@ -193,7 +203,7 @@ describe('the tasks a sociogram sets', () => {
     // Absent, not `{ allowHighlighting: false }`: a prompt that never answered
     // the question still has not. The prompt itself is asserted first, so a
     // stage that did not save at all says so rather than throwing.
-    expect(saved).toMatchObject({ id: 'sociogram-prompt-1' });
+    expect(saved).toMatchObject({ id: testId('sociogram-prompt-1') });
     expect(saved).not.toHaveProperty('highlight');
   });
 
@@ -326,7 +336,7 @@ describe('a connection type this protocol does not define', () => {
   const LOST_EDGE = 'former_edge';
 
   const DISPLAYING_A_LOST_TYPE = {
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     edges: { display: ['knows', LOST_EDGE] },
@@ -448,7 +458,7 @@ describe('a connection type this protocol does not define', () => {
  */
 describe('a prompt that only highlights its nodes', () => {
   const DISPLAY_ONLY_PROMPT = {
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     highlight: { variable: 'highlighted', allowHighlighting: false },
@@ -531,7 +541,7 @@ describe('a prompt that only highlights its nodes', () => {
  */
 describe('a prompt that draws a connection it does not show', () => {
   const COLLECTS_WITHOUT_SHOWING = {
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     edges: { create: 'knows', display: [] },
@@ -619,7 +629,7 @@ describe('what tapping a node does, against what the prompt already said', () =>
   const promptSaying = (
     highlight?: Record<string, unknown>,
   ): Record<string, unknown> => ({
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
     ...(highlight === undefined ? {} : { highlight }),
@@ -814,7 +824,7 @@ describe('a prompt opened and cancelled untouched', () => {
   const promptSaying = (
     tap: Record<string, unknown>,
   ): Record<string, unknown> => ({
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: 'Place the people who know each other close together',
     layout: { layoutVariable: 'layout' },
     ...tap,
@@ -994,7 +1004,7 @@ describe('a connections list with nothing in it', () => {
   it('says why, rather than rendering an empty fieldset', async () => {
     const harness = renderStageEditor(
       sociogramHolding({
-        id: 'sociogram-prompt-1',
+        id: testId('sociogram-prompt-1'),
         text: {
           'en-US': 'Place the people who know each other close together',
         },
@@ -1031,10 +1041,12 @@ describe('a connections list with nothing in it', () => {
 
 describe('the order a sociogram hands unplaced nodes over in', () => {
   const SORTED_PROMPT = {
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
     layout: { layoutVariable: 'layout' },
-    sortOrder: [{ property: 'name', direction: 'asc' }],
+    sortOrder: [
+      { id: testId('sort-name'), property: 'name', direction: 'asc' },
+    ],
   };
 
   const openWithSortOrder = () => sociogramHolding(SORTED_PROMPT);
@@ -1066,7 +1078,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
 
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.sortOrder).toEqual([
-      { property: 'age', direction: 'desc' },
+      { id: expect.any(String), property: 'age', direction: 'desc' },
     ]);
   });
 
@@ -1109,6 +1121,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('judges no sort rule while the stage has not been told what it collects', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testId('Sociogram-stage'),
         type: 'Sociogram' as const,
         fields: {
           label: { 'en-US': 'Sociogram' },
@@ -1116,7 +1129,13 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
           prompts: [
             {
               ...SORTED_PROMPT,
-              sortOrder: [{ property: 'nickname', direction: 'asc' }],
+              sortOrder: [
+                {
+                  id: testId('sort-nickname'),
+                  property: 'nickname',
+                  direction: 'asc',
+                },
+              ],
             },
           ],
         },

@@ -42,7 +42,10 @@ import {
   stableEventUuid,
 } from '../../platform/analytics.ts';
 import { BrowserLogs } from '../../platform/browser-logs.ts';
-import { baseProtocol } from '../../protocol/__tests__/helpers.ts';
+import {
+  BASE_PROTOCOL_IDS,
+  baseProtocol,
+} from '../../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../../protocol/store.ts';
 import type { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RATE_LIMITS, type RateLimitScope } from '../../rate-limit/scopes.ts';
@@ -54,7 +57,7 @@ const MAPBOX_KEY = 'pk.participant-test-key';
 const PHOTO_SOURCE = `${'a'.repeat(64)}.png`;
 
 /** The protocol's finish stage, as `baseProtocol` names it. */
-const FINISH_STAGE_ID = 'finish';
+const FINISH_STAGE_ID = BASE_PROTOCOL_IDS.finish;
 
 const interviewProtocol = (
   finishOutcome: FinishOutcome = 'completed',
@@ -791,7 +794,10 @@ describe.skipIf(!testDb)('the participant procedures', () => {
     });
 
     it.each([
-      ['a stage that is not a finish stage', { stageId: 'sociogram1' }],
+      [
+        'a stage that is not a finish stage',
+        { stageId: BASE_PROTOCOL_IDS.sociogram },
+      ],
       ['a stage the protocol does not have', { stageId: 'elsewhere' }],
       [
         'an outcome its finish stage does not declare',

@@ -13,6 +13,7 @@ import {
   type StageMetadata,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { createInitialNetwork } from '../../../contract/network';
 import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import { store as createStore } from '../../../store/store';
@@ -110,7 +111,7 @@ type Stages = InterviewPayload['protocol']['stages'];
 
 const nameGeneratorStages: Stages = [
   {
-    id: 'stage-1',
+    id: testId('stage-1'),
     type: 'NameGenerator',
     label: { en: 'Name generator' },
     subject: { entity: 'node', type: NODE_TYPE },
@@ -118,37 +119,37 @@ const nameGeneratorStages: Stages = [
       title: { en: 'Add a person' },
       fields: [
         {
-          id: 'field-1',
+          id: testId('field-1'),
           variable: asEntityAttributeReference('name'),
           prompt: { en: 'Name' },
         },
         {
-          id: 'field-2',
+          id: testId('field-2'),
           variable: asEntityAttributeReference('age'),
           prompt: { en: 'Age' },
         },
       ],
     },
-    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
+    prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
   },
 ];
 
 /** An alter form asking for an encrypted and an unencrypted answer. */
 export const alterFormStages: Stages = [
   {
-    id: 'alter-form',
+    id: testId('alter-form'),
     type: 'AlterForm',
     label: { en: 'Alter form' },
     subject: { entity: 'node', type: NODE_TYPE },
     form: {
       fields: [
         {
-          id: 'field-1',
+          id: testId('field-1'),
           variable: asEntityAttributeReference('name'),
           prompt: { en: 'Name' },
         },
         {
-          id: 'field-2',
+          id: testId('field-2'),
           variable: asEntityAttributeReference('age'),
           prompt: { en: 'Age' },
         },
@@ -156,7 +157,7 @@ export const alterFormStages: Stages = [
     },
   },
   {
-    id: 'next-screen',
+    id: testId('next-screen'),
     type: 'Information',
     label: { en: 'Next screen' },
     title: { en: 'Next screen' },

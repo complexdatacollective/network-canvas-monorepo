@@ -10,7 +10,9 @@ import {
   ExperimentsSchema,
   NodeDefinitionSchema,
   assetSchema,
+  type ProtocolObjectId,
   stageSchema,
+  withEnclosingObjectIds,
 } from '@codaco/protocol-validation';
 
 import type { SectionDoc } from './apply.ts';
@@ -41,6 +43,12 @@ const AssetsSectionSchema = z.record(z.string(), assetSchema);
 export type SectionIssue = {
   path: (string | number)[];
   message: string;
+  /**
+   * The id of the nearest object inside the section that holds the failing
+   * value and has an id of its own (see `protocolObjectId`), so a host can
+   * point at that object.
+   */
+  objectId?: ProtocolObjectId;
 };
 
 export type SectionValidationResult =
@@ -83,20 +91,37 @@ function schemaFor(id: string): z.ZodType {
   }
 }
 
-export function validateSection(
-  id: string,
-  doc: SectionDoc,
-): SectionValidationResult {
-  const result = schemaFor(id).safeParse(doc);
-  if (result.success) return { success: true };
-  return {
-    success: false,
-    issues: result.error.issues.map((issue) => ({
+/**
+ * A section schema's refusal of `doc` as section issues, each with the id of
+ * the marked object it falls inside (see `withEnclosingObjectIds`).
+ */
+export function toSectionIssues(
+  schema: z.ZodType,
+  doc: unknown,
+  issues: readonly z.core.$ZodIssue[],
+): SectionIssue[] {
+  return withEnclosingObjectIds(
+    schema,
+    doc,
+    issues.map((issue): SectionIssue => ({
       path: issue.path.map((part) =>
         typeof part === 'symbol' ? String(part) : part,
       ),
       message: issue.message,
     })),
+  );
+}
+
+export function validateSection(
+  id: string,
+  doc: SectionDoc,
+): SectionValidationResult {
+  const schema = schemaFor(id);
+  const result = schema.safeParse(doc);
+  if (result.success) return { success: true };
+  return {
+    success: false,
+    issues: toSectionIssues(schema, doc, result.error.issues),
   };
 }
 

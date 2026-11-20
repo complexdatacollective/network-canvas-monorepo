@@ -6,7 +6,9 @@ import {
   type StageFormStoreApi,
   useStageEditorForm,
 } from '../../form/stageEditorContext.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 import { useStageName } from '../useStageName.ts';
 
 const NAME = { name: 'Stage name' } as const;
@@ -48,7 +50,9 @@ describe('the stage name drawn outside the form', () => {
     await harness.user.keyboard('{Enter}');
 
     await waitFor(() => {
-      expect(harness.protocolSections()['stage:information-1']).toMatchObject({
+      expect(
+        harness.protocolSections()[`stage:${fixtureStageId('information-1')}`],
+      ).toMatchObject({
         label: { [FIXTURE_LANGUAGE]: 'Information (revised)' },
       });
     });
@@ -85,7 +89,7 @@ describe('a second reader of the name', () => {
   it('comes and goes without taking the registered field with it', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'information-unnamed',
+        id: testId('information-unnamed'),
         type: 'Information',
         fields: {
           label: { [FIXTURE_LANGUAGE]: 'Named' },
@@ -211,7 +215,9 @@ describe('a host that draws no name control at all', () => {
     });
     // Refused before the protocol was asked, so the schema said nothing.
     expect(harness.problems()).toEqual([]);
-    expect(harness.protocolSections()['stage:information-1']).toMatchObject({
+    expect(
+      harness.protocolSections()[`stage:${fixtureStageId('information-1')}`],
+    ).toMatchObject({
       label: { [FIXTURE_LANGUAGE]: 'Information' },
     });
   });

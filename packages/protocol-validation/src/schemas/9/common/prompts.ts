@@ -6,11 +6,12 @@ import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { SortOrderSchema } from '../filters/index.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 
 export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference.ts';
 
 export const promptSchema = z.strictObject({
-  id: z.string(),
+  id: protocolObjectId('prompt'),
   text: localizedString(
     nonBlankText(),
     { format: 'markdown', lines: 'single' },
@@ -52,6 +53,7 @@ export type BasePrompt = z.infer<typeof promptSchema>;
 // (including encrypted text) overwritten by, then erased with, a plain boolean.
 const AdditionalAttributesSchema = z.array(
   z.strictObject({
+    id: protocolObjectId('additionalAttribute'),
     variable: entityAttributeReference({
       subject: 'stageSubject',
       requireType: ['boolean'],

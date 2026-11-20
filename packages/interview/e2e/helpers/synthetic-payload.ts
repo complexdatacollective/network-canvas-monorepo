@@ -55,6 +55,12 @@ export type SyntheticPayloadResult = {
   assetFiles: { assetId: string; source: string; localPath: string }[];
 };
 
+/** The id of the last finish stage in `protocol`, if it has one. */
+export const finishStageIdOf = (protocol: {
+  stages: readonly { id: string; type: string }[];
+}): string | undefined =>
+  protocol.stages.findLast((stage) => stage.type === 'FinishSession')?.id;
+
 // The runtime never tries to decrypt a schema 8 value, so these bytes need
 // not decrypt to anything: only their shape is the old format's.
 const SCHEMA_8_CIPHERTEXT = Array.from(

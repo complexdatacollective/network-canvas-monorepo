@@ -337,7 +337,7 @@
   },
   "stages": [
     {
-      "id": "stage-language",
+      "id": "f368b301-a426-5ef7-aa1f-783e4267060d",
       "type": "LanguageChooser",
       "label": {
         "en-US": "Language",
@@ -349,7 +349,7 @@
       }
     },
     {
-      "id": "stage-info",
+      "id": "92e1117d-5067-58f1-b956-e3cbe2c51f6e",
       "type": "Information",
       "label": {
         "en-US": "Welcome",
@@ -361,7 +361,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "f023ccf4-6b4e-5424-829e-484cbe238bef",
           "type": "text",
           "content": {
             "en-US": "# Release smoke\n\nThis short interview exercises every data write path. Today is {today}.",
@@ -376,7 +376,7 @@
       }
     },
     {
-      "id": "stage-ego",
+      "id": "087490a6-a432-5b70-8e82-e7afb38db2f2",
       "type": "EgoForm",
       "label": {
         "en-US": "About you",
@@ -395,7 +395,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "c9079860-d80d-5883-95d8-a0651ecb0e79",
             "variable": "ego_name",
             "prompt": {
               "en-US": "What is your name?",
@@ -403,7 +403,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "81135797-4a1b-5732-89af-c60b6fa9a438",
             "variable": "consent",
             "prompt": {
               "en-US": "Do you agree to take part?",
@@ -414,7 +414,7 @@
       }
     },
     {
-      "id": "stage-anonymisation",
+      "id": "a3add452-aaf8-56ff-b022-e5d032908b21",
       "label": {
         "en-US": "Privacy",
         "es": "Privacidad"
@@ -433,7 +433,7 @@
         "filter": {
           "rules": [
             {
-              "id": "consent-declined",
+              "id": "20cfadad-fc62-5326-8196-d1e77612111b",
               "type": "ego",
               "options": {
                 "attribute": "consent",
@@ -445,12 +445,12 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "5f5818c7-5122-5b8f-99ea-dbd4f766c2a8"
         }
       }
     },
     {
-      "id": "stage-ng",
+      "id": "2576a148-0481-55b0-8c1b-10862d43aa63",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "Name people",
@@ -480,7 +480,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "7784b696-92fe-521f-99d4-842cb0cb9b81",
           "text": {
             "en-US": "{egoName, select, missing {Who are the people you know?} other {Who are the people you know, {egoName}?}}",
             "es": "{egoName, select, missing {¿Quiénes son las personas que conoces?} other {¿Quiénes son las personas que conoces, {egoName}?}}"
@@ -493,7 +493,7 @@
       }
     },
     {
-      "id": "stage-socio",
+      "id": "0f29c982-b213-5979-927b-35c328be4449",
       "type": "Sociogram",
       "label": {
         "en-US": "Place and connect",
@@ -509,7 +509,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "eb12f0dc-37a4-5f0e-81c9-a60f43784cfb",
           "text": {
             "en-US": "Drag to place everyone; link people who know each other.",
             "es": "Arrastra para ubicar a todos; une a las personas que se conocen entre sí."
@@ -525,7 +525,7 @@
       ]
     },
     {
-      "id": "stage-dyad-introduction",
+      "id": "863b2c2e-6148-502d-ab6e-45c18705fa51",
       "type": "Information",
       "label": {
         "en-US": "Friendships",
@@ -537,7 +537,7 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "7cd9e6f1-1f04-55f1-b9ed-759dc93f8fcf",
           "type": "text",
           "content": {
             "en-US": "You will be asked about each pair of people you named.",
@@ -547,7 +547,7 @@
       ]
     },
     {
-      "id": "stage-dyad",
+      "id": "05e2638c-07d2-57e2-85d8-c58d716538c7",
       "type": "DyadCensus",
       "label": {
         "en-US": "Friendships",
@@ -567,7 +567,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "ad584752-caa8-57d3-94cc-ac099ff3931a",
           "text": {
             "en-US": "Are {first} and {second} friends?",
             "es": "¿{first} y {second} son amigos?"
@@ -577,7 +577,7 @@
       ]
     },
     {
-      "id": "stage-catbin",
+      "id": "c449a0b7-c849-5486-a78f-2423abcfae97",
       "type": "CategoricalBin",
       "label": {
         "en-US": "Context",
@@ -596,7 +596,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "c514b65e-1048-5b86-99d1-a49a21d17d02",
           "text": {
             "en-US": "How do you know each person?",
             "es": "¿De qué conoces a cada persona?"
@@ -606,7 +606,7 @@
       ]
     },
     {
-      "id": "stage-followup",
+      "id": "788c98ec-4645-594e-9f23-94a1755ea70e",
       "type": "AlterForm",
       "label": {
         "en-US": "Follow-up",
@@ -619,7 +619,7 @@
       "filter": {
         "rules": [
           {
-            "id": "follow-up-only",
+            "id": "92528736-e250-5c46-9d2f-2ed28987cb9f",
             "type": "node",
             "options": {
               "type": "person",
@@ -638,7 +638,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "b213121c-6246-5fca-a33d-a9f7d98e6838",
             "variable": "follow_up",
             "prompt": {
               "en-US": "Should we follow up with {nodeLabel}?",
@@ -649,7 +649,7 @@
       }
     },
     {
-      "id": "stage-ordbin",
+      "id": "bd887e02-6980-5bb2-ba85-c1c7558e6f7d",
       "type": "OrdinalBin",
       "label": {
         "en-US": "Closeness",
@@ -664,7 +664,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "489afbd3-3f56-5f8e-b735-a9693bf88c7f",
           "text": {
             "en-US": "How close are you to each person?",
             "es": "¿Qué tan cercana es tu relación con cada persona?"
@@ -675,7 +675,7 @@
       ]
     },
     {
-      "id": "stage-family",
+      "id": "13c450d7-adaa-5e1e-864e-96898bc6a1f2",
       "wording": {
         "alsoParentOfLabel": {
           "en-US": "Are they also the parent of…",
@@ -1035,7 +1035,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "e5879ce7-9346-5a8a-a10f-550459bcc040",
       "finishLabel": {
         "en-US": "Finish",
         "es": "Finalizar"
@@ -1065,7 +1065,7 @@
       "outcome": "completed"
     },
     {
-      "id": "finish-declined",
+      "id": "5f5818c7-5122-5b8f-99ea-dbd4f766c2a8",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {

@@ -7,6 +7,7 @@ import type { InterfaceTextUpdate } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { familyPedigreeStageEditor } from '../../../editors/family-pedigree/FamilyPedigreeStageEditor.ts';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { sharedWording } from '../sharedWording.tsx';
 
@@ -14,7 +15,7 @@ const FIXTURE_LANGUAGE = 'en-US';
 const SETTINGS = sectionId({ kind: 'settings' });
 const COMPOSER_STAGE = sectionId({
   kind: 'stage',
-  stageId: 'network-composer-1',
+  stageId: fixtureStageId('network-composer-1'),
 });
 const SUPPLIED_HINT = 'Type a name, then press Enter';
 /** The placeholder as the shared protocol saves it, before any test. */
@@ -41,7 +42,7 @@ const formIsDirty = () =>
 const mountComposer = () => {
   const sent: (readonly InterfaceTextUpdate[])[] = [];
   const harness = renderStageEditor({
-    stageId: 'network-composer-1',
+    stageId: fixtureStageId('network-composer-1'),
     sections: (
       <>
         <ComposerWording />
@@ -99,7 +100,7 @@ const openHint = async (harness: Harness) => {
 describe('a stage whose only built-in wording is shared', () => {
   it('shows the shared words without a part for the stage’s own', async () => {
     const harness = renderStageEditor({
-      stageId: 'network-composer-1',
+      stageId: fixtureStageId('network-composer-1'),
       sections: <ComposerWording />,
     });
     await harness.user.click(
@@ -265,7 +266,7 @@ describe('a stage whose only built-in wording is shared', () => {
 describe('a stage whose shared wording comes in several groups', () => {
   it('saves a shared word of each group with the stage', async () => {
     const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       registry: familyPedigreeStageEditor,
     });
     const section = await screen.findByRole('switch', {
@@ -315,7 +316,7 @@ describe('a stage whose shared wording comes in several groups', () => {
 describe('a protocol whose default language has no built-in wording', () => {
   it('shows the wording to write, with no switch to turn it off', async () => {
     renderStageEditor({
-      stageId: 'network-composer-1',
+      stageId: fixtureStageId('network-composer-1'),
       sections: <ComposerWording />,
       localization: { defaultLocale: 'en-GB', locales: ['en-GB'] },
     });
@@ -330,7 +331,7 @@ describe('a protocol whose default language has no built-in wording', () => {
 
   it('saves the stage without the shared wording it has not touched', async () => {
     const harness = renderStageEditor({
-      stageId: 'network-composer-1',
+      stageId: fixtureStageId('network-composer-1'),
       sections: <ComposerWording />,
       localization: { defaultLocale: 'en-GB', locales: ['en-GB'] },
     });

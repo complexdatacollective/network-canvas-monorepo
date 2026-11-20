@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import {
@@ -36,7 +37,7 @@ const { saveAssetWithFallback } = await import('~/utils/assetUtils');
 const mockedSaveAssetWithFallback = vi.mocked(saveAssetWithFallback);
 
 const openStage: Stage = {
-  id: 'stage-1',
+  id: createProtocolObjectId(),
   type: 'Information',
   label: { en: 'A' },
   title: { en: 'A' },

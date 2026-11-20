@@ -14,7 +14,6 @@ import {
 import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
-import { NEW_PROTOCOL_FINISH_STAGE_ID } from '../protocol/sectionize.ts';
 import type { RateLimiter } from '../rate-limit/limiter.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
@@ -29,6 +28,7 @@ import {
   createRpcClient,
   expectRpcFailure,
   type RpcTestClient,
+  finishStageIdOf,
 } from './support/rpc.ts';
 import { limiterWithoutStore } from './support/valkey.ts';
 
@@ -183,7 +183,16 @@ describe.skipIf(!testDb)(
         admin.client.rpc('protocols.draft', { teamId: TEAM_ID, ...study }),
       );
       const order = draft.sections.stageOrder;
-      return order === undefined ? undefined : Redacted.value(order);
+      return {
+        order: order === undefined ? undefined : Redacted.value(order),
+        finishStageId: finishStageIdOf(draft.sections),
+      };
+    };
+    // A new study's protocol holds only its finish stage until a stage is
+    // added.
+    const expectUnedited = async (study: CreatedStudy) => {
+      const { order, finishStageId } = await stageOrder(study);
+      expect(order).toEqual({ stages: [finishStageId] });
     };
 
     beforeAll(async () => {
@@ -219,9 +228,7 @@ describe.skipIf(!testDb)(
       );
 
       await expectRpcFailure(Promise.resolve(exit), 'Forbidden');
-      expect(await stageOrder(study)).toEqual({
-        stages: [NEW_PROTOCOL_FINISH_STAGE_ID],
-      });
+      await expectUnedited(study);
     });
 
     it('refuses a draft read from an Admin demoted while the request is in flight', async () => {
@@ -378,9 +385,7 @@ describe.skipIf(!testDb)(
       );
 
       await expectRpcFailure(Promise.resolve(exit), 'Forbidden');
-      expect(await stageOrder(study)).toEqual({
-        stages: [NEW_PROTOCOL_FINISH_STAGE_ID],
-      });
+      await expectUnedited(study);
     });
   },
 );

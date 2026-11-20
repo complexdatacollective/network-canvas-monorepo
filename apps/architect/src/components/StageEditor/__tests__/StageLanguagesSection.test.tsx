@@ -12,6 +12,8 @@ import type { StageEditTarget } from '@codaco/protocol-builder/stageEdit';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
 import {
   type CurrentProtocol,
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -34,7 +36,9 @@ import { loadWalkthrough } from '../walkthrough/parseWalkthrough';
  * the whole protocol, made while a stage of it is open and possibly unsaved.
  */
 const PROTOCOL_ID = 'library-row-1';
-const STAGE_ID = 'choose-language';
+const STAGE_ID = ProtocolObjectIdSchema.parse(
+  '6a0e4f8c-2b1d-4e7a-9c3f-5d8b1a2e4c60',
+);
 const FORM_ID = 'language-chooser-form';
 
 const LABEL = { en: 'Choose a language', fr: 'Choisissez une langue' };
@@ -60,7 +64,7 @@ const protocol: CurrentProtocol = {
       },
     },
     {
-      id: 'finish',
+      id: createProtocolObjectId(),
       type: 'FinishSession',
       label: { en: 'Finish', fr: 'Fin' },
       mode: 'confirmation',

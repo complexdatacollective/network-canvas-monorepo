@@ -14,6 +14,7 @@ import type { Codebook } from '@codaco/protocol-validation';
 
 import { shapeAssetIds } from '../codebook/customShapes.ts';
 import NodeShapeSvgs from '../codebook/NodeShapeSvgs.tsx';
+import { rowTemplate } from '../form/rowDialog.tsx';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
@@ -339,7 +340,7 @@ export type RuleListProps = Readonly<{
   readOnly?: boolean;
 }>;
 
-const createEmptyRule = (): Partial<RuleDraft> => ({});
+const createEmptyRule = rowTemplate<RuleDraft>();
 
 /**
  * A rule's identity is its own id, so a row keeps its place through an add, a

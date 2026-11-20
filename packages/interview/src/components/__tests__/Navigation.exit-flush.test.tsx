@@ -9,6 +9,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { createDebouncedSyncHandler } from '../../contract/debouncedSync';
 import type { InterviewPayload } from '../../contract/types';
 import Shell from '../../Shell';
@@ -72,7 +73,7 @@ const payload = {
     assets: [],
     stages: [
       {
-        id: 'only-stage',
+        id: testId('only-stage'),
         type: 'Information',
         label: { en: 'Only stage' },
         title: { en: 'Only stage' },

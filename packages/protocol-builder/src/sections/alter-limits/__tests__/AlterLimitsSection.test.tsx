@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import { nameGeneratorWording } from '../../name-generator-wording/nameGeneratorWording.tsx';
 import AlterLimitsSection from '../AlterLimitsSection.tsx';
 
@@ -28,15 +30,22 @@ const en = (text: string) => ({ 'en-US': text });
 
 const unlimitedStage = {
   stage: {
+    id: testId('unlimited-stage'),
     type: 'NameGenerator' as const,
     fields: {
       label: en('Name Generator'),
       subject: { entity: 'node', type: 'person' },
       form: {
         title: en('Add a person'),
-        fields: [{ id: 'field-1', variable: 'name', prompt: en('Name?') }],
+        fields: [
+          {
+            id: testId('field-1'),
+            variable: 'name',
+            prompt: en('Name?'),
+          },
+        ],
       },
-      prompts: [{ id: 'prompt-a', text: en('Who do you know?') }],
+      prompts: [{ id: testId('prompt-a'), text: en('Who do you know?') }],
     },
   },
   sections: limits,
@@ -48,7 +57,7 @@ const savingStage = { ...unlimitedStage, sections: limitsAndMessages };
 describe('the nomination limits a name generator may set', () => {
   it('opens already switched on for a stage that has limits', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-roster-1',
+      stageId: fixtureStageId('name-generator-roster-1'),
       sections: limits,
     });
 
@@ -67,7 +76,7 @@ describe('the nomination limits a name generator may set', () => {
 
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-roster-1',
+      stageId: fixtureStageId('name-generator-roster-1'),
       sections: (
         <>
           <AlterLimitsSection />
@@ -332,12 +341,13 @@ describe('the nomination limits a name generator may set', () => {
   it('warns that the limits cover a stage asking several questions', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testId('several-prompts-stage'),
         type: 'NameGenerator' as const,
         fields: {
           ...unlimitedStage.stage.fields,
           prompts: [
-            { id: 'prompt-a', text: en('Who do you know?') },
-            { id: 'prompt-b', text: en('Who do you talk to?') },
+            { id: testId('prompt-a'), text: en('Who do you know?') },
+            { id: testId('prompt-b'), text: en('Who do you talk to?') },
           ],
         },
       },
@@ -373,7 +383,7 @@ describe('the nomination limits a name generator may set', () => {
    */
   it('throws the limits away when the researcher switches them off', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-roster-1',
+      stageId: fixtureStageId('name-generator-roster-1'),
       sections: limits,
     });
 

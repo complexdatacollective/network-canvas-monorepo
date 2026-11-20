@@ -21,6 +21,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import * as attributePatch from '../../../forms/formValuesToAttributePatch';
 import protocol from '../../../store/modules/protocol';
@@ -84,7 +85,7 @@ const FORM_ID = 'person-form';
 const NICKNAME = 'nickname';
 
 const nicknameField: FormField = {
-  id: 'field-nickname',
+  id: testId('field-nickname'),
   variable: asEntityAttributeReference(NICKNAME),
   prompt: { en: 'Nickname' },
 };

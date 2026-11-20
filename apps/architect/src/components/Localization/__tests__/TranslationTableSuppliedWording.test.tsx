@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -24,11 +25,17 @@ const study = (
   codebook: { node: {}, edge: {}, ego: {} },
   stages: [
     {
-      id: 'welcome',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome' },
       title: { en: 'Hello' },
-      items: [{ id: 'intro', type: 'text', content: { en: 'Read this' } }],
+      items: [
+        {
+          id: createProtocolObjectId(),
+          type: 'text',
+          content: { en: 'Read this' },
+        },
+      ],
     },
   ],
   ...(interfaceText === undefined ? {} : { interfaceText }),

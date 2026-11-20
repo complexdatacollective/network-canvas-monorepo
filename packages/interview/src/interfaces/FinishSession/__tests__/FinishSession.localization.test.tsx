@@ -8,6 +8,7 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testIds';
 import { ContractProvider } from '../../../contract/context';
 import type { FinishHandler, InterviewPayload } from '../../../contract/types';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
@@ -21,7 +22,7 @@ import { suppliedInterfaceText } from '../../__tests__/TestProtocolLocalization'
 import FinishSession from '../FinishSession';
 
 const finishStage = {
-  id: 'finish',
+  id: testId('finish'),
   type: 'FinishSession',
   mode: 'confirmation',
   label: { en: 'Finish' },
@@ -215,7 +216,7 @@ describe('FinishSession localized recoverable failures', () => {
       );
       expect(finish).toHaveBeenLastCalledWith(
         'finish-locale-session',
-        { stageId: 'finish', outcome: 'ineligible' },
+        { stageId: testId('finish'), outcome: 'ineligible' },
         expect.any(AbortSignal),
       );
       expect(abortStatesAtFinish).toEqual(

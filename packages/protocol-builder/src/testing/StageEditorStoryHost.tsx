@@ -4,7 +4,10 @@ import { Button } from '@codaco/fresco-ui/Button';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { StageType } from '@codaco/protocol-validation';
+import {
+  isProtocolObjectId,
+  type StageType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
@@ -24,6 +27,7 @@ import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
   fixtureProtocolSections,
+  loadFixtureStage,
 } from './protocolFixture.ts';
 
 /** DOM id of the stage form, so a play function can address it. */
@@ -37,8 +41,9 @@ const COLLABORATOR = {
 
 export type StageEditorStoryHostProps = Readonly<{
   /**
-   * The stage this story opens: one the shared all-interfaces protocol holds,
-   * or the id `stage` is added under.
+   * The stage this story opens: a stage of the shared all-interfaces protocol,
+   * by its handle (`'sociogram-1'`, see `FIXTURE_STAGE_TYPES`) or its own id.
+   * With `stage`, the protocol object id `stage` is filed under.
    */
   stageId: string;
   /**
@@ -120,7 +125,7 @@ export type StageEditorStoryHostProps = Readonly<{
  * play checks that the value it just set is what the protocol now holds.
  */
 export function StageEditorStoryHost({
-  stageId,
+  stageId: named,
   stage: addedStage,
   localization,
   renderEditor,
@@ -129,6 +134,12 @@ export function StageEditorStoryHost({
   createResourceId,
   collaboratorRevision,
 }: StageEditorStoryHostProps) {
+  if (addedStage !== undefined && !isProtocolObjectId(named)) {
+    throw new Error(
+      `A story adding a stage files it under a protocol object id, not "${named}".`,
+    );
+  }
+  const stageId = addedStage === undefined ? loadFixtureStage(named).id : named;
   const [saved, setSaved] = useState<SectionDoc | null>(null);
   const [host] = useState(() => {
     const assetManifest = { ...fixtureAssetManifest(), ...assets };

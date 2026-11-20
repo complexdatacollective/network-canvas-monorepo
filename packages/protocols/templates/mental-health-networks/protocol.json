@@ -275,13 +275,13 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "978e7528-64da-5f22-86fb-19311c64d584",
       "type": "Information",
       "label": { "en": "Template notes (delete before fielding)" },
       "title": { "en": "Template notes" },
       "items": [
         {
-          "id": "researcher-notes",
+          "id": "6ef32e69-938c-50b9-84e5-6bc0ff91f912",
           "type": "text",
           "content": {
             "en": "## For researchers\n\n_Delete this screen before you field the study. It lists the instruments and studies this template draws on._\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n- [Kessler RC et al. The K6 psychological distress scale (overview, Cognitive Atlas).](https://www.cognitiveatlas.org/task/id/tsk_OA90UJX5qwTyc/)\n- [Offer S, Fischer CS (2018). They Drive Me Crazy: Difficult Social Ties and Subjective Well-Being (UCNets). *J Health Soc Behav*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC9242844/)\n- [GSS \"important matters\" generator — Contributions of the GSS to Egocentric Network Research (TR45).](https://gss.norc.org/content/dam/gss/get-documentation/pdf/reports/topical-reports/TR45%20Egocentric%20Network.pdf)"
@@ -290,7 +290,7 @@
       ]
     },
     {
-      "id": "information-intro",
+      "id": "d05688a9-df55-5776-8349-36fc5bf5b17f",
       "type": "EgoForm",
       "label": { "en": "Welcome and consent" },
       "introductionPanel": {
@@ -302,7 +302,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "4b9b4531-79af-555a-9b1e-7f115f3cc7cf",
             "variable": "participant_consent",
             "prompt": {
               "en": "Do you consent to participate in this study?"
@@ -312,7 +312,7 @@
       }
     },
     {
-      "id": "ego-form-background",
+      "id": "fd9f5be8-b2b3-5726-85de-07389d271295",
       "type": "EgoForm",
       "label": { "en": "About you" },
       "skipLogic": {
@@ -330,7 +330,10 @@
             }
           ]
         },
-        "destination": { "type": "stage", "stageId": "finish-declined" }
+        "destination": {
+          "type": "stage",
+          "stageId": "a748a677-3549-5316-a8db-c2276944ff1e"
+        }
       },
       "introductionPanel": {
         "title": { "en": "A few questions about you" },
@@ -341,56 +344,56 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "4e78326f-da60-574c-9a98-0b4a1769dae3",
             "variable": "k6_1",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel nervous?"
             }
           },
           {
-            "id": "field-2",
+            "id": "f1a5e6f2-c49e-5b36-901d-1935431824ab",
             "variable": "k6_2",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel hopeless?"
             }
           },
           {
-            "id": "field-3",
+            "id": "bab5b982-6f7a-5052-b39c-0ff8a0956e76",
             "variable": "k6_3",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel restless or fidgety?"
             }
           },
           {
-            "id": "field-4",
+            "id": "525423f2-0045-540f-8755-30b06e3a495e",
             "variable": "k6_4",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel so depressed that nothing could cheer you up?"
             }
           },
           {
-            "id": "field-5",
+            "id": "16485a4c-c02d-5211-b7b4-114c006010a4",
             "variable": "k6_5",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel that everything was an effort?"
             }
           },
           {
-            "id": "field-6",
+            "id": "d73e8545-da12-59dc-9b25-55b0dfa50d6f",
             "variable": "k6_6",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel worthless?"
             }
           },
           {
-            "id": "field-7",
+            "id": "773668ac-b481-5a22-8351-ee27380fdbd6",
             "variable": "self_rated_mental_health",
             "prompt": {
               "en": "In general, how would you rate your mental health these days?"
             }
           },
           {
-            "id": "field-8",
+            "id": "5f9ef3b0-b644-5e7f-b911-551b492d1411",
             "variable": "in_treatment",
             "prompt": {
               "en": "Are you currently receiving any treatment or support for your mental health?"
@@ -403,12 +406,12 @@
       }
     },
     {
-      "id": "ng-supportive",
+      "id": "d295773a-d658-53cc-b503-72fff4de853b",
       "type": "NameGenerator",
       "label": { "en": "People who support you" },
       "panels": [
         {
-          "id": "ng-supportive-existing",
+          "id": "f66223f6-5cf5-53f4-898f-2eb45c491a07",
           "title": { "en": "Already mentioned" },
           "dataSource": "existing"
         }
@@ -419,7 +422,7 @@
         "title": { "en": "Add Person" },
         "fields": [
           {
-            "id": "field-1",
+            "id": "8116c406-847a-5cc1-9dd6-61e8dd508952",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
@@ -430,41 +433,53 @@
       "behaviours": { "minNodes": 0 },
       "prompts": [
         {
-          "id": "ng-support-confide",
+          "id": "336928af-ab15-5c6f-83a5-e855f80bdbf7",
           "text": {
             "en": "Who are the people you can **talk to about how you're feeling**, or confide in about personal matters?"
           },
           "additionalAttributes": [
-            { "variable": "support_emotional", "value": true }
+            {
+              "id": "d2e8849f-bbf7-5b86-b971-07d51dc64266",
+              "variable": "support_emotional",
+              "value": true
+            }
           ]
         },
         {
-          "id": "ng-support-advice",
+          "id": "b904ab7a-1bcc-5bc9-8286-60b0f9c169bb",
           "text": {
             "en": "Who do you turn to for **advice or guidance** when you have an important decision to make about your health or your life?"
           },
           "additionalAttributes": [
-            { "variable": "support_informational", "value": true }
+            {
+              "id": "33090597-5480-5f81-a536-71d39728e96b",
+              "variable": "support_informational",
+              "value": true
+            }
           ]
         },
         {
-          "id": "ng-support-practical",
+          "id": "3dd85442-9268-582b-a978-f7748498b386",
           "text": {
             "en": "Who would you ask for **practical help** — for example if you were unwell and needed help for a couple of weeks?"
           },
           "additionalAttributes": [
-            { "variable": "support_practical", "value": true }
+            {
+              "id": "dbfcd377-7995-51b6-b78f-be428aed893b",
+              "variable": "support_practical",
+              "value": true
+            }
           ]
         }
       ]
     },
     {
-      "id": "ng-difficult",
+      "id": "4451e2a9-3925-540e-b067-8188777de961",
       "type": "NameGenerator",
       "label": { "en": "People who are difficult or draining" },
       "panels": [
         {
-          "id": "ng-difficult-existing",
+          "id": "48a39c35-6788-583c-aa9d-343724e958ff",
           "title": { "en": "Already mentioned" },
           "dataSource": "existing"
         }
@@ -475,7 +490,7 @@
         "title": { "en": "Add Person" },
         "fields": [
           {
-            "id": "field-1",
+            "id": "9a208e52-4482-553f-b76d-21417f4785c0",
             "variable": "alter_name",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
@@ -486,33 +501,41 @@
       "behaviours": { "minNodes": 0 },
       "prompts": [
         {
-          "id": "ng-difficult-demanding",
+          "id": "d4e93f98-2c88-5bcb-880b-8b81f51a7a9a",
           "text": {
             "en": "Thinking about the people in your life, who do you **sometimes find demanding or difficult**, or who are a source of stress or conflict for you?"
           },
           "additionalAttributes": [
-            { "variable": "is_source_of_stress", "value": true }
+            {
+              "id": "f5abfd76-ece3-54c2-8bd8-353365ac1bac",
+              "variable": "is_source_of_stress",
+              "value": true
+            }
           ]
         },
         {
-          "id": "ng-difficult-draining",
+          "id": "7162b779-addf-596b-b935-be339603d205",
           "text": {
             "en": "Who tends to **drain your energy** or leave you feeling worse after spending time with them? (If you have already named them as someone who supports you, drag them in from the 'Already mentioned' panel rather than typing their name again — this keeps them as a single person who is both supportive and difficult.)"
           },
           "additionalAttributes": [
-            { "variable": "is_source_of_stress", "value": true }
+            {
+              "id": "2b296fd1-8e12-5474-853a-b7469b5cda0f",
+              "variable": "is_source_of_stress",
+              "value": true
+            }
           ]
         }
       ]
     },
     {
-      "id": "alter-form-attributes-introduction",
+      "id": "9cd308e4-eb83-5f84-884b-74b1cd9dcc00",
       "type": "Information",
       "label": { "en": "Tell us a little about each person" },
       "title": { "en": "Tell us a little about each person" },
       "items": [
         {
-          "id": "introduction-text",
+          "id": "fcd59b42-f409-5805-b73b-9f60f000a596",
           "type": "text",
           "content": {
             "en": "For each person you named, we would like to understand your relationship with them, what kinds of support they provide, whether they know about your mental health, and how often you are in contact. There are no right answers — just describe things as they are for you."
@@ -521,7 +544,7 @@
       ]
     },
     {
-      "id": "alter-form-attributes",
+      "id": "031ef781-b493-5216-970c-1eadaa17b2d3",
       "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en": "About each person" },
@@ -529,12 +552,12 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "50271127-ce78-5c55-b985-686b22a47a38",
             "variable": "relationship",
             "prompt": { "en": "How is {nodeLabel} related to you?" }
           },
           {
-            "id": "field-2",
+            "id": "1b7e7aa8-6700-5725-a96b-4f3aa57972e9",
             "variable": "knows_about_mh",
             "prompt": {
               "en": "Does {nodeLabel} **know about your mental health**?"
@@ -542,7 +565,7 @@
             "hint": { "en": "That is, have you told them about it?" }
           },
           {
-            "id": "field-3",
+            "id": "21597d2f-d398-5ad4-9bee-e8205450ee53",
             "variable": "is_clinical",
             "prompt": {
               "en": "Is {nodeLabel} a **formal or clinical source of help**?"
@@ -555,13 +578,13 @@
       }
     },
     {
-      "id": "ordinal-bin-closeness",
+      "id": "cf2ea393-41be-5640-9067-cafdc20de9fc",
       "type": "OrdinalBin",
       "label": { "en": "How close, and how often you're in touch" },
       "subject": { "entity": "node", "type": "person" },
       "prompts": [
         {
-          "id": "bin-closeness",
+          "id": "92d91ca8-42b3-5a5d-8ed7-8ddb06594c6f",
           "text": {
             "en": "Drag each person into the band that best describes **how close you feel to them**."
           },
@@ -569,7 +592,7 @@
           "color": "ord-color-seq-1"
         },
         {
-          "id": "bin-contact-frequency",
+          "id": "89f8e923-6b39-5921-8a28-ab4882e0544c",
           "text": {
             "en": "Now drag the same people into the band that best describes **how often you are usually in contact** with them."
           },
@@ -579,13 +602,13 @@
       ]
     },
     {
-      "id": "categorical-bin-help-source",
+      "id": "e3974bf6-2a6b-5da7-a14e-3ea770dfa716",
       "type": "CategoricalBin",
       "label": { "en": "Where your help comes from" },
       "subject": { "entity": "node", "type": "person" },
       "prompts": [
         {
-          "id": "bin-help-source",
+          "id": "b3b6a172-37a4-5e86-a76a-9e3179fb1cfd",
           "text": {
             "en": "Sort the people you named by the kind of help they represent: **informal** help (family, friends, peers) or **formal/clinical** help (professionals and services)."
           },
@@ -594,7 +617,7 @@
       ]
     },
     {
-      "id": "sociogram-position",
+      "id": "f86f01ab-6146-5c7a-b228-66fd7dde1a03",
       "type": "Sociogram",
       "label": { "en": "Arrange your network" },
       "interviewScript": "This is a reflective, manual-positioning stage (no automatic layout): invite the participant to arrange the people meaningfully — for example supportive people on one side, difficult or draining people on the other, and those they feel closest to nearer the centre of the rings — then draw lines between people who know one another. The arrangement they build becomes the network map they talk through on the final review screen, so the positions are meaningful here rather than incidental.",
@@ -602,7 +625,7 @@
       "background": { "concentricCircles": 3, "skewedTowardCenter": true },
       "prompts": [
         {
-          "id": "sociogram-position-knows",
+          "id": "6b2fb0bd-6bc7-5e8c-a4f1-a8f28d83a024",
           "text": {
             "en": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**."
           },
@@ -612,7 +635,7 @@
       ]
     },
     {
-      "id": "narrative-support-vs-strain",
+      "id": "92905b20-ddf2-5e4e-804c-2a57e66f4005",
       "attributesHeading": { "en": "Attributes" },
       "type": "Narrative",
       "label": { "en": "Your network of support and strain" },
@@ -624,30 +647,34 @@
       },
       "presets": [
         {
-          "id": "preset-support-strain",
+          "id": "4f0edd4a-fbbd-5fec-b16b-8237f915568f",
           "label": { "en": "Supportive vs difficult ties" },
           "layoutVariable": "layout",
           "highlight": [
             {
+              "id": "69476724-d32f-5cb7-81f9-ec634ac17d87",
               "variable": "support_emotional",
               "label": { "en": "Emotional support" }
             },
             {
+              "id": "fbc24f4a-a001-550d-96e7-e03a1ecabbe3",
               "variable": "is_source_of_stress",
               "label": { "en": "Source of stress" }
             }
           ]
         },
         {
-          "id": "preset-disclosure",
+          "id": "9b8e5033-0fbe-5afc-889b-25405cb28f39",
           "label": { "en": "Who knows about your mental health" },
           "layoutVariable": "layout",
           "highlight": [
             {
+              "id": "d5d5c3cc-625d-5d25-98dd-757f026c45b9",
               "variable": "knows_about_mh",
               "label": { "en": "Knows about your mental health" }
             },
             {
+              "id": "9066cdf4-d75c-500e-8eed-484307c912ba",
               "variable": "is_clinical",
               "label": { "en": "Formal or clinical help" }
             }
@@ -657,13 +684,13 @@
       "background": { "concentricCircles": 3, "skewedTowardCenter": true }
     },
     {
-      "id": "information-safety",
+      "id": "05ace129-c789-50b2-aff3-1b76ed6b260e",
       "type": "Information",
       "label": { "en": "Thank you and support services" },
       "title": { "en": "Thank you — and where to find support" },
       "items": [
         {
-          "id": "safety-thanks",
+          "id": "ccd5e80c-c268-57ab-9b57-c4703aa1f4c4",
           "type": "text",
           "content": {
             "en": "## Thank you for sharing\n\nTalking about your mental health and your relationships takes courage, and we are grateful for your time and honesty.\n\n### If you would like support\n\nIf any of these questions brought up difficult feelings, please consider reaching out for support:\n\n- **Talk to the interviewer now** if you would like to stop and take a moment.\n- **Contact your doctor or usual mental-health service.**\n- **If you are in crisis or thinking about harming yourself, please contact your local emergency services or a crisis line immediately.** _The researcher will insert the specific local and national helpline numbers for your study site here (for example, in the US: call or text 988; in the UK: Samaritans on 116 123)._\n\nYou do not have to face difficult feelings alone, and reaching out for help is a sign of strength."
@@ -672,7 +699,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "87e1d084-fb04-58d5-9b69-e526c7ec2cb0",
       "finishLabel": { "en": "Finish" },
       "finishConfirmation": {
         "en": "Are you sure you want to finish the interview?"
@@ -692,7 +719,7 @@
       "outcome": "completed"
     },
     {
-      "id": "finish-declined",
+      "id": "a748a677-3549-5316-a8db-c2276944ff1e",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": { "en": "Not Taking Part" },

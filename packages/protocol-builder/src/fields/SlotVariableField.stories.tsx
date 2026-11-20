@@ -10,11 +10,12 @@ import { familyPedigreeMessages } from '../editors/family-pedigree/sections/pedi
 import type { CodebookSubject } from '../protocol-context.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 
 const PEDIGREE_STAGE = sectionId({
   kind: 'stage',
-  stageId: 'family-pedigree-1',
+  stageId: fixtureStageId('family-pedigree-1'),
 });
 const FAMILY_MEMBER = sectionId({
   kind: 'codebookNode',
@@ -95,7 +96,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     sectionTitle: 'Person attributes',
     children: <ParticipantSlot />,
   },

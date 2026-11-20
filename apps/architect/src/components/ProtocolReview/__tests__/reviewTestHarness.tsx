@@ -27,6 +27,9 @@ import {
   makeFinding,
   makeProtocol,
   op,
+  WELCOME_STAGE_ID,
+  NAMES_STAGE_ID,
+  NAMES_PROMPT_ID,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
@@ -53,9 +56,15 @@ export type TestStore = ReturnType<typeof makeStore>;
 const FINDINGS: Finding[] = [
   makeFinding(
     'prompt',
-    [op('set', '/stages/names/prompts/p1/text', 'Name everyone you know')],
+    [
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
+        'Name everyone you know',
+      ),
+    ],
     {
-      stageId: 'names',
+      stageId: NAMES_STAGE_ID,
       severity: 'serious',
       category: 'wording',
       title: 'The prompt is vague',
@@ -63,21 +72,25 @@ const FINDINGS: Finding[] = [
   ),
   makeFinding(
     'title',
-    [op('set', '/stages/welcome/title/en', 'Welcome to our study')],
+    [op('set', `/stages/${WELCOME_STAGE_ID}/title/en`, 'Welcome to our study')],
     {
-      stageId: 'welcome',
+      stageId: WELCOME_STAGE_ID,
       severity: 'worth_fixing',
       category: 'burden',
       title: 'The welcome title is unclear',
     },
   ),
-  makeFinding('broken', [op('set', '/stages/welcome/type', 'NotAStage')], {
-    codebookEntity: 'node',
-    codebookTypeId: 'person',
-    category: 'structure',
-    severity: 'worth_fixing',
-    title: 'The person type is misused',
-  }),
+  makeFinding(
+    'broken',
+    [op('set', `/stages/${WELCOME_STAGE_ID}/type`, 'NotAStage')],
+    {
+      codebookEntity: 'node',
+      codebookTypeId: 'person',
+      category: 'structure',
+      severity: 'worth_fixing',
+      title: 'The person type is misused',
+    },
+  ),
   makeFinding('advice', [], {
     category: 'research_fit',
     severity: 'suggestion',

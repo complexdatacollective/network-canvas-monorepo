@@ -7,12 +7,16 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { RuleDraft } from '../../../rules/rule.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import {
   type CodebookPatch,
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import BuilderSection from '../../BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../interviewer-guidance/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../SkipLogicSection.tsx';
@@ -118,7 +122,7 @@ const configuredFields = (
 ): SectionDoc => ({
   skipLogic: {
     action: 'SKIP',
-    filter: { rules: [nodeRule('rule-a')] },
+    filter: { rules: [nodeRule(testId('rule-a'))] },
     ...(destination === undefined ? {} : { destination }),
   },
 });
@@ -133,7 +137,7 @@ const configuredFields = (
 const awaitingRulesFields: SectionDoc = {
   skipLogic: {
     action: 'SKIP',
-    destination: { type: 'stage', stageId: 'name-generator-1' },
+    destination: { type: 'stage', stageId: fixtureStageId('name-generator-1') },
     filter: { rules: [] },
   },
 };
@@ -172,7 +176,10 @@ describe('a stage editor composing the skip-logic section', () => {
   it('opens already configured skip logic and reports it as finished', async () => {
     const harness = renderStageEditor({
       stage: stageHolding(
-        configuredFields({ type: 'stage', stageId: 'name-generator-1' }),
+        configuredFields({
+          type: 'stage',
+          stageId: fixtureStageId('name-generator-1'),
+        }),
       ),
       sections: editorSections,
     });
@@ -220,7 +227,7 @@ describe('a stage editor composing the skip-logic section', () => {
     );
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
-      'route:stage:name-generator-1',
+      `route:stage:${fixtureStageId('name-generator-1')}`,
     );
 
     expect(
@@ -228,7 +235,7 @@ describe('a stage editor composing the skip-logic section', () => {
     ).toBeChecked();
     expect(
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
-    ).toHaveValue('route:stage:name-generator-1');
+    ).toHaveValue(`route:stage:${fixtureStageId('name-generator-1')}`);
   });
 
   /**
@@ -277,7 +284,7 @@ describe('a stage editor composing the skip-logic section', () => {
 
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
-      'route:stage:name-generator-1',
+      `route:stage:${fixtureStageId('name-generator-1')}`,
     );
 
     // The save runs the stage's own schema over the document before handing it
@@ -294,7 +301,10 @@ describe('a stage editor composing the skip-logic section', () => {
           },
         ],
       },
-      destination: { type: 'stage', stageId: 'name-generator-1' },
+      destination: {
+        type: 'stage',
+        stageId: fixtureStageId('name-generator-1'),
+      },
     });
   });
 });
@@ -303,7 +313,10 @@ describe('the rules inside skip logic', () => {
   const twoRuleFields: SectionDoc = {
     skipLogic: {
       action: 'SHOW',
-      filter: { join: 'AND', rules: [nodeRule('rule-a'), nodeRule('rule-b')] },
+      filter: {
+        join: 'AND',
+        rules: [nodeRule(testId('rule-a')), nodeRule(testId('rule-b'))],
+      },
     },
   };
 
@@ -323,7 +336,7 @@ describe('the rules inside skip logic', () => {
 
     const written = await harness.submit();
     expect(written).not.toBeNull();
-    expect(ruleIds(written?.stageDocument)).toEqual(['rule-b']);
+    expect(ruleIds(written?.stageDocument)).toEqual([testId('rule-b')]);
   });
 
   it('moves a rule without changing which rule it is', async () => {
@@ -339,7 +352,10 @@ describe('the rules inside skip logic', () => {
 
     const written = await harness.submit();
     expect(written).not.toBeNull();
-    expect(ruleIds(written?.stageDocument)).toEqual(['rule-b', 'rule-a']);
+    expect(ruleIds(written?.stageDocument)).toEqual([
+      testId('rule-b'),
+      testId('rule-a'),
+    ]);
   });
 });
 
@@ -356,7 +372,7 @@ describe('a rule set the researcher cannot save', () => {
       filter: {
         rules: [
           {
-            id: 'rule-a',
+            id: testId('rule-a'),
             type: 'node',
             options: {
               type: 'person',
@@ -377,7 +393,9 @@ describe('a rule set the researcher cannot save', () => {
         // expected array to have <=1 items".
         skipLogic: {
           action: 'SHOW',
-          filter: { rules: [nodeRule('rule-a'), nodeRule('rule-b')] },
+          filter: {
+            rules: [nodeRule(testId('rule-a')), nodeRule(testId('rule-b'))],
+          },
         },
       }),
       sections: editorSections,
@@ -403,7 +421,10 @@ describe('a rule set the researcher cannot save', () => {
   it('refuses a rule set the researcher has emptied', async () => {
     const harness = renderStageEditor({
       stage: stageHolding(
-        configuredFields({ type: 'stage', stageId: 'name-generator-1' }),
+        configuredFields({
+          type: 'stage',
+          stageId: fixtureStageId('name-generator-1'),
+        }),
       ),
       sections: editorSections,
     });
@@ -454,7 +475,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: 'rule-a',
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -507,7 +528,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: 'rule-a',
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -642,7 +663,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: 'rule-a',
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -706,7 +727,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: 'rule-a',
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -746,8 +767,8 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   /**
-   * The protocol schema refuses a filter whose rules repeat an id
-   * (`findDuplicateId`), and no control here asks for one — so a stage holding
+   * The protocol schema refuses a protocol whose objects repeat an id
+   * (`findDuplicateProtocolObjectIds`), and no control here asks for one — so a stage holding
    * two rules under one id can only have arrived by import, by hand-editing,
    * or from a merge. Nothing used to report it, and the list keyed both rows
    * by that one id, which made them one row to `ArrayField`.
@@ -761,12 +782,12 @@ describe('a rule set the researcher cannot save', () => {
             join: 'AND',
             rules: [
               {
-                id: 'rule-a',
+                id: testId('rule-a'),
                 type: 'node',
                 options: { type: 'person', operator: 'EXISTS' },
               },
               {
-                id: 'rule-a',
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -820,7 +841,7 @@ describe('a rule set the researcher cannot save', () => {
           filter: {
             rules: [
               {
-                id: 'rule-a',
+                id: testId('rule-a'),
                 type: 'node',
                 options: {
                   type: 'person',
@@ -953,7 +974,10 @@ describe('choosing where the interview continues', () => {
   it('reports a destination whose stage has left the interview, and saves it', async () => {
     const harness = renderStageEditor({
       stage: lateStageHolding(
-        configuredFields({ type: 'stage', stageId: 'deleted-stage' }),
+        configuredFields({
+          type: 'stage',
+          stageId: testId('deleted-stage'),
+        }),
       ),
       sections: skipLogicOnly,
     });
@@ -974,14 +998,20 @@ describe('choosing where the interview continues', () => {
 
     const written = await harness.submit();
     expect(written?.stageDocument.skipLogic).toEqual(
-      configuredFields({ type: 'stage', stageId: 'deleted-stage' }).skipLogic,
+      configuredFields({
+        type: 'stage',
+        stageId: testId('deleted-stage'),
+      }).skipLogic,
     );
   });
 
   it('leaves a destination the interview can still reach marked valid', () => {
     renderStageEditor({
       stage: lateStageHolding(
-        configuredFields({ type: 'stage', stageId: 'geospatial-1' }),
+        configuredFields({
+          type: 'stage',
+          stageId: fixtureStageId('geospatial-1'),
+        }),
       ),
       sections: skipLogicOnly,
     });
@@ -1021,7 +1051,7 @@ describe('choosing where the interview continues', () => {
   it('reports a destination carrying a key the schema refuses', async () => {
     renderStageEditor({
       stage: lateStageHolding(
-        configuredFields({ type: 'finish', stageId: 'stale' }),
+        configuredFields({ type: 'finish', stageId: testId('stale') }),
       ),
       sections: skipLogicOnly,
     });
@@ -1043,7 +1073,7 @@ describe('choosing where the interview continues', () => {
   it('refuses to save a destination carrying a key the schema refuses', async () => {
     const harness = renderStageEditor({
       stage: lateStageHolding(
-        configuredFields({ type: 'finish', stageId: 'stale' }),
+        configuredFields({ type: 'finish', stageId: testId('stale') }),
       ),
       sections: skipLogicOnly,
     });
@@ -1066,7 +1096,10 @@ describe('choosing where the interview continues', () => {
     const harness = renderStageEditor({
       stage: lateStageHolding(
         // The interview reaches the Information stage long before this one.
-        configuredFields({ type: 'stage', stageId: 'information-1' }),
+        configuredFields({
+          type: 'stage',
+          stageId: fixtureStageId('information-1'),
+        }),
       ),
       sections: skipLogicOnly,
     });
@@ -1080,26 +1113,32 @@ describe('choosing where the interview continues', () => {
 
     const written = await harness.submit();
     expect(written?.stageDocument.skipLogic).toEqual(
-      configuredFields({ type: 'stage', stageId: 'information-1' }).skipLogic,
+      configuredFields({
+        type: 'stage',
+        stageId: fixtureStageId('information-1'),
+      }).skipLogic,
     );
   });
 
   it('saves the same stage once the destination is chosen again', async () => {
     const harness = renderStageEditor({
       stage: lateStageHolding(
-        configuredFields({ type: 'stage', stageId: 'deleted-stage' }),
+        configuredFields({
+          type: 'stage',
+          stageId: testId('deleted-stage'),
+        }),
       ),
       sections: skipLogicOnly,
     });
 
     await harness.user.selectOptions(
       destinationSelect(),
-      'route:stage:geospatial-1',
+      `route:stage:${fixtureStageId('geospatial-1')}`,
     );
 
     const written = await harness.submit();
     expect(written?.stageDocument.skipLogic).toMatchObject({
-      destination: { type: 'stage', stageId: 'geospatial-1' },
+      destination: { type: 'stage', stageId: fixtureStageId('geospatial-1') },
     });
   });
 });
@@ -1108,7 +1147,10 @@ describe('switching skip logic off', () => {
   it('removes it from the stage entirely', async () => {
     const harness = renderStageEditor({
       stage: stageHolding(
-        configuredFields({ type: 'stage', stageId: 'name-generator-1' }),
+        configuredFields({
+          type: 'stage',
+          stageId: fixtureStageId('name-generator-1'),
+        }),
       ),
       sections: editorSections,
     });
@@ -1131,7 +1173,10 @@ describe('switching skip logic off', () => {
   it('asks first, and keeps everything when the answer is no', async () => {
     const harness = renderStageEditor({
       stage: stageHolding(
-        configuredFields({ type: 'stage', stageId: 'name-generator-1' }),
+        configuredFields({
+          type: 'stage',
+          stageId: fixtureStageId('name-generator-1'),
+        }),
       ),
       sections: editorSections,
     });
@@ -1150,7 +1195,7 @@ describe('switching skip logic off', () => {
     ).toBeChecked();
     expect(
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
-    ).toHaveValue('route:stage:name-generator-1');
+    ).toHaveValue(`route:stage:${fixtureStageId('name-generator-1')}`);
     expect(skipLogicOutline(harness)?.state).toBe('Finished');
   });
 
@@ -1177,7 +1222,10 @@ describe('switching skip logic off', () => {
   it('switches back on with an editable, empty rule set', async () => {
     const harness = renderStageEditor({
       stage: stageHolding(
-        configuredFields({ type: 'stage', stageId: 'name-generator-1' }),
+        configuredFields({
+          type: 'stage',
+          stageId: fixtureStageId('name-generator-1'),
+        }),
       ),
       sections: editorSections,
     });

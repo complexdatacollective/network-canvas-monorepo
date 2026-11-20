@@ -25,6 +25,8 @@ const CLASH =
   'A change you made to the codebook while editing this stage no longer fits the protocol, so nothing was saved.';
 const LOST =
   'This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.';
+const ADD_REFUSED =
+  'This stage could not be added because part of it is not valid. Your changes are still here.';
 
 const QUICK_ADD = sectionId({
   kind: 'stage',
@@ -159,18 +161,24 @@ describe('a stage save the host refuses over a codebook section', () => {
     expect(alert).not.toHaveTextContent(CLASH);
   });
 
-  it('still says the stage is not something the protocol can hold when the refused section is the stage being added', async () => {
+  it('keeps the draft and says the stage is not valid when the refused section is the stage being added', async () => {
     const harness = renderStageEditor({
       create: ADDED_STAGE,
       sections: <SubjectSection entity="node" />,
       adapter: (host) => refusingWith(host, () => QUICK_ADD).adapter,
     });
-    await harness.opened();
+    const before = harness.host.store.sectionIds().length;
+    await stagePlace(harness);
+    const staged = harness.stagedCodebook();
 
     expect(await harness.submit()).toBeNull();
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(LOST);
+    expect(alert).toHaveTextContent(ADD_REFUSED);
+    expect(alert).not.toHaveTextContent(LOST);
     expect(alert).not.toHaveTextContent(CLASH);
+    // Nothing was added, and the codebook change made in the draft is still there.
+    expect(harness.host.store.sectionIds()).toHaveLength(before);
+    expect(Object.keys(harness.stagedCodebook())).toEqual(Object.keys(staged));
   });
 });

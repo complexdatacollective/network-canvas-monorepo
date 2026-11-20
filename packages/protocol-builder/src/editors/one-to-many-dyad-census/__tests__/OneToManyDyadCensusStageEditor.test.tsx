@@ -2,14 +2,17 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { oneToManyDyadCensusStageEditor } from '../OneToManyDyadCensusStageEditor.ts';
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const ONE_TO_MANY_INDEX = fixtureStageIds().indexOf(
-  'one-to-many-dyad-census-1',
+  fixtureStageId('one-to-many-dyad-census-1'),
 );
 
 const stageNameInput = (): HTMLInputElement =>

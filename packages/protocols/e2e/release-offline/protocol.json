@@ -45,7 +45,7 @@
   },
   "stages": [
     {
-      "id": "stage-welcome",
+      "id": "375bc35c-d78e-5c5f-8bdc-5196bd2cea27",
       "type": "Information",
       "label": {
         "en-US": "Welcome"
@@ -55,14 +55,14 @@
       },
       "items": [
         {
-          "id": "text",
+          "id": "1e56a01a-7c9a-5d8b-a734-56bf3d8877f5",
           "type": "text",
           "content": {
             "en-US": "# Release offline\n\nThis protocol was imported while the device was offline."
           }
         },
         {
-          "id": "image",
+          "id": "783e0fe0-d021-53a4-912e-b617580e1619",
           "type": "asset",
           "content": "marker",
           "description": {
@@ -73,7 +73,7 @@
       ]
     },
     {
-      "id": "stage-roster",
+      "id": "3d80572d-c637-5d36-8f41-acb5440b7bc4",
       "minNodesNotice": {
         "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
       },
@@ -98,6 +98,7 @@
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "2d527bf0-ddae-5285-9ca6-53d318be2dff",
             "label": {
               "en-US": "Age"
             },
@@ -108,12 +109,14 @@
       "sortOptions": {
         "sortOrder": [
           {
+            "id": "6393e61b-00a2-514a-ae86-309d4ee2a617",
             "property": "age",
             "direction": "desc"
           }
         ],
         "sortableProperties": [
           {
+            "id": "f1548135-3606-542b-917f-855b088e72ee",
             "label": {
               "en-US": "Age"
             },
@@ -127,7 +130,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "edf49369-de38-5596-8f7d-24124b956aca",
           "text": {
             "en-US": "Who on this list do you know?"
           }
@@ -142,7 +145,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "a18c82be-1062-5367-9539-187fdf15eb31",
       "finishLabel": {
         "en-US": "Finish"
       },

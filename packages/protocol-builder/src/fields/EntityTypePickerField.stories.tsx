@@ -8,6 +8,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import EntityTypePickerField, {
   EntitySubjectPickerField,
 } from './EntityTypePickerField.tsx';
@@ -25,7 +26,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'name-generator-1',
+    stageId: fixtureStageId('name-generator-1'),
     sectionTitle: 'What this stage is about',
     children: (
       <Field<typeof EntitySubjectPickerField>
@@ -120,7 +121,7 @@ export const ASpectator: Story = {
  * and it says so by passing a question or not passing one.
  */
 export const ChoosingAnotherType: Story = {
-  args: { stageId: 'anonymisation-1' },
+  args: { stageId: fixtureStageId('anonymisation-1') },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -203,7 +204,7 @@ export const ATypeThatWasDeleted: Story = {
  * stored protocol valid would be right to refuse the pair as one edit.
  */
 export const MakingAType: Story = {
-  args: { stageId: 'anonymisation-1' },
+  args: { stageId: fixtureStageId('anonymisation-1') },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -253,7 +254,7 @@ export const EditingTheHeldType: Story = {
 /** The same control for a kind of relationship rather than a kind of member. */
 export const ChoosingAnEdgeType: Story = {
   args: {
-    stageId: 'dyad-census-1',
+    stageId: fixtureStageId('dyad-census-1'),
     sectionTitle: 'What this stage records',
     children: (
       <Field<typeof EntityTypePickerField>

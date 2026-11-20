@@ -23,6 +23,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
@@ -60,7 +61,7 @@ const form: TForm = {
   title: { en: 'Add a person' },
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: asEntityAttributeReference(VARIABLE),
       prompt: { en: FIELD_LABEL },
     },
@@ -70,12 +71,12 @@ const form: TForm = {
 type NameGeneratorStage = StageProps<'NameGenerator'>['stage'];
 
 const stage: NameGeneratorStage = {
-  id: 'name-generator-stage',
+  id: testId('name-generator-stage'),
   type: 'NameGenerator',
   label: { en: 'Add people' },
   subject: { entity: 'node', type: NODE_TYPE },
   form,
-  prompts: [{ id: 'prompt-1', text: { en: 'Who do you know?' } }],
+  prompts: [{ id: testId('prompt-1'), text: { en: 'Who do you know?' } }],
 };
 
 function buildProtocol(variable: Variable): ProtocolPayload {

@@ -173,13 +173,13 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "7916338f-881c-5fd6-b5e9-32a5667c883d",
       "type": "Information",
       "label": { "en": "Template notes (delete before fielding)" },
       "title": { "en": "Template notes" },
       "items": [
         {
-          "id": "researcher-notes",
+          "id": "c03288d0-1986-5466-99cd-6cdcdf693afb",
           "type": "text",
           "content": {
             "en": "## For researchers\n\n_Delete this screen before you field the study. It lists the surveillance instruments and studies this template draws on._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
@@ -188,13 +188,13 @@
       ]
     },
     {
-      "id": "information-intro",
+      "id": "c996c1c2-7ab0-57c8-bd06-03f7f98a0f89",
       "type": "Information",
       "label": { "en": "Welcome & Confidentiality" },
       "title": { "en": "About this interview" },
       "items": [
         {
-          "id": "intro-confidentiality",
+          "id": "63d79381-1c58-55a2-afee-d7565b8e9abe",
           "type": "text",
           "content": {
             "en": "Thank you for taking part. In this interview we will ask about people you have had **sexual contact** with, and (if relevant) people you have **injected drugs** with. These questions help researchers understand how HIV, other sexually transmitted infections, and bloodborne infections can spread through networks of partners.\n\nYour answers are **confidential**. You will never have to give anyone's real name: you can use initials or a code that only makes sense to you. In the next step you will create a private passphrase that encrypts these labels, so that **only you** can read them — not even the research team.\n\n## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time — whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
@@ -203,7 +203,7 @@
       ]
     },
     {
-      "id": "anonymisation",
+      "id": "c3f8973e-1060-502e-8e0f-7f2aec79e122",
       "type": "Anonymisation",
       "label": { "en": "Create your private passphrase" },
       "explanationText": {
@@ -212,7 +212,7 @@
       "validation": { "minLength": 8, "maxLength": 64 }
     },
     {
-      "id": "ego-form",
+      "id": "3c5c3313-0f08-58f3-892e-81647d0ededa",
       "dynamicValues": {
         "egoHivStatus": {
           "path": "ego.ego_hiv_status",
@@ -230,12 +230,12 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "e1e2a161-a14a-5e3d-8358-b81b6925258d",
             "variable": "ego_hiv_status",
             "prompt": { "en": "What is your current HIV status?" }
           },
           {
-            "id": "field-2",
+            "id": "78125377-94fc-590a-a1b5-98251813a801",
             "variable": "on_prep",
             "prompt": {
               "en": "Are you currently taking PrEP to prevent HIV?"
@@ -243,7 +243,7 @@
             "hint": { "en": "PrEP stands for pre-exposure prophylaxis." }
           },
           {
-            "id": "field-3",
+            "id": "3398c3a2-6f26-5e89-8e7d-7271d0a13763",
             "variable": "on_art",
             "prompt": {
               "en": "{egoHivStatus, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} positive {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
@@ -253,7 +253,7 @@
             }
           },
           {
-            "id": "field-4",
+            "id": "39ecac05-f8ba-558e-8bec-1add04c28a15",
             "variable": "last_hiv_test",
             "prompt": {
               "en": "When did you most recently take an HIV test?"
@@ -261,7 +261,7 @@
             "hint": { "en": "An approximate month and year is fine." }
           },
           {
-            "id": "field-5",
+            "id": "88c7107a-04de-537e-8acf-cdc5ee6ef12c",
             "variable": "injects_drugs",
             "prompt": {
               "en": "In the past 6 months, have you injected any drugs that were not prescribed to you?"
@@ -271,12 +271,12 @@
       }
     },
     {
-      "id": "ng-sexual-partners",
+      "id": "6aaa0321-18f5-5412-80fe-a313b547d127",
       "type": "NameGenerator",
       "label": { "en": "Sexual partners" },
       "panels": [
         {
-          "id": "ng-sexual-partners-existing",
+          "id": "4bfc68ad-f868-509e-bb86-bdb5849e8261",
           "title": { "en": "Already listed" },
           "dataSource": "existing"
         }
@@ -286,7 +286,7 @@
         "title": { "en": "Add Partner" },
         "fields": [
           {
-            "id": "field-1",
+            "id": "2878c819-e8d1-56c1-8e7d-83637aa1e411",
             "variable": "partner_label",
             "prompt": { "en": "Enter initials or a code for this person." },
             "hint": {
@@ -297,7 +297,7 @@
       },
       "prompts": [
         {
-          "id": "p-sexual",
+          "id": "d1c59bac-5974-5c8d-9825-909444faeeba",
           "text": {
             "en": "Thinking about the **past 6 months**, who are the people you have had any kind of **sexual contact** with? Add each person using initials or a private code — include main or steady partners, casual partners, and one-time partners."
           }
@@ -306,12 +306,12 @@
       "behaviours": { "minNodes": 0 }
     },
     {
-      "id": "ng-injection-partners",
+      "id": "72835c2a-717b-5199-a910-0ca2064ae5ac",
       "type": "NameGenerator",
       "label": { "en": "Injection partners" },
       "panels": [
         {
-          "id": "ng-injection-partners-existing",
+          "id": "d728f581-95a0-5412-9df8-64b63c409c11",
           "title": { "en": "Already listed" },
           "dataSource": "existing"
         }
@@ -321,7 +321,7 @@
         "title": { "en": "Add Partner" },
         "fields": [
           {
-            "id": "field-1",
+            "id": "d31f2245-f9e1-5c5a-aea9-510971cc67ef",
             "variable": "partner_label",
             "prompt": { "en": "Enter initials or a code for this person." },
             "hint": {
@@ -332,7 +332,7 @@
       },
       "prompts": [
         {
-          "id": "p-injection",
+          "id": "e44d6d4a-102f-5af0-9fdc-a2207778dd3c",
           "text": {
             "en": "Still thinking about the **past 6 months**, who are the people you have **injected drugs with** — for example, people you injected alongside, or shared any injection equipment (needles, syringes, cookers, cotton, or water) with? Add anyone not already listed; if someone is both a sexual and an injection partner, drag them in from the 'Already listed' panel so they remain a single person in the data."
           }
@@ -341,13 +341,13 @@
       "behaviours": { "minNodes": 0 }
     },
     {
-      "id": "alter-form-partnership-introduction",
+      "id": "8b75b3eb-572a-5450-8073-ca3affd79e51",
       "type": "Information",
       "label": { "en": "Tell us about each partnership" },
       "title": { "en": "Tell us about each partnership" },
       "items": [
         {
-          "id": "introduction-text",
+          "id": "7af45b1c-e05e-5d4b-9420-ec265d61404b",
           "type": "text",
           "content": {
             "en": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
@@ -356,7 +356,7 @@
       ]
     },
     {
-      "id": "alter-form-partnership",
+      "id": "756e69ac-09e3-54e7-b836-9c5e02c4b3c4",
       "dynamicValues": {
         "nodeLabel": { "path": "node.$label" },
         "partnershipStart": { "path": "node.partnership_start" }
@@ -367,38 +367,38 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "61776abd-cf8c-538f-9402-4753f71cd5ce",
             "variable": "partner_type",
             "prompt": {
               "en": "How would you describe your relationship with {nodeLabel}?"
             }
           },
           {
-            "id": "field-2",
+            "id": "60e226df-90b9-55ab-8dc2-0be26ee503b6",
             "variable": "partner_age",
             "prompt": { "en": "About how old is {nodeLabel}, in years?" }
           },
           {
-            "id": "field-3",
+            "id": "9af3d1fd-a7a8-5e46-9c31-c0e11d11e701",
             "variable": "partner_gender",
             "prompt": { "en": "What is {nodeLabel}'s gender?" }
           },
           {
-            "id": "field-4",
+            "id": "c676dac1-fa39-5435-9643-401b0ff4a58f",
             "variable": "partner_serostatus",
             "prompt": {
               "en": "As far as you know, what is {nodeLabel}'s HIV status?"
             }
           },
           {
-            "id": "field-5",
+            "id": "f0c72086-6e18-55f8-88d8-1e65039803ec",
             "variable": "condom_use",
             "prompt": {
               "en": "When you had sex with {nodeLabel}, how often did you use a condom?"
             }
           },
           {
-            "id": "field-6",
+            "id": "5ea71954-3eff-589f-8545-02f6050f24c2",
             "variable": "shared_injection_equipment",
             "prompt": {
               "en": "Did you ever share injection equipment with {nodeLabel}?"
@@ -408,7 +408,7 @@
             }
           },
           {
-            "id": "field-7",
+            "id": "96a703b7-0ad6-5945-a3d0-4d3cdd4fc5df",
             "variable": "partnership_start",
             "prompt": {
               "en": "When did your sexual or injection relationship with {nodeLabel} begin?"
@@ -416,7 +416,7 @@
             "hint": { "en": "An approximate month and year is fine." }
           },
           {
-            "id": "field-8",
+            "id": "cab81d9d-0807-5c02-9920-83a4a51e1b05",
             "variable": "partnership_end",
             "prompt": { "en": "When did it end?" },
             "hint": {
@@ -427,7 +427,7 @@
       }
     },
     {
-      "id": "sociogram-overlap",
+      "id": "20b81c52-f186-5046-a1a8-6926ef5afa06",
       "type": "Sociogram",
       "label": { "en": "Connections between partners" },
       "subject": { "entity": "node", "type": "partner" },
@@ -435,7 +435,7 @@
       "behaviours": { "automaticLayout": true },
       "prompts": [
         {
-          "id": "p-overlap",
+          "id": "5174bbe3-136f-5969-93f6-f4e3a7499ad2",
           "text": {
             "en": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected."
           },
@@ -446,7 +446,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "e8e11c03-2072-57d5-911b-8fd997e7cf7a",
       "finishLabel": { "en": "Finish" },
       "finishConfirmation": {
         "en": "Are you sure you want to finish the interview?"

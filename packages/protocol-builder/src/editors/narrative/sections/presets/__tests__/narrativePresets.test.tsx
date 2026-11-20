@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -10,8 +11,10 @@ import {
   closeAttributePicker,
   openAttributePicker,
 } from '../../../../../testing/attributePicker.ts';
+import { loadFixtureStage } from '../../../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../../../testing/testId.ts';
 import {
   addPreset,
   narrativeHolding,
@@ -22,6 +25,33 @@ import {
 } from '../../../__tests__/narrativeFixtures.tsx';
 
 const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+
+const idOf = (row: unknown): unknown =>
+  typeof row === 'object' && row !== null && 'id' in row ? row.id : undefined;
+
+const firstOf = (rows: unknown): unknown =>
+  Array.isArray(rows) ? rows[0] : undefined;
+
+/** The ids the fixture's one preset, and the rows inside it, were given. */
+const fixturePresetIds = () => {
+  const preset = firstOf(loadFixtureStage('narrative-1').fields.presets);
+  const rows = (key: string): unknown =>
+    typeof preset === 'object' && preset !== null && key in preset
+      ? Reflect.get(preset, key)
+      : undefined;
+  const edges = rows('edges');
+  return {
+    id: idOf(preset),
+    edgeId: idOf(
+      firstOf(
+        typeof edges === 'object' && edges !== null && 'display' in edges
+          ? edges.display
+          : undefined,
+      ),
+    ),
+    highlightId: idOf(firstOf(rows('highlight'))),
+  };
+};
 
 const openEditor = () => ({
   stageId: 'narrative-1' as const,
@@ -50,6 +80,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
   });
 
   it('renames a preset without disturbing the rest of it', async () => {
+    const fixturePreset = fixturePresetIds();
     const harness = renderStageEditor(openEditor());
 
     const preset = await openPreset(harness);
@@ -64,12 +95,26 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     const saved = await harness.submit();
     expect(presetsOf(saved?.stageDocument ?? {})).toEqual([
       {
-        id: 'narrative-preset-1',
+        id: fixturePreset.id,
         label: { 'en-US': 'Ties' },
         layoutVariable: 'layout',
         groupVariable: 'contactType',
-        edges: { display: [{ type: 'knows', label: { 'en-US': 'knows' } }] },
-        highlight: [{ variable: 'flagged', label: { 'en-US': 'Flagged' } }],
+        edges: {
+          display: [
+            {
+              id: fixturePreset.edgeId,
+              type: 'knows',
+              label: { 'en-US': 'knows' },
+            },
+          ],
+        },
+        highlight: [
+          {
+            id: fixturePreset.highlightId,
+            variable: 'flagged',
+            label: { 'en-US': 'Flagged' },
+          },
+        ],
       },
     ]);
   });
@@ -96,11 +141,12 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     const rows = presetsOf(saved?.stageDocument ?? {});
     expect(rows).toHaveLength(2);
     expect(rows[1]).toEqual({
-      id: expect.any(String) as unknown as string,
+      id: rows[1]?.id,
       label: { 'en-US': 'All' },
       layoutVariable: 'layout',
     });
-    expect(rows[1]?.id).not.toBe('narrative-preset-1');
+    expect(isProtocolObjectId(rows[1]?.id)).toBe(true);
+    expect(rows[1]?.id).not.toBe(fixturePresetIds().id);
   });
 
   /**
@@ -178,11 +224,13 @@ describe('the label of a highlighted attribute', () => {
     );
 
     const saved = await harness.submit();
-    expect(presetsOf(saved?.stageDocument ?? {})[1]).toMatchObject({
+    const added = presetsOf(saved?.stageDocument ?? {})[1];
+    expect(added).toMatchObject({
       highlight: [
         { variable: 'highlighted', label: { 'en-US': 'Close ties' } },
       ],
     });
+    expect(isProtocolObjectId(idOf(firstOf(added?.highlight)))).toBe(true);
   });
 
   it('refuses a highlighted attribute with no label', async () => {
@@ -251,6 +299,7 @@ describe('an attribute another interface owns', () => {
   /** A narrative stage over the type the fixture's pedigree builds. */
   const narrativeOverFamilyMembers = () => ({
     stage: {
+      id: testId('Narrative-stage'),
       type: 'Narrative' as const,
       fields: {
         label: { 'en-US': 'Family narrative' },
@@ -365,18 +414,34 @@ describe('a preset naming what the codebook no longer has', () => {
   const openLostPreset = async () => {
     const harness = renderStageEditor(
       narrativeHolding({
-        id: 'narrative-preset-1',
+        id: testId('narrative-preset-1'),
         label: { 'en-US': 'Default layout' },
         layoutVariable: 'layout',
         edges: {
           display: [
-            { type: 'knows', label: { 'en-US': 'knows' } },
-            { type: LOST_EDGE, label: { 'en-US': 'Formerly drawn' } },
+            {
+              id: testId('edge-knows'),
+              type: 'knows',
+              label: { 'en-US': 'knows' },
+            },
+            {
+              id: testId('edge-lost'),
+              type: LOST_EDGE,
+              label: { 'en-US': 'Formerly drawn' },
+            },
           ],
         },
         highlight: [
-          { variable: 'flagged', label: { 'en-US': 'Flagged' } },
-          { variable: LOST_HIGHLIGHT, label: { 'en-US': 'Formerly flagged' } },
+          {
+            id: testId('highlight-flagged'),
+            variable: 'flagged',
+            label: { 'en-US': 'Flagged' },
+          },
+          {
+            id: testId('highlight-lost'),
+            variable: LOST_HIGHLIGHT,
+            label: { 'en-US': 'Formerly flagged' },
+          },
         ],
       }),
     );
@@ -415,11 +480,25 @@ describe('a preset naming what the codebook no longer has', () => {
 
     const saved = await harness.submit();
     expect(presetsOf(saved?.stageDocument ?? {})[0]).toEqual({
-      id: 'narrative-preset-1',
+      id: testId('narrative-preset-1'),
       label: { 'en-US': 'Default layout' },
       layoutVariable: 'layout',
-      edges: { display: [{ type: 'knows', label: { 'en-US': 'knows' } }] },
-      highlight: [{ variable: 'flagged', label: { 'en-US': 'Flagged' } }],
+      edges: {
+        display: [
+          {
+            id: testId('edge-knows'),
+            type: 'knows',
+            label: { 'en-US': 'knows' },
+          },
+        ],
+      },
+      highlight: [
+        {
+          id: testId('highlight-flagged'),
+          variable: 'flagged',
+          label: { 'en-US': 'Flagged' },
+        },
+      ],
     });
   });
 });
@@ -500,7 +579,7 @@ const presetFilter = {
   join: 'AND',
   rules: [
     {
-      id: 'rule-1',
+      id: testId('rule-1'),
       type: 'edge',
       options: { type: 'knows', operator: 'EXISTS' },
     },
@@ -508,7 +587,7 @@ const presetFilter = {
 };
 
 const presetHolding = (settings: Record<string, unknown> = {}) => ({
-  id: 'narrative-preset-1',
+  id: testId('narrative-preset-1'),
   label: { 'en-US': 'Default layout' },
   layoutVariable: 'layout',
   ...settings,

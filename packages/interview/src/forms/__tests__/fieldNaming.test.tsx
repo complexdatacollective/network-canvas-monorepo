@@ -14,6 +14,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
@@ -109,7 +110,7 @@ function makeWrapper(
 }
 
 const field = (variable: string, prompt: LocalizedString): FormField => ({
-  id: 'field-L111',
+  id: testId('field-L111'),
   variable: asEntityAttributeReference(variable),
   prompt,
 });

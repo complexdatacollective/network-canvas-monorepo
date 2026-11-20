@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { testId } from '../../__tests__/testIds.ts';
 import { createDefaultFinishSessionStage } from '../../schemas/9/finish-session-defaults.ts';
 import { ProtocolSchemaV9 } from '../../schemas/9/schema.ts';
 import { createBaseProtocol } from '../../utils/test-utils.ts';
@@ -17,7 +18,9 @@ const heldOnlyInSpanish = (localization: {
     ...createBaseProtocol(),
     codebook: { node: {}, edge: {}, ego: {} },
     localization,
-    stages: [createDefaultFinishSessionStage({ id: 'end', localization })],
+    stages: [
+      createDefaultFinishSessionStage({ id: testId('end'), localization }),
+    ],
     interfaceText: { navigation: { back: { es: 'Volver' } } },
   });
 

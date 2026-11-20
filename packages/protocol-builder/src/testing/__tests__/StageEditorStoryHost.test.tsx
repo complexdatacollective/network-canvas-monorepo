@@ -10,7 +10,11 @@ import { contentBlockSlots } from '../../sections/content-blocks/contentBlockTyp
 import PageContentSection from '../../sections/page-content/PageContentSection.tsx';
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { StageEditSession } from '../../stageEdit.tsx';
-import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureStageIds,
+  loadFixtureStage,
+} from '../protocolFixture.ts';
 import { StageEditorStoryHost } from '../StageEditorStoryHost.tsx';
 
 /**
@@ -83,7 +87,7 @@ describe('what a family’s story tells the host', () => {
   const renderPageHost = () =>
     render(
       <StageEditorStoryHost
-        stageId="information-1"
+        stageId={fixtureStageId('information-1')}
         assets={{
           extra_photo: {
             name: 'Extra photo',

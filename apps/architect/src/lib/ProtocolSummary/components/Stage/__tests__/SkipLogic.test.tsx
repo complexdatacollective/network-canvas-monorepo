@@ -1,6 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
 import type {
   CurrentProtocol,
   SkipLogicDestination,
@@ -8,6 +12,10 @@ import type {
 
 import SummaryContext from '../../SummaryContext';
 import SkipLogic from '../SkipLogic';
+
+const DEBRIEF_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '6627d054-db08-47c3-83fb-eb8234b60e9e',
+);
 
 const protocol = {
   schemaVersion: 9,
@@ -17,14 +25,14 @@ const protocol = {
   assetManifest: {},
   stages: [
     {
-      id: 'source',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Source', fr: 'Source' },
       title: { en: 'Source', fr: 'Source' },
       items: [],
     },
     {
-      id: 'debrief',
+      id: DEBRIEF_STAGE_ID,
       type: 'Information',
       label: { en: 'Debrief', fr: 'Bilan' },
       title: { en: 'Debrief', fr: 'Bilan' },
@@ -59,7 +67,7 @@ describe('Protocol Summary skip logic', () => {
   const destinationRow = () => screen.getByText('Destination').closest('tr');
 
   it('includes the resolved destination stage', () => {
-    renderSkipLogic({ type: 'stage', stageId: 'debrief' });
+    renderSkipLogic({ type: 'stage', stageId: DEBRIEF_STAGE_ID });
 
     expect(destinationRow()).toHaveTextContent('Stage 2 — Debrief');
     expect(screen.getByText('Debrief')).toHaveAttribute('lang', 'en');
@@ -67,7 +75,7 @@ describe('Protocol Summary skip logic', () => {
 
   it('names the destination stage in the default language', () => {
     renderSkipLogic(
-      { type: 'stage', stageId: 'debrief' },
+      { type: 'stage', stageId: DEBRIEF_STAGE_ID },
       { defaultLocale: 'fr', locales: ['en', 'fr'] },
     );
 

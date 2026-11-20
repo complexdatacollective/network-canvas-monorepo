@@ -1,6 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { testId } from '../../../__tests__/testIds';
+
 vi.mock('../../../hooks/useStageSelector', () => ({
   useStageSelector: () => ({
     categoricalOptions: undefined,
@@ -22,15 +24,17 @@ const HEADINGS = {
 
 const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
   {
-    id: 'preset',
+    id: testId('preset'),
     label: { en: 'Friends', ar: 'الأصدقاء' },
     layoutVariable: asEntityAttributeReference('layout'),
     highlight: [
       {
+        id: testId('highlight-close'),
         variable: asEntityAttributeReference('close'),
         label: { en: 'Close friend', ar: 'صديق مقرب' },
       },
       {
+        id: testId('highlight-trusted'),
         variable: asEntityAttributeReference('trusted'),
         label: { en: 'Trusted' },
       },

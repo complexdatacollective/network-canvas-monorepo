@@ -12,6 +12,10 @@ import {
   openAttributePicker,
 } from '../../../../testing/attributePicker.ts';
 import {
+  fixtureStageId,
+  loadFixtureStage,
+} from '../../../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
@@ -30,6 +34,16 @@ const SCALE_LABEL = 'Ordinal attribute';
 const findScaleField = async (): Promise<HTMLElement> => {
   await screen.findByText(SCALE_LABEL, { selector: 'label' });
   return attributeField(SCALE_LABEL);
+};
+
+/** The id the fixture gives its one prompt, read from the fixture itself. */
+const fixturePromptId = (): unknown => {
+  const [first] = [
+    loadFixtureStage('tie-strength-census-1').fields.prompts,
+  ].flat();
+  return typeof first === 'object' && first !== null && 'id' in first
+    ? first.id
+    : undefined;
 };
 
 const openSection = () => ({
@@ -468,7 +482,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     const request = await harness.submit();
     const rows = prompts(request?.stageDocument ?? {});
     expect(rows).toHaveLength(2);
-    expect(rows[0]?.id).toBe('tie-strength-census-prompt-1');
+    expect(rows[0]?.id).toBe(fixturePromptId());
     expect(rows[1]).toEqual({
       id: expect.any(String) as unknown as string,
       text: { 'en-US': 'How much trust?' },
@@ -733,7 +747,7 @@ describe('a tie-strength prompt whose scale has gone', () => {
 
 const PEDIGREE_SECTION = sectionId({
   kind: 'stage',
-  stageId: 'family-pedigree-1',
+  stageId: fixtureStageId('family-pedigree-1'),
 });
 const CENSUS_EDGE = 'knows';
 const CENSUS_EDGE_SECTION = sectionId({

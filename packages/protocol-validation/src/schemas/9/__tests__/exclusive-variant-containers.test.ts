@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import {
   AMBIGUOUS_VARIANT_CONTAINERS,
@@ -256,7 +257,7 @@ describe('the jointly constrained containers of a stage document', () => {
    */
   it('refuses a sociogram prompt whose edges set neither member', () => {
     const prompt = (edges: unknown) => ({
-      id: 'p1',
+      id: testId('p1'),
       text: localized('Who do you know?'),
       layout: { layoutVariable: 'position' },
       edges,
@@ -285,16 +286,18 @@ describe('the jointly constrained containers of a stage document', () => {
   it('accepts a row any stage type’s schema at that path accepts', () => {
     expect(
       schemaRefusesContainer(['prompts', '*'], {
-        id: 'p1',
+        id: testId('p1'),
         text: localized('Who do you know?'),
-        additionalAttributes: [{ variable: 'isClose', value: true }],
+        additionalAttributes: [
+          { id: testId('isClose'), variable: 'isClose', value: true },
+        ],
       }),
     ).toBe(false);
     // A row NO stage type can read is refused, which is the answer that makes
     // the acceptance above a judgement rather than a shrug.
     expect(
       schemaRefusesContainer(['prompts', '*'], {
-        id: 'p1',
+        id: testId('p1'),
         text: localized(''),
       }),
     ).toBe(true);

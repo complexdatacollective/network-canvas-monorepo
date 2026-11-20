@@ -5,7 +5,9 @@ import {
   asEntityAttributeReference,
   type CurrentProtocol,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  createProtocolObjectId,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
@@ -16,7 +18,9 @@ import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
 import { chooseAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
-const SOURCE_STAGE_ID = 'family-pedigree-1';
+const SOURCE_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'b3f1c2d4-5e6a-4b7c-8d9e-0f1a2b3c4d5e',
+);
 
 // Unlike every other interface spec in this suite, the seeded protocol here
 // already has ONE stage (the FamilyPedigree prerequisite) before this spec's
@@ -144,7 +148,7 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
         },
         nominationPrompts: [
           {
-            id: 'nomination-1',
+            id: createProtocolObjectId(),
             text: {
               en: 'Who in your family has been diagnosed with condition X?',
             },

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -686,7 +687,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
               rules: [
                 {
                   type: 'node',
-                  id: 'eligible-only',
+                  id: createProtocolObjectId(),
                   options: {
                     // The node type owning the referenced attribute; the
                     // attribute reference cannot be resolved without it.

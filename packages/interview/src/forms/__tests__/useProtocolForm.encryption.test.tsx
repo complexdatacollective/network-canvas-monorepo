@@ -19,6 +19,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../contract/types';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -140,7 +141,7 @@ const codebookWith = (nodeVariables: Record<string, Variable>): Codebook => ({
 function fieldFor(variable: string): FormField[] {
   return [
     {
-      id: 'field-L142',
+      id: testId('field-L142'),
       variable: asEntityAttributeReference(variable),
       prompt: { en: 'Answer' },
     },
@@ -202,12 +203,14 @@ async function makeStore(
     codebook: codebookWith(nodeVariables),
     stages: [
       {
-        id: 'stage-1',
+        id: testId('stage-1'),
         type: 'NameGenerator',
         label: { en: 'Name the people you know' },
         subject: { entity: 'node', type: NODE_TYPE },
         form: { title: { en: 'Add a person' }, fields: fieldFor(NOTES_VAR) },
-        prompts: [{ id: 'prompt-1', text: { en: 'Name the people you know' } }],
+        prompts: [
+          { id: testId('prompt-1'), text: { en: 'Name the people you know' } },
+        ],
       },
     ],
   };

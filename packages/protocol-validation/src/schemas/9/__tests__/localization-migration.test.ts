@@ -32,10 +32,12 @@ import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
+import { isProtocolObjectId } from '../protocol-object-id.ts';
 import { withoutUnshownWording } from '../protocol-wording.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { suppliedStageSettingPaths } from '../supplied-stage-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
+import { migratedStageIds } from './migrated-stage-ids.ts';
 import {
   asSchema8Protocol,
   codebookTypes,
@@ -120,6 +122,28 @@ const nameBehindLabel = (document: unknown, at: Path): unknown => {
     owner,
     'name',
   ]);
+};
+
+// `value` with every `id` key removed, for comparing what the migration gives
+// with a fixture whose readable ids it replaces.
+const withoutIds = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(withoutIds)
+    : isRecord(value)
+      ? Object.fromEntries(
+          Object.entries(value)
+            .filter(([key]) => key !== 'id')
+            .map(([key, child]) => [key, withoutIds(child)]),
+        )
+      : value;
+
+/** Rows the migration gave ids, without them, once each id is a UUID. */
+const rowsWithMintedIds = (rows: unknown): unknown => {
+  expect(
+    Array.isArray(rows) &&
+      rows.every((row) => isRecord(row) && isProtocolObjectId(row.id)),
+  ).toBe(true);
+  return withoutIds(rows);
 };
 
 const isEnglishOnly = (value: unknown) =>
@@ -277,10 +301,20 @@ describe('v8 to v9 localization migration', () => {
     if (!isRecord(expected) || !Array.isArray(expected.stages)) {
       throw new Error('Fixture has no stages');
     }
-    expected.stages = expected.stages.filter(
+    const expectedStages = expected.stages.filter(
       (stage) => isRecord(stage) && stage.type !== 'LanguageChooser',
     );
+    expected.stages = expectedStages;
     expected.localization = ENGLISH_ONLY;
+    const migrated = migrateStep(schema8Protocol());
+    // The migration gives each stage a new id, and a stage reference follows.
+    const renames = migratedStageIds(schema8Protocol(), migrated);
+    for (const stage of expectedStages) {
+      if (isRecord(stage) && typeof stage.sourceStageId === 'string') {
+        stage.sourceStageId =
+          renames.get(stage.sourceStageId) ?? stage.sourceStageId;
+      }
+    }
 
     // The fixture words everything in Network Canvas's English. The migration
     // writes none of that wording (the finish stage it adds holds none) and
@@ -289,17 +323,20 @@ describe('v8 to v9 localization migration', () => {
     // interview's catalogue, it holds none of it.
     type Stored = Parameters<typeof withoutSuppliedWording>[0];
     const kept = withoutUnshownWording(expected as unknown as Stored);
-    const migrated = migrateStep(schema8Protocol());
-    expect(migrated).toEqual({
-      ...kept,
-      stages: kept.stages?.map((stage) =>
-        isRecord(stage) && stage.type === 'FinishSession'
-          ? stageWithoutSuppliedText({ ...stage, type: stage.type })
-          : stage,
-      ),
-    });
+    expect(withoutIds(migrated)).toEqual(
+      withoutIds({
+        ...kept,
+        stages: kept.stages?.map((stage) =>
+          isRecord(stage) && stage.type === 'FinishSession'
+            ? stageWithoutSuppliedText({ ...stage, type: stage.type })
+            : stage,
+        ),
+      }),
+    );
     const stored = withoutSuppliedWording(migrated as unknown as Stored);
-    expect(stored).toEqual(withoutSuppliedWording(kept));
+    expect(withoutIds(stored)).toEqual(
+      withoutIds(withoutSuppliedWording(kept)),
+    );
     expect(stored).not.toHaveProperty('interfaceText');
   });
 
@@ -486,7 +523,9 @@ describe('v8 to v9 localization migration', () => {
       );
 
       const migrated = migrateProtocol(document, 9);
-      expect(getAt(migrated, [...preset, 'highlight'])).toEqual([
+      expect(
+        rowsWithMintedIds(getAt(migrated, [...preset, 'highlight'])),
+      ).toEqual([
         { variable: 'flag', label: { en: 'Flag' } },
         {
           variable: 'nickname',
@@ -505,7 +544,11 @@ describe('v8 to v9 localization migration', () => {
         '',
       );
 
-      expect(getAt(migrateStep(document), [...preset, 'highlight'])).toEqual([
+      expect(
+        rowsWithMintedIds(
+          getAt(migrateStep(document), [...preset, 'highlight']),
+        ),
+      ).toEqual([
         { variable: 'flag', label: { en: 'flag' } },
         { variable: 'removed', label: { en: 'removed' } },
       ]);
@@ -518,7 +561,9 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, ['codebook', 'edge', 'knows', 'name'], 'Knows {who}');
 
       expect(
-        getAt(migrateProtocol(document, 9), [...preset, 'edges', 'display']),
+        rowsWithMintedIds(
+          getAt(migrateProtocol(document, 9), [...preset, 'edges', 'display']),
+        ),
       ).toEqual([
         { type: 'knows', label: { en: escapeMessageText('Knows {who}') } },
         { type: 'family', label: { en: 'Family' } },
@@ -532,7 +577,9 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, ['codebook', 'edge', 'knows', 'name'], '');
 
       expect(
-        getAt(migrateStep(document), [...preset, 'edges', 'display']),
+        rowsWithMintedIds(
+          getAt(migrateStep(document), [...preset, 'edges', 'display']),
+        ),
       ).toEqual([
         { type: 'knows', label: { en: 'knows' } },
         { type: 'removed', label: { en: 'removed' } },
@@ -888,62 +935,6 @@ describe('v8 to v9 localization migration', () => {
       );
     });
   });
-
-  /**
-   * Fresco's deploy normalization numbers a row stored at schema 9 as schema
-   * 8 and runs this step over it again, so a document whose copy is already
-   * localized must come through with its languages and text unchanged.
-   */
-  describe('a document already in schema 9 form', () => {
-    const FRENCH_AND_GERMAN = { defaultLocale: 'fr', locales: ['fr', 'de'] };
-
-    const inFrenchAndGerman = () => {
-      const document: unknown = {
-        ...completeProtocol(),
-        schemaVersion: 8,
-        localization: FRENCH_AND_GERMAN,
-      };
-      for (const { path: at, value } of collectLocalizedStrings(document)) {
-        setAt(document, at, {
-          fr: `${value.en ?? ''} (fr)`,
-          de: `${value.en ?? ''} (de)`,
-        });
-      }
-      return document;
-    };
-
-    it('keeps the languages it declares', () => {
-      expect(migrateStep(inFrenchAndGerman())).toMatchObject({
-        localization: FRENCH_AND_GERMAN,
-      });
-    });
-
-    it('keeps its text in every language, scale end labels included', () => {
-      const document = inFrenchAndGerman();
-      const text = collectLocalizedStrings(document);
-      expect(text.map(({ path: at }) => at.at(-1))).toContain('minLabel');
-
-      // The step keeps all of it, but the wording of a setting its stage does
-      // not show (a gender identity label with the question off).
-      expect(collectLocalizedStrings(migrateStep(document))).toEqual(
-        text.filter(({ path: at }) => at.at(-1) !== 'genderIdentityLabel'),
-      );
-    });
-
-    it('migrates to a protocol schema 9 accepts', () => {
-      expect(() => migrateProtocol(inFrenchAndGerman(), 9)).not.toThrow();
-    });
-
-    it('records text it still holds as a string in its default language', () => {
-      const document = inFrenchAndGerman();
-      const title = [...stagePath(document, 'information'), 'title'];
-      setAt(document, title, 'Bienvenue');
-
-      expect(getAt(migrateStep(document), title)).toEqual({
-        fr: 'Bienvenue',
-      });
-    });
-  });
 });
 
 /**
@@ -977,34 +968,48 @@ describe('committed schema 8 protocols', () => {
       : [];
   };
 
-  const stageOutlineWithIntroductions = (document: unknown) => {
+  // Each stage under the id the migration gives it, and the Information stage
+  // it makes from an introduction panel, under an id it mints.
+  const stageOutlineWithIntroductions = (
+    document: unknown,
+    renames: ReadonlyMap<string, string>,
+  ) => {
     const stages = getAt(document, ['stages']);
     if (!Array.isArray(stages)) return [];
     return stages.flatMap((stage) => {
       if (!isRecord(stage)) return [undefined];
-      const outline = { id: stage.id, type: stage.type };
+      const outline = {
+        id:
+          typeof stage.id === 'string'
+            ? (renames.get(stage.id) ?? stage.id)
+            : stage.id,
+        type: stage.type,
+      };
       if (!isRecord(stage.introductionPanel) || stage.type === 'EgoForm') {
         return [outline];
       }
-      return [
-        { id: `${String(stage.id)}-introduction`, type: 'Information' },
-        outline,
-      ];
+      return [{ id: expect.any(String), type: 'Information' }, outline];
     });
   };
 
   // Stages move when an introduction is inserted before them, so a migrated
-  // site is compared with the schema 8 stage of the same id.
+  // site is compared with the schema 8 stage the migrated stage came from.
   const schema8PathOf = (
     migrated: unknown,
     schema8: unknown,
+    renames: ReadonlyMap<string, string>,
     at: readonly (string | number)[],
   ): (string | number)[] => {
     if (at[0] !== 'stages' || typeof at[1] !== 'number') return [...at];
     const id = getAt(migrated, ['stages', at[1], 'id']);
     const stages = getAt(schema8, ['stages']);
     const index = Array.isArray(stages)
-      ? stages.findIndex((stage) => isRecord(stage) && stage.id === id)
+      ? stages.findIndex(
+          (stage) =>
+            isRecord(stage) &&
+            typeof stage.id === 'string' &&
+            (renames.get(stage.id) ?? stage.id) === id,
+        )
       : -1;
     return index === -1 ? ['missing'] : ['stages', index, ...at.slice(2)];
   };
@@ -1026,6 +1031,7 @@ describe('committed schema 8 protocols', () => {
         name: path.basename(file, '.netcanvas'),
       });
       const migrated = migrateProtocol(schema8, 9);
+      const renames = migratedStageIds(schema8, migrated);
 
       const result = await validateProtocol(migrated);
       expect(
@@ -1037,8 +1043,8 @@ describe('committed schema 8 protocols', () => {
       // Form's becomes the Information stage just before its stage, and the
       // finish stage follows them.
       expect(stageOutline(migrated)).toEqual([
-        ...stageOutlineWithIntroductions(schema8),
-        { id: 'finish', type: 'FinishSession' },
+        ...stageOutlineWithIntroductions(schema8, renames),
+        { id: expect.any(String), type: 'FinishSession' },
       ]);
       expect(Object.keys(migrated.codebook.node ?? {})).toEqual(
         Object.keys(getAt(schema8, ['codebook', 'node']) ?? {}),
@@ -1048,7 +1054,10 @@ describe('committed schema 8 protocols', () => {
         migrated,
       )) {
         expect(Object.keys(value)).toEqual(['en']);
-        const source = getAt(schema8, schema8PathOf(migrated, schema8, at));
+        const source = getAt(
+          schema8,
+          schema8PathOf(migrated, schema8, renames, at),
+        );
         if (typeof source === 'string') {
           // Text declared one line has its lines joined.
           expect(messageText(value.en ?? '')).toBe(

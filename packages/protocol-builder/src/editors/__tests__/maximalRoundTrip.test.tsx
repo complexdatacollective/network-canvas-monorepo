@@ -11,11 +11,13 @@ import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
 import {
   loadFixtureStage,
   type FixtureStageId,
+  fixtureStageId,
 } from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 import { openStageWording } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
   addFamilyMemberVariables,
@@ -47,31 +49,31 @@ vi.mock('../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
-const nodeFilter = {
+const nodeFilter = (name: string) => ({
   join: 'AND' as const,
   rules: [
     {
       type: 'node' as const,
-      id: 'rule-1',
+      id: testId(`rule-${name}`),
       options: { type: 'person', operator: 'EXISTS' as const },
     },
   ],
-};
+});
 
-const edgeFilter = {
+const edgeFilter = (name: string) => ({
   join: 'AND' as const,
   rules: [
     {
       type: 'edge' as const,
-      id: 'rule-2',
+      id: testId(`rule-${name}`),
       options: { type: 'knows', operator: 'EXISTS' as const },
     },
   ],
-};
+});
 
 const skipLogic = {
   action: 'SHOW' as const,
-  filter: nodeFilter,
+  filter: nodeFilter('skip-logic'),
   destination: { type: 'finish' as const },
 };
 
@@ -157,7 +159,7 @@ const EVERY_STAGE = {
     consented: {
       rules: [
         {
-          id: 'consented-rule',
+          id: testId('consented-rule'),
           type: 'ego',
           options: { attribute: 'consent', operator: 'EXISTS' },
         },
@@ -179,13 +181,13 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       conditions: EVERY_STAGE.conditions,
       items: [
         {
-          id: 'info-item-1',
+          id: testId('info-item-1'),
           type: 'text',
           content: { 'en-US': 'Welcome to this interview.' },
           description: 'The opening line.',
         },
         {
-          id: 'info-item-2',
+          id: testId('info-item-2'),
           type: 'asset',
           content: 'geo_data',
           description: { 'en-US': 'A map of the regions.' },
@@ -211,7 +213,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'ego_name',
             prompt: { 'en-US': 'What is your name?' },
             hint: { 'en-US': 'Your full name.' },
@@ -231,12 +233,12 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
-      filter: nodeFilter,
+      filter: nodeFilter('stage'),
       subject: { entity: 'node', type: 'person' },
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'relationship_to_ego',
             prompt: { 'en-US': 'Relationship?' },
             hint: { 'en-US': 'How you know them.' },
@@ -256,12 +258,12 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
-      filter: edgeFilter,
+      filter: edgeFilter('stage'),
       subject: { entity: 'edge', type: 'knows' },
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'edgeNotes',
             prompt: { 'en-US': 'Any notes?' },
             hint: { 'en-US': 'Free text.' },
@@ -286,7 +288,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
         title: { 'en-US': 'Add a person' },
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'name',
             prompt: { 'en-US': 'What is their name?' },
             hint: { 'en-US': 'Their first name.' },
@@ -296,20 +298,26 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       },
       prompts: [
         {
-          id: 'p1',
+          id: testId('name-generator-prompt-1'),
           text: { 'en-US': 'Who are the people you know?' },
-          additionalAttributes: [{ variable: 'flagged', value: true }],
+          additionalAttributes: [
+            {
+              id: testId('additional-attribute-1'),
+              variable: 'flagged',
+              value: true,
+            },
+          ],
         },
       ],
       panels: [
         {
-          id: 'panel-1',
+          id: testId('panel-1'),
           title: { 'en-US': 'People you named earlier' },
           dataSource: 'existing',
-          filter: nodeFilter,
+          filter: nodeFilter('panel-1'),
         },
         {
-          id: 'panel-2',
+          id: testId('panel-2'),
           title: { 'en-US': 'From the roster' },
           dataSource: 'roster_data',
         },
@@ -347,14 +355,14 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       behaviours: { minNodes: 1, maxNodes: 6 },
       panels: [
         {
-          id: 'quick-add-panel-1',
+          id: testId('quick-add-panel-1'),
           title: { 'en-US': 'People you named earlier' },
           dataSource: 'existing',
-          filter: nodeFilter,
+          filter: nodeFilter('quick-add-panel-1'),
         },
         // A panel reading a data file is what shows its error words.
         {
-          id: 'quick-add-panel-2',
+          id: testId('quick-add-panel-2'),
           title: { 'en-US': 'From the roster' },
           dataSource: 'roster_data',
         },
@@ -395,7 +403,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'Sociogram',
     fields: fixtureMaximal('sociogram-1', {
       ...EVERY_STAGE,
-      filter: nodeFilter,
+      filter: nodeFilter('stage'),
     }),
   },
   {
@@ -406,7 +414,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       nodeForm: {
         fields: [
           {
-            id: 'composer-field-1',
+            id: testId('composer-field-1'),
             variable: 'relationship_to_ego',
             component: 'Text',
             label: { 'en-US': 'How you know them' },
@@ -419,13 +427,13 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       behaviours: { automaticLayout: true },
       edges: [
         {
-          id: 'composer-edge-1',
+          id: testId('composer-edge-1'),
           subject: { entity: 'edge', type: 'knows' },
           label: { en: 'Connection' },
           form: {
             fields: [
               {
-                id: 'composer-edge-field-1',
+                id: testId('composer-edge-field-1'),
                 variable: 'closeness',
                 component: 'LikertScale',
                 label: { 'en-US': 'How close are you?' },
@@ -441,7 +449,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'DyadCensus',
     fields: fixtureMaximal('dyad-census-1', {
       ...EVERY_STAGE,
-      filter: nodeFilter,
+      filter: nodeFilter('stage'),
     }),
   },
   {
@@ -449,7 +457,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'TieStrengthCensus',
     fields: fixtureMaximal('tie-strength-census-1', {
       ...EVERY_STAGE,
-      filter: nodeFilter,
+      filter: nodeFilter('stage'),
     }),
   },
   {
@@ -457,7 +465,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'OneToManyDyadCensus',
     fields: fixtureMaximal('one-to-many-dyad-census-1', {
       ...EVERY_STAGE,
-      filter: nodeFilter,
+      filter: nodeFilter('stage'),
     }),
   },
   {
@@ -465,7 +473,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'OrdinalBin',
     fields: fixtureMaximal('ordinal-bin-1', {
       ...EVERY_STAGE,
-      filter: nodeFilter,
+      filter: nodeFilter('stage'),
       behaviours: { interactionMode: 'select', requireCompletePlacement: true },
       unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
     }),
@@ -475,7 +483,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'CategoricalBin',
     fields: fixtureMaximal('categorical-bin-1', {
       ...EVERY_STAGE,
-      filter: nodeFilter,
+      filter: nodeFilter('stage'),
       behaviours: { interactionMode: 'select', requireCompletePlacement: true },
       unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
     }),
@@ -488,7 +496,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('narrative-1', {
       ...EVERY_STAGE,
       presets: narrativePresetsOfFixture().map((preset, index) =>
-        index === 0 ? { ...preset, filter: nodeFilter } : preset,
+        index === 0 ? { ...preset, filter: nodeFilter('preset') } : preset,
       ),
     }),
   },
@@ -497,7 +505,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'Geospatial',
     fields: fixtureMaximal('geospatial-1', {
       ...EVERY_STAGE,
-      filter: nodeFilter,
+      filter: nodeFilter('stage'),
       // Searching is offered.
       mapOptions: {
         ...mapOptionsOfFixture(),
@@ -509,7 +517,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'FamilyPedigree',
     type: 'FamilyPedigree',
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     reveal: (harness) => openStageWording(harness),
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
@@ -521,7 +529,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'fm_occupation',
             prompt: { 'en-US': 'What do they do?' },
           },
@@ -537,7 +545,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       wording: EVERY_PEDIGREE_WORD,
       nominationPrompts: [
         {
-          id: 'nomination-1',
+          id: testId('nomination-1'),
           text: { 'en-US': 'Who in your family has had heart disease?' },
           attribute: 'has_heart_disease',
           onlyForSexAssignedAtBirth: 'female',
@@ -658,7 +666,7 @@ describe('a maximal stage of each interface', () => {
       // so the dispatcher finding the editor is part of what the case shows.
       const harness = renderStageEditor({
         stage: {
-          ...(stageId === undefined ? {} : { id: stageId }),
+          id: stageId ?? testId('stage-under-test'),
           type,
           fields,
         },

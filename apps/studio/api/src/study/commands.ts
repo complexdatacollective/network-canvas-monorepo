@@ -4,6 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import { createEmptyProtocol } from '@codaco/protocol-builder-core/empty-protocol';
 import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type { NotFound } from '@codaco/studio-contract/schema/errors';
@@ -31,7 +32,6 @@ import { type TeamAccess, Transaction } from '../db/tenant.ts';
 import type { RequestId } from '../http/middleware/request-id.ts';
 import type { Jobs } from '../jobs/jobs.ts';
 import type { Analytics } from '../platform/analytics.ts';
-import { emptyProtocol } from '../protocol/sectionize.ts';
 import { createProtocol, type ProtocolStoreError } from '../protocol/store.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
@@ -243,7 +243,7 @@ export const createAuditedStudy: (
 
         // The protocol line first: `studies.protocol_id` references it.
         const protocol = yield* createProtocol(access.teamId, cipher, {
-          protocol: emptyProtocol(Redacted.value(studyName)),
+          protocol: createEmptyProtocol({ name: Redacted.value(studyName) }),
           protocolId: input.protocolId,
           draftId: input.draftId,
         });

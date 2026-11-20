@@ -27,6 +27,56 @@ const ASSET_DIR = resolve(
 
 const HASH = 'development-hash';
 
+type DevelopmentStage = (typeof developmentProtocol.stages)[number];
+
+// Stage ids are UUIDs, so each stage is found by what it is: its type, its
+// English label and, for the two Classmates rosters, the option only one has.
+const stageIdWhere = (
+  description: string,
+  matches: (stage: DevelopmentStage) => boolean,
+): string => {
+  const found = developmentProtocol.stages.filter(matches);
+  const [stage] = found;
+  if (!stage || found.length > 1) {
+    throw new Error(`The Development Protocol has no single ${description}`);
+  }
+  return stage.id;
+};
+
+const labelled =
+  (type: string, label: string) =>
+  (stage: DevelopmentStage): boolean =>
+    stage.type === type && stage.label.en === label;
+
+const externalDataNameGenerator = stageIdWhere(
+  'name generator with external data',
+  labelled('NameGenerator', 'NG with external data'),
+);
+const csvNameGenerator = stageIdWhere(
+  'name generator with a CSV file',
+  labelled('NameGenerator', 'NG CSV File'),
+);
+const searchableClassmatesRoster = stageIdWhere(
+  'searchable Classmates roster',
+  (stage) =>
+    labelled('NameGeneratorRoster', 'NG Classmates')(stage) &&
+    'searchOptions' in stage,
+);
+const sortableClassmatesRoster = stageIdWhere(
+  'sortable Classmates roster',
+  (stage) =>
+    labelled('NameGeneratorRoster', 'NG Classmates')(stage) &&
+    'sortOptions' in stage,
+);
+const hivServicesRoster = stageIdWhere(
+  'HIV services roster',
+  labelled('NameGeneratorRoster', 'NG HIV Services'),
+);
+const hivAutocompleteRoster = stageIdWhere(
+  'HIV autocomplete roster',
+  labelled('NameGeneratorRoster', 'Roster Autocomplete HIV'),
+);
+
 const bytesByUrl = new Map<string, Buffer>();
 
 function storedProtocol(): StoredCurrentProtocol {
@@ -90,25 +140,27 @@ describe('synthetic generation over the real Development Protocol', () => {
   it('parses every roster-backed stage from the real asset files', async () => {
     const externalData = await loadRosterNodesForStages(storedProtocol());
 
-    expect(Object.keys(externalData).toSorted()).toEqual([
-      'namegen1',
-      'namegen1a',
-      'namegenroster1',
-      'namegenroster2',
-      'namegenroster2a',
-      'namegenroster3',
-    ]);
+    expect(Object.keys(externalData).toSorted()).toEqual(
+      [
+        externalDataNameGenerator,
+        csvNameGenerator,
+        searchableClassmatesRoster,
+        sortableClassmatesRoster,
+        hivServicesRoster,
+        hivAutocompleteRoster,
+      ].toSorted(),
+    );
 
-    expect(externalData.namegenroster1).toHaveLength(6);
-    expect(externalData.namegenroster2a!.length).toBeGreaterThan(200);
+    expect(externalData[searchableClassmatesRoster]).toHaveLength(6);
+    expect(externalData[hivServicesRoster]!.length).toBeGreaterThan(200);
 
-    expect(externalData.namegen1).toHaveLength(1);
+    expect(externalData[externalDataNameGenerator]).toHaveLength(1);
   });
 
   it('maps roster columns onto real codebook variable ids', async () => {
     const externalData = await loadRosterNodesForStages(storedProtocol());
 
-    const person = externalData.namegenroster1![0]!;
+    const person = externalData[searchableClassmatesRoster]![0]!;
     expect(person.type).toBe('person_node_type');
 
     const nameVariable = Object.entries(
@@ -137,7 +189,7 @@ describe('synthetic generation over the real Development Protocol', () => {
     );
 
     const venueNodes = network.nodes.filter(
-      (n) => n.type === 'venue_node_type' && n.stageId === 'namegenroster2a',
+      (n) => n.type === 'venue_node_type' && n.stageId === hivServicesRoster,
     );
     expect(venueNodes.length).toBeGreaterThan(0);
     for (const node of venueNodes) {
@@ -157,7 +209,9 @@ describe('synthetic generation over the real Development Protocol', () => {
     });
 
     const shared = new Set(
-      externalData.namegenroster1!.map((n) => n[entityPrimaryKeyProperty]),
+      externalData[searchableClassmatesRoster]!.map(
+        (n) => n[entityPrimaryKeyProperty],
+      ),
     );
     const drawn = network.nodes
       .map((n) => n[entityPrimaryKeyProperty])

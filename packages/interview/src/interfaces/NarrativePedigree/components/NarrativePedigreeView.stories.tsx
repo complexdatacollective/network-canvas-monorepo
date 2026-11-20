@@ -16,6 +16,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
@@ -131,7 +132,7 @@ const sourceStage = {
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 
 const narrativeStage: NarrativeStage = {
-  id: 'np-1',
+  id: testId('np-1'),
   type: 'NarrativePedigree',
   label: { en: 'Disease Pedigree' },
   sourceStageId: SOURCE_STAGE_ID,
@@ -139,14 +140,14 @@ const narrativeStage: NarrativeStage = {
   ...narrativePedigreeWords(),
   diseases: [
     {
-      id: 'breast-cancer',
+      id: testId('breast-cancer'),
       label: { en: 'Breast Cancer' },
       color: 'node-color-seq-1',
       attribute: asEntityAttributeReference(BREAST_CANCER_VAR),
       inheritancePattern: 'autosomalDominant',
     },
     {
-      id: 'haemophilia',
+      id: testId('haemophilia'),
       label: { en: 'Haemophilia' },
       color: 'node-color-seq-6',
       attribute: asEntityAttributeReference(HAEMOPHILIA_VAR),

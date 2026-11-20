@@ -11,6 +11,7 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import {
   buildStageAvailabilityMap,
   getLastAvailableAuthoredStageIndex,
@@ -322,7 +323,7 @@ describe('buildStageAvailabilityMap', () => {
       const onlyAged = (age: number): Filter => ({
         rules: [
           {
-            id: `aged-${age}`,
+            id: testId(`aged-${age}`),
             type: 'node' as const,
             options: {
               type: 'person',
@@ -402,7 +403,7 @@ describe('buildStageAvailabilityMap', () => {
             join: 'AND',
             rules: [
               {
-                id: 'close',
+                id: testId('close'),
                 type: 'node',
                 options: {
                   type: 'person',

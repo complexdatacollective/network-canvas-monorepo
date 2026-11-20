@@ -19,6 +19,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
@@ -54,7 +55,7 @@ const LAYOUT_VAR = 'var-layout';
 const GROUP_VAR = 'var-group';
 
 const stage = {
-  id: 'nc1',
+  id: testId('nc1'),
   type: 'NetworkComposer' as const,
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
@@ -62,7 +63,7 @@ const stage = {
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
   edges: [
     {
-      id: 'edge-config',
+      id: testId('edge-config'),
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
       label: { en: 'Knows' },
     },

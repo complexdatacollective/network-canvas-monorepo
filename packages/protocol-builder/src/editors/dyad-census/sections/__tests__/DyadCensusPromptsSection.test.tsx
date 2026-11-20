@@ -1,9 +1,22 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  fixtureStageId,
+  loadFixtureStage,
+} from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../../testing/testId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import DyadCensusPromptsSection from '../DyadCensusPromptsSection.tsx';
+
+/** The id the fixture gives its one prompt, read from the fixture itself. */
+const fixturePromptId = (): unknown => {
+  const [first] = [loadFixtureStage('dyad-census-1').fields.prompts].flat();
+  return typeof first === 'object' && first !== null && 'id' in first
+    ? first.id
+    : undefined;
+};
 
 const openSection = () => ({
   stageId: 'dyad-census-1' as const,
@@ -72,7 +85,7 @@ describe('the questions a dyad census asks about a pair', () => {
 
     const request = await harness.submit();
     const rows = prompts(request?.stageDocument ?? {});
-    expect(rows[0]?.id).toBe('dyad-census-prompt-1');
+    expect(rows[0]?.id).toBe(fixturePromptId());
     expect(rows[1]?.id).toEqual(expect.any(String));
     expect(rows[1]?.id).not.toBe(rows[0]?.id);
     expect(rows[1]?.createEdge).toBe('family_edge');
@@ -87,18 +100,19 @@ describe('the questions a dyad census asks about a pair', () => {
   it('removes only the prompt the researcher chose', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testId('DyadCensus-stage'),
         type: 'DyadCensus',
         fields: {
           label: { 'en-US': 'Dyad Census' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: 'prompt-a',
+              id: testId('prompt-a'),
               text: { 'en-US': 'Know each other?' },
               createEdge: 'knows',
             },
             {
-              id: 'prompt-b',
+              id: testId('prompt-b'),
               text: { 'en-US': 'Worked together?' },
               createEdge: 'family_edge',
             },
@@ -122,7 +136,7 @@ describe('the questions a dyad census asks about a pair', () => {
     const request = await harness.submit();
     const remaining = prompts(request?.stageDocument ?? {});
     expect(remaining).toHaveLength(1);
-    expect(remaining[0]?.id).toBe('prompt-b');
+    expect(remaining[0]?.id).toBe(testId('prompt-b'));
     expect(remaining[0]?.createEdge).toBe('family_edge');
   });
 });
@@ -224,7 +238,7 @@ describe('creating a connection type from inside a prompt', () => {
 describe('a dyad census someone else is holding', () => {
   it('shows the questions it asks and offers no way to change them', async () => {
     const harness = renderStageEditor({
-      stageId: 'dyad-census-1',
+      stageId: fixtureStageId('dyad-census-1'),
       sections: <DyadCensusPromptsSection />,
       readOnly: true,
     });

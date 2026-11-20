@@ -6,7 +6,9 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { background } from '../../../../../sections/background/background.tsx';
 import { nodeLayout } from '../../../../../sections/canvas-behaviours/nodeLayout.tsx';
 import { attributeField } from '../../../../../testing/attributePicker.ts';
+import { fixtureStageId } from '../../../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../../../testing/testId.ts';
 import { sociogramPrompts } from '../sociogramPrompts.tsx';
 
 const Prompts = sociogramPrompts();
@@ -36,6 +38,7 @@ export const promptsOf = (
 /** A sociogram holding exactly one prompt, so a save can be read whole. */
 export const sociogramHolding = (prompt: Record<string, unknown>) => ({
   stage: {
+    id: testId('sociogram-stage'),
     type: 'Sociogram' as const,
     fields: {
       label: { 'en-US': 'Sociogram' },
@@ -92,7 +95,10 @@ export const collectInAForm = (
   harness: StageEditorHarness,
   variableId: string,
 ): void => {
-  const id = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
+  const id = sectionId({
+    kind: 'stage',
+    stageId: fixtureStageId('alter-form-1'),
+  });
   const stage = harness.protocolSections()[id];
   if (stage === undefined) throw new Error('the fixture has no alter form');
   const form = stage.form;
@@ -107,7 +113,7 @@ export const collectInAForm = (
       fields: [
         ...fields,
         {
-          id: 'field-added',
+          id: testId('field-added'),
           variable: variableId,
           prompt: { 'en-US': 'Is this so?' },
         },

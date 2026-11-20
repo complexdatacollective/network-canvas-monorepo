@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { withStageTestIds } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
@@ -755,7 +756,9 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
 
     it('rejects an external-data panel filter with an edge rule, on the stage alone', () => {
       const result = stageSchema.safeParse(
-        nameGeneratorWithPanels([panelReadingAFileWithAnEdgeRule]),
+        withStageTestIds(
+          nameGeneratorWithPanels([panelReadingAFileWithAnEdgeRule]),
+        ),
       );
 
       expect(result.success).toBe(false);
@@ -775,16 +778,18 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
     });
 
     it('rejects it for a quick-add name generator too', () => {
-      const result = stageSchema.safeParse({
-        id: 'quickAdd1',
-        type: 'NameGeneratorQuickAdd',
-        addNamePlaceholder: localized('Type a name, then press Enter'),
-        label: localized('Generate'),
-        subject: { entity: 'node', type: 'person' },
-        quickAdd: 'name',
-        prompts: [{ id: 'p1', text: localized('Who?') }],
-        panels: [panelReadingAFileWithAnEdgeRule],
-      });
+      const result = stageSchema.safeParse(
+        withStageTestIds({
+          id: 'quickAdd1',
+          type: 'NameGeneratorQuickAdd',
+          addNamePlaceholder: localized('Type a name, then press Enter'),
+          label: localized('Generate'),
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          prompts: [{ id: 'p1', text: localized('Who?') }],
+          panels: [panelReadingAFileWithAnEdgeRule],
+        }),
+      );
 
       expect(result.success).toBe(false);
       if (result.success) return;
@@ -834,9 +839,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
      */
     it('accepts an edge rule on a panel reading the interview network', () => {
       const result = stageSchema.safeParse(
-        nameGeneratorWithPanels([
-          { ...panelReadingAFileWithAnEdgeRule, dataSource: 'existing' },
-        ]),
+        withStageTestIds(
+          nameGeneratorWithPanels([
+            { ...panelReadingAFileWithAnEdgeRule, dataSource: 'existing' },
+          ]),
+        ),
       );
 
       expect(result.error?.issues ?? []).toEqual([]);

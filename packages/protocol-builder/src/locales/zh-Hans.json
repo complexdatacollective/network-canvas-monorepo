@@ -2006,6 +2006,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property} — 此属性无法用于排序",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "此规则指向的属性无法用于排序。请选择其他属性或删除此规则。",
   "protocolBuilder.stageEdit.addFailed": "无法添加此阶段。请稍候重试。",
+  "protocolBuilder.stageEdit.addInvalidShape": "无法添加此阶段，因为其中部分内容无效。您的更改仍保留在此处。请更正问题，然后再次尝试添加此阶段。",
   "protocolBuilder.stageEdit.blockedBy": "{holder} 正在编辑此次保存所需的协议其他部分，因此未保存任何内容，您的更改仍保留在此处。请稍后再次保存。",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} 正在编辑此次保存所需的协议其他部分，因此未保存任何内容，您的更改仍保留在此处。请稍后再次保存。",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "此次保存所需的协议其他部分正在被他人编辑，因此未保存任何内容，您的更改仍保留在此处。请稍后再次保存。",

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { testId } from '../../__tests__/testIds';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
   suppliedInterfaceText,
@@ -38,7 +39,7 @@ vi.mock('../../selectors/name-generator', () => ({
 function RosterLabels() {
   const { items } = useItems({
     stage: {
-      id: 'stage',
+      id: testId('stage'),
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       unnamedLabel: { en: 'Unnamed {count}', es: 'Sin nombre {count}' },
@@ -46,7 +47,7 @@ function RosterLabels() {
       label: { en: 'Authored stage' },
       subject: { entity: 'node', type: 'person' },
       dataSource: 'source',
-      prompts: [{ id: 'prompt', text: { en: 'Authored prompt' } }],
+      prompts: [{ id: testId('prompt'), text: { en: 'Authored prompt' } }],
     },
     getNavigationHelpers: () => ({
       moveForward: () => {},

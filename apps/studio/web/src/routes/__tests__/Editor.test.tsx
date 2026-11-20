@@ -78,6 +78,7 @@ const STAGE_A = '11111111-1111-4111-8111-111111111111';
 const STAGE_B = '22222222-2222-4222-8222-222222222222';
 const STAGE_C = '33333333-3333-4333-8333-333333333333';
 const FINISH = '44444444-4444-4444-8444-444444444444';
+const ITEM_A = '55555555-5555-4555-8555-555555555555';
 const queryDraft = vi.hoisted(() => vi.fn<Answer<'protocols.draft'>>());
 const addInformationStage = vi.fn<Answer<'protocols.addInformationStage'>>();
 const moveStage = vi.fn<Answer<'protocols.moveStage'>>();
@@ -2363,6 +2364,33 @@ describe('the validation problems', () => {
     );
   });
 
+  it('focus the row of the object a problem is about, not the list it is in', async () => {
+    const first = '77777777-7777-4777-8777-777777777777';
+    const blank = '66666666-6666-4666-8666-666666666666';
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      [`stage:${STAGE_B}`]: {
+        ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
+        items: [
+          { id: first, type: 'text', content: enUS('First item') },
+          { id: blank, type: 'text', content: enUS('') },
+        ],
+      },
+    });
+    renderEditor();
+    await findStageNameField();
+
+    // The item's text is edited in a dialog, so no field of the stage's form
+    // is that text: without the item's id the list is the nearest field.
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
+    );
+
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute('data-item-id')).toBe(blank),
+    );
+  });
+
   it('go to the screen entry when the problem is about the screen and no field', async () => {
     renderEditor();
     await findStageNameField();
@@ -2493,7 +2521,7 @@ describe('the editing lock', () => {
       ...HOST_SECTIONS,
       [`stage:${STAGE_A}`]: {
         ...HOST_SECTIONS[`stage:${STAGE_A}`],
-        items: [{ id: 'item-1', type: 'text', content: enUS('Hello') }],
+        items: [{ id: ITEM_A, type: 'text', content: enUS('Hello') }],
       },
     });
     renderEditor();

@@ -18,6 +18,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import NetworkFilterSection from '../NetworkFilterSection.tsx';
 
 /** An `AlterForm` is the least-configured stage the schema gives a filter. */
@@ -39,7 +40,7 @@ const OTHER_EDGE = 'family_edge';
 const nodeFilter = {
   rules: [
     {
-      id: 'rule-a',
+      id: testId('rule-a'),
       type: 'node',
       options: { type: 'person', operator: 'EXISTS' },
     },
@@ -47,7 +48,7 @@ const nodeFilter = {
 };
 
 const edgeRule = (type: string, operator: string) => ({
-  rules: [{ id: 'rule-a', type: 'edge', options: { type, operator } }],
+  rules: [{ id: testId('rule-a'), type: 'edge', options: { type, operator } }],
 });
 
 const stageHolding = (
@@ -292,12 +293,12 @@ describe('rules that contradict the rest of the stage', () => {
         join: 'AND',
         rules: [
           {
-            id: 'rule-a',
+            id: testId('rule-a'),
             type: 'node',
             options: { type: 'person', operator: 'EXISTS' },
           },
           {
-            id: 'rule-b',
+            id: testId('rule-b'),
             type: 'edge',
             options: { type: OTHER_EDGE, operator: 'EXISTS' },
           },
@@ -315,12 +316,12 @@ describe('rules that contradict the rest of the stage', () => {
         join: 'AND',
         rules: [
           {
-            id: 'rule-a',
+            id: testId('rule-a'),
             type: 'edge',
             options: { type: CONFIGURED_EDGE, operator: 'EXISTS' },
           },
           {
-            id: 'rule-b',
+            id: testId('rule-b'),
             type: 'edge',
             options: { type: OTHER_EDGE, operator: 'EXISTS' },
           },
@@ -342,12 +343,12 @@ describe('rules that contradict the rest of the stage', () => {
         join: 'OR',
         rules: [
           {
-            id: 'rule-a',
+            id: testId('rule-a'),
             type: 'edge',
             options: { type: CONFIGURED_EDGE, operator: 'EXISTS' },
           },
           {
-            id: 'rule-b',
+            id: testId('rule-b'),
             type: 'edge',
             options: { type: OTHER_EDGE, operator: 'EXISTS' },
           },
@@ -367,12 +368,12 @@ describe('rules that contradict the rest of the stage', () => {
         join: 'OR',
         rules: [
           {
-            id: 'rule-a',
+            id: testId('rule-a'),
             type: 'edge',
             options: { type: OTHER_EDGE, operator: 'EXISTS' },
           },
           {
-            id: 'rule-b',
+            id: testId('rule-b'),
             type: 'node',
             options: { type: 'person', operator: 'EXISTS' },
           },
@@ -390,7 +391,7 @@ describe('rules that contradict the rest of the stage', () => {
     renderStageEditor({
       stage: sociogram(edgeRule(CONFIGURED_EDGE, 'EXISTS'), [
         {
-          id: 'sociogram-prompt-1',
+          id: testId('sociogram-prompt-1'),
           text: 'Who do you know?',
           layout: { layoutVariable: 'layout' },
           // Displayed rather than created, and still hidden by rules that
@@ -443,7 +444,7 @@ describe('a rule this filter cannot be about', () => {
   const egoFilter = {
     rules: [
       {
-        id: 'rule-a',
+        id: testId('rule-a'),
         type: 'ego',
         options: {
           attribute: 'ego_name',
@@ -512,7 +513,7 @@ const ENCRYPTED_ROW_PROBLEM =
 
 describe('a rule on an encrypted attribute', () => {
   it('saves a rule that only asks whether it is answered', async () => {
-    const filter = { rules: [answeredRule('rule-a', 'name')] };
+    const filter = { rules: [answeredRule(testId('rule-a'), 'name')] };
     const harness = renderStageEditor({
       stage: alterForm({ filter }),
       sections: nodeFilterSection,
@@ -532,7 +533,9 @@ describe('a rule on an encrypted attribute', () => {
    */
   it('marks a rule it holds once the attribute is encrypted while it is open', async () => {
     const harness = renderStageEditor({
-      stage: alterForm({ filter: { rules: [personRule('rule-a', 'name')] } }),
+      stage: alterForm({
+        filter: { rules: [personRule(testId('rule-a'), 'name')] },
+      }),
       sections: nodeFilterSection,
     });
     await screen.findByRole('button', { name: /^Edit rule:/ });
@@ -549,7 +552,9 @@ describe('a rule on an encrypted attribute', () => {
 
   it('marks the rule on its own row and refuses the stage', async () => {
     const harness = renderStageEditor({
-      stage: alterForm({ filter: { rules: [personRule('rule-a', 'name')] } }),
+      stage: alterForm({
+        filter: { rules: [personRule(testId('rule-a'), 'name')] },
+      }),
       sections: nodeFilterSection,
       adapter: alreadyProtecting('name'),
     });

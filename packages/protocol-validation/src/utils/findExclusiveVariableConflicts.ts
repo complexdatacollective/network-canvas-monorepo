@@ -3,16 +3,14 @@ import type {
   InterfaceOwnedOptionSetKey,
   StageManagedOptionsDescriptor,
 } from '../schemas/9/entity-attribute-reference.ts';
-import {
-  collectEntityAttributeReferences,
-  type EntityAttributeReferenceHit,
-} from './collectEntityAttributeReferences.ts';
+import { collectEntityAttributeReferences } from './collectEntityAttributeReferences.ts';
 import {
   subjectVariableKey,
   toReferenceSubject,
   variableNameFor,
   type ReferenceSubject,
 } from './referenceSubjects.ts';
+import type { EntityAttributeReferenceHit } from './schemaReferenceWalk.ts';
 
 type UnknownRecord = Record<string, unknown>;
 

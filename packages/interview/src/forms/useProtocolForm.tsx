@@ -12,6 +12,7 @@ import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import type {
   ComposerFormField,
   FormField,
+  ProtocolObjectId,
   StageSubject,
 } from '@codaco/protocol-validation';
 
@@ -63,7 +64,7 @@ function ProtocolFormFields({
   autoFocus,
   validationContext,
 }: {
-  fields: readonly ProtocolFieldDefinition[];
+  fields: readonly (ProtocolFieldDefinition & { id: ProtocolObjectId })[];
   unavailableVariables: readonly string[];
   initialValues: Record<string, FieldValue> | undefined;
   autoFocus: boolean;
@@ -107,7 +108,7 @@ function ProtocolFormFields({
 
         return (
           <ProtocolFormField
-            key={index}
+            key={field.id}
             field={field}
             unavailable={unavailableVariables.includes(field.variable)}
             initialValue={initialValue}

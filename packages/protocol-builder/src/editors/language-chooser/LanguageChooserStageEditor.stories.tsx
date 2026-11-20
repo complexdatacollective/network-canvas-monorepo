@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { languageChooserStageEditor } from './LanguageChooserStageEditor.ts';
 
@@ -11,7 +12,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Language Chooser',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'language-chooser-1',
+    stageId: fixtureStageId('language-chooser-1'),
     stage: {
       type: 'LanguageChooser',
       fields: {

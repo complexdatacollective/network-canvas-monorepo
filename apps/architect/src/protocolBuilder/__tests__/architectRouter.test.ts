@@ -10,6 +10,7 @@ import {
   Layer,
   ManagedRuntime,
   Option,
+  Predicate,
   Redacted,
   Schema,
   Stream,
@@ -45,7 +46,9 @@ import {
   ASSETS_SECTION,
   STAGE_ORDER_SECTION,
 } from '@codaco/protocol-builder/host/protocolSections';
+import { fixtureStageId } from '@codaco/protocol-builder/testing/protocolFixture';
 import {
+  createProtocolObjectId,
   CurrentProtocolSchema,
   EdgeColorSequence,
   type Experiments,
@@ -81,6 +84,14 @@ vi.mock('~/utils/assetUtils', async (importOriginal) => ({
   },
 }));
 
+const INFORMATION_STAGE_ID = fixtureStageId('information-1');
+const EGO_FORM_STAGE_ID = fixtureStageId('ego-form-1');
+const NAME_GENERATOR_STAGE_ID = fixtureStageId('name-generator-1');
+const FAMILY_PEDIGREE_STAGE_ID = fixtureStageId('family-pedigree-1');
+const NARRATIVE_PEDIGREE_STAGE_ID = fixtureStageId('narrative-pedigree-1');
+const GEOSPATIAL_STAGE_ID = fixtureStageId('geospatial-1');
+const FINISH_STAGE_ID = fixtureStageId('finish');
+
 const PROTOCOL_ID = 'library-row-1';
 
 const encodeDescriptor = Schema.encodeSync(ResourceDescriptorSchema);
@@ -100,8 +111,8 @@ const OTHER_EDIT = 'edit-2';
 /** A fresh idempotency key: every write below is its own intent. */
 let writes = 0;
 const nextRequestId = (): string => `write-${++writes}`;
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
-const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
+const INFORMATION = sectionId({ kind: 'stage', stageId: INFORMATION_STAGE_ID });
+const EGO_FORM = sectionId({ kind: 'stage', stageId: EGO_FORM_STAGE_ID });
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
 const SETTINGS = sectionId({ kind: 'settings' });
 
@@ -288,7 +299,9 @@ describe("Architect's in-process protocol-builder host", () => {
       revision: held.revision,
     });
 
-    expect(stageLabel(store, 'information-1')).toBe('Renamed by the editor');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe(
+      'Renamed by the editor',
+    );
     await waitFor(
       () => revisionsOf(stream.seen).length > 0,
       'the revision to reach the stream',
@@ -325,12 +338,59 @@ describe("Architect's in-process protocol-builder host", () => {
 
     expect(isSuccess).toBe(false);
     expect(error).toBeInstanceOf(NotLockHolder);
-    expect(stageLabel(store, 'information-1')).toBe('Information');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe('Information');
     const after = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
     expect(after.revision).toEqual(before.revision);
+  });
+
+  it('names the row inside a refused new stage that the issue is about', async () => {
+    const { client } = openProtocol();
+    const template = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('sociogram-1'),
+      }),
+    });
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
+    const prompts: unknown = withoutId.prompts;
+    if (!Array.isArray(prompts) || !Predicate.isObject(prompts[0])) {
+      throw new Error('the fixture sociogram has no prompt');
+    }
+    const sortRule = createProtocolObjectId();
+
+    const { error } = await safe(
+      client.call('Create', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        kind: 'stage',
+        document: Redacted.make({
+          ...withoutId,
+          prompts: [
+            {
+              ...prompts[0],
+              sortOrder: [
+                { id: sortRule, property: '*', direction: 'sideways' },
+              ],
+            },
+            ...prompts.slice(1),
+          ],
+        }),
+      }),
+    );
+
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error).toMatchObject({
+      issues: [
+        expect.objectContaining({
+          path: ['prompts', 0, 'sortOrder', 0, 'direction'],
+          objectId: sortRule,
+        }),
+      ],
+    });
   });
 
   it('registers a created stage in the stage index at the same revision', async () => {
@@ -467,9 +527,9 @@ describe("Architect's in-process protocol-builder host", () => {
 
     store.dispatch(timelineActions.undo());
     expect(stageIds(store)).not.toContain('');
-    expect(stageLabel(store, 'information-1')).toBe('One step');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe('One step');
     store.dispatch(timelineActions.undo());
-    expect(stageLabel(store, 'information-1')).toBe('Information');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe('Information');
     expect(undoDepth(store)).toBe(0);
   });
 
@@ -568,7 +628,7 @@ describe("Architect's in-process protocol-builder host", () => {
     if (!(error instanceof ReferencesRemain)) return;
     const { remaining } = error;
     expect(remaining.map((entry) => entry.sectionId)).toContain(
-      sectionId({ kind: 'stage', stageId: 'name-generator-1' }),
+      sectionId({ kind: 'stage', stageId: NAME_GENERATOR_STAGE_ID }),
     );
     // A section and a path inside it: "somewhere in this stage" is not
     // something a dialog can point at.
@@ -632,7 +692,7 @@ describe("Architect's in-process protocol-builder host", () => {
       revision: held.revision,
     });
 
-    expect(stageLabel(store, 'information-1')).toBe(
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe(
       'Written by the second client',
     );
     const separate = clientOf(store);
@@ -642,7 +702,7 @@ describe("Architect's in-process protocol-builder host", () => {
         requestId: nextRequestId(),
         sectionId: EGO_FORM,
         document: Redacted.make({
-          id: 'ego-form-1',
+          id: EGO_FORM_STAGE_ID,
           type: 'EgoForm',
           label: { [FIXTURE_LANGUAGE]: 'No lock here' },
         }),
@@ -776,7 +836,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(error).toMatchObject({
       failure: { reason: 'not-found', resourceId: id },
     });
-    expect(stageLabel(store, 'information-1')).toBe('Information');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe('Information');
     // And the file is still the importing edit's to take back.
     await client.call('ResourcesDiscard', {
       protocolId: PROTOCOL_ID,
@@ -1058,7 +1118,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
       failure: { reason: 'not-found', resourceId: 'never-staged' },
     });
-    expect(stageLabel(store, 'information-1')).toBe('Information');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe('Information');
     expect(getAssetManifest(store.getState())).toEqual(manifest);
     // The resource this edit imported is still the edit's to take back.
     await client.call('ResourcesDiscard', {
@@ -1112,7 +1172,7 @@ describe("Architect's in-process protocol-builder host", () => {
     // is told to discard a draft over.
     expect(retried.revision).toEqual(written.revision);
     expect(retried.promoted?.map((entry) => entry.id)).toEqual([id]);
-    expect(stageLabel(store, 'information-1')).toBe('Saved once');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe('Saved once');
   });
 
   it('refuses a create while an editor holds the stage index', async () => {
@@ -1179,7 +1239,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(error).toMatchObject({
       blocked: [{ sectionId: ASSETS_SECTION }],
     });
-    expect(stageLabel(store, 'information-1')).toBe('Information');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe('Information');
     // Nothing was promoted, so the resource is still the edit's to take back.
     await client.call('ResourcesDiscard', {
       protocolId: PROTOCOL_ID,
@@ -1307,7 +1367,7 @@ describe("Architect's in-process protocol-builder host", () => {
       sectionId: INFORMATION,
     });
 
-    expect(stageIds(store)).not.toContain('information-1');
+    expect(stageIds(store)).not.toContain(INFORMATION_STAGE_ID);
     expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER_SECTION]);
     const order = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
@@ -1347,7 +1407,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(error).toMatchObject({
       blocked: [{ sectionId: INFORMATION }],
     });
-    expect(stageIds(store)).toContain('information-1');
+    expect(stageIds(store)).toContain(INFORMATION_STAGE_ID);
   });
 
   it('refuses to delete a stage another stage is built on, naming where', async () => {
@@ -1356,7 +1416,10 @@ describe("Architect's in-process protocol-builder host", () => {
     const { error, isSuccess } = await safe(
       client.call('Delete', {
         protocolId: PROTOCOL_ID,
-        sectionId: sectionId({ kind: 'stage', stageId: 'family-pedigree-1' }),
+        sectionId: sectionId({
+          kind: 'stage',
+          stageId: FAMILY_PEDIGREE_STAGE_ID,
+        }),
       }),
     );
 
@@ -1370,14 +1433,14 @@ describe("Architect's in-process protocol-builder host", () => {
           {
             sectionId: sectionId({
               kind: 'stage',
-              stageId: 'narrative-pedigree-1',
+              stageId: NARRATIVE_PEDIGREE_STAGE_ID,
             }),
             path: ['sourceStageId'],
           },
         ],
       }),
     );
-    expect(stageIds(store)).toContain('family-pedigree-1');
+    expect(stageIds(store)).toContain(FAMILY_PEDIGREE_STAGE_ID);
   });
 
   /**
@@ -1401,10 +1464,14 @@ describe("Architect's in-process protocol-builder host", () => {
           action: 'SKIP',
           filter: {
             rules: [
-              { type: 'node', id: 'rule-1', options: { operator: 'EXISTS' } },
+              {
+                type: 'node',
+                id: createProtocolObjectId(),
+                options: { operator: 'EXISTS' },
+              },
             ],
           },
-          destination: { type: 'stage', stageId: 'geospatial-1' },
+          destination: { type: 'stage', stageId: GEOSPATIAL_STAGE_ID },
         },
       }),
       revision: held.revision,
@@ -1417,7 +1484,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const { error, isSuccess } = await safe(
       client.call('Delete', {
         protocolId: PROTOCOL_ID,
-        sectionId: sectionId({ kind: 'stage', stageId: 'geospatial-1' }),
+        sectionId: sectionId({ kind: 'stage', stageId: GEOSPATIAL_STAGE_ID }),
       }),
     );
 
@@ -1433,20 +1500,20 @@ describe("Architect's in-process protocol-builder host", () => {
         ],
       }),
     );
-    expect(stageIds(store)).toContain('geospatial-1');
+    expect(stageIds(store)).toContain(GEOSPATIAL_STAGE_ID);
   });
 
   // The interview has to end at a finish stage, so its only one stays; the
   // refusal names the stage order, the reference that is not taken out.
   it('refuses to delete the stage that ends the interview', async () => {
     const { store, client } = openProtocol();
-    const finishIndex = stageIds(store).indexOf('finish');
+    const finishIndex = stageIds(store).indexOf(FINISH_STAGE_ID);
     expect(finishIndex).toBe(stageIds(store).length - 1);
 
     const { error, isSuccess } = await safe(
       client.call('Delete', {
         protocolId: PROTOCOL_ID,
-        sectionId: sectionId({ kind: 'stage', stageId: 'finish' }),
+        sectionId: sectionId({ kind: 'stage', stageId: FINISH_STAGE_ID }),
       }),
     );
 
@@ -1461,7 +1528,7 @@ describe("Architect's in-process protocol-builder host", () => {
         ],
       }),
     );
-    expect(stageIds(store)).toContain('finish');
+    expect(stageIds(store)).toContain(FINISH_STAGE_ID);
   });
 
   // A protocol always ends at its finish stages, which sit together at the
@@ -1470,7 +1537,7 @@ describe("Architect's in-process protocol-builder host", () => {
   it.each([
     {
       direction: 'the finish stage into another kind of stage',
-      stageId: 'finish',
+      stageId: FINISH_STAGE_ID,
       rewrite: (document: Readonly<Record<string, unknown>>) => ({
         id: document.id,
         type: 'Information',
@@ -1481,7 +1548,7 @@ describe("Architect's in-process protocol-builder host", () => {
     },
     {
       direction: 'another stage into a second finish stage',
-      stageId: 'information-1',
+      stageId: INFORMATION_STAGE_ID,
       rewrite: (document: Readonly<Record<string, unknown>>) => ({
         id: document.id,
         type: 'FinishSession',
@@ -1571,7 +1638,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageIds(store)).toEqual([...before, stageId]);
     expect(
       stages.filter(({ type }) => type === 'FinishSession').map(({ id }) => id),
-    ).toEqual(['finish', stageId]);
+    ).toEqual([FINISH_STAGE_ID, stageId]);
     expect(stages.at(-1)).toMatchObject({
       type: 'FinishSession',
       mode: 'automatic',
@@ -1707,7 +1774,7 @@ describe("Architect's in-process protocol-builder host", () => {
       revision: held.revision,
     });
     expect(written.revision.sequence).toBeGreaterThan(held.revision.sequence);
-    expect(stageLabel(store, 'information-1')).toBe(
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe(
       'Saved after the stream ended',
     );
   });
@@ -1748,13 +1815,13 @@ describe("Architect's in-process protocol-builder host", () => {
     );
     expect(isSuccess).toBe(false);
     expect(error).toBeInstanceOf(NotLockHolder);
-    expect(stageLabel(store, 'information-1')).toBe('Information');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe('Information');
 
     await client.call('Delete', {
       protocolId: PROTOCOL_ID,
       sectionId: INFORMATION,
     });
-    expect(stageIds(store)).not.toContain('information-1');
+    expect(stageIds(store)).not.toContain(INFORMATION_STAGE_ID);
   });
 
   it('lists the committed asset manifest as resources', async () => {
@@ -1965,7 +2032,7 @@ describe("Architect's in-process protocol-builder host", () => {
       expect(Redacted.value(opened.holder.displayName)).toBe(OTHER_TAB);
       // The document still arrives: a demoted tab shows the researcher the
       // stage, it just cannot write it.
-      expect(Redacted.value(opened.document).id).toBe('information-1');
+      expect(Redacted.value(opened.document).id).toBe(INFORMATION_STAGE_ID);
     });
 
     it('refuses a submit raised by an editor opened before the demotion', async () => {
@@ -1993,7 +2060,7 @@ describe("Architect's in-process protocol-builder host", () => {
       expect(error).toBeInstanceOf(NotLockHolder);
       const holder = error instanceof NotLockHolder ? error.holder : undefined;
       expect(holder && Redacted.value(holder.displayName)).toBe(OTHER_TAB);
-      expect(stageLabel(store, 'information-1')).not.toBe(
+      expect(stageLabel(store, INFORMATION_STAGE_ID)).not.toBe(
         'Saved by a demoted tab',
       );
     });
@@ -2046,7 +2113,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
       expect(isSuccess).toBe(false);
       expect(error).toBeInstanceOf(SectionsLocked);
-      expect(stageIds(store)).toContain('information-1');
+      expect(stageIds(store)).toContain(INFORMATION_STAGE_ID);
     });
 
     it('refuses a refactor, so the codebook keeps what it had', async () => {
@@ -2229,7 +2296,9 @@ describe("Architect's in-process protocol-builder host", () => {
         revision: held.revision,
       });
 
-      expect(stageLabel(store, 'information-1')).toBe('Written after a defect');
+      expect(stageLabel(store, INFORMATION_STAGE_ID)).toBe(
+        'Written after a defect',
+      );
       await waitFor(
         () => revisionsOf(stream.seen).length > 0,
         'the revision to reach the stream',
@@ -2239,7 +2308,7 @@ describe("Architect's in-process protocol-builder host", () => {
 });
 
 describe('shared words saved with a stage', () => {
-  const MAP = sectionId({ kind: 'stage', stageId: 'geospatial-1' });
+  const MAP = sectionId({ kind: 'stage', stageId: GEOSPATIAL_STAGE_ID });
 
   /** The researcher's wording for the message a failed map search shows. */
   const REWORDED = { [FIXTURE_LANGUAGE]: 'No place matched that search' };
@@ -2287,7 +2356,7 @@ describe('shared words saved with a stage', () => {
       ],
     });
 
-    expect(allowsSearch(store, 'geospatial-1')).toBe(true);
+    expect(allowsSearch(store, GEOSPATIAL_STAGE_ID)).toBe(true);
     expect(searchFailed(store)).toEqual(REWORDED);
     const settings = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
@@ -2297,7 +2366,7 @@ describe('shared words saved with a stage', () => {
     expect(undoDepth(store)).toBe(1);
 
     store.dispatch(timelineActions.undo());
-    expect(allowsSearch(store, 'geospatial-1')).not.toBe(true);
+    expect(allowsSearch(store, GEOSPATIAL_STAGE_ID)).not.toBe(true);
     expect(searchFailed(store)).toBeUndefined();
   });
 
@@ -2362,7 +2431,7 @@ describe('shared words saved with a stage', () => {
 
     expect(error).toBeInstanceOf(InvalidShape);
     expect(error instanceof InvalidShape && error.sectionId).toBe(SETTINGS);
-    expect(allowsSearch(store, 'geospatial-1')).not.toBe(true);
+    expect(allowsSearch(store, GEOSPATIAL_STAGE_ID)).not.toBe(true);
     expect(searchFailed(store)).toBeUndefined();
     expect(undoDepth(store)).toBe(0);
   });
@@ -2393,7 +2462,7 @@ describe('shared words saved with a stage', () => {
 
     expect(error).toBeInstanceOf(SectionsLocked);
     expect(error).toMatchObject({ blocked: [{ sectionId: SETTINGS }] });
-    expect(allowsSearch(store, 'geospatial-1')).not.toBe(true);
+    expect(allowsSearch(store, GEOSPATIAL_STAGE_ID)).not.toBe(true);
     expect(searchFailed(store)).toBeUndefined();
   });
 });
@@ -2539,7 +2608,7 @@ describe('codebook sections saved with a stage', () => {
 
     expect(error).toBeInstanceOf(InvalidShape);
     expect(error instanceof InvalidShape && error.sectionId).toBe(NEW_TYPE);
-    expect(stageLabel(store, 'information-1')).not.toBe('Relabelled');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).not.toBe('Relabelled');
     expect(
       getProtocol(store.getState())?.codebook.node?.['invented-type'],
     ).toBeUndefined();
@@ -2653,7 +2722,7 @@ describe('codebook sections saved with a stage', () => {
       REFUSAL,
     );
     expect(personColor(store)).not.toBe('node-color-seq-5');
-    expect(stageLabel(store, 'information-1')).not.toBe('Relabelled');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).not.toBe('Relabelled');
     expect(undoDepth(store)).toBe(0);
   });
 
@@ -2698,7 +2767,7 @@ describe('codebook sections saved with a stage', () => {
     expect(
       getProtocol(store.getState())?.codebook.node?.['invented-type']?.name,
     ).toBe('Invented');
-    expect(stageLabel(store, 'information-1')).not.toBe('Relabelled');
+    expect(stageLabel(store, INFORMATION_STAGE_ID)).not.toBe('Relabelled');
   });
 
   it('refuses the same on a create', async () => {

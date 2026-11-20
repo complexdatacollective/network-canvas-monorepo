@@ -6,7 +6,9 @@ import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { newEntityDraft } from '../../../codebook/components/CodebookEntityEditorDialog.tsx';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import {
   TestPromptEditor,
   TestPromptPreview,
@@ -23,7 +25,7 @@ type Harness = ReturnType<typeof renderStageEditor>;
 
 const NAME_GENERATOR = sectionId({
   kind: 'stage',
-  stageId: 'name-generator-1',
+  stageId: fixtureStageId('name-generator-1'),
 });
 
 const nodeSubjectAndPrompts = (
@@ -107,7 +109,7 @@ const pickedTypeBehindTheQuestion = (): string | undefined => {
 describe('the section that says what a stage is about', () => {
   it('offers the protocol’s own node types, and nothing else', () => {
     renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -119,7 +121,7 @@ describe('the section that says what a stage is about', () => {
 
   it('mounts the stage filter beside it, as its own section', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-edge-form-1',
+      stageId: fixtureStageId('alter-edge-form-1'),
       sections: <SubjectSection entity="edge" filter />,
     });
 
@@ -132,7 +134,7 @@ describe('the section that says what a stage is about', () => {
 
   it('leaves the filter out when the stage does not offer one', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -156,7 +158,7 @@ describe('the section that says what a stage is about', () => {
    */
   it('writes an edge pick as the stage’s edge subject', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-edge-form-1',
+      stageId: fixtureStageId('alter-edge-form-1'),
       sections: <SubjectSection entity="edge" filter />,
     });
 
@@ -174,7 +176,7 @@ describe('the section that says what a stage is about', () => {
 
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-edge-form-1',
+      stageId: fixtureStageId('alter-edge-form-1'),
       sections: <SubjectSection entity="edge" filter />,
     });
 
@@ -193,7 +195,7 @@ describe('the section that says what a stage is about', () => {
 describe('changing what a stage is about', () => {
   it('throws away the configuration that described the old type', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
     expect(
@@ -221,7 +223,7 @@ describe('changing what a stage is about', () => {
    */
   it('throws it away for good, so the next row cannot bring it back', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -298,7 +300,7 @@ describe('creating the type a stage needs without leaving it', () => {
    */
   it('opens on the shared draft, so only the name is left to enter', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -359,7 +361,7 @@ describe('creating the type a stage needs without leaving it', () => {
 
   it('holds the new type with the stage and selects it here', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -391,7 +393,7 @@ describe('creating the type a stage needs without leaving it', () => {
    */
   it('asks before it moves a configured stage to the new type', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -412,7 +414,7 @@ describe('creating the type a stage needs without leaving it', () => {
 
   it('keeps the stage on its own type when the researcher backs out', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -448,7 +450,7 @@ describe('creating the type a stage needs without leaving it', () => {
    */
   it('does not ask when the stage has nothing to lose', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -473,7 +475,7 @@ describe('creating the type a stage needs without leaving it', () => {
    */
   it('works after the stage has been edited, and leaves that edit unsaved', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -509,7 +511,7 @@ describe('creating the type a stage needs without leaving it', () => {
    */
   it('creates a type while the stage is too incomplete to save', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -533,7 +535,7 @@ describe('creating the type a stage needs without leaving it', () => {
 
   it('refuses a name the protocol already uses', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -556,7 +558,7 @@ describe('creating the type a stage needs without leaving it', () => {
 
   it('is not offered to a spectator', async () => {
     renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
       readOnly: true,
     });
@@ -578,7 +580,7 @@ describe('creating the type a stage needs without leaving it', () => {
 describe('a codebook that changes while the editor is open', () => {
   it('offers a type a collaborator added', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -611,7 +613,7 @@ describe('a codebook that changes while the editor is open', () => {
 
   it('stops offering a type a collaborator deleted', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -644,7 +646,7 @@ describe('naming a new type', () => {
 
   it('refuses a node name an edge type already uses', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -667,7 +669,7 @@ describe('naming a new type', () => {
 
   it('refuses an edge name a node type already uses, whatever the case', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-edge-form-1',
+      stageId: fixtureStageId('alter-edge-form-1'),
       sections: edgeSubjectSection,
     });
 
@@ -710,7 +712,7 @@ describe('changing a subject the stage is configured for', () => {
 
   it('asks first, and changes nothing while the question stands', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -730,7 +732,7 @@ describe('changing a subject the stage is configured for', () => {
 
   it('leaves the stage as it was when the researcher backs out', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -754,7 +756,7 @@ describe('changing a subject the stage is configured for', () => {
 
   it('throws it away once the researcher has said so', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: nodeSubjectAndPrompts,
     });
 
@@ -779,7 +781,7 @@ describe('changing a subject the stage is configured for', () => {
   it('does not ask about a stage that has nothing to lose', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'name-generator-1',
+        id: fixtureStageId('name-generator-1'),
         type: 'NameGenerator' as const,
         fields: {
           label: en('Name Generator'),
@@ -837,7 +839,7 @@ describe('choosing a type for a stage that has never had one', () => {
       filter: {
         rules: [
           {
-            id: 'rule-a',
+            id: testId('rule-a'),
             type: 'node',
             options: { type: 'person', operator: 'EXISTS' },
           },

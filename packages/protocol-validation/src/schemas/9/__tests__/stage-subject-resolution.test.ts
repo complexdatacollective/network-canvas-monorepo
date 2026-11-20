@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { localized, localizedOptions } from '../../../utils/test-utils.ts';
 import { getEntityAttributeReferenceDescriptor } from '../entity-attribute-reference.ts';
@@ -192,7 +193,7 @@ describe('stage subjects resolve during collection', () => {
     );
     expect(hit?.subject).toBeUndefined();
     expect(issueMessagesAt(protocol, ['stages', 1, 'sourceStageId'])).toEqual([
-      'NarrativePedigree sourceStageId "nope" does not reference an existing stage.',
+      `NarrativePedigree sourceStageId "${testId('nope')}" does not reference an existing stage.`,
     ]);
   });
 

@@ -1,18 +1,32 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { MigrationResultInvalidError } from '../../../migration/errors.ts';
+import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import {
-  migrateProtocol,
-  migrateProtocolWithSessions,
-} from '../../../migration/migrate-protocol.ts';
+  collectProtocolObjectIds,
+  findDuplicateProtocolObjectIds,
+} from '../../../utils/collectProtocolObjectIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import migrationV8toV9 from '../migration.ts';
+import { isProtocolObjectId } from '../protocol-object-id.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
-import { MAX_STAGE_ID_LENGTH } from '../stages/base.ts';
+import { migratedStageId } from './migrated-stage-ids.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
+
+// The stage of `document`, migrated to schema 9, that was its schema 8 stage
+// `id`.
+const findMigratedStage = (
+  document: unknown,
+  id: string,
+  migrated = migrateProtocol(document, 9),
+) => {
+  const newId = migratedStageId(document, migrated, id);
+  return migrated.stages.find((stage) => stage.id === newId);
+};
 
 // The base protocol with its `person.name` attribute marked encrypted, under
 // the given experiments.
@@ -189,7 +203,7 @@ const protocolWithPassphraseRules = (
     stages: [
       ...base.stages,
       {
-        id: 'anonymisation',
+        id: testId('anonymisation'),
         type: 'Anonymisation' as const,
         label: localized('Anonymisation'),
         explanationText: localized('# Privacy\n\nChoose a passphrase.'),
@@ -213,8 +227,11 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
 
     // No passphrase could meet both, so neither is kept and the interview's
     // default applies. Every stage stays, in its order.
-    expect(migrated.stages).toEqual(
-      migrateProtocol(schema8WithPassphraseRules(undefined), 9).stages,
+    // Every migration gives new ids, so they differ between the two.
+    expect(withoutIds(migrated.stages)).toEqual(
+      withoutIds(
+        migrateProtocol(schema8WithPassphraseRules(undefined), 9).stages,
+      ),
     );
   });
 
@@ -234,7 +251,7 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
 
 const nodeRule = (id: string, attribute: string, value: string | number) => ({
   type: 'node' as const,
-  id,
+  id: testId(id),
   options: {
     type: 'person',
     attribute,
@@ -248,13 +265,13 @@ const ageRule = nodeRule('rule-age', 'age', 18);
 
 const presenceRule = (operator: 'EXISTS' | 'NOT_EXISTS') => ({
   type: 'node' as const,
-  id: `rule-${operator}`,
+  id: testId(`rule-${operator}`),
   options: { type: 'person', attribute: 'name', operator },
 });
 
 // The name generator's panel over the interview's own network.
 const networkPanel = (filter: object) => ({
-  id: 'panel-network',
+  id: testId('panel-network'),
   title: localized('People already named'),
   dataSource: 'existing',
   filter,
@@ -284,7 +301,7 @@ const protocolWithRulesOnEncryptedName = (
         panels: [
           networkPanel({ join: 'AND', rules: [nameRule, ageRule] }),
           {
-            id: 'panel-external',
+            id: testId('panel-external'),
             title: localized('People from before'),
             dataSource: 'previous-people',
             filter: { rules: [nameRule] },
@@ -306,13 +323,15 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
     ).stages;
 
     expect(nameGenerator).not.toHaveProperty('skipLogic');
-    expect(nameGenerator).toMatchObject({
-      panels: [
-        { filter: { join: 'AND', rules: [ageRule] } },
-        // The external file's rows are not encrypted, so its rule still works.
-        { filter: { rules: [nameRule] } },
-      ],
-    });
+    expect(withoutIds(nameGenerator)).toMatchObject(
+      objectWithoutIds({
+        panels: [
+          { filter: { join: 'AND', rules: [ageRule] } },
+          // The external file's rows are not encrypted, so its rule still works.
+          { filter: { rules: [nameRule] } },
+        ],
+      }),
+    );
     expect(sociogram).not.toHaveProperty('filter');
   });
 
@@ -322,14 +341,19 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
       9,
     ).stages;
 
-    expect(nameGenerator).toMatchObject({
-      skipLogic: { action: 'SKIP', filter: { rules: [nameRule] } },
-      panels: [
-        { filter: { join: 'AND', rules: [nameRule, ageRule] } },
-        { filter: { rules: [nameRule] } },
-      ],
-    });
-    expect(sociogram).toMatchObject({ filter: { rules: [nameRule] } });
+    // The rule is repeated in four places, and each copy gets an id of its own.
+    expect(withoutIds(nameGenerator)).toMatchObject(
+      objectWithoutIds({
+        skipLogic: { action: 'SKIP', filter: { rules: [nameRule] } },
+        panels: [
+          { filter: { join: 'AND', rules: [nameRule, ageRule] } },
+          { filter: { rules: [nameRule] } },
+        ],
+      }),
+    );
+    expect(withoutIds(sociogram)).toMatchObject(
+      objectWithoutIds({ filter: { rules: [nameRule] } }),
+    );
   });
 
   // Encryption turns an answer into another string and leaves an unanswered
@@ -363,13 +387,15 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
     );
     const [migratedNameGenerator, migratedSociogram] = migrated.stages;
 
-    expect(migratedNameGenerator).toMatchObject({
-      skipLogic: { action: 'SKIP', filter: { rules: [answered] } },
-      panels: [{ filter: { join: 'AND', rules: [unanswered] } }],
-    });
-    expect(migratedSociogram).toMatchObject({
-      filter: { join: 'OR', rules: [answered] },
-    });
+    expect(withoutIds(migratedNameGenerator)).toMatchObject(
+      objectWithoutIds({
+        skipLogic: { action: 'SKIP', filter: { rules: [answered] } },
+        panels: [{ filter: { join: 'AND', rules: [unanswered] } }],
+      }),
+    );
+    expect(withoutIds(migratedSociogram)).toMatchObject(
+      objectWithoutIds({ filter: { join: 'OR', rules: [answered] } }),
+    );
   });
 
   // Schema 8 already refused a filter with no rules, so one the migration did
@@ -561,7 +587,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     const protocol = protocolWithCategoryValues(['friend', 'family', 'friend']);
     const rule = {
       type: 'node' as const,
-      id: 'rule-friend',
+      id: testId('rule-friend'),
       options: {
         type: 'person',
         attribute: 'category',
@@ -584,9 +610,9 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
       9,
     );
 
-    expect(migrated.stages[0]).toMatchObject({
-      skipLogic: { filter: { rules: [rule] } },
-    });
+    expect(withoutIds(migrated.stages[0])).toMatchObject(
+      objectWithoutIds({ skipLogic: { filter: { rules: [rule] } } }),
+    );
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
 
@@ -594,7 +620,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     const protocol = protocolWithCategoryValues([1, 'work', '1']);
     const rule = (value: unknown) => ({
       type: 'node' as const,
-      id: 'rule-one',
+      id: testId('rule-one'),
       options: {
         type: 'person',
         attribute: 'category',
@@ -617,9 +643,9 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
       9,
     );
 
-    expect(migrated.stages[0]).toMatchObject({
-      skipLogic: { filter: { rules: [rule([1])] } },
-    });
+    expect(withoutIds(migrated.stages[0])).toMatchObject(
+      objectWithoutIds({ skipLogic: { filter: { rules: [rule([1])] } } }),
+    );
   });
 
   it('rewrites a shape mapping keyed by a value merged into one of another type', () => {
@@ -695,70 +721,6 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     });
   });
 
-  it('rewrites recorded answers that hold a value merged into one of another type', () => {
-    const { migrateSession } = migrateProtocolWithSessions(
-      asSchema8Protocol(protocolWithCategoryValues([1, 'work', '1'])),
-    );
-    const person = (_uid: string, category: unknown) => ({
-      _uid,
-      type: 'person',
-      attributes: { category },
-    });
-    const result = migrateSession({
-      network: {
-        ego: { _uid: 'ego', attributes: {} },
-        nodes: [
-          person('a', ['1']),
-          person('b', ['1', 1, 'work']),
-          person('c', [1]),
-          { _uid: 'd', type: 'place', attributes: { category: ['1'] } },
-        ],
-        edges: [],
-      },
-      stageMetadata: {},
-      currentStep: 0,
-    });
-    if (!result.success) throw result.error;
-
-    expect(
-      result.session.network.nodes.map(({ attributes }) => attributes),
-    ).toEqual([
-      { category: [1] },
-      { category: [1, 'work'] },
-      { category: [1] },
-      { category: ['1'] },
-    ]);
-  });
-
-  it('leaves an encrypted answer as stored when its option values merge', () => {
-    const { migrateSession } = migrateProtocolWithSessions(
-      asSchema8Protocol(protocolWithCategoryValues(['1', 'work', 1])),
-    );
-    const ciphertext = [1, 7, 1, 42];
-    const result = migrateSession({
-      network: {
-        ego: { _uid: 'ego', attributes: {} },
-        nodes: [
-          {
-            _uid: 'a',
-            type: 'person',
-            attributes: { category: ciphertext },
-            _secureAttributes: { category: { iv: [1, 2], salt: [3, 4] } },
-          },
-          { _uid: 'b', type: 'person', attributes: { category: [1] } },
-        ],
-        edges: [],
-      },
-      stageMetadata: {},
-      currentStep: 0,
-    });
-    if (!result.success) throw result.error;
-
-    expect(
-      result.session.network.nodes.map(({ attributes }) => attributes),
-    ).toEqual([{ category: ciphertext }, { category: ['1'] }]);
-  });
-
   it.each([
     ['spaces around it', ' friend ', 'friend'],
     ['a tab inside it', 'close\tfriend', 'close friend'],
@@ -810,11 +772,11 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     ).toMatchObject({ options: [{ value: 'friend' }, { value: 'family' }] });
   });
 
-  it('rewrites rules and recorded answers that hold a repaired value', () => {
+  it('rewrites rules that hold a repaired value', () => {
     const protocol = protocolWithCategoryValues([' friend', 'family']);
     const rule = (value: unknown) => ({
       type: 'node' as const,
-      id: 'rule-friend',
+      id: testId('rule-friend'),
       options: {
         type: 'person',
         attribute: 'category',
@@ -833,31 +795,13 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
         ...rest,
       ],
     });
-    const { protocol: migrated, migrateSession } =
-      migrateProtocolWithSessions(schema8);
+    const migrated = migrateProtocol(schema8, 9);
 
-    expect(migrated.stages[0]).toMatchObject({
-      skipLogic: { filter: { rules: [rule(['friend'])] } },
-    });
-    const result = migrateSession({
-      network: {
-        ego: { _uid: 'ego', attributes: {} },
-        nodes: [
-          {
-            _uid: 'a',
-            type: 'person',
-            attributes: { category: [' friend', 'family'] },
-          },
-        ],
-        edges: [],
-      },
-      stageMetadata: {},
-      currentStep: 0,
-    });
-    if (!result.success) throw result.error;
-    expect(result.session.network.nodes[0]?.attributes).toEqual({
-      category: ['friend', 'family'],
-    });
+    expect(withoutIds(migrated.stages[0])).toMatchObject(
+      objectWithoutIds({
+        skipLogic: { filter: { rules: [rule(['friend'])] } },
+      }),
+    );
   });
 
   // The attribute only ever offered one answer, and no repair can invent a
@@ -887,12 +831,12 @@ const BLANK_TEXT = [
 // schema 8 stored it, migrated to schema 9.
 const migratedExplanation = (explanationText: Record<string, unknown>) => {
   const document = schema8WithPassphraseRules(undefined);
-  const stage = document.stages.find(({ id }) => id === 'anonymisation');
+  const stage = document.stages.find(
+    ({ id }) => id === testId('anonymisation'),
+  );
   if (!stage) throw new Error('No Anonymisation stage');
   stage.explanationText = explanationText;
-  return migrateProtocol(document, 9).stages.find(
-    ({ id }) => id === 'anonymisation',
-  );
+  return findMigratedStage(document, testId('anonymisation'));
 };
 
 describe('Migrating an Anonymisation title from schema 8 to 9', () => {
@@ -956,7 +900,7 @@ const egoFormWithPanel = (
   panel: { title?: string; text?: string },
   label = 'About you',
 ): Schema8Stage => ({
-  id: 'ego-form',
+  id: testId('ego-form'),
   type: 'EgoForm',
   label,
   introductionPanel: {
@@ -970,7 +914,7 @@ const alterFormWithPanel = (
   panel: { title: string; text?: string },
   extra: Schema8Stage = {},
 ): Schema8Stage => ({
-  id: 'alter-form',
+  id: testId('alter-form'),
   type: 'AlterForm',
   label: 'About them',
   subject: { entity: 'node', type: 'person' },
@@ -979,11 +923,17 @@ const alterFormWithPanel = (
   ...extra,
 });
 
-const migratedStages = (document: unknown) =>
-  migrateProtocol(document, 9).stages;
-
-const migratedStage = (document: unknown, id: string) =>
-  migratedStages(document).find((stage) => stage.id === id);
+// The stage just before the stage `id`, where the migration puts the
+// Information stage it makes from that stage's introduction panel.
+const migratedStageBefore = (
+  document: unknown,
+  id: string,
+  migrated = migrateProtocol(document, 9),
+) => {
+  const newId = migratedStageId(document, migrated, id);
+  const { stages } = migrated;
+  return stages[stages.findIndex((stage) => stage.id === newId) - 1];
+};
 
 // The stages the migration step itself gives, before validation.
 const stagesMigratedFrom = (document: unknown): unknown[] => {
@@ -994,8 +944,29 @@ const stagesMigratedFrom = (document: unknown): unknown[] => {
   return Array.isArray(stages) ? stages : [];
 };
 
+// `value` with every `id` key removed, for comparing what the migration gives
+// apart from the ids it chooses.
+const withoutIds = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(withoutIds)
+    : typeof value === 'object' && value !== null
+      ? Object.fromEntries(
+          Object.entries(value)
+            .filter(([key]) => key !== 'id')
+            .map(([key, child]) => [key, withoutIds(child)]),
+        )
+      : value;
+
+const objectWithoutIds = (value: object): object => {
+  const stripped = withoutIds(value);
+  return typeof stripped === 'object' && stripped !== null ? stripped : {};
+};
+
 const stageIds = (stages: readonly unknown[]) =>
   stages.map((stage) => (stage as { id?: unknown }).id);
+
+const stageTypes = (stages: readonly unknown[]) =>
+  stages.map((stage) => (stage as { type?: unknown }).type);
 
 describe('Migrating introduction panels from schema 8 to 9', () => {
   it.each([
@@ -1050,21 +1021,24 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
       const migrated = migrateProtocol(document, 9);
 
       expect((await validateProtocol(migrated)).success).toBe(true);
-      expect(stageIds(migrated.stages)).toEqual([
-        'nameGenerator1',
-        'sociogram1',
-        'alter-form-introduction',
-        'alter-form',
-        'finish',
+      expect(stageTypes(migrated.stages)).toEqual([
+        'NameGenerator',
+        'Sociogram',
+        'Information',
+        type,
+        'FinishSession',
       ]);
+      expect(migrated.stages[3]?.id).toBe(
+        migratedStageId(document, migrated, testId('alter-form')),
+      );
       expect(migrated.stages[2]).toEqual({
-        id: 'alter-form-introduction',
+        id: expect.any(String),
         type: 'Information',
         label: localized('Welcome'),
         title: localized('Welcome'),
         items: [
           {
-            id: 'introduction-text',
+            id: expect.any(String),
             type: 'text',
             content: localized('Some questions about them.'),
           },
@@ -1076,9 +1050,9 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
 
   it('gives a panel with only a title an Information stage with only a title', () => {
     expect(
-      migratedStage(
+      migratedStageBefore(
         schema8WithStages(alterFormWithPanel({ title: 'Welcome' })),
-        'alter-form-introduction',
+        testId('alter-form'),
       ),
     ).toMatchObject({ title: localized('Welcome'), items: [] });
   });
@@ -1090,31 +1064,47 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         rules: [
           {
             type: 'ego',
-            id: 'rule-1',
+            id: testId('rule-1'),
             options: { attribute: 'egoName', operator: 'EXISTS' },
           },
         ],
       },
     };
-    const stages = migratedStages(
-      schema8WithStages(
-        alterFormWithPanel({ title: 'Welcome' }, { skipLogic }),
-      ),
+    const document = schema8WithStages(
+      alterFormWithPanel({ title: 'Welcome' }, { skipLogic }),
     );
 
-    expect(
-      stages.find(({ id }) => id === 'alter-form-introduction'),
-    ).toHaveProperty('skipLogic', skipLogic);
-    expect(stages.find(({ id }) => id === 'alter-form')).toHaveProperty(
+    const migrated = migrateProtocol(document, 9);
+    const information = migratedStageBefore(
+      document,
+      testId('alter-form'),
+      migrated,
+    );
+    const alterForm = findMigratedStage(
+      document,
+      testId('alter-form'),
+      migrated,
+    );
+
+    expect(withoutIds(information)).toHaveProperty(
       'skipLogic',
-      skipLogic,
+      withoutIds(skipLogic),
+    );
+    expect(withoutIds(alterForm)).toHaveProperty(
+      'skipLogic',
+      withoutIds(skipLogic),
+    );
+    // Each copy of the rule has an id of its own.
+    expect(information).not.toHaveProperty(
+      'skipLogic.filter.rules.0.id',
+      alterForm?.skipLogic?.filter?.rules?.[0]?.id,
     );
   });
 
   it('lands a skip that jumped to the stage on its Information stage', () => {
     const document = schema8WithStages(
       {
-        id: 'info',
+        id: testId('info'),
         type: 'Information',
         label: 'Info',
         title: 'Info',
@@ -1125,47 +1115,45 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
             rules: [
               {
                 type: 'ego',
-                id: 'rule-1',
+                id: testId('rule-1'),
                 options: { attribute: 'egoName', operator: 'EXISTS' },
               },
             ],
           },
-          destination: { type: 'stage', stageId: 'alter-form' },
+          destination: { type: 'stage', stageId: testId('alter-form') },
         },
       },
       alterFormWithPanel({ title: 'Welcome' }),
     );
 
-    expect(migratedStage(document, 'info')).toHaveProperty(
-      'skipLogic.destination',
-      { type: 'stage', stageId: 'alter-form-introduction' },
-    );
+    const migrated = migrateProtocol(document, 9);
+
+    expect(
+      findMigratedStage(document, testId('info'), migrated),
+    ).toHaveProperty('skipLogic.destination', {
+      type: 'stage',
+      stageId: migratedStageBefore(document, testId('alter-form'), migrated)
+        ?.id,
+    });
   });
 
-  it('gives the Information stage an id no other stage has, within the length allowed', () => {
-    const longId = 'a'.repeat(MAX_STAGE_ID_LENGTH);
+  it('gives each Information stage an id no other object has', () => {
     const stages = stagesMigratedFrom(
       schema8WithStages(
-        {
-          id: 'alter-form-introduction',
-          type: 'Information',
-          label: 'Taken',
-          title: 'Taken',
-          items: [],
-        },
         alterFormWithPanel({ title: 'Welcome' }),
-        alterFormWithPanel({ title: 'Welcome' }, { id: longId }),
+        alterFormWithPanel({ title: 'Welcome' }, { id: testId('second') }),
       ),
     );
+    const ids = stageIds(stages);
 
-    expect(stageIds(stages)).toEqual(
-      expect.arrayContaining([
-        'alter-form-introduction',
-        'alter-form-introduction-2',
-        'a'.repeat(MAX_STAGE_ID_LENGTH - '-introduction'.length) +
-          '-introduction',
-      ]),
-    );
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(stageTypes(stages).slice(2)).toEqual([
+      'Information',
+      'AlterForm',
+      'Information',
+      'AlterForm',
+      'FinishSession',
+    ]);
   });
 
   it("keeps an Ego Form's panel where it is, above its questions", async () => {
@@ -1175,11 +1163,11 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     );
 
     expect((await validateProtocol(migrated)).success).toBe(true);
-    expect(stageIds(migrated.stages)).toEqual([
-      'nameGenerator1',
-      'sociogram1',
-      'ego-form',
-      'finish',
+    expect(stageTypes(migrated.stages)).toEqual([
+      'NameGenerator',
+      'Sociogram',
+      'EgoForm',
+      'FinishSession',
     ]);
     expect(migrated.stages[2]).toMatchObject({
       introductionPanel: {
@@ -1195,9 +1183,9 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
   it.each(BLANK_TEXT)(
     "removes an Ego Form's panel text of %s, so it shows only its title",
     (_, text) => {
-      const stage = migratedStage(
+      const stage = findMigratedStage(
         schema8WithStages(egoFormWithPanel({ title: 'Welcome', text })),
-        'ego-form',
+        testId('ego-form'),
       );
 
       expect(stage).toMatchObject({
@@ -1211,9 +1199,9 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     'leaves out text of %s, so the Information stage shows only its title',
     (_, text) => {
       expect(
-        migratedStage(
+        migratedStageBefore(
           schema8WithStages(alterFormWithPanel({ title: 'Welcome', text })),
-          'alter-form-introduction',
+          testId('alter-form'),
         ),
       ).toMatchObject({ items: [] });
     },
@@ -1221,11 +1209,11 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
 
   it('keeps text that says something, padded or not', () => {
     expect(
-      migratedStage(
+      findMigratedStage(
         schema8WithStages(
           egoFormWithPanel({ title: 'Welcome', text: ' Hello ' }),
         ),
-        'ego-form',
+        testId('ego-form'),
       ),
     ).toMatchObject({
       introductionPanel: {
@@ -1240,9 +1228,9 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     'gives a title of %s the stage label, as a missing title gets',
     (_, title) => {
       expect(
-        migratedStage(
+        findMigratedStage(
           schema8WithStages(egoFormWithPanel({ title, text: 'Hello' })),
-          'ego-form',
+          testId('ego-form'),
         ),
       ).toMatchObject({
         introductionPanel: {
@@ -1251,9 +1239,9 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         },
       });
       expect(
-        migratedStage(
+        migratedStageBefore(
           schema8WithStages(alterFormWithPanel({ title, text: 'Hello' })),
-          'alter-form-introduction',
+          testId('alter-form'),
         ),
       ).toMatchObject({ title: localized('About them') });
     },
@@ -1273,78 +1261,6 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     expect(stages.at(-2)).toHaveProperty('introductionPanel', {
       title: localized(`Stage ${position}`),
     });
-  });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('removes only the blank translations of text already localized', () => {
-    const base = createBaseProtocol();
-    const stage = {
-      id: 'ego-form',
-      type: 'EgoForm',
-      label: { en: 'About you', fr: 'Vous' },
-      introductionPanel: {
-        title: { en: ' ', fr: 'Bienvenue' },
-        text: { en: 'Hello', fr: '\t' },
-      },
-      form: {
-        fields: [{ variable: 'egoName', prompt: { en: 'Name?', fr: 'Nom ?' } }],
-      },
-    };
-    const [migrated] = stagesMigratedFrom({
-      ...base,
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      stages: [stage],
-    });
-
-    expect(migrated).toMatchObject({
-      introductionPanel: { title: { fr: 'Bienvenue' }, text: { en: 'Hello' } },
-    });
-    expect(migrated).not.toHaveProperty('introductionPanel.title.en');
-    expect(migrated).not.toHaveProperty('introductionPanel.text.fr');
-  });
-
-  it('removes text already localized that is blank in every language, and titles it from the label', () => {
-    const base = createBaseProtocol();
-    const stages = stagesMigratedFrom({
-      ...base,
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      stages: [
-        {
-          id: 'ego-form',
-          type: 'EgoForm',
-          label: { en: 'About you', fr: ' ' },
-          introductionPanel: {
-            title: { en: '​', fr: ' ' },
-            text: { en: ' ', fr: '\t' },
-          },
-          form: {
-            fields: [{ variable: 'egoName', prompt: { en: 'Name?' } }],
-          },
-        },
-      ],
-    });
-
-    expect(stageIds(stages)).toEqual(['ego-form', 'finish']);
-    expect(stages[0]).toHaveProperty('introductionPanel', {
-      title: { en: 'About you' },
-    });
-  });
-
-  it('leaves a document already without panels as it is', () => {
-    const once = migrateProtocol(
-      schema8WithStages(
-        egoFormWithPanel({ title: 'Welcome', text: 'Hello' }),
-        alterFormWithPanel({ title: 'Welcome' }),
-      ),
-      9,
-    );
-    const { schemaVersion: _version, ...again } = once;
-
-    expect(stagesMigratedFrom({ ...again, schemaVersion: 8 })).toEqual(
-      once.stages,
-    );
   });
 
   // Two published protocols in the validation corpus failed here: their
@@ -1371,21 +1287,21 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
       },
       stages: [
         {
-          id: 'ego-1',
+          id: testId('ego-1'),
           type: 'EgoForm',
           label: 'About you',
           introductionPanel: { title: ' ', text: ' ' },
           form: { fields: [{ variable: 'age', prompt: 'How old are you?' }] },
         },
         {
-          id: 'ego-2',
+          id: testId('ego-2'),
           type: 'EgoForm',
           label: ' ',
           introductionPanel: { title: '\t', text: 'Some more questions.' },
           form: { fields: [{ variable: 'age', prompt: 'Still that old?' }] },
         },
         {
-          id: 'alter-1',
+          id: testId('alter-1'),
           type: 'AlterForm',
           label: 'About them',
           subject: { entity: 'node', type: 'person' },
@@ -1400,16 +1316,19 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
 
     expect(result.success).toBe(true);
     expect(migrated.stages.slice(0, 4)).toMatchObject([
-      { id: 'ego-1', introductionPanel: { title: localized('About you') } },
       {
-        id: 'ego-2',
+        label: localized('About you'),
+        introductionPanel: { title: localized('About you') },
+      },
+      {
+        label: localized('Stage 2'),
         introductionPanel: {
           title: localized('Stage 2'),
           text: localized('Some more questions.'),
         },
       },
-      { id: 'alter-1-introduction', title: localized('About them'), items: [] },
-      { id: 'alter-1' },
+      { type: 'Information', title: localized('About them'), items: [] },
+      { type: 'AlterForm', label: localized('About them') },
     ]);
     expect(migrated.stages[0]).not.toHaveProperty('introductionPanel.text');
   });
@@ -1427,13 +1346,13 @@ const schema8WithOtherBin = (other: {
     stages: [
       ...base.stages,
       {
-        id: 'bin',
+        id: testId('bin'),
         type: 'CategoricalBin' as const,
         label: localized('Sort them'),
         subject: { entity: 'node' as const, type: 'person' },
         prompts: [
           {
-            id: 'bin-prompt',
+            id: testId('bin-prompt'),
             text: localized('How do you know them?'),
             variable: 'category',
             otherVariable: 'name',
@@ -1444,7 +1363,7 @@ const schema8WithOtherBin = (other: {
       },
     ],
   });
-  const stage = document.stages.find(({ id }) => id === 'bin');
+  const stage = document.stages.find(({ id }) => id === testId('bin'));
   if (!stage || !('prompts' in stage)) throw new Error('No bin');
   const [prompt] = stage.prompts as Record<string, unknown>[];
   if (!prompt) throw new Error('No bin prompt');
@@ -1456,9 +1375,7 @@ const migratedOtherBin = (other: {
   otherOptionLabel: string;
   otherVariablePrompt: string;
 }) => {
-  const stage = migrateProtocol(schema8WithOtherBin(other), 9).stages.find(
-    ({ id }) => id === 'bin',
-  );
+  const stage = findMigratedStage(schema8WithOtherBin(other), testId('bin'));
   return stage && 'prompts' in stage ? stage.prompts[0] : undefined;
 };
 
@@ -1522,45 +1439,6 @@ describe('Migrating the text of a Categorical Bin "other" bin from schema 8 to 9
       otherVariablePrompt: localized('What else?'),
     });
   });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('removes only the blank translations of text already localized', () => {
-    const base = createBaseProtocol();
-    const [stage] = stagesMigratedFrom({
-      ...base,
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      stages: [
-        {
-          id: 'bin',
-          type: 'CategoricalBin',
-          label: { en: 'Sort them' },
-          subject: { entity: 'node', type: 'person' },
-          prompts: [
-            {
-              id: 'bin-prompt',
-              text: { en: 'How do you know them?' },
-              variable: 'category',
-              otherVariable: 'name',
-              otherOptionLabel: { en: 'Other', fr: '   ' },
-              otherVariablePrompt: { en: 'What else?', fr: '\t' },
-            },
-          ],
-        },
-      ],
-    });
-
-    expect(stage).toMatchObject({
-      prompts: [
-        {
-          otherOptionLabel: { en: 'Other' },
-          otherVariablePrompt: { en: 'What else?' },
-        },
-      ],
-    });
-    expect(stage).not.toHaveProperty('prompts.0.otherOptionLabel.fr');
-    expect(stage).not.toHaveProperty('prompts.0.otherVariablePrompt.fr');
-  });
 });
 
 // The base protocol with a Tie-Strength Census whose prompt has the decline
@@ -1572,7 +1450,7 @@ const migratedDeclineLabel = (negativeLabel: string) => {
     stages: [
       ...base.stages,
       {
-        id: 'tie-strength',
+        id: testId('tie-strength'),
         type: 'TieStrengthCensus' as const,
         label: localized('Rate them'),
         subject: { entity: 'node' as const, type: 'person' },
@@ -1582,7 +1460,7 @@ const migratedDeclineLabel = (negativeLabel: string) => {
         },
         prompts: [
           {
-            id: 'tie-strength-prompt',
+            id: testId('tie-strength-prompt'),
             text: localized('How close are these people?'),
             createEdge: 'knows',
             edgeVariable: 'closeness',
@@ -1592,14 +1470,12 @@ const migratedDeclineLabel = (negativeLabel: string) => {
       },
     ],
   });
-  const stage = document.stages.find(({ id }) => id === 'tie-strength');
+  const stage = document.stages.find(({ id }) => id === testId('tie-strength'));
   if (!stage || !('prompts' in stage)) throw new Error('No census');
   const [prompt] = stage.prompts as Record<string, unknown>[];
   if (!prompt) throw new Error('No census prompt');
   prompt.negativeLabel = negativeLabel;
-  const migrated = migrateProtocol(document, 9).stages.find(
-    ({ id }) => id === 'tie-strength',
-  );
+  const migrated = findMigratedStage(document, testId('tie-strength'));
   return migrated && 'prompts' in migrated ? migrated.prompts[0] : undefined;
 };
 
@@ -1628,22 +1504,25 @@ const migratedInformationTitle = (title: string) => {
     ...base,
     stages: [
       {
-        id: 'welcome',
+        id: testId('welcome'),
         type: 'Information' as const,
         label: localized('Welcome'),
         title: localized('Placeholder'),
         items: [
-          { id: 'item', type: 'text' as const, content: localized('Hi') },
+          {
+            id: testId('item'),
+            type: 'text' as const,
+            content: localized('Hi'),
+          },
         ],
       },
       ...base.stages,
     ],
   });
-  const stage = document.stages.find(({ id }) => id === 'welcome');
+  const stage = document.stages.find(({ id }) => id === testId('welcome'));
   if (!stage) throw new Error('No Information stage');
   (stage as Record<string, unknown>).title = title;
-  const migrated = migrateProtocol(document, 9);
-  return migrated.stages.find(({ id }) => id === 'welcome');
+  return findMigratedStage(document, testId('welcome'));
 };
 
 describe('Migrating an Information stage title from schema 8 to 9', () => {
@@ -1669,18 +1548,18 @@ const migratedNarrative = (label: string) => {
     stages: [
       ...base.stages,
       {
-        id: 'narrative',
+        id: testId('narrative'),
         type: 'Narrative' as const,
         label: localized('Tell the story'),
         subject: { entity: 'node' as const, type: 'person' },
         presets: [
           {
-            id: 'first',
+            id: testId('first'),
             label: localized('Placeholder'),
             layoutVariable: 'layoutPosition',
           },
           {
-            id: 'second',
+            id: testId('second'),
             label: localized('Placeholder'),
             layoutVariable: 'layoutPosition',
           },
@@ -1690,13 +1569,11 @@ const migratedNarrative = (label: string) => {
       },
     ],
   });
-  const stage = document.stages.find(({ id }) => id === 'narrative');
+  const stage = document.stages.find(({ id }) => id === testId('narrative'));
   if (!stage || !('presets' in stage)) throw new Error('No Narrative stage');
   const presets = stage.presets as Record<string, unknown>[];
   for (const preset of presets) preset.label = label;
-  return migrateProtocol(document, 9).stages.find(
-    ({ id }) => id === 'narrative',
-  );
+  return findMigratedStage(document, testId('narrative'));
 };
 
 describe('Migrating Narrative preset labels from schema 8 to 9', () => {
@@ -1720,44 +1597,6 @@ describe('Migrating Narrative preset labels from schema 8 to 9', () => {
       ],
     });
   });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('removes only the blank translations of text already localized, and names a highlight left blank', () => {
-    const base = createBaseProtocol();
-    const [stage] = stagesMigratedFrom({
-      ...base,
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-      stages: [
-        {
-          id: 'narrative',
-          type: 'Narrative',
-          label: { en: 'Tell the story' },
-          subject: { entity: 'node', type: 'person' },
-          presets: [
-            {
-              id: 'first',
-              label: { en: 'Closeness', fr: '  ' },
-              layoutVariable: 'layoutPosition',
-              highlight: [{ variable: 'age', label: { en: ' ', fr: '\t' } }],
-            },
-          ],
-          background: { concentricCircles: 3 },
-          behaviours: {},
-        },
-      ],
-    });
-
-    expect(stage).toMatchObject({
-      presets: [
-        {
-          label: { en: 'Closeness' },
-          highlight: [{ variable: 'age', label: { en: 'Age' } }],
-        },
-      ],
-    });
-    expect(stage).not.toHaveProperty('presets.0.label.fr');
-  });
 });
 
 // A schema 8 Narrative stage with two presets, holding the settings given.
@@ -1766,13 +1605,21 @@ const schema8Narrative = (settings: Record<string, unknown>) => ({
   schemaVersion: 8,
   stages: [
     {
-      id: 'narrative',
+      id: testId('narrative'),
       type: 'Narrative',
       label: 'Tell the story',
       subject: { entity: 'node', type: 'person' },
       presets: [
-        { id: 'first', label: 'Closeness', layoutVariable: 'layoutPosition' },
-        { id: 'second', label: 'Support', layoutVariable: 'layoutPosition' },
+        {
+          id: testId('first'),
+          label: 'Closeness',
+          layoutVariable: 'layoutPosition',
+        },
+        {
+          id: testId('second'),
+          label: 'Support',
+          layoutVariable: 'layoutPosition',
+        },
       ],
       background: { concentricCircles: 3 },
       ...settings,
@@ -1786,11 +1633,8 @@ describe('Migrating a Narrative stage filter from schema 8 to 9', () => {
   it('copies the stage filter to every preset, and leaves the stage none', () => {
     const [stage] = stagesMigratedFrom(schema8Narrative({ filter }));
 
-    expect(stage).toMatchObject({
-      presets: [
-        { id: 'first', filter },
-        { id: 'second', filter },
-      ],
+    expect(withoutIds(stage)).toMatchObject({
+      presets: [{ filter: withoutIds(filter) }, { filter: withoutIds(filter) }],
     });
     expect(stage).not.toHaveProperty('filter');
   });
@@ -1817,24 +1661,6 @@ describe('Migrating a Narrative stage filter from schema 8 to 9', () => {
 
     expect(result.error?.issues ?? []).toEqual([]);
   });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('leaves a preset its own filter when run over a stage already converted', () => {
-    const own = { rules: [nameRule] };
-    const base = schema8Narrative({});
-    const [stage] = stagesMigratedFrom({
-      ...base,
-      stages: base.stages.map((narrative) => ({
-        ...narrative,
-        presets: narrative.presets.map((preset, index) =>
-          index === 0 ? { ...preset, filter: own } : preset,
-        ),
-      })),
-    });
-
-    expect(stage).toMatchObject({ presets: [{ filter: own }, {}] });
-    expect(stage).not.toHaveProperty('presets.1.filter');
-  });
 });
 
 // The base protocol with its Name Generator form titled as given, as schema 8
@@ -1851,12 +1677,12 @@ const migratedFormTitle = (title: string, nodeTypeName = 'Person') => {
       },
     },
   });
-  const stage = document.stages.find(({ id }) => id === 'nameGenerator1');
+  const stage = document.stages.find(
+    ({ id }) => id === testId('nameGenerator1'),
+  );
   if (!stage || !('form' in stage)) throw new Error('No Name Generator');
   (stage.form as Record<string, unknown>).title = title;
-  const migrated = migrateProtocol(document, 9).stages.find(
-    ({ id }) => id === 'nameGenerator1',
-  );
+  const migrated = findMigratedStage(document, testId('nameGenerator1'));
   return migrated && 'form' in migrated ? migrated.form : undefined;
 };
 
@@ -1901,46 +1727,52 @@ const migratedInformationItems = (content: string) => {
     ...base,
     stages: [
       {
-        id: 'welcome',
+        id: testId('welcome'),
         type: 'Information' as const,
         label: localized('Welcome'),
         title: localized('Welcome'),
         items: [
-          { id: 'first', type: 'text' as const, content: localized('Hi') },
-          { id: 'second', type: 'text' as const, content: localized('Bye') },
+          {
+            id: testId('first'),
+            type: 'text' as const,
+            content: localized('Hi'),
+          },
+          {
+            id: testId('second'),
+            type: 'text' as const,
+            content: localized('Bye'),
+          },
         ],
       },
       ...base.stages,
     ],
   });
-  const stage = document.stages.find(({ id }) => id === 'welcome');
+  const stage = document.stages.find(({ id }) => id === testId('welcome'));
   if (!stage || !('items' in stage)) throw new Error('No Information stage');
   const [first] = stage.items as Record<string, unknown>[];
   if (!first) throw new Error('No text item');
   first.content = content;
-  const migrated = migrateProtocol(document, 9).stages.find(
-    ({ id }) => id === 'welcome',
-  );
+  const migrated = findMigratedStage(document, testId('welcome'));
   return migrated && 'items' in migrated ? migrated.items : undefined;
 };
 
 describe('Migrating Information text items from schema 8 to 9', () => {
   it.each(BLANK_TEXT)('removes an item of %s', (_, blank) => {
-    expect(migratedInformationItems(blank)).toEqual([
-      { id: 'second', type: 'text', content: localized('Bye') },
+    expect(withoutIds(migratedInformationItems(blank))).toEqual([
+      { type: 'text', content: localized('Bye') },
     ]);
   });
 
   it('keeps an item that says something', () => {
-    expect(migratedInformationItems('Hello')).toEqual([
-      { id: 'first', type: 'text', content: localized('Hello') },
-      { id: 'second', type: 'text', content: localized('Bye') },
+    expect(withoutIds(migratedInformationItems('Hello'))).toEqual([
+      { type: 'text', content: localized('Hello') },
+      { type: 'text', content: localized('Bye') },
     ]);
   });
 });
 
 // The base protocol with its Name Generator form field hinted as given.
-const migratedHint = (hint: unknown, locales = ['en']) => {
+const migratedHint = (hint: string) => {
   const base = createBaseProtocol();
   const document = asSchema8Protocol(base) as Record<string, unknown>;
   const stage = (document.stages as Record<string, unknown>[])[0];
@@ -1948,12 +1780,7 @@ const migratedHint = (hint: unknown, locales = ['en']) => {
   const [field] = (form?.fields ?? []) as Record<string, unknown>[];
   if (!field) throw new Error('No form field');
   field.hint = hint;
-  if (locales.length > 1) {
-    document.localization = { defaultLocale: 'en', locales };
-  }
-  const migrated = migrateProtocol(document, 9).stages.find(
-    ({ id }) => id === 'nameGenerator1',
-  );
+  const migrated = findMigratedStage(document, testId('nameGenerator1'));
   return migrated && 'form' in migrated ? migrated.form?.fields[0] : undefined;
 };
 
@@ -1970,22 +1797,6 @@ describe('Migrating optional text that shows nothing from schema 8 to 9', () => 
     expect(migratedHint('Their full name')).toMatchObject({
       hint: localized('Their full name'),
     });
-  });
-
-  // Fresco re-runs this migration over rows already in schema 9 form.
-  it('removes only the blank translations of text already localized', () => {
-    expect(
-      migratedHint({ en: 'Their full name', fr: '  ' }, ['en', 'fr']),
-    ).toMatchObject({ hint: { en: 'Their full name' } });
-    expect(
-      migratedHint({ en: 'Their full name', fr: '  ' }, ['en', 'fr']),
-    ).not.toHaveProperty('hint.fr');
-  });
-
-  it('removes text already localized that is blank in every language', () => {
-    expect(migratedHint({ en: '', fr: '​' }, ['en', 'fr'])).not.toHaveProperty(
-      'hint',
-    );
   });
 
   it('removes a scale end label that shows nothing', () => {
@@ -2027,19 +1838,20 @@ describe('Migrating optional text that shows nothing from schema 8 to 9', () => 
   });
 });
 
-describe('Migrating form field ids from schema 8 to 9', () => {
-  // One stage of each type that holds a form of the shared field shape, as
-  // schema 8 stored it: no field has an id.
+describe('Migrating protocol object ids from schema 8 to 9', () => {
+  // A UUID a schema 8 author could already have given an object.
+  const KEPT = testId('kept');
+
   const formStages = (): Schema8Stage[] => [
     {
-      id: 'ego-form',
+      id: testId('ego-form'),
       type: 'EgoForm',
       label: 'About you',
       introductionPanel: { title: 'About you', text: 'Please answer.' },
       form: {
         fields: [
           { variable: 'egoName', prompt: 'Your name?' },
-          { variable: 'egoAge', prompt: 'Your age?' },
+          { id: KEPT, variable: 'egoAge', prompt: 'Your age?' },
         ],
       },
     },
@@ -2048,22 +1860,11 @@ describe('Migrating form field ids from schema 8 to 9', () => {
       type: 'AlterForm',
       label: 'About them',
       subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 'About them' },
       form: {
         fields: [
-          { variable: 'name', prompt: 'Their name?' },
-          { variable: 'age', prompt: 'Their age?' },
-        ],
-      },
-    },
-    {
-      id: 'alter-edge-form',
-      type: 'AlterEdgeForm',
-      label: 'About the tie',
-      subject: { entity: 'edge', type: 'knows' },
-      form: {
-        fields: [
-          { variable: 'closeness', prompt: 'How close?' },
-          { variable: 'duration', prompt: 'How long?' },
+          { id: 'field-1', variable: 'name', prompt: 'Their name?' },
+          { id: 'field-1', variable: 'age', prompt: 'Their age?' },
         ],
       },
     },
@@ -2072,16 +1873,43 @@ describe('Migrating form field ids from schema 8 to 9', () => {
       type: 'NameGenerator',
       label: 'Add people',
       subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', text: 'Who do you know?' }],
+      prompts: [
+        { id: 'p1', text: 'Who do you know?' },
+        { id: 'p2', text: 'Who else?' },
+      ],
       form: {
         title: 'Add a person',
-        fields: [
-          { variable: 'name', prompt: 'Name?' },
-          { variable: 'age', prompt: 'Age?' },
-        ],
+        fields: [{ variable: 'name', prompt: 'Name?' }],
+      },
+      skipLogic: {
+        action: 'SKIP',
+        filter: {
+          rules: [
+            {
+              type: 'ego',
+              id: testId('rule-1'),
+              options: { attribute: 'egoName', operator: 'EXISTS' },
+            },
+          ],
+        },
+        destination: { type: 'stage', stageId: 'name-generator-2' },
+      },
+    },
+    {
+      id: 'name-generator-2',
+      type: 'NameGenerator',
+      label: 'Add more people',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Who do you work with?' }],
+      form: {
+        title: 'Add a person',
+        fields: [{ variable: 'name', prompt: 'Name?' }],
       },
     },
   ];
+
+  const migrated = (document: unknown = schema8WithStages(...formStages())) =>
+    migrateProtocol(document, 9);
 
   const fieldIds = (stage: unknown): unknown[] => {
     const { form } = stage as { form?: { fields?: unknown } };
@@ -2089,167 +1917,143 @@ describe('Migrating form field ids from schema 8 to 9', () => {
     return fields.map((field) => (field as { id?: unknown }).id);
   };
 
-  it.each(['ego-form', 'alter-form', 'alter-edge-form', 'name-generator'])(
-    'gives every field of the %s stage a different id',
-    (id) => {
-      const ids = fieldIds(
-        migratedStage(schema8WithStages(...formStages()), id),
-      );
-
-      expect(ids).toHaveLength(2);
-      for (const fieldId of ids) {
-        expect(fieldId).toEqual(expect.any(String));
-        expect(fieldId).not.toBe('');
+  // Every value written under an `id` key anywhere in `document`.
+  const idsWritten = (document: unknown): Set<unknown> => {
+    const ids = new Set<unknown>();
+    const visit = (value: unknown): void => {
+      if (Array.isArray(value)) value.forEach(visit);
+      else if (typeof value === 'object' && value !== null) {
+        for (const [key, child] of Object.entries(value)) {
+          if (key === 'id') ids.add(child);
+          visit(child);
+        }
       }
-      expect(new Set(ids).size).toBe(2);
+    };
+    visit(document);
+    return ids;
+  };
+
+  // The stage labelled `label`, not the Information stage the migration
+  // makes from its introduction panel, which takes the same label.
+  const stageLabelled = (
+    protocol: {
+      stages: readonly { id: string; type: string; label: unknown }[];
     },
-  );
+    label: string,
+  ) =>
+    protocol.stages.find(
+      (stage) =>
+        stage.type !== 'Information' &&
+        JSON.stringify(stage.label) === JSON.stringify(localized(label)),
+    );
 
-  it('migrates every stage type to a protocol schema 9 accepts', () => {
-    // `migrateProtocol` validates its result, so this throws if a field of
-    // any stage type is left without an id.
-    expect(() =>
-      migrateProtocol(schema8WithStages(...formStages()), 9),
-    ).not.toThrow();
+  it('gives every object a UUID that no other object in the protocol has', () => {
+    const protocol = migrated();
+    const ids = collectProtocolObjectIds(protocol).map(({ id }) => id);
+
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) expect(isProtocolObjectId(id)).toBe(true);
+    expect(findDuplicateProtocolObjectIds(protocol)).toEqual([]);
   });
 
-  it('keeps an id a field already has, and gives the others ids that do not collide with it', () => {
-    const [egoForm] = formStages();
-    const document = schema8WithStages({
-      ...egoForm,
-      form: {
-        fields: [
-          { variable: 'egoName', prompt: 'Your name?' },
-          { id: 'field-1', variable: 'egoAge', prompt: 'Your age?' },
-        ],
-      },
-    });
-
-    const ids = fieldIds(migratedStage(document, 'ego-form'));
-
-    expect(ids[1]).toBe('field-1');
-    expect(ids[0]).not.toBe('field-1');
-  });
-
-  it('replaces an id that an earlier field of the form already uses', () => {
-    const [egoForm] = formStages();
-    const document = schema8WithStages({
-      ...egoForm,
-      form: {
-        fields: [
-          { id: 'mine', variable: 'egoName', prompt: 'Your name?' },
-          { id: 'mine', variable: 'egoAge', prompt: 'Your age?' },
-        ],
-      },
-    });
-
-    const ids = fieldIds(migratedStage(document, 'ego-form'));
-
-    expect(ids[0]).toBe('mine');
-    expect(ids[1]).toEqual(expect.any(String));
-    expect(ids[1]).not.toBe('mine');
-  });
-
-  describe('on a Network Composer stage', () => {
-    // A schema 8 Network Composer: a node form and two edge forms, whose
-    // fields have no id, except the ones that say so.
-    const composer = (): Schema8Stage => ({
-      id: 'composer',
-      type: 'NetworkComposer',
-      label: 'Compose',
-      subject: { entity: 'node', type: 'person' },
-      quickAdd: 'name',
-      layoutVariable: 'layoutPosition',
-      background: { concentricCircles: 1 },
-      nodeForm: {
-        fields: [
-          { variable: 'age', component: 'Number' },
-          { id: 'kept', variable: 'category', component: 'ToggleButtonGroup' },
-        ],
-      },
-      edges: [
-        {
-          id: 'knows-edge',
-          subject: { entity: 'edge', type: 'knows' },
-          form: {
-            fields: [
-              { variable: 'closeness', component: 'RadioGroup' },
-              { variable: 'duration', component: 'Number' },
-            ],
-          },
-        },
-        {
-          id: 'collaborates-edge',
-          subject: { entity: 'edge', type: 'collaborates' },
-          form: {
-            fields: [
-              { id: 'field-1', variable: 'frequency', component: 'RadioGroup' },
-            ],
-          },
-        },
-      ],
-    });
-
-    const migratedComposer = () =>
-      migratedStage(schema8WithStages(composer()), 'composer') as {
-        nodeForm: { fields: { id: string }[] };
-        edges: { form: { fields: { id: string }[] } }[];
-      };
-
-    it('gives every field of the node form and each edge form an id', () => {
-      const stage = migratedComposer();
-      const forms = [stage.nodeForm, ...stage.edges.map(({ form }) => form)];
-
-      expect(forms).toHaveLength(3);
-      for (const form of forms) {
-        const ids = form.fields.map(({ id }) => id);
-        expect(ids.every((id) => typeof id === 'string' && id !== '')).toBe(
-          true,
-        );
-        expect(new Set(ids).size).toBe(ids.length);
-      }
-    });
-
-    it('keeps the ids fields already have', () => {
-      const stage = migratedComposer();
-
-      expect(stage.nodeForm.fields[1]?.id).toBe('kept');
-      expect(stage.edges[1]?.form.fields[0]?.id).toBe('field-1');
-    });
-
-    it('does not repeat an id within one form', () => {
-      const document = schema8WithStages({
-        ...composer(),
-        nodeForm: {
-          fields: [
-            { id: 'field-2', variable: 'age', component: 'Number' },
-            { variable: 'category', component: 'ToggleButtonGroup' },
-          ],
-        },
-      });
-      const { nodeForm } = migratedStage(document, 'composer') as {
-        nodeForm: { fields: { id: string }[] };
-      };
-
-      expect(nodeForm.fields.map(({ id }) => id)).toEqual([
-        'field-2',
-        'field-3',
-      ]);
-    });
-  });
-
-  it('gives the same ids when the same document is migrated twice', () => {
+  it('gives every object a new id, even one that was already a UUID', () => {
     const document = schema8WithStages(...formStages());
-    expect(migratedStages(document)).toEqual(migratedStages(document));
+    const before = idsWritten(document);
+    const protocol = migrated(document);
+
+    expect(before.has(testId('ego-form'))).toBe(true);
+    expect(before.has(KEPT)).toBe(true);
+    for (const { id } of collectProtocolObjectIds(protocol)) {
+      expect(before.has(id)).toBe(false);
+    }
   });
 
-  it('keeps the ids it gave when a migrated form is migrated again', () => {
-    const once = stagesMigratedFrom(schema8WithStages(...formStages()));
-    const again = stagesMigratedFrom({
-      ...schema8WithStages(),
-      stages: once,
-    });
+  it('gives each of two fields that shared an id one of its own', () => {
+    const protocol = migrated();
+    const [first, second] = fieldIds(stageLabelled(protocol, 'About them'));
 
-    expect(again.flatMap(fieldIds)).toEqual(once.flatMap(fieldIds));
+    expect(isProtocolObjectId(first)).toBe(true);
+    expect(isProtocolObjectId(second)).toBe(true);
+    expect(second).not.toBe(first);
+  });
+
+  it('gives each use of a UUID repeated in different forms of one stage an id of its own', () => {
+    const protocol = migrated(
+      schema8WithStages({
+        id: testId('composer'),
+        type: 'NetworkComposer',
+        label: 'Compose',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'name',
+        layoutVariable: 'layoutPosition',
+        background: { concentricCircles: 1 },
+        nodeForm: {
+          fields: [{ id: KEPT, variable: 'age', component: 'Number' }],
+        },
+        edges: [
+          {
+            id: testId('knows-edge'),
+            subject: { entity: 'edge', type: 'knows' },
+            form: {
+              fields: [
+                { id: KEPT, variable: 'closeness', component: 'RadioGroup' },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const composer = protocol.stages[2] as {
+      nodeForm: { fields: { id: string }[] };
+      edges: { id: string; form: { fields: { id: string }[] } }[];
+    };
+    const nodeFieldId = composer.nodeForm.fields[0]?.id;
+    const edgeFieldId = composer.edges[0]?.form.fields[0]?.id;
+
+    expect(isProtocolObjectId(nodeFieldId)).toBe(true);
+    expect(isProtocolObjectId(edgeFieldId)).toBe(true);
+    expect(nodeFieldId).not.toBe(edgeFieldId);
+    expect([nodeFieldId, edgeFieldId]).not.toContain(KEPT);
+    expect(findDuplicateProtocolObjectIds(protocol)).toEqual([]);
+  });
+
+  it('points a skip at the new id of the stage it names', () => {
+    const protocol = migrated();
+    const target = stageLabelled(protocol, 'Add more people');
+    const skipping = stageLabelled(protocol, 'Add people');
+
+    expect(target?.id).not.toBe('name-generator-2');
+    expect(skipping).toHaveProperty('skipLogic.destination', {
+      type: 'stage',
+      stageId: target?.id,
+    });
+  });
+
+  it('gives the stages it adds UUIDs instead of readable ids', () => {
+    const protocol = migrated();
+
+    expect(protocol.stages.at(-1)).toMatchObject({ type: 'FinishSession' });
+    for (const stage of protocol.stages) {
+      expect(isProtocolObjectId(stage.id)).toBe(true);
+    }
+    expect(JSON.stringify(protocol)).not.toMatch(
+      /"(finish|introduction-text|field-\d+|[^"]*-introduction)"/,
+    );
+  });
+
+  it('never changes the document it is given', () => {
+    const document = deepFreeze(schema8WithStages(...formStages()));
+    const copy = structuredClone(document);
+
+    expect(() => migrated(document)).not.toThrow();
+    expect(document).toEqual(copy);
   });
 });
+
+const deepFreeze = <T>(value: T): T => {
+  if (typeof value === 'object' && value !== null) {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+};

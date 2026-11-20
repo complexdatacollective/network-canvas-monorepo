@@ -12,6 +12,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
@@ -111,7 +112,7 @@ describe('useProtocolForm required boolean rendering', () => {
       <FormHarness
         fields={[
           {
-            id: 'field-L113',
+            id: testId('field-L113'),
             variable: asEntityAttributeReference('requiredToggle'),
             prompt: { en: 'Do you live alone?' },
           },
@@ -137,7 +138,7 @@ describe('useProtocolForm required boolean rendering', () => {
       <FormHarness
         fields={[
           {
-            id: 'field-L138',
+            id: testId('field-L138'),
             variable: asEntityAttributeReference('optionalToggle'),
             prompt: { en: 'Do you live alone?' },
           },
@@ -155,7 +156,7 @@ describe('useProtocolForm required boolean rendering', () => {
       <FormHarness
         fields={[
           {
-            id: 'field-L157',
+            id: testId('field-L157'),
             variable: asEntityAttributeReference('singletonOptions'),
             component: 'Toggle',
             label: { en: 'Are you employed?' },
@@ -179,12 +180,12 @@ describe('useProtocolForm required boolean rendering', () => {
         useProtocolForm({
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: asEntityAttributeReference('requiredToggle'),
               prompt: { en: 'Do you live alone?' },
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: asEntityAttributeReference('optionalToggle'),
               prompt: { en: 'Do you have a car?' },
             },

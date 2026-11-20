@@ -17,6 +17,7 @@ import { markdownTextShapeAt } from '../localization/textShape.ts';
 import { chooseEditingLanguage } from '../testing/chooseEditingLanguage.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import {
   LocalizedInputField,
   LocalizedRichTextField,
@@ -76,7 +77,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'information-1',
+    stageId: fixtureStageId('information-1'),
     sectionTitle: 'What the participant is told',
     children: page,
   },

@@ -8,6 +8,7 @@ import {
 } from '../../../testing/attributePicker.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import {
   expectOpenedAsANewStage,
   NEW_STAGE_POSITION,
@@ -21,7 +22,7 @@ const openFixture = () =>
 const openNewStage = () =>
   renderStageEditor({
     stage: {
-      id: 'network-composer-new',
+      id: testId('network-composer-new'),
       type: 'NetworkComposer',
       fields: getInterfaceTemplate('NetworkComposer'),
     },

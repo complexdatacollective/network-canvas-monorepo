@@ -6,13 +6,18 @@ import {
   chooseAttributeById,
   inventAttribute,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { ordinalBinStageEditor } from '../OrdinalBinStageEditor.ts';
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const ORDINAL_BIN_INDEX = fixtureStageIds().indexOf('ordinal-bin-1');
+const ORDINAL_BIN_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('ordinal-bin-1'),
+);
 
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });

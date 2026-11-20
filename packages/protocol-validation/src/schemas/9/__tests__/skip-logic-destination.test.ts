@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 
 const filter = {
   rules: [
     {
-      id: 'consent-rule',
+      id: testId('consent-rule'),
       type: 'ego' as const,
       options: {
         attribute: 'egoAge',
@@ -62,7 +63,11 @@ describe('schema 8 skip-logic destinations', () => {
     (action) => {
       const result = ProtocolSchemaV9.safeParse(
         withFinishStage(
-          withDestination(0, { type: 'stage', stageId: 'sociogram1' }, action),
+          withDestination(
+            0,
+            { type: 'stage', stageId: testId('sociogram1') },
+            action,
+          ),
         ),
       );
 
@@ -70,7 +75,7 @@ describe('schema 8 skip-logic destinations', () => {
       if (result.success) {
         expect(result.data.stages[0]?.skipLogic?.destination).toEqual({
           type: 'stage',
-          stageId: 'sociogram1',
+          stageId: testId('sociogram1'),
         });
       }
     },
@@ -87,7 +92,7 @@ describe('schema 8 skip-logic destinations', () => {
   it('rejects a destination that does not reference an existing stage', () => {
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(
-        withDestination(0, { type: 'stage', stageId: 'missing-stage' }),
+        withDestination(0, { type: 'stage', stageId: testId('missing-stage') }),
       ),
     );
 
@@ -95,7 +100,7 @@ describe('schema 8 skip-logic destinations', () => {
     if (!result.success) {
       expect(result.error.issues).toContainEqual(
         expect.objectContaining({
-          message: 'Skip destination stage "missing-stage" does not exist.',
+          message: `Skip destination stage "${testId('missing-stage')}" does not exist.`,
           path: ['stages', 0, 'skipLogic', 'destination', 'stageId'],
         }),
       );
@@ -105,7 +110,10 @@ describe('schema 8 skip-logic destinations', () => {
   it('rejects a self destination', () => {
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(
-        withDestination(0, { type: 'stage', stageId: 'nameGenerator1' }),
+        withDestination(0, {
+          type: 'stage',
+          stageId: testId('nameGenerator1'),
+        }),
       ),
     );
 
@@ -113,8 +121,7 @@ describe('schema 8 skip-logic destinations', () => {
     if (!result.success) {
       expect(result.error.issues).toContainEqual(
         expect.objectContaining({
-          message:
-            'Skip destination stage "nameGenerator1" must come after the stage that references it.',
+          message: `Skip destination stage "${testId('nameGenerator1')}" must come after the stage that references it.`,
           path: ['stages', 0, 'skipLogic', 'destination', 'stageId'],
         }),
       );
@@ -124,7 +131,10 @@ describe('schema 8 skip-logic destinations', () => {
   it('rejects a backward destination', () => {
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(
-        withDestination(1, { type: 'stage', stageId: 'nameGenerator1' }),
+        withDestination(1, {
+          type: 'stage',
+          stageId: testId('nameGenerator1'),
+        }),
       ),
     );
 
@@ -171,7 +181,7 @@ describe('schema 8 skip-logic destinations', () => {
   it('rejects properties that do not belong to the finish destination', () => {
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(
-        withDestination(0, { type: 'finish', stageId: 'sociogram1' }),
+        withDestination(0, { type: 'finish', stageId: testId('sociogram1') }),
       ),
     );
 

@@ -1,5 +1,8 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { FilterOperator } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  type FilterOperator,
+} from '@codaco/protocol-validation';
 
 import { expect } from '../fixtures/matrix-test.js';
 import type { InterfaceScenarios, ScenarioDefinition } from './types.js';
@@ -112,7 +115,7 @@ function buildOperatorInterview(tc: OperatorCase): SyntheticInterview {
         join: 'OR',
         rules: [
           {
-            id: 'probe-rule',
+            id: createProtocolObjectId(),
             type: 'node',
             options: {
               type: nodeType.id,
@@ -194,7 +197,7 @@ const behaviourScenarios: ScenarioDefinition[] = [
             join: 'OR',
             rules: [
               {
-                id: 'show-rule',
+                id: createProtocolObjectId(),
                 type: 'node',
                 options: { type: nodeType.id, operator: 'EXISTS' },
               },
@@ -421,7 +424,7 @@ const filterScenarios: ScenarioDefinition[] = [
           join: 'OR',
           rules: [
             {
-              id: 'group-a',
+              id: createProtocolObjectId(),
               type: 'node',
               options: {
                 type: personType.id,

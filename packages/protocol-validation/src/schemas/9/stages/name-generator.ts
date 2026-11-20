@@ -4,7 +4,7 @@ import {
   EVERY_VERSION,
   type MessageArguments,
 } from '../../../localization/messageArguments.ts';
-import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import {
   FormSchema,
   NodeStageSubjectSchema,
@@ -71,25 +71,14 @@ export const nameGeneratorWording = {
   }).optional(),
 };
 
-export const nameGeneratorStage = baseStageSchema.extend({
-  type: z.literal('NameGenerator'),
-  form: FormSchema,
-  subject: NodeStageSubjectSchema,
-  panels: panelsSchema,
-  prompts: z
-    .array(nameGeneratorPromptSchema)
-    .min(1)
-    .superRefine((prompts, ctx) => {
-      // Check for duplicate prompt IDs
-      const duplicatePromptId = findDuplicateId(prompts);
-      if (duplicatePromptId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-          path: [],
-        });
-      }
-    }),
-  behaviours: nameGeneratorBehavioursSchema,
-  ...nameGeneratorWording,
-});
+export const nameGeneratorStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('NameGenerator'),
+    form: FormSchema,
+    subject: NodeStageSubjectSchema,
+    panels: panelsSchema,
+    prompts: z.array(nameGeneratorPromptSchema).min(1),
+    behaviours: nameGeneratorBehavioursSchema,
+    ...nameGeneratorWording,
+  }),
+);

@@ -17,6 +17,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { StageDynamicValues } from '../../dynamicValues/DynamicValueScope';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
@@ -98,7 +99,7 @@ function renderForm(
 
   const fields: FormField[] = [
     {
-      id: 'field-L97',
+      id: testId('field-L97'),
       variable: asEntityAttributeReference('note'),
       prompt: { en: prompt },
     },
@@ -325,7 +326,7 @@ describe('useProtocolForm dynamic values on an edge form', () => {
       const { fieldComponents } = useProtocolForm({
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: asEntityAttributeReference('note'),
             prompt: { en: 'How did {from} meet {to}?' },
           },

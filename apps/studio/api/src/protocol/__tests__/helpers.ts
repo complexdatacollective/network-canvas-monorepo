@@ -8,6 +8,7 @@ import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   type CurrentProtocol,
   CurrentProtocolSchema,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import {
   forceExpire,
@@ -154,6 +155,32 @@ export const FIXTURES = [
   '@codaco/protocols/development',
 ] as const;
 
+/**
+ * The ids of the objects in `baseProtocol()`. They are fixed so that the
+ * golden hashes of that protocol stay the same from run to run.
+ */
+export const BASE_PROTOCOL_IDS = {
+  nameGenerator: ProtocolObjectIdSchema.parse(
+    '3c07e726-388f-4af2-99ce-bbe2aa1b31eb',
+  ),
+  nameField: ProtocolObjectIdSchema.parse(
+    '2c52f7c1-5ab2-4d31-a3e4-b4291ee9db9b',
+  ),
+  namePrompt: ProtocolObjectIdSchema.parse(
+    '99ba6512-b20d-4f89-99bb-aa137ddffbfb',
+  ),
+  secondPrompt: ProtocolObjectIdSchema.parse(
+    'e1b0d3a4-5c6f-4e7a-8b9c-0d1e2f3a4b5c',
+  ),
+  sociogram: ProtocolObjectIdSchema.parse(
+    '7f96f8ac-4f56-4f34-9195-dae7858b93f7',
+  ),
+  sociogramPrompt: ProtocolObjectIdSchema.parse(
+    '691beb73-a56e-4f68-a031-fbf18b306997',
+  ),
+  finish: ProtocolObjectIdSchema.parse('8f480b11-39d0-4912-ade7-1d5040bf1f71'),
+};
+
 // A schema parse rather than a cast: the reference fields are branded.
 /**
  * A protocol as Studio stores it: holding the interface text for what it
@@ -193,7 +220,7 @@ export function baseProtocol(): CurrentProtocol {
       },
       stages: [
         {
-          id: 'nameGenerator1',
+          id: BASE_PROTOCOL_IDS.nameGenerator,
           type: 'NameGenerator',
           label: { en: 'Generate Names' },
           subject: { entity: 'node', type: 'person' },
@@ -201,23 +228,28 @@ export function baseProtocol(): CurrentProtocol {
             title: { en: 'Add person' },
             fields: [
               {
-                id: 'field-1',
+                id: BASE_PROTOCOL_IDS.nameField,
                 variable: 'personName',
                 prompt: { en: 'Enter name' },
               },
             ],
           },
-          prompts: [{ id: 'prompt1', text: { en: 'Who do you know?' } }],
+          prompts: [
+            {
+              id: BASE_PROTOCOL_IDS.namePrompt,
+              text: { en: 'Who do you know?' },
+            },
+          ],
         },
         {
-          id: 'sociogram1',
+          id: BASE_PROTOCOL_IDS.sociogram,
           type: 'Sociogram',
           label: { en: 'Sociogram' },
           subject: { entity: 'node', type: 'person' },
           background: { concentricCircles: 4 },
           prompts: [
             {
-              id: 'socPrompt1',
+              id: BASE_PROTOCOL_IDS.sociogramPrompt,
               text: { en: 'Position nodes' },
               layout: { layoutVariable: 'layoutPosition' },
             },
@@ -225,7 +257,7 @@ export function baseProtocol(): CurrentProtocol {
         },
         // Every schema 9 interview ends at a finish stage.
         {
-          id: 'finish',
+          id: BASE_PROTOCOL_IDS.finish,
           type: 'FinishSession',
           mode: 'confirmation',
           label: { en: 'Finish' },

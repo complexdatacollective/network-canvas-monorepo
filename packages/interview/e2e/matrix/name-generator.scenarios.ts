@@ -1,7 +1,10 @@
 import path from 'node:path';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import { FilterSchema } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  FilterSchema,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -761,7 +764,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
             join: 'AND',
             rules: [
               {
-                id: 'edge-exists',
+                id: createProtocolObjectId(),
                 type: 'edge',
                 options: { type: colleague.id, operator: 'EXISTS' },
               },
@@ -865,7 +868,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
             join: 'AND',
             rules: [
               {
-                id: 'is-colleague-rule',
+                id: createProtocolObjectId(),
                 type: 'node',
                 options: {
                   type: person.id,

@@ -8,6 +8,7 @@ import {
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { RowValues } from '../../form/rowDialog.tsx';
@@ -18,6 +19,7 @@ import {
   type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
 import NodePanelsSection from '../panels/NodePanelsSection.tsx';
@@ -146,7 +148,7 @@ const nameGeneratorWith = (
   sections: ReactNode,
 ): RenderStageEditorOptions => ({
   stage: {
-    id: 'name-generator-with-rows',
+    id: testId('name-generator-with-rows'),
     type: 'NameGenerator',
     fields: {
       label: en('Name Generator'),
@@ -155,13 +157,13 @@ const nameGeneratorWith = (
         title: en('Add a person'),
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'name',
             prompt: en("What is this person's name?"),
           },
         ],
       },
-      prompts: [{ id: 'prompt-seed', text: en('Who do you know?') }],
+      prompts: [{ id: testId('prompt-seed'), text: en('Who do you know?') }],
       ...fields,
     },
   },
@@ -197,7 +199,7 @@ const lists: readonly ListCase[] = [
     write: typeInto('Block text'),
     open: (rows) => ({
       stage: {
-        id: 'information-with-blocks',
+        id: testId('information-with-blocks'),
         type: 'Information',
         fields: {
           label: en('Information'),
@@ -245,7 +247,7 @@ const lists: readonly ListCase[] = [
     },
     open: (rows) => ({
       stage: {
-        id: 'alter-form-with-fields',
+        id: testId('alter-form-with-fields'),
         type: 'AlterForm',
         fields: {
           label: en('Alter form'),
@@ -260,8 +262,8 @@ const lists: readonly ListCase[] = [
 
 /** The two rows every case below opens on. */
 const seeded = (listCase: ListCase) => [
-  listCase.row('row-one', 'Alpha', 0),
-  listCase.row('row-two', 'Bravo', 1),
+  listCase.row(testId('row-one'), 'Alpha', 0),
+  listCase.row(testId('row-two'), 'Bravo', 1),
 ];
 
 const openDialog = async (
@@ -346,7 +348,10 @@ describe.each(lists)('$list', (listCase) => {
     expect(saved).not.toBeNull();
     const rows = listCase.read(saved?.stageDocument ?? {});
     expect(rows.map(listCase.label)).toEqual(['Bravo', 'Alpha']);
-    expect(rows.map((row) => row.id)).toEqual(['row-two', 'row-one']);
+    expect(rows.map((row) => row.id)).toEqual([
+      testId('row-two'),
+      testId('row-one'),
+    ]);
   });
 
   /**
@@ -385,7 +390,7 @@ describe.each(lists)('$list', (listCase) => {
     // One row rather than two: a side-panel list is at its cap with two, and
     // a list with no Add button has nothing to drive.
     const harness = renderStageEditor(
-      listCase.open([listCase.row('row-one', 'Alpha', 0)]),
+      listCase.open([listCase.row(testId('row-one'), 'Alpha', 0)]),
     );
 
     const dialog = await openDialog(harness, addLabel);
@@ -401,5 +406,81 @@ describe.each(lists)('$list', (listCase) => {
       expect(Object.keys(row)).not.toContain('_internalId');
       expect(Object.keys(row)).not.toContain('_draft');
     }
+  });
+
+  it('keeps every row the same object through add, edit, reorder and delete', async () => {
+    const harness = renderStageEditor(
+      listCase.open([listCase.row(testId('row-one'), 'Alpha', 0)]),
+    );
+
+    const added = await openDialog(harness, addLabel);
+    await listCase.write(harness, added, 'Charlie');
+    await listCase.complete?.(harness, added);
+    await harness.user.click(added.getByRole('button', { name: 'Add' }));
+    await closesDialog();
+
+    const afterAdd = listCase.read(
+      (await harness.submit())?.stageDocument ?? {},
+    );
+    const newId = afterAdd[1]?.id;
+    expect(isProtocolObjectId(newId)).toBe(true);
+
+    const edited = await openDialog(harness, `Edit ${noun}`, 1);
+    await listCase.write(harness, edited, 'Delta');
+    await harness.user.click(edited.getByRole('button', { name: 'Save' }));
+    await closesDialog();
+
+    const handles = await screen.findAllByRole('button', {
+      name: `Reorder ${noun} 2 of 2`,
+    });
+    handles[0]!.focus();
+    await harness.user.keyboard('{ }{ArrowUp}{ }');
+
+    const afterMove = listCase.read(
+      (await harness.submit())?.stageDocument ?? {},
+    );
+    expect(afterMove.map(listCase.label)).toEqual(['Delta', 'Alpha']);
+    expect(afterMove.map((row) => row.id)).toEqual([newId, testId('row-one')]);
+
+    const removes = await screen.findAllByRole('button', {
+      name: `Delete ${noun}`,
+    });
+    await harness.user.click(removes[1]!);
+    await harness.user.click(
+      await screen.findByRole('button', { name: `Delete ${noun}` }),
+    );
+
+    const afterDelete = listCase.read(
+      (await harness.submit())?.stageDocument ?? {},
+    );
+    expect(afterDelete.map((row) => row.id)).toEqual([newId]);
+  });
+
+  /**
+   * A draft abandoned in a row's dialog is gone, and the row it was made on
+   * opens again as the list holds it: the next save writes the stored row
+   * under its own id, not the abandoned draft and not a copy.
+   */
+  it('reopens a row whose draft was discarded as the row the list holds', async () => {
+    const harness = renderStageEditor(listCase.open(seeded(listCase)));
+
+    const abandoned = await openDialog(harness, `Edit ${noun}`, 1);
+    await listCase.write(harness, abandoned, 'Abandoned');
+    await harness.user.click(abandoned.getByRole('button', { name: 'Cancel' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await closesDialog();
+
+    const reopened = await openDialog(harness, `Edit ${noun}`, 1);
+    await harness.user.click(reopened.getByRole('button', { name: 'Save' }));
+    await closesDialog();
+
+    const rows = listCase.read((await harness.submit())?.stageDocument ?? {});
+    expect(rows.map(listCase.label)).toEqual(['Alpha', 'Bravo']);
+    expect(rows.map((row) => row.id)).toEqual([
+      testId('row-one'),
+      testId('row-two'),
+    ]);
   });
 });

@@ -17,6 +17,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { createInitialNetwork } from '../../contract/network';
 import type { InterviewPayload } from '../../contract/types';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
@@ -104,7 +105,7 @@ function storeWith(
       codebook,
       stages: [
         {
-          id: 'stage-1',
+          id: testId('stage-1'),
           type: 'NameGenerator',
           label: { en: 'Name generator' },
           subject: { entity: 'node', type: 'place' },
@@ -112,13 +113,13 @@ function storeWith(
             title: { en: 'Add a place' },
             fields: [
               {
-                id: 'field-L114',
+                id: testId('field-L114'),
                 variable: asEntityAttributeReference('nameVar'),
                 prompt: { en: 'Name' },
               },
             ],
           },
-          prompts: [{ id: 'prompt-1', text: { en: 'Name a place' } }],
+          prompts: [{ id: testId('prompt-1'), text: { en: 'Name a place' } }],
         },
       ],
     },
@@ -249,7 +250,7 @@ describe('a node type’s own label', () => {
           rules: [
             {
               type: 'node',
-              id: 'r1',
+              id: testId('r1'),
               options: {
                 type: 'place',
                 attribute: 'kind',
@@ -259,7 +260,7 @@ describe('a node type’s own label', () => {
             },
             {
               type: 'node',
-              id: 'r2',
+              id: testId('r2'),
               options: {
                 type: 'place',
                 attribute: 'beds',
@@ -303,7 +304,7 @@ describe('a node type’s own label', () => {
 describe('a label that follows how its node is connected', () => {
   const edgeRule = (id: string, options: Record<string, unknown>) => ({
     about: 'node',
-    rules: [{ type: 'edge', id, options }],
+    rules: [{ type: 'edge', id: testId(id), options }],
   });
   const label: NodeLabel = NodeLabelSchema.parse({
     text: {

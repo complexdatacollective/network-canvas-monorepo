@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { StageEditorActionContext } from '../../stage-editor-contract.ts';
+import { fixtureStageId } from '../protocolFixture.ts';
 import { renderStageEditor } from '../renderStageEditor.tsx';
 
 const SAVE = 'Save stage';
@@ -60,7 +61,9 @@ describe('a submit through a host’s own save control', () => {
       actions: nativeSaveButton,
     });
 
-    expect((await harness.submit())?.stageDocument.id).toBe('information-1');
+    expect((await harness.submit())?.stageDocument.id).toBe(
+      fixtureStageId('information-1'),
+    );
   });
 
   /**

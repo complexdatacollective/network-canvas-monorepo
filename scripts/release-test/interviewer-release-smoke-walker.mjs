@@ -1147,14 +1147,29 @@ try {
   // The finish stage the walk ended on, recorded with the session: the
   // normal finish stage and its outcome — not the declined-consent finish
   // stage the walk visited and left.
+  const walkedProtocol = JSON.parse(
+    protocolSource.endsWith('.json')
+      ? fs.readFileSync(protocolSource, 'utf8')
+      : await (
+          await require('jszip').loadAsync(fs.readFileSync(protocolSource))
+        )
+          .file('protocol.json')
+          .async('string'),
+  );
+  const completedFinishStageId =
+    walkedProtocol.stages.find(
+      (stage) =>
+        stage.type === 'FinishSession' && stage.outcome === 'completed',
+    )?.id ?? null;
   const finishOk =
-    payload.finishStageId === 'finish' &&
+    completedFinishStageId !== null &&
+    payload.finishStageId === completedFinishStageId &&
     payload.finishOutcome === 'completed' &&
     typeof payload.finishedAt === 'string';
   record(
     'persisted-finish',
     finishOk,
-    `finishStageId=${JSON.stringify(payload.finishStageId ?? null)} finishOutcome=${JSON.stringify(payload.finishOutcome ?? null)} finishedAt=${JSON.stringify(payload.finishedAt ?? null)} (expected "finish"/"completed")`,
+    `finishStageId=${JSON.stringify(payload.finishStageId ?? null)} finishOutcome=${JSON.stringify(payload.finishOutcome ?? null)} finishedAt=${JSON.stringify(payload.finishedAt ?? null)} (expected ${JSON.stringify(completedFinishStageId)}/"completed")`,
   );
 
   // Cross-cutting: every non-whitelisted console error collected across the

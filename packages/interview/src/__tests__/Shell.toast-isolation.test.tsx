@@ -37,6 +37,7 @@ import {
   InterviewToastViewport,
 } from '../toast/InterviewToast';
 import { interviewToastManager } from '../toast/interviewToastManager';
+import { testId } from './testIds';
 
 // Keep the actual NameGenerator, node-limit validation, Navigation, Shell,
 // Redux store, toast providers and toast UI. Avoid importing unrelated WebGL
@@ -148,7 +149,7 @@ function makePayload(id: string): InterviewPayload {
       assets: [],
       stages: [
         {
-          id: `${id}-names`,
+          id: testId(`${id}-names`),
           type: 'NameGeneratorQuickAdd',
           minNodesNotice: {
             en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -158,12 +159,15 @@ function makePayload(id: string): InterviewPayload {
           subject: { entity: 'node', type: 'person' },
           quickAdd: asEntityAttributeReference('name'),
           prompts: [
-            { id: `${id}-prompt`, text: { en: `Original prompt ${id}` } },
+            {
+              id: testId(`${id}-prompt`),
+              text: { en: `Original prompt ${id}` },
+            },
           ],
           behaviours: { minNodes: 1 },
         },
         {
-          id: `${id}-finish`,
+          id: testId(`${id}-finish`),
           type: 'FinishSession',
           mode: 'confirmation',
           label: { en: 'Finish' },
@@ -506,7 +510,7 @@ describe('Shell stage portal ownership', () => {
         [entityPrimaryKeyProperty]: 'same-node-id',
         type: 'person',
         [entityAttributesProperty]: { name: 'Álvaro first' },
-        promptIDs: ['first-prompt'],
+        promptIDs: [testId('first-prompt')],
       },
     ];
     secondPayload.session.network.nodes = [
@@ -514,7 +518,7 @@ describe('Shell stage portal ownership', () => {
         [entityPrimaryKeyProperty]: 'same-node-id',
         type: 'person',
         [entityAttributesProperty]: { name: 'Íñigo second' },
-        promptIDs: ['second-prompt'],
+        promptIDs: [testId('second-prompt')],
       },
     ];
     const originalFirst = structuredClone(firstPayload);

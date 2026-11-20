@@ -4,7 +4,7 @@ import {
   EVERY_VERSION,
   type MessageArguments,
 } from '../../../localization/messageArguments.ts';
-import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { assetReference } from '../asset-reference.ts';
 import {
   NodeStageSubjectSchema,
@@ -17,6 +17,7 @@ import {
   localizedString,
   nonBlankText,
 } from '../localized-string.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import { baseStageSchema } from './base.ts';
 import {
@@ -78,70 +79,61 @@ const rosterWording = {
   }).optional(),
 };
 
-export const nameGeneratorRosterStage = baseStageSchema.extend({
-  type: z.literal('NameGeneratorRoster'),
-  subject: NodeStageSubjectSchema,
-  dataSource: assetReference(),
-  // The heading above the people the participant can add. The roster IS the
-  // panel, so it is named for what it heads rather than as the stage's title.
-  panelTitle: localizedString(
-    nonBlankText(),
-    { format: 'plain', lines: 'single' },
-    {
-      dynamicValues: 'stageText',
-    },
-  ).optional(),
-  cardOptions: z
-    .strictObject({
-      additionalProperties: z
-        .array(
-          z.strictObject({
-            label: localizedString(nonBlankText(), {
-              format: 'plain',
-              lines: 'single',
+export const nameGeneratorRosterStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('NameGeneratorRoster'),
+    subject: NodeStageSubjectSchema,
+    dataSource: assetReference(),
+    // The heading above the people the participant can add. The roster IS the
+    // panel, so it is named for what it heads rather than as the stage's title.
+    panelTitle: localizedString(
+      nonBlankText(),
+      { format: 'plain', lines: 'single' },
+      {
+        dynamicValues: 'stageText',
+      },
+    ).optional(),
+    cardOptions: z
+      .strictObject({
+        additionalProperties: z
+          .array(
+            z.strictObject({
+              id: protocolObjectId('rosterCardProperty'),
+              label: localizedString(nonBlankText(), {
+                format: 'plain',
+                lines: 'single',
+              }),
+              variable: rosterColumnReference(),
             }),
-            variable: rosterColumnReference(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  sortOptions: z
-    .strictObject({
-      sortOrder: SortOrderSchema.optional(),
-      sortableProperties: z
-        .array(
-          z.strictObject({
-            label: localizedString(nonBlankText(), {
-              format: 'plain',
-              lines: 'single',
+          )
+          .optional(),
+      })
+      .optional(),
+    sortOptions: z
+      .strictObject({
+        sortOrder: SortOrderSchema.optional(),
+        sortableProperties: z
+          .array(
+            z.strictObject({
+              id: protocolObjectId('rosterSortableProperty'),
+              label: localizedString(nonBlankText(), {
+                format: 'plain',
+                lines: 'single',
+              }),
+              variable: rosterColumnReference(),
             }),
-            variable: rosterColumnReference(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  searchOptions: z
-    .strictObject({
-      fuzziness: z.number(),
-      matchProperties: z.array(rosterColumnReference()).min(1),
-    })
-    .optional(),
-  prompts: z
-    .array(nameGeneratorPromptSchema)
-    .min(1)
-    .superRefine((prompts, ctx) => {
-      // Check for duplicate prompt IDs
-      const duplicatePromptId = findDuplicateId(prompts);
-      if (duplicatePromptId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-          path: [],
-        });
-      }
-    }),
-  behaviours: nameGeneratorBehavioursSchema,
-  ...rosterWording,
-});
+          )
+          .optional(),
+      })
+      .optional(),
+    searchOptions: z
+      .strictObject({
+        fuzziness: z.number(),
+        matchProperties: z.array(rosterColumnReference()).min(1),
+      })
+      .optional(),
+    prompts: z.array(nameGeneratorPromptSchema).min(1),
+    behaviours: nameGeneratorBehavioursSchema,
+    ...rosterWording,
+  }),
+);

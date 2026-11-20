@@ -7,6 +7,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import createSorter, {
   type LegacyOrProtocolSortRule,
   processProtocolSortRule,
@@ -1239,6 +1240,7 @@ describe('Special cases', () => {
 describe('processProtocolSortRule', () => {
   it('ignores rules that already have a type', () => {
     const rule = {
+      id: testId('sort-name'),
       property: asEntityAttributeReference('name'),
       type: 'string',
       direction: 'asc',

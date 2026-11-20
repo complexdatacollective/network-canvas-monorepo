@@ -379,13 +379,10 @@ describe('fixInEffect', () => {
     const withNewField = apply(form(), [
       op('insert', '/fields/-', { id: 'new', variable: 'c' }),
     ]).result;
-    // The question is still in the form, still reached by its index, and the
-    // fix that removes it can still be made.
+    // The list now holds a protocol object, so it is addressed by id alone:
+    // no index reaches the question any more, and the removal cannot be made.
     expect(fixInEffect(withNewField, removal, expected)).toBe(false);
-    expect(fixFits(withNewField, removal, targets)).toBe(true);
-    expect(apply(withNewField, removal).result).toEqual({
-      fields: [{ variable: 'a' }, { id: 'new', variable: 'c' }],
-    });
+    expect(fixFits(withNewField, removal, targets)).toBe(false);
   });
 });
 
@@ -714,8 +711,8 @@ describe('writtenStands', () => {
 });
 
 describe('arrays that mix members with and without ids', () => {
-  // A form's `fields` can hold both: a member with an id is addressed by it,
-  // and one without by its index.
+  // A list that holds any member with an id is a list of protocol objects: its
+  // members are reached by id alone, and a member without one has no path.
   const mixed = () => ({
     fields: [
       { id: '1', prompt: 'id one' },
@@ -724,7 +721,7 @@ describe('arrays that mix members with and without ids', () => {
     ],
   });
 
-  it('reads a segment as an id first, and as an index only for a member without one', () => {
+  it('reads a segment only as an id', () => {
     expect(readPath(mixed(), ['fields', '0', 'prompt'])).toEqual({
       found: true,
       value: 'id zero',
@@ -733,31 +730,32 @@ describe('arrays that mix members with and without ids', () => {
       found: true,
       value: 'id one',
     });
-    // No member has id 2, and the member at index 2 has an id of its own.
+    // No member has id 2, and no index is read in a list of protocol objects.
     expect(readPath(mixed(), ['fields', '2', 'prompt'])).toEqual({
       found: false,
     });
-    // A member without an id is reached by its index, beside members with ids.
     const withoutClash = {
       fields: [{ id: 'x', prompt: 'has id' }, { prompt: 'no id' }],
     };
     expect(readPath(withoutClash, ['fields', '1', 'prompt'])).toEqual({
-      found: true,
-      value: 'no id',
+      found: false,
     });
     expect(readPath(withoutClash, ['fields', '0', 'prompt'])).toEqual({
       found: false,
     });
   });
 
-  it('keeps reaching a member by its index when another member is given an id', () => {
+  it('stops reaching a member by its index once another member is given an id', () => {
     const before = { fields: [{ prompt: 'first' }, { prompt: 'second' }] };
+    expect(readPath(before, ['fields', '1', 'prompt'])).toEqual({
+      found: true,
+      value: 'second',
+    });
     const after = apply(before, [
       op('insert', '/fields/-', { id: 'new', prompt: 'third' }),
     ]).result;
     expect(readPath(after, ['fields', '1', 'prompt'])).toEqual({
-      found: true,
-      value: 'second',
+      found: false,
     });
     expect(readPath(after, ['fields', 'new', 'prompt'])).toEqual({
       found: true,
@@ -789,9 +787,10 @@ describe('arrays that mix members with and without ids', () => {
         [op('insert', '/fields/-', { prompt: 'x' })],
       ),
     ).toEqual({ ok: false, failure: { kind: 'ambiguous_path', operation: 0 } });
-    // At an index that is nobody's id, it can be reached and taken out again.
-    const added = apply(mixed(), [op('insert', '/fields/-', { prompt: 'x' })]);
-    expect(apply(added.result, added.inverse).result).toEqual(mixed());
+    // At an index that is nobody's id it is still out of reach.
+    expect(
+      applyOperations(mixed(), [op('insert', '/fields/-', { prompt: 'x' })]),
+    ).toEqual({ ok: false, failure: { kind: 'ambiguous_path', operation: 0 } });
   });
 
   it('refuses a duplicate id even where some members have none', () => {

@@ -18,6 +18,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../../contract/context';
@@ -94,7 +95,7 @@ const variables: Record<string, Variable> = {
 };
 
 const stage: StageProps<'Geospatial'>['stage'] = {
-  id: 'geospatial-stage',
+  id: testId('geospatial-stage'),
   type: 'Geospatial',
   outsideAreasLabel: { en: 'Outside Selectable Areas' },
   label: { en: 'Where people live' },
@@ -110,7 +111,7 @@ const stage: StageProps<'Geospatial'>['stage'] = {
   },
   prompts: [
     {
-      id: 'prompt-1',
+      id: testId('prompt-1'),
       text: { en: 'Where does this person live?' },
       variable: asEntityAttributeReference('neighbourhood'),
     },

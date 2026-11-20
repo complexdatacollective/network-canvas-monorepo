@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
+  createProtocolObjectId,
   type CurrentProtocol,
   DEFAULT_FINISH_SESSION_TEXT,
   ProtocolValidationError,
@@ -317,8 +318,11 @@ describe('userActions', () => {
   // participant could reach, is refused rather than opened.
   describe('opening a protocol with two finish stages', () => {
     const localization = { defaultLocale: 'en', locales: ['en'] };
-    const finish = (id: string) =>
-      createDefaultFinishSessionStage({ id, localization });
+    const finish = () =>
+      createDefaultFinishSessionStage({
+        id: createProtocolObjectId(),
+        localization,
+      });
 
     beforeEach(async () => {
       const actual = await vi.importActual<
@@ -331,7 +335,7 @@ describe('userActions', () => {
       // As a bundled template is: holding the interface text it uses.
       const protocol: CurrentProtocol = withInterfaceText({
         ...makeProtocol(),
-        stages: [finish('finish'), finish('finish-2')],
+        stages: [finish(), finish()],
       });
 
       const result = await runThunk(openBundledTemplate({ protocol }));
@@ -344,15 +348,15 @@ describe('userActions', () => {
       const protocol: CurrentProtocol = withInterfaceText({
         ...makeProtocol(),
         stages: [
-          finish('finish'),
+          finish(),
           {
-            id: 'information',
+            id: createProtocolObjectId(),
             type: 'Information',
             label: { en: 'After the end' },
             title: { en: 'After the end' },
             items: [],
           },
-          finish('finish-2'),
+          finish(),
         ],
       });
 

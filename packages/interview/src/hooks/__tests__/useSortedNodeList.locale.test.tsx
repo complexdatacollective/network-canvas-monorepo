@@ -13,6 +13,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import {
@@ -34,7 +35,11 @@ const named = (name: string): NcNode => ({
 const nodes = [named('z'), named('ö'), named('a')];
 const store = createEncryptionStore(nodes, undefined, variables);
 const sortOrder = [
-  { property: asEntityAttributeReference('name'), direction: 'asc' as const },
+  {
+    id: testId('sort-name'),
+    property: asEntityAttributeReference('name'),
+    direction: 'asc' as const,
+  },
 ];
 
 const wrapperFor =

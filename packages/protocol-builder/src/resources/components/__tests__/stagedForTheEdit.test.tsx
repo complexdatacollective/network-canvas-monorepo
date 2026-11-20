@@ -21,6 +21,7 @@ import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
 import StageEditor from '../../../StageEditor.tsx';
 import { createInMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../../testing/host/sectionsFromProtocol.ts';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import {
   useResourceClient,
   useStagedResources,
@@ -89,7 +90,10 @@ it('lists an imported file as staged, and lets a second field reference it, befo
   // The host is holding it, and says which of the two kinds of resource it is:
   // a researcher looking at their own import is told it is not saved yet.
   expect(await staged()).toEqual([
-    expect.objectContaining({ id: 'staged-resource-1', status: 'staged' }),
+    expect.objectContaining({
+      id: 'staged-resource-1',
+      status: 'staged',
+    }),
   ]);
   expect(await screen.findByText('Imported, not yet saved')).toBeVisible();
 
@@ -155,7 +159,10 @@ it('keeps one resource client across a staging change', async () => {
   // And the staging itself did happen, so the identity above is not the
   // identity of a client nothing ever asked to stage anything.
   expect(await staged()).toEqual([
-    expect.objectContaining({ id: 'staged-resource-1', status: 'staged' }),
+    expect.objectContaining({
+      id: 'staged-resource-1',
+      status: 'staged',
+    }),
   ]);
 });
 
@@ -170,8 +177,14 @@ it('keeps one resource client across a staging change', async () => {
  * where nothing refers to them and nothing will take them out again.
  */
 const FIXTURE: Record<string, unknown> = allInterfaces;
-const FIRST_STAGE = sectionId({ kind: 'stage', stageId: 'information-1' });
-const SECOND_STAGE = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
+const FIRST_STAGE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
+const SECOND_STAGE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('ego-form-1'),
+});
 const ASSETS = sectionId({ kind: 'assets' });
 
 const openEdit: {

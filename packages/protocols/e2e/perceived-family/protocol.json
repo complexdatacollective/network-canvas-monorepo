@@ -128,7 +128,7 @@
   },
   "stages": [
     {
-      "id": "researcher-notes",
+      "id": "a958f20f-d2bb-5e23-bc46-2be743e6d5b2",
       "label": {
         "en-US": "Prototype notes (delete before fielding)"
       },
@@ -138,7 +138,7 @@
       },
       "items": [
         {
-          "id": "researcher-notes-text",
+          "id": "c3aa8ab9-c48d-50fa-a8e3-5f61cfd5d73a",
           "type": "text",
           "content": {
             "en-US": "## Discussion prototype\n\n_Delete this screen before collecting any data._\n\nCo-design the wording and recruitment with Liz McConnell's group and youth advisers. No participant age range is assumed. If minors are involved, the group will need to establish age-appropriate consent, confidentiality and safeguarding procedures for its setting.\n\nThis protocol starts with perceived family, not biology. It does not ask sex assigned at birth, reproductive history or medical conditions. Add a structural pedigree only if youth advisers find it useful, as a separate optional component; the current pedigree wizard asks about sex recorded at birth and may not fit this research question.\n\nArrange approved consent before this prototype begins. Use participant-selected nicknames; do not infer identities of relatives. Categories may overlap and their absence is not evidence of rejection. Discuss whether prompted identity affirmation fits the study. Narrative drawing is transient and is not exported: capture the conversation only through the approved audio/notes procedure.\n\nDo not share identifiable maps, link family members across interviews or infer genetic risk from perceived-family ties."
@@ -147,7 +147,7 @@
       ]
     },
     {
-      "id": "welcome",
+      "id": "a71c899e-e0bd-5283-9419-9d23cb56a929",
       "label": {
         "en-US": "Welcome"
       },
@@ -157,7 +157,7 @@
       },
       "items": [
         {
-          "id": "welcome-text",
+          "id": "bdda914f-8b04-5cd2-bbfc-ffd6971dbe03",
           "type": "text",
           "content": {
             "en-US": "You decide what family means for this conversation. It might include people you grew up with, chosen family, partners, friends, or anyone else. There is no correct kind of family.\n\nYou can use nicknames, leave things out, change your mind, or stop. Tell the interviewer if a question does not fit."
@@ -166,7 +166,7 @@
       ]
     },
     {
-      "id": "name-family",
+      "id": "c0700cd3-da78-5979-a3b0-d4ab0a68bd03",
       "label": {
         "en-US": "People who matter"
       },
@@ -178,14 +178,14 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "aea4add8-64e5-5c6c-9730-6664434735e5",
             "variable": "name",
             "prompt": {
               "en-US": "What name or nickname should we use?"
             }
           },
           {
-            "id": "field-2",
+            "id": "464fc598-6a45-5953-889f-7319dac6d6fa",
             "variable": "relationship_words",
             "prompt": {
               "en-US": "What words do you use for your relationship with this person?"
@@ -201,13 +201,13 @@
       },
       "prompts": [
         {
-          "id": "family-now",
+          "id": "6511b101-acf8-5e9a-9ec8-674c3469df86",
           "text": {
             "en-US": "Who feels like family to you at the moment?"
           }
         },
         {
-          "id": "family-complicated",
+          "id": "8e94fdc6-d7ff-5536-81c5-764fb8c8bbf9",
           "text": {
             "en-US": "Are there people whose place in your family feels complicated, changing, or uncertain? Include them only if you want to."
           }
@@ -215,7 +215,7 @@
       ],
       "panels": [
         {
-          "id": "already-named",
+          "id": "d4de5025-4926-5c6a-acb8-34e48ac22494",
           "title": {
             "en-US": "People already mentioned"
           },
@@ -224,7 +224,7 @@
       ]
     },
     {
-      "id": "family-meanings-introduction",
+      "id": "626011fe-cb45-5630-8d14-707cc49a32c9",
       "type": "Information",
       "label": {
         "en-US": "Your words for family"
@@ -234,7 +234,7 @@
       },
       "items": [
         {
-          "id": "introduction-text",
+          "id": "0cd5e887-b36f-54be-94b2-46f4f4decc47",
           "type": "text",
           "content": {
             "en-US": "Which descriptions fit each person? A person can fit more than one, and you can use your own words. You can also leave these questions blank."
@@ -243,7 +243,7 @@
       ]
     },
     {
-      "id": "family-meanings",
+      "id": "1265ac1a-45de-5cd0-9710-c37d691503a3",
       "label": {
         "en-US": "Your words for family"
       },
@@ -255,7 +255,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "1a61158f-3a65-552d-aa25-aa1a68fcf781",
             "variable": "family_categories",
             "prompt": {
               "en-US": "Which descriptions fit this person?"
@@ -265,7 +265,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "70483994-835c-5784-9875-45477721f80e",
             "variable": "category_words",
             "prompt": {
               "en-US": "What other words would you use?"
@@ -278,7 +278,7 @@
       }
     },
     {
-      "id": "closeness",
+      "id": "a57cfd21-4c9d-5729-af99-a628ba258785",
       "label": {
         "en-US": "Closeness now"
       },
@@ -289,7 +289,7 @@
       },
       "prompts": [
         {
-          "id": "close-now",
+          "id": "faf8d037-8182-5213-9158-a27406b0a8d1",
           "text": {
             "en-US": "How close do you feel to each person right now?"
           },
@@ -299,7 +299,7 @@
       ]
     },
     {
-      "id": "family-map",
+      "id": "384a5c7d-1628-5260-ad81-285049562c44",
       "label": {
         "en-US": "Your family map"
       },
@@ -314,7 +314,7 @@
       },
       "prompts": [
         {
-          "id": "place-people",
+          "id": "32653099-a030-57fe-a801-0b9ae86b6659",
           "text": {
             "en-US": "Place people on the map in a way that makes sense to you. You can put people closer to the centre if they feel closer to you."
           },
@@ -323,7 +323,7 @@
           }
         },
         {
-          "id": "connections",
+          "id": "aeba8608-4b99-58a0-813a-7e5602fc4605",
           "text": {
             "en-US": "Which people know one another? Connect them if you want to."
           },
@@ -336,7 +336,7 @@
           }
         },
         {
-          "id": "feels_family",
+          "id": "5672f97e-82d3-5618-bd4d-3148b917c84b",
           "text": {
             "en-US": "Who on this map feels like family to you right now?"
           },
@@ -352,7 +352,7 @@
           }
         },
         {
-          "id": "emotional_support",
+          "id": "03d59d06-0e65-5148-9461-095845ea04a5",
           "text": {
             "en-US": "Who can you turn to when you need to talk about something personal?"
           },
@@ -368,7 +368,7 @@
           }
         },
         {
-          "id": "practical_support",
+          "id": "dce616da-e2e4-590d-9f7c-9c13544be15b",
           "text": {
             "en-US": "Who helps with everyday needs, such as a place to stay, transport or practical advice?"
           },
@@ -384,7 +384,7 @@
           }
         },
         {
-          "id": "identity_affirming",
+          "id": "55256163-12f5-5d1e-996c-66ad69687b57",
           "text": {
             "en-US": "Who helps you feel recognised and accepted as you are?"
           },
@@ -402,7 +402,7 @@
       ]
     },
     {
-      "id": "family-story",
+      "id": "bbfc9a04-52b9-5a1f-b5a0-44a872a5dcc1",
       "attributesHeading": {
         "en-US": "Attributes"
       },
@@ -431,7 +431,7 @@
       },
       "presets": [
         {
-          "id": "everyone",
+          "id": "59addabd-e5d2-5d80-995b-1a1c4df3efaa",
           "label": {
             "en-US": "Everyone on your map"
           },
@@ -439,6 +439,7 @@
           "edges": {
             "display": [
               {
+                "id": "1e60ec1a-506d-5be6-83fb-e1adbd9a8e84",
                 "type": "knows",
                 "label": {
                   "en-US": "Knows"
@@ -448,7 +449,7 @@
           }
         },
         {
-          "id": "belonging",
+          "id": "d639c187-adb4-5281-85c4-d0757ecfcb5d",
           "label": {
             "en-US": "Belonging and support"
           },
@@ -456,24 +457,28 @@
           "groupVariable": "family_categories",
           "highlight": [
             {
+              "id": "e84120c2-7bfc-586f-9ccc-c133b28273b5",
               "variable": "feels_family",
               "label": {
                 "en-US": "feels_family"
               }
             },
             {
+              "id": "ed134544-eb0f-57bf-ab2f-d5851f9ac49f",
               "variable": "emotional_support",
               "label": {
                 "en-US": "emotional_support"
               }
             },
             {
+              "id": "7ae27ed3-9ad5-5780-9d55-929ca8bfd590",
               "variable": "practical_support",
               "label": {
                 "en-US": "practical_support"
               }
             },
             {
+              "id": "4f9ca6b5-14e8-51f9-8444-8cbf7c1353a4",
               "variable": "identity_affirming",
               "label": {
                 "en-US": "identity_affirming"
@@ -483,6 +488,7 @@
           "edges": {
             "display": [
               {
+                "id": "ffcc808e-c4a8-5adb-9df9-cbb9182b59c5",
                 "type": "knows",
                 "label": {
                   "en-US": "Knows"
@@ -495,7 +501,7 @@
       "interviewScript": "Ask: What makes someone family? Does this map capture your family as you experience it? Who is difficult to place, or missing? Can someone feel like family without offering support? How has this changed? What wording or symbols would you change? Never treat chosen family as an inferior substitute or assume conflict with birth family. Draw only to help discussion; drawings are not exported. Record the qualitative account using the approved procedure."
     },
     {
-      "id": "debrief",
+      "id": "838dfdb5-1168-5835-aadb-57fad0022a11",
       "label": {
         "en-US": "Reflection"
       },
@@ -505,7 +511,7 @@
       },
       "items": [
         {
-          "id": "debrief-text",
+          "id": "00213fbe-4dc2-569b-9388-cd144d6bb4a1",
           "type": "text",
           "content": {
             "en-US": "What felt easy or difficult? Did any question or picture fail to fit your experience? Is there anything you would change or remove?\n\nPlease tell the interviewer what you would want people studying family to understand."
@@ -514,7 +520,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "553e2eb0-0b9f-5412-9028-f4f16943546d",
       "finishLabel": {
         "en-US": "Finish"
       },

@@ -5,6 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import OptionLabelField from './OptionLabelField.tsx';
 
 /** Where a row of an option list keeps the words on one answer. */
@@ -41,7 +42,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'categorical-bin-1',
+    stageId: fixtureStageId('categorical-bin-1'),
     sectionTitle: 'Answer options',
     children: <OptionLabel />,
   },

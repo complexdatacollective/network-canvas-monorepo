@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { binBehavioursSchema } from '../common/behaviours.ts';
 import {
   categoricalBinPromptSchema,
@@ -12,24 +12,13 @@ import { binWording } from './bin-wording.ts';
 
 export const CATEGORICAL_BIN_MAX_BINS = 10;
 
-export const categoricalBinStage = baseStageSchema.extend({
-  type: z.literal('CategoricalBin'),
-  subject: NodeStageSubjectSchema,
-  filter: FilterSchema.optional(),
-  behaviours: binBehavioursSchema,
-  prompts: z
-    .array(categoricalBinPromptSchema)
-    .min(1)
-    .superRefine((prompts, ctx) => {
-      // Check for duplicate prompt IDs
-      const duplicatePromptId = findDuplicateId(prompts);
-      if (duplicatePromptId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-          path: [],
-        });
-      }
-    }),
-  ...binWording,
-});
+export const categoricalBinStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('CategoricalBin'),
+    subject: NodeStageSubjectSchema,
+    filter: FilterSchema.optional(),
+    behaviours: binBehavioursSchema,
+    prompts: z.array(categoricalBinPromptSchema).min(1),
+    ...binWording,
+  }),
+);

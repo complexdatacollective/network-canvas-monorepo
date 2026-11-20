@@ -9,6 +9,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -75,11 +76,15 @@ const edgeTypes: Codebook['edge'] = {
 };
 
 const byName: SortRule[] = [
-  { property: asEntityAttributeReference('name'), direction: 'asc' },
+  {
+    id: testId('sort-name'),
+    property: asEntityAttributeReference('name'),
+    direction: 'asc',
+  },
 ];
 
 const prompt = (id: string) => ({
-  id,
+  id: testId(id),
   text: { en: 'Who do they know?' },
   createEdge: EDGE_TYPE,
   bucketSortOrder: byName,
@@ -88,7 +93,7 @@ const prompt = (id: string) => ({
 const stageWith = (
   removeAfterConsideration: boolean,
 ): StageProps<'OneToManyDyadCensus'>['stage'] => ({
-  id: 'one-to-many',
+  id: testId('one-to-many'),
   type: 'OneToManyDyadCensus',
   label: { en: 'One to many' },
   subject: { entity: 'node', type: NODE_TYPE },

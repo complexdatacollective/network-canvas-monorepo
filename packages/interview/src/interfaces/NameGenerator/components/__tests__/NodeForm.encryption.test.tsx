@@ -14,6 +14,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
 import { InterviewI18nProvider } from '../../../../i18n/InterviewI18nProvider';
@@ -307,7 +308,7 @@ const nicknameVariables: Record<string, Variable> = {
 
 const nicknameStages: Parameters<typeof createEncryptionStore>[1] = [
   {
-    id: 'stage-1',
+    id: testId('stage-1'),
     type: 'NameGenerator',
     label: { en: 'Name generator' },
     subject: { entity: 'node', type: NODE_TYPE },
@@ -315,13 +316,13 @@ const nicknameStages: Parameters<typeof createEncryptionStore>[1] = [
       title: { en: 'Add a person' },
       fields: [
         {
-          id: 'field-1',
+          id: testId('field-1'),
           variable: asEntityAttributeReference('nickname'),
           prompt: { en: 'Nickname' },
         },
       ],
     },
-    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
+    prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
   },
 ];
 

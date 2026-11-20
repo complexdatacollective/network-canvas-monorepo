@@ -14,6 +14,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import type { StageProps } from '../../../types';
 import {
   createEncryptionStore,
@@ -42,7 +43,7 @@ const variables: Record<string, Variable> = {
 };
 
 const stage: StageProps<'NetworkComposer'>['stage'] = {
-  id: 'nc1',
+  id: testId('nc1'),
   type: 'NetworkComposer',
   label: { en: 'Network Composer' },
   subject: { entity: 'node', type: NODE_TYPE },

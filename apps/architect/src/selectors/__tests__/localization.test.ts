@@ -1,6 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
+import {
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -11,6 +15,13 @@ import {
   getTranslationGroups,
 } from '../issues';
 import { getStageList } from '../protocol';
+
+const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '0f3fc844-4142-4d2d-81a9-48ea954ca4cf',
+);
+const INTRO_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'f88ffddb-1b3c-480e-8ed1-08162c3b3024',
+);
 
 const stateWith = (protocol: CurrentProtocol) => {
   const store = configureStore({
@@ -50,7 +61,7 @@ const protocolIn = (
   },
   stages: [
     {
-      id: 'welcome',
+      id: WELCOME_STAGE_ID,
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
       title: { en: 'Hello', fr: 'Bonjour' },
@@ -105,8 +116,8 @@ describe('getTranslationGroups()', () => {
     ]);
     expect(groups.slice(0, -1)).toEqual([
       {
-        key: 'stage:welcome',
-        place: { kind: 'stage', stageId: 'welcome' },
+        key: `stage:${WELCOME_STAGE_ID}`,
+        place: { kind: 'stage', stageId: WELCOME_STAGE_ID },
         rows: [
           {
             path: ['stages', 0, 'label'],
@@ -162,13 +173,13 @@ describe('getTranslationGroups()', () => {
       stages: [
         ...protocol.stages,
         {
-          id: 'intro',
+          id: INTRO_STAGE_ID,
           type: 'Information',
           label: { en: 'Intro', fr: 'Intro', de: 'Intro' },
           title: { en: 'About', fr: 'À propos', de: 'Über' },
           items: [
             {
-              id: 'text',
+              id: createProtocolObjectId(),
               type: 'text',
               content: { en: 'Name **people**', fr: 'Nommez' },
             },
@@ -178,7 +189,7 @@ describe('getTranslationGroups()', () => {
     };
 
     const content = getTranslationGroups(stateWith(withText))
-      .find(({ key }) => key === 'stage:intro')
+      .find(({ key }) => key === `stage:${INTRO_STAGE_ID}`)
       ?.rows.find(({ field }) => field.join('.') === 'items.0.content');
 
     expect(content).toEqual({

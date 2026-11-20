@@ -315,7 +315,7 @@
   },
   "stages": [
     {
-      "id": "language",
+      "id": "832fa593-e307-55cf-823f-3b4c5647aa26",
       "type": "LanguageChooser",
       "label": {
         "en": "Language",
@@ -327,7 +327,7 @@
       }
     },
     {
-      "id": "welcome",
+      "id": "322c897b-0762-57f6-93f2-9d44699ca338",
       "type": "Information",
       "label": {
         "en": "Welcome",
@@ -344,7 +344,7 @@
       },
       "items": [
         {
-          "id": "welcome-text",
+          "id": "4d31be78-8fd7-5685-a51b-10ad2e6ef88d",
           "type": "text",
           "content": {
             "en": "This interview was started on {today}.",
@@ -354,7 +354,7 @@
       ]
     },
     {
-      "id": "about-you",
+      "id": "4badd6ae-28a8-5573-861e-121d5a911938",
       "type": "EgoForm",
       "label": {
         "en": "About you",
@@ -369,7 +369,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "064c0dfc-10e5-541f-9b70-b9119ade6af4",
             "variable": "ego-var-9009-1",
             "prompt": {
               "en": "What is your name?",
@@ -377,7 +377,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "5f97e59f-07d3-5078-85da-184308ed8000",
             "variable": "ego-var-9009-2",
             "prompt": {
               "en": "Do you agree to take part?",
@@ -388,7 +388,7 @@
       }
     },
     {
-      "id": "privacy",
+      "id": "03c4c152-a167-5d56-bddf-e89e0d52ad6a",
       "type": "Anonymisation",
       "label": {
         "en": "Privacy",
@@ -399,7 +399,7 @@
         "filter": {
           "rules": [
             {
-              "id": "consent-declined",
+              "id": "1f257cad-8470-5de7-bc47-12f402814165",
               "type": "ego",
               "options": {
                 "attribute": "ego-var-9009-2",
@@ -411,7 +411,7 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "1dd347f7-e4ba-5467-9778-03c9bc9ea149"
         }
       },
       "explanationText": {
@@ -420,7 +420,7 @@
       }
     },
     {
-      "id": "greeting",
+      "id": "01aad786-e3ec-5e11-ad7e-a912239cbb5d",
       "type": "Information",
       "label": {
         "en": "Greeting",
@@ -437,7 +437,7 @@
       },
       "items": [
         {
-          "id": "greeting-text",
+          "id": "5ecb40a6-b92a-582b-aa58-7c1d9bbd66a6",
           "type": "text",
           "content": {
             "en": "Thank you{egoName, select, missing {.} other {, {egoName}.}} Next, tell us about the people you know.",
@@ -447,7 +447,7 @@
       ]
     },
     {
-      "id": "people",
+      "id": "3f242aec-7da7-5aab-b3e6-7066cceec574",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en": "People",
@@ -459,7 +459,7 @@
       },
       "prompts": [
         {
-          "id": "prompt-9009-11",
+          "id": "d233145b-85c1-5a6b-9d47-27c38bca3589",
           "text": {
             "en": "Who are the people you know?",
             "es": "¿Quiénes son las personas que conoces?"
@@ -473,7 +473,7 @@
       }
     },
     {
-      "id": "each-person",
+      "id": "34ae9efa-7037-504c-a629-30283860c2fe",
       "type": "AlterForm",
       "label": {
         "en": "About each person",
@@ -491,7 +491,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "498b3f9b-7894-5b47-93af-b5f7a0f7e4ee",
             "variable": "hours",
             "prompt": {
               "en": "How many hours a week do you spend with {nodeLabel}?",
@@ -502,7 +502,7 @@
       }
     },
     {
-      "id": "context-bin",
+      "id": "6c7da068-e884-5ae8-ad55-632d0f1fad78",
       "type": "CategoricalBin",
       "label": {
         "en": "Context",
@@ -514,7 +514,7 @@
       },
       "prompts": [
         {
-          "id": "prompt-9009-14",
+          "id": "1efee686-9932-5eae-bcc3-3f49ce985fec",
           "text": {
             "en": "Where do you know each person from?",
             "es": "¿De dónde conoces a cada persona?"
@@ -532,7 +532,7 @@
       }
     },
     {
-      "id": "nobody-to-show",
+      "id": "84550fb5-ea3b-5f8d-acda-684677280003",
       "type": "OrdinalBin",
       "label": {
         "en": "Pets",
@@ -541,7 +541,7 @@
       "filter": {
         "rules": [
           {
-            "id": "only-pets",
+            "id": "daf582f0-c1b5-5f58-aaa6-46ef71f5b96f",
             "type": "node",
             "options": {
               "type": "node-type-9009-3",
@@ -558,7 +558,7 @@
       },
       "prompts": [
         {
-          "id": "prompt-9009-16",
+          "id": "673a7e0f-1a35-5931-9fbe-4ac8a62b54e2",
           "text": {
             "en": "How close are you to each pet?",
             "es": "¿Qué tan cercano eres a cada mascota?"
@@ -569,7 +569,7 @@
       ]
     },
     {
-      "id": "family",
+      "id": "58c739fd-59d7-5a5b-992d-91ced6827f0f",
       "type": "FamilyPedigree",
       "label": {
         "en": "Family",
@@ -929,7 +929,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "2b5cce6a-7754-5f9f-9304-e21f4dd86f8d",
       "type": "FinishSession",
       "label": {
         "en": "Finish Interview",
@@ -959,7 +959,7 @@
       }
     },
     {
-      "id": "finish-declined",
+      "id": "1dd347f7-e4ba-5467-9778-03c9bc9ea149",
       "type": "FinishSession",
       "label": {
         "en": "Not taking part",

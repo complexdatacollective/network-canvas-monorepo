@@ -53,6 +53,10 @@ import {
   makeProtocol,
   op,
   STUDY_CONTEXT,
+  WELCOME_STAGE_ID,
+  NAMES_STAGE_ID,
+  NAMES_PROMPT_ID,
+  FINISH_STAGE_ID,
 } from '~/protocolReview/__tests__/fixtures';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import {
@@ -82,19 +86,29 @@ type Store = ReturnType<typeof makeStore>;
 const FINDINGS: Finding[] = [
   makeFinding(
     'prompt',
-    [op('set', '/stages/names/prompts/p1/text', 'Name everyone you know')],
-    { stageId: 'names', severity: 'serious', category: 'wording' },
+    [
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
+        'Name everyone you know',
+      ),
+    ],
+    { stageId: NAMES_STAGE_ID, severity: 'serious', category: 'wording' },
   ),
   makeFinding(
     'title',
-    [op('set', '/stages/welcome/title/en', 'Welcome to our study')],
-    { stageId: 'welcome', severity: 'suggestion', category: 'burden' },
+    [op('set', `/stages/${WELCOME_STAGE_ID}/title/en`, 'Welcome to our study')],
+    { stageId: WELCOME_STAGE_ID, severity: 'suggestion', category: 'burden' },
   ),
-  makeFinding('broken', [op('set', '/stages/welcome/type', 'NotAStage')], {
-    codebookEntity: 'node',
-    codebookTypeId: 'person',
-    category: 'structure',
-  }),
+  makeFinding(
+    'broken',
+    [op('set', `/stages/${WELCOME_STAGE_ID}/type`, 'NotAStage')],
+    {
+      codebookEntity: 'node',
+      codebookTypeId: 'person',
+      category: 'structure',
+    },
+  ),
   makeFinding('advice', [], { category: 'research_fit' }),
 ];
 
@@ -641,7 +655,11 @@ describe('decisions', () => {
       status: 'undecided',
       availability: 'available',
       canFix: true,
-      location: { kind: 'stage', position: 2, href: '/protocol/stage/names' },
+      location: {
+        kind: 'stage',
+        position: 2,
+        href: `/protocol/stage/${NAMES_STAGE_ID}`,
+      },
       textEdits: [
         {
           now: 'Name people',
@@ -726,19 +744,24 @@ describe('decisions', () => {
   it('does not change the interface of the stage an editor has open', async () => {
     await open(store);
     const names = protocolOf(store).stages.find(
-      (stage) => stage.id === 'names',
+      (stage) => stage.id === NAMES_STAGE_ID,
     );
     if (!names) throw new Error('The fixture needs the names stage');
     const converted = makeFinding(
       'convert',
       [
-        op('set', '/stages/welcome', {
+        op('set', `/stages/${WELCOME_STAGE_ID}`, {
           ...names,
-          id: 'welcome',
-          prompts: [{ id: 'p9', text: { en: 'Name others', fr: 'Autres' } }],
+          id: WELCOME_STAGE_ID,
+          prompts: [
+            {
+              id: '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e09',
+              text: { en: 'Name others', fr: 'Autres' },
+            },
+          ],
         }),
       ],
-      { stageId: 'welcome', category: 'structure' },
+      { stageId: WELCOME_STAGE_ID, category: 'structure' },
     );
     vi.stubGlobal(
       'fetch',
@@ -748,7 +771,7 @@ describe('decisions', () => {
     await store.dispatch(checkFixAvailability());
     const before = protocolOf(store);
 
-    const close = registerOpenStage('welcome', () => {});
+    const close = registerOpenStage(WELCOME_STAGE_ID, () => {});
     expect(await store.dispatch(decideFinding('convert', 'fix'))).toEqual({
       ok: false,
       reason: 'invalid',
@@ -760,7 +783,8 @@ describe('decisions', () => {
       ok: true,
     });
     expect(
-      protocolOf(store).stages.find((stage) => stage.id === 'welcome')?.type,
+      protocolOf(store).stages.find((stage) => stage.id === WELCOME_STAGE_ID)
+        ?.type,
     ).toBe(names.type);
   });
 
@@ -896,8 +920,14 @@ describe('decisions', () => {
         findings: [
           makeFinding(
             'finish',
-            [op('set', '/stages/finish/finishLabel/en', 'Send my answers')],
-            { stageId: 'finish' },
+            [
+              op(
+                'set',
+                `/stages/${FINISH_STAGE_ID}/finishLabel/en`,
+                'Send my answers',
+              ),
+            ],
+            { stageId: FINISH_STAGE_ID },
           ),
         ],
       }).fetchImpl,
@@ -992,13 +1022,21 @@ describe('decisions', () => {
       answering({
         ...RESULT,
         findings: [
-          makeFinding('dropWelcome', [op('remove', '/stages/welcome')], {
-            stageId: 'welcome',
-            category: 'structure',
-          }),
-          makeFinding('alsoDropWelcome', [op('remove', '/stages/welcome')], {
-            category: 'structure',
-          }),
+          makeFinding(
+            'dropWelcome',
+            [op('remove', `/stages/${WELCOME_STAGE_ID}`)],
+            {
+              stageId: WELCOME_STAGE_ID,
+              category: 'structure',
+            },
+          ),
+          makeFinding(
+            'alsoDropWelcome',
+            [op('remove', `/stages/${WELCOME_STAGE_ID}`)],
+            {
+              category: 'structure',
+            },
+          ),
         ],
       }).fetchImpl,
     );
@@ -1035,15 +1073,19 @@ describe('decisions', () => {
       answering({
         ...RESULT,
         findings: [
-          makeFinding('dropWelcome', [op('remove', '/stages/welcome')], {
-            stageId: 'welcome',
-            category: 'structure',
-          }),
+          makeFinding(
+            'dropWelcome',
+            [op('remove', `/stages/${WELCOME_STAGE_ID}`)],
+            {
+              stageId: WELCOME_STAGE_ID,
+              category: 'structure',
+            },
+          ),
           makeFinding(
             'finishCopy',
-            [op('set', '/stages/finish/content/en', 'All done.')],
+            [op('set', `/stages/${FINISH_STAGE_ID}/content/en`, 'All done.')],
             {
-              stageId: 'finish',
+              stageId: FINISH_STAGE_ID,
               title: 'Stage 3 · Finish is abrupt.',
               explanation:
                 'Stage 1 · Welcome promises more than Stage 3 · Finish.',
@@ -1051,7 +1093,11 @@ describe('decisions', () => {
                 summary: 'Reword Stage 3 · Finish.',
                 changes: ['Stage 3 · Finish: say the interview is over.'],
                 operations: [
-                  op('set', '/stages/finish/content/en', 'All done.'),
+                  op(
+                    'set',
+                    `/stages/${FINISH_STAGE_ID}/content/en`,
+                    'All done.',
+                  ),
                 ],
               },
             },
@@ -1089,24 +1135,34 @@ describe('decisions', () => {
 describe('stage numbers in the review’s text', () => {
   const NUMBERED = makeFinding(
     'numbered',
-    [op('set', '/stages/names/prompts/p1/text/en', 'Name everyone you know')],
+    [
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
+        'Name everyone you know',
+      ),
+    ],
     {
-      stageId: 'names',
+      stageId: NAMES_STAGE_ID,
       title: 'Stage 2 · Names asks too little',
       explanation: 'Stage 2 · Names comes after Stage 1 · Welcome.',
       fix: {
         summary: 'Reword Stage 2 · Names.',
         changes: ['Stage 2 · Names: reword the first prompt'],
         operations: [
-          op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
+          op(
+            'set',
+            `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
+            'Name everyone',
+          ),
         ],
       },
     },
   );
   const REMOVES_WELCOME = makeFinding(
     'remove-welcome',
-    [op('remove', '/stages/welcome')],
-    { stageId: 'welcome', category: 'structure' },
+    [op('remove', `/stages/${WELCOME_STAGE_ID}`)],
+    { stageId: WELCOME_STAGE_ID, category: 'structure' },
   );
 
   const texts = () => {
@@ -1130,7 +1186,7 @@ describe('stage numbers in the review’s text', () => {
 
   it('follow a stage the researcher deleted', async () => {
     await reviewedWith([NUMBERED]);
-    store.dispatch(stagesTest.deleteStage('welcome'));
+    store.dispatch(stagesTest.deleteStage(WELCOME_STAGE_ID));
 
     expect(texts()).toEqual({
       title: 'Stage 1 · Names asks too little',

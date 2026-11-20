@@ -9,6 +9,7 @@ import {
   friendshipDesign,
   friendshipWording,
 } from '../design/__fixtures__/example.ts';
+import { sketchStageId } from '../design/objectIds.ts';
 import { runPipeline } from '../pipeline.ts';
 import { reply, scriptedAdapter, STUDY_SCREENING } from './fakes.ts';
 
@@ -18,7 +19,10 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
   return {
     ...actual,
     validateProtocol: async (protocol: { stages: { id: string }[] }) => {
-      const index = protocol.stages.findIndex((s) => s.id === 'wellbeing');
+      const ids = await import('../design/objectIds.ts');
+      const index = protocol.stages.findIndex(
+        (s) => s.id === ids.sketchStageId('wellbeing'),
+      );
       if (index === -1) return actual.validateProtocol(protocol as never);
       return {
         success: false,
@@ -86,7 +90,9 @@ describe('salvage', () => {
         id: string;
         items?: { content: { en: string } }[];
       }[];
-      expect(stages.some((s) => s.id === 'wellbeing')).toBe(false);
+      expect(stages.some((s) => s.id === sketchStageId('wellbeing'))).toBe(
+        false,
+      );
       expect(stages[0]?.items?.[0]?.content.en).toContain(message);
     },
   );

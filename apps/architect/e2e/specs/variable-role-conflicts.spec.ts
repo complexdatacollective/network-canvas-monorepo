@@ -1,5 +1,6 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  createProtocolObjectId,
   CurrentProtocolSchema,
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
@@ -88,14 +89,14 @@ function conflictProtocol(): CurrentProtocol {
       },
       stages: [
         {
-          id: 'shared-field-form',
+          id: createProtocolObjectId(),
           type: 'AlterForm',
           label: { en: 'Person Details' },
           subject: { entity: 'node', type: 'person' },
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: createProtocolObjectId(),
                 variable: 'sharedVar',
                 prompt: { en: 'Shared field prompt' },
               },
@@ -103,14 +104,14 @@ function conflictProtocol(): CurrentProtocol {
           },
         },
         {
-          id: 'form-only-form',
+          id: createProtocolObjectId(),
           type: 'AlterForm',
           label: { en: 'Extra Person Form' },
           subject: { entity: 'node', type: 'person' },
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: createProtocolObjectId(),
                 variable: 'formOnlyVar',
                 prompt: { en: 'Form only field prompt' },
               },
@@ -118,26 +119,26 @@ function conflictProtocol(): CurrentProtocol {
           },
         },
         {
-          id: 'shared-bin',
+          id: createProtocolObjectId(),
           type: 'CategoricalBin',
           label: { en: 'Contact Category' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: 'shared-bin-prompt',
+              id: createProtocolObjectId(),
               text: { en: 'Shared bin prompt' },
               variable: 'sharedVar',
             },
           ],
         },
         {
-          id: 'bin-only-bin',
+          id: createProtocolObjectId(),
           type: 'CategoricalBin',
           label: { en: 'Extra Category Bin' },
           subject: { entity: 'node', type: 'person' },
           prompts: [
             {
-              id: 'bin-only-prompt',
+              id: createProtocolObjectId(),
               text: { en: 'Bin only prompt' },
               variable: 'binOnlyVar',
             },

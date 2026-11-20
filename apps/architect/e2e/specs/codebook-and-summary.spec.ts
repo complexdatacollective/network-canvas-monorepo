@@ -202,7 +202,20 @@ test(
     expect(names.filter((name) => name === '')).toEqual([]);
     expect(new Set(names).size).toBe(names.length);
 
-    const baselines = names.map((name) => `summary-${sectionSlug(name)}`);
+    // A stage section's id carries the stage's UUID, which says nothing to
+    // whoever reads a failure, so a stage baseline is named by the stage's
+    // type and its position among the stages of that type.
+    const stageNames = new Map<string, string>();
+    const typeCounts = new Map<string, number>();
+    for (const stage of protocol.stages) {
+      const ordinal = (typeCounts.get(stage.type) ?? 0) + 1;
+      typeCounts.set(stage.type, ordinal);
+      const type = stage.type.replace(/([a-z])([A-Z])/g, '$1-$2');
+      stageNames.set(`stage-${stage.id}`, `stage-${type}-${ordinal}`);
+    }
+    const baselines = names.map(
+      (name) => `summary-${sectionSlug(stageNames.get(name) ?? name)}`,
+    );
     // One actionable failure instead of one opaque "a snapshot doesn't exist"
     // per section. Derived from `names`, so it checks the exact set the loop
     // below is about to capture and a partial deletion fails too. See
@@ -376,8 +389,12 @@ test('names each stage once in the printable summary Used In column', async ({
   // Guard the guard: an empty table, or a table whose roster references never
   // arrived, would satisfy the de-duplication assertion vacuously.
   expect(usage.length).toBeGreaterThan(0);
+  const roster = protocol.stages.find(
+    (stage) => stage.type === 'NameGeneratorRoster',
+  );
+  if (!roster) throw new Error('Expected the NameGeneratorRoster fixture');
   expect(usage.find((row) => row.id === 'variable-age')?.links).toEqual([
-    '#stage-name-generator-roster-1',
+    `#stage-${roster.id}`,
   ]);
 
   const repeated = usage.filter(

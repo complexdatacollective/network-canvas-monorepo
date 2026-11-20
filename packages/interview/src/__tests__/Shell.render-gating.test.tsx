@@ -10,6 +10,7 @@ import {
 
 import type { InterviewPayload } from '../contract/types';
 import Shell from '../Shell';
+import { testId } from './testIds';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -53,14 +54,14 @@ const payload = {
     assets: [],
     stages: [
       {
-        id: 'available-stage',
+        id: testId('available-stage'),
         type: 'Information',
         label: { en: 'Available stage' },
         title: { en: 'Available stage' },
         items: [],
       },
       {
-        id: 'unavailable-stage',
+        id: testId('unavailable-stage'),
         type: 'Information',
         label: { en: 'Unavailable stage' },
         title: { en: 'Unavailable stage' },
@@ -80,7 +81,7 @@ const noActiveAuthoredStagePayload = {
     ...payload.protocol,
     stages: [
       {
-        id: 'route-controlling-stage',
+        id: testId('route-controlling-stage'),
         type: 'Information',
         label: { en: 'Route-controlling stage' },
         title: { en: 'Route-controlling stage' },
@@ -92,7 +93,7 @@ const noActiveAuthoredStagePayload = {
         },
       },
       {
-        id: 'bypassed-stage',
+        id: testId('bypassed-stage'),
         type: 'Information',
         label: { en: 'Bypassed stage' },
         title: { en: 'Bypassed stage' },
@@ -198,15 +199,15 @@ describe('Shell render gating', () => {
       await waitFor(() => {
         expect(
           view.container.querySelector(
-            '[data-stage-interface="available-stage"]',
+            `[data-stage-interface="${testId('available-stage')}"]`,
           ),
         ).toBeInTheDocument();
       });
 
       collectMountedStageIds(observer.takeRecords(), mountedStageIds);
 
-      expect(mountedStageIds).toContain('available-stage');
-      expect(mountedStageIds).not.toContain('unavailable-stage');
+      expect(mountedStageIds).toContain(testId('available-stage'));
+      expect(mountedStageIds).not.toContain(testId('unavailable-stage'));
     } finally {
       observer.disconnect();
       view.unmount();
@@ -218,11 +219,13 @@ describe('Shell render gating', () => {
     const view = render(<ControlledReviewShell />);
 
     expect(
-      view.container.querySelector('[data-stage-interface="available-stage"]'),
+      view.container.querySelector(
+        `[data-stage-interface="${testId('available-stage')}"]`,
+      ),
     ).toBeInTheDocument();
     expect(
       view.container.querySelector(
-        '[data-stage-interface="unavailable-stage"]',
+        `[data-stage-interface="${testId('unavailable-stage')}"]`,
       ),
     ).not.toBeInTheDocument();
   });
@@ -232,7 +235,7 @@ describe('Shell render gating', () => {
 
     expect(
       view.container.querySelector(
-        '[data-stage-interface="route-controlling-stage"]',
+        `[data-stage-interface="${testId('route-controlling-stage')}"]`,
       ),
     ).toBeInTheDocument();
   });

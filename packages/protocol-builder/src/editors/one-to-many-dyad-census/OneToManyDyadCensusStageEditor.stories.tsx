@@ -4,6 +4,7 @@ import { expect, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { oneToManyDyadCensusStageEditor } from './OneToManyDyadCensusStageEditor.ts';
 
@@ -11,7 +12,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/One-to-Many Dyad Census',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'one-to-many-dyad-census-1',
+    stageId: fixtureStageId('one-to-many-dyad-census-1'),
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (

@@ -23,6 +23,8 @@ import {
 import BuilderSection from '../sections/BuilderSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { buttonPaint, TRANSPARENT } from '../testing/buttonPaint.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
+import { testId } from '../testing/testId.ts';
 import AssetPickerField from './AssetPickerField.tsx';
 
 /** Which stage the picker under the researcher's cursor is a field of. */
@@ -82,7 +84,11 @@ function imageItemPicker(index: number, label: string): ReactNode {
 }
 
 function assetItem(index: number, holding: string): SectionDoc {
-  return { id: `item-${index + 1}`, type: 'asset', content: holding };
+  return {
+    id: testId(`item-${index + 1}`),
+    type: 'asset',
+    content: holding,
+  };
 }
 
 /**
@@ -94,7 +100,7 @@ const STAGE_SCENARIOS: Readonly<
 > = {
   'welcome-screen': (holding) => ({
     stage: {
-      stageId: 'welcome-screen',
+      stageId: testId('welcome-screen'),
       type: 'Information',
       fields: {
         label: 'Welcome',
@@ -111,7 +117,7 @@ const STAGE_SCENARIOS: Readonly<
   }),
   'two-image-items': (holding) => ({
     stage: {
-      stageId: 'welcome-screen',
+      stageId: testId('welcome-screen'),
       type: 'Information',
       fields: {
         label: 'Welcome',
@@ -130,12 +136,14 @@ const STAGE_SCENARIOS: Readonly<
   }),
   'canvas-background': (holding) => ({
     stage: {
-      stageId: 'sociogram-1',
+      stageId: fixtureStageId('sociogram-1'),
       type: 'Sociogram',
       fields: {
         label: 'Sociogram',
         subject: { entity: 'node', type: 'person' },
-        prompts: [{ id: 'prompt-1', text: 'Place the people you know' }],
+        prompts: [
+          { id: testId('prompt-1'), text: 'Place the people you know' },
+        ],
         background: { image: holding ?? '' },
       },
     },
@@ -152,12 +160,14 @@ const STAGE_SCENARIOS: Readonly<
   }),
   'roster': (holding) => ({
     stage: {
-      stageId: 'roster',
+      stageId: testId('roster'),
       type: 'NameGeneratorRoster',
       fields: {
         label: 'People you know',
         subject: { entity: 'node', type: 'person' },
-        prompts: [{ id: 'prompt-1', text: 'Choose the people you know' }],
+        prompts: [
+          { id: testId('prompt-1'), text: 'Choose the people you know' },
+        ],
         ...(holding === undefined ? {} : { dataSource: holding }),
       },
     },

@@ -22,6 +22,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
@@ -343,14 +344,14 @@ describe('AlterForm comparing an answer with a protected one', () => {
   };
   const stages: Stages = [
     {
-      id: 'alter-form',
+      id: testId('alter-form'),
       type: 'AlterForm',
       label: { en: 'Alter form' },
       subject: { entity: 'node', type: 'person' },
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: asEntityAttributeReference('nickname'),
             prompt: { en: 'Nickname' },
           },

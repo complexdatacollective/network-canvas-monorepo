@@ -11,6 +11,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -62,9 +63,13 @@ beforeAll(() => {
 
 const form: TitlelessForm = {
   fields: [
-    { id: 'field-1', variable: 'name' as never, prompt: { en: 'Person name' } },
     {
-      id: 'field-2',
+      id: testId('field-1'),
+      variable: 'name' as never,
+      prompt: { en: 'Person name' },
+    },
+    {
+      id: testId('field-2'),
       variable: 'met_on' as never,
       prompt: { en: 'When you met' },
     },

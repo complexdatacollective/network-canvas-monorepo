@@ -14,6 +14,7 @@ import type {
   StageSectionsStore,
 } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 import { REQUIRED } from '../requiredField.ts';
 import { focusStageSection } from '../stageSections.ts';
 
@@ -111,7 +112,11 @@ const twoSections = (
 function renderEditor(sections: ReactNode, fields: SectionDoc = initialFields) {
   const probe = captureSections();
   const harness = renderStageEditor({
-    stage: { type: 'Information', fields },
+    stage: {
+      id: testId('stage-sections-stage'),
+      type: 'Information',
+      fields,
+    },
     sections,
     actions: probe.actions,
     submitLabel: SUBMIT_LABEL,

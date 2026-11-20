@@ -11,7 +11,9 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import type { RowPreviewProps } from '../../../form/rowDialog.tsx';
 import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import BuilderSection from '../../BuilderSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
@@ -108,7 +110,7 @@ const writeAPrompt = async (
  * (already holding the default) could never be.
  */
 const censusHoldingNonDefault = {
-  id: 'one-to-many-dyad-census-1',
+  id: fixtureStageId('one-to-many-dyad-census-1'),
   type: 'OneToManyDyadCensus' as const,
   fields: {
     label: en('One to Many Dyad Census'),
@@ -116,7 +118,7 @@ const censusHoldingNonDefault = {
     behaviours: { removeAfterConsideration: false },
     prompts: [
       {
-        id: 'one-to-many-dyad-census-prompt-1',
+        id: testId('one-to-many-dyad-census-prompt-1'),
         text: en('Tap on all the people who this person knows'),
         createEdge: 'knows',
       },
@@ -164,7 +166,7 @@ describe('resetting a stage whose interface has nested defaults', () => {
 const A_PERSON_FILTER: SectionDoc = {
   rules: [
     {
-      id: 'rule-1',
+      id: testId('rule-1'),
       type: 'node',
       options: { type: 'person', operator: 'EXISTS' },
     },
@@ -172,7 +174,7 @@ const A_PERSON_FILTER: SectionDoc = {
 };
 
 const censusWithAFilter = {
-  id: 'dyad-census-1',
+  id: fixtureStageId('dyad-census-1'),
   type: 'DyadCensus' as const,
   fields: {
     label: en('Dyad Census'),
@@ -180,7 +182,7 @@ const censusWithAFilter = {
     filter: A_PERSON_FILTER,
     prompts: [
       {
-        id: 'dyad-census-prompt-1',
+        id: testId('dyad-census-prompt-1'),
         text: en('Do these two people know each other?'),
         createEdge: 'knows',
       },

@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import {
@@ -23,6 +24,10 @@ import protocolValidation from '~/ducks/modules/protocolValidation';
 
 import ProtocolLockBanner from '../ProtocolLockBanner';
 
+const STAGE_ID = ProtocolObjectIdSchema.parse(
+  'c85f20f9-e5f0-4ce2-8040-01769027c2cd',
+);
+
 const { mockLocation, mockSetLocation } = vi.hoisted(() => ({
   mockLocation: vi.fn<() => string>(),
   mockSetLocation: vi.fn(),
@@ -41,7 +46,7 @@ const protocol: CurrentProtocol = {
 };
 
 const stage: Stage = {
-  id: 'stage-1',
+  id: STAGE_ID,
   type: 'Information',
   label: { en: 'A' },
   title: { en: 'A' },
@@ -127,7 +132,7 @@ describe('ProtocolLockBanner', () => {
   });
 
   it('says nothing can be saved in a held stage editor, and offers to discard', () => {
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
     // An editor open on a stage, holding an edit the researcher made: what
     // "Discard Changes" is offered about.
     publishStageDraft({ stage: editedStage, unsaved: true, editing: true });
@@ -156,7 +161,7 @@ describe('ProtocolLockBanner', () => {
   // The other tab has gone, so telling the researcher to close it would send
   // them looking for a tab that no longer exists.
   it('stops blaming the other tab once it has closed and a choice is outstanding', () => {
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
     publishStageDraft({ stage: editedStage, unsaved: true, editing: true });
     store.dispatch(setProtocolLockState('reclaim-blocked'));
 

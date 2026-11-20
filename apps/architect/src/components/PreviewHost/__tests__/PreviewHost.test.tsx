@@ -34,6 +34,8 @@ import {
   asEntityAttributeReference,
   type CurrentProtocol,
   getLocaleMetadata,
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
@@ -93,6 +95,10 @@ vi.mock('~/utils/assetDB', () => ({
 }));
 
 import { PreviewHost } from '../PreviewHost';
+
+const FOLLOWING_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '84239db1-78ef-4a5e-84ef-73bed4381dc8',
+);
 
 function QueuePreviewConfirmation({
   description,
@@ -216,7 +222,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
     localization: ENGLISH_ONLY,
     stages: [
       {
-        id: 'consent',
+        id: createProtocolObjectId(),
         type: 'EgoForm',
         label: { en: 'Consent' },
         introductionPanel: {
@@ -226,12 +232,12 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         form: {
           fields: [
             {
-              id: 'field-1',
+              id: createProtocolObjectId(),
               variable: asEntityAttributeReference('screening'),
               prompt: { en: 'Are you eligible?' },
             },
             {
-              id: 'field-2',
+              id: createProtocolObjectId(),
               variable: asEntityAttributeReference('consent'),
               prompt: { en: 'Do you consent?' },
             },
@@ -239,7 +245,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         },
       },
       {
-        id: 'background',
+        id: createProtocolObjectId(),
         type: 'Information',
         label: { en: 'Background' },
         title: { en: 'Background' },
@@ -249,7 +255,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
           filter: {
             rules: [
               {
-                id: 'consent-refused',
+                id: createProtocolObjectId(),
                 type: 'ego',
                 options: {
                   attribute: asEntityAttributeReference('consent'),
@@ -263,7 +269,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         },
       },
       {
-        id: 'people',
+        id: createProtocolObjectId(),
         type: 'NameGenerator',
         minNodesNotice: {
           en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
@@ -273,13 +279,15 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         },
         label: { en: 'People' },
         subject: { entity: 'node', type: 'person' },
-        prompts: [{ id: 'people-prompt', text: { en: 'Name people' } }],
+        prompts: [
+          { id: createProtocolObjectId(), text: { en: 'Name people' } },
+        ],
         behaviours: { minNodes: 4, maxNodes: 4 },
         form: {
           title: { en: 'About this person' },
           fields: [
             {
-              id: 'field-1',
+              id: createProtocolObjectId(),
               variable: asEntityAttributeReference('name'),
               prompt: { en: 'What is their name?' },
             },
@@ -287,14 +295,14 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         },
       },
       {
-        id: 'support',
+        id: createProtocolObjectId(),
         type: 'Sociogram',
         label: { en: 'Exchanges of support' },
         subject: { entity: 'node', type: 'person' },
         background: { concentricCircles: 3 },
         prompts: [
           {
-            id: 'support-prompt',
+            id: createProtocolObjectId(),
             text: { en: 'Place people' },
             layout: {
               layoutVariable: asEntityAttributeReference('layout'),
@@ -303,7 +311,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         ],
       },
       {
-        id: 'following',
+        id: FOLLOWING_STAGE_ID,
         type: 'Information',
         label: { en: 'Following stage' },
         title: { en: 'Following stage' },
@@ -610,7 +618,7 @@ describe('PreviewHost', () => {
           (stage) => !Object.hasOwn(stage, 'skipLogic'),
         ),
       ).toBe(true);
-      expect(call.payload.protocol.stages[4]?.id).toBe('following');
+      expect(call.payload.protocol.stages[4]?.id).toBe(FOLLOWING_STAGE_ID);
       expect(
         getLastAvailableAuthoredStageIndex(
           call.payload.protocol.stages,

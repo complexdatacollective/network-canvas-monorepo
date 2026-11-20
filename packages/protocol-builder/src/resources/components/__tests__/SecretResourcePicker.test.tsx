@@ -609,7 +609,10 @@ describe('the control a key is typed into', () => {
     expect(
       staged.mock.calls.map(([descriptor]) => plainDescriptor(descriptor)),
     ).toEqual([
-      expect.objectContaining({ id: 'staged-resource-1', name: 'Mapbox key' }),
+      expect.objectContaining({
+        id: 'staged-resource-1',
+        name: 'Mapbox key',
+      }),
       expect.objectContaining({
         id: 'staged-resource-2',
         name: 'Fieldwork key',

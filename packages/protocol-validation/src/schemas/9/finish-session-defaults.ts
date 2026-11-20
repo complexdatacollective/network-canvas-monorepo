@@ -3,6 +3,7 @@ import type {
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
 import type { LocalizedString } from './localized-string.ts';
+import type { ProtocolObjectId } from './protocol-object-id.ts';
 import type {
   FinishMode,
   FinishOutcome,
@@ -160,7 +161,7 @@ export const createDefaultFinishSessionStage = ({
   mode = 'confirmation',
   outcome = 'completed',
 }: {
-  id: string;
+  id: ProtocolObjectId;
   localization: LocalizationDeclaration;
   mode?: FinishMode;
   outcome?: FinishOutcome;

@@ -5,13 +5,18 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { tieStrengthCensusStageEditor } from '../TieStrengthCensusStageEditor.ts';
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const TIE_STRENGTH_INDEX = fixtureStageIds().indexOf('tie-strength-census-1');
+const TIE_STRENGTH_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('tie-strength-census-1'),
+);
 
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });

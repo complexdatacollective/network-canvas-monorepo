@@ -34,6 +34,8 @@ import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   collectLocalizedStringsFromSchema,
+  collectProtocolObjectIdsFromSchema,
+  enclosingProtocolObjects,
   findDynamicValueProblems,
   type InterfaceTextUpdate,
   type LocalizationDeclaration,
@@ -43,6 +45,7 @@ import {
   applyCommands,
   type Command,
   contentHash,
+  type SectionDoc,
 } from '@codaco/studio-sync/apply';
 
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
@@ -79,6 +82,10 @@ import {
   SectionOutlineStore,
   type SectionValidationIssue,
 } from './outlineStore.ts';
+import {
+  findProtocolObjectRow,
+  focusProtocolObjectRow,
+} from './protocolObjectRow.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
 import { rewriteFormStore } from './rewriteFormStore.ts';
 import {
@@ -380,6 +387,22 @@ function StageEditorFormBody({
     });
   }, [storeApi, working]);
 
+  // A problem the last save found inside a prompt, a field or another object
+  // of the stage stays with that object when the list holding it is reordered
+  // before the next save.
+  useEffect(() => {
+    // The stage's own id, at `['id']`, names nothing inside the stage.
+    outline.setObjectLocator((id) =>
+      collectProtocolObjectIdsFromSchema(
+        stageSchema,
+        stageDocument(identity, liveDraft()),
+      )
+        .find((object) => object.id === id && object.path.length > 1)
+        ?.path.slice(0, -1),
+    );
+    return () => outline.setObjectLocator(undefined);
+  }, [identity, liveDraft, outline]);
+
   /**
    * The shared words a save would write with the stage as the form holds it
    * now (see `pendingSharedWording`): the researcher's changes to them, and
@@ -411,6 +434,12 @@ function StageEditorFormBody({
     | Readonly<{ ask: string; wording: readonly InterfaceTextUpdate[] }>
     | undefined
   >(undefined);
+
+  /**
+   * The object the last refused save was about, for the refusal's focus to
+   * reach once its message is on screen: see `onSubmitInvalid`.
+   */
+  const refusedObjectId = useRef<string | undefined>(undefined);
 
   /**
    * How this form writes structurally, as a list editor commits one row
@@ -611,6 +640,8 @@ function StageEditorFormBody({
         discardDraft(outcome.message);
         return { success: false, formErrors: [outcome.message] };
       }
+      refusedObjectId.current =
+        outcome.status === 'refused' ? outcome.objectId : undefined;
       return { success: false, formErrors: [outcome.message] };
     },
     [
@@ -654,6 +685,15 @@ function StageEditorFormBody({
       // renders the same field names; the store's identity, because the
       // stage's NAME is drawn outside this element and is still ours.
       focusFirstError(errors, formRef.current, fieldScope);
+      // A refusal about one row of a list goes to that row. Where the row is
+      // not on screen, focus stays where the refusal left it.
+      const objectId = refusedObjectId.current;
+      refusedObjectId.current = undefined;
+      const row =
+        objectId === undefined
+          ? undefined
+          : findProtocolObjectRow(formRef.current, objectId);
+      if (row !== undefined) focusProtocolObjectRow(row);
     },
   });
 
@@ -914,7 +954,9 @@ function stageProblems(
     });
   }
 
-  if (result.success) return { sections, whole };
+  if (result.success) {
+    return { sections: withEnclosingObjects(document, sections), whole };
+  }
   for (const issue of result.error.issues) {
     const path = issue.path.map((part) =>
       typeof part === 'symbol' ? String(part) : part,
@@ -935,7 +977,29 @@ function stageProblems(
       absent: isUnanswered(getValue(fields, path)),
     });
   }
-  return { sections, whole };
+  return { sections: withEnclosingObjects(document, sections), whole };
+}
+
+/**
+ * Each issue with the innermost protocol object inside the stage that holds
+ * it. The stage itself is left out: every problem is inside it, so it says
+ * nothing about where one belongs.
+ */
+function withEnclosingObjects(
+  document: SectionDoc,
+  issues: readonly SectionValidationIssue[],
+): SectionValidationIssue[] {
+  const objects = enclosingProtocolObjects(
+    stageSchema,
+    document,
+    issues.map((issue) => issue.path),
+  );
+  return issues.map((issue, index) => {
+    const object = objects[index];
+    return object === undefined || object.path.length === 0
+      ? issue
+      : { ...issue, object };
+  });
 }
 
 /**

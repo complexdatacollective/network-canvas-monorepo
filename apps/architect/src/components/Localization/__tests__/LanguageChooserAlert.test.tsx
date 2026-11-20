@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -19,7 +20,7 @@ import LanguageChooserAlert from '../LanguageChooserAlert';
 const PROTOCOL_ID = 'protocol-1';
 
 const information = {
-  id: 'welcome',
+  id: createProtocolObjectId(),
   type: 'Information' as const,
   label: { en: 'Welcome', fr: 'Bienvenue' },
   title: { en: 'Hello', fr: 'Bonjour' },
@@ -27,7 +28,7 @@ const information = {
 };
 
 const chooser = {
-  id: 'language',
+  id: createProtocolObjectId(),
   type: 'LanguageChooser' as const,
   label: { en: 'Language', fr: 'Langue' },
   title: { en: 'Choose a language', fr: 'Choisissez une langue' },

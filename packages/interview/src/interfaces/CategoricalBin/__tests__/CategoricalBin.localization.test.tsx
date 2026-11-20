@@ -14,6 +14,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import protocol from '../../../store/modules/protocol';
@@ -56,13 +57,13 @@ const LOCALIZATION: LocalizationDeclaration = {
 };
 
 const stage: StageProps<'CategoricalBin'>['stage'] = {
-  id: 'stage',
+  id: testId('stage'),
   type: 'CategoricalBin',
   label: { en: 'Categorise people', ar: 'تصنيف الأشخاص' },
   subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
     {
-      id: 'prompt',
+      id: testId('prompt'),
       text: { en: 'Which group?', ar: 'أي مجموعة؟' },
       variable: asEntityAttributeReference(CATEGORY_VARIABLE),
     },

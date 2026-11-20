@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -44,24 +45,30 @@ const trilingual: CurrentProtocol = {
   },
   stages: [
     {
-      id: 'welcome',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue', es: 'Bienvenida' },
       title: { en: 'Hello', es: 'Hola' },
       items: [
         {
-          id: 'intro',
+          id: createProtocolObjectId(),
           type: 'text',
           content: { en: 'Read **this** first', es: 'Lea esto primero' },
         },
       ],
     },
     {
-      id: 'thanks',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Thanks', fr: 'Merci', es: 'Gracias' },
       title: { en: 'Thank you' },
-      items: [{ id: 'bye', type: 'text', content: { en: 'See you **soon**' } }],
+      items: [
+        {
+          id: createProtocolObjectId(),
+          type: 'text',
+          content: { en: 'See you **soon**' },
+        },
+      ],
     },
   ],
 };
@@ -771,7 +778,7 @@ describe('TranslationTable', () => {
         throw new Error('No Information stage');
       first.items = [
         {
-          id: 'intro',
+          id: createProtocolObjectId(),
           type: 'text',
           content: { en: '## Welcome', fr: '## Bienvenue' },
         },
@@ -800,13 +807,13 @@ describe('TranslationTable', () => {
         },
         stages: [
           {
-            id: 'census',
+            id: createProtocolObjectId(),
             type: 'DyadCensus',
             label: { en: 'Census' },
             subject: { entity: 'node', type: 'person' },
             prompts: [
               {
-                id: 'knows',
+                id: createProtocolObjectId(),
                 text: { en: 'Who knows\neach other?' },
                 createEdge: 'knows',
               },

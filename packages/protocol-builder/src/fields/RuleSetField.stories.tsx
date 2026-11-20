@@ -10,13 +10,18 @@ import { NO_RULES_MESSAGE } from '../rules/ruleSet.ts';
 import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
+import { testId } from '../testing/testId.ts';
 import { FilterRuleSetField, QueryRuleSetField } from './RuleSetField.tsx';
 
 /** Where the schema keeps a stage's skip-logic rules, and its own filter. */
 const SKIP_LOGIC_RULES = 'skipLogic.filter';
 const FILTER_RULES = 'filter';
 
-const SKIP_LOGIC_STAGE = sectionId({ kind: 'stage', stageId: 'information-1' });
+const SKIP_LOGIC_STAGE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 
 /**
  * The skip-logic rule builder, mounted the way `SkipLogicSection` mounts it.
@@ -76,7 +81,7 @@ const holdingSkipLogic =
 
 /** Everyone over 65 the participant knows: two rules, so they must combine. */
 const OLDER_THAN_65: RuleDraft = {
-  id: 'rule-older',
+  id: testId('rule-older'),
   type: 'node',
   options: {
     type: 'person',
@@ -87,7 +92,7 @@ const OLDER_THAN_65: RuleDraft = {
 };
 
 const KNOWS_SOMEBODY: RuleDraft = {
-  id: 'rule-knows',
+  id: testId('rule-knows'),
   type: 'edge',
   options: { type: 'knows', operator: 'EXISTS' },
 };
@@ -110,14 +115,14 @@ const encryptingNames = (host: InMemoryHost) => {
 
 /** Anyone the participant has not named. */
 const NAME_UNANSWERED: RuleDraft = {
-  id: 'rule-unnamed',
+  id: testId('rule-unnamed'),
   type: 'node',
   options: { type: 'person', attribute: 'name', operator: 'NOT_EXISTS' },
 };
 
 /** Anyone named Ada, which an encrypted name cannot be checked for. */
 const NAMED_ADA: RuleDraft = {
-  id: 'rule-ada',
+  id: testId('rule-ada'),
   type: 'node',
   options: {
     type: 'person',
@@ -140,7 +145,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'information-1',
+    stageId: fixtureStageId('information-1'),
     sectionTitle: 'Skip logic',
     children: <SkipLogicRules />,
   },
@@ -314,7 +319,7 @@ export const TheSaveIsRefusedWithNoRules: Story = {
  */
 export const AFilterCannotAskAboutTheEgo: Story = {
   args: {
-    stageId: 'name-generator-1',
+    stageId: fixtureStageId('name-generator-1'),
     sectionTitle: 'Filter network',
     children: <StageFilterRules />,
   },

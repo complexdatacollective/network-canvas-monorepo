@@ -2,16 +2,10 @@ import { z } from 'zod';
 
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 
 export const FormFieldSchema = z.strictObject({
-  // A stable identity for the field, unlike its position or its variable, both
-  // of which an edit can change. Architect assigns a uuid when it creates a
-  // field, and the schema 8 to 9 migration assigns one to every field it
-  // upgrades. Anything that tracks a field across copies of a protocol (the
-  // editor's reordering, the protocol review) relies on every field having
-  // one, so it is required. It is unique within its form
-  // (`uniqueFormFieldIds`).
-  id: z.string().min(1),
+  id: protocolObjectId('formField'),
   variable: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'validatedAttribute',
@@ -69,10 +63,9 @@ export const duplicateFormFieldIndices = (
 };
 
 /**
- * One form may not write the same variable twice — the rule
- * `ComposerFormSchema` already applies to NetworkComposer forms, hoisted here
- * so every surface holding an array of `FormFieldSchema` shares it instead of
- * each call site remembering to add its own copy.
+ * One form may not write the same variable twice. Every surface holding an
+ * array of `FormFieldSchema` applies this one rule, the Network Composer's
+ * forms included.
  *
  * Every field renders under its variable's name (the interview's
  * `useProtocolForm` passes `name: field.variable` to each Field, and the form
@@ -85,7 +78,7 @@ export const duplicateFormFieldIndices = (
  * The scope is ONE form: separate forms resolve their references against
  * different subjects and are checked independently.
  */
-const uniqueFormFieldVariables = (
+export const uniqueFormFieldVariables = (
   fields: readonly { variable: string }[],
   ctx: z.RefinementCtx,
 ): void => {
@@ -99,49 +92,12 @@ const uniqueFormFieldVariables = (
 };
 
 /**
- * One form may not give two fields the same id: an id exists to tell the
- * fields of a form apart across copies, so a repeat defeats it. The second
- * occurrence is the one rejected, as for a repeated variable; the scope is
- * ONE form.
- */
-const uniqueFormFieldIds = (
-  fields: readonly { id: string }[],
-  ctx: z.RefinementCtx,
-): void => {
-  const seen = new Set<string>();
-  fields.forEach((field, index) => {
-    if (seen.has(field.id)) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: `Form fields contain duplicate id "${field.id}"`,
-        path: [index, 'id'],
-      });
-      return;
-    }
-    seen.add(field.id);
-  });
-};
-
-/**
- * Both uniqueness rules of one form: no variable twice (`uniqueFormFieldVariables`)
- * and no id twice (`uniqueFormFieldIds`). Every form surface applies this one
- * function, the Network Composer's included, so a rule added here reaches them all.
- */
-export const uniqueFormFields = (
-  fields: readonly { id: string; variable: string }[],
-  ctx: z.RefinementCtx,
-): void => {
-  uniqueFormFieldVariables(fields, ctx);
-  uniqueFormFieldIds(fields, ctx);
-};
-
-/**
- * A bare array of form fields carrying the uniqueness rules — for the surfaces
+ * A bare array of form fields carrying the variable rule, for the surfaces
  * that hold fields without the surrounding `FormSchema` object.
  */
 export const FormFieldArraySchema = z
   .array(FormFieldSchema)
-  .superRefine(uniqueFormFields);
+  .superRefine(uniqueFormFieldVariables);
 
 export const FormSchema = z.strictObject({
   title: localizedString(
@@ -151,7 +107,7 @@ export const FormSchema = z.strictObject({
       dynamicValues: 'stageText',
     },
   ),
-  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFields),
+  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
 });
 
 export type Form = z.infer<typeof FormSchema>;
@@ -159,7 +115,7 @@ export type Form = z.infer<typeof FormSchema>;
 // EgoForm/AlterForm/AlterEdgeForm never render form.title, so those stages use
 // this title-less variant to keep authored protocols honest.
 export const TitlelessFormSchema = z.strictObject({
-  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFields),
+  fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
 });
 
 export type TitlelessForm = z.infer<typeof TitlelessFormSchema>;

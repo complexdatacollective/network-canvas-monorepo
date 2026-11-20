@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../../testing/testId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import OneToManyDyadCensusPromptsSection from '../OneToManyDyadCensusPromptsSection.tsx';
 
@@ -125,7 +126,7 @@ describe('the questions a one-to-many dyad census asks', () => {
     const request = await harness.submit();
     const saved = prompts(request?.stageDocument ?? {})[0];
     expect(saved?.bucketSortOrder).toEqual([
-      { property: 'name', direction: 'asc' },
+      { id: expect.any(String), property: 'name', direction: 'asc' },
     ]);
     // The order the researcher never opened carries no key at all, rather than
     // an empty list saying what its absence already says.
@@ -140,6 +141,7 @@ describe('the questions a one-to-many dyad census asks', () => {
   it('drops an order the researcher switched back off', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testId('OneToManyDyadCensus-stage'),
         type: 'OneToManyDyadCensus',
         fields: {
           label: { 'en-US': 'One to Many Dyad Census' },
@@ -147,10 +149,16 @@ describe('the questions a one-to-many dyad census asks', () => {
           behaviours: { removeAfterConsideration: true },
           prompts: [
             {
-              id: 'prompt-a',
+              id: testId('prompt-a'),
               text: { 'en-US': 'Who does this person know?' },
               createEdge: 'knows',
-              bucketSortOrder: [{ property: 'name', direction: 'asc' }],
+              bucketSortOrder: [
+                {
+                  id: testId('bucket-sort-name'),
+                  property: 'name',
+                  direction: 'asc',
+                },
+              ],
             },
           ],
         },

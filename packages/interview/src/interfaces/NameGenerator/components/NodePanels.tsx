@@ -157,7 +157,7 @@ function NodePanels(props: NodePanelsProps) {
   const renderNodePanel = (panel: Panel, index: number) => {
     return (
       <NodePanel
-        key={index}
+        key={panel.id}
         panelConfig={panel}
         disableDragging={disableAddNew}
         accepts={['EXISTING_NODE']}

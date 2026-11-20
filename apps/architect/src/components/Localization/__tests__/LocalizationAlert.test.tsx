@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -20,11 +21,11 @@ const PROTOCOL_ID = 'protocol-1';
 
 // Each stage is missing its label and title in French, so n stages are
 // 2n missing translations.
-const stage = (id: string) => ({
-  id,
+const stage = (index: number) => ({
+  id: createProtocolObjectId(),
   type: 'Information' as const,
-  label: { en: `Label ${id}` },
-  title: { en: `Title ${id}` },
+  label: { en: `Label ${index}` },
+  title: { en: `Title ${index}` },
   items: [],
 });
 
@@ -34,7 +35,7 @@ const protocolWithStages = (count: number): CurrentProtocol => ({
   localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
   assetManifest: {},
   codebook: { node: {}, edge: {}, ego: {} },
-  stages: Array.from({ length: count }, (_, index) => stage(`stage-${index}`)),
+  stages: Array.from({ length: count }, (_, index) => stage(index)),
 });
 
 // Each stage is missing only its title in French, so n stages are n missing
@@ -42,7 +43,7 @@ const protocolWithStages = (count: number): CurrentProtocol => ({
 const protocolWithGaps = (count: number): CurrentProtocol => ({
   ...protocolWithStages(0),
   stages: Array.from({ length: count }, (_, index) => ({
-    id: `stage-${index}`,
+    id: createProtocolObjectId(),
     type: 'Information' as const,
     label: { en: `Label ${index}`, fr: `Etiquette ${index}` },
     title: { en: `Title ${index}` },
@@ -88,7 +89,7 @@ describe('LocalizationAlert', () => {
         },
         stages: [
           {
-            id: 'welcome',
+            id: createProtocolObjectId(),
             type: 'Information',
             label: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
             title: { en: 'Hello', de: 'Hallo' },

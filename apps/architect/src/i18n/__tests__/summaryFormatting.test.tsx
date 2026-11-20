@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
+import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import Stage from '~/lib/ProtocolSummary/components/Stage/Stage';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
@@ -10,6 +11,10 @@ import { architectCatalogSource } from '~/locales/catalogs';
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
 
+const AUTHORED_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '7706b11d-eaf2-429f-8523-065d678f68e1',
+);
+
 const protocol = {
   name: 'Authored protocol',
   schemaVersion: 9,
@@ -18,7 +23,7 @@ const protocol = {
   assetManifest: {},
   stages: [
     {
-      id: 'authored-stage',
+      id: AUTHORED_STAGE_ID,
       label: { en: 'Authored stage' },
       type: 'Information',
       title: { en: 'Authored title' },
@@ -55,7 +60,7 @@ it('reorders both printed attribute surfaces after a locale change without chang
     id: `attribute-${position}`,
     name,
     type: 'text',
-    stages: ['authored-stage'],
+    stages: [AUTHORED_STAGE_ID],
   }));
   const variables = Object.fromEntries(
     index.map(({ id, name }) => [id, { name, type: 'text' as const }]),
@@ -71,7 +76,7 @@ it('reorders both printed attribute surfaces after a locale change without chang
         }}
       >
         <Stage
-          id="authored-stage"
+          id={AUTHORED_STAGE_ID}
           label={{ en: 'Authored stage' }}
           type="Information"
           stageNumber={12345}
@@ -122,7 +127,7 @@ it('formats a whole linked list using the literal names, including Spanish e bef
     id: `attribute-${position}`,
     name,
     type: 'text',
-    stages: ['authored-stage'],
+    stages: [AUTHORED_STAGE_ID],
   }));
   render(
     <ArchitectI18nProvider>
@@ -134,7 +139,7 @@ it('formats a whole linked list using the literal names, including Spanish e bef
         }}
       >
         <Stage
-          id="authored-stage"
+          id={AUTHORED_STAGE_ID}
           label={{ en: 'Authored stage' }}
           type="Information"
           stageNumber={1}

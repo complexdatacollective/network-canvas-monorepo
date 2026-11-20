@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { networkComposerStage } from '@codaco/protocol-validation';
+import {
+  networkComposerStage,
+  createProtocolObjectId,
+} from '@codaco/protocol-validation';
 
 const stage = {
-  id: 's1',
+  id: createProtocolObjectId(),
   label: { en: 'Compose' },
   type: 'NetworkComposer',
   subject: { entity: 'node', type: 'person' },
@@ -13,7 +16,7 @@ const stage = {
   nodeForm: {
     fields: [
       {
-        id: 'field-1',
+        id: createProtocolObjectId(),
         variable: 'age',
         component: 'Number',
         label: { en: 'Age?' },
@@ -22,13 +25,13 @@ const stage = {
   },
   edges: [
     {
-      id: 'edge-1',
+      id: createProtocolObjectId(),
       subject: { entity: 'edge', type: 'knows' },
       label: { en: 'Connection' },
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: createProtocolObjectId(),
             variable: 'closeness',
             component: 'VisualAnalogScale',
             label: { en: 'How close?' },
@@ -56,12 +59,12 @@ describe('NetworkComposer editor output validates', () => {
         ...stage,
         edges: [
           {
-            id: 'edge-1',
+            id: createProtocolObjectId(),
             subject: { entity: 'edge', type: 'knows' },
             label: { en: 'Connection' },
           },
           {
-            id: 'edge-2',
+            id: createProtocolObjectId(),
             subject: { entity: 'edge', type: 'knows' },
             label: { en: 'Connection' },
           },

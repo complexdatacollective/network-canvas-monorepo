@@ -5,7 +5,9 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import { egoFormStageEditor } from '../../editors/ego-form/EgoFormStageEditor.ts';
 import StageEditor from '../../StageEditor.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { testId } from '../../testing/testId.ts';
 
 /**
  * The two panes, as a browser lays them out.
@@ -26,7 +28,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Form field preview',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'ego-form-1',
+    stageId: fixtureStageId('ego-form-1'),
     renderEditor: ({ actions, ...editor }) => (
       <StageEditor
         {...editor}
@@ -168,7 +170,7 @@ export const SwitchingLanguage: Story = {
           title: { 'en-US': 'About you' },
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'ego_name',
               prompt: {
                 'en-US': 'What is your name?',

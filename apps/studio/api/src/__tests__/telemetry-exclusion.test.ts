@@ -30,7 +30,10 @@ import { RuntimeMetricsLive } from '../platform/runtime-metrics.ts';
 import { ObservabilityLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { Doorbell } from '../protocol-builder/doorbell.ts';
-import { baseProtocol } from '../protocol/__tests__/helpers.ts';
+import {
+  BASE_PROTOCOL_IDS,
+  baseProtocol,
+} from '../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../protocol/store.ts';
 import {
   TELEMETRY_EXCLUSIONS,
@@ -183,7 +186,9 @@ const exclusionProtocol = (): CurrentProtocol => {
       {
         ...nameGenerator,
         label: { en: SEEDED.stageLabel },
-        prompts: [{ id: 'prompt1', text: { en: SEEDED.promptText } }],
+        prompts: [
+          { id: BASE_PROTOCOL_IDS.namePrompt, text: { en: SEEDED.promptText } },
+        ],
       },
       ...rest,
     ],
@@ -442,14 +447,14 @@ const scenario = (
         holderEpoch,
         revision: (BigInt(revision) + 1n).toString(),
         stageIndex: 0,
-        stageId: 'nameGenerator1',
+        stageId: BASE_PROTOCOL_IDS.nameGenerator,
         network: {
           nodes: [
             {
               _uid: 'node-1',
               type: 'person',
-              stageId: 'nameGenerator1',
-              promptIDs: ['prompt1'],
+              stageId: BASE_PROTOCOL_IDS.nameGenerator,
+              promptIDs: [BASE_PROTOCOL_IDS.namePrompt],
               attributes: { personName: SEEDED.participantAnswer },
             },
           ],

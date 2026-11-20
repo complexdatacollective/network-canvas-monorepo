@@ -13,6 +13,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import {
   collectRosterExternalData,
   filterExternalPanelNodes,
@@ -56,14 +57,14 @@ const codebook: Codebook = {
 };
 
 const nameField: FormField = {
-  id: 'field-name',
+  id: testId('field-name'),
   variable: asEntityAttributeReference('var-name'),
   prompt: { en: 'Name' },
 };
 
 function rosterStage(id: string, dataSource: string): Stage {
   return {
-    id,
+    id: testId(id),
     label: { en: 'Roster' },
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
@@ -71,7 +72,7 @@ function rosterStage(id: string, dataSource: string): Stage {
     panelTitle: { en: 'Available to add' },
     subject: { entity: 'node', type: 'person' },
     dataSource,
-    prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
+    prompts: [{ id: testId(`${id}-p1`), text: { en: 'Pick people' } }],
   };
 }
 
@@ -81,13 +82,13 @@ function nameGeneratorStage(
   subjectType = 'person',
 ): Stage {
   return {
-    id,
+    id: testId(id),
     label: { en: 'Name Generator' },
     type: 'NameGenerator',
     form: { title: { en: 'Add people' }, fields: [nameField] },
     subject: { entity: 'node', type: subjectType },
     panels,
-    prompts: [{ id: 'p1', text: { en: 'Add people' } }],
+    prompts: [{ id: testId(`${id}-p1`), text: { en: 'Add people' } }],
   };
 }
 
@@ -95,7 +96,7 @@ const ageFilter: Filter = {
   join: 'AND',
   rules: [
     {
-      id: 'r1',
+      id: testId('r1'),
       type: 'node',
       options: {
         type: 'person',
@@ -112,7 +113,7 @@ const impossibleAgeFilter: Filter = {
   join: 'AND',
   rules: [
     {
-      id: 'r1',
+      id: testId('r1'),
       type: 'node',
       options: {
         type: 'person',
@@ -395,8 +396,8 @@ describe('collectRosterExternalData', () => {
       resolveAsset,
     });
 
-    expect(result['stage-ngr']).toHaveLength(3);
-    const [first] = result['stage-ngr']!;
+    expect(result[testId('stage-ngr')]).toHaveLength(3);
+    const [first] = result[testId('stage-ngr')]!;
     expect(first!.type).toBe('person');
     expect(first![entityAttributesProperty]['var-name']).toBe('Ada');
     // cleanup runs after a successful parse too, not only on failure.
@@ -411,7 +412,7 @@ describe('collectRosterExternalData', () => {
 
     const panels: Panel[] = [
       {
-        id: 'b',
+        id: testId('b'),
         title: { en: 'Older people' },
         dataSource: 'panel',
         filter: ageFilter,
@@ -424,8 +425,8 @@ describe('collectRosterExternalData', () => {
       resolveAsset,
     });
 
-    expect(result['stage-ng']).toHaveLength(2);
-    const names = result['stage-ng']!.map(
+    expect(result[testId('stage-ng')]).toHaveLength(2);
+    const names = result[testId('stage-ng')]!.map(
       (n) => n[entityAttributesProperty]['var-name'],
     );
     expect(names).not.toContain('Ada');
@@ -444,9 +445,9 @@ describe('collectRosterExternalData', () => {
     });
 
     const panels: Panel[] = [
-      { id: 'a', title: { en: 'Previously' }, dataSource: 'existing' },
-      { id: 'b', title: { en: 'People' }, dataSource: 'panel-people' },
-      { id: 'c', title: { en: 'Places' }, dataSource: 'panel-places' },
+      { id: testId('a'), title: { en: 'Previously' }, dataSource: 'existing' },
+      { id: testId('b'), title: { en: 'People' }, dataSource: 'panel-people' },
+      { id: testId('c'), title: { en: 'Places' }, dataSource: 'panel-places' },
     ];
 
     const result = await collectRosterExternalData({
@@ -456,7 +457,7 @@ describe('collectRosterExternalData', () => {
     });
 
     // 3 people + 2 places, with the "existing" panel contributing nothing.
-    expect(result['stage-ng']).toHaveLength(5);
+    expect(result[testId('stage-ng')]).toHaveLength(5);
     expect(resolveAsset).not.toHaveBeenCalledWith('existing');
   });
 
@@ -471,7 +472,7 @@ describe('collectRosterExternalData', () => {
         rosterStage('as-person-a', 'roster'),
         rosterStage('as-person-b', 'roster'),
         {
-          id: 'as-place',
+          id: testId('as-place'),
           label: { en: 'Roster' },
           type: 'NameGeneratorRoster',
           allAddedNotice: {
@@ -481,7 +482,7 @@ describe('collectRosterExternalData', () => {
           panelTitle: { en: 'Available to add' },
           subject: { entity: 'node', type: 'place' },
           dataSource: 'roster',
-          prompts: [{ id: 'p1', text: { en: 'Pick places' } }],
+          prompts: [{ id: testId('p1'), text: { en: 'Pick places' } }],
         },
       ],
       codebook,
@@ -491,11 +492,13 @@ describe('collectRosterExternalData', () => {
     // Same assetId + same subject type (person) is parsed once and reused.
     // A different subject type (place) triggers a second, separate parse.
     expect(resolveAsset).toHaveBeenCalledTimes(2);
-    expect(result['as-person-a']![0]!.type).toBe('person');
-    expect(result['as-person-b']![0]!.type).toBe('person');
-    expect(result['as-place']![0]!.type).toBe('place');
+    expect(result[testId('as-person-a')]![0]!.type).toBe('person');
+    expect(result[testId('as-person-b')]![0]!.type).toBe('person');
+    expect(result[testId('as-place')]![0]!.type).toBe('place');
     expect(
-      result['as-place']![0]![entityAttributesProperty]['var-place-name'],
+      result[testId('as-place')]![0]![entityAttributesProperty][
+        'var-place-name'
+      ],
     ).toBe('Ada');
   });
 
@@ -527,8 +530,8 @@ describe('collectRosterExternalData', () => {
       resolveAsset,
     });
 
-    expect(result.ok).toHaveLength(3);
-    expect(result.bad).toBeUndefined();
+    expect(result[testId('ok')]).toHaveLength(3);
+    expect(result[testId('bad')]).toBeUndefined();
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining('"broken"'),
       expect.any(Error),
@@ -574,8 +577,8 @@ describe('collectRosterExternalData', () => {
       resolveAsset,
     });
 
-    expect(result.ok).toHaveLength(3);
-    expect(result.bad).toBeUndefined();
+    expect(result[testId('ok')]).toHaveLength(3);
+    expect(result[testId('bad')]).toBeUndefined();
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining('"unreadable"'),
       expect.any(Error),
@@ -594,22 +597,22 @@ describe('collectRosterExternalData', () => {
     // Draft/unvalidated stages the host may feed in: `subject` or `dataSource`
     // absent despite the schema types marking them required.
     const draftMissingSubject = {
-      id: 'draft-no-subject',
+      id: testId('draft-no-subject'),
       label: 'Roster',
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
       unnamedLabel: localized('Unnamed {count}'),
       dataSource: 'draft-roster',
-      prompts: [{ id: 'p1', text: 'Pick people' }],
+      prompts: [{ id: testId('p1'), text: 'Pick people' }],
     } as unknown as Stage;
     const draftMissingDataSource = {
-      id: 'draft-no-source',
+      id: testId('draft-no-source'),
       label: 'Roster',
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
       unnamedLabel: localized('Unnamed {count}'),
       subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', text: 'Pick people' }],
+      prompts: [{ id: testId('p1'), text: 'Pick people' }],
     } as unknown as Stage;
 
     // A throw would reject this await and fail the test.
@@ -623,9 +626,9 @@ describe('collectRosterExternalData', () => {
       resolveAsset,
     });
 
-    expect(result.ok).toHaveLength(3);
-    expect(result['draft-no-subject']).toBeUndefined();
-    expect(result['draft-no-source']).toBeUndefined();
+    expect(result[testId('ok')]).toHaveLength(3);
+    expect(result[testId('draft-no-subject')]).toBeUndefined();
+    expect(result[testId('draft-no-source')]).toBeUndefined();
     // The dropped stages never reach asset resolution.
     expect(resolveAsset).not.toHaveBeenCalledWith('draft-roster');
     expect(resolveAsset).toHaveBeenCalledWith('roster');
@@ -644,8 +647,8 @@ describe('collectRosterExternalData', () => {
     });
 
     const panels: Panel[] = [
-      { id: 'a', title: { en: 'First' }, dataSource: 'panel-a' },
-      { id: 'b', title: { en: 'Second' }, dataSource: 'panel-b' },
+      { id: testId('a'), title: { en: 'First' }, dataSource: 'panel-a' },
+      { id: testId('b'), title: { en: 'Second' }, dataSource: 'panel-b' },
     ];
 
     const result = await collectRosterExternalData({
@@ -657,8 +660,10 @@ describe('collectRosterExternalData', () => {
     // Both panels parse independently, but byte-identical content yields
     // identical content-hash primary keys, so the later source overwrites the
     // earlier one in the merge map: three rows in, three entries out (not six).
-    expect(result['stage-ng']).toHaveLength(3);
-    const keys = result['stage-ng']!.map((n) => n[entityPrimaryKeyProperty]);
+    expect(result[testId('stage-ng')]).toHaveLength(3);
+    const keys = result[testId('stage-ng')]!.map(
+      (n) => n[entityPrimaryKeyProperty],
+    );
     expect(new Set(keys).size).toBe(3);
   });
 
@@ -676,8 +681,8 @@ describe('collectRosterExternalData', () => {
     });
 
     // Key present (a resolvable but empty roster), distinct from an absent key.
-    expect('stage-ngr' in result).toBe(true);
-    expect(result['stage-ngr']).toEqual([]);
+    expect(testId('stage-ngr') in result).toBe(true);
+    expect(result[testId('stage-ngr')]).toEqual([]);
     expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
@@ -689,7 +694,7 @@ describe('collectRosterExternalData', () => {
 
     const panels: Panel[] = [
       {
-        id: 'b',
+        id: testId('b'),
         title: { en: 'Nobody' },
         dataSource: 'panel',
         filter: impossibleAgeFilter,
@@ -702,8 +707,8 @@ describe('collectRosterExternalData', () => {
       resolveAsset,
     });
 
-    expect('stage-ng' in result).toBe(true);
-    expect(result['stage-ng']).toEqual([]);
+    expect(testId('stage-ng') in result).toBe(true);
+    expect(result[testId('stage-ng')]).toEqual([]);
   });
 
   it('omits a stage whose only source cannot be resolved', async () => {
@@ -717,7 +722,7 @@ describe('collectRosterExternalData', () => {
 
     // Every source failed, so the stage is absent — generation falls back to
     // fabrication rather than treating this as a known-empty roster.
-    expect('all-failed' in result).toBe(false);
+    expect(testId('all-failed') in result).toBe(false);
     expect(result).toEqual({});
   });
 
@@ -733,8 +738,8 @@ describe('collectRosterExternalData', () => {
     );
 
     const panels: Panel[] = [
-      { id: 'a', title: { en: 'Broken' }, dataSource: 'broken' },
-      { id: 'b', title: { en: 'Empty' }, dataSource: 'empty' },
+      { id: testId('a'), title: { en: 'Broken' }, dataSource: 'broken' },
+      { id: testId('b'), title: { en: 'Empty' }, dataSource: 'empty' },
     ];
 
     const result = await collectRosterExternalData({
@@ -745,8 +750,8 @@ describe('collectRosterExternalData', () => {
 
     // One source parsed successfully (with zero rows), so the roster is known
     // empty — key present with [] — despite the sibling source failing.
-    expect('stage-ng' in result).toBe(true);
-    expect(result['stage-ng']).toEqual([]);
+    expect(testId('stage-ng') in result).toBe(true);
+    expect(result[testId('stage-ng')]).toEqual([]);
     expect(console.error).toHaveBeenCalledTimes(1);
   });
 
@@ -756,7 +761,7 @@ describe('collectRosterExternalData', () => {
     const result = await collectRosterExternalData({
       stages: [
         {
-          id: 'info',
+          id: testId('info'),
           label: { en: 'Info' },
           type: 'Information',
           title: { en: 'Info' },

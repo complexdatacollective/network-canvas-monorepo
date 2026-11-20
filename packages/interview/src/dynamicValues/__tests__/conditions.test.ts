@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type Conditions,
   ConditionsSchema,
+  createProtocolObjectId,
   type DynamicValues,
 } from '@codaco/protocol-validation';
 import {
@@ -51,7 +52,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
     rules: [
       {
         type: 'ego',
-        id: 'r1',
+        id: createProtocolObjectId(),
         options: {
           attribute: 'age',
           operator: 'GREATER_THAN_OR_EQUAL',
@@ -66,7 +67,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
     rules: [
       {
         type: 'node',
-        id: 'r1',
+        id: createProtocolObjectId(),
         options: {
           type: 'person',
           attribute: 'close',
@@ -76,7 +77,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
       },
       {
         type: 'edge',
-        id: 'r2',
+        id: createProtocolObjectId(),
         options: { type: 'knows', operator: 'EXISTS' },
       },
     ],
@@ -86,7 +87,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
     rules: [
       {
         type: 'edge',
-        id: 'r1',
+        id: createProtocolObjectId(),
         options: {
           type: 'knows',
           attribute: 'years',
@@ -98,14 +99,20 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
   },
   popular: {
     about: 'node',
-    rules: [{ type: 'edge', id: 'r1', options: { count: 'MOST' } }],
+    rules: [
+      {
+        type: 'edge',
+        id: createProtocolObjectId(),
+        options: { count: 'MOST' },
+      },
+    ],
   },
   strongTie: {
     about: 'edge',
     rules: [
       {
         type: 'edge',
-        id: 'r1',
+        id: createProtocolObjectId(),
         options: {
           type: 'knows',
           attribute: 'years',

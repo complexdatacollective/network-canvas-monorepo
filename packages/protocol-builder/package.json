@@ -33,6 +33,7 @@
     "./fields/StageNameField": "./src/fields/StageNameField.tsx",
     "./form/sectionHeaderAction": "./src/form/sectionHeaderAction.ts",
     "./fields/variableNameRules": "./src/fields/variableNameRules.ts",
+    "./form/protocolObjectRow": "./src/form/protocolObjectRow.ts",
     "./form/stageDraftStore": "./src/form/stageDraftStore.ts",
     "./form/stageEditorContext": "./src/form/stageEditorContext.ts",
     "./form/stageSections": "./src/form/stageSections.ts",

@@ -15,6 +15,7 @@ import {
 } from '../../../testing/attributePicker.ts';
 import { readMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import {
   addEdgeType,
   addPersonVariable,
@@ -31,7 +32,7 @@ import {
 } from './composerFixtures.tsx';
 
 const KNOWS_ENTRY = {
-  id: 'composer-edge-1',
+  id: testId('composer-edge-1'),
   subject: { entity: 'edge', type: 'knows' },
   label: { 'en-US': 'Knows' },
 };
@@ -85,7 +86,7 @@ describe('what a network composer lets the participant build', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'age',
               component: 'Number',
               label: { 'en-US': 'age' },
@@ -98,7 +99,7 @@ describe('what a network composer lets the participant build', () => {
             form: {
               fields: [
                 {
-                  id: 'edge-field-1',
+                  id: testId('edge-field-1'),
                   variable: 'edgeNotes',
                   component: 'TextArea',
                   label: { 'en-US': 'edgeNotes' },
@@ -127,7 +128,7 @@ describe('what a network composer lets the participant build', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'age',
               component: 'Number',
               label: { 'en-US': 'How old are they?' },
@@ -140,7 +141,7 @@ describe('what a network composer lets the participant build', () => {
             form: {
               fields: [
                 {
-                  id: 'edge-field-1',
+                  id: testId('edge-field-1'),
                   variable: 'edgeNotes',
                   component: 'TextArea',
                   label: { 'en-US': 'Anything else?' },
@@ -255,7 +256,7 @@ describe('what a network composer lets the participant build', () => {
             form: {
               fields: [
                 {
-                  id: 'edge-field-1',
+                  id: testId('edge-field-1'),
                   variable: 'edgeNotes',
                   component: 'TextArea',
                   label: { 'en-US': 'Anything else?' },
@@ -306,11 +307,11 @@ describe('what a network composer lets the participant build', () => {
       composerHolding({
         edges: [
           {
-            id: 'composer-edge-1',
+            id: testId('composer-edge-1'),
             form: {
               fields: [
                 {
-                  id: 'edge-field-1',
+                  id: testId('edge-field-1'),
                   variable: 'edgeNotes',
                   component: 'TextArea',
                   label: { 'en-US': 'Anything else?' },
@@ -337,7 +338,7 @@ describe('what a network composer lets the participant build', () => {
     const saved = await harness.submit();
     expect(edgesOf(saved?.stageDocument ?? {})).toEqual([
       {
-        id: 'composer-edge-1',
+        id: testId('composer-edge-1'),
         subject: { entity: 'edge', type: 'family_edge' },
         label: { 'en-US': 'family_edge' },
       },
@@ -359,7 +360,7 @@ describe('what a network composer lets the participant build', () => {
             form: {
               fields: [
                 {
-                  id: 'edge-field-1',
+                  id: testId('edge-field-1'),
                   variable: 'edgeNotes',
                   component: 'TextArea',
                   label: { 'en-US': 'Anything else?' },
@@ -403,7 +404,7 @@ describe('what a network composer lets the participant build', () => {
             form: {
               fields: [
                 {
-                  id: 'edge-field-1',
+                  id: testId('edge-field-1'),
                   variable: 'edgeNotes',
                   component: 'TextArea',
                   label: { 'en-US': 'Anything else?' },
@@ -412,13 +413,13 @@ describe('what a network composer lets the participant build', () => {
             },
           },
           {
-            id: 'composer-edge-2',
+            id: testId('composer-edge-2'),
             subject: { entity: 'edge', type: 'family_edge' },
             label: { en: 'Connection' },
             form: {
               fields: [
                 {
-                  id: 'edge-field-2',
+                  id: testId('edge-field-2'),
                   variable: 'isActive',
                   component: 'Boolean',
                   label: { 'en-US': 'Still in touch?' },
@@ -461,7 +462,7 @@ describe('what a network composer lets the participant build', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'former_attribute',
               component: 'Text',
               label: { 'en-US': 'What did they do?' },
@@ -490,7 +491,7 @@ describe('what a network composer lets the participant build', () => {
       composerHolding({
         edges: [
           {
-            id: 'gone-1',
+            id: testId('gone-1'),
             subject: { entity: 'edge', type: 'former_edge' },
             label: { en: 'Connection' },
           },
@@ -543,22 +544,22 @@ describe('what a network composer lets the participant build', () => {
   });
 
   /**
-   * A protocol authored elsewhere can hold two entries carrying the same `id`
-   * — the schema refines `edges` for duplicate TYPES and says nothing about
-   * ids — so a form addressed by id would land on both, giving the second
-   * connection type questions naming attributes it does not have.
+   * The form lands on the entry whose type it was made for, and on no other.
+   * Two entries sharing an id is no longer something a protocol may hold (every
+   * id is unique across a protocol), so the entries here are told apart by id
+   * and type, and the second one must stay without questions.
    */
   it('writes a form into the connection type it belongs to, and no other', async () => {
     const harness = renderStageEditor(
       composerHolding({
         edges: [
           {
-            id: 'shared',
+            id: testId('knows-entry'),
             subject: { entity: 'edge', type: 'knows' },
             label: { en: 'Connection' },
           },
           {
-            id: 'shared',
+            id: testId('family-entry'),
             subject: { entity: 'edge', type: 'family_edge' },
             label: { en: 'Connection' },
           },
@@ -598,7 +599,7 @@ describe('what a network composer lets the participant build', () => {
             form: {
               fields: [
                 {
-                  id: 'edge-field-1',
+                  id: testId('edge-field-1'),
                   variable: 'edgeNotes',
                   component: 'TextArea',
                   label: { 'en-US': 'edgeNotes' },
@@ -858,7 +859,7 @@ describe('what a network composer lets the participant build', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'contactType',
               label: { 'en-US': 'contactType' },
               component: 'CheckboxGroup',
@@ -904,13 +905,13 @@ describe('what a network composer lets the participant build', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'age',
               component: 'Number',
               label: { 'en-US': 'age' },
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'age',
               component: 'Number',
               label: { 'en-US': 'age' },
@@ -1074,7 +1075,7 @@ describe('what a network composer lets the participant build', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'contactType',
               label: { 'en-US': 'contactType' },
             },
@@ -1565,13 +1566,13 @@ describe('inventing the attribute a connection form records', () => {
     composerHolding({
       edges: [
         {
-          id: 'composer-edge-1',
+          id: testId('composer-edge-1'),
           subject: { entity: 'edge', type },
           label: { en: 'Connection' },
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('field-1'),
                 variable: 'edgeNotes',
                 component: 'TextArea',
                 label: { 'en-US': 'edgeNotes' },
@@ -1682,7 +1683,7 @@ describe('an attribute another stage starts writing mid-edit', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'highlighted',
               component: 'Boolean',
               label: { 'en-US': 'highlighted' },
@@ -1700,7 +1701,7 @@ describe('an attribute another stage starts writing mid-edit', () => {
     );
     const saved = await harness.submit();
     expect(nodeFormFieldsOf(saved?.stageDocument ?? {})[0]).toEqual({
-      id: 'field-1',
+      id: testId('field-1'),
       variable: 'highlighted',
       component: 'Boolean',
       label: { 'en-US': 'highlighted' },
@@ -1790,7 +1791,7 @@ describe('validation hints on a composer form field', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable,
             component: 'Number',
             label: { 'en-US': variable },
@@ -1813,7 +1814,7 @@ describe('validation hints on a composer form field', () => {
 
     const on = await harness.submit();
     expect(nodeFormFieldsOf(on?.stageDocument ?? {})[0]).toEqual({
-      id: 'field-1',
+      id: testId('field-1'),
       variable: 'age',
       component: 'Number',
       label: { 'en-US': 'age' },
@@ -1831,7 +1832,7 @@ describe('validation hints on a composer form field', () => {
 
     const off = await harness.submit();
     expect(nodeFormFieldsOf(off?.stageDocument ?? {})[0]).toEqual({
-      id: 'field-1',
+      id: testId('field-1'),
       variable: 'age',
       component: 'Number',
       label: { 'en-US': 'age' },
@@ -1848,7 +1849,7 @@ describe('what a composer field’s control accepts', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: DATE_ATTRIBUTE,
               component: 'DatePicker',
               label: { 'en-US': 'When did you meet?' },
@@ -1959,7 +1960,7 @@ describe('what a composer field’s control accepts', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: DATE_ATTRIBUTE,
               component: 'DatePicker',
               label: { 'en-US': 'When did you meet?' },
@@ -2008,7 +2009,7 @@ describe('the live preview beside a composer form field', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'age',
             component: 'Number',
             label: { 'en-US': 'age' },
@@ -2206,7 +2207,7 @@ describe('the rules a composer field authors', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'metOn',
               label: { 'en-US': 'metOn' },
               ...YEAR_PICKER('2020', '2025'),
@@ -2333,19 +2334,19 @@ describe('the rules a composer field authors', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'metOn',
               label: { 'en-US': 'metOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'bornOn',
               label: { 'en-US': 'bornOn' },
               ...YEAR_PICKER('1990', '1995'),
             },
             {
-              id: 'field-3',
+              id: testId('field-3'),
               variable: 'movedOn',
               label: { 'en-US': 'movedOn' },
               ...YEAR_PICKER('2020', '2025'),
@@ -2408,19 +2409,19 @@ describe('the rules a composer field authors', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'metOn',
               label: { 'en-US': 'metOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'bornOn',
               label: { 'en-US': 'bornOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
             {
-              id: 'field-3',
+              id: testId('field-3'),
               variable: 'movedOn',
               label: { 'en-US': 'movedOn' },
               ...YEAR_PICKER('2020', '2025'),
@@ -2485,13 +2486,13 @@ describe('the rules a composer field authors', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'metOn',
               label: { 'en-US': 'metOn' },
               ...YEAR_PICKER('2020', '2025'),
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'bornOn',
               label: { 'en-US': 'bornOn' },
               ...YEAR_PICKER('2020', '2025'),
@@ -2575,13 +2576,13 @@ describe('the rules a composer field authors', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'isKin',
               component: 'Boolean',
               label: { 'en-US': 'isKin' },
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'isClose',
               component: 'Boolean',
               label: { 'en-US': 'isClose' },
@@ -2646,13 +2647,13 @@ describe('the rules a composer field authors', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'isKin',
               component: 'Boolean',
               label: { 'en-US': 'isKin' },
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'isPinned',
               component: 'Boolean',
               label: { 'en-US': 'isPinned' },
@@ -2674,7 +2675,7 @@ describe('the rules a composer field authors', () => {
     // it.
     composerInAnotherStage(harness, [
       {
-        id: 'other-field-1',
+        id: testId('other-field-1'),
         variable: 'isKin',
         component: 'Toggle',
         label: { 'en-US': 'isKin' },
@@ -2722,13 +2723,13 @@ describe('the rules a composer field authors', () => {
         nodeForm: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'isKin',
               component: 'Boolean',
               label: { 'en-US': 'isKin' },
             },
             {
-              id: 'field-2',
+              id: testId('field-2'),
               variable: 'isPinned',
               component: 'Boolean',
               label: { 'en-US': 'isPinned' },
@@ -2752,7 +2753,7 @@ describe('the rules a composer field authors', () => {
     // both answers — which this editor cannot see, and must not guess at.
     composerInAnotherStage(harness, [
       {
-        id: 'other-field-1',
+        id: testId('other-field-1'),
         variable: 'isClose',
         component: 'Toggle',
         label: { 'en-US': 'isClose' },

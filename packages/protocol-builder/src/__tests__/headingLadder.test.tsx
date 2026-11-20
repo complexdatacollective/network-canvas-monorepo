@@ -19,6 +19,7 @@ import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { ResourceClientProvider } from '../resources/client.tsx';
 import { contentBlocks } from '../sections/content-blocks/contentBlocks.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 import { StageEditorStoryHost } from '../testing/StageEditorStoryHost.tsx';
 
@@ -259,7 +260,7 @@ describe('an editor opened in a dialog', () => {
 describe('the stage editor shell', () => {
   const editor = (
     <StageEditorStoryHost
-      stageId="information-1"
+      stageId={fixtureStageId('information-1')}
       renderEditor={({ target, formId, onSaved, actions }) => (
         <ResourceClientProvider>
           <StageEditSession target={target} formId={formId} onSaved={onSaved}>
@@ -338,7 +339,7 @@ describe('a row of a stage editor list, opened in its dialog', () => {
   /** The one editor that offers both of the lists asked about here. */
   const openNameGenerator = () =>
     renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       registry: nameGeneratorStageEditor,
     });
 
@@ -396,7 +397,7 @@ describe('a row of a stage editor list, opened in its dialog', () => {
    */
   it('leaves a single-topic row dialog with only its title', async () => {
     const harness = renderStageEditor({
-      stageId: 'dyad-census-1',
+      stageId: fixtureStageId('dyad-census-1'),
       registry: dyadCensusStageEditor,
     });
 

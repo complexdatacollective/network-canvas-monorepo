@@ -29,12 +29,38 @@ import {
   openAttributePicker,
 } from '../../../testing/attributePicker.ts';
 import { fixtureMessage } from '../../../testing/i18n.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import { exactlyText } from '../../../testing/text.ts';
 import type { SectionCapability } from '../../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 
+/** The ids of the objects an array in a fixture stage holds, in order. */
+const idsIn = (rows: unknown): string[] =>
+  Array.isArray(rows)
+    ? rows.flatMap((row: unknown) => {
+        const id: unknown =
+          typeof row === 'object' && row !== null
+            ? Reflect.get(row, 'id')
+            : undefined;
+        return typeof id === 'string' ? [id] : [];
+      })
+    : [];
+
+const fixtureFormFieldIds = (handle: 'alter-form-1'): string[] => {
+  const { form } = loadFixtureStage(handle).fields;
+  return idsIn(
+    typeof form === 'object' && form !== null
+      ? Reflect.get(form, 'fields')
+      : undefined,
+  );
+};
+
+const ALTER_FORM_FIELD_IDS = fixtureFormFieldIds('alter-form-1');
 /**
  * The question and hint are rich-text editors, and their editing surface
  * cannot be driven in jsdom: ProseMirror places the caret through
@@ -193,14 +219,18 @@ const fieldsOf = (
  * one.
  */
 const COLLECTS_A_POSITION = {
-  id: 'collects-a-position',
+  id: testId('collects-a-position'),
   type: 'AlterForm',
   fields: {
     ...loadFixtureStage('alter-form-1').fields,
     label: en('Where everyone sits'),
     form: {
       fields: [
-        { id: 'field-1', variable: 'layout', prompt: en('Where do they sit?') },
+        {
+          id: testId('field-1'),
+          variable: 'layout',
+          prompt: en('Where do they sit?'),
+        },
       ],
     },
   },
@@ -250,7 +280,7 @@ const savedAttribute = (
 describe('the fields a form collects', () => {
   it('shows what an alter form collects, and saves it unchanged', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -268,7 +298,7 @@ describe('the fields a form collects', () => {
 
   it('records the question the researcher rewrote', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -283,13 +313,13 @@ describe('the fields a form collects', () => {
 
     const fields = fieldsOf(await harness.submit());
     expect(fields[0]).toEqual({
-      id: 'field-1',
+      id: ALTER_FORM_FIELD_IDS[0],
       variable: 'relationship_to_ego',
       prompt: en('How do you know this person?'),
     });
     // The field the researcher did not touch is still exactly as it was.
     expect(fields[1]).toEqual({
-      id: 'field-2',
+      id: ALTER_FORM_FIELD_IDS[1],
       variable: 'flagged',
       prompt: en('Does this person have this attribute?'),
     });
@@ -297,7 +327,7 @@ describe('the fields a form collects', () => {
 
   it('binds a new field to the attribute the researcher chose', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -324,14 +354,14 @@ describe('the fields a form collects', () => {
   it('refuses to save a stage holding a field whose question is only spaces', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'alter-form-1',
+        id: fixtureStageId('alter-form-1'),
         type: 'AlterForm',
         fields: {
           ...loadFixtureStage('alter-form-1').fields,
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('field-1'),
                 variable: 'relationship_to_ego',
                 prompt: { en: '   ' },
               },
@@ -355,7 +385,7 @@ describe('the fields a form collects', () => {
 
     it('is refused when a new field is added, and the dialog stays open', async () => {
       const harness = renderStageEditor({
-        stageId: 'alter-form-1',
+        stageId: fixtureStageId('alter-form-1'),
         sections: <FormFieldsSection subject="node" />,
       });
 
@@ -382,7 +412,7 @@ describe('the fields a form collects', () => {
 
     it('is refused when a field is rewritten, and the field keeps its question', async () => {
       const harness = renderStageEditor({
-        stageId: 'alter-form-1',
+        stageId: fixtureStageId('alter-form-1'),
         sections: <FormFieldsSection subject="node" />,
       });
 
@@ -417,7 +447,7 @@ describe('the fields a form collects', () => {
    */
   it('does not offer an attribute this form or another stage already writes', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -442,7 +472,7 @@ describe('the fields a form collects', () => {
   it('refuses to save a form that collects one attribute twice', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'repeats-an-attribute',
+        id: testId('repeats-an-attribute'),
         type: 'AlterForm',
         fields: {
           label: en('Alter form'),
@@ -450,12 +480,12 @@ describe('the fields a form collects', () => {
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('field-1'),
                 variable: 'relationship_to_ego',
                 prompt: en('How do you know them?'),
               },
               {
-                id: 'field-2',
+                id: testId('field-2'),
                 variable: 'relationship_to_ego',
                 prompt: en('And how else?'),
               },
@@ -481,7 +511,7 @@ describe('the fields a form collects', () => {
    */
   it('refuses to save a form with no fields left', async () => {
     const harness = renderStageEditor({
-      stageId: 'ego-form-1',
+      stageId: fixtureStageId('ego-form-1'),
       sections: <FormFieldsSection subject="ego" />,
     });
 
@@ -505,7 +535,7 @@ describe('the fields a form collects', () => {
 
   it("collects the participant's own attributes on an ego form, with no title to author", async () => {
     const harness = renderStageEditor({
-      stageId: 'ego-form-1',
+      stageId: fixtureStageId('ego-form-1'),
       sections: <FormFieldsSection subject="ego" />,
     });
 
@@ -528,7 +558,7 @@ describe('the fields a form collects', () => {
 
   it('offers to invent the first attribute the participant has', async () => {
     const harness = renderStageEditor({
-      stageId: 'ego-form-1',
+      stageId: fixtureStageId('ego-form-1'),
       sections: <FormFieldsSection subject="ego" />,
     });
     await harness.opened();
@@ -553,7 +583,7 @@ describe('the fields a form collects', () => {
 
   it("collects a relationship's attributes on an alter edge form", async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-edge-form-1',
+      stageId: fixtureStageId('alter-edge-form-1'),
       sections: <FormFieldsSection subject="edge" />,
     });
 
@@ -580,7 +610,7 @@ describe('the fields a form collects', () => {
 
   it("authors the heading shown above a name generator's form, and needs one", async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: <FormFieldsSection subject="node" hasTitle />,
     });
 
@@ -605,7 +635,7 @@ describe('the fields a form collects', () => {
    */
   it('keeps both fields whole when they are reordered', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -621,7 +651,7 @@ describe('the fields a form collects', () => {
       'relationship_to_ego',
     ]);
     expect(fields[1]).toEqual({
-      id: 'field-1',
+      id: ALTER_FORM_FIELD_IDS[0],
       variable: 'relationship_to_ego',
       prompt: en("What is this person's relationship to you?"),
     });
@@ -634,7 +664,7 @@ describe('the fields a form collects', () => {
    */
   it('offers an attribute another session added, and does not save over it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -691,7 +721,7 @@ describe('the fields a form collects', () => {
    */
   it('creates the attribute a field invents, and binds the field to it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -723,7 +753,7 @@ describe('the fields a form collects', () => {
    */
   it('discards the attribute a field invents when the stage is cancelled', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -848,7 +878,7 @@ describe('the fields a form collects', () => {
     );
     expect(fieldsOf(await harness.submit())).toEqual([
       {
-        id: 'field-1',
+        id: testId('field-1'),
         variable: 'relationship_to_ego',
         prompt: en('Where do they sit?'),
       },
@@ -863,7 +893,7 @@ describe('the fields a form collects', () => {
 describe('a spectator and the fields a form collects', () => {
   it('offers no way to add, edit or remove a field', async () => {
     renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       readOnly: true,
       sections: <FormFieldsSection subject="node" />,
     });
@@ -890,7 +920,7 @@ describe('a spectator and the fields a form collects', () => {
    */
   it('does not open a row dialog when a spectator clicks Edit', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       readOnly: true,
       sections: <FormFieldsSection subject="node" />,
     });
@@ -927,7 +957,7 @@ describe('a codebook change a field needs, refused', () => {
    */
   it('refuses the stage save naming the colleague who is holding the type, and keeps the draft', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       heldSections: [
         {
           sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
@@ -970,7 +1000,7 @@ describe('a codebook change a field needs, refused', () => {
    */
   it('refuses a name that would write an export column another attribute writes before asking for it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -1014,7 +1044,7 @@ describe('a codebook change a field needs, refused', () => {
 
   it('control: a name that clashes with no export column is created', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -1037,7 +1067,7 @@ describe('a codebook change a field needs, refused', () => {
    */
   it('refuses the stage save naming the colleague who is holding the type when a control is chosen', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       heldSections: [
         {
           sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
@@ -1084,7 +1114,7 @@ describe('a codebook change a field needs, refused', () => {
  * protocol.
  */
 const STAMPING_NAME_GENERATOR = {
-  id: 'stamps-an-attribute-it-also-asks-about',
+  id: testId('stamps-an-attribute-it-also-asks-about'),
   type: 'NameGenerator' as const,
   fields: {
     label: en('Name generator'),
@@ -1093,7 +1123,7 @@ const STAMPING_NAME_GENERATOR = {
       title: en('Add a person'),
       fields: [
         {
-          id: 'field-1',
+          id: testId('field-1'),
           variable: 'name',
           prompt: en("What is this person's name?"),
         },
@@ -1101,9 +1131,15 @@ const STAMPING_NAME_GENERATOR = {
     },
     prompts: [
       {
-        id: 'name-generator-prompt-1',
+        id: testId('name-generator-prompt-1'),
         text: en('Who are the people you know?'),
-        additionalAttributes: [{ variable: 'flagged', value: true }],
+        additionalAttributes: [
+          {
+            id: testId('stamps-flagged'),
+            variable: 'flagged',
+            value: true,
+          },
+        ],
       },
     ],
   },
@@ -1182,13 +1218,13 @@ describe('an attribute the open stage itself writes unvalidated', () => {
 
 /** The same name generator, with nothing stamped on the nodes it adds yet. */
 const UNSTAMPED_NAME_GENERATOR = {
-  id: 'binds-a-slot-while-the-form-is-open',
+  id: testId('binds-a-slot-while-the-form-is-open'),
   type: 'NameGenerator' as const,
   fields: {
     ...STAMPING_NAME_GENERATOR.fields,
     prompts: [
       {
-        id: 'name-generator-prompt-1',
+        id: testId('name-generator-prompt-1'),
         text: en('Who are the people you know?'),
       },
     ],
@@ -1502,7 +1538,7 @@ const personForm = (
 describe('a form the researcher may switch off', () => {
   it('opens switched off on a stage with no form, and saves it without one', async () => {
     const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       sections: personForm,
     });
 
@@ -1556,7 +1592,7 @@ describe('a form the researcher may switch off', () => {
 
   it('asks for a first field while it is switched on', async () => {
     const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       sections: personForm,
     });
 
@@ -1826,7 +1862,7 @@ const addFieldCollecting = async (
 describe('the codebook an attribute a form field collects lives in', () => {
   it('creates a categorical attribute with the values it will offer', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -1864,7 +1900,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('writes the control the row chose onto what it collects, with the field', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -1910,7 +1946,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('leaves the codebook untouched when only the question changed', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
@@ -1929,7 +1965,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     );
 
     expect(fieldsOf(await harness.submit())[0]).toEqual({
-      id: 'field-1',
+      id: ALTER_FORM_FIELD_IDS[0],
       variable: 'relationship_to_ego',
       prompt: en('How do you know them?'),
     });
@@ -1955,7 +1991,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('puts the dialog’s controls in Architect’s own sections, in order', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2027,7 +2063,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('shows a read-only attribute’s values instead of offering them', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2082,7 +2118,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('keeps the values in the draft when the stage save is refused for the type being held', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       heldSections: [
         {
           sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
@@ -2135,7 +2171,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
   it('writes nothing when the values were left alone', async () => {
     const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2167,7 +2203,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
   it('changes the values an attribute already offers', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2214,7 +2250,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
   it('keeps an attribute a collaborator added while the values editor was open', async () => {
     const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
       adapter: (host) => {
         let raced = false;
@@ -2298,7 +2334,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
   it('keeps a rename a collaborator made while the rules editor was open', async () => {
     const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
       adapter: (host) => {
         let raced = false;
@@ -2380,7 +2416,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('sets what a date field accepts, on the attribute it collects', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2423,7 +2459,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('offers the settings of the control the row is showing, not the saved one', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2471,7 +2507,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('sets the rules an answer to this field must satisfy', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2501,7 +2537,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('changes what the two answers of a boolean field say', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2533,7 +2569,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
    */
   it('drops the answers a toggle cannot show when the field changes control', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2563,7 +2599,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
   it('keeps the values typed for an invented attribute when the control moves to another list', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2605,7 +2641,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
   it('refuses a row that invents a categorical attribute without its values', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2684,7 +2720,7 @@ describe('switching the input control on a configured attribute', () => {
 
   it('control: switches while the attribute has no settings', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     const variableId = await collectADateField(harness);
@@ -2698,7 +2734,7 @@ describe('switching the input control on a configured attribute', () => {
 
   it('takes the old control’s settings with it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     const variableId = await collectADateField(harness, { type: 'year' });
@@ -2714,7 +2750,7 @@ describe('switching the input control on a configured attribute', () => {
 
   it('shows the settings the attribute holds, and keeps them when the row is saved untouched', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     const variableId = await collectADateField(harness, { type: 'year' });
@@ -2754,7 +2790,7 @@ describe('rebinding a form field to another attribute', () => {
 
   it('shows the newly chosen attribute’s own control, in both directions', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     collectNotesInATextArea(harness);
@@ -2778,7 +2814,7 @@ describe('rebinding a form field to another attribute', () => {
 
   it('does not rewrite the newly chosen attribute’s control in the codebook', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     collectNotesInATextArea(harness);
@@ -2810,7 +2846,7 @@ describe('rebinding a form field to another attribute', () => {
    */
   it('makes the invented attribute the kind its input control collects, whichever control it ends on', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2886,7 +2922,7 @@ describe('a control the collaborator changed under an open row', () => {
 
   it('shows the new control, and saving the row leaves it alone', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2921,7 +2957,7 @@ describe('a control the collaborator changed under an open row', () => {
    */
   it('keeps the control the researcher chose, whatever the codebook does next', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -2957,7 +2993,7 @@ describe('a row whose codebook section goes', () => {
 
   it('takes the validation section down with the codebook it writes to', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3023,7 +3059,7 @@ describe('an attribute id that collides with the create option', () => {
 
   it('offers it once, as itself', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     giveThePersonThatAttribute(harness);
@@ -3053,7 +3089,7 @@ describe('an attribute id that collides with the create option', () => {
 
   it('binds the field to it rather than inventing a second one', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     giveThePersonThatAttribute(harness);
@@ -3130,7 +3166,7 @@ describe('an attribute that stops being collectable under an open row', () => {
 
   it('says so when a collaborator deletes it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3152,7 +3188,7 @@ describe('an attribute that stops being collectable under an open row', () => {
 
   it('says so when a collaborator changes what it records', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3188,7 +3224,7 @@ describe('an attribute that stops being collectable under an open row', () => {
    */
   it('gives the save back when the row is bound somewhere else', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3208,12 +3244,12 @@ describe('an attribute that stops being collectable under an open row', () => {
 
     expect(fieldsOf(await harness.submit())).toEqual([
       {
-        id: 'field-1',
+        id: ALTER_FORM_FIELD_IDS[0],
         variable: 'name',
         prompt: en("What is this person's relationship to you?"),
       },
       {
-        id: 'field-2',
+        id: ALTER_FORM_FIELD_IDS[1],
         variable: 'flagged',
         prompt: en('Does this person have this attribute?'),
       },
@@ -3234,14 +3270,14 @@ describe('an attribute that stops being collectable under an open row', () => {
  */
 describe('a form whose list holds something that is not a field', () => {
   const WITH_A_MALFORMED_ENTRY = {
-    id: 'alter-form-1',
+    id: fixtureStageId('alter-form-1'),
     type: 'AlterForm',
     fields: {
       ...loadFixtureStage('alter-form-1').fields,
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'relationship_to_ego',
             prompt: en('How do you know them?'),
           },
@@ -3275,7 +3311,7 @@ describe('a form whose list is not a list', () => {
   it('says so of a required form too, rather than asking for a first field', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'alter-form-1',
+        id: fixtureStageId('alter-form-1'),
         type: 'AlterForm',
         fields: {
           ...loadFixtureStage('alter-form-1').fields,
@@ -3321,7 +3357,7 @@ describe('a stored field the schema refuses for its own shape', () => {
     harness.outline().map(({ title, state }) => `${title}${state}`);
 
   const alterFormHolding = (fields: readonly Record<string, unknown>[]) => ({
-    id: 'alter-form-1',
+    id: fixtureStageId('alter-form-1'),
     type: 'AlterForm' as const,
     fields: {
       ...loadFixtureStage('alter-form-1').fields,
@@ -3331,14 +3367,14 @@ describe('a stored field the schema refuses for its own shape', () => {
 
   /** A field of the fixture's own form, plus a key no form field has. */
   const CARRIES_AN_UNKNOWN_KEY = {
-    id: 'field-2',
+    id: testId('field-2'),
     variable: 'flagged',
     prompt: en('Does this person have this attribute?'),
     notAThing: 'left behind by a half-applied migration',
   };
 
   const RELATIONSHIP = {
-    id: 'field-1',
+    id: testId('field-1'),
     variable: 'relationship_to_ego',
     prompt: en('What is this person’s relationship to you?'),
   };
@@ -3486,7 +3522,7 @@ describe('the answers a boolean a field is inventing offers', () => {
 
   it('writes both answers with the create, from the row that asked for them', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3534,7 +3570,7 @@ describe('the answers a boolean a field is inventing offers', () => {
    */
   it('writes which answer is styled as the negative one', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3578,7 +3614,7 @@ describe('the answers a boolean a field is inventing offers', () => {
    */
   it('writes no answers at all when the researcher named neither', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3613,7 +3649,7 @@ describe('the answers a boolean a field is inventing offers', () => {
    */
   it('offers no answers for a kind that is not a yes-or-no question', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3631,7 +3667,7 @@ describe('the answers a boolean a field is inventing offers', () => {
    */
   it('offers no answers once the control is a toggle', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3679,7 +3715,7 @@ describe('rules for the attribute a field is inventing', () => {
 
   it('offers them before the attribute exists, and writes them with it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3726,7 +3762,7 @@ describe('rules for the attribute a field is inventing', () => {
 
   it('offers rules for an attribute whose answers are a list', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3756,7 +3792,7 @@ describe('rules for the attribute a field is inventing', () => {
    */
   it('drops a rule the new kind of answer cannot take, and says which', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3813,7 +3849,7 @@ describe('rules for the attribute a field is inventing', () => {
    */
   it('writes a comparison rule the row has just been given', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3863,7 +3899,7 @@ describe('rules for the attribute a field is inventing', () => {
    */
   it('takes the notice down once the rules editor has saved, and names the newest loss', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3920,7 +3956,7 @@ describe('rules for the attribute a field is inventing', () => {
    */
   it('leaves the notice standing through a change of kind that drops nothing', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -3981,7 +4017,7 @@ describe('rules for the attribute a field is inventing', () => {
    */
   it('takes the notice down when the row picks an attribute instead', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4014,7 +4050,7 @@ describe('rules for the attribute a field is inventing', () => {
 
   it('carries the rules written for a list of answers into its create', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4052,7 +4088,7 @@ describe('rules for the attribute a field is inventing', () => {
   /** And a row that has not chosen a control has no kind, so it has no rules. */
   it('offers none until the input control is chosen', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4083,7 +4119,7 @@ describe('inventing an attribute whose control takes settings', () => {
 
   it('shows a visual analog scale’s end labels inline', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4109,7 +4145,7 @@ describe('inventing an attribute whose control takes settings', () => {
 
   it('writes both labels onto the attribute, and binds the field to it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4157,7 +4193,7 @@ describe('inventing an attribute whose control takes settings', () => {
 
   it('refuses a scale whose end labels are missing', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4182,7 +4218,7 @@ describe('inventing an attribute whose control takes settings', () => {
 
   it('shows a relative date picker’s anchor and window inline, and creates the attribute with them', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4235,7 +4271,7 @@ describe('a row whose attribute is deleted', () => {
    */
   it('takes the validation section down with the attribute it rules', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4463,7 +4499,7 @@ describe('the control a row saves for the attribute it finally collects', () => 
 
   it.each(ROUTES)('$name', async ({ route, saves }) => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     seedContactSetting(harness);
@@ -4553,7 +4589,7 @@ describe('the live preview beside a form field’s settings', () => {
 
   it('offers the fields and the preview as two named regions', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4570,7 +4606,7 @@ describe('the live preview beside a form field’s settings', () => {
 
   it('shows the question in the preview as it is typed, and commits nothing', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 
@@ -4605,7 +4641,7 @@ describe('the live preview beside a form field’s settings', () => {
 
   it('previews the control the researcher chooses, as they choose it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     const dialog = await collectFollowUp(harness);
@@ -4628,7 +4664,7 @@ describe('the live preview beside a form field’s settings', () => {
 
   it('follows the answers the row is authoring for the attribute', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     const dialog = await collectFollowUp(harness);
@@ -4664,7 +4700,7 @@ describe('the live preview beside a form field’s settings', () => {
 
   it('keeps a trial answer out of the row it commits', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
     const dialog = await collectFollowUp(harness);
@@ -4708,7 +4744,7 @@ describe('the live preview beside a form field’s settings', () => {
    */
   it('previews an attribute the picker’s create row is inventing, and then the one it created', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       sections: <FormFieldsSection subject="node" />,
     });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { FormFieldSchema, FormSchema } from '../common/forms.ts';
 import { panelSchema } from '../common/panels.ts';
@@ -71,7 +72,7 @@ describe('nonBlankText', () => {
 
 describe('a form field prompt', () => {
   const field = (prompt: Record<string, string>) => ({
-    id: 'field-age',
+    id: testId('field-age'),
     variable: 'age',
     prompt,
   });
@@ -118,7 +119,7 @@ describe('a form field prompt', () => {
 describe('a Network Composer field caption', () => {
   it('rejects a caption of spaces, anchored at its label', () => {
     const result = networkComposerStage.safeParse({
-      id: 'composer',
+      id: testId('composer'),
       type: 'NetworkComposer',
       label: localized('Compose'),
       subject: { entity: 'node', type: 'person' },
@@ -129,7 +130,7 @@ describe('a Network Composer field caption', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'age',
             label: { en: '   ' },
             component: ComponentTypes.Number,
@@ -148,7 +149,7 @@ describe('a Network Composer field caption', () => {
 });
 
 const rosterStage = {
-  id: 'roster',
+  id: testId('roster'),
   type: 'NameGeneratorRoster',
   allAddedNotice: localized('There is nothing left to add from this list.'),
   unnamedLabel: localized('Unnamed {count}'),
@@ -156,7 +157,7 @@ const rosterStage = {
   subject: { entity: 'node', type: 'person' },
   dataSource: 'rosterAsset',
   panelTitle: localized('People'),
-  prompts: [{ id: 'p', text: localized('Who do you know?') }],
+  prompts: [{ id: testId('p'), text: localized('Who do you know?') }],
 };
 
 // Every required participant-facing string these schemas hold, each with a
@@ -170,20 +171,20 @@ const REQUIRED_TEXT_SITES: readonly {
   {
     name: 'a prompt',
     schema: promptSchema,
-    valid: (text) => ({ id: 'p', text }),
+    valid: (text) => ({ id: testId('p'), text }),
     path: ['text'],
   },
   {
     name: 'a panel title',
     schema: panelSchema,
-    valid: (title) => ({ id: 'panel', title, dataSource: 'existing' }),
+    valid: (title) => ({ id: testId('panel'), title, dataSource: 'existing' }),
     path: ['title'],
   },
   {
     name: 'an anonymisation explanation',
     schema: anonymisationStage,
     valid: (explanationText) => ({
-      id: 'anon',
+      id: testId('anon'),
       type: 'Anonymisation',
       label: localized('Anonymisation'),
       explanationText,
@@ -195,7 +196,11 @@ const REQUIRED_TEXT_SITES: readonly {
     schema: nameGeneratorRosterStage,
     valid: (label) => ({
       ...rosterStage,
-      cardOptions: { additionalProperties: [{ label, variable: 'age' }] },
+      cardOptions: {
+        additionalProperties: [
+          { id: testId('card-age'), label, variable: 'age' },
+        ],
+      },
     }),
     path: ['cardOptions', 'additionalProperties', 0, 'label'],
   },
@@ -204,7 +209,11 @@ const REQUIRED_TEXT_SITES: readonly {
     schema: nameGeneratorRosterStage,
     valid: (label) => ({
       ...rosterStage,
-      sortOptions: { sortableProperties: [{ label, variable: 'age' }] },
+      sortOptions: {
+        sortableProperties: [
+          { id: testId('sort-age'), label, variable: 'age' },
+        ],
+      },
     }),
     path: ['sortOptions', 'sortableProperties', 0, 'label'],
   },
@@ -212,13 +221,13 @@ const REQUIRED_TEXT_SITES: readonly {
     name: 'a narrative pedigree disease label',
     schema: narrativePedigreeStage,
     valid: (label) => ({
-      id: 'narrative',
+      id: testId('narrative'),
       type: 'NarrativePedigree',
       label: localized('Family health'),
-      sourceStageId: 'pedigree',
+      sourceStageId: testId('pedigree'),
       diseases: [
         {
-          id: 'disease',
+          id: testId('disease'),
           label,
           color: 'node-color-seq-1',
           attribute: 'hasCondition',
@@ -234,7 +243,9 @@ const REQUIRED_TEXT_SITES: readonly {
     schema: FormSchema,
     valid: (title) => ({
       title,
-      fields: [{ id: 'field-1', variable: 'name', prompt: localized('Name?') }],
+      fields: [
+        { id: testId('field-1'), variable: 'name', prompt: localized('Name?') },
+      ],
     }),
     path: ['title'],
   },
@@ -242,11 +253,11 @@ const REQUIRED_TEXT_SITES: readonly {
     name: 'an Information text item',
     schema: informationStage,
     valid: (content) => ({
-      id: 'info',
+      id: testId('info'),
       type: 'Information',
       label: localized('Welcome'),
       title: localized('Welcome'),
-      items: [{ id: 'item', type: 'text', content }],
+      items: [{ id: testId('item'), type: 'text', content }],
     }),
     path: ['items', 0, 'content'],
   },
@@ -255,18 +266,20 @@ const REQUIRED_TEXT_SITES: readonly {
     name: 'an Information media description',
     schema: informationStage,
     valid: (description) => ({
-      id: 'info',
+      id: testId('info'),
       type: 'Information',
       label: localized('Welcome'),
       title: localized('Welcome'),
-      items: [{ id: 'item', type: 'asset', content: 'image', description }],
+      items: [
+        { id: testId('item'), type: 'asset', content: 'image', description },
+      ],
     }),
     path: ['items', 0, 'description'],
   },
 ];
 
 const composerField = (field: Record<string, unknown>) => ({
-  id: 'composer',
+  id: testId('composer'),
   type: 'NetworkComposer',
   label: localized('Compose'),
   subject: { entity: 'node', type: 'person' },
@@ -275,7 +288,14 @@ const composerField = (field: Record<string, unknown>) => ({
   background: { concentricCircles: 4 },
   edges: [],
   nodeForm: {
-    fields: [{ variable: 'age', label: localized('Age'), ...field }],
+    fields: [
+      {
+        id: testId('field-age'),
+        variable: 'age',
+        label: localized('Age'),
+        ...field,
+      },
+    ],
   },
 });
 
@@ -291,11 +311,11 @@ const BLANK_REFUSED_SITES: readonly {
     name: 'a Narrative preset label',
     schema: narrativeStage,
     holding: (label) => ({
-      id: 'narrative',
+      id: testId('narrative'),
       type: 'Narrative',
       label: localized('Narrative'),
       subject: { entity: 'node', type: 'person' },
-      presets: [{ id: 'preset', label, layoutVariable: 'layout' }],
+      presets: [{ id: testId('preset'), label, layoutVariable: 'layout' }],
     }),
     path: ['presets', 0, 'label'],
   },
@@ -303,16 +323,16 @@ const BLANK_REFUSED_SITES: readonly {
     name: 'a Narrative highlight label',
     schema: narrativeStage,
     holding: (label) => ({
-      id: 'narrative',
+      id: testId('narrative'),
       type: 'Narrative',
       label: localized('Narrative'),
       subject: { entity: 'node', type: 'person' },
       presets: [
         {
-          id: 'preset',
+          id: testId('preset'),
           label: localized('Preset 1'),
           layoutVariable: 'layout',
-          highlight: [{ variable: 'close', label }],
+          highlight: [{ id: testId('highlight'), variable: 'close', label }],
         },
       ],
     }),
@@ -322,16 +342,18 @@ const BLANK_REFUSED_SITES: readonly {
     name: 'a Narrative edge legend label',
     schema: narrativeStage,
     holding: (label) => ({
-      id: 'narrative',
+      id: testId('narrative'),
       type: 'Narrative',
       label: localized('Narrative'),
       subject: { entity: 'node', type: 'person' },
       presets: [
         {
-          id: 'preset',
+          id: testId('preset'),
           label: localized('Preset 1'),
           layoutVariable: 'layout',
-          edges: { display: [{ type: 'knows', label }] },
+          edges: {
+            display: [{ id: testId('edge-display'), type: 'knows', label }],
+          },
         },
       ],
     }),
@@ -341,7 +363,7 @@ const BLANK_REFUSED_SITES: readonly {
     name: 'a Family Pedigree prompt',
     schema: familyPedigreeStage,
     holding: (prompt) => ({
-      id: 'pedigree',
+      id: testId('pedigree'),
       type: 'FamilyPedigree',
       label: localized('Family'),
       subject: { entity: 'node', type: 'person' },
@@ -353,12 +375,12 @@ const BLANK_REFUSED_SITES: readonly {
     name: 'a Family Pedigree question about the family',
     schema: familyPedigreeStage,
     holding: (text) => ({
-      id: 'pedigree',
+      id: testId('pedigree'),
       type: 'FamilyPedigree',
       label: localized('Family'),
       subject: { entity: 'node', type: 'person' },
       prompt: localized('Who is in your family?'),
-      nominationPrompts: [{ id: 'q', text, attribute: 'hasCondition' }],
+      nominationPrompts: [{ id: testId('q'), text, attribute: 'hasCondition' }],
     }),
     path: ['nominationPrompts', 0, 'text'],
   },

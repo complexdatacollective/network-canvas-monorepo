@@ -5,7 +5,10 @@ import {
   withInterfaceText,
   withSuppliedWording,
 } from '@codaco/interview/supplied-wording';
-import { type CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
 import createTimeline, { timelineActions } from '~/ducks/middleware/timeline';
 import activeProtocol, {
   actionCreators,
@@ -33,6 +36,10 @@ const makeStore = () =>
 
 type Store = ReturnType<typeof makeStore>;
 
+const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '1f2e3d4c-5b6a-4978-8a6b-5c4d3e2f1a0b',
+);
+
 const englishProtocol = (): CurrentProtocol =>
   withInterfaceText<CurrentProtocol>({
     name: 'English study',
@@ -52,7 +59,7 @@ const englishProtocol = (): CurrentProtocol =>
     },
     stages: [
       {
-        id: 'welcome',
+        id: WELCOME_STAGE_ID,
         type: 'Information',
         label: { en: 'Welcome' },
         title: { en: 'Hello' },

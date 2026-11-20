@@ -1,6 +1,7 @@
 import {
   asEntityAttributeReference,
   CurrentProtocolSchema,
+  createProtocolObjectId,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -40,7 +41,7 @@ for (const { kind, label } of [
       filter: {
         rules: [
           {
-            id: 'authored-rule',
+            id: createProtocolObjectId(),
             type: 'node',
             options: {
               type: 'person',

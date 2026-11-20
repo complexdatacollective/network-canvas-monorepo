@@ -18,6 +18,7 @@ import {
 } from '@codaco/shared-consts';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import protocol from '../../../store/modules/protocol';
@@ -36,23 +37,35 @@ const NODE_TYPE = 'person';
 const EDGE_TYPE = 'friend';
 
 const twoPromptStage = {
-  id: 'dc1',
+  id: testId('dc1'),
   type: 'DyadCensus',
   label: { en: 'Dyad Census' },
   subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
-    { id: 'p1', text: { en: 'Are they friends (q1)?' }, createEdge: EDGE_TYPE },
-    { id: 'p2', text: { en: 'Are they friends (q2)?' }, createEdge: EDGE_TYPE },
+    {
+      id: testId('p1'),
+      text: { en: 'Are they friends (q1)?' },
+      createEdge: EDGE_TYPE,
+    },
+    {
+      id: testId('p2'),
+      text: { en: 'Are they friends (q2)?' },
+      createEdge: EDGE_TYPE,
+    },
   ],
 };
 
 const onePromptStage = {
-  id: 'dc1',
+  id: testId('dc1'),
   type: 'DyadCensus',
   label: { en: 'Dyad Census' },
   subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
-    { id: 'p1', text: { en: 'Are they friends?' }, createEdge: EDGE_TYPE },
+    {
+      id: testId('p1'),
+      text: { en: 'Are they friends?' },
+      createEdge: EDGE_TYPE,
+    },
   ],
 };
 

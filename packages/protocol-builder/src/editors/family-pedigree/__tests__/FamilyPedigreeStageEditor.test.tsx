@@ -1,9 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { get } from 'es-toolkit/compat';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   familyPedigreeStage,
+  isProtocolObjectId,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
@@ -26,9 +27,9 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
-import { newNominationPromptId } from '../sections/NominationPromptsSection.tsx';
 import {
   familyPedigreeEditor,
   openStageWording,
@@ -183,7 +184,7 @@ describe('the family pedigree stage editor', () => {
         form: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'fm_occupation',
               prompt: { 'en-US': 'What do they do?' },
             },
@@ -844,7 +845,7 @@ describe('the gender identity options, which this stage manages', () => {
   it('refuses another stage that holds it, naming the stage that manages it', async () => {
     const seeded = familyPedigreeStageWith({ label: 'Family again' });
     const harness = renderStageEditor({
-      stage: { ...seeded, id: 'family-pedigree-2' },
+      stage: { ...seeded, id: testId('family-pedigree-2') },
       editor: familyPedigreeEditor,
     });
     await harness.opened();
@@ -1846,7 +1847,7 @@ describe('the nomination prompts', () => {
     });
 
   const savedPrompt = {
-    id: 'nomination-1',
+    id: testId('nomination-1'),
     text: { 'en-US': 'Who in your family has had heart disease?' },
     attribute: HEART_DISEASE,
     onlyForSexAssignedAtBirth: 'female',
@@ -2055,17 +2056,6 @@ describe('the nomination prompts', () => {
   });
 
   it('never gives a prompt the id the interview keeps for building the family', async () => {
-    const randomUUID = vi
-      .spyOn(crypto, 'randomUUID')
-      .mockReturnValueOnce('pedigree' as ReturnType<typeof crypto.randomUUID>);
-    try {
-      expect(newNominationPromptId()).not.toBe('pedigree');
-      // The first draw was the reserved word, so a second one was made.
-      expect(randomUUID).toHaveBeenCalledTimes(2);
-    } finally {
-      randomUUID.mockRestore();
-    }
-
     const harness = openWithoutPrompts();
     await harness.opened();
     const dialog = await startAPrompt(harness);
@@ -2082,7 +2072,7 @@ describe('the nomination prompts', () => {
     await addThePrompt(harness);
     const request = await harness.submit();
     const [prompt] = nominationPromptsOf(request?.stageDocument);
-    expect(prompt?.id).toEqual(expect.any(String));
+    expect(isProtocolObjectId(prompt?.id)).toBe(true);
     expect(prompt?.id).not.toBe('pedigree');
   });
 
@@ -2092,7 +2082,7 @@ describe('the nomination prompts', () => {
         form: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'has_pets',
               prompt: { 'en-US': 'Any pets?' },
             },

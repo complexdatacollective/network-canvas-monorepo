@@ -12,6 +12,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testId.ts';
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { describeValue } from '../describeValue.ts';
 import { SyntheticDataConstraintError } from '../error.ts';
@@ -93,10 +94,10 @@ function codebookWith(options: {
   };
 }
 
-function referencedField(field: ComposerField) {
+function referencedField(field: ComposerField, scope: string) {
   return {
     ...field,
-    id: `field-${field.variable}`,
+    id: testId(`${scope}/field-${field.variable}`),
     variable: asEntityAttributeReference(field.variable),
     label: { 'en-US': field.variable },
   };
@@ -107,8 +108,9 @@ function composerStage(options: {
   nodeFields?: ComposerField[];
   edgeFields?: ComposerField[];
 }): Extract<Stage, { type: 'NetworkComposer' }> {
+  const stageId = options.id ?? 'composer-1';
   return {
-    id: options.id ?? 'composer-1',
+    id: testId(stageId),
     type: 'NetworkComposer',
     label: { 'en-US': 'Compose' },
     subject: { entity: 'node', type: 'person' },
@@ -116,15 +118,27 @@ function composerStage(options: {
     layoutVariable: asEntityAttributeReference('layout'),
     background: { concentricCircles: 1 },
     ...(options.nodeFields !== undefined
-      ? { nodeForm: { fields: options.nodeFields.map(referencedField) } }
+      ? {
+          nodeForm: {
+            fields: options.nodeFields.map((field) =>
+              referencedField(field, stageId),
+            ),
+          },
+        }
       : {}),
     edges: [
       {
-        id: 'edge-def-1',
+        id: testId(`${stageId}/edge-def-1`),
         subject: { entity: 'edge', type: 'knows' },
         label: { en: 'Connection' },
         ...(options.edgeFields !== undefined
-          ? { form: { fields: options.edgeFields.map(referencedField) } }
+          ? {
+              form: {
+                fields: options.edgeFields.map((field) =>
+                  referencedField(field, `${stageId}/edge-def-1`),
+                ),
+              },
+            }
           : {}),
       },
     ],
@@ -135,14 +149,14 @@ function alterFormStage(
   variable: string,
 ): Extract<Stage, { type: 'AlterForm' }> {
   return {
-    id: 'ordinary-form',
+    id: testId('ordinary-form'),
     type: 'AlterForm',
     label: { 'en-US': 'Edit person' },
     subject: { entity: 'node', type: 'person' },
     form: {
       fields: [
         {
-          id: 'field-1',
+          id: testId('ordinary-form/field-1'),
           variable: asEntityAttributeReference(variable),
           prompt: { 'en-US': 'Enter a value' },
         },
@@ -220,7 +234,7 @@ describe('NetworkComposer field renderings', () => {
         filter: {
           rules: [
             {
-              id: 'missing-consent',
+              id: testId('missing-consent'),
               type: 'ego',
               options: {
                 attribute: asEntityAttributeReference('consent'),
@@ -403,7 +417,7 @@ describe('NetworkComposer field renderings', () => {
         filter: {
           rules: [
             {
-              id: 'missing-consent',
+              id: testId('missing-consent'),
               type: 'ego',
               options: {
                 attribute: asEntityAttributeReference('consent'),

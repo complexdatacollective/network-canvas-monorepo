@@ -1,7 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
 import {
@@ -42,7 +45,9 @@ const openFixture = () => ({
 });
 
 /** Where a host would insert a new one: over the form the fixture holds. */
-const ALTER_EDGE_FORM_INDEX = fixtureStageIds().indexOf('alter-edge-form-1');
+const ALTER_EDGE_FORM_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('alter-edge-form-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'AlterEdgeForm' as const, position: ALTER_EDGE_FORM_INDEX },

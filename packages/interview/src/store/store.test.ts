@@ -12,6 +12,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId } from '../__tests__/testIds';
 import { createInitialNetwork } from '../contract/network';
 import type { InterviewPayload } from '../contract/types';
 import {
@@ -77,7 +78,7 @@ const payload: InterviewPayload = {
     },
     stages: [
       {
-        id: 'stage-1',
+        id: testId('stage-1'),
         type: 'NameGenerator',
         label: { en: 'Name generator' },
         subject: { entity: 'node', type: NODE_TYPE },
@@ -85,13 +86,13 @@ const payload: InterviewPayload = {
           title: { en: 'Add a person' },
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: asEntityAttributeReference('name'),
               prompt: { en: 'Name' },
             },
           ],
         },
-        prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
+        prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
       },
     ],
   },

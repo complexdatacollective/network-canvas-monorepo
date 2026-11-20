@@ -2006,6 +2006,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property} – op dit attribuut kan niet worden gesorteerd",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "Deze regel verwijst naar een attribuut waarop niet kan worden gesorteerd. Kies een ander attribuut of verwijder de regel.",
   "protocolBuilder.stageEdit.addFailed": "Deze fase kon niet worden toegevoegd. Wacht even en probeer het opnieuw.",
+  "protocolBuilder.stageEdit.addInvalidShape": "Deze fase kon niet worden toegevoegd, omdat een deel ervan ongeldig is. Je wijzigingen staan er nog. Los het probleem op en probeer de fase daarna opnieuw toe te voegen.",
   "protocolBuilder.stageEdit.blockedBy": "{holder} bewerkt een ander onderdeel van het protocol dat nodig is om deze fase op te slaan, waardoor er niets is opgeslagen. Je wijzigingen staan er nog. Probeer over een ogenblik opnieuw op te slaan.",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} bewerken andere onderdelen van het protocol die nodig zijn om deze fase op te slaan, waardoor er niets is opgeslagen. Je wijzigingen staan er nog. Probeer over een ogenblik opnieuw op te slaan.",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "Een ander onderdeel van het protocol dat nodig is om deze fase op te slaan, wordt op dit moment bewerkt, waardoor er niets is opgeslagen. Je wijzigingen staan er nog. Probeer over een ogenblik opnieuw op te slaan.",

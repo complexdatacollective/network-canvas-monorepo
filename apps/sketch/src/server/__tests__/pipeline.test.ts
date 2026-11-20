@@ -8,6 +8,7 @@ import {
   friendshipDesign,
   friendshipWording,
 } from '../design/__fixtures__/example.ts';
+import { sketchStageId } from '../design/objectIds.ts';
 import { estimateJobCostUsd, runPipeline } from '../pipeline.ts';
 import { DESIGN_SYSTEM, UNPARSEABLE_FEEDBACK } from '../prompts/design.ts';
 import { reply, scriptedAdapter, STUDY_SCREENING } from './fakes.ts';
@@ -488,8 +489,8 @@ describe('the design review', () => {
   };
   const notesOf = (protocol: Record<string, unknown> | undefined) =>
     JSON.stringify(
-      (protocol?.stages as { id: string }[] | undefined)?.find((st) =>
-        st.id.startsWith('researcher_notes'),
+      (protocol?.stages as { id: string }[] | undefined)?.find(
+        (st) => st.id === sketchStageId('researcher_notes'),
       ),
     );
 

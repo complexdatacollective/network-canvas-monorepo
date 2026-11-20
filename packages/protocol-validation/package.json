@@ -58,6 +58,7 @@
     "csvtojson": "catalog:",
     "jszip": "catalog:",
     "ohash": "^2.0.12",
+    "uuid": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -66,6 +67,7 @@
     "@octokit/types": "^18.0.0",
     "@types/gunzip-maybe": "^1.4.3",
     "dotenv": "catalog:",
+    "fast-check": "^4.10.2",
     "gunzip-maybe": "^1.4.2",
     "tar-stream": "^3.2.2",
     "tsx": "catalog:",

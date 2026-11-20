@@ -13,6 +13,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import {
   createEncryptionStore,
   encryptedVariables,
@@ -28,11 +29,19 @@ import useSortedNodeList from '../useSortedNodeList';
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
 const byName: SortRule[] = [
-  { property: asEntityAttributeReference('name'), direction: 'asc' },
+  {
+    id: testId('sort-name'),
+    property: asEntityAttributeReference('name'),
+    direction: 'asc',
+  },
 ];
 const byNameThenAge: SortRule[] = [
   ...byName,
-  { property: asEntityAttributeReference('age'), direction: 'asc' },
+  {
+    id: testId('sort-age'),
+    property: asEntityAttributeReference('age'),
+    direction: 'asc',
+  },
 ];
 
 const ids = (nodes: readonly NcNode[]) =>

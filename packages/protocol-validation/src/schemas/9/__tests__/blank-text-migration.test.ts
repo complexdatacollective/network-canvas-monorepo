@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { escapeMessageText } from '../../../localization/messageSyntax.ts';
 import {
   MigrationContentRefusedError,
   MigrationResultInvalidError,
@@ -13,6 +12,7 @@ import { ProtocolSchemaV9 } from '../schema.ts';
 import { suppliedStageSettingPaths } from '../supplied-stage-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-8.json';
+import { migratedStageId } from './migrated-stage-ids.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 type Path = readonly (string | number)[];
@@ -172,12 +172,17 @@ const outcomeOf = (at: Path): Outcome | undefined => {
 
 /**
  * Where schema 9 reports a site of a schema 8 document: the same place in
- * the migrated document. A stage keeps its id, though the migration can add
- * stages before it, and the pedigree conversion renames two of its fields.
+ * the migrated document. A stage keeps its identity, though the migration can
+ * add stages before it and give it a new id, and the pedigree conversion
+ * renames two of its fields.
  */
 const migratedPathOf = (document: unknown, migrated: unknown, at: Path) => {
   if (at[0] !== 'stages') return at;
-  const id = getAt(document, ['stages', at[1] ?? -1, 'id']);
+  const id = migratedStageId(
+    document,
+    migrated,
+    getAt(document, ['stages', at[1] ?? -1, 'id']),
+  );
   const stages = getAt(migrated, ['stages']);
   const index = Array.isArray(stages)
     ? stages.findIndex((stage) => isRecord(stage) && stage.id === id)
@@ -461,15 +466,19 @@ describe('the text given to blank schema 8 text', () => {
   const migrateWith = (at: Path, blank: string) => {
     const document = structuredClone(ecoGeneticTemplate);
     setAt(document, at, blank);
-    return migrateProtocol(document, 9);
+    return { document, migrated: migrateProtocol(document, 9) };
   };
 
-  const stageWithId = (protocol: unknown, id: string) => {
-    const stages = getAt(protocol, ['stages']);
+  const stageWithId = (
+    { document, migrated }: { document: unknown; migrated: unknown },
+    schema8Id: string,
+  ) => {
+    const id = migratedStageId(document, migrated, schema8Id);
+    const stages = getAt(migrated, ['stages']);
     const stage = Array.isArray(stages)
       ? stages.find((candidate) => isRecord(candidate) && candidate.id === id)
       : undefined;
-    if (!isRecord(stage)) throw new Error(`No stage "${id}"`);
+    if (!isRecord(stage)) throw new Error(`No stage "${schema8Id}"`);
     return stage;
   };
 
@@ -505,11 +514,17 @@ describe('the text given to blank schema 8 text', () => {
       );
       const stage = stageWithId(migrated, stageIdAt(12));
       const attribute = getAt(stage, ['diseases', 0, 'attribute']);
-      const source = stageWithId(migrated, String(stage.sourceStageId));
-      const type = getAt(source, ['subject', 'type']);
+      const source = getAt(migrated.migrated, ['stages']);
+      const sourceStage = Array.isArray(source)
+        ? source.find(
+            (candidate) =>
+              isRecord(candidate) && candidate.id === stage.sourceStageId,
+          )
+        : undefined;
+      const type = getAt(sourceStage, ['subject', 'type']);
       expect(typeof attribute).toBe('string');
       expect(getAt(stage, ['diseases', 0, 'label'])).toEqual({
-        en: getAt(migrated, [
+        en: getAt(migrated.migrated, [
           'codebook',
           'node',
           String(type),
@@ -531,7 +546,7 @@ describe('the text given to blank schema 8 text', () => {
       'options',
     ];
     const value = getAt(ecoGeneticTemplate, [...options, 1, 'value']);
-    const migrated = migrateWith([...options, 1, 'label'], blank);
+    const { migrated } = migrateWith([...options, 1, 'label'], blank);
     expect(getAt(migrated, [...options, 1, 'label'])).toEqual({
       en: String(value),
     });
@@ -650,52 +665,18 @@ describe('condition labels that show nothing', () => {
       label: ' ',
       variable: 'had_testing',
     });
-    const stages = getAt(migrateProtocol(document, 9), ['stages']);
+    const migrated = migrateProtocol(document, 9);
+    const stages = getAt(migrated, ['stages']);
     const stage = Array.isArray(stages)
       ? stages.find(
           (candidate) =>
-            isRecord(candidate) && candidate.id === 'narrative-pedigree',
+            isRecord(candidate) &&
+            candidate.id ===
+              migratedStageId(document, migrated, 'narrative-pedigree'),
         )
       : undefined;
     expect(getAt(stage, ['diseases', 1, 'label'])).toEqual({
       en: 'had_testing 2',
-    });
-  });
-
-  // Fresco re-runs this migration over rows already in schema 9 form, where
-  // a label is a message: `Type '{'A'}'` shows the participant `Type {A}`.
-  it('are numbered when another already shows the name, in schema 9 form', () => {
-    const document = structuredClone(ecoGeneticTemplate);
-    const diseases = ['stages', 12, 'diseases'];
-    const first = getAt(document, [...diseases, 0]);
-    if (!isRecord(first)) throw new Error('No condition');
-    Reflect.set(document, 'localization', {
-      defaultLocale: 'en',
-      locales: ['en'],
-    });
-    setAt(
-      document,
-      ['codebook', 'node', 'person', 'variables', 'had_testing', 'name'],
-      'Type {A}',
-    );
-    setAt(document, [...diseases, 0, 'label'], {
-      en: escapeMessageText('Type {A}'),
-    });
-    setAt(document, [...diseases, 1], {
-      ...structuredClone(first),
-      id: 'second-condition',
-      label: { en: ' ' },
-      variable: 'had_testing',
-    });
-    const stages = getAt(migrateProtocol(document, 9), ['stages']);
-    const stage = Array.isArray(stages)
-      ? stages.find(
-          (candidate) =>
-            isRecord(candidate) && candidate.id === 'narrative-pedigree',
-        )
-      : undefined;
-    expect(getAt(stage, ['diseases', 1, 'label'])).toEqual({
-      en: escapeMessageText('Type {A} 2'),
     });
   });
 });

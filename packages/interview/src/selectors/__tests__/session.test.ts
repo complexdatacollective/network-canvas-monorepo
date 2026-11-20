@@ -3,17 +3,29 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  type CurrentProtocol,
   type NodeDefinition,
 } from '@codaco/protocol-validation';
-import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
+import {
+  type DyadCensusMetadataItem,
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { createInitialNetwork } from '../../contract/network';
+import type { ProtocolPayload } from '../../contract/types';
 import protocolReducer from '../../store/modules/protocol';
 import sessionReducer, {
   updateStageMetadata,
 } from '../../store/modules/session';
 import uiReducer from '../../store/modules/ui';
-import { getStageMetadata, resolveNodeShape } from '../session';
+import {
+  getNetworkNodesForPrompt,
+  getStageMetadata,
+  resolveNodeShape,
+} from '../session';
 
 const rootReducer = combineReducers({
   session: sessionReducer,
@@ -65,6 +77,75 @@ describe('getStageMetadata', () => {
     const store = createStore();
 
     expect(getStageMetadata(store.getState(), 0)).toBeUndefined();
+  });
+});
+
+describe('getNetworkNodesForPrompt', () => {
+  it('keeps the nodes named on one stage off the prompt of another stage', () => {
+    const nameGenerator = (stage: string) => ({
+      id: testId(stage),
+      type: 'NameGeneratorQuickAdd' as const,
+      label: { en: stage },
+      subject: { entity: 'node' as const, type: 'person' },
+      quickAdd: asEntityAttributeReference('name'),
+      prompts: [{ id: testId(`${stage}-prompt`), text: { en: stage } }],
+    });
+    const protocolState: ProtocolPayload = {
+      id: 'protocol',
+      hash: 'hash',
+      importedAt: '2026-08-12T00:00:00.000Z',
+      assets: [],
+      name: 'Test protocol',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: { name: { name: 'Name', type: 'text' } },
+          },
+        },
+        edge: {},
+        ego: { variables: {} },
+      },
+      stages: [
+        nameGenerator('friends'),
+        nameGenerator('family'),
+      ] satisfies CurrentProtocol['stages'],
+    };
+    const person = (id: string, stage: string): NcNode => ({
+      [entityPrimaryKeyProperty]: id,
+      type: 'person',
+      [entityAttributesProperty]: {},
+      promptIDs: [testId(`${stage}-prompt`)],
+    });
+    const store = configureStore({
+      reducer: rootReducer,
+      preloadedState: {
+        session: {
+          id: 'session',
+          startTime: '2026-08-12T00:00:00.000Z',
+          finishTime: null,
+          exportTime: null,
+          lastUpdated: '2026-08-12T00:00:00.000Z',
+          promptIndex: 0,
+          network: {
+            ...createInitialNetwork(),
+            nodes: [person('alex', 'friends'), person('sam', 'family')],
+          },
+        },
+        protocol: protocolState,
+      },
+    });
+    const namedOn = (step: number) =>
+      getNetworkNodesForPrompt(store.getState(), step).map(
+        (node) => node[entityPrimaryKeyProperty],
+      );
+
+    expect(namedOn(0)).toEqual(['alex']);
+    expect(namedOn(1)).toEqual(['sam']);
   });
 });
 

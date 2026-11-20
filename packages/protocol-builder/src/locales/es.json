@@ -2006,6 +2006,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property}: este atributo no se puede usar para ordenar",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "Esta regla apunta a un atributo que no se puede usar para ordenar. Elige otro o elimina la regla.",
   "protocolBuilder.stageEdit.addFailed": "No se pudo añadir esta etapa. Espera un momento e inténtalo de nuevo.",
+  "protocolBuilder.stageEdit.addInvalidShape": "No se pudo añadir esta etapa porque una parte de ella no es válida. Tus cambios siguen aquí. Corrige el problema e intenta añadir la etapa de nuevo.",
   "protocolBuilder.stageEdit.blockedBy": "{holder} está editando otra parte del protocolo que este guardado necesita, así que no se ha guardado nada y tus cambios siguen aquí. Intenta guardar de nuevo dentro de un momento.",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} están editando otras partes del protocolo que este guardado necesita, así que no se ha guardado nada y tus cambios siguen aquí. Intenta guardar de nuevo dentro de un momento.",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "Se está editando otra parte del protocolo que este guardado necesita, así que no se ha guardado nada y tus cambios siguen aquí. Intenta guardar de nuevo dentro de un momento.",

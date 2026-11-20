@@ -9,7 +9,7 @@ import {
   EVERY_VERSION,
   type MessageArguments,
 } from '../../../localization/messageArguments.ts';
-import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { NodeColorReferenceSchema } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import {
@@ -19,6 +19,7 @@ import {
   nonBlankText,
 } from '../localized-string.ts';
 import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 import { stageReference } from '../stage-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { baseStageSchema } from './base.ts';
@@ -65,7 +66,7 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
   diseases: z
     .array(
       z.strictObject({
-        id: z.string(),
+        id: protocolObjectId('disease'),
         label: localizedString(nonBlankText(), {
           format: 'plain',
           lines: 'single',
@@ -92,15 +93,6 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
     )
     .min(1)
     .superRefine((diseases, ctx) => {
-      const duplicateId = findDuplicateId(diseases);
-      if (duplicateId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Diseases contain duplicate ID "${duplicateId}"`,
-          path: [],
-        });
-      }
-
       // A disease row maps ONE node attribute to a colour and an inheritance
       // pattern. Two rows on one attribute give the pedigree contradictory
       // answers for a single affected set — the genetics engine resolves one
@@ -149,7 +141,7 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
 });
 
 export const narrativePedigreeStage = withStageSubjectResolution(
-  narrativePedigreeStageShape,
+  withUniqueObjectIds(narrativePedigreeStageShape),
   {
     from: 'stageRef',
     stageRef: 'sourceStageId',

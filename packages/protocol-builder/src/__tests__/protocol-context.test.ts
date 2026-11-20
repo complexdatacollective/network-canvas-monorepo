@@ -10,9 +10,11 @@ import {
   variablesForSubject,
 } from '../protocol-context.ts';
 import { readMessage } from '../testing/i18n.ts';
+import { testId } from '../testing/testId.ts';
 
-const FIRST_STAGE = 'stage-first';
-const SECOND_STAGE = 'stage-second';
+const FIRST_STAGE = testId('stage-first');
+const SECOND_STAGE = testId('stage-second');
+const MISSING_STAGE = testId('missing-stage');
 
 const text = (value: string) => ({ 'en-US': value });
 
@@ -225,19 +227,25 @@ describe('protocolContextFromSections', () => {
       subject: { entity: 'node', type: 'person' },
       form: {
         title: text('Add'),
-        fields: [{ id: 'field-1', variable: 'name', prompt: text('Name') }],
+        fields: [
+          {
+            id: testId('field-1'),
+            variable: 'name',
+            prompt: text('Name'),
+          },
+        ],
       },
-      prompts: [{ id: 'p1', text: text('Who?') }],
+      prompts: [{ id: testId('p1'), text: text('Who?') }],
       // The only thing this stage gets wrong is the rule.
       panels: [
         {
-          id: 'panel-1',
+          id: testId('panel-1'),
           title: text('From a file'),
           dataSource: 'roster-asset',
           filter: {
             rules: [
               {
-                id: 'r1',
+                id: testId('r1'),
                 type: 'edge',
                 options: { type: 'knows', operator: 'EXISTS' },
               },
@@ -268,7 +276,7 @@ describe('protocolContextFromSections', () => {
   it('reports stage-order inconsistencies instead of throwing', () => {
     const sections = protocolSections();
     sections[sectionId({ kind: 'stageOrder' })] = {
-      stages: [SECOND_STAGE, 'missing-stage'],
+      stages: [SECOND_STAGE, MISSING_STAGE],
     };
 
     const context = protocolContextFromSections(sections);
@@ -276,7 +284,7 @@ describe('protocolContextFromSections', () => {
     expect(context.orderedStages.map(({ id }) => id)).toEqual([SECOND_STAGE]);
     expect(context.issues.map(({ message }) => readMessage(message))).toEqual(
       expect.arrayContaining([
-        'Stage order names missing stage missing-stage.',
+        `Stage order names missing stage ${MISSING_STAGE}.`,
         `Stage ${FIRST_STAGE} is missing from the stage order.`,
       ]),
     );

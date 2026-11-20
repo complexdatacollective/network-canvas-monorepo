@@ -12,6 +12,7 @@ import {
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  type ProtocolObjectId,
   suppliedOptionLabels,
 } from '@codaco/protocol-validation';
 import { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
@@ -19,6 +20,7 @@ import { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
 import type { GeneratedAsset, ProtocolSummary } from '../../shared/api.ts';
 import type { NormalizedDesign, NStage } from './analyse.ts';
 import { taskIntroductions } from './intros.ts';
+import { assignNestedObjectIds, sketchStageId } from './objectIds.ts';
 import {
   type NAttribute,
   type DesignIssue,
@@ -676,10 +678,10 @@ export const compile = (
     let x = id;
     for (let n = 2; stageIds.has(x); n++) x = `${id}_${n}`;
     stageIds.add(x);
-    return x;
+    return sketchStageId(x);
   };
   // Endings are reserved first: skip logic and the consent gate point at them.
-  const endingStageId = new Map<string, string>();
+  const endingStageId = new Map<string, ProtocolObjectId>();
   const earlyEndings = d.endings.map((e) => {
     const stageId = sid(`ending_${e.id}`);
     for (const from of e.fromStageIds) endingStageId.set(from, stageId);
@@ -936,7 +938,11 @@ export const compile = (
           ...(p.tagAttributeId
             ? {
                 additionalAttributes: [
-                  { variable: key(scope, p.tagAttributeId), value: true },
+                  {
+                    id: 'tag',
+                    variable: key(scope, p.tagAttributeId),
+                    value: true,
+                  },
                 ],
               }
             : {}),
@@ -1005,7 +1011,7 @@ export const compile = (
             src,
           );
         } else {
-          const assetId = `${st.id}_roster`;
+          const assetId = `${s.id}_roster`;
           const cols = ['name', ...s.attributeIds]; // variable NAMES: the interview maps CSV headers by name, then key
           // at least as many rows as the stage requires the participant to pick
           const rowCount = Math.max(12, s.minNodes);
@@ -1051,6 +1057,7 @@ export const compile = (
                 ? {
                     cardOptions: {
                       additionalProperties: s.attributeIds.map((a) => ({
+                        id: a,
                         label: localized(attrIn(scope, a)!.label),
                         variable: key(scope, a),
                       })),
@@ -1058,9 +1065,11 @@ export const compile = (
                   }
                 : {}),
               sortOptions: {
-                sortOrder: [{ property: nameKey, direction: 'asc' }],
+                sortOrder: [
+                  { id: 'name', property: nameKey, direction: 'asc' },
+                ],
                 sortableProperties: [
-                  { label: localized('Name'), variable: nameKey },
+                  { id: 'name', label: localized('Name'), variable: nameKey },
                 ],
               },
               searchOptions: { fuzziness: 0.5, matchProperties: [nameKey] },
@@ -1193,6 +1202,7 @@ export const compile = (
                       edges: {
                         // the legend names each relationship shown
                         display: v.relationshipIds.map((r) => ({
+                          id: r,
                           type: relKey.get(r),
                           label: localized(relName(r)),
                         })),
@@ -1203,6 +1213,7 @@ export const compile = (
                   ? {
                       // the legend names each highlighted attribute
                       highlight: v.highlightAttributeIds.map((h) => ({
+                        id: h,
                         variable: key(scope, h),
                         label: localized(attrIn(scope, h)!.label),
                       })),
@@ -1496,7 +1507,7 @@ export const compile = (
   );
   stageMap.push({ added: 'finish' });
   const earlyFinish = (
-    id: string,
+    id: ProtocolObjectId,
     outcome: 'ineligible' | 'terminated',
     lbl: string,
     message: string,
@@ -1531,6 +1542,8 @@ export const compile = (
     });
     Object.assign(codebook, relabel(codebook, SKETCH_LOCALE, lang));
   }
+
+  assignNestedObjectIds(stages);
 
   const protocol: Json = {
     name: graphemes(

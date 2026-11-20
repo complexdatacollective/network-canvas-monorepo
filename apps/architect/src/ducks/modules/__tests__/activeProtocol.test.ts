@@ -1,10 +1,21 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import {
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import activeProtocolReducer, { actionCreators } from '../activeProtocol';
 import { test as stagesTest } from '../protocol/stages';
+
+const ANON_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '89f2ab4e-316b-486c-83cc-cdeee9847f3b',
+);
+const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'e727bae5-72ab-46f5-8956-2ea25bc96720',
+);
 
 const mockProtocol: CurrentProtocol = {
   name: 'Test Protocol',
@@ -27,7 +38,7 @@ const mockProtocol2: CurrentProtocol = {
   localization: { defaultLocale: 'en', locales: ['en'] },
   stages: [
     {
-      id: 'stage-1',
+      id: createProtocolObjectId(),
       type: 'NameGenerator',
       label: { en: 'Test Stage' },
       form: {
@@ -40,7 +51,7 @@ const mockProtocol2: CurrentProtocol = {
       },
       prompts: [
         {
-          id: 'prompt-1',
+          id: createProtocolObjectId(),
           text: { en: 'Test prompt' },
         },
       ],
@@ -277,9 +288,13 @@ describe('activeProtocol', () => {
     const holdingSuppliedWording = {
       ...mockProtocol,
       stages: [
-        { id: 'anon', type: 'Anonymisation', label: { en: 'Passphrase' } },
         {
-          id: 'finish',
+          id: ANON_STAGE_ID,
+          type: 'Anonymisation',
+          label: { en: 'Passphrase' },
+        },
+        {
+          id: FINISH_STAGE_ID,
           type: 'FinishSession',
           label: { en: 'Finish' },
           finishLabel: { en: 'Finish' },
@@ -301,7 +316,7 @@ describe('activeProtocol', () => {
         passphrase: { passphraseAccepted: { en: 'Thank you' } },
       });
       expect(state?.stages[1]).toEqual({
-        id: 'finish',
+        id: FINISH_STAGE_ID,
         type: 'FinishSession',
         label: { en: 'Finish' },
         finishConfirmation: { en: 'Really finish?' },
@@ -312,10 +327,10 @@ describe('activeProtocol', () => {
       store.dispatch(actionCreators.setActiveProtocol(holdingSuppliedWording));
 
       // Only a passphrase stage shows the "passphrase accepted" text.
-      store.dispatch(stagesTest.deleteStage('anon'));
+      store.dispatch(stagesTest.deleteStage(ANON_STAGE_ID));
 
       const state = store.getState().activeProtocol;
-      expect(state?.stages.map(({ id }) => id)).toEqual(['finish']);
+      expect(state?.stages.map(({ id }) => id)).toEqual([FINISH_STAGE_ID]);
       expect(state?.interfaceText).toEqual({
         navigation: { continue: { en: 'Onwards' } },
       });

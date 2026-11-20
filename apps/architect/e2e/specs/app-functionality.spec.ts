@@ -1,4 +1,7 @@
-import { validateProtocol } from '@codaco/protocol-validation';
+import {
+  validateProtocol,
+  createProtocolObjectId,
+} from '@codaco/protocol-validation';
 
 import { SESSION_PREFIX } from '../../src/utils/storageNames.js';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -81,13 +84,13 @@ test('keeps history to saved changes while a stage editor is open', async ({
     ...emptyProtocol(),
     stages: [
       {
-        id: 'information-1',
+        id: createProtocolObjectId(),
         type: 'Information',
         label: { en: 'A page to rename' },
         title: { en: 'Welcome' },
         items: [
           {
-            id: 'item-1',
+            id: createProtocolObjectId(),
             type: 'text',
             content: { en: 'Thanks for coming.' },
           },
