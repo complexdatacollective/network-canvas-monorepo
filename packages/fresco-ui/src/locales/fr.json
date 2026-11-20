@@ -148,6 +148,8 @@
   "frescoUi.richTextEditor.linkUrlLabel": "URL du lien",
   "frescoUi.richTextEditor.linkUrlPlaceholder": "https://example.com",
   "frescoUi.richTextEditor.removeLinkShort": "Supprimer",
+  "frescoUi.richTextEditor.textStyleHeading": "Titre {level}",
+  "frescoUi.richTextEditor.textStyleParagraph": "Paragraphe",
   "frescoUi.selectAllHeader.deselectAll": "Tout désélectionner",
   "frescoUi.selectAllHeader.selectAll": "Tout sélectionner ({count, number})",
   "frescoUi.selectAllHeader.selectPage": "Sélectionner la page ({count, number})",

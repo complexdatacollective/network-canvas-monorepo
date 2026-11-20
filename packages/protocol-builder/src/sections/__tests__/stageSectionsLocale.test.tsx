@@ -76,7 +76,7 @@ describe('the shared stage sections, read in Spanish', () => {
     });
 
     const editor = await screen.findByRole('textbox', {
-      name: 'Contenido de la página',
+      name: 'Texto enriquecido',
     });
     expect(editor).toHaveTextContent('Welcome');
     expect(editor).toHaveTextContent('Welcome to this interview.');
@@ -87,7 +87,7 @@ describe('the shared stage sections, read in Spanish', () => {
     // whichever host draws the list, not to this package.
     await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()[0]).toEqual({
-      title: 'Contenido de la página',
+      title: 'Contenido',
       state: 'Finished',
     });
   });
@@ -206,7 +206,7 @@ describe('a block a page cannot show, read in Spanish', () => {
       },
     });
 
-    await screen.findByRole('textbox', { name: 'Contenido de la página' });
+    await screen.findByRole('textbox', { name: 'Texto enriquecido' });
     expect(screen.queryByText(UNUSABLE)).toBeNull();
   });
 });
@@ -219,7 +219,7 @@ describe('the page-content section, read in Spanish', () => {
   it('refuses in Spanish to save a page that shows the participant nothing', async () => {
     const harness = renderStageEditor(pageOf('information-empty-es', ''));
 
-    await screen.findByRole('textbox', { name: 'Contenido de la página' });
+    await screen.findByRole('textbox', { name: 'Texto enriquecido' });
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
@@ -227,7 +227,7 @@ describe('the page-content section, read in Spanish', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('textbox', { name: 'Contenido de la página' }),
+      screen.getByRole('textbox', { name: 'Texto enriquecido' }),
     ).toBeInTheDocument();
   });
 });
