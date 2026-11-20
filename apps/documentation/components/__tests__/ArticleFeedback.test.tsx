@@ -62,7 +62,7 @@ describe('ArticleFeedback', () => {
     );
   });
 
-  it('sends a comment under the same submission as the rating', () => {
+  it('sends a comment under the same submission as the rating, then only thanks the reader', () => {
     renderFeedback();
 
     expect(
@@ -75,6 +75,7 @@ describe('ArticleFeedback', () => {
     const box = screen.getByRole('textbox', {
       name: 'How could this article be improved?',
     });
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
     fireEvent.change(box, { target: { value: 'Add an example' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
@@ -85,9 +86,11 @@ describe('ArticleFeedback', () => {
       [COMMENT]: 'Add an example',
     });
     expect(second.$survey_submission_id).toBe(first.$survey_submission_id);
+    expect(screen.getByText('Thanks for your feedback.')).toHaveFocus();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Change your feedback' }),
-    ).toHaveFocus();
+      screen.queryByText('Did this article help?'),
+    ).not.toBeInTheDocument();
   });
 
   it('replaces the announcement for every result, even a repeated one', () => {
@@ -102,53 +105,20 @@ describe('ArticleFeedback', () => {
     expect(second).not.toBe(first);
   });
 
-  it('clears the sent message when the reader reopens their feedback', () => {
+  it('shows a returning reader the rating they gave', async () => {
+    window.localStorage.setItem(
+      'nc-docs-article-feedback:/get-started/glossary',
+      JSON.stringify({ submissionId: 's1', rating: 'yes', comment: '' }),
+    );
     renderFeedback();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'Add an example' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Thanks. Your feedback was sent.',
-    );
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Change your feedback' }),
-    );
-    expect(screen.getByRole('status')).toBeEmptyDOMElement();
-    expect(screen.getByRole('textbox')).toHaveFocus();
+    expect(
+      await screen.findByRole('button', { name: 'Yes', pressed: true }),
+    ).toBeInTheDocument();
+    expect(capture).not.toHaveBeenCalled();
   });
 
-  it('keeps focus in the box when the reader removes their feedback', () => {
-    renderFeedback();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'Add an example' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Change your feedback' }),
-    );
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-
-    expect(capture).toHaveBeenLastCalledWith(
-      'survey sent',
-      expect.not.objectContaining({
-        '$survey_response_220d2d7a-3cb1-4061-9c03-dc02ff1b44e4':
-          expect.anything(),
-      }),
-    );
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Your feedback was removed.',
-    );
-    expect(screen.getByRole('textbox')).toHaveFocus();
-  });
-
-  it('shows a returning reader the answer they gave', async () => {
+  it('only thanks a returning reader who already commented', async () => {
     window.localStorage.setItem(
       'nc-docs-article-feedback:/get-started/glossary',
       JSON.stringify({ submissionId: 's1', rating: 'yes', comment: 'Clear' }),
@@ -156,8 +126,10 @@ describe('ArticleFeedback', () => {
     renderFeedback();
 
     expect(
-      await screen.findByRole('button', { name: 'Yes', pressed: true }),
+      await screen.findByText('Thanks for your feedback.'),
     ).toBeInTheDocument();
+    expect(screen.getByText('Thanks for your feedback.')).not.toHaveFocus();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(capture).not.toHaveBeenCalled();
   });
 });

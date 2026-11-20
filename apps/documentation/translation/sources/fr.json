@@ -235,10 +235,8 @@
     "commentLabel": "How could this article be improved?",
     "forumNote": "Have a question? Ask it in the <link>community forum</link>.",
     "send": "Send",
-    "editComment": "Change your feedback",
     "ratingSent": "Thanks. Your answer was sent.",
     "ratingRemoved": "Your answer was removed.",
-    "commentSent": "Thanks. Your feedback was sent.",
-    "commentRemoved": "Your feedback was removed."
+    "thanks": "Thanks for your feedback."
   }
 }

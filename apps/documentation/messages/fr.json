@@ -235,10 +235,8 @@
     "commentLabel": "Comment pourrions-nous améliorer cet article ?",
     "forumNote": "Vous avez une question ? Posez-la sur le <link>forum de la communauté</link>.",
     "send": "Envoyer",
-    "editComment": "Modifier votre commentaire",
     "ratingSent": "Merci. Votre réponse a été envoyée.",
     "ratingRemoved": "Votre réponse a été retirée.",
-    "commentSent": "Merci. Votre commentaire a été envoyé.",
-    "commentRemoved": "Votre commentaire a été supprimé."
+    "thanks": "Merci pour votre commentaire."
   }
 }

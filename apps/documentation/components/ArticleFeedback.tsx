@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageSquare, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { posthog } from 'posthog-js';
 import {
@@ -25,7 +25,7 @@ import {
   saveArticleFeedback,
 } from '~/lib/analytics/articleFeedback';
 
-type Status = 'ratingSent' | 'ratingRemoved' | 'commentSent' | 'commentRemoved';
+type Status = 'ratingSent' | 'ratingRemoved';
 
 // Each result gets a new id, so the live region's text node is replaced and
 // announced even when the message matches the previous one.
@@ -58,11 +58,8 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const announce = (status: Status) =>
     setAnnouncement((previous) => ({ status, id: (previous?.id ?? 0) + 1 }));
-  // Whatever control the reader pressed may unmount or turn disabled, so
-  // focus moves to the control that replaces it.
-  const focusEditButton = useRef(false);
-  const focusCommentBox = useRef(false);
-  const commentBox = useRef<HTMLTextAreaElement | null>(null);
+  // Sending a comment replaces the prompt, so focus moves to the thanks.
+  const focusThanks = useRef(false);
 
   const send = (next: Feedback) => {
     setSent(next);
@@ -91,23 +88,35 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
   };
 
   const sendComment = () => {
-    if (draft === null) return;
-    const nextComment = draft.trim();
+    const nextComment = draft?.trim() ?? '';
+    if (nextComment === '') return;
     send({
       submissionId: feedback?.submissionId ?? crypto.randomUUID(),
       rating,
       comment: nextComment,
     });
-    announce(nextComment === '' ? 'commentRemoved' : 'commentSent');
     setDraft(null);
-    if (nextComment === '') {
-      commentBox.current?.focus();
-    } else {
-      focusEditButton.current = true;
-    }
+    focusThanks.current = true;
   };
 
-  const editing = rating !== null && (draft !== null || comment === '');
+  if (comment !== '') {
+    return (
+      <section className="border-outline mt-12 border-t pt-6">
+        <Paragraph
+          ref={(thanks: HTMLParagraphElement | null) => {
+            if (thanks === null || !focusThanks.current) return;
+            focusThanks.current = false;
+            thanks.focus();
+          }}
+          tabIndex={-1}
+          margin="none"
+          className="font-bold focus:outline-none"
+        >
+          {t('thanks')}
+        </Paragraph>
+      </section>
+    );
+  }
 
   return (
     <section
@@ -138,22 +147,16 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
         </div>
       </div>
 
-      {editing ? (
+      {rating !== null && (
         <div className="flex flex-col gap-2">
           <label htmlFor={commentId} className="font-bold">
             {t('commentLabel')}
           </label>
           <TextAreaField
-            ref={(box: HTMLTextAreaElement | null) => {
-              commentBox.current = box;
-              if (box === null || !focusCommentBox.current) return;
-              focusCommentBox.current = false;
-              box.focus();
-            }}
             id={commentId}
             maxLength={ARTICLE_COMMENT_MAX_LENGTH}
             className="[&>textarea]:field-sizing-content [&>textarea]:max-h-60 [&>textarea]:min-h-24"
-            value={draft ?? comment}
+            value={draft ?? ''}
             onChange={(next) => setDraft(next ?? '')}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -163,55 +166,22 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
             <Button
               size="sm"
               color="primary"
-              disabled={(draft ?? comment).trim() === comment}
+              disabled={(draft ?? '').trim() === ''}
               onClick={sendComment}
             >
               {t('send')}
             </Button>
           </div>
         </div>
-      ) : (
-        rating !== null && (
-          <div>
-            <Button
-              ref={(button: HTMLButtonElement | null) => {
-                if (button === null || !focusEditButton.current) return;
-                focusEditButton.current = false;
-                button.focus();
-              }}
-              size="sm"
-              variant="text"
-              className="-ms-3"
-              icon={<MessageSquare aria-hidden />}
-              onClick={() => {
-                focusCommentBox.current = true;
-                setDraft(comment);
-                setAnnouncement(null);
-              }}
-            >
-              {t('editComment')}
-            </Button>
-          </div>
-        )
       )}
 
       {/* The pressed button already shows a rating, so its result is only
-          announced; a sent comment closes the box, so that result is shown. */}
-      <Paragraph
-        role="status"
-        intent="smallText"
-        margin="none"
-        className={
-          announcement?.status === 'commentSent' ||
-          announcement?.status === 'commentRemoved'
-            ? undefined
-            : 'sr-only'
-        }
-      >
+          announced. */}
+      <p role="status" className="sr-only">
         {announcement !== null && (
           <span key={announcement.id}>{t(announcement.status)}</span>
         )}
-      </Paragraph>
+      </p>
     </section>
   );
 }
