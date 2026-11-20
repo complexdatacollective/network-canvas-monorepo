@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import type { JSX } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import ArticleFeedback from '~/components/ArticleFeedback';
 import WorkInProgress from '~/components/customComponents/WorkInProgress';
 import type { HeadingNode } from '~/lib/tableOfContents';
 import { usePathname } from '~/navigation';
@@ -67,6 +68,7 @@ export default function Article({
         {wip && <WorkInProgress />}
         {showToc && <TableOfContents headings={headings} />}
         {content}
+        <ArticleFeedback key={pathname} docPath={pathname} />
       </article>
       {showToc && <TableOfContents headings={headings} sideBar />}
     </>

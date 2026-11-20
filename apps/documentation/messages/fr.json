@@ -227,5 +227,18 @@
     "goHome": "Utilisez le lien « Retour à l’accueil » ci-dessous pour revenir à la page d’accueil, puis trouvez la page que vous cherchez à l’aide des menus.",
     "contact": "Si vous pensez voir cette page par erreur, contactez l’équipe du projet en précisant la page que vous cherchiez à atteindre. Écrivez-nous à <link>info@networkcanvas.com</link>.",
     "returnHome": "Retour à l’accueil"
+  },
+  "ArticleFeedback": {
+    "question": "Cet article vous a-t-il été utile ?",
+    "yes": "Oui",
+    "no": "Non",
+    "commentLabel": "Comment pourrions-nous améliorer cet article ?",
+    "forumNote": "Vous avez une question ? Posez-la sur le <link>forum de la communauté</link>.",
+    "send": "Envoyer",
+    "editComment": "Modifier votre commentaire",
+    "ratingSent": "Merci. Votre réponse a été envoyée.",
+    "ratingRemoved": "Votre réponse a été retirée.",
+    "commentSent": "Merci. Votre commentaire a été envoyé.",
+    "commentRemoved": "Votre commentaire a été supprimé."
   }
 }
