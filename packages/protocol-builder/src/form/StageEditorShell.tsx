@@ -81,6 +81,10 @@ import {
   SectionOutlineStore,
   type SectionValidationIssue,
 } from './outlineStore.ts';
+import {
+  findProtocolObjectRow,
+  focusProtocolObjectRow,
+} from './protocolObjectRow.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
 import { rewriteFormStore } from './rewriteFormStore.ts';
 import {
@@ -425,6 +429,12 @@ function StageEditorFormBody({
   >(undefined);
 
   /**
+   * The object the last refused save was about, for the refusal's focus to
+   * reach once its message is on screen: see `onSubmitInvalid`.
+   */
+  const refusedObjectId = useRef<string | undefined>(undefined);
+
+  /**
    * How this form writes structurally, as a list editor commits one row
    * operation rather than as a researcher types into a control.
    *
@@ -623,6 +633,8 @@ function StageEditorFormBody({
         discardDraft(outcome.message);
         return { success: false, formErrors: [outcome.message] };
       }
+      refusedObjectId.current =
+        outcome.status === 'refused' ? outcome.objectId : undefined;
       return { success: false, formErrors: [outcome.message] };
     },
     [
@@ -666,6 +678,15 @@ function StageEditorFormBody({
       // renders the same field names; the store's identity, because the
       // stage's NAME is drawn outside this element and is still ours.
       focusFirstError(errors, formRef.current, fieldScope);
+      // A refusal about one row of a list goes to that row. Where the row is
+      // not on screen, focus stays where the refusal left it.
+      const objectId = refusedObjectId.current;
+      refusedObjectId.current = undefined;
+      const row =
+        objectId === undefined
+          ? undefined
+          : findProtocolObjectRow(formRef.current, objectId);
+      if (row !== undefined) focusProtocolObjectRow(row);
     },
   });
 

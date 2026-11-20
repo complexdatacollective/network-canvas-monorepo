@@ -1124,6 +1124,60 @@ with no word for its rows can honestly say.
 };
 
 /**
+ * A host sending focus to one row, as a problem about the item in it does.
+ */
+export const FocusedRow: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Finding a row**
+
+With \`getId\`, each row carries its item's id as \`data-item-id\`, so a host
+can find the row an item is drawn in however the list has been reordered.
+A row is not in the tab order. When a host focuses it (making it focusable
+with \`tabindex="-1"\` for the purpose), the row shows the focus ring however
+the researcher arrived, a click included.
+        `,
+      },
+    },
+  },
+  render: function Render() {
+    const [prompts, setPrompts] = useState<SimpleItemType[]>([
+      { id: 'first', label: 'Who do you turn to for advice?' },
+      { id: 'second', label: 'Who have you spent time with recently?' },
+      { id: 'third', label: 'Who do you work with?' },
+    ]);
+
+    return (
+      <ArrayField<SimpleItemType>
+        sortable
+        itemLabel={promptLabel}
+        addButtonLabel="Add prompt"
+        value={prompts}
+        onChange={(newValue) => setPrompts(newValue ?? [])}
+        getId={(item) => item.id}
+        itemComponent={SimpleInlineItem}
+      />
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const row = canvasElement.querySelector<HTMLElement>(
+      '[data-item-id="second"]',
+    );
+    await expect(row).not.toBeNull();
+    row?.setAttribute('tabindex', '-1');
+    row?.focus();
+    await expect(row).toHaveFocus();
+    await expect(
+      within(row ?? canvasElement).getByText(
+        'Who have you spent time with recently?',
+      ),
+    ).toBeInTheDocument();
+  },
+};
+
+/**
  * A list whose every field is answered in the row dialog passes no
  * `itemTemplate`: adding opens the editor on an empty row.
  */

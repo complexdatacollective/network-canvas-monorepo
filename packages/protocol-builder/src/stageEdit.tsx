@@ -84,8 +84,12 @@ export type StageSaveOutcome =
   | Readonly<{ status: 'saved'; sectionId: ProtocolSectionId }>
   /** The stage is somebody else's now; this draft is gone and cannot be retried. */
   | Readonly<{ status: 'lost'; message: string }>
-  /** The host answered, and wrote nothing; the draft stays to be saved again. */
-  | Readonly<{ status: 'refused'; message: string }>
+  /**
+   * The host answered, and wrote nothing; the draft stays to be saved again.
+   * `objectId` names the object in the stage the refusal is about, where the
+   * host could say.
+   */
+  | Readonly<{ status: 'refused'; message: string; objectId?: string }>
   /**
    * No answer came, so the stage may or may not have been saved. Saving the
    * same draft again is how to find out: the host answers that request with
@@ -497,13 +501,19 @@ function refusedAdd(refusal: Refusal<'Create'> | undefined): StageSaveOutcome {
         status: 'refused',
         message: blockedMessage(blockedHolders(refusal.blocked)),
       };
-    case 'InvalidShape':
+    case 'InvalidShape': {
+      if (isCodebookSectionId(refusal.sectionId)) {
+        return { status: 'refused', message: CODEBOOK_CLASH_MESSAGE };
+      }
+      const objectId = refusal.issues.find(
+        (issue) => issue.objectId !== undefined,
+      )?.objectId;
       return {
         status: 'refused',
-        message: isCodebookSectionId(refusal.sectionId)
-          ? CODEBOOK_CLASH_MESSAGE
-          : INVALID_SHAPE_MESSAGE,
+        message: INVALID_SHAPE_MESSAGE,
+        ...(objectId === undefined ? {} : { objectId }),
       };
+    }
     case 'ProtocolNotFound':
     case 'SectionNotFound':
     case 'SectionExists':
