@@ -11,11 +11,12 @@ import {
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 
+import { useShownSteps } from './useShownSteps';
 import { useWalkthrough } from './useWalkthrough';
 import {
   openWalkthrough,
   setWalkthroughCollapsed,
-  stepWithin,
+  placeAmong,
   takeWalkthroughFocus,
   useWalkthroughState,
 } from './walkthroughStore';
@@ -65,6 +66,7 @@ export const WalkthroughToolbarControl = defineToolbarChild(
     const open = useWalkthroughState((state) => state.open);
     const step = useWalkthroughState((state) => state.step);
     const steps = useWalkthrough(type)?.steps;
+    const shown = useShownSteps(steps);
 
     // Minimising or closing the walkthrough hands focus to this control.
     useEffect(() => {
@@ -90,9 +92,9 @@ export const WalkthroughToolbarControl = defineToolbarChild(
       );
     }
 
-    const index = stepWithin(step, steps.length);
-    const title = steps[index]?.title ?? '';
-    const values = { index: index + 1, total: steps.length, title };
+    const index = placeAmong(step, shown);
+    const title = steps[shown[index] ?? 0]?.title ?? '';
+    const values = { index: index + 1, total: shown.length, title };
     return (
       <ToolbarIconButton
         ref={mergedRef}
@@ -102,7 +104,7 @@ export const WalkthroughToolbarControl = defineToolbarChild(
         aria-label={`Resume walkthrough, step ${values.index} of ${values.total}: ${title}`}
         icon={
           <ProgressRing
-            value={(index + 1) / steps.length}
+            value={(index + 1) / shown.length}
             className="size-10 shrink-0"
           >
             <span aria-hidden className="font-heading text-2xs font-extrabold">

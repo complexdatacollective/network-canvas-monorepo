@@ -7,6 +7,12 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
  * How far a running review has got, as a ring the size of an icon. Exposed
  * as a progress bar with its value; the ring is drawn in the current text
  * colour over a faint track, so it reads in every theme.
+ *
+ * Not fresco-ui's `ProgressRing`: that one is the presentational face of a
+ * control which names the progress itself, in the primary colour, with a
+ * thinner stroke and something in its middle. This one is the progress bar,
+ * in whatever colour its button's text is, and fills the other way round in a
+ * right-to-left language.
  */
 const ReviewProgressRing = ({ fraction }: { fraction: number }) => {
   const intl = useAppIntl();

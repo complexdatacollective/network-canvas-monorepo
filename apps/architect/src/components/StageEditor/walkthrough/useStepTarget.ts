@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from 'react';
  * Calls back whenever elements are added to or removed from the page, which
  * is all that can make a step's target appear or go.
  */
-function subscribeToPage(onChange: () => void) {
+export function subscribeToPage(onChange: () => void) {
   const observer = new MutationObserver(onChange);
   observer.observe(document.body, { childList: true, subtree: true });
   return () => observer.disconnect();

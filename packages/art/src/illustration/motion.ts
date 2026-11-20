@@ -21,6 +21,17 @@ export const backOut = (x: number) => {
 // SVG `scale(0)` collapses a group's transform; keep it just above zero.
 export const grow = (k: number) => Math.max(0.001, k);
 
+// Each tick of the clock re-renders a whole illustration, so the clock ticks
+// at the rate of drawn animation, 30 frames a second, rather than of the
+// display. A frame arrives a little early as often as late, hence the
+// allowance: without it a 60Hz display would tick at 20.
+const TICK = 1000 / 30 - 2;
+
+// The longest step the clock takes in one tick, in milliseconds. A tab left
+// in the background stops ticking; when it comes back, the illustration
+// carries on from where it was instead of jumping ahead by the time away.
+const LONGEST_STEP = 100;
+
 // Seconds of illustration time, advancing while the drawing is in view.
 // Looping scenes start at `stillTime` and take it modulo their loop; a scene
 // that plays once passes `from: 0`. With reduced motion it stays on
@@ -33,10 +44,18 @@ export function useIllustrationClock(
   const reduceMotion = usePrefersReducedMotion();
   const inView = useInView(ref, { amount: 0.2 });
   const [time, setTime] = useState(from);
+  const waited = useRef(0);
 
   useAnimationFrame((_, delta) => {
-    if (!inView || reduceMotion) return;
-    setTime((current) => current + delta / 1000);
+    if (!inView || reduceMotion) {
+      waited.current = 0;
+      return;
+    }
+    waited.current += delta;
+    if (waited.current < TICK) return;
+    const step = Math.min(waited.current, LONGEST_STEP);
+    waited.current = 0;
+    setTime((current) => current + step / 1000);
   });
 
   return { ref, time: reduceMotion ? stillTime : time };

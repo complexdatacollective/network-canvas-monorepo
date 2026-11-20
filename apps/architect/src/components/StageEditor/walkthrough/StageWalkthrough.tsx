@@ -32,6 +32,7 @@ import Practices from './Practices';
 import SceneBoundary from './SceneBoundary';
 import { SCENES } from './scenes/sceneRegistry';
 import { STEP_SECONDS, usePanel } from './usePanel';
+import { useShownSteps } from './useShownSteps';
 import { useStepTarget } from './useStepTarget';
 import { useWalkthrough } from './useWalkthrough';
 import {
@@ -39,7 +40,7 @@ import {
   goToWalkthroughStep,
   setWalkthroughCollapsed,
   setWalkthroughSection,
-  stepWithin,
+  placeAmong,
   takeWalkthroughFocus,
   useWalkthroughState,
 } from './walkthroughStore';
@@ -119,8 +120,10 @@ function WalkthroughPanel({
   steps,
 }: Readonly<{ title: string; steps: readonly WalkthroughStep[] }>) {
   const current = useWalkthroughState((state) => state.step);
-  const index = stepWithin(current, steps.length);
-  const step = steps[index];
+  const shown = useShownSteps(steps);
+  const index = placeAmong(current, shown);
+  const place = shown[index];
+  const step = place === undefined ? undefined : steps[place];
   const section = step?.section;
 
   useEffect(() => {
@@ -131,19 +134,22 @@ function WalkthroughPanel({
   const target = useStepTarget(section, step?.field, step?.control);
   if (step === undefined) return null;
 
-  const isLast = index === steps.length - 1;
+  const back = shown[index - 1];
+  const next = shown[index + 1];
   return (
     <WalkthroughCard
       title={title}
       step={step}
       index={index}
-      total={steps.length}
+      total={shown.length}
       target={target}
-      onBack={index === 0 ? undefined : () => goToWalkthroughStep(index - 1)}
+      onBack={back === undefined ? undefined : () => goToWalkthroughStep(back)}
       onNext={
-        isLast ? () => closeWalkthrough() : () => goToWalkthroughStep(index + 1)
+        next === undefined
+          ? () => closeWalkthrough()
+          : () => goToWalkthroughStep(next)
       }
-      isLast={isLast}
+      isLast={next === undefined}
     />
   );
 }

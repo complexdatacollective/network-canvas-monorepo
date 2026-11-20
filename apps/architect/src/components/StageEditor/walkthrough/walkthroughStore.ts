@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 type WalkthroughState = Readonly<{
   open: boolean;
+  /** The step's place in the whole walkthrough, shown or not. */
   step: number;
   collapsed: boolean;
   /**
@@ -118,9 +119,14 @@ export function takeWalkthroughFocus(): boolean {
   return pending;
 }
 
-/** `step`, kept within a walkthrough of `total` steps. */
-export const stepWithin = (step: number, total: number) =>
-  Math.min(step, Math.max(0, total - 1));
+/**
+ * Where `step` falls among `shown`, the steps on offer by their place in the
+ * walkthrough: itself, or the next one on offer after it, or the last.
+ */
+export const placeAmong = (step: number, shown: readonly number[]) => {
+  const at = shown.findIndex((candidate) => candidate >= step);
+  return at === -1 ? Math.max(0, shown.length - 1) : at;
+};
 
 export function goToWalkthroughStep(step: number) {
   set({ ...state, step });
