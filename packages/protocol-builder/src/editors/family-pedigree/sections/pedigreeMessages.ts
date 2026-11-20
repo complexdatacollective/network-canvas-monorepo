@@ -442,7 +442,7 @@ export const familyPedigreeMessages = defineMessages({
     defaultMessage:
       'The interface sets this boolean attribute to true on the participant’s own person, and leaves it blank on everyone else. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Because it is blank rather than false for everyone else, filter on “is not” true to leave the participant out.',
     description:
-      'Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Stage filter section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there.',
+      'Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Filter network section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there.',
   },
   egoCreateLabel: {
     id: 'protocolBuilder.pedigree.egoCreateLabel',

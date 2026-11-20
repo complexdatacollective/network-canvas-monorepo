@@ -145,7 +145,7 @@ describe('F: the preview shows every text change a fix makes', () => {
     ]);
   });
 
-  it('gives one edit per changed translation, and names none left as they are when all change', () => {
+  it('gives an edit only for the default language when a fix names other translations', () => {
     const protocol = makeProtocol();
     const { operations } = recordFix(protocol, [
       op('set', '/stages/names/prompts/p1/text', {
@@ -159,19 +159,7 @@ describe('F: the preview shows every text change a fix makes', () => {
         now: 'Name people',
         after: 'New wording',
         locale: 'en',
-        otherTranslations: [],
-        markdown: true,
-        singleLine: true,
-        textPath: ['stages', 1, 'prompts', 0, 'text'],
-        kind: 'text',
-        editable: true,
-      },
-      {
-        path: '/stages/names/prompts/p1/text/fr',
-        now: 'Nommez',
-        after: 'Nouveau texte',
-        locale: 'fr',
-        otherTranslations: [],
+        otherTranslations: ['fr'],
         markdown: true,
         singleLine: true,
         textPath: ['stages', 1, 'prompts', 0, 'text'],

@@ -27,6 +27,7 @@ export default function TaskExplanationSection() {
 
   return (
     <BuilderSection
+      sectionKey="task-explanation"
       title={intl.formatMessage(anonymisationMessages.explanationTitle)}
       description={intl.formatMessage(
         anonymisationMessages.explanationDescription,

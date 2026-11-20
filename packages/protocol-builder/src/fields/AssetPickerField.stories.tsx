@@ -256,6 +256,7 @@ function ResourcePickerHost({
             <main className="mx-auto max-w-6xl p-6">
               <StageEditorShell>
                 <BuilderSection
+                  sectionKey="form-fields"
                   title="Resources"
                   description="What this stage shows the participant, or reads its people from."
                 >

@@ -44,7 +44,15 @@ const section = (
   title: string,
   status: StageSectionStatus,
   problems: readonly string[] = [],
-): StageSection => ({ id, title, status, problems });
+): StageSection => ({
+  id,
+  // The outline matches sections to the walkthrough by key, which none of
+  // these tests involve.
+  sectionKey: 'introduction',
+  title,
+  status,
+  problems,
+});
 
 /** The sections themselves, as the editor renders them: focusable regions. */
 function SectionsOnThePage({

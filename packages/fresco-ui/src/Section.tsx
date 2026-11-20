@@ -42,6 +42,8 @@ type SectionBaseProps = {
    * region named by its own heading, arriving announces the section's title.
    */
   id?: string;
+  /** A small control shown beside the title, such as a link to help. */
+  headerAction?: ReactNode;
   children?: ReactNode;
 };
 
@@ -97,6 +99,7 @@ export default function Section({
   onOpenChange,
   disabled = false,
   id,
+  headerAction,
   children,
 }: SectionProps) {
   const titleId = useId();
@@ -157,6 +160,20 @@ export default function Section({
     [disabled, onOpenChange, toggleable],
   );
 
+  const heading = (
+    <Heading
+      id={titleId}
+      level={headingLevel}
+      margin="none"
+      // The element only — `level` still carries the type treatment.
+      {...(headingTag === headingLevel
+        ? {}
+        : { render: createElement(headingTag) })}
+    >
+      {title}
+    </Heading>
+  );
+
   return (
     <Collapsible.Root
       open={toggleable ? open : true}
@@ -180,17 +197,14 @@ export default function Section({
       >
         <header className="flex items-start justify-between gap-6 px-8 py-6">
           <div className="min-w-0 group-aria-disabled:opacity-50">
-            <Heading
-              id={titleId}
-              level={headingLevel}
-              margin="none"
-              // The element only — `level` still carries the type treatment.
-              {...(headingTag === headingLevel
-                ? {}
-                : { render: createElement(headingTag) })}
-            >
-              {title}
-            </Heading>
+            {headerAction === undefined ? (
+              heading
+            ) : (
+              <div className="flex items-center gap-2">
+                {heading}
+                {headerAction}
+              </div>
+            )}
             {description && (
               <Paragraph
                 id={descriptionId}

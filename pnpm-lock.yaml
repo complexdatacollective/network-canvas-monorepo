@@ -508,6 +508,9 @@ importers:
       react:
         specifier: 'catalog:'
         version: 19.3.1
+      react-best-merge-refs:
+        specifier: ^1.0.2
+        version: 1.0.2(react@19.3.1)
       react-dom:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)

@@ -30,7 +30,7 @@ describe('a section that is not available yet', () => {
         fields: { label: 'New stage' },
       },
       sections: (
-        <BuilderSection title="Data source" disabled>
+        <BuilderSection sectionKey="roster-source" title="Data source" disabled>
           <Field name="dataSource" label="Data source" component={InputField} />
         </BuilderSection>
       ),
@@ -54,7 +54,10 @@ describe('a required value the stage no longer holds', () => {
     const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
       sections: (
-        <BuilderSection title="Person attributes">
+        <BuilderSection
+          sectionKey="person-attributes"
+          title="Person attributes"
+        >
           <Field
             name="nodeConfiguration.egoAttribute"
             label="Ego variable"
@@ -99,7 +102,7 @@ const SetZoom = (({
 describe('a value the schema refuses', () => {
   const zoomSections = (
     <>
-      <BuilderSection title="Map">
+      <BuilderSection sectionKey="map-view" title="Map">
         <Field
           name="mapOptions.initialZoom"
           label="Starting zoom"
@@ -107,7 +110,7 @@ describe('a value the schema refuses', () => {
         />
       </BuilderSection>
       {/* A second section, owning a value the problem is not about. */}
-      <BuilderSection title="Stage name">
+      <BuilderSection sectionKey="form-fields" title="Stage name">
         <Field name="label" label="Stage name" component={InputField} />
       </BuilderSection>
     </>

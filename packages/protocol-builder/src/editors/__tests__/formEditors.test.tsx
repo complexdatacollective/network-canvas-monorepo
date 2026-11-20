@@ -88,7 +88,7 @@ const FORM_EDITORS: FormEditorCase[] = [
     editor: alterFormStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Form configuration',
       'Skip logic',
       'Interviewer guidance',
@@ -101,7 +101,7 @@ const FORM_EDITORS: FormEditorCase[] = [
     editor: alterEdgeFormStageEditor,
     sections: [
       'Edge setup',
-      'Stage filter',
+      'Filter network',
       'Form configuration',
       'Skip logic',
       'Interviewer guidance',

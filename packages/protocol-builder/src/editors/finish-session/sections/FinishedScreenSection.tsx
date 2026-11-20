@@ -24,6 +24,7 @@ export default function FinishedScreenSection() {
 
   return (
     <BuilderSection
+      sectionKey="finished-screen"
       title={intl.formatMessage(finishSessionMessages.finishedTitle)}
       description={intl.formatMessage(
         finishSessionMessages.finishedDescription,

@@ -234,6 +234,7 @@ export default function SourcePedigreeSection() {
 
   return (
     <BuilderSection
+      sectionKey="pedigree-source"
       title={intl.formatMessage(narrativePedigreeMessages.sourceTitle)}
     >
       {problem !== null && (

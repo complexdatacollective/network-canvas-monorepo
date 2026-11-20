@@ -58,6 +58,7 @@ export default function IntroductionSection() {
 
   return (
     <BuilderSection
+      sectionKey="introduction"
       title={intl.formatMessage(introductionMessages.title)}
       description={intl.formatMessage(introductionMessages.description)}
     >

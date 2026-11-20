@@ -336,7 +336,7 @@ function renderInlineList(options: readonly unknown[]) {
   const harness = renderStageEditor({
     stage: { type: 'Information', fields: { ...SAVEABLE_STAGE, options } },
     sections: (
-      <BuilderSection title="Answer options">
+      <BuilderSection sectionKey="form-fields" title="Answer options">
         {probe}
         <Field
           name="options"
@@ -485,7 +485,7 @@ function renderBooleanAnswers(options: readonly unknown[]) {
   const harness = renderStageEditor({
     stage: { type: 'Information', fields: { ...SAVEABLE_STAGE, options } },
     sections: (
-      <BuilderSection title="Answer labels">
+      <BuilderSection sectionKey="form-fields" title="Answer labels">
         {probe}
         <Field
           name="options"

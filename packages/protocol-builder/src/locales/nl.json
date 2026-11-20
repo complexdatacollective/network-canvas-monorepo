@@ -1133,7 +1133,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "Filterregels verbergen ingestelde waarden",
   "protocolBuilder.networkFilter.rulesHint": "Maak een of meer regels om te filteren wat in deze fase wordt getoond.",
   "protocolBuilder.networkFilter.rulesLabel": "Filterregels",
-  "protocolBuilder.networkFilter.title": "Fasefilter",
+  "protocolBuilder.networkFilter.title": "Netwerk filteren",
   "protocolBuilder.nodeLabel.textPlaceholder": "Schrijf het label en voeg via de werkbalk waarden en logica in…",
   "protocolBuilder.nodePanels.addLabel": "Nieuw paneel toevoegen",
   "protocolBuilder.nodePanels.addTitle": "Paneel aanmaken",

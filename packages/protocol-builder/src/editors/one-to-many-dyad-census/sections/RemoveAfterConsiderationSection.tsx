@@ -25,6 +25,7 @@ export default function RemoveAfterConsiderationSection() {
 
   return (
     <BuilderSection
+      sectionKey="node-availability"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
     >

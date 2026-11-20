@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from 'react';
 
 import type { StageType } from '@codaco/protocol-validation';
 
+import type { SectionKey } from './sections/sectionKeys.ts';
 import { STAGE_TYPES } from './stage-types.ts';
 
 /**
@@ -30,6 +31,14 @@ export type StageSectionStatus =
 export type StageSection = Readonly<{
   /** The DOM id of the section's own element, for `focusStageSection`. */
   id: string;
+  /**
+   * The section's stable name, such as `filter-network`. Unlike `title` it is
+   * not translated and does not change when the wording does, so a host that
+   * must recognise a particular section recognises it by this. It is also
+   * carried on the section's element as `data-section-key`. Unique within one
+   * stage editor.
+   */
+  sectionKey: SectionKey;
   title: string;
   status: StageSectionStatus;
   /**

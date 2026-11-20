@@ -318,7 +318,7 @@ export const applyFixEdits = (
     const written = changed
       ? { ...operation, value: JSON.stringify(value) }
       : operation;
-    if (writesPlaceholder(written)) return null;
+    if (writesPlaceholder(written, protocol)) return null;
     result.push(written);
   }
   return result;
@@ -340,7 +340,10 @@ export const placeholdersReplaceable = (
       .map((edit) => [edit.path, 'text']),
   );
   const result = applyFixEdits(protocol, operations, replaced);
-  return result !== null && !result.some(writesPlaceholder);
+  return (
+    result !== null &&
+    !result.some((operation) => writesPlaceholder(operation, protocol))
+  );
 };
 
 /**

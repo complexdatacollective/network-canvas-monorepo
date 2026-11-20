@@ -67,7 +67,7 @@ function renderEditor(readOnly = false) {
     localization: { defaultLocale: 'en', locales: ['en'] },
     ...(readOnly ? { readOnly: true } : {}),
     sections: (
-      <BuilderSection title="Page content">
+      <BuilderSection sectionKey="page-content" title="Page content">
         <Probe />
         <Field
           name="content"

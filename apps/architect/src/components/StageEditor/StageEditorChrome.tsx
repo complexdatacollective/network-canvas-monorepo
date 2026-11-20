@@ -43,6 +43,11 @@ import {
 } from './stageDraftBeacon';
 import StageSectionOutline from './StageSectionOutline';
 import StageTitle from './StageTitle';
+import { hasWalkthrough } from './walkthrough/parseWalkthrough';
+import StageWalkthrough from './walkthrough/StageWalkthrough';
+import { useWalkthroughState } from './walkthrough/walkthroughStore';
+import { WalkthroughToolbarControl } from './walkthrough/WalkthroughToolbarControl';
+
 const messages = defineMessages({
   openingPreview: {
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
@@ -164,6 +169,7 @@ export default function StageEditorChrome({
       <OpenStageRegistration />
       {outlineHost !== null &&
         createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
+      <StageWalkthrough />
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}
@@ -262,6 +268,12 @@ function StageEditorActions({
   const protocol = useSelector(getProtocol);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
   const respectSkipLogic = useSelector(getPreviewRespectSkipLogic);
+  const { identity } = useStageEditorForm();
+  // The toolbar offers the walkthrough while it is closed, and a ring to
+  // restore it while it is minimised; its open panel needs neither.
+  const walkthroughPanelOpen = useWalkthroughState(
+    (state) => state.open && !state.collapsed,
+  );
 
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   // Disabled until the stage is known to be previewable, so Preview cannot be
@@ -420,6 +432,17 @@ function StageEditorActions({
         previewOptionsContent={previewOptionsContent}
         isStageInvalid={!isStageValid}
         isOpeningPreview={isOpeningPreview}
+        walkthrough={
+          identity !== undefined &&
+          hasWalkthrough(identity.type) &&
+          !walkthroughPanelOpen ? (
+            <WalkthroughToolbarControl
+              key="walkthrough"
+              stage={identity.id}
+              type={identity.type}
+            />
+          ) : undefined
+        }
       />
     </>
   );

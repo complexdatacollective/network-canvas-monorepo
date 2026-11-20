@@ -37,7 +37,7 @@ function renderEditor({
   return renderStageEditor({
     stage: { type: 'Information', fields },
     sections: (
-      <BuilderSection title="Page content">
+      <BuilderSection sectionKey="page-content" title="Page content">
         {fieldName !== undefined && (
           <Field
             name={fieldName}

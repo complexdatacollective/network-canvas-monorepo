@@ -44,7 +44,7 @@ describe('what the protocol refuses that no section answers for', () => {
     const harness = renderStageEditor({
       stage: untitledStage,
       sections: (
-        <BuilderSection title="Page content">
+        <BuilderSection sectionKey="page-content" title="Page content">
           <Field
             name="content"
             label="Page heading"

@@ -26,6 +26,7 @@ export default function ParticipantLanguagesSection() {
 
   return (
     <BuilderSection
+      sectionKey="languages"
       title={intl.formatMessage(languageChooserMessages.languagesTitle)}
       description={intl.formatMessage(
         languageChooserMessages.languagesDescription,

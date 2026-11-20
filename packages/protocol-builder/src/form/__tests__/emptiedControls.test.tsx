@@ -34,7 +34,10 @@ describe('a control the researcher emptied', () => {
       },
       sections: (
         <>
-          <BuilderSection title="Interviewer guidance">
+          <BuilderSection
+            sectionKey="interviewer-guidance"
+            title="Interviewer guidance"
+          >
             <Field
               name="interviewScript"
               label="Interviewer script text"
@@ -82,7 +85,7 @@ describe('a control the researcher emptied', () => {
       },
       sections: (
         <>
-          <BuilderSection title="Condition text">
+          <BuilderSection sectionKey="form-fields" title="Condition text">
             {probe}
             {names.map(([name, label]) => (
               <Field
@@ -126,7 +129,7 @@ describe('a control the researcher emptied', () => {
       },
       sections: (
         <>
-          <BuilderSection title="Page content">
+          <BuilderSection sectionKey="page-content" title="Page content">
             <Field
               name="content"
               label="Page heading"
@@ -167,7 +170,7 @@ describe('a control the researcher emptied', () => {
       },
       sections: (
         <>
-          <BuilderSection title="Page content">
+          <BuilderSection sectionKey="page-content" title="Page content">
             <Field
               name="content"
               label="Page heading"

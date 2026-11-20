@@ -289,6 +289,7 @@ export default function ComposerNodesSection() {
 
   return (
     <BuilderSection
+      sectionKey="composer-nodes"
       title={intl.formatMessage(messages.nodesTitle)}
       description={intl.formatMessage(
         waiting ? messages.nodesWaitingDescription : messages.nodesDescription,
@@ -365,6 +366,7 @@ export default function ComposerNodesSection() {
       </Section>
 
       <BuilderSection
+        sectionKey="composer-node-form"
         title={intl.formatMessage(messages.nodeFormTitle)}
         description={intl.formatMessage(messages.nodeFormDescription)}
         disabled={waiting}

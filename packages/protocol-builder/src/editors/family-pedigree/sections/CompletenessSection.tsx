@@ -144,6 +144,7 @@ export default function CompletenessSection() {
 
   return (
     <BuilderSection
+      sectionKey="completeness"
       title={intl.formatMessage(messages.completenessTitle)}
       description={intl.formatMessage(
         waiting

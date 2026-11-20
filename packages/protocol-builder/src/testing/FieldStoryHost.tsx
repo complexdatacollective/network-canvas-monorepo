@@ -154,7 +154,10 @@ export function FieldStoryHost({
                 {...(header === undefined ? {} : { header: () => header })}
               >
                 {children === undefined ? null : (
-                  <BuilderSection title={sectionTitle ?? 'This field'}>
+                  <BuilderSection
+                    sectionKey="form-fields"
+                    title={sectionTitle ?? 'This field'}
+                  >
                     {children}
                   </BuilderSection>
                 )}
