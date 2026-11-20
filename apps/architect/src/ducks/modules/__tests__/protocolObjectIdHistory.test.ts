@@ -109,6 +109,20 @@ const rosterIds = (stage: RosterStage) => ({
   ),
 });
 
+type RosterSortRule = NonNullable<
+  NonNullable<RosterStage['sortOptions']>['sortOrder']
+>[number];
+
+/** A new sort rule on the roster's first sort property, the other way round. */
+const extraSortRule = (
+  stage: RosterStage,
+  id = createProtocolObjectId(),
+): RosterSortRule => {
+  const [rule] = stage.sortOptions?.sortOrder ?? [];
+  if (rule === undefined) throw new Error('The roster has no sort rule');
+  return { ...rule, id, direction: rule.direction === 'asc' ? 'desc' : 'asc' };
+};
+
 /** Commits an edit of a stage the way a stage editor's save does. */
 const commitEdit = (store: Store, stage: Stage) =>
   store.dispatch(commitStage({ stageId: stage.id, stage }));
@@ -125,28 +139,33 @@ describe('protocol object ids through undo and redo', () => {
     const { id: _templateId, ...document } = template;
     const stagesBefore = presentOf(store).stages.map(({ id }) => id);
 
-    const creation = await createSection(store, 'stage', {
-      ...document,
-      label: { 'en-US': 'Second roster' },
-      prompts: template.prompts.map((prompt) => ({
-        ...prompt,
-        id: createProtocolObjectId(),
-      })),
-      cardOptions: {
-        additionalProperties: (
-          template.cardOptions?.additionalProperties ?? []
-        ).map((row) => ({ ...row, id: createProtocolObjectId() })),
-      },
-      sortOptions: {
-        sortOrder: (template.sortOptions?.sortOrder ?? []).map((rule) => ({
-          ...rule,
+    const creation = await createSection(
+      store,
+      'stage',
+      {
+        ...document,
+        label: { 'en-US': 'Second roster' },
+        prompts: template.prompts.map((prompt) => ({
+          ...prompt,
           id: createProtocolObjectId(),
         })),
-        sortableProperties: (
-          template.sortOptions?.sortableProperties ?? []
-        ).map((row) => ({ ...row, id: createProtocolObjectId() })),
+        cardOptions: {
+          additionalProperties: (
+            template.cardOptions?.additionalProperties ?? []
+          ).map((row) => ({ ...row, id: createProtocolObjectId() })),
+        },
+        sortOptions: {
+          sortOrder: (template.sortOptions?.sortOrder ?? []).map((rule) => ({
+            ...rule,
+            id: createProtocolObjectId(),
+          })),
+          sortableProperties: (
+            template.sortOptions?.sortableProperties ?? []
+          ).map((row) => ({ ...row, id: createProtocolObjectId() })),
+        },
       },
-    });
+      undefined,
+    );
     expect(creation.status).toBe('created');
 
     const createdStageId = presentOf(store)
@@ -187,7 +206,7 @@ describe('protocol object ids through undo and redo', () => {
         ...roster.sortOptions,
         sortOrder: [
           ...(roster.sortOptions?.sortOrder ?? []),
-          { id: newSortRuleId, property: 'name', direction: 'asc' },
+          extraSortRule(roster, newSortRuleId),
         ],
       },
     });
@@ -215,7 +234,7 @@ describe('protocol object ids through undo and redo', () => {
         ...roster.sortOptions,
         sortOrder: [
           ...(roster.sortOptions?.sortOrder ?? []),
-          { id: createProtocolObjectId(), property: 'name', direction: 'asc' },
+          extraSortRule(roster),
         ],
       },
     });
@@ -325,7 +344,7 @@ describe('protocol object ids through undo and redo', () => {
         ...roster.sortOptions,
         sortOrder: [
           ...(roster.sortOptions?.sortOrder ?? []),
-          { id: createProtocolObjectId(), property: 'name', direction: 'asc' },
+          extraSortRule(roster),
         ],
       },
     });
