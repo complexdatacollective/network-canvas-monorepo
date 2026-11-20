@@ -91,7 +91,7 @@
   "protocolValidation.migrationNotes.schema9.finishStage": "结束访谈的屏幕现在是协议末尾的一个“完成屏幕”阶段，因此您可以更改其标题和文本，并像协议的其他内容一样进行翻译。",
   "protocolValidation.migrationNotes.schema9.introductionPanels": "除“自我表单”外，其他界面的介绍面板均已移除，因此这些阶段中面向参与者的说明改用信息界面。“逐一他者表单”“逐一他者关系表单”“二元组普查”或“关系强度普查”阶段的介绍面板内容会移到紧接在原阶段之前的一个新的信息阶段中。每当原阶段被跳过时，新阶段也会被跳过；原本跳转到原阶段的跳过逻辑现在会跳转到新阶段。",
   "protocolValidation.migrationNotes.schema9.narrativePresetFilters": "叙事阶段的筛选现在属于该阶段的每个预设，因此每个预设可以显示网络的不同部分。现有叙事阶段的筛选会复制到该阶段的每个预设，因此该阶段显示的人员与之前相同。",
-  "protocolValidation.migrationNotes.schema9.optionValueNames": "有序和分类选项值的规则现在更加严格。值开头和结尾的空格会被删除，值中的每个制表符或换行符都会变为空格，值中的字符会统一以一种标准 Unicode 形式存储。经上述处理后值相同的选项会按前述方式合并，已记录的回答、跳过逻辑、筛选器和节点形状都会更新为新值。",
+  "protocolValidation.migrationNotes.schema9.optionValueNames": "有序和分类选项值的规则现在更加严格。值开头和结尾的空格会被删除，值中的每个制表符或换行符都会变为空格，值中的字符会统一以一种标准 Unicode 形式存储。经上述处理后值相同的选项会按前述方式合并，跳过逻辑、筛选器和节点形状都会更新为新值。此前使用原始协议收集的数据不会更改，因此其中的回答仍保留旧的选项值。",
   "protocolValidation.migrationNotes.schema9.otherBinText": "在“分类分箱”阶段中，用于未列出回答的分箱标签现在必须包含文字。如果该标签只包含空格，现在会显示为“Other”。",
   "protocolValidation.migrationNotes.schema9.pedigreeWording": "“家族谱系”阶段自身的文字现在属于该阶段，因此您可以更改它，并像协议的其他内容一样翻译它：询问每个人姓名的问题及其提示，以及在家庭必须完整时列出仍缺少内容的清单。其初始内容就是访谈一直显示的文字。",
   "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "“名册数据姓名生成器”阶段现在有一个面板标题，显示在参与者从中选择人员的列表上方，因此您可以更改它，并像协议的其他内容一样进行翻译。其初始内容就是访谈一直以来在此处显示的标题：“Available to add”。",

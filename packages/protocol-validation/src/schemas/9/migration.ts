@@ -193,9 +193,9 @@ const removeContradictionsOf = (
  * between them cannot be recovered, and their export columns collide. Each
  * later option whose value repeats an earlier one goes, compared as schema 9
  * compares them (`optionValueKey`), so `1` and `"1"` collide. Where the two
- * are exactly equal, answers already recorded, and filters and skip logic
- * that name the value, still refer to the option kept; where they differ in
- * type, `remapMergedOptionValues` rewrites them to it.
+ * are exactly equal, filters and skip logic that name the value still refer
+ * to the option kept; where they differ in type, `remapMergedOptionValues`
+ * rewrites them to it.
  */
 const removeDuplicateOptionValues = (codebook: unknown) => {
   for (const variables of variableRecordsOf(codebook)) {
@@ -288,8 +288,8 @@ const optionValueRewrites = (
  * An attribute whose option values `removeDuplicateOptionValues` rewrites,
  * each mapped to the value it becomes (`optionValueRewrites`): one that was
  * not a valid name, or that merges into an earlier option across types.
- * Answers and rules compare option values exactly, so either still holding
- * the old value would name no option.
+ * Rules and shape mappings compare option values exactly, so one still
+ * holding the old value would name no option.
  */
 type MergedOptionValues = {
   entity: 'node' | 'edge' | 'ego';
@@ -1277,7 +1277,7 @@ const migrationV8toV9 = createMigration({
 - A protocol cannot be upgraded while a prompt or question, the value of an option of an ordinal or categorical attribute, or the name of a node type, edge type or attribute is empty or contains only spaces, because the upgrade cannot know what it should be. This includes form field questions, the label given to a field of a Network Composer form, a Family Pedigree's prompt and nomination prompts, and the question a Categorical Bin stage asks participants to describe an answer that is not listed. Correct each in the version of Architect that made the protocol, then upgrade it.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
 - Ordinal and categorical option values must now be unique. Where existing options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
-- The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
+- The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. Options whose values are then identical are merged as above, and skip logic, filters and node shapes are updated to the new value. Data already collected with the original protocol is not changed, so the answers in it keep the old option values.
 - Several places that accepted empty text, or text made up only of spaces, now require some text:
   - On a Categorical Bin stage, the label of the bin for answers not listed must now contain some text. Where it contained only spaces, it now reads "Other".
   - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
