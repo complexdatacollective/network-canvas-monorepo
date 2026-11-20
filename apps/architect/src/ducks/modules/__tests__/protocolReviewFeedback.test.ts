@@ -32,17 +32,19 @@ import {
   makeProtocol,
   op,
 } from '~/protocolReview/__tests__/fixtures';
+import {
+  COMMENT,
+  PROBLEM_SURVEY_ID,
+  RATING,
+  REASON,
+  REVIEW_SURVEY_ID,
+  surveyEvents,
+} from '~/protocolReview/__tests__/surveyEvents';
 import { FEEDBACK_COMMENT_MAX_LENGTH } from '~/protocolReview/reviewFeedback';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import { readReviewRecord } from '~/protocolReview/reviewStore';
 
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
-
-const PROBLEM_SURVEY_ID = '01a1f560-e7a6-0000-197a-8a38fee548d1';
-const REVIEW_SURVEY_ID = '01a1f560-e8cb-0000-f278-9ef6ad9f3bb7';
-const RATING = '$survey_response_666eab72-38ca-41d0-96f1-e8a5160624c7';
-const REASON = '$survey_response_14e70b7d-7f2f-42b0-a4da-d51a2617fca6';
-const COMMENT = '$survey_response_d1404b0d-14be-4a2f-befe-577bd0afedee';
 
 const makeStore = () => {
   const created = configureStore({
@@ -91,18 +93,6 @@ const fetchImpl = vi.fn<typeof fetch>(async (input) => {
     { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
   );
 });
-
-type SurveyEvent = Record<string, unknown>;
-
-/** Every `survey sent` event captured for `surveyId`, in order. */
-const surveyEvents = (surveyId: string): SurveyEvent[] =>
-  vi
-    .mocked(posthog.capture)
-    .mock.calls.filter(
-      ([event, properties]) =>
-        event === 'survey sent' && properties?.$survey_id === surveyId,
-    )
-    .map(([, properties]) => properties ?? {});
 
 const problemEvents = () => surveyEvents(PROBLEM_SURVEY_ID);
 const commentEvents = () => surveyEvents(REVIEW_SURVEY_ID);

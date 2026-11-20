@@ -32,10 +32,8 @@ const SHOWN_AS_WELL: Record<string, string> = {
     'a toolbar icon button shows its name as a tooltip',
   'components/ProjectNav/historyToolbarItems.tsx: messages.redo':
     'a toolbar icon button shows its name as a tooltip',
-  'components/ProtocolReview/ReviewProblemView.tsx: messages.ratingUseful':
-    'the rating icon button shows its name as a tooltip',
-  'components/ProtocolReview/ReviewProblemView.tsx: messages.ratingNotUseful':
-    'the rating icon button shows its name as a tooltip',
+  'components/ProtocolReview/ReviewProblemRating.tsx: control.name':
+    'each rating icon button shows its name as a tooltip',
   'components/Screens/NewStageScreen/NewStageScreen.tsx: messages.clearSearch':
     'the same text is the button title and tooltip',
   'components/VariablePill.tsx: messages.editAttributeName':

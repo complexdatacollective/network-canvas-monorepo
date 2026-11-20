@@ -117,10 +117,49 @@ const REASON_CHOICES: Record<FeedbackReason, string> = {
   fix_would_not_work: 'The suggested fix would not work',
 };
 
-type FindingFeedbackPayload = {
+/** The review a survey response is about. */
+type SurveySubject = {
   reviewId: string;
   shared: boolean;
   provider: ReviewProvider | undefined;
+};
+
+type SurveyResponse = {
+  surveyId: string;
+  /** Sending the same one again replaces the response sent before. */
+  submissionId: string;
+  subject: SurveySubject;
+  /** By question id; a null answer is left out. */
+  answers: Record<string, string | null>;
+  completed: boolean;
+  properties?: Record<string, string>;
+};
+
+const captureSurveyResponse = ({
+  surveyId,
+  submissionId,
+  subject: { reviewId, shared, provider },
+  answers,
+  completed,
+  properties,
+}: SurveyResponse) => {
+  posthog.capture('survey sent', {
+    $survey_id: surveyId,
+    $survey_submission_id: submissionId,
+    $survey_completed: completed,
+    ...Object.fromEntries(
+      Object.entries(answers).flatMap(([question, answer]) =>
+        answer === null ? [] : [[`$survey_response_${question}`, answer]],
+      ),
+    ),
+    ...(shared && { review_id: reviewId }),
+    ...properties,
+    shared,
+    provider,
+  });
+};
+
+type FindingFeedbackPayload = SurveySubject & {
   finding: Pick<Finding, 'id' | 'severity' | 'category'>;
   feedback: FindingFeedback;
 };
@@ -132,61 +171,43 @@ type FindingFeedbackPayload = {
  * incomplete response.
  */
 export const captureFindingFeedback = ({
-  reviewId,
-  shared,
-  provider,
   finding,
-  feedback,
+  feedback: { outcome, rating, reason },
+  ...subject
 }: FindingFeedbackPayload) => {
-  const { rating, reason } = feedback;
-  posthog.capture('survey sent', {
-    $survey_id: PROBLEM_SURVEY.id,
-    $survey_submission_id: `${reviewId}:${finding.id}`,
-    $survey_completed: rating !== null,
-    ...(rating !== null && {
-      [`$survey_response_${PROBLEM_SURVEY.ratingQuestion}`]:
-        RATING_CHOICES[rating],
-    }),
-    ...(reason !== null && {
-      [`$survey_response_${PROBLEM_SURVEY.reasonQuestion}`]:
-        REASON_CHOICES[reason],
-    }),
-    ...(shared && { review_id: reviewId }),
-    finding_id: finding.id,
-    shared,
-    outcome: feedback.outcome,
-    severity: finding.severity,
-    category: finding.category,
-    provider,
+  captureSurveyResponse({
+    surveyId: PROBLEM_SURVEY.id,
+    submissionId: `${subject.reviewId}:${finding.id}`,
+    subject,
+    answers: {
+      [PROBLEM_SURVEY.ratingQuestion]: rating && RATING_CHOICES[rating],
+      [PROBLEM_SURVEY.reasonQuestion]: reason && REASON_CHOICES[reason],
+    },
+    completed: rating !== null,
+    properties: {
+      finding_id: finding.id,
+      outcome,
+      severity: finding.severity,
+      category: finding.category,
+    },
   });
 };
 
-type ReviewCommentPayload = {
-  reviewId: string;
-  shared: boolean;
-  provider: ReviewProvider | undefined;
-  comment: string;
-};
+type ReviewCommentPayload = SurveySubject & { comment: string };
 
 /**
  * What the researcher wrote about a review, shared or not. An empty comment
  * takes back the one sent before, as an incomplete response.
  */
 export const captureReviewComment = ({
-  reviewId,
-  shared,
-  provider,
   comment,
+  ...subject
 }: ReviewCommentPayload) => {
-  posthog.capture('survey sent', {
-    $survey_id: REVIEW_SURVEY.id,
-    $survey_submission_id: reviewId,
-    $survey_completed: comment !== '',
-    ...(comment !== '' && {
-      [`$survey_response_${REVIEW_SURVEY.commentQuestion}`]: comment,
-    }),
-    ...(shared && { review_id: reviewId }),
-    shared,
-    provider,
+  captureSurveyResponse({
+    surveyId: REVIEW_SURVEY.id,
+    submissionId: subject.reviewId,
+    subject,
+    answers: { [REVIEW_SURVEY.commentQuestion]: comment || null },
+    completed: comment !== '',
   });
 };

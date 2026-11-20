@@ -560,6 +560,14 @@ const fixHolds = (stored: StoredFinding, protocol: CurrentProtocol) =>
   !!stored.written &&
   writtenHolds(protocolAsReviewed(protocol), stored.written);
 
+const UNRATED: Pick<FindingFeedback, 'rating' | 'reason'> = {
+  rating: null,
+  reason: null,
+};
+
+/** How the researcher rated a problem; both null until they do. */
+const ratingOf = (stored: StoredFinding) => stored.rating ?? UNRATED;
+
 /**
  * Whether an applied fix is still made: exactly as it was left, or adjusted
  * since without having been taken back out in between (`noteFixesTakenOut`).
@@ -677,8 +685,8 @@ export const getProtocolReviewFindings = createSelector(
         canRestore: status === 'dismissed',
         location,
         fixPlace: resolveFixPlace(reviewed, stored.operations, location),
-        rating: stored.rating?.rating ?? null,
-        ratingReason: stored.rating?.reason ?? null,
+        rating: ratingOf(stored).rating,
+        ratingReason: ratingOf(stored).reason,
       };
     });
   },
@@ -712,48 +720,33 @@ const outcomeOf = (
   stored: StoredFinding,
   protocol: CurrentProtocol,
 ): FeedbackOutcome => {
+  if (fixStands(stored, protocol)) {
+    return stored.edited === true ? 'fixed_edited' : 'fixed';
+  }
+  // Fixed without Architect's fix standing in the protocol: the researcher
+  // made the change.
   const status = statusOf(stored, protocol);
-  if (status !== 'fixed') return status;
-  // The protocol is as the fix would leave it without Architect's fix
-  // standing in it: the researcher made the change.
-  if (!fixStands(stored, protocol)) return 'done';
-  return stored.edited === true ? 'fixed_edited' : 'fixed';
+  return status === 'fixed' ? 'done' : status;
 };
 
-/** How the review was received, as the protocol and the record now show it. */
-const reviewFeedback = (
-  review: StoredReview,
+/** How a problem was received, as the protocol and the record now show it. */
+const findingFeedback = (
+  stored: StoredFinding,
   protocol: CurrentProtocol,
-): ReviewFeedback => ({
-  findings: Object.fromEntries(
-    review.findings.map((stored) => [
-      stored.finding.id,
-      {
-        outcome: outcomeOf(stored, protocol),
-        rating: stored.rating?.rating ?? null,
-        reason: stored.rating?.reason ?? null,
-      },
-    ]),
-  ),
-  comment: review.comment ?? '',
+): FindingFeedback => ({
+  outcome: outcomeOf(stored, protocol),
+  ...ratingOf(stored),
 });
 
+/**
+ * The feedback of a problem nothing has been done with, which is what counts
+ * as sent while nothing has been: there is nothing in it to send.
+ */
 const UNTOUCHED_FINDING: FindingFeedback = {
   outcome: 'undecided',
   rating: null,
   reason: null,
 };
-
-/**
- * The feedback of a review nothing has been done with, which is what counts
- * as sent while nothing has been: there is nothing in it to send.
- */
-const untouchedFeedback = (review: StoredReview): ReviewFeedback => ({
-  findings: Object.fromEntries(
-    review.findings.map((stored) => [stored.finding.id, UNTOUCHED_FINDING]),
-  ),
-  comment: '',
-});
 
 const sameFindingFeedback = (
   a: FindingFeedback,
@@ -1172,18 +1165,13 @@ export const cancelReview = (): Thunk<void> => (dispatch) => {
  */
 export const dismissReview =
   (): Thunk<Promise<boolean>> => async (dispatch, getState) => {
-    const record = selectRecord(getState());
-    if (
-      !record?.review ||
-      record.protocolId !== getActiveProtocolId(getState())
-    ) {
-      return false;
-    }
+    const active = activeReview(getState());
+    if (!active) return false;
     // Feedback not yet sent goes now, as it stands: once the review is
     // removed there is nothing left here to send it from.
     const due = dueFeedback(getState);
     const dismissed = await saveRecord(dispatch, getState, {
-      ...record,
+      ...active.record,
       review: null,
     });
     if (dismissed) {
@@ -1224,14 +1212,22 @@ const refused = (reason: DecisionRefusal): DecisionResult => ({
   reason,
 });
 
+/** The active protocol's record and the review it holds, or null without one. */
+const activeReview = (state: RootState) => {
+  const record = selectRecord(state);
+  if (!record?.review || record.protocolId !== getActiveProtocolId(state)) {
+    return null;
+  }
+  return { record, review: record.review };
+};
+
 const findStored = (getState: GetState, findingId: string) => {
-  const record = selectRecord(getState());
-  const protocolId = getActiveProtocolId(getState());
-  if (!record?.review || record.protocolId !== protocolId) return null;
-  const stored = record.review.findings.find(
+  const active = activeReview(getState());
+  if (!active) return null;
+  const stored = active.review.findings.find(
     (candidate) => candidate.finding.id === findingId,
   );
-  return stored ? { record, stored } : undefined;
+  return stored ? { record: active.record, stored } : undefined;
 };
 
 /** Whether the active protocol still holds the review these edits were asked of. */
@@ -1248,23 +1244,33 @@ const holdsReview = (
   );
 };
 
-const withFinding = (
+/** `record` with the finding `findingId` of its review changed by `change`. */
+const mapFinding = (
   record: StoredReviewRecord,
   findingId: string,
-  update: Pick<StoredFinding, 'decision' | 'inverse' | 'written' | 'edited'>,
+  change: (stored: StoredFinding) => StoredFinding,
 ): StoredReviewRecord => ({
   ...record,
   review: record.review
     ? {
         ...record.review,
         findings: record.review.findings.map((stored) =>
-          stored.finding.id === findingId
-            ? { ...stored, ...update, takenOut: false }
-            : stored,
+          stored.finding.id === findingId ? change(stored) : stored,
         ),
       }
     : null,
 });
+
+const withFinding = (
+  record: StoredReviewRecord,
+  findingId: string,
+  update: Pick<StoredFinding, 'decision' | 'inverse' | 'written' | 'edited'>,
+): StoredReviewRecord =>
+  mapFinding(record, findingId, (stored) => ({
+    ...stored,
+    ...update,
+    takenOut: false,
+  }));
 
 /**
  * Applies a protocol edit as ONE change in the undo history, as long as the
@@ -1500,28 +1506,17 @@ export const rateFinding =
     const found = findStored(getState, findingId);
     if (found === null) return refused('no_review');
     if (found === undefined) return refused('not_found');
-    const { review } = found.record;
-    if (!review) return refused('no_review');
-    const saved = await saveRecord(dispatch, getState, {
-      ...found.record,
-      review: {
-        ...review,
-        findings: review.findings.map((stored) =>
-          stored.finding.id === findingId
-            ? {
-                ...stored,
-                rating:
-                  rating === null
-                    ? null
-                    : {
-                        rating,
-                        reason: rating === 'not_useful' ? reason : null,
-                      },
-              }
-            : stored,
-        ),
-      },
-    });
+    const saved = await saveRecord(
+      dispatch,
+      getState,
+      mapFinding(found.record, findingId, (stored) => ({
+        ...stored,
+        rating:
+          rating === null
+            ? null
+            : { rating, reason: rating === 'not_useful' ? reason : null },
+      })),
+    );
     if (!saved) return refused('not_owned');
     scheduleFeedback(dispatch, getState);
     return { ok: true };
@@ -1535,17 +1530,12 @@ export const rateFinding =
 export const commentOnReview =
   (comment: string): Thunk<Promise<boolean>> =>
   async (dispatch, getState) => {
-    const record = selectRecord(getState());
-    if (
-      !record?.review ||
-      record.protocolId !== getActiveProtocolId(getState())
-    ) {
-      return false;
-    }
+    const active = activeReview(getState());
+    if (!active) return false;
     const saved = await saveRecord(dispatch, getState, {
-      ...record,
+      ...active.record,
       review: {
-        ...record.review,
+        ...active.review,
         comment: comment.trim().slice(0, FEEDBACK_COMMENT_MAX_LENGTH),
       },
     });
@@ -1566,7 +1556,7 @@ const cancelScheduledFeedback = () => {
 
 /**
  * Sends the feedback a little after the last change, so that a run of
- * choices goes as one request. Asked for wherever the feedback may have
+ * choices is sent once, as it ends up. Asked for wherever the feedback may have
  * changed; whether it has is worked out when the time comes.
  */
 const scheduleFeedback = (dispatch: AppDispatch, getState: GetState) => {
@@ -1579,10 +1569,12 @@ const scheduleFeedback = (dispatch: AppDispatch, getState: GetState) => {
 };
 
 type DueFeedback = {
+  record: StoredReviewRecord;
   review: StoredReview;
+  /** All the feedback as it stands: what has been sent once this is. */
   feedback: ReviewFeedback;
   /** The problems whose feedback differs from what was last sent. */
-  findings: StoredFinding[];
+  findings: { finding: Finding; feedback: FindingFeedback }[];
   /** Whether the comment differs from what was last sent. */
   comment: boolean;
 };
@@ -1594,25 +1586,39 @@ type DueFeedback = {
  */
 const dueFeedback = (getState: GetState): DueFeedback | null => {
   const state = getState();
-  const record = selectRecord(state);
+  const active = activeReview(state);
   const protocol = getProtocol(state);
-  if (!protocol || !record?.review) return null;
-  if (record.protocolId !== getActiveProtocolId(state)) return null;
-  if (!getProtocolOwnedHere(state)) return null;
-  const { review } = record;
-  const feedback = reviewFeedback(review, protocol);
-  const sent = review.feedbackSent ?? untouchedFeedback(review);
-  const findings = review.findings.filter((stored) => {
-    const now = feedback.findings[stored.finding.id];
-    const before = sent.findings[stored.finding.id];
-    if (now === undefined || sameFindingFeedback(now, before)) return false;
+  if (!protocol || !active || !getProtocolOwnedHere(state)) return null;
+  const { record, review } = active;
+  const sent = review.feedbackSent;
+  const current = review.findings.map((stored) => ({
+    finding: stored.finding,
+    feedback: findingFeedback(stored, protocol),
+  }));
+  const findings = current.filter(({ finding, feedback }) => {
+    const before = sent?.findings[finding.id];
+    if (sameFindingFeedback(feedback, before)) return false;
     // An unshared review's outcomes already go out as decision events, so
     // only a problem that is or was rated is sent from it.
-    return review.shared === true || now.rating !== null || !!before?.rating;
+    return (
+      review.shared === true || feedback.rating !== null || !!before?.rating
+    );
   });
-  const comment = feedback.comment !== sent.comment;
-  if (findings.length === 0 && !comment) return null;
-  return { review, feedback, findings, comment };
+  const comment = review.comment ?? '';
+  const commentDue = comment !== (sent?.comment ?? '');
+  if (findings.length === 0 && !commentDue) return null;
+  return {
+    record,
+    review,
+    feedback: {
+      findings: Object.fromEntries(
+        current.map(({ finding, feedback }) => [finding.id, feedback]),
+      ),
+      comment,
+    },
+    findings,
+    comment: commentDue,
+  };
 };
 
 const captureDueFeedback = ({
@@ -1621,25 +1627,13 @@ const captureDueFeedback = ({
   findings,
   comment,
 }: DueFeedback) => {
-  for (const stored of findings) {
-    const findingFeedback = feedback.findings[stored.finding.id];
-    if (!findingFeedback) continue;
-    captureFindingFeedback({
-      reviewId: review.reviewId,
-      shared: review.shared === true,
-      provider: review.provider,
-      finding: stored.finding,
-      feedback: findingFeedback,
-    });
-  }
-  if (comment) {
-    captureReviewComment({
-      reviewId: review.reviewId,
-      shared: review.shared === true,
-      provider: review.provider,
-      comment: feedback.comment,
-    });
-  }
+  const subject = {
+    reviewId: review.reviewId,
+    shared: review.shared === true,
+    provider: review.provider,
+  };
+  for (const due of findings) captureFindingFeedback({ ...subject, ...due });
+  if (comment) captureReviewComment({ ...subject, comment: feedback.comment });
 };
 
 /**
@@ -1653,11 +1647,9 @@ export const sendFeedback =
     const due = dueFeedback(getState);
     if (!due) return;
     captureDueFeedback(due);
-    const record = selectRecord(getState());
-    if (!record?.review) return;
     await saveRecord(dispatch, getState, {
-      ...record,
-      review: { ...record.review, feedbackSent: due.feedback },
+      ...due.record,
+      review: { ...due.review, feedbackSent: due.feedback },
     });
   };
 
@@ -1681,12 +1673,12 @@ export const setShareReviews =
  */
 const noteFixesTakenOut = (dispatch: AppDispatch, getState: GetState) => {
   const protocol = getProtocol(getState());
-  const record = selectRecord(getState());
-  if (!protocol || !record?.review) return;
-  if (record.protocolId !== getActiveProtocolId(getState())) return;
+  const active = activeReview(getState());
+  if (!protocol || !active) return;
+  const { record, review } = active;
   const reviewed = protocolAsReviewed(protocol);
   let changed = false;
-  const findings = record.review.findings.map((stored) => {
+  const findings = review.findings.map((stored) => {
     if (stored.decision !== 'fix' || !stored.written) return stored;
     const was = stored.takenOut === true;
     const takenOut = was
@@ -1699,7 +1691,7 @@ const noteFixesTakenOut = (dispatch: AppDispatch, getState: GetState) => {
   if (!changed) return;
   void saveRecord(dispatch, getState, {
     ...record,
-    review: { ...record.review, findings },
+    review: { ...review, findings },
   });
 };
 

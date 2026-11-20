@@ -76,8 +76,7 @@ export type StoredFinding = {
   edited?: boolean;
   /**
    * Whether the researcher found the problem useful, and why not when they
-   * said; absent or null until they rate it. Asked only about a review that
-   * was shared.
+   * said; absent or null until they rate it.
    */
   rating?: FindingRating | null;
 };

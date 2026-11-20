@@ -9,16 +9,13 @@
  * - `done`: the researcher fixed it themselves;
  * - `dismissed`: the researcher put it away.
  */
-export const FEEDBACK_OUTCOMES = [
-  'undecided',
-  'fixed',
-  'fixed_edited',
-  'mine',
-  'done',
-  'dismissed',
-] as const;
-
-export type FeedbackOutcome = (typeof FEEDBACK_OUTCOMES)[number];
+export type FeedbackOutcome =
+  | 'undecided'
+  | 'fixed'
+  | 'fixed_edited'
+  | 'mine'
+  | 'done'
+  | 'dismissed';
 
 /** Whether the researcher found a problem worth being told about. */
 export const FEEDBACK_RATINGS = ['useful', 'not_useful'] as const;
@@ -48,8 +45,7 @@ export type FindingFeedback = {
 
 /**
  * Feedback on a review as it stands, or as it was last sent
- * (`StoredReview.feedbackSent`). Problems are reported only for a review that
- * was shared; the comment for any review.
+ * (`StoredReview.feedbackSent`).
  */
 export type ReviewFeedback = {
   findings: Record<string, FindingFeedback>;

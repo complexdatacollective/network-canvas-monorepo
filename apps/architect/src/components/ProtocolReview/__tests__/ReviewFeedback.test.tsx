@@ -14,6 +14,11 @@ import {
   setShareReviews,
   startReview,
 } from '~/ducks/modules/protocolReview';
+import {
+  COMMENT,
+  REVIEW_SURVEY_ID,
+  surveyEvents,
+} from '~/protocolReview/__tests__/surveyEvents';
 
 import {
   makeStore,
@@ -38,8 +43,6 @@ vi.mock('~/protocolReview/reviewClient', async (importOriginal) => ({
   requestReview: client.requestReview,
   requestProviderStatus: client.requestProviderStatus,
 }));
-
-const COMMENT = '$survey_response_d1404b0d-14be-4a2f-befe-577bd0afedee';
 
 /** Opens a protocol and completes a review of it, shared or not. */
 const reviewed = async (store: TestStore, share: boolean) => {
@@ -76,16 +79,8 @@ const ratingOf = (store: TestStore, id: string) => {
   return [finding?.rating, finding?.ratingReason];
 };
 
-/** Every `survey sent` event, in order. */
-const surveyEvents = () =>
-  vi
-    .mocked(posthog.capture)
-    .mock.calls.filter(([event]) => event === 'survey sent')
-    .map(([, properties]) => properties ?? {});
-
 /** The `survey sent` events carrying written feedback. */
-const sentComments = () =>
-  surveyEvents().filter((event) => !('finding_id' in event));
+const sentComments = () => surveyEvents(REVIEW_SURVEY_ID);
 
 let store: TestStore;
 
@@ -147,7 +142,7 @@ describe('a review that was not shared', () => {
   });
 });
 
-describe('a review that was shared', () => {
+describe('rating a problem', () => {
   it('rates a problem with two toggle buttons, and asks why only when it was not useful', async () => {
     await reviewed(store, true);
     renderToolbar(store);
@@ -192,7 +187,9 @@ describe('a review that was shared', () => {
     );
     expect(problem.queryByRole('radiogroup')).not.toBeInTheDocument();
   });
+});
 
+describe('a review that was shared', () => {
   it('sends a comment on the review, which can then be changed', async () => {
     await reviewed(store, true);
     renderToolbar(store);
