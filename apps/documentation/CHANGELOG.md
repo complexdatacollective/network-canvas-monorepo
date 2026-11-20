@@ -1,5 +1,19 @@
 # @codaco/documentation
 
+## 0.10.0
+
+### Minor Changes
+
+- The Piped Text article describes the editor's two toolbar buttons: the syringe, which inserts values only, and Insert logic, which inserts If blocks set with the rule builder, different wording for each answer, wording that fits a number, and wording for the participant or someone else. A new Logic section covers If blocks and their rules, and links to dynamic node labels. Updated in English, Spanish and French.
+- The Narrative page explains how to filter each preset separately, the Network
+  Filtering page says where a Narrative's filters are set, and the schema 9 notes
+  describe how an existing Narrative stage's filter is carried over.
+
+### Patch Changes
+
+- The documentation calls Architect's stage filter section by its new name, **Filter network**, in the text and in the screenshots.
+- The documentation site uses far less of your computer's processor and graphics card while a page is open. Its moving background was being redrawn in full for every frame, for as long as the tab was visible; it is now drawn once, and only its moving parts are updated. The background looks and moves as it did.
+
 ## 0.9.1
 
 ### Patch Changes
