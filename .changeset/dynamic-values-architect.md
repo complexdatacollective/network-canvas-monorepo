@@ -29,7 +29,8 @@ note saying why. An attribute that a piped value shows cannot be deleted
 from the codebook, including while the stage that shows it is still unsaved.
 A protocol whose text refers to a value that does not exist is refused with
 "This text refers to a value that does not exist" and the name, and one whose
-formatted text has a line break inside a version is refused too. When a stage
+formatted text has a line break inside a version, or a value inside a link
+address, is refused too. When a stage
 is not saved because of its piped text, the first field with a problem takes
 focus.
 

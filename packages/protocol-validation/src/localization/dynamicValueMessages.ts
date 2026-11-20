@@ -4,6 +4,7 @@ import {
   type ParserOptions,
   TYPE,
 } from '@formatjs/icu-messageformat-parser';
+import { fromMarkdown } from 'mdast-util-from-markdown';
 
 import { holdsLineBreak } from '@codaco/shared-consts';
 
@@ -258,9 +259,7 @@ const MARKER_PROBLEM =
  * when it can: a version of a piece of text is part of one line, so it holds
  * no line break. Text outside any version may run over several lines.
  */
-export const findVersionLineBreakProblem = (
-  message: string,
-): string | undefined => {
+const findVersionLineBreakProblem = (message: string): string | undefined => {
   const elements = parseMessage(message);
   if (typeof elements === 'string') return undefined;
   const breaks = (
@@ -282,6 +281,61 @@ export const findVersionLineBreakProblem = (
     ? 'A version of this text cannot contain a line break. Put the line break outside the versions.'
     : undefined;
 };
+
+type MarkdownTree = ReturnType<typeof fromMarkdown>;
+type MarkdownNode = MarkdownTree | MarkdownTree['children'][number];
+
+const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
+  if (
+    node.type === 'link' &&
+    `${node.url}${node.title ?? ''}`.includes(DYNAMIC_VALUE_MARKER)
+  ) {
+    return true;
+  }
+  return 'children' in node && node.children.some(linkAddressHoldsValue);
+};
+
+/**
+ * Why `message`, as formatted text, cannot hold its links, or undefined when
+ * it can: a link's address and title are fixed text, so neither holds a
+ * value or a choice of versions. Each version is read as markdown of its
+ * own, as the editor reads it.
+ */
+const findLinkAddressValueProblem = (message: string): string | undefined => {
+  const elements = parseMessage(message);
+  if (typeof elements === 'string') return undefined;
+  const holds = (nodes: readonly MessageFormatElement[]): boolean => {
+    const markdown = nodes
+      .map((node) =>
+        node.type === TYPE.literal ? node.value : DYNAMIC_VALUE_MARKER,
+      )
+      .join('');
+    if (
+      markdown.includes(DYNAMIC_VALUE_MARKER) &&
+      linkAddressHoldsValue(fromMarkdown(markdown))
+    ) {
+      return true;
+    }
+    return nodes.some(
+      (node) =>
+        (node.type === TYPE.select || node.type === TYPE.plural) &&
+        Object.values(node.options).some((option) => holds(option.value)),
+    );
+  };
+  return holds(elements)
+    ? 'A link address cannot contain a value. Put the value in the words of the link, or outside the link.'
+    : undefined;
+};
+
+/**
+ * Why `message` cannot be formatted text that may show dynamic values, or
+ * undefined when it can. These are the texts the editor cannot hold, so a
+ * protocol that passes holds none of them.
+ */
+export const findFormattedMessageProblem = (
+  message: string,
+): string | undefined =>
+  findVersionLineBreakProblem(message) ?? findLinkAddressValueProblem(message);
 
 /**
  * Why `message` cannot be the text of a site that may show dynamic values,

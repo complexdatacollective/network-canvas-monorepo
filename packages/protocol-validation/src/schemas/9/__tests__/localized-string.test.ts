@@ -464,3 +464,52 @@ describe('a line break inside a version of formatted text', () => {
     expect(issuesOf(textOf('plain'), { en: VERSIONS })).toEqual([]);
   });
 });
+
+describe('a value inside a link address of formatted text', () => {
+  const REFUSAL = /A link address cannot contain a value\./;
+  const textOf = (format: 'plain' | 'markdown') =>
+    localizedString(
+      z.string(),
+      { format, lines: 'multiple' },
+      { dynamicValues: 'stageText' },
+    );
+
+  it.each([
+    ['in the address', '[Your page](https://example.com/{today})'],
+    ['in the title', '[Your page](https://example.com "For {name}")'],
+    [
+      'in an address written between angle brackets',
+      '<https://example.com/{today}>',
+    ],
+    [
+      'in a link inside a version',
+      '{name, select, missing {Hello} other {[you](https://example.com/{name})}}',
+    ],
+    [
+      'as a choice of versions',
+      '[Your page](https://example.com/{name, select, missing {a} other {b}})',
+    ],
+  ])('is refused %s', (_where, message) => {
+    expect(issuesOf(textOf('markdown'), { en: message })).toEqual([
+      { message: expect.stringMatching(REFUSAL), path: ['en'] },
+    ]);
+  });
+
+  it('is accepted in the words of a link, beside a link, and in plain text', () => {
+    expect(
+      issuesOf(textOf('markdown'), {
+        en: '[Page for {name}](https://example.com) and {today}',
+      }),
+    ).toEqual([]);
+    expect(
+      issuesOf(textOf('markdown'), {
+        en: 'Written out, not a link: \\[a\\](https://example.com/{today})',
+      }),
+    ).toEqual([]);
+    expect(
+      issuesOf(textOf('plain'), {
+        en: '[Your page](https://example.com/{today})',
+      }),
+    ).toEqual([]);
+  });
+});

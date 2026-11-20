@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { suppliedStageText } from '@codaco/interview/supplied-wording';
 import {
+  findFormattedMessageProblem,
   messageStructure,
   printMessageStructure,
 } from '@codaco/protocol-validation';
@@ -140,8 +141,38 @@ describe('messageToDocument', () => {
       expect(() =>
         messageToDocument(structure.nodes, MARKDOWN, labels),
       ).toThrow(expect.objectContaining({ kind: 'linesInVersion' }));
+      expect(findFormattedMessageProblem(message)).toBeDefined();
     },
   );
+
+  it.each([
+    '[Your page](https://example.com/{name})',
+    '[Your page](https://example.com "For {name}")',
+    '{kind, select, a {[you](https://example.com/{name})} other {none}}',
+    '[Your page](https://example.com/{kind, select, a {one} other {two}})',
+  ])(
+    'refuses a value inside a link address, as validation does: %s',
+    (message) => {
+      const structure = messageStructure(message);
+      if (!('nodes' in structure)) throw new Error('unreadable');
+      expect(() =>
+        messageToDocument(structure.nodes, MARKDOWN, labels),
+      ).toThrow(expect.objectContaining({ kind: 'valueInLinkAddress' }));
+      expect(findFormattedMessageProblem(message)).toBeDefined();
+    },
+  );
+
+  it.each([
+    '[Page for {name}](https://example.com) and {name}',
+    'Hello\n\n{kind, select, a {**one**} other {[two](https://example.com)}}',
+  ])('holds a text validation accepts: %s', (message) => {
+    const structure = messageStructure(message);
+    if (!('nodes' in structure)) throw new Error('unreadable');
+    expect(findFormattedMessageProblem(message)).toBeUndefined();
+    expect(() =>
+      messageToDocument(structure.nodes, MARKDOWN, labels),
+    ).not.toThrow();
+  });
 
   it('still reads a markdown document whose versions are one line each', () => {
     const message =

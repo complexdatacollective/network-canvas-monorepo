@@ -108,6 +108,7 @@ export {
   findDynamicValueProblem,
   MISSING_CASE,
   pluralValueExamples,
+  findFormattedMessageProblem,
 } from './localization/dynamicValueMessages.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {

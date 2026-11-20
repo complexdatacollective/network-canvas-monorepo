@@ -5,7 +5,7 @@ import { holdsLineBreak } from '@codaco/shared-consts';
 import { isBlankMessage } from '../../localization/blankText.ts';
 import {
   findDynamicMessageSyntaxProblem,
-  findVersionLineBreakProblem,
+  findFormattedMessageProblem,
 } from '../../localization/dynamicValueMessages.ts';
 import {
   canonicalizeLocale,
@@ -272,7 +272,7 @@ export const localizedString = (
       : format === 'markdown'
         ? (message) =>
             findDynamicMessageSyntaxProblem(message) ??
-            findVersionLineBreakProblem(message)
+            findFormattedMessageProblem(message)
         : findDynamicMessageSyntaxProblem,
   ).meta({
     [LOCALIZED_STRING]: {
