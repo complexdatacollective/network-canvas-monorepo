@@ -5,15 +5,10 @@ import { informationStage } from '@codaco/protocol-validation';
 
 import { informationStageEditor } from '../../editors/information/InformationStageEditor.ts';
 import { declaredDynamicValueSite } from '../../testing/declaredDynamicValueSite.ts';
+import { fieldAround } from '../../testing/fieldAround.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
 const INSERT_A_VALUE = { name: /^Inject piped text/ };
-
-const fieldAround = (control: HTMLElement): HTMLElement => {
-  const field = control.closest<HTMLElement>('[data-field-name]');
-  if (field === null) throw new Error('The control is not inside a field.');
-  return field;
-};
 
 /**
  * Whether a text field offers to insert a value follows the site its schema

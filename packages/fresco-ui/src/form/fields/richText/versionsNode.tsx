@@ -619,10 +619,7 @@ function VersionEditor({
 
   useEffect(() => {
     if (!editor) return undefined;
-    versionPlaces.set(
-      editor,
-      path.map(({ meta: placeMeta, key }) => ({ meta: placeMeta, key })),
-    );
+    versionPlaces.set(editor, path);
     return () => {
       versionPlaces.delete(editor);
     };

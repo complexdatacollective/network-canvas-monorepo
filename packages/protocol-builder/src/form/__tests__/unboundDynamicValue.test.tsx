@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { informationStageEditor } from '../../editors/information/InformationStageEditor.ts';
+import { fieldAround } from '../../testing/fieldAround.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
@@ -41,16 +42,14 @@ describe('a stage text that shows a value the stage does not bind', () => {
 
     expect(await harness.submit()).toBeNull();
 
-    const heading = screen
-      .getByRole('textbox', { name: 'Page heading' })
-      .closest<HTMLElement>('[data-field-name]');
-    if (heading === null) throw new Error('The heading is not in a field.');
+    const heading = fieldAround(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+    );
     expect(await within(heading).findByText(NOT_A_VALUE)).toBeInTheDocument();
-    const name = screen
-      .getByRole('textbox', { name: 'Stage name' })
-      .closest<HTMLElement>('[data-field-name]');
-    expect(name).not.toBeNull();
-    expect(within(name ?? heading).queryByText(NOT_A_VALUE)).toBeNull();
+    const name = fieldAround(
+      screen.getByRole('textbox', { name: 'Stage name' }),
+    );
+    expect(within(name).queryByText(NOT_A_VALUE)).toBeNull();
   });
 
   it('moves focus to the field the text is in', async () => {

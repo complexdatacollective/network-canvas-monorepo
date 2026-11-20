@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { suppliedStageText } from '@codaco/interview/supplied-wording';
 import {
-  findFormattedMessageProblem,
+  anonymisationStage,
   messageStructure,
   printMessageStructure,
 } from '@codaco/protocol-validation';
@@ -15,7 +15,6 @@ import {
   ifBlockRowsIn,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
-  MessageDocumentProblem,
   messageToDocument,
 } from '../messageDocument';
 
@@ -119,15 +118,16 @@ describe('messageToDocument', () => {
     expect(roundTrip(message, PLAIN)).toBe(message);
   });
 
-  it('refuses a value inside a link address', () => {
-    const structure = messageStructure(
-      '[Your page](https://example.com/{name})',
-    );
-    if (!('nodes' in structure)) throw new Error('unreadable');
-    expect(() => messageToDocument(structure.nodes, MARKDOWN, labels)).toThrow(
-      MessageDocumentProblem,
-    );
-  });
+  // What validation says of `message` as formatted stage text, read through
+  // a stage's own schema.
+  const refusalsOf = (message: string): string[] => {
+    const result = anonymisationStage.shape.explanationText.safeParse({
+      en: message,
+    });
+    return result.success
+      ? []
+      : result.error.issues.map((issue) => issue.message);
+  };
 
   it.each([
     '{kind, select, a {First paragraph\n\nSecond paragraph} other {none}}',
@@ -141,7 +141,9 @@ describe('messageToDocument', () => {
       expect(() =>
         messageToDocument(structure.nodes, MARKDOWN, labels),
       ).toThrow(expect.objectContaining({ kind: 'linesInVersion' }));
-      expect(findFormattedMessageProblem(message)).toBeDefined();
+      expect(refusalsOf(message)).toEqual([
+        expect.stringMatching(/cannot contain a line break/),
+      ]);
     },
   );
 
@@ -158,7 +160,9 @@ describe('messageToDocument', () => {
       expect(() =>
         messageToDocument(structure.nodes, MARKDOWN, labels),
       ).toThrow(expect.objectContaining({ kind: 'valueInLinkAddress' }));
-      expect(findFormattedMessageProblem(message)).toBeDefined();
+      expect(refusalsOf(message)).toEqual([
+        expect.stringMatching(/link address cannot contain a value/),
+      ]);
     },
   );
 
@@ -168,7 +172,7 @@ describe('messageToDocument', () => {
   ])('holds a text validation accepts: %s', (message) => {
     const structure = messageStructure(message);
     if (!('nodes' in structure)) throw new Error('unreadable');
-    expect(findFormattedMessageProblem(message)).toBeUndefined();
+    expect(refusalsOf(message)).toEqual([]);
     expect(() =>
       messageToDocument(structure.nodes, MARKDOWN, labels),
     ).not.toThrow();

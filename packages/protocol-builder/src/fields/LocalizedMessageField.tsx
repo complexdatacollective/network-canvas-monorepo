@@ -24,7 +24,7 @@ import {
   type MissingPlacement,
   pluralCountExamples,
   printMessageStructure,
-  requiredArgumentsOf,
+  missingPlacementsOf,
 } from '@codaco/protocol-validation';
 
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
@@ -35,8 +35,7 @@ import {
   isSwitchMeta,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
-  MessageDocumentProblem,
-  messageToDocument,
+  openMessageDocument,
 } from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
@@ -475,26 +474,20 @@ export function LocalizedMessageVersions({
     argumentLabels,
   );
 
-  const variants = messageVariants(message, declaration, locale);
+  const missing = missingPlacementsOf(message, declaration, locale);
   // Whether the version being edited requires `argument` and does not show
   // it: some version of the message for the cases the caret is in.
   const missingIn =
     (argument: string): RichTextInsertMenuItem['required'] =>
-    (place) => {
-      const cases = place.flatMap(({ meta, key }) =>
-        isSwitchMeta(meta) ? [{ argument: meta.argument, key }] : [],
-      );
-      return variants.some(
-        (variant) =>
-          cases.every((each) => variant.when[each.argument] === each.key) &&
-          requiredArgumentsOf(variant, declaration, locale).includes(
-            argument,
-          ) &&
-          !variant.parts.some(
-            (part) => typeof part !== 'string' && part.argument === argument,
+    (place) =>
+      missing.some(
+        (each) =>
+          each.argument === argument &&
+          place.every(
+            ({ meta, key }) =>
+              !isSwitchMeta(meta) || each.when[meta.argument] === key,
           ),
       );
-    };
 
   const items: RichTextInsertMenuItem[] = Object.entries(declaration).map(
     ([argument, declared]): RichTextInsertMenuItem => {
@@ -583,20 +576,13 @@ export function LocalizedMessageVersions({
   // interface language relabels a document already open.
   const labelsKey = `${intl.locale}:${locale}`;
 
-  // The stored message as the editor's document, or why it cannot be one.
-  const parsed = useMemo(() => {
-    const structure = messageStructure(message);
-    if (!('nodes' in structure)) return undefined;
-    try {
-      return messageToDocument(structure.nodes, FORMAT, labels);
-    } catch (error) {
-      if (error instanceof MessageDocumentProblem) return undefined;
-      throw error;
-    }
+  const parsed = useMemo(
+    () => openMessageDocument(name, message, FORMAT, labels),
     // The labels follow the languages (`labelsKey`) and the declaration; the
     // message decides the document.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [message, declaration, labelsKey]);
+    [name, message, declaration, labelsKey],
+  );
 
   // As `DynamicMessageEditor` does: the editor gets its own last document
   // back while that document still writes the stored message, so a round
@@ -632,11 +618,6 @@ export function LocalizedMessageVersions({
     if ((nextMessage ?? '') === message) return;
     onMessageChange(nextMessage);
   };
-
-  // As in `DynamicMessageEditor`: validation refuses such a text.
-  if (parsed === undefined && message !== '') {
-    throw new Error(`The text of "${name}" cannot be opened for editing.`);
-  }
 
   return (
     <RichTextEditorField

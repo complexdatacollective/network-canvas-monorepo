@@ -13,6 +13,7 @@ import {
   MISSING_CASE,
   type MessageNode,
   type MessageSwitch,
+  messageStructure,
   type MessageVersion,
 } from '@codaco/protocol-validation';
 
@@ -267,7 +268,7 @@ const withoutLineLead = (
  */
 type MessageDocumentProblemKind = 'valueInLinkAddress' | 'linesInVersion';
 
-export class MessageDocumentProblem extends Error {
+class MessageDocumentProblem extends Error {
   readonly kind: MessageDocumentProblemKind;
 
   constructor(kind: MessageDocumentProblemKind) {
@@ -637,3 +638,25 @@ export const documentToMessageNodes = (
   document: RichTextContent,
   format: MessageDocumentFormat,
 ): MessageNode[] => messageNodesOf(document, format, false, undefined);
+
+/**
+ * The editor's document for the stored text of the field `name`. Validation
+ * refuses a protocol holding text the editor cannot hold, so one that reaches
+ * an editor is a fault, and this throws.
+ */
+export const openMessageDocument = (
+  name: string,
+  message: string,
+  format: MessageDocumentFormat,
+  labels: MessageDocumentLabels,
+): RichTextContent => {
+  const fault = (cause?: unknown) =>
+    new Error(`The text of "${name}" cannot be opened for editing.`, { cause });
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) throw fault();
+  try {
+    return messageToDocument(structure.nodes, format, labels);
+  } catch (error) {
+    throw error instanceof MessageDocumentProblem ? fault(error) : error;
+  }
+};

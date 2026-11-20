@@ -438,41 +438,36 @@ describe('schema version boundary', () => {
   });
 });
 
+const stageTextOf = (format: 'plain' | 'markdown') =>
+  localizedString(
+    z.string(),
+    { format, lines: 'multiple' },
+    { dynamicValues: 'stageText' },
+  );
+
 describe('a line break inside a version of formatted text', () => {
   const VERSIONS =
     'Hello\n\n{name, select, missing {there} other {{name},\nwelcome}}';
   const REFUSAL = /A version of this text cannot contain a line break\./;
-  const textOf = (format: 'plain' | 'markdown') =>
-    localizedString(
-      z.string(),
-      { format, lines: 'multiple' },
-      { dynamicValues: 'stageText' },
-    );
 
   it('is refused where the text is markdown', () => {
-    expect(issuesOf(textOf('markdown'), { en: VERSIONS })).toEqual([
+    expect(issuesOf(stageTextOf('markdown'), { en: VERSIONS })).toEqual([
       { message: expect.stringMatching(REFUSAL), path: ['en'] },
     ]);
   });
 
   it('is accepted outside the versions, and in plain text', () => {
     expect(
-      issuesOf(textOf('markdown'), {
+      issuesOf(stageTextOf('markdown'), {
         en: 'Hello\n\n{name, select, missing {there} other {{name}}}',
       }),
     ).toEqual([]);
-    expect(issuesOf(textOf('plain'), { en: VERSIONS })).toEqual([]);
+    expect(issuesOf(stageTextOf('plain'), { en: VERSIONS })).toEqual([]);
   });
 });
 
 describe('a value inside a link address of formatted text', () => {
   const REFUSAL = /A link address cannot contain a value\./;
-  const textOf = (format: 'plain' | 'markdown') =>
-    localizedString(
-      z.string(),
-      { format, lines: 'multiple' },
-      { dynamicValues: 'stageText' },
-    );
 
   it.each([
     ['in the address', '[Your page](https://example.com/{today})'],
@@ -490,24 +485,24 @@ describe('a value inside a link address of formatted text', () => {
       '[Your page](https://example.com/{name, select, missing {a} other {b}})',
     ],
   ])('is refused %s', (_where, message) => {
-    expect(issuesOf(textOf('markdown'), { en: message })).toEqual([
+    expect(issuesOf(stageTextOf('markdown'), { en: message })).toEqual([
       { message: expect.stringMatching(REFUSAL), path: ['en'] },
     ]);
   });
 
   it('is accepted in the words of a link, beside a link, and in plain text', () => {
     expect(
-      issuesOf(textOf('markdown'), {
+      issuesOf(stageTextOf('markdown'), {
         en: '[Page for {name}](https://example.com) and {today}',
       }),
     ).toEqual([]);
     expect(
-      issuesOf(textOf('markdown'), {
+      issuesOf(stageTextOf('markdown'), {
         en: 'Written out, not a link: \\[a\\](https://example.com/{today})',
       }),
     ).toEqual([]);
     expect(
-      issuesOf(textOf('plain'), {
+      issuesOf(stageTextOf('plain'), {
         en: '[Your page](https://example.com/{today})',
       }),
     ).toEqual([]);

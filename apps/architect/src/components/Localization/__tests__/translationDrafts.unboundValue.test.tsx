@@ -5,7 +5,6 @@ import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getTranslationGroups } from '~/selectors/issues';
@@ -14,28 +13,12 @@ import {
   translationFieldName,
   useTranslationDraft,
 } from '../translationDrafts';
+import { dynamicValuesProtocol } from './dynamicValuesProtocol';
 
-const protocol = {
-  name: 'Study',
-  schemaVersion: 9,
-  localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-  assetManifest: {},
-  codebook: {
-    node: {},
-    edge: {},
-    ego: { variables: { firstName: { name: 'first_name', type: 'text' } } },
-  },
-  stages: [
-    {
-      id: 'welcome',
-      type: 'Information',
-      label: { en: 'Welcome', fr: 'Bienvenue' },
-      title: { en: 'Welcome', fr: 'Bienvenue' },
-      dynamicValues: { name: { path: 'ego.firstName' } },
-      items: [],
-    },
-  ],
-} as unknown as CurrentProtocol;
+const protocol = dynamicValuesProtocol(
+  { en: 'Welcome', fr: 'Bienvenue' },
+  { name: { path: 'ego.firstName' } },
+);
 
 const openDraft = () => {
   const store = configureStore({

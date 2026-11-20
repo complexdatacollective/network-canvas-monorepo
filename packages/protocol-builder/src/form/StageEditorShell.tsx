@@ -28,13 +28,9 @@ import type {
   FieldValue,
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
-import {
-  focusFirstError,
-  resolveFieldErrorTarget,
-} from '@codaco/fresco-ui/form/utils/focusFirstError';
+import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
-import { prefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   collectLocalizedStringsFromSchema,
@@ -657,21 +653,17 @@ function StageEditorFormBody({
       // Both halves: the element, because an item dialog over the editor
       // renders the same field names; the store's identity, because the
       // stage's NAME is drawn outside this element and is still ours.
-      focusFirstError(errors, formRef.current, fieldScope);
+      //
       // A refusal the schema anchored at a path has no field error of its
       // own, so the first field that answers for one takes focus instead.
-      if (Object.keys(errors.fieldErrors).length > 0) return;
       const fieldName = outline
         .getSnapshot()
         .flatMap((section) => section.issues)[0]?.fieldName;
-      if (fieldName === undefined) return;
-      const target = resolveFieldErrorTarget(fieldName, formRef.current);
-      if (target === undefined) return;
-      target.focus({ preventScroll: true });
-      target.scrollIntoView({
-        behavior: prefersReducedMotion(target) ? 'auto' : 'smooth',
-        block: 'center',
-      });
+      const answering =
+        Object.keys(errors.fieldErrors).length === 0 && fieldName !== undefined
+          ? { formErrors: [], fieldErrors: { [fieldName]: [] } }
+          : errors;
+      focusFirstError(answering, formRef.current, fieldScope);
     },
   });
 

@@ -38,24 +38,6 @@ const isUsedMapEquals = (a: IsUsedMap, b: IsUsedMap): boolean => {
 const getLiveStageValues = (_state: RootState) => readStageDraft().stage;
 
 /**
- * The variables a stage's piped text shows. A binding names its attribute
- * inside a longer path (`ego.<id>`), which the string search below cannot
- * find.
- */
-const dynamicValueVariablesOf = (stage: unknown): string[] => {
-  if (typeof stage !== 'object' || stage === null) return [];
-  if (!('dynamicValues' in stage)) return [];
-  const bindings = stage.dynamicValues;
-  if (typeof bindings !== 'object' || bindings === null) return [];
-  return Object.values(bindings).flatMap((binding: unknown) => {
-    if (typeof binding !== 'object' || binding === null) return [];
-    if (!('path' in binding) || typeof binding.path !== 'string') return [];
-    const parsed = parseDynamicValuePath(binding.path);
-    return parsed?.kind === 'attribute' ? [parsed.variableId] : [];
-  });
-};
-
-/**
  * Gets a key value object describing which variables are in use, including by
  * the stage currently being edited but not yet saved.
  *
@@ -90,7 +72,14 @@ export const getIsUsed = createSelector(
     const referencedVariables = new Set(Object.values(variableIndex));
 
     const liveStageData = liveValues ? JSON.stringify(liveValues) : '';
-    const shownByLiveStage = new Set(dynamicValueVariablesOf(liveValues));
+    // A piped-text binding names its attribute inside a longer path
+    // (`ego.<id>`), which the string search cannot find.
+    const shownByLiveStage = new Set(
+      Object.values(liveValues?.dynamicValues ?? {}).flatMap(({ path }) => {
+        const parsed = parseDynamicValuePath(path);
+        return parsed?.kind === 'attribute' ? [parsed.variableId] : [];
+      }),
+    );
 
     return variableIds.reduce<IsUsedMap>((memo, variableId) => {
       const inProtocol = referencedVariables.has(variableId);

@@ -9,11 +9,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
  * covers the guards that sit before a store write). Pair it with an assertion
  * that the refusal was observed, so a save that never ran cannot pass.
  */
-export async function allowErroneousWriteToLand(
-  page: Page,
-  ms = 1_000,
-): Promise<void> {
-  await page.waitForTimeout(ms);
+export async function allowErroneousWriteToLand(page: Page): Promise<void> {
+  await page.waitForTimeout(1_000);
 }
 
 /**

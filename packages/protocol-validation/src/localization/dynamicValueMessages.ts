@@ -230,7 +230,7 @@ const statesNamedIn = (
           for (const key of keys) counted.add(key);
           categories.set(node.value, counted);
         }
-        for (const option of Object.values(node.options)) collect(option.value);
+        for (const version of versionsOf(node)) collect(version);
       }
     }
   };
@@ -242,6 +242,14 @@ const statesNamedIn = (
     ]),
   );
 };
+
+/** The versions a node chooses between: none, unless it is a choice. */
+const versionsOf = (
+  node: MessageFormatElement,
+): readonly (readonly MessageFormatElement[])[] =>
+  node.type === TYPE.select || node.type === TYPE.plural
+    ? Object.values(node.options).map((option) => option.value)
+    : [];
 
 const hasChoice = (elements: readonly MessageFormatElement[]): boolean =>
   elements.some(
@@ -255,32 +263,20 @@ const MARKER_PROBLEM =
   'Text cannot contain the private-use character U+E000: the interview uses it to place values.';
 
 /**
- * Why `message`, as formatted text, cannot hold its versions, or undefined
- * when it can: a version of a piece of text is part of one line, so it holds
- * no line break. Text outside any version may run over several lines.
+ * Whether some version holds a line break. A version of a piece of text is
+ * part of one line; text outside any version may run over several lines.
  */
-const findVersionLineBreakProblem = (message: string): string | undefined => {
-  const elements = parseMessage(message);
-  if (typeof elements === 'string') return undefined;
-  const breaks = (
-    nodes: readonly MessageFormatElement[],
-    inVersion: boolean,
-  ): boolean =>
-    nodes.some((node) => {
-      if (node.type === TYPE.literal) {
-        return inVersion && holdsLineBreak(node.value);
-      }
-      if (node.type === TYPE.select || node.type === TYPE.plural) {
-        return Object.values(node.options).some((option) =>
-          breaks(option.value, true),
-        );
-      }
-      return false;
-    });
-  return breaks(elements, false)
-    ? 'A version of this text cannot contain a line break. Put the line break outside the versions.'
-    : undefined;
-};
+const versionHoldsLineBreak = (
+  nodes: readonly MessageFormatElement[],
+  inVersion = false,
+): boolean =>
+  nodes.some((node) =>
+    node.type === TYPE.literal
+      ? inVersion && holdsLineBreak(node.value)
+      : versionsOf(node).some((version) =>
+          versionHoldsLineBreak(version, true),
+        ),
+  );
 
 type MarkdownTree = ReturnType<typeof fromMarkdown>;
 type MarkdownNode = MarkdownTree | MarkdownTree['children'][number];
@@ -296,46 +292,42 @@ const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
 };
 
 /**
- * Why `message`, as formatted text, cannot hold its links, or undefined when
- * it can: a link's address and title are fixed text, so neither holds a
- * value or a choice of versions. Each version is read as markdown of its
- * own, as the editor reads it.
+ * Whether a link's address or title holds a value or a choice of versions:
+ * both are fixed text. Each version is read as markdown of its own, as the
+ * editor reads it.
  */
-const findLinkAddressValueProblem = (message: string): string | undefined => {
-  const elements = parseMessage(message);
-  if (typeof elements === 'string') return undefined;
-  const holds = (nodes: readonly MessageFormatElement[]): boolean => {
-    const markdown = nodes
-      .map((node) =>
-        node.type === TYPE.literal ? node.value : DYNAMIC_VALUE_MARKER,
-      )
-      .join('');
-    if (
-      markdown.includes(DYNAMIC_VALUE_MARKER) &&
-      linkAddressHoldsValue(fromMarkdown(markdown))
-    ) {
-      return true;
-    }
-    return nodes.some(
-      (node) =>
-        (node.type === TYPE.select || node.type === TYPE.plural) &&
-        Object.values(node.options).some((option) => holds(option.value)),
-    );
-  };
-  return holds(elements)
-    ? 'A link address cannot contain a value. Put the value in the words of the link, or outside the link.'
-    : undefined;
+const linkHoldsValue = (nodes: readonly MessageFormatElement[]): boolean => {
+  const markdown = nodes
+    .map((node) =>
+      node.type === TYPE.literal ? node.value : DYNAMIC_VALUE_MARKER,
+    )
+    .join('');
+  return (
+    (markdown.includes(DYNAMIC_VALUE_MARKER) &&
+      linkAddressHoldsValue(fromMarkdown(markdown))) ||
+    nodes.some((node) => versionsOf(node).some(linkHoldsValue))
+  );
 };
 
 /**
  * Why `message` cannot be formatted text that may show dynamic values, or
  * undefined when it can. These are the texts the editor cannot hold, so a
- * protocol that passes holds none of them.
+ * protocol that passes holds none of them. Meant for messages
+ * `findDynamicMessageSyntaxProblem` accepts.
  */
 export const findFormattedMessageProblem = (
   message: string,
-): string | undefined =>
-  findVersionLineBreakProblem(message) ?? findLinkAddressValueProblem(message);
+): string | undefined => {
+  const elements = parseMessage(message);
+  if (typeof elements === 'string') return undefined;
+  if (versionHoldsLineBreak(elements)) {
+    return 'A version of this text cannot contain a line break. Put the line break outside the versions.';
+  }
+  if (linkHoldsValue(elements)) {
+    return 'A link address cannot contain a value. Put the value in the words of the link, or outside the link.';
+  }
+  return undefined;
+};
 
 /**
  * Why `message` cannot be the text of a site that may show dynamic values,
@@ -355,8 +347,8 @@ export const findDynamicMessageSyntaxProblem = (
   ): string | undefined => {
     for (const node of nodes) {
       if (node.type === TYPE.select || node.type === TYPE.plural) {
-        for (const option of Object.values(node.options)) {
-          const problem = visit(option.value);
+        for (const version of versionsOf(node)) {
+          const problem = visit(version);
           if (problem !== undefined) return problem;
         }
       } else if (
@@ -529,7 +521,7 @@ export const dynamicValueNamesIn = (message: string): readonly string[] => {
       if (node.type === TYPE.argument) names.add(node.value);
       if (node.type === TYPE.select || node.type === TYPE.plural) {
         names.add(node.value);
-        for (const option of Object.values(node.options)) visit(option.value);
+        for (const version of versionsOf(node)) visit(version);
       }
     }
   };

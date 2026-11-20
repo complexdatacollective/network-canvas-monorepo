@@ -84,8 +84,8 @@ import {
   ifRowOf,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
-  MessageDocumentProblem,
   messageToDocument,
+  openMessageDocument,
 } from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import {
@@ -1043,20 +1043,13 @@ export function DynamicMessageEditor({
     ]),
   ).concat(JSON.stringify([conditionValues, writesConditions]));
 
-  // The stored message as the editor's document, or why it cannot be one.
-  const parsed = useMemo(() => {
-    const structure = messageStructure(message);
-    if (!('nodes' in structure)) return undefined;
-    try {
-      return messageToDocument(structure.nodes, format, labels);
-    } catch (error) {
-      if (error instanceof MessageDocumentProblem) return undefined;
-      throw error;
-    }
+  const parsed = useMemo(
+    () => openMessageDocument(name, message, format, labels),
     // The labels follow the bindings, the language and the codebook's names
     // (`labelsKey`); the message decides the document.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [message, format, locale, bindings, intl, labelsKey]);
+    [name, message, format, locale, bindings, intl, labelsKey],
+  );
 
   // As `RichTextField` does: the editor gets its own last document back
   // while that document still writes the stored message, so a round trip
@@ -1294,19 +1287,11 @@ export function DynamicMessageEditor({
       : NEW_CONDITION;
 
   const problem = useMemo(() => {
-    if (!showsProblems || message === '' || parsed === undefined) {
-      return undefined;
-    }
+    if (!showsProblems || message === '') return undefined;
     const values = dynamicValueArgumentsAt(bindings, context);
     return findDynamicValueProblem(message, values, locale);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [showsProblems, message, parsed, bindings, context, locale]);
-
-  // Validation refuses a protocol holding text the editor cannot hold, so
-  // one that reaches here is a fault.
-  if (parsed === undefined && message !== '') {
-    throw new Error(`The text of "${name}" cannot be opened for editing.`);
-  }
+  }, [showsProblems, message, bindings, context, locale]);
 
   const toolbarOptions = markdown
     ? richTextToolbarFor(singleLine)

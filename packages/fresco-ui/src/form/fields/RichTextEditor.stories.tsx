@@ -836,6 +836,12 @@ const childrenOf = (node: unknown): readonly unknown[] =>
   isRecord(node) && Array.isArray(node.content) ? node.content : [];
 
 /** The paragraph's parts in order: a run of words, or `{id}` for a token. */
+const namePill = (editor: Element): HTMLElement => {
+  const found = editor.querySelector('[data-token="name"]');
+  if (!(found instanceof HTMLElement)) throw new Error('No pill');
+  return found;
+};
+
 const partsOf = (canvasElement: HTMLElement, label: string): string[] => {
   const value: unknown = JSON.parse(
     within(canvasElement).getByTestId(`${label} value`).textContent || 'null',
@@ -867,11 +873,7 @@ export const TokensFromTheKeyboard: Story = {
     const canvas = within(canvasElement);
     const editor = await canvas.findByRole('textbox', { name: 'Question' });
     const doc = canvasElement.ownerDocument;
-    const pill = (): HTMLElement => {
-      const found = editor.querySelector('[data-token="name"]');
-      if (!(found instanceof HTMLElement)) throw new Error('No pill');
-      return found;
-    };
+    const pill = () => namePill(editor);
     await userEvent.click(editor);
 
     // user-event cannot move a caret through a contenteditable, so the
@@ -1021,11 +1023,7 @@ export const DraggingATokenPill: Story = {
     const canvas = within(canvasElement);
     const editor = await canvas.findByRole('textbox', { name: 'Question' });
 
-    const pill = (): HTMLElement => {
-      const found = editor.querySelector('[data-token="name"]');
-      if (!(found instanceof HTMLElement)) throw new Error('No pill');
-      return found;
-    };
+    const pill = () => namePill(editor);
     await waitFor(() => expect(pill().draggable).toBe(true));
 
     dragPill(pill(), editor);

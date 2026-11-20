@@ -24,8 +24,7 @@ different-wording entry instead). A number can give it a version for each plural
 of the language. Values show as pills in the stage editors, the translation
 table and the protocol summary. Showing a value is optional in every
 language: a translation may leave out a value the default-language text
-shows. Text that shows values a field cannot edit is shown as it is, with a
-note saying why. An attribute that a piped value shows cannot be deleted
+shows. An attribute that a piped value shows cannot be deleted
 from the codebook, including while the stage that shows it is still unsaved.
 A protocol whose text refers to a value that does not exist is refused with
 "This text refers to a value that does not exist" and the name, and one whose
