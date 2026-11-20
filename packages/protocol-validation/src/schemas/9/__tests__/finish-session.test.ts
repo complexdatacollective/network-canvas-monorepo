@@ -283,20 +283,13 @@ describe('v8 to v9 migration', () => {
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
 
-  it('migrates the same document to the same finish stage every time', () => {
-    const first = migrateProtocol(schema8(), 9);
-    const second = migrateProtocol(schema8(), 9);
-    expect(first.stages.at(-1)).toEqual(second.stages.at(-1));
-  });
-
   it('produces a protocol that validates, ending at its finish stage', () => {
     const migrated = migrateProtocol(schema8(), 9);
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
 
-  // Fresco's deploy normalization re-runs this migration over rows already
-  // stored at schema 9, so a document that already ends at its finish stage
-  // keeps that stage, with whatever the researcher wrote in it.
+  // A document that already ends at its finish stage keeps that stage, with
+  // whatever the researcher wrote in it, under a new id.
   it('keeps the finish stage a document already ends at, rather than adding a second', () => {
     const migrated = migrateProtocol(schema8(), 9);
     const finishStage = migrated.stages.at(-1);
@@ -318,10 +311,11 @@ describe('v8 to v9 migration', () => {
       9,
     );
 
+    const kept = { ...edited, id: expect.any(String) };
     expect(again.stages.filter(({ type }) => type === 'FinishSession')).toEqual(
-      [edited],
+      [kept],
     );
-    expect(again.stages.at(-1)).toEqual(edited);
+    expect(again.stages.at(-1)).toEqual(kept);
   });
 });
 

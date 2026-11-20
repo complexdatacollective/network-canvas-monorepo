@@ -7,8 +7,6 @@ import type {
   PersistedSession,
   SessionMigrationResult,
 } from '../../../migration/session.ts';
-import ProtocolSchemaV8 from '../../8/schema.ts';
-import migrationV8toV9 from '../migration.ts';
 import {
   committedRecord,
   committedSession,
@@ -21,6 +19,7 @@ import {
 // The CEGRM template as `main` released it, when the Family Pedigree was a
 // schema 8 stage. Its pedigree (stage 3) has an introduction screen.
 import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-8.json';
+import { migratedStageId } from './migrated-stage-ids.ts';
 
 type Fields = Record<string, unknown>;
 
@@ -42,49 +41,6 @@ const migrated = (result: SessionMigrationResult) => {
 const nodeById = (nodes: readonly Fields[], id: string) =>
   nodes.find((node) => node._uid === id);
 
-/** The id the migration gives the schema 8 stage `id` of `protocol`. */
-const renamed = (protocol: Fields, id: string): string =>
-  migrationV8toV9.stageIdChanges?.(ProtocolSchemaV8.parse(protocol)).get(id) ??
-  id;
-
-const isRecord = (value: unknown): value is Fields =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const promptsOf = (stage: unknown): Fields[] =>
-  isRecord(stage) && Array.isArray(stage.prompts)
-    ? stage.prompts.filter(isRecord)
-    : [];
-
-/**
- * `node` as the session migration writes it for `protocol`: on the id its
- * stage was given, and naming its prompts by the ids they were given. The
- * family-building prompt id is not a prompt of the stage, so it is kept.
- */
-const withMigratedIds = (
-  protocol: Fields,
-  migratedProtocol: { stages: readonly unknown[] },
-  node: Fields,
-): Fields => {
-  if (typeof node.stageId !== 'string') return node;
-  const stageId = renamed(protocol, node.stageId);
-  const stagesBefore = Array.isArray(protocol.stages) ? protocol.stages : [];
-  const before = stagesBefore.find(
-    (stage) => isRecord(stage) && stage.id === node.stageId,
-  );
-  const after = migratedProtocol.stages.find(
-    (stage) => isRecord(stage) && stage.id === stageId,
-  );
-  const promptIDs = Array.isArray(node.promptIDs)
-    ? node.promptIDs.map((promptId) => {
-        const index = promptsOf(before).findIndex(
-          (prompt) => prompt.id === promptId,
-        );
-        return index === -1 ? promptId : promptsOf(after)[index]?.id;
-      })
-    : node.promptIDs;
-  return { ...node, stageId, promptIDs };
-};
-
 // A DyadCensus after the pedigree, whose record is a list of answered pairs.
 const dyadCensus: Fields = {
   id: 'dyad-family',
@@ -104,7 +60,7 @@ describe('migrationV8toV9 session step', () => {
       type: 'Information',
     });
     expect(protocol.stages[PEDIGREE_INDEX + 1]).toMatchObject({
-      id: renamed(template(), 'family-pedigree'),
+      id: migratedStageId(template(), protocol, 'family-pedigree'),
       type: 'FamilyPedigree',
     });
   });
@@ -122,7 +78,7 @@ describe('migrationV8toV9 session step', () => {
     it('stays on the pedigree, not its new introduction', () => {
       expect(resumeAt(PEDIGREE_INDEX)).toBe(PEDIGREE_INDEX + 1);
       expect(protocol.stages[resumeAt(PEDIGREE_INDEX)]?.id).toBe(
-        renamed(template(), 'family-pedigree'),
+        migratedStageId(template(), protocol, 'family-pedigree'),
       );
     });
 
@@ -203,7 +159,7 @@ describe('migrationV8toV9 session step', () => {
     it('moves one stage on after it', () => {
       expect(resumeAt(9)).toBe(10);
       expect(protocol.stages[resumeAt(9)]?.id).toBe(
-        renamed(template(), 'socio-exchanges'),
+        migratedStageId(template(), protocol, 'socio-exchanges'),
       );
     });
 
@@ -241,7 +197,7 @@ describe('migrationV8toV9 session step', () => {
     // The pedigree's introduction and the census's own come before it.
     expect(protocol.stages[dyadIndex + 1]?.type).toBe('Information');
     expect(protocol.stages[dyadIndex + 2]?.id).toBe(
-      renamed(source, 'dyad-family'),
+      migratedStageId(source, protocol, 'dyad-family'),
     );
     expect(result.currentStep).toBe(dyadIndex + 2);
     expect(result.stageMetadata).toEqual({
@@ -277,7 +233,7 @@ describe('migrationV8toV9 session step', () => {
   });
 
   describe('a finalized schema 8 pedigree', () => {
-    const { migrateSession, protocol } = migrate();
+    const { migrateSession } = migrate();
     const session = committedSession(9);
     const result = migrated(migrateSession(session));
 
@@ -294,9 +250,7 @@ describe('migrationV8toV9 session step', () => {
       expect(
         result.network.nodes.filter((node) => node._uid !== 'ego-1'),
       ).toEqual(
-        [...pedigreePeople, friend]
-          .filter((node) => node._uid !== 'ego-1')
-          .map((node) => withMigratedIds(template(), protocol, node)),
+        [...pedigreePeople, friend].filter((node) => node._uid !== 'ego-1'),
       );
       expect(result.network.ego).toEqual(session.network.ego);
     });
@@ -575,9 +529,9 @@ describe('migrationV8toV9 session step', () => {
   });
 
   describe('a schema 8 pedigree that never reached the network', () => {
-    const { migrateSession } = migrate();
+    const { migrateSession, protocol } = migrate();
     const result = migrated(migrateSession(uncommittedSession()));
-    const pedigreeId = renamed(template(), 'family-pedigree');
+    const pedigreeId = migratedStageId(template(), protocol, 'family-pedigree');
 
     it('writes every person, with their name, the participant flag and the sex at birth their gamete gives', () => {
       expect(result.network.nodes).toEqual([
@@ -719,9 +673,7 @@ describe('migrationV8toV9 session step', () => {
       expect(
         result.network.nodes.filter((node) => node._uid !== 'ego-1'),
       ).toEqual(
-        [...pedigreePeople, friend]
-          .filter((node) => node._uid !== 'ego-1')
-          .map((node) => withMigratedIds(source, protocol, node)),
+        [...pedigreePeople, friend].filter((node) => node._uid !== 'ego-1'),
       );
       expect(result.stageMetadata).toEqual({
         [PEDIGREE_INDEX + 1]: { framing: 'gendered' },

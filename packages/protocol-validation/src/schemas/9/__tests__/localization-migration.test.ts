@@ -37,6 +37,7 @@ import { withoutUnshownWording } from '../protocol-wording.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { suppliedStageSettingPaths } from '../supplied-stage-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
+import { migratedStageIds } from './migrated-stage-ids.ts';
 import {
   asSchema8Protocol,
   codebookTypes,
@@ -305,14 +306,13 @@ describe('v8 to v9 localization migration', () => {
     );
     expected.stages = expectedStages;
     expected.localization = ENGLISH_ONLY;
+    const migrated = migrateStep(schema8Protocol());
     // The migration gives each stage a new id, and a stage reference follows.
-    const renames = migrationV8toV9.stageIdChanges?.(
-      ProtocolSchemaV8.parse(schema8Protocol()),
-    );
+    const renames = migratedStageIds(schema8Protocol(), migrated);
     for (const stage of expectedStages) {
       if (isRecord(stage) && typeof stage.sourceStageId === 'string') {
         stage.sourceStageId =
-          renames?.get(stage.sourceStageId) ?? stage.sourceStageId;
+          renames.get(stage.sourceStageId) ?? stage.sourceStageId;
       }
     }
 
@@ -323,7 +323,6 @@ describe('v8 to v9 localization migration', () => {
     // interview's catalogue, it holds none of it.
     type Stored = Parameters<typeof withoutSuppliedWording>[0];
     const kept = withoutUnshownWording(expected as unknown as Stored);
-    const migrated = migrateStep(schema8Protocol());
     expect(withoutIds(migrated)).toEqual(
       withoutIds({
         ...kept,
@@ -1088,9 +1087,7 @@ describe('committed schema 8 protocols', () => {
         name: path.basename(file, '.netcanvas'),
       });
       const migrated = migrateProtocol(schema8, 9);
-      const renames =
-        migrationV8toV9.stageIdChanges?.(ProtocolSchemaV8.parse(schema8)) ??
-        new Map<string, string>();
+      const renames = migratedStageIds(schema8, migrated);
 
       const result = await validateProtocol(migrated);
       expect(

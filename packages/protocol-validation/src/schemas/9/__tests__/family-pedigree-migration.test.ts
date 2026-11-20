@@ -18,6 +18,7 @@ import { isProtocolObjectId } from '../protocol-object-id.ts';
 // The CEGRM template as `main` released it (commit 5dec6ca2), when the Family
 // Pedigree was a schema 8 stage.
 import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-8.json';
+import { migratedStageId } from './migrated-stage-ids.ts';
 
 type Fields = Record<string, unknown>;
 
@@ -224,7 +225,7 @@ const asRecord = (value: unknown): Fields => (isRecord(value) ? value : {});
 const stagesOf = (document: Fields): Fields[] =>
   Array.isArray(document.stages) ? document.stages.filter(isRecord) : [];
 
-const stageById = (document: Fields, id: string): Fields => {
+const stageById = (document: Fields, id: string | undefined): Fields => {
   const stage = stagesOf(document).find((candidate) => candidate.id === id);
   if (!stage) throw new Error(`No stage "${id}"`);
   return stage;
@@ -258,11 +259,6 @@ const stageIds = (document: Fields) =>
 const stageTypes = (document: Fields) =>
   stagesOf(document).map((stage) => stage.type);
 
-/** The id the migration gives the schema 8 stage `id` of `document`. */
-const renamed = (document: unknown, id: string): string =>
-  migrationV8toV9.stageIdChanges?.(ProtocolSchemaV8.parse(document)).get(id) ??
-  id;
-
 /** The stage the migration adds just before the pedigree. */
 const introductionOf = (document: Fields): Fields => {
   const stages = stagesOf(document);
@@ -292,7 +288,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
     const document = schema8Protocol();
     const migrated = migrateValid(document);
 
-    expect(pedigreeOf(migrated).id).toBe(renamed(document, 'pedigree'));
+    expect(pedigreeOf(migrated).id).toBe(
+      migratedStageId(document, migrated, 'pedigree'),
+    );
     expect(withoutIds(pedigreeOf(migrated))).toEqual({
       type: 'FamilyPedigree',
       label: en('Your family'),
@@ -492,7 +490,8 @@ describe('v8 to v9 Family Pedigree migration', () => {
       const migrated = migrateValid(document);
       for (const id of ['mother-side', 'father-side']) {
         expect(
-          stageById(migrated, renamed(document, id)).completeness,
+          stageById(migrated, migratedStageId(document, migrated, id))
+            .completeness,
         ).toMatchObject({
           relativesNotRecordedAttribute: 'relativesNotRecorded',
         });
@@ -516,10 +515,10 @@ describe('v8 to v9 Family Pedigree migration', () => {
         'FinishSession',
       ]);
       expect(stageIds(migrated)).toEqual([
-        renamed(document, 'welcome'),
+        migratedStageId(document, migrated, 'welcome'),
         introductionOf(migrated).id,
-        renamed(document, 'pedigree'),
-        renamed(document, 'goodbye'),
+        migratedStageId(document, migrated, 'pedigree'),
+        migratedStageId(document, migrated, 'goodbye'),
         expect.any(String),
       ]);
       expect(isProtocolObjectId(introductionOf(migrated).id)).toBe(true);
@@ -552,7 +551,10 @@ describe('v8 to v9 Family Pedigree migration', () => {
       ]);
       const migrated = migrateValid(document);
       const skipLogic = withoutIds(
-        consentSkip({ type: 'stage', stageId: renamed(document, 'goodbye') }),
+        consentSkip({
+          type: 'stage',
+          stageId: migratedStageId(document, migrated, 'goodbye'),
+        }),
       );
       expect(withoutIds(introductionOf(migrated).skipLogic)).toEqual(skipLogic);
       expect(withoutIds(pedigreeOf(migrated).skipLogic)).toEqual(skipLogic);
@@ -576,12 +578,14 @@ describe('v8 to v9 Family Pedigree migration', () => {
       ]);
       const migrated = migrateValid(document);
       expect(
-        stageById(migrated, renamed(document, 'welcome')).skipLogic,
+        stageById(migrated, migratedStageId(document, migrated, 'welcome'))
+          .skipLogic,
       ).toMatchObject({
         destination: { type: 'stage', stageId: introductionOf(migrated).id },
       });
       expect(
-        stageById(migrated, renamed(document, 'goodbye')).skipLogic,
+        stageById(migrated, migratedStageId(document, migrated, 'goodbye'))
+          .skipLogic,
       ).toMatchObject({
         destination: { type: 'finish' },
       });
@@ -667,7 +671,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(new Set(ids).size).toBe(2);
     });
 
-    it('keeps a nomination prompt id that is already a UUID', () => {
+    it('replaces a nomination prompt id that is already a UUID', () => {
       const migrated = migrateValid(
         schema8Protocol([
           schema8Pedigree({
@@ -677,9 +681,17 @@ describe('v8 to v9 Family Pedigree migration', () => {
           }),
         ]),
       );
-      expect(pedigreeOf(migrated).nominationPrompts).toEqual([
-        { id: testId('who'), text: en('Who?'), attribute: 'hasCondition' },
-      ]);
+      const { nominationPrompts } = pedigreeOf(migrated);
+      const prompt = Array.isArray(nominationPrompts)
+        ? nominationPrompts[0]
+        : undefined;
+      expect(prompt).toEqual({
+        id: expect.any(String),
+        text: en('Who?'),
+        attribute: 'hasCondition',
+      });
+      expect(isProtocolObjectId(asRecord(prompt).id)).toBe(true);
+      expect(asRecord(prompt).id).not.toBe(testId('who'));
     });
 
     it('leaves out an empty list, which schema 9 does not accept', () => {
@@ -1051,7 +1063,8 @@ describe('v8 to v9 Family Pedigree migration', () => {
 
   // The chain runs each step once, from the version a document declares, so
   // the step is never given its own output. A stage already in the schema 9
-  // shape is still left as it is rather than converted again.
+  // shape is still left as it is, apart from its new ids, rather than
+  // converted again.
   it('leaves a pedigree already in the schema 9 shape as it is', () => {
     const migrated = migrateStep(schema8Protocol());
     const converted = structuredClone(pedigreeOf(migrated));
@@ -1059,8 +1072,8 @@ describe('v8 to v9 Family Pedigree migration', () => {
       ...schema8Protocol([]),
       stages: [converted],
     });
-    expect(stagesOf(again)).toEqual([
-      converted,
+    expect(withoutIds(stagesOf(again))).toEqual([
+      withoutIds(converted),
       expect.objectContaining({ type: 'FinishSession' }),
     ]);
   });
@@ -1081,7 +1094,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       const document = withoutNarrativePedigree();
       const migrated = migrateValid(document);
       const renamedIn = (ids: string[]) =>
-        ids.map((id) => renamed(document, id));
+        ids.map((id) => migratedStageId(document, migrated, id));
 
       expect(stageIds(migrated)).toEqual([
         ...renamedIn([
@@ -1148,10 +1161,13 @@ describe('v8 to v9 Family Pedigree migration', () => {
       const document = structuredClone(ecoGeneticTemplate);
       const migrated = migrateStep(document);
       expect(
-        stageById(migrated, renamed(document, 'narrative-pedigree')),
+        stageById(
+          migrated,
+          migratedStageId(document, migrated, 'narrative-pedigree'),
+        ),
       ).toMatchObject({
         type: 'NarrativePedigree',
-        sourceStageId: renamed(document, 'family-pedigree'),
+        sourceStageId: migratedStageId(document, migrated, 'family-pedigree'),
         diseases: [
           {
             label: en('This condition'),
@@ -1197,11 +1213,14 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
       ]),
     ]);
     const migrated = migrateStep(document);
-    const stage = stageById(migrated, renamed(document, 'narrative'));
+    const stage = stageById(
+      migrated,
+      migratedStageId(document, migrated, 'narrative'),
+    );
     expect(withoutIds(stage)).toEqual({
       type: 'NarrativePedigree',
       label: en('How it runs in the family'),
-      sourceStageId: renamed(document, 'pedigree'),
+      sourceStageId: migratedStageId(document, migrated, 'pedigree'),
       showAtRiskStatuses: true,
       // The wording Network Canvas supplies is not written into the stage.
       diseases: [
@@ -1240,7 +1259,10 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
     ]);
     const migrated = migrateStep(document);
     expect(
-      withoutIds(stageById(migrated, renamed(document, 'narrative')).diseases),
+      withoutIds(
+        stageById(migrated, migratedStageId(document, migrated, 'narrative'))
+          .diseases,
+      ),
     ).toEqual(withoutIds([{ ...disease, label: en('The condition') }]));
   });
 });

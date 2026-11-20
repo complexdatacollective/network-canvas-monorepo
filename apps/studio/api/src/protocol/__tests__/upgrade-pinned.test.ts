@@ -320,6 +320,7 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
       await inTeam(getVersionDocument(TEST_TEAM_ID, migrated.id)),
     ).stages;
     expect(appendedFinish?.type).toBe('FinishSession');
+    expect(intro?.id).not.toBe('intro');
 
     // Resumes on the finish stage the migration appended where the engine's
     // own finish screen was, and a tab still open on the old protocol is
@@ -342,6 +343,8 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
 
     // The network is rewritten with the protocol: the merged option's
     // answers now hold the value it was merged into, and nothing else moved.
+    // The migration gives the stage a new id but leaves the one a node
+    // recorded as it was.
     const network = await inTeam(readSessionNetwork(atFinish));
     expect(network.nodes).toEqual([
       {
@@ -349,7 +352,7 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
         type: 'person',
         attributes: { personName: 'Alex', category: [1] },
         secureAttributes: null,
-        stageId: intro?.id,
+        stageId: 'intro',
         promptIds: null,
       },
       {

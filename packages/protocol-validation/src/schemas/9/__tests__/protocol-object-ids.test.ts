@@ -4,7 +4,6 @@ import type { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { testId } from '../../../__tests__/testIds.ts';
-import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import {
   collectProtocolObjectIds,
   findDuplicateProtocolObjectIds,
@@ -14,10 +13,7 @@ import { hashProtocol } from '../../../utils/hashProtocol.ts';
 import { DUPLICATE_OBJECT_ID } from '../../../utils/protocolObjectIds.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
-import {
-  assignProtocolObjectIds,
-  createMigrationIdMinter,
-} from '../migration-object-ids.ts';
+import { assignProtocolObjectIds } from '../migration-object-ids.ts';
 import {
   isProtocolObjectId,
   registeredProtocolObjectKinds,
@@ -25,7 +21,6 @@ import {
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { nameGeneratorStage } from '../stages/name-generator.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
-import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 type Path = readonly PropertyKey[];
 
@@ -361,16 +356,11 @@ describe('the protocol hash and object ids', () => {
     expect(hashProtocol(protocol)).not.toBe(before);
   });
 
-  it('is the same after validation, and for every migration of one document', async () => {
+  it('is the same after validation', async () => {
     const protocol = validProtocol();
     const before = hashProtocol(protocol);
     await validateProtocol(protocol);
     expect(hashProtocol(protocol)).toBe(before);
-
-    const schema8 = asSchema8Protocol(completeProtocol());
-    expect(hashProtocol(migrateProtocol(schema8, 9))).toBe(
-      hashProtocol(migrateProtocol(schema8, 9)),
-    );
   });
 });
 
@@ -517,42 +507,65 @@ describe('the migration id pass', () => {
     { maxLength: 12 },
   );
 
-  it('gives every object a UUID no other object has, and keeps undamaged ones', () => {
+  it('gives every object a new UUID that no other object has', () => {
+    const objectCount = collectProtocolObjectIds(validProtocol()).length;
     fc.assert(
       fc.property(damage, (choices) => {
         const input = damaged(choices);
-        const kept = new Set(
-          collectProtocolObjectIds(input)
-            .map(({ id }) => id)
-            .filter((id, index, all) => all.indexOf(id) === index),
+        const oldIds = new Set(
+          collectProtocolObjectIds(input).map(({ id }) => id),
         );
         const document = structuredClone(input);
-        assignProtocolObjectIds(document, createMigrationIdMinter(input));
-        const ids = collectProtocolObjectIds(document).map(({ id }) => id);
+        assignProtocolObjectIds(document);
+        const locations = collectProtocolObjectIds(document);
+        const ids = locations.map(({ id }) => id);
         return (
+          locations.length === objectCount &&
           ids.every(isProtocolObjectId) &&
           new Set(ids).size === ids.length &&
-          [...kept].every((id) => !isProtocolObjectId(id) || ids.includes(id))
+          ids.every((id) => !oldIds.has(id))
         );
       }),
-      { numRuns: 50 },
+      { numRuns: 20 },
     );
   });
 
-  it('gives the same ids every time, and changes nothing on a second pass', () => {
-    fc.assert(
-      fc.property(damage, (choices) => {
-        const input = damaged(choices);
-        const once = structuredClone(input);
-        assignProtocolObjectIds(once, createMigrationIdMinter(input));
-        const again = structuredClone(input);
-        assignProtocolObjectIds(again, createMigrationIdMinter(input));
-        const twice = structuredClone(once);
-        assignProtocolObjectIds(twice, createMigrationIdMinter(once));
-        expect(again).toEqual(once);
-        expect(twice).toEqual(once);
-      }),
-      { numRuns: 30 },
+  it('points each stage reference at the new id of the first stage that had the old one', () => {
+    const document = validProtocol();
+    const { stages } = document;
+    const target = stages[2];
+    const repeat = stages[3];
+    const skipping = stages[0];
+    if (!target || !repeat || !skipping) throw new Error('Too few stages');
+    const oldId = target.id;
+    repeat.id = oldId;
+    setAt(document, ['stages', 0, 'skipLogic'], {
+      action: 'SKIP',
+      filter: { rules: [] },
+      destination: { type: 'stage', stageId: oldId },
+    });
+    const pedigree = stages.findIndex(
+      (stage) => stage.type === 'NarrativePedigree',
     );
+    const source = getAt(document, ['stages', pedigree, 'sourceStageId']);
+    const sourceIndex = stages.findIndex((stage) => stage.id === source);
+
+    const stageRenames = assignProtocolObjectIds(document);
+
+    const idAt = (index: number) => getAt(document, ['stages', index, 'id']);
+    const destination = getAt(document, [
+      'stages',
+      0,
+      'skipLogic',
+      'destination',
+      'stageId',
+    ]);
+    expect(destination).toBe(idAt(2));
+    expect(destination).not.toBe(idAt(3));
+    expect(getAt(document, ['stages', pedigree, 'sourceStageId'])).toBe(
+      idAt(sourceIndex),
+    );
+    expect(sourceIndex).toBeGreaterThanOrEqual(0);
+    expect(stageRenames.get(oldId)).toBe(idAt(2));
   });
 });

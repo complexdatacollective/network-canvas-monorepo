@@ -6564,10 +6564,11 @@ describe('Migration V7 to V8', () => {
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
       ).toBe(true);
-      // Found by id: an introduction panel becomes an Information stage
-      // just before its stage, which moves the stage on.
-      const { id } = (protocol as Protocol<7>).stages[1] ?? {};
-      const stage = parsed.data?.stages.find((s) => s.id === id);
+      // An introduction panel becomes an Information stage just before its
+      // stage, which moves the stage on, and the stage gets a new id.
+      const stage = parsed.data?.stages.filter(
+        ({ type }) => type !== 'Information',
+      )[1];
       // The schema 9 migration mints each field's id.
       return stage && 'form' in stage
         ? stage.form?.fields.map(({ id: _id, ...field }) => field)

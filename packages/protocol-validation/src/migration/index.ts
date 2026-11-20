@@ -49,8 +49,8 @@
  * - `migrationV8toV9` inserts an Information stage before a Family Pedigree
  *   that had an introduction screen (schema 9's pedigree has none), and
  *   appends a finish stage in place of the engine's own finish screen. It
- *   also replaces every stage id that is not a UUID, and declares the
- *   replacements (`stageIdChanges`) so that stages are matched across it.
+ *   also gives every stage a new id, and declares the replacements
+ *   (`stageIdChanges`) so that stages are matched across it.
  *
  * Steps that declare a session step:
  * - `migrationV8toV9`: the redesigned pedigree keeps a different stage
@@ -145,7 +145,9 @@ export type ProtocolMigration<
    * Required of a step that gives existing stages new ids: each replaced
    * stage id in `before`, mapped to the id the step gave that stage. The
    * framework matches stages across the step through it, so a session's stage
-   * records and resume position follow a stage whose id changed.
+   * records and resume position follow a stage whose id changed. It is asked
+   * only after `migrate` has run on the same `before`, so a step whose new
+   * ids are not reproducible can answer from what that run recorded.
    */
   stageIdChanges?: (
     before: ProtocolDocument<From>,
@@ -328,23 +330,26 @@ export class MigrationChain {
         continue;
       }
 
-      // Read before the step runs, in case it changes its input in place.
+      // Read before the step runs, in case it changes its input in place. A
+      // step that declares a session step or stage id changes is given the
+      // frozen copy, so both answer about the very document it migrated.
       const before =
         migration.migrateSession || migration.stageIdChanges
           ? deepFreeze(structuredClone(current))
           : undefined;
+      const storedIds = stageIdsOf(current);
+      current = this.executeStep(
+        before ?? current,
+        migration,
+        dependencies,
+        targetVersion,
+      );
       const stageRenames =
         before && migration.stageIdChanges
           ? migration.stageIdChanges(before)
           : undefined;
-      const beforeIds = stageIdsOf(current).map((id) =>
+      const beforeIds = storedIds.map((id) =>
         id === undefined ? id : (stageRenames?.get(id) ?? id),
-      );
-      current = this.executeStep(
-        current,
-        migration,
-        dependencies,
-        targetVersion,
       );
       const stages = stageMovement(beforeIds, stageIdsOf(current));
       const migrateSession = migration.migrateSession;

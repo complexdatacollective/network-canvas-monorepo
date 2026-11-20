@@ -13,13 +13,13 @@ rules, sort rules, a prompt's additional attributes, a Name Generator Roster's
 card and sortable properties, Narrative presets with their edge and highlight
 rows, Narrative Pedigree diseases and Network Composer edge configurations.
 
-Upgrading a protocol from schema 8 keeps every id that is already a UUID and
-has not been used earlier in the protocol, and replaces every other id with a
-new UUID. Skip logic destinations and Narrative Pedigree source stages follow
-the stages they point at, and the stage and prompt ids stored in an interview
-that is upgraded with its protocol are updated to match. Upgrading the same
-protocol always gives the same ids. The stages an upgrade adds no longer have
-readable ids such as `finish`, so find a Finish Screen stage by its type.
+Upgrading a protocol from schema 8 gives every one of these objects a new,
+random UUID, including any that already had one. Skip logic destinations and
+Narrative Pedigree source stages follow the stages they point at; where two
+stages shared an id, they follow the first. The stage and prompt ids stored in
+an interview's nodes are not changed. Upgrading the same protocol twice gives
+different ids. The stages an upgrade adds no longer have readable ids such as
+`finish`, so find a Finish Screen stage by its type.
 
 For developers:
 

@@ -17,7 +17,7 @@ import {
   type InterfaceOwnedOption,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
-import type { MigrationIdMinter } from './migration-object-ids.ts';
+import { createProtocolObjectId } from './protocol-object-id.ts';
 
 type Fields = Record<string, unknown>;
 
@@ -246,7 +246,6 @@ const INTRODUCTION_TITLE = 'Introduction';
 const introductionStage = (
   pedigree: Fields,
   introScreen: unknown,
-  mintId: () => string,
 ): Fields | undefined => {
   const items = asRecord(introScreen).items;
   if (!Array.isArray(items)) return undefined;
@@ -257,7 +256,7 @@ const introductionStage = (
       ? pedigree.label
       : DEFAULT_PEDIGREE_LABEL;
   return withoutUndefined({
-    id: mintId(),
+    id: createProtocolObjectId(),
     type: 'Information',
     label: `${label} (introduction)`,
     title: INTRODUCTION_TITLE,
@@ -368,24 +367,19 @@ const retargetSkipDestination = (
  * of its own before the pedigree, so the skip lands on it, and the
  * participant still reads it before they start.
  */
-export const migrateFamilyPedigreeStages = (
-  protocol: Fields,
-  minter: MigrationIdMinter,
-) => {
+export const migrateFamilyPedigreeStages = (protocol: Fields) => {
   if (!Array.isArray(protocol.stages)) return;
   const { codebook } = protocol;
   const relativesNotRecordedByType = new Map<string, string>();
   const retargets = new Map<string, string>();
 
   const stages: unknown[] = [];
-  for (const [index, stage] of protocol.stages.entries()) {
+  for (const stage of protocol.stages) {
     if (!isSchema8FamilyPedigree(stage)) {
       stages.push(stage);
       continue;
     }
-    const introduction = introductionStage(stage, stage.introScreen, () =>
-      minter.mint(`familyPedigreeIntroductionBefore:${index}`),
-    );
+    const introduction = introductionStage(stage, stage.introScreen);
     if (introduction && typeof introduction.id === 'string') {
       if (typeof stage.id === 'string') {
         retargets.set(stage.id, introduction.id);

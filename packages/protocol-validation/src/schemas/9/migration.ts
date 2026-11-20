@@ -36,13 +36,8 @@ import {
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
-import {
-  assignProtocolObjectIds,
-  createMigrationIdMinter,
-  type MigrationIdChanges,
-  type MigrationIdMinter,
-  rewriteSessionObjectIds,
-} from './migration-object-ids.ts';
+import { assignProtocolObjectIds } from './migration-object-ids.ts';
+import { createProtocolObjectId } from './protocol-object-id.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
@@ -515,12 +510,11 @@ const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
 const moveIntroductionPanelsToInformationStages = (
   protocol: unknown,
   { defaultLocale }: LocalizationDeclaration,
-  minter: MigrationIdMinter,
 ) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   const retargets = new Map<string, string>();
   const stages: unknown[] = [];
-  for (const [index, stage] of protocol.stages.entries()) {
+  for (const stage of protocol.stages) {
     if (!isRecord(stage) || !isRecord(stage.introductionPanel)) {
       stages.push(stage);
       continue;
@@ -536,7 +530,7 @@ const moveIntroductionPanelsToInformationStages = (
       stages.push(stage);
       continue;
     }
-    const id = minter.mint(`introductionBefore:${index}`);
+    const id = createProtocolObjectId();
     if (typeof stage.id === 'string') retargets.set(stage.id, id);
     stages.push({
       id,
@@ -1142,12 +1136,9 @@ const endsAtFinishStage = (stages: unknown): boolean => {
  * document, which is recorded as English, and a schema 9 document's own
  * languages otherwise.
  */
-const finishStageFor = (
-  localization: LocalizationDeclaration,
-  minter: MigrationIdMinter,
-) =>
+const finishStageFor = (localization: LocalizationDeclaration) =>
   createDefaultFinishSessionStage({
-    id: minter.mint('finishStage'),
+    id: createProtocolObjectId(),
     localization,
   });
 
@@ -1286,7 +1277,6 @@ const containerAt = (
 const migrateDocument = (input: ProtocolDocument<8>) => {
   const { experiments, ...doc } = input;
   const migrated = structuredClone(doc);
-  const minter = createMigrationIdMinter(input);
   // Before any repair removes or reorders a list item, so a refusal names
   // each item where the researcher will find it.
   recordOriginalPositions(migrated);
@@ -1302,13 +1292,13 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   removeDuplicateOptionValues(migrated.codebook);
   // Before the localization pass, so the attribute and stage the
   // conversion adds are localized with the rest.
-  migrateFamilyPedigreeStages(migrated, minter);
+  migrateFamilyPedigreeStages(migrated);
   migrateNarrativePedigreeStages(migrated);
   addLegendLabels(migrated);
   // After the filters are rewritten above, which read each stage's own.
   moveNarrativeFiltersIntoPresets(migrated);
   addComposerCaptions(migrated);
-  moveIntroductionPanelsToInformationStages(migrated, localization, minter);
+  moveIntroductionPanelsToInformationStages(migrated, localization);
   repairInformationTitles(migrated);
   repairInformationTextItems(migrated);
   repairNarrativeLabels(migrated);
@@ -1341,17 +1331,17 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
       ? migrated.stages
       : [
           ...(Array.isArray(migrated.stages) ? migrated.stages : []),
-          finishStageFor(localization, minter),
+          finishStageFor(localization),
         ],
     ...(experiments !== undefined && {
-      experiments: withoutEncryptedVariables(experiments),
+      experiments: withoutEncryptedVariables(structuredClone(experiments)),
     }),
     schemaVersion: 9 as const,
     localization,
   };
   // Last, so that every object the steps above add or move is given its id
   // where it ends up, and every stage reference they wrote is rewritten.
-  const idChanges = assignProtocolObjectIds(assembled, minter);
+  const stageRenames = assignProtocolObjectIds(assembled);
 
   // None of the wording Network Canvas supplies is written in: the
   // interview shows it for a protocol that does not hold it. A document
@@ -1359,20 +1349,25 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   // shows. The words are the interview's, so a copy of them cannot be told
   // from a rewording here; the tool that next stores the protocol removes
   // it (`withoutSuppliedWording`).
-  return { document: withoutUnshownWording(assembled), idChanges };
+  return { document: withoutUnshownWording(assembled), stageRenames };
 };
 
-// The id changes of one migration, for its session step. The framework hands
-// that step the frozen document the migration was given, so the changes are
-// worked out from it once and kept for as long as it is.
-const idChangesByInput = new WeakMap<object, MigrationIdChanges>();
+// The new ids are random, so the stage renames of a migration can only be
+// read from the run that made them. They are kept against the document that
+// run was given, which the framework also hands to `stageIdChanges` and to
+// the session step.
+const stageRenamesByInput = new WeakMap<object, ReadonlyMap<string, string>>();
 
-const idChangesFor = (before: ProtocolDocument<8>): MigrationIdChanges => {
-  const cached = idChangesByInput.get(before);
-  if (cached !== undefined) return cached;
-  const { idChanges } = migrateDocument(before);
-  idChangesByInput.set(before, idChanges);
-  return idChanges;
+const stageRenamesFor = (
+  before: ProtocolDocument<8>,
+): ReadonlyMap<string, string> => {
+  const stageRenames = stageRenamesByInput.get(before);
+  if (stageRenames === undefined) {
+    throw new Error(
+      'The stage ids of a schema 8 document can only be read after it has been migrated.',
+    );
+  }
+  return stageRenames;
 };
 
 // The schema 8 document with its stages under the ids the migration gave
@@ -1426,8 +1421,12 @@ const migrationV8toV9 = createMigration({
 - A Narrative stage's filter now belongs to each of its presets, so each preset can show a different part of the network. A filter on an existing Narrative stage is copied to every preset of that stage, so the stage shows the same people as before.
 - A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
-  migrate: (input) => migrateDocument(input).document,
-  stageIdChanges: (before) => idChangesFor(before).stageRenames,
+  migrate: (input) => {
+    const { document, stageRenames } = migrateDocument(input);
+    stageRenamesByInput.set(input, stageRenames);
+    return document;
+  },
+  stageIdChanges: stageRenamesFor,
   // A pedigree's introduction screen becomes a stage of its own, which moves
   // the pedigree and every stage after it one place on; the framework moves
   // each session's stage records and resume position with their stages
@@ -1440,15 +1439,10 @@ const migrationV8toV9 = createMigration({
   // used to add after the last stage. The framework keeps a session that was
   // on that screen past the end of the stages, so it resumes on the finish
   // stage instead.
-  //
-  // Stage and prompt ids the migration replaced are replaced in the nodes
-  // that recorded them (`rewriteSessionObjectIds`).
   migrateSession: (session, { before, after }) => {
-    const idChanges = idChangesFor(before);
-    rewriteSessionObjectIds(session, idChanges);
     remapMergedOptionAnswers(session.network, before);
     resumeAtAppendedFinishStage(session, after);
-    const renamedBefore = withNewStageIds(before, idChanges.stageRenames);
+    const renamedBefore = withNewStageIds(before, stageRenamesFor(before));
     resumeUnstartedPedigreeAtIntroduction(session, after, renamedBefore);
     migrateFamilyPedigreeSessionRecords(session, after, renamedBefore);
     return session;

@@ -13,6 +13,7 @@ import { ProtocolSchemaV9 } from '../schema.ts';
 import { suppliedStageSettingPaths } from '../supplied-stage-text.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-8.json';
+import { migratedStageId } from './migrated-stage-ids.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 type Path = readonly (string | number)[];
@@ -171,19 +172,6 @@ const outcomeOf = (at: Path): Outcome | undefined => {
 };
 
 /**
- * The id the migration gives the stage of schema 8 `document` whose id was
- * `id`: the same id when it was a UUID, and the one it was replaced with when
- * it was not.
- */
-const migratedStageId = (document: unknown, id: unknown) => {
-  if (typeof id !== 'string') return id;
-  const renames = migrationV8toV9.stageIdChanges?.(
-    ProtocolSchemaV8.parse(document),
-  );
-  return renames?.get(id) ?? id;
-};
-
-/**
  * Where schema 9 reports a site of a schema 8 document: the same place in
  * the migrated document. A stage keeps its identity, though the migration can
  * add stages before it and give it a new id, and the pedigree conversion
@@ -193,6 +181,7 @@ const migratedPathOf = (document: unknown, migrated: unknown, at: Path) => {
   if (at[0] !== 'stages') return at;
   const id = migratedStageId(
     document,
+    migrated,
     getAt(document, ['stages', at[1] ?? -1, 'id']),
   );
   const stages = getAt(migrated, ['stages']);
@@ -485,7 +474,7 @@ describe('the text given to blank schema 8 text', () => {
     { document, migrated }: { document: unknown; migrated: unknown },
     schema8Id: string,
   ) => {
-    const id = migratedStageId(document, schema8Id);
+    const id = migratedStageId(document, migrated, schema8Id);
     const stages = getAt(migrated, ['stages']);
     const stage = Array.isArray(stages)
       ? stages.find((candidate) => isRecord(candidate) && candidate.id === id)
@@ -677,12 +666,14 @@ describe('condition labels that show nothing', () => {
       label: ' ',
       variable: 'had_testing',
     });
-    const stages = getAt(migrateProtocol(document, 9), ['stages']);
+    const migrated = migrateProtocol(document, 9);
+    const stages = getAt(migrated, ['stages']);
     const stage = Array.isArray(stages)
       ? stages.find(
           (candidate) =>
             isRecord(candidate) &&
-            candidate.id === migratedStageId(document, 'narrative-pedigree'),
+            candidate.id ===
+              migratedStageId(document, migrated, 'narrative-pedigree'),
         )
       : undefined;
     expect(getAt(stage, ['diseases', 1, 'label'])).toEqual({
@@ -715,12 +706,14 @@ describe('condition labels that show nothing', () => {
       label: { en: ' ' },
       variable: 'had_testing',
     });
-    const stages = getAt(migrateProtocol(document, 9), ['stages']);
+    const migrated = migrateProtocol(document, 9);
+    const stages = getAt(migrated, ['stages']);
     const stage = Array.isArray(stages)
       ? stages.find(
           (candidate) =>
             isRecord(candidate) &&
-            candidate.id === migratedStageId(document, 'narrative-pedigree'),
+            candidate.id ===
+              migratedStageId(document, migrated, 'narrative-pedigree'),
         )
       : undefined;
     expect(getAt(stage, ['diseases', 1, 'label'])).toEqual({
