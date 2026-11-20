@@ -21,6 +21,7 @@ import {
   REVIEW_PROVIDER_NAMES,
   type ReviewErrorCode,
 } from '@codaco/protocol-review-worker/contract';
+import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import {
   cancelReview,
@@ -130,6 +131,13 @@ const messages = defineMessages({
       'The results of your review are shown below in order of importance.',
     description:
       'Line under the Protocol review heading, above the list of problems the review found.',
+  },
+  defaultLanguageOnly: {
+    id: 'architect.protocolReview.popover.defaultLanguageOnly',
+    defaultMessage:
+      'Fixes change the {language} text only. After a fix, check your other translations on the <page>Languages</page> page.',
+    description:
+      'Small note above the list of problems an automated review found, shown only when the protocol has more than one language. {language} is the name of the protocol’s default language, the only one a suggested fix rewords. The tag around "Languages" makes it a link to the page of that name, where translations are edited; keep the tag around that word, which must match the name of the page.',
   },
   noProblems: {
     id: 'architect.protocolReview.popover.noProblems',
@@ -342,6 +350,12 @@ const failureNotices: Record<ReviewErrorCode, NoticeKind> = {
   invalid_request: 'unavailable',
 };
 
+const languagesLink = (onFollow: () => void) => (chunks: ReactNode[]) => (
+  <ProtocolPlaceLink href="/protocol/localization" onFollow={onFollow}>
+    {chunks}
+  </ProtocolPlaceLink>
+);
+
 const noticeOf = (
   online: boolean,
   run: ReviewRun,
@@ -441,6 +455,7 @@ const ReviewPopoverContent = ({
   const progress = useAppSelector(getProtocolReviewProgress);
   const phase = useAppSelector(getProtocolReviewPhase);
   const protocol = useAppSelector(getProtocol);
+  const languageName = useLanguageName();
   const {
     now,
     online,
@@ -722,6 +737,18 @@ const ReviewPopoverContent = ({
     </div>
   ) : (
     <>
+      {protocol && protocol.localization.locales.length > 1 && (
+        <div className="px-6 pb-4">
+          <Paragraph intent="smallText" margin="none">
+            {intl.formatMessage(messages.defaultLanguageOnly, {
+              language: languageName(
+                summary.defaultLocale ?? protocol.localization.defaultLocale,
+              ),
+              page: languagesLink(onClose),
+            })}
+          </Paragraph>
+        </div>
+      )}
       {(counts.mine > 0 || filter === 'mine') && (
         <div className="px-6 pb-4">
           <SegmentedSwitcher

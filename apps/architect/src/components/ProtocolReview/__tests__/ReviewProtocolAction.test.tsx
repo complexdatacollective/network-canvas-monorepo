@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { timelineActions } from '~/ducks/middleware/timeline';
 import {
+  setProtocolDefaultLocale,
   setProtocolTranslation,
   setActiveProtocol,
 } from '~/ducks/modules/activeProtocol';
@@ -818,11 +819,8 @@ describe('one problem at a time, in the panel', () => {
     ).toBeNull();
     expect(within(dialog).getByText('Name people')).toBeVisible();
     expect(within(dialog).getByText('Name everyone you know')).toBeVisible();
-    expect(
-      within(dialog).getByText(
-        'This protocol also has this text in French. Fix for me does not change that version, so check it after the fix.',
-      ),
-    ).toBeVisible();
+    expect(within(dialog).getByText('Not changed: French')).toBeVisible();
+    expect(within(dialog).queryByText(/English text/)).toBeNull();
 
     await userEvent.click(
       within(dialog).getByRole('button', { name: 'Fix for me' }),
@@ -909,7 +907,7 @@ describe('one problem at a time, in the panel', () => {
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Edit' }));
     const field = within(dialog).getByRole('textbox', {
-      name: 'Prompt collection › Prompt 1 › Prompt text After the fix',
+      name: 'Prompt collection › Prompt 1 › Prompt text After the fix · English',
     });
     expect(field).toHaveTextContent('Name everyone you know');
     await userEvent.clear(field);
@@ -937,7 +935,7 @@ describe('one problem at a time, in the panel', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Edit' }));
     await userEvent.type(
       within(dialog).getByRole('textbox', {
-        name: 'Prompt collection › Prompt 1 › Prompt text After the fix',
+        name: 'Prompt collection › Prompt 1 › Prompt text After the fix · English',
       }),
       ' today',
     );
@@ -1311,7 +1309,30 @@ describe('one problem at a time, in the panel', () => {
     ).toBeEnabled();
   });
 
-  it('previews a fix that replaces a whole localized text, translation by translation', async () => {
+  it('says once, above the problems, which language fixes change, and links to the Languages page', async () => {
+    await reviewed(store);
+    renderToolbar(store);
+    const panel = await openPanel();
+    const note = within(panel).getByText(/Fixes change the English text only/);
+    expect(note).toHaveTextContent(
+      'Fixes change the English text only. After a fix, check your other translations on the Languages page.',
+    );
+    expect(within(note).getByRole('link', { name: 'Languages' })).toBeVisible();
+  });
+
+  it('names the language fixes change as it was when the protocol was reviewed', async () => {
+    await reviewed(store);
+    act(() => {
+      store.dispatch(setProtocolDefaultLocale({ locale: 'fr' }));
+    });
+    renderToolbar(store);
+    const panel = await openPanel();
+    expect(
+      within(panel).getByText(/Fixes change the English text only/),
+    ).toBeVisible();
+  });
+
+  it('previews a fix that replaces a whole localized text, changing only the default language', async () => {
     await reviewed(store, {
       ...RESULT,
       findings: [
@@ -1345,11 +1366,8 @@ describe('one problem at a time, in the panel', () => {
     let dialog = await openProblemFromList('The prompt is vague');
     expect(within(dialog).getByText('Name people')).toBeVisible();
     expect(within(dialog).getByText('Name everyone you know')).toBeVisible();
-    expect(
-      within(dialog).getByText(
-        'This protocol also has this text in French. Fix for me does not change that version, so check it after the fix.',
-      ),
-    ).toBeVisible();
+    expect(within(dialog).getByText('Not changed: French')).toBeVisible();
+    expect(within(dialog).queryByText(/English text/)).toBeNull();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Back' }));
 
     dialog = await openProblemFromListAlreadyOpen(
@@ -1357,15 +1375,8 @@ describe('one problem at a time, in the panel', () => {
     );
     expect(within(dialog).getByText('Hello')).toBeVisible();
     expect(within(dialog).getByText('Welcome to our study')).toBeVisible();
-    expect(within(dialog).getByText('Bonjour')).toBeVisible();
-    expect(
-      within(dialog).getByText('Bienvenue dans notre étude'),
-    ).toBeVisible();
-    expect(
-      within(dialog).getByText('Page content › Page heading · English'),
-    ).toBeVisible();
-    expect(
-      within(dialog).getByText('Page content › Page heading · French'),
-    ).toBeVisible();
+    expect(within(dialog).getByText('Not changed: French')).toBeVisible();
+    expect(within(dialog).queryByText('Bienvenue dans notre étude')).toBeNull();
+    expect(within(dialog).queryByText(/· French/)).toBeNull();
   });
 });
