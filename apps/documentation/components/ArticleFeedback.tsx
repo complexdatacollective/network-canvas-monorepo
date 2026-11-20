@@ -27,6 +27,10 @@ import {
 
 type Status = 'ratingSent' | 'ratingRemoved' | 'commentSent' | 'commentRemoved';
 
+// Each result gets a new id, so the live region's text node is replaced and
+// announced even when the message matches the previous one.
+type Announcement = { status: Status; id: number };
+
 const COMMUNITY_URL = 'https://community.networkcanvas.com';
 
 const subscribeToNothing = () => () => undefined;
@@ -51,7 +55,9 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
   const [sent, setSent] = useState<Feedback | null>(null);
   const feedback = sent ?? parseArticleFeedback(stored);
   const [draft, setDraft] = useState<string | null>(null);
-  const [status, setStatus] = useState<Status | null>(null);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const announce = (status: Status) =>
+    setAnnouncement((previous) => ({ status, id: (previous?.id ?? 0) + 1 }));
   const focusEditButton = useRef(false);
 
   const send = (next: Feedback) => {
@@ -77,7 +83,7 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
       rating: nextRating,
       comment,
     });
-    setStatus(nextRating === null ? 'ratingRemoved' : 'ratingSent');
+    announce(nextRating === null ? 'ratingRemoved' : 'ratingSent');
   };
 
   const sendComment = () => {
@@ -88,7 +94,7 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
       rating,
       comment: nextComment,
     });
-    setStatus(nextComment === '' ? 'commentRemoved' : 'commentSent');
+    announce(nextComment === '' ? 'commentRemoved' : 'commentSent');
     focusEditButton.current = true;
     setDraft(null);
   };
@@ -163,7 +169,10 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
               variant="text"
               className="-ms-3"
               icon={<MessageSquare aria-hidden />}
-              onClick={() => setDraft(comment)}
+              onClick={() => {
+                setDraft(comment);
+                setAnnouncement(null);
+              }}
             >
               {t('editComment')}
             </Button>
@@ -178,12 +187,15 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
         intent="smallText"
         margin="none"
         className={
-          status === 'commentSent' || status === 'commentRemoved'
+          announcement?.status === 'commentSent' ||
+          announcement?.status === 'commentRemoved'
             ? undefined
             : 'sr-only'
         }
       >
-        {status !== null && t(status)}
+        {announcement !== null && (
+          <span key={announcement.id}>{t(announcement.status)}</span>
+        )}
       </Paragraph>
     </section>
   );

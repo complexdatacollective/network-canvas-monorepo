@@ -90,6 +90,36 @@ describe('ArticleFeedback', () => {
     ).toHaveFocus();
   });
 
+  it('replaces the announcement for every result, even a repeated one', () => {
+    renderFeedback();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    const first = screen.getByRole('status').firstElementChild;
+    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    const second = screen.getByRole('status').firstElementChild;
+
+    expect(second).toHaveTextContent('Thanks. Your answer was sent.');
+    expect(second).not.toBe(first);
+  });
+
+  it('clears the sent message when the reader reopens their feedback', () => {
+    renderFeedback();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'Add an example' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Thanks. Your feedback was sent.',
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change your feedback' }),
+    );
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
   it('shows a returning reader the answer they gave', async () => {
     window.localStorage.setItem(
       'nc-docs-article-feedback:/get-started/glossary',
