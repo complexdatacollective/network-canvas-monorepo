@@ -140,7 +140,7 @@ const probedRuleSet = (): RuleSetValue | null => {
  * codebook prop, no host store.
  */
 const ruleSetSection = (
-  <BuilderSection title="Skip logic">
+  <BuilderSection sectionKey="skip-logic" title="Skip logic">
     <Field name={RULE_SET_FIELD} label="Rules" component={QueryRuleSetField} />
     <RuleSetProbe />
   </BuilderSection>

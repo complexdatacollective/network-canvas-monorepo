@@ -1144,7 +1144,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "Filter rules hide configured values",
   "protocolBuilder.networkFilter.rulesHint": "Create one or more rules to filter what is shown on this stage.",
   "protocolBuilder.networkFilter.rulesLabel": "Filter rules",
-  "protocolBuilder.networkFilter.title": "Stage filter",
+  "protocolBuilder.networkFilter.title": "Filter network",
   "protocolBuilder.nodeLabel.textPlaceholder": "Write the label, and insert values and logic from the toolbar…",
   "protocolBuilder.nodePanels.addLabel": "Add new panel",
   "protocolBuilder.nodePanels.addTitle": "Create panel",

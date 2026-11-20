@@ -1,0 +1,1378 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Walkthrough editor</title>
+    <style>
+      :root {
+        --bg: #f5f5f8;
+        --surface: #fff;
+        --ink: #1d1d2b;
+        --muted: #6b6b80;
+        --line: #dcdce6;
+        --accent: #4b3fd8;
+        --accent-soft: #ecebfd;
+        --do: #15803d;
+        --do-soft: #e8f6ed;
+        --avoid: #c2410c;
+        --avoid-soft: #fdeee6;
+        --warn: #a16207;
+        --warn-soft: #fef6dc;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        font-size: 14px;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        display: grid;
+        grid-template-columns: 15rem 1fr;
+        height: 100vh;
+      }
+      nav {
+        overflow-y: auto;
+        border-inline-end: 1px solid var(--line);
+        background: var(--surface);
+        padding: 0.75rem 0.5rem 2rem;
+      }
+      nav h2 {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 1rem 0.5rem 0.25rem;
+      }
+      nav a {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.3rem 0.5rem;
+        border-radius: 6px;
+        color: inherit;
+        text-decoration: none;
+      }
+      nav a:hover {
+        background: var(--bg);
+      }
+      nav a[aria-current='page'] {
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 600;
+      }
+      nav a small {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      main {
+        overflow-y: auto;
+        scroll-padding-top: 5rem;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1.5rem;
+        background: color-mix(in srgb, var(--bg) 92%, transparent);
+        backdrop-filter: blur(6px);
+        border-bottom: 1px solid var(--line);
+      }
+      header .path {
+        font-family: ui-monospace, monospace;
+        font-size: 0.8rem;
+        color: var(--muted);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .status {
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .status.dirty {
+        color: var(--warn);
+        font-weight: 600;
+      }
+      button {
+        font: inherit;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: inherit;
+        border-radius: 6px;
+        padding: 0.3rem 0.65rem;
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+        font-weight: 600;
+      }
+      button.icon {
+        padding: 0.15rem 0.45rem;
+        color: var(--muted);
+      }
+      button.danger:hover:not(:disabled) {
+        border-color: var(--avoid);
+        color: var(--avoid);
+      }
+      .content {
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: 1rem 1.5rem 6rem;
+      }
+      .banner {
+        padding: 0.6rem 0.9rem;
+        border-radius: 8px;
+        background: var(--warn-soft);
+        color: var(--warn);
+        margin-bottom: 0.75rem;
+      }
+      .banner ul {
+        margin: 0.25rem 0 0;
+        padding-inline-start: 1.2rem;
+      }
+      .banner a {
+        color: inherit;
+      }
+      label.field {
+        display: grid;
+        gap: 0.2rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      input,
+      select,
+      textarea {
+        font: inherit;
+        color: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 0.35rem 0.5rem;
+        background: var(--surface);
+        width: 100%;
+      }
+      input:focus,
+      select:focus,
+      textarea:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: -1px;
+        border-color: transparent;
+      }
+      textarea {
+        field-sizing: content;
+        min-height: 3.2rem;
+        resize: vertical;
+        line-height: 1.45;
+      }
+      .walkthrough-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        border-color: transparent;
+        background: transparent;
+        padding-inline: 0.25rem;
+      }
+      details.note {
+        margin: 0.5rem 0 1rem;
+        color: var(--muted);
+      }
+      details.note textarea {
+        font-family: ui-monospace, monospace;
+        font-size: 0.8rem;
+        margin-top: 0.4rem;
+      }
+      .toolbar {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin: 0.5rem 0;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .toolbar .spacer {
+        flex: 1;
+      }
+      .item {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin: 0.25rem 0;
+      }
+      .item.has-problem {
+        border-color: var(--warn);
+      }
+      .item-head {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+      }
+      .item-head .number {
+        min-width: 1.6rem;
+        text-align: center;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .item-head input.step-title {
+        font-weight: 600;
+        font-size: 1rem;
+        flex: 1;
+      }
+      .item-head .badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.1rem 0.45rem;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        white-space: nowrap;
+      }
+      .item-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(14rem, 22rem);
+        gap: 1rem;
+        padding: 0 0.75rem 0.75rem 2.85rem;
+      }
+      .item.collapsed .item-body {
+        display: none;
+      }
+      .directives {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+      }
+      .blocks {
+        display: grid;
+        gap: 0.5rem;
+      }
+      .block {
+        display: grid;
+        grid-template-columns: 5.5rem 1fr auto;
+        gap: 0.4rem;
+        align-items: start;
+      }
+      .block select {
+        padding-inline: 0.3rem;
+      }
+      .block.do textarea {
+        background: var(--do-soft);
+      }
+      .block.avoid textarea {
+        background: var(--avoid-soft);
+      }
+      .block .moves {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+      }
+      .add-row {
+        display: flex;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+      }
+      .add-row button {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .problems {
+        color: var(--warn);
+        font-size: 0.85rem;
+        margin: 0 0 0.5rem;
+        padding-inline-start: 1.1rem;
+      }
+      .include {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        border-style: dashed;
+        background: transparent;
+      }
+      .include .include-steps {
+        flex: 1;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .include select {
+        width: auto;
+      }
+      .insert {
+        display: flex;
+        justify-content: center;
+        gap: 0.4rem;
+        height: 0.9rem;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.1s;
+      }
+      .insert:hover,
+      .insert:focus-within,
+      .insert.always {
+        opacity: 1;
+      }
+      .insert button {
+        font-size: 0.75rem;
+        padding: 0 0.5rem;
+        color: var(--muted);
+        background: var(--bg);
+      }
+      .insert.always {
+        height: auto;
+        margin-top: 0.75rem;
+      }
+      /* Preview: an approximation of the walkthrough panel's step. */
+      .preview {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 0.9rem 1rem;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        align-self: start;
+        background: #fcfcfe;
+      }
+      .preview .eyebrow {
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-bottom: 0.2rem;
+      }
+      .preview h3 {
+        margin: 0 0 0.5rem;
+        font-size: 1.05rem;
+      }
+      .preview .scene {
+        aspect-ratio: 720 / 412;
+        border-radius: 8px;
+        background: repeating-linear-gradient(
+          135deg,
+          var(--accent-soft) 0 10px,
+          #f6f5ff 10px 20px
+        );
+        display: grid;
+        place-items: center;
+        color: var(--accent);
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 0.6rem;
+      }
+      .preview .target {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-bottom: 0.5rem;
+      }
+      .preview p {
+        margin: 0 0 0.6rem;
+      }
+      .preview ul,
+      .preview ol {
+        margin: 0 0 0.6rem;
+        padding-inline-start: 1.2rem;
+      }
+      .preview a {
+        color: var(--accent);
+      }
+      .preview code {
+        font-size: 0.85em;
+        background: var(--bg);
+        padding: 0 0.2em;
+        border-radius: 3px;
+      }
+      .preview .practices {
+        display: grid;
+        gap: 0.4rem;
+        margin-bottom: 0.6rem;
+      }
+      .preview .practice {
+        border-radius: 8px;
+        padding: 0.5rem 0.65rem;
+        font-size: 0.85rem;
+      }
+      .preview .practice strong {
+        display: block;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .preview .practice.do {
+        background: var(--do-soft);
+        color: #14532d;
+      }
+      .preview .practice.avoid {
+        background: var(--avoid-soft);
+        color: #7c2d12;
+      }
+      .empty {
+        color: var(--muted);
+        padding: 4rem 1.5rem;
+        text-align: center;
+      }
+      .toast {
+        position: fixed;
+        bottom: 1rem;
+        inset-inline-end: 1rem;
+        background: var(--ink);
+        color: #fff;
+        padding: 0.6rem 0.9rem;
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <nav id="files" aria-label="Walkthrough files"></nav>
+    <main>
+      <header>
+        <span class="path" id="path"></span>
+        <span class="status" id="status" role="status"></span>
+        <button id="revert" disabled>Discard changes</button>
+        <button id="save" class="primary" disabled title="Save (⌘S)">
+          Save
+        </button>
+      </header>
+      <div class="content" id="editor">
+        <p class="empty">Choose a walkthrough on the left.</p>
+      </div>
+    </main>
+    <datalist id="values-section"></datalist>
+    <datalist id="values-field"></datalist>
+    <datalist id="values-control"></datalist>
+
+    <script type="module">
+      import {
+        DIRECTIVES,
+        parse,
+        problems,
+        serialize,
+      } from '/scripts/walkthrough-editor/format.mjs';
+
+      const DIRECTIVE_LABELS = {
+        section: 'Highlight section',
+        field: 'Highlight field',
+        control: 'Highlight control',
+        scene: 'Animation',
+      };
+      const DIRECTIVE_HINTS = {
+        section:
+          "The editor section's key (not its title), e.g. prompts or skip-logic",
+        field: 'A form field name inside that section',
+        control:
+          'A control outside the sections, e.g. preview (the toolbar Preview button)',
+        scene: 'An animation from scenes/sceneRegistry.ts',
+      };
+
+      let meta = {
+        files: [],
+        scenes: [],
+        sections: [],
+        shared: {},
+        values: {},
+      };
+      let current; // { path, base, doc }
+      let unreadable; // the path of an open file that breaks the format
+      const collapsed = new Set();
+
+      const $ = (selector) => document.querySelector(selector);
+      const h = (tag, props = {}, ...children) => {
+        const node = document.createElement(tag);
+        for (const [key, value] of Object.entries(props)) {
+          if (value === undefined || value === false) continue;
+          if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+          else if (key in node && key !== 'list') node[key] = value;
+          else node.setAttribute(key, value === true ? '' : value);
+        }
+        node.append(
+          ...children
+            .flat()
+            .filter(
+              (child) => child != null && child !== false && child !== '',
+            ),
+        );
+        return node;
+      };
+
+      const api = async (url, options) => {
+        const response = await fetch(url, options);
+        const body = await response.json();
+        return { ok: response.ok, status: response.status, body };
+      };
+
+      const isDirty = () =>
+        current !== undefined && serialize(current.doc) !== current.base;
+
+      function toast(message) {
+        const node = h('div', { className: 'toast', role: 'status' }, message);
+        document.body.append(node);
+        setTimeout(() => node.remove(), 3500);
+      }
+
+      // ---- Markdown preview (enough of it for walkthrough steps) ----------
+      const escape = (text) =>
+        text.replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+        );
+      const inline = (text) =>
+        escape(text)
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
+          .replace(
+            /\[([^\]]+)\]\(([^)\s]+)\)/g,
+            '<a href="$2" target="_blank" rel="noreferrer">$1</a>',
+          );
+      function markdown(text) {
+        return text
+          .split(/\n\s*\n/)
+          .map((chunk) => {
+            const lines = chunk.split('\n');
+            if (lines.every((line) => /^\s*[-*] /.test(line))) {
+              return `<ul>${lines.map((line) => `<li>${inline(line.replace(/^\s*[-*] /, ''))}</li>`).join('')}</ul>`;
+            }
+            if (lines.every((line) => /^\s*\d+\. /.test(line))) {
+              return `<ol>${lines.map((line) => `<li>${inline(line.replace(/^\s*\d+\. /, ''))}</li>`).join('')}</ol>`;
+            }
+            // The panel has no quotes: a quote shows as a plain paragraph
+            // there, so it does here too. ("> Do:" and "> Avoid:" lines are
+            // practices, handled before this.)
+            if (lines.every((line) => line.startsWith('>'))) {
+              return `<p>${inline(lines.map((line) => line.replace(/^>\s?/, '')).join(' '))}</p>`;
+            }
+            return `<p>${inline(chunk)}</p>`;
+          })
+          .join('');
+      }
+
+      function renderPreview(step, index, steps) {
+        const directive = (name) =>
+          step.directives.find((d) => d.name === name)?.value.trim() || '';
+        const scene = directive('scene');
+        const section = directive('section');
+        const field = directive('field');
+        const control = directive('control');
+        const preview = h('div', {
+          'className': 'preview',
+          'aria-label': 'Preview',
+        });
+        const position = steps.indexOf(step) + 1;
+        preview.append(
+          h('div', { className: 'eyebrow' }, `Step ${position} in this file`),
+          h('h3', {}, step.title || 'Untitled step'),
+        );
+        if (section || field || control) {
+          preview.append(
+            h(
+              'div',
+              { className: 'target' },
+              [
+                section && `Rings “${section}”`,
+                field && `field “${field}”`,
+                control && `Rings the ${control} control`,
+              ]
+                .filter(Boolean)
+                .join(' · '),
+            ),
+          );
+        }
+        if (scene)
+          preview.append(
+            h('div', { className: 'scene' }, `Animation: ${scene}`),
+          );
+        let practices;
+        for (const block of step.blocks) {
+          if (block.text.trim() === '') continue;
+          if (block.type === 'text') {
+            practices = undefined;
+            const wrapper = h('div');
+            wrapper.innerHTML = markdown(block.text);
+            preview.append(...wrapper.childNodes);
+          } else {
+            if (practices === undefined) {
+              practices = h('div', { className: 'practices' });
+              preview.append(practices);
+            }
+            const card = h('div', { className: `practice ${block.type}` });
+            card.innerHTML = `<strong>${block.type === 'do' ? 'Do' : 'Avoid'}</strong>${inline(block.text)}`;
+            practices.append(card);
+          }
+        }
+        return preview;
+      }
+
+      // ---- File list ------------------------------------------------------
+      function renderFiles() {
+        const nav = $('#files');
+        const link = (file) => {
+          const label = file.path.replace(/^shared\//, '').replace(/\.md$/, '');
+          return h(
+            'a',
+            {
+              'href': `#${encodeURIComponent(file.path)}`,
+              'aria-current': current?.path === file.path ? 'page' : undefined,
+            },
+            h('span', {}, label),
+            h(
+              'small',
+              {},
+              file.error
+                ? 'error'
+                : `${current?.path === file.path && isDirty() ? '● ' : ''}${file.steps}`,
+            ),
+          );
+        };
+        nav.replaceChildren(
+          h('h2', {}, 'Stage walkthroughs'),
+          ...meta.files
+            .filter((file) => !file.path.startsWith('shared/'))
+            .map(link),
+          h('h2', {}, 'Shared steps'),
+          ...meta.files
+            .filter((file) => file.path.startsWith('shared/'))
+            .map(link),
+        );
+        for (const name of ['section', 'field', 'control']) {
+          $(`#values-${name}`).replaceChildren(
+            ...(meta.values[name] ?? []).map((value) => h('option', { value })),
+          );
+        }
+      }
+
+      function updateStatus() {
+        const dirty = isDirty();
+        $('#save').disabled = !dirty;
+        $('#revert').disabled = !dirty;
+        $('#status').textContent =
+          current === undefined ? '' : dirty ? 'Unsaved changes' : 'Saved';
+        $('#status').className = `status${dirty ? ' dirty' : ''}`;
+        document.title = `${dirty ? '● ' : ''}${current?.path ?? 'Walkthrough editor'}`;
+        renderFiles();
+      }
+
+      // ---- Editor ---------------------------------------------------------
+      const move = (list, from, to) => {
+        if (to < 0 || to >= list.length) return;
+        const [item] = list.splice(from, 1);
+        list.splice(to, 0, item);
+      };
+
+      const newStep = () => ({
+        type: 'step',
+        title: 'New step',
+        directives: [],
+        blocks: [{ type: 'text', text: '' }],
+      });
+
+      function setDirective(step, name, value) {
+        const existing = step.directives.find((d) => d.name === name);
+        if (existing) existing.value = value;
+        else {
+          step.directives.push({ name, value });
+          step.directives.sort(
+            (a, b) => DIRECTIVES.indexOf(a.name) - DIRECTIVES.indexOf(b.name),
+          );
+        }
+      }
+
+      function insertBar(index, always = false) {
+        const add = (item) => () => {
+          current.doc.items.splice(index, 0, item);
+          render();
+          updateStatus();
+          document
+            .querySelectorAll('.item')
+            [index]?.querySelector('input')
+            ?.focus();
+        };
+        return h(
+          'div',
+          { className: `insert${always ? ' always' : ''}` },
+          h('button', { onclick: add(newStep()) }, '+ Step'),
+          // A shared file cannot include another: every walkthrough that
+          // includes it would stop loading.
+          current.path.startsWith('shared/')
+            ? null
+            : h(
+                'button',
+                {
+                  onclick: add({
+                    type: 'include',
+                    name: Object.keys(meta.shared)[0] ?? '',
+                  }),
+                },
+                '+ Shared steps',
+              ),
+        );
+      }
+
+      function renderInclude(item, index, items) {
+        const names = Object.keys(meta.shared);
+        const titles = meta.shared[item.name];
+        return h(
+          'div',
+          { className: 'item include' },
+          h('span', { className: 'badge' }, 'Shared'),
+          h(
+            'select',
+            {
+              'aria-label': 'Shared steps',
+              'onchange': (event) => {
+                item.name = event.target.value;
+                render();
+                updateStatus();
+              },
+            },
+            (names.includes(item.name) ? names : [item.name, ...names]).map(
+              (name) =>
+                h(
+                  'option',
+                  { value: name, selected: name === item.name },
+                  name,
+                ),
+            ),
+          ),
+          h(
+            'span',
+            { className: 'include-steps' },
+            titles
+              ? `${titles.length} step${titles.length === 1 ? '' : 's'}: ${titles.join(' · ')}`
+              : 'Unknown shared steps',
+          ),
+          h(
+            'a',
+            { href: `#${encodeURIComponent(`shared/${item.name}.md`)}` },
+            'Edit',
+          ),
+          moveButtons(items, index),
+        );
+      }
+
+      function moveButtons(items, index) {
+        return h(
+          'span',
+          {},
+          h(
+            'button',
+            {
+              'className': 'icon',
+              'title': 'Move up',
+              'aria-label': 'Move up',
+              'disabled': index === 0,
+              'onclick': () => (
+                move(items, index, index - 1),
+                render(),
+                updateStatus()
+              ),
+            },
+            '↑',
+          ),
+          ' ',
+          h(
+            'button',
+            {
+              'className': 'icon',
+              'title': 'Move down',
+              'aria-label': 'Move down',
+              'disabled': index === items.length - 1,
+              'onclick': () => (
+                move(items, index, index + 1),
+                render(),
+                updateStatus()
+              ),
+            },
+            '↓',
+          ),
+          ' ',
+          h(
+            'button',
+            {
+              'className': 'icon danger',
+              'title': 'Delete',
+              'aria-label': 'Delete',
+              'onclick': () => {
+                const item = items[index];
+                const name =
+                  item.type === 'step'
+                    ? `the step “${item.title}”`
+                    : `the shared steps “${item.name}”`;
+                if (!confirm(`Delete ${name}?`)) return;
+                items.splice(index, 1);
+                render();
+                updateStatus();
+              },
+            },
+            '✕',
+          ),
+        );
+      }
+
+      function renderStep(step, index, items, stepNumber, found) {
+        const steps = items.filter((item) => item.type === 'step');
+        const key = `${current.path}:${index}`;
+        let preview;
+        const refreshPreview = () => {
+          const next = renderPreview(step, index, steps);
+          preview.replaceWith(next);
+          preview = next;
+          updateStatus();
+        };
+        const directiveInputs = DIRECTIVES.map((name) => {
+          const value =
+            step.directives.find((d) => d.name === name)?.value ?? '';
+          const control =
+            name === 'scene'
+              ? h(
+                  'select',
+                  {
+                    onchange: (event) => (
+                      setDirective(step, name, event.target.value),
+                      refreshPreview(),
+                      render()
+                    ),
+                  },
+                  h('option', { value: '' }, 'None'),
+                  (meta.scenes.includes(value) || value === ''
+                    ? meta.scenes
+                    : [value, ...meta.scenes]
+                  ).map((scene) =>
+                    h(
+                      'option',
+                      { value: scene, selected: scene === value },
+                      scene,
+                    ),
+                  ),
+                )
+              : h('input', {
+                  value,
+                  list: `values-${name}`,
+                  placeholder: 'None',
+                  oninput: (event) => (
+                    setDirective(step, name, event.target.value),
+                    refreshPreview()
+                  ),
+                });
+          if (name !== 'scene') control.setAttribute('list', `values-${name}`);
+          return h(
+            'label',
+            { className: 'field', title: DIRECTIVE_HINTS[name] },
+            DIRECTIVE_LABELS[name],
+            control,
+          );
+        });
+
+        const blocks = h(
+          'div',
+          { className: 'blocks' },
+          step.blocks.map((block, blockIndex) =>
+            h(
+              'div',
+              { className: `block ${block.type}` },
+              h(
+                'select',
+                {
+                  'aria-label': 'Block type',
+                  'onchange': (event) => {
+                    block.type = event.target.value;
+                    render();
+                    updateStatus();
+                  },
+                },
+                [
+                  ['text', 'Text'],
+                  ['do', 'Do'],
+                  ['avoid', 'Avoid'],
+                ].map(([value, label]) =>
+                  h('option', { value, selected: value === block.type }, label),
+                ),
+              ),
+              h('textarea', {
+                'value': block.text,
+                'aria-label':
+                  block.type === 'text'
+                    ? 'Text (markdown)'
+                    : `${block.type === 'do' ? 'Do' : 'Avoid'} card`,
+                'placeholder':
+                  block.type === 'text'
+                    ? 'Markdown: **bold**, [link](https://…), - list items. A blank line starts a new paragraph.'
+                    : 'One sentence, no line breaks.',
+                'oninput': (event) => {
+                  block.text =
+                    block.type === 'text'
+                      ? event.target.value
+                      : event.target.value.replace(/\s*\n\s*/g, ' ');
+                  refreshPreview();
+                },
+              }),
+              h(
+                'span',
+                { className: 'moves' },
+                h(
+                  'button',
+                  {
+                    'className': 'icon',
+                    'aria-label': 'Move block up',
+                    'disabled': blockIndex === 0,
+                    'onclick': () => (
+                      move(step.blocks, blockIndex, blockIndex - 1),
+                      render(),
+                      updateStatus()
+                    ),
+                  },
+                  '↑',
+                ),
+                h(
+                  'button',
+                  {
+                    'className': 'icon',
+                    'aria-label': 'Move block down',
+                    'disabled': blockIndex === step.blocks.length - 1,
+                    'onclick': () => (
+                      move(step.blocks, blockIndex, blockIndex + 1),
+                      render(),
+                      updateStatus()
+                    ),
+                  },
+                  '↓',
+                ),
+                h(
+                  'button',
+                  {
+                    'className': 'icon danger',
+                    'aria-label': 'Delete block',
+                    'onclick': () => (
+                      step.blocks.splice(blockIndex, 1),
+                      render(),
+                      updateStatus()
+                    ),
+                  },
+                  '✕',
+                ),
+              ),
+            ),
+          ),
+        );
+
+        const addBlock = (type) => () => {
+          step.blocks.push({ type, text: '' });
+          render();
+          updateStatus();
+          document
+            .querySelectorAll('.item')
+            [index]?.querySelectorAll('textarea')
+            [step.blocks.length - 1]?.focus();
+        };
+
+        preview = renderPreview(step, index, steps);
+        const isCollapsed = collapsed.has(key);
+        return h(
+          'section',
+          {
+            className: `item${isCollapsed ? ' collapsed' : ''}${found.length ? ' has-problem' : ''}`,
+            id: `item-${index}`,
+          },
+          h(
+            'div',
+            { className: 'item-head' },
+            h(
+              'button',
+              {
+                'className': 'icon',
+                'aria-expanded': String(!isCollapsed),
+                'aria-label': isCollapsed ? 'Expand step' : 'Collapse step',
+                'onclick': () => {
+                  if (collapsed.has(key)) collapsed.delete(key);
+                  else collapsed.add(key);
+                  render();
+                },
+              },
+              isCollapsed ? '▸' : '▾',
+            ),
+            h('span', { className: 'number' }, String(stepNumber)),
+            h('input', {
+              'className': 'step-title',
+              'value': step.title,
+              'aria-label': 'Step title',
+              'oninput': (event) => {
+                step.title = event.target.value;
+                refreshPreview();
+              },
+            }),
+            moveButtons(items, index),
+          ),
+          h(
+            'div',
+            { className: 'item-body' },
+            h(
+              'div',
+              {},
+              found.length > 0 &&
+                h(
+                  'ul',
+                  { className: 'problems' },
+                  found.map((problem) => h('li', {}, problem.message)),
+                ),
+              h('div', { className: 'directives' }, directiveInputs),
+              blocks,
+              h(
+                'div',
+                { className: 'add-row' },
+                h('button', { onclick: addBlock('text') }, '+ Text'),
+                h('button', { onclick: addBlock('do') }, '+ Do'),
+                h('button', { onclick: addBlock('avoid') }, '+ Avoid'),
+              ),
+            ),
+            preview,
+          ),
+        );
+      }
+
+      function render() {
+        const editor = $('#editor');
+        if (current === undefined) {
+          editor.replaceChildren(
+            h('p', { className: 'empty' }, 'Choose a walkthrough on the left.'),
+          );
+          return;
+        }
+        const { doc } = current;
+        const scroll = $('main').scrollTop;
+        const found = problems(doc, {
+          scenes: meta.scenes,
+          shared: Object.keys(meta.shared),
+          sections: meta.sections,
+        });
+        const children = [];
+
+        if (found.length > 0) {
+          children.push(
+            h(
+              'div',
+              { className: 'banner' },
+              `${found.length} problem${found.length === 1 ? '' : 's'} to fix:`,
+              h(
+                'ul',
+                {},
+                found.map((problem) =>
+                  h(
+                    'li',
+                    {},
+                    h(
+                      'a',
+                      {
+                        href: `#${encodeURIComponent(current.path)}`,
+                        onclick: (event) => (
+                          event.preventDefault(),
+                          document
+                            .getElementById(`item-${problem.index}`)
+                            ?.scrollIntoView({ block: 'start' })
+                        ),
+                      },
+                      problem.message,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (doc.title !== null) {
+          children.push(
+            h('input', {
+              'className': 'walkthrough-title',
+              'value': doc.title,
+              'aria-label': 'Walkthrough title',
+              'oninput': (event) => {
+                doc.title = event.target.value;
+                updateStatus();
+              },
+            }),
+          );
+        }
+        children.push(
+          h(
+            'details',
+            { className: 'note' },
+            h(
+              'summary',
+              {},
+              'Note at the top of the file (not shown to researchers)',
+            ),
+            h('textarea', {
+              value: doc.preamble,
+              oninput: (event) => {
+                doc.preamble = event.target.value;
+                updateStatus();
+              },
+            }),
+          ),
+        );
+        if (doc.intro.trim() !== '') {
+          children.push(
+            h(
+              'label',
+              { className: 'field' },
+              'Text before the first step (not shown in the walkthrough)',
+              h('textarea', {
+                value: doc.intro,
+                oninput: (event) => (
+                  (doc.intro = event.target.value),
+                  updateStatus()
+                ),
+              }),
+            ),
+          );
+        }
+
+        const stepCount = doc.items.filter(
+          (item) => item.type === 'step',
+        ).length;
+        children.push(
+          h(
+            'div',
+            { className: 'toolbar' },
+            `${stepCount} step${stepCount === 1 ? '' : 's'} in this file`,
+            h('span', { className: 'spacer' }),
+            h(
+              'button',
+              {
+                onclick: () => (
+                  doc.items.forEach((_, i) =>
+                    collapsed.add(`${current.path}:${i}`),
+                  ),
+                  render()
+                ),
+              },
+              'Collapse all',
+            ),
+            h(
+              'button',
+              {
+                onclick: () => (
+                  doc.items.forEach((_, i) =>
+                    collapsed.delete(`${current.path}:${i}`),
+                  ),
+                  render()
+                ),
+              },
+              'Expand all',
+            ),
+          ),
+        );
+
+        let stepNumber = 0;
+        doc.items.forEach((item, index) => {
+          children.push(insertBar(index));
+          if (item.type === 'include')
+            children.push(renderInclude(item, index, doc.items));
+          else {
+            stepNumber += 1;
+            children.push(
+              renderStep(
+                item,
+                index,
+                doc.items,
+                stepNumber,
+                found.filter((p) => p.index === index),
+              ),
+            );
+          }
+        });
+        children.push(insertBar(doc.items.length, true));
+
+        editor.replaceChildren(...children);
+        $('main').scrollTop = scroll;
+      }
+
+      // ---- Loading and saving ----------------------------------------------
+      let loads = 0;
+      async function load(path) {
+        // Another file can be asked for, or the open one edited, while this
+        // request is out; then its answer no longer applies.
+        const request = ++loads;
+        const shown = current;
+        const edits = shown === undefined ? '' : serialize(shown.doc);
+        const { ok, body } = await api(
+          `/api/file?path=${encodeURIComponent(path)}`,
+        );
+        if (request !== loads) return;
+        if (
+          current !== shown ||
+          (shown !== undefined && serialize(shown.doc) !== edits)
+        ) {
+          if (current !== undefined) {
+            history.replaceState(
+              null,
+              '',
+              `#${encodeURIComponent(current.path)}`,
+            );
+          }
+          return;
+        }
+        if (!ok) {
+          toast(body.error);
+          return;
+        }
+        $('#path').textContent = `content/${path}`;
+        $('main').scrollTop = 0;
+        let doc;
+        try {
+          doc = parse(body.source);
+        } catch (error) {
+          showUnreadable(path, error);
+          return;
+        }
+        current = { path, base: body.source, doc };
+        unreadable = undefined;
+        render();
+        updateStatus();
+      }
+
+      // A file that breaks the walkthrough format cannot be shown as fields
+      // (saving would rewrite what the editor could not read), so say what
+      // is wrong and leave the fix to a text editor.
+      function showUnreadable(path, error) {
+        current = undefined;
+        unreadable = path;
+        $('#editor').replaceChildren(
+          h(
+            'div',
+            { className: 'banner' },
+            `content/${path} cannot be edited here until it is fixed in a text editor:`,
+            h('ul', {}, h('li', {}, error.message)),
+          ),
+        );
+        updateStatus();
+      }
+
+      async function save(force = false) {
+        if (!isDirty()) return;
+        // Another file can be opened while this one saves, so the response
+        // updates the file it was for, not whichever is open by then.
+        const saving = current;
+        const source = serialize(saving.doc);
+        const { ok, status, body } = await api(
+          `/api/file?path=${encodeURIComponent(saving.path)}${force ? '&force=1' : ''}`,
+          {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ base: saving.base, source }),
+          },
+        );
+        if (current !== saving) {
+          toast(ok ? `Saved ${saving.path}` : `${saving.path} was not saved`);
+          return;
+        }
+        if (status === 409) {
+          const overwrite = confirm(
+            `${saving.path} changed on disk after you opened it (a git pull, or an edit somewhere else).\n\nOK: overwrite it with your version.\nCancel: keep editing (reload the page to see the version on disk, losing your edits).`,
+          );
+          if (overwrite) await save(true);
+          return;
+        }
+        if (!ok) {
+          toast(`Not saved: ${body.error}`);
+          return;
+        }
+        saving.base = body.source;
+        meta = (await api('/api/meta')).body;
+        if (current !== saving) return;
+        render();
+        updateStatus();
+        toast(`Saved ${saving.path}`);
+      }
+
+      async function route() {
+        const path = decodeURIComponent(location.hash.slice(1));
+        if (path === '' || path === current?.path) return;
+        if (
+          isDirty() &&
+          !confirm(`Discard your unsaved changes to ${current.path}?`)
+        ) {
+          history.replaceState(
+            null,
+            '',
+            `#${encodeURIComponent(current.path)}`,
+          );
+          return;
+        }
+        await load(path);
+      }
+
+      // Pick up changes made outside the editor (git pull, another editor)
+      // when the tab comes back, unless there are unsaved edits.
+      window.addEventListener('focus', async () => {
+        if (current === undefined) {
+          // Retry a file that could not be read, in case it has been fixed.
+          if (unreadable !== undefined) await load(unreadable);
+          return;
+        }
+        // Another file can be opened, or this one edited, while these
+        // requests are out; then their answer no longer applies.
+        const shown = current;
+        const { ok, body } = await api(
+          `/api/file?path=${encodeURIComponent(shown.path)}`,
+        );
+        if (current !== shown || !ok || body.source === shown.base) return;
+        if (isDirty()) {
+          toast(
+            `${current.path} changed on disk. Saving will ask before overwriting it.`,
+          );
+          return;
+        }
+        meta = (await api('/api/meta')).body;
+        if (current !== shown || isDirty()) return;
+        try {
+          current = { ...shown, base: body.source, doc: parse(body.source) };
+        } catch (error) {
+          showUnreadable(shown.path, error);
+          return;
+        }
+        render();
+        updateStatus();
+        toast(`Reloaded ${shown.path}: it changed on disk`);
+      });
+
+      $('#save').addEventListener('click', () => save());
+      $('#revert').addEventListener('click', () => {
+        if (!confirm('Discard all unsaved changes to this file?')) return;
+        current.doc = parse(current.base);
+        render();
+        updateStatus();
+      });
+      window.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+          event.preventDefault();
+          save();
+        }
+      });
+      window.addEventListener('beforeunload', (event) => {
+        if (isDirty()) event.preventDefault();
+      });
+      window.addEventListener('hashchange', route);
+
+      meta = (await api('/api/meta')).body;
+      renderFiles();
+      if (location.hash.length > 1) await route();
+      else location.hash = encodeURIComponent(meta.files[0]?.path ?? '');
+    </script>
+  </body>
+</html>

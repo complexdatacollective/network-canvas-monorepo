@@ -25,8 +25,16 @@ describe('SectionOutlineStore', () => {
     const store = new SectionOutlineStore();
     mountSection('first');
     const second = mountSection('second');
-    store.registerSection({ id: 'first', title: 'First' });
-    store.registerSection({ id: 'second', title: 'Second' });
+    store.registerSection({
+      id: 'first',
+      sectionKey: 'form-fields',
+      title: 'First',
+    });
+    store.registerSection({
+      id: 'second',
+      sectionKey: 'form-fields',
+      title: 'Second',
+    });
 
     expect(store.getSnapshot().map((section) => section.title)).toEqual([
       'First',
@@ -48,8 +56,16 @@ describe('SectionOutlineStore', () => {
     const store = new SectionOutlineStore();
     mountSection('first');
     const second = mountSection('second');
-    store.registerSection({ id: 'first', title: 'First' });
-    store.registerSection({ id: 'second', title: 'Second' });
+    store.registerSection({
+      id: 'first',
+      sectionKey: 'form-fields',
+      title: 'First',
+    });
+    store.registerSection({
+      id: 'second',
+      sectionKey: 'form-fields',
+      title: 'Second',
+    });
     store.getSnapshot();
 
     second.remove();
@@ -64,7 +80,11 @@ describe('SectionOutlineStore', () => {
   it('hands back the same snapshot while nothing has moved', () => {
     const store = new SectionOutlineStore();
     mountSection('only');
-    store.registerSection({ id: 'only', title: 'Only' });
+    store.registerSection({
+      id: 'only',
+      sectionKey: 'form-fields',
+      title: 'Only',
+    });
 
     // Identity has to hold, or `useSyncExternalStore` would re-render forever.
     expect(store.getSnapshot()).toBe(store.getSnapshot());
@@ -122,7 +142,11 @@ function storeWith(
   const store = new SectionOutlineStore();
   for (const [sectionId, names] of Object.entries(fields)) {
     const element = mountSection(sectionId);
-    store.registerSection({ id: sectionId, title: sectionId });
+    store.registerSection({
+      id: sectionId,
+      sectionKey: 'form-fields',
+      title: sectionId,
+    });
     for (const name of names) element.append(fieldMarkup(name, required));
   }
   return store;

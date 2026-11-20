@@ -317,13 +317,13 @@ const CASES: readonly EditorCase[] = [
     editor: dyadCensusStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
@@ -354,13 +354,13 @@ const CASES: readonly EditorCase[] = [
     editor: tieStrengthCensusStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
@@ -389,14 +389,14 @@ const CASES: readonly EditorCase[] = [
     editor: oneToManyDyadCensusStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Node availability',
       'Skip logic',
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
@@ -447,14 +447,14 @@ const CASES: readonly EditorCase[] = [
     editor: ordinalBinStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Placing nodes',
       'Skip logic',
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
@@ -496,7 +496,7 @@ const CASES: readonly EditorCase[] = [
     editor: categoricalBinStageEditor,
     sections: [
       'Node setup',
-      'Stage filter',
+      'Filter network',
       'Prompt collection',
       'Placing nodes',
       // The fixture's bin is placed by dragging and lets nodes stay
@@ -505,7 +505,7 @@ const CASES: readonly EditorCase[] = [
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Filtro de la etapa',
+      'Filtrar la red',
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],

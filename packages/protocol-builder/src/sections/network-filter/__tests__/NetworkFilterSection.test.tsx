@@ -73,7 +73,8 @@ const dyadCensus = (filter: unknown) => stageHolding(DYAD_CENSUS, { filter });
 const nodeFilterSection = <NetworkFilterSection />;
 const edgeFilterSection = nodeFilterSection;
 
-const filterSwitch = () => screen.getByRole('switch', { name: 'Stage filter' });
+const filterSwitch = () =>
+  screen.getByRole('switch', { name: 'Filter network' });
 
 /**
  * Switch the section on, and wait for the panel that opens.
@@ -110,7 +111,7 @@ const switchFilterOff = async (harness: StageEditorHarness) => {
 };
 
 const filterOutline = (harness: StageEditorHarness) =>
-  harness.outline().find((section) => section.title === 'Stage filter');
+  harness.outline().find((section) => section.title === 'Filter network');
 
 describe('what the section says it is for', () => {
   it('names the nodes a node stage filters', () => {

@@ -150,6 +150,7 @@ export default function SkipLogicSection({ position }: SkipLogicSectionProps) {
 
   return (
     <BuilderSection
+      sectionKey="skip-logic"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
       capability={SKIP_LOGIC_CAPABILITY}

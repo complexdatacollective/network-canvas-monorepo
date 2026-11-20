@@ -1144,7 +1144,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "篩選規則隱藏了已設定的值",
   "protocolBuilder.networkFilter.rulesHint": "建立一個或多個規則，篩選此階段顯示的內容。",
   "protocolBuilder.networkFilter.rulesLabel": "篩選規則",
-  "protocolBuilder.networkFilter.title": "階段篩選條件",
+  "protocolBuilder.networkFilter.title": "篩選網絡",
   "protocolBuilder.nodeLabel.textPlaceholder": "撰寫標籤，並從工具列插入值與邏輯…",
   "protocolBuilder.nodePanels.addLabel": "新增面板",
   "protocolBuilder.nodePanels.addTitle": "建立面板",

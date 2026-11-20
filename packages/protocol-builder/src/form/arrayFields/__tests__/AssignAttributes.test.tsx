@@ -133,7 +133,7 @@ function renderAttributeList(
     );
 
     return (
-      <BuilderSection title="Additional attributes">
+      <BuilderSection sectionKey="form-fields" title="Additional attributes">
         {probe}
         <Field
           name="additionalAttributes"

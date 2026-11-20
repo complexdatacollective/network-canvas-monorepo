@@ -327,6 +327,7 @@ export default function DiseasesSection() {
 
   return (
     <BuilderSection
+      sectionKey="disease-mappings"
       title={intl.formatMessage(narrativePedigreeMessages.diseasesTitle)}
       description={
         waiting

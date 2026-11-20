@@ -150,7 +150,7 @@ describe('the narrative stage editor', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(7));
 
     expect(harness.outline().map((section) => section.title)).not.toContain(
-      'Stage filter',
+      'Filter network',
     );
   });
 

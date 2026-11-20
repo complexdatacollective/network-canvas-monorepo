@@ -232,6 +232,7 @@ export default function PageContentSection({
 
   return (
     <BuilderSection
+      sectionKey="page-content"
       title={intl.formatMessage(pageContentMessages.pageTitle)}
       description={intl.formatMessage(pageContentMessages.pageDescription)}
     >

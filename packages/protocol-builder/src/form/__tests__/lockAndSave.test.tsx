@@ -583,7 +583,7 @@ function StagedFileProbe() {
   const resources = useResourceClient();
   const { staged } = useStagedResources();
   return (
-    <BuilderSection title="Import">
+    <BuilderSection sectionKey="form-fields" title="Import">
       <button
         type="button"
         onClick={() => {

@@ -42,6 +42,7 @@ import type { ProtocolLocalization } from '../localization/localizedText.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
+import type { SectionKey } from '../sections/sectionKeys.ts';
 import type {
   StageEditorActions,
   StageEditorComponent,
@@ -339,6 +340,11 @@ export type StageEditorHarness = RenderResult &
      * a host's list would use. See {@link SECTION_STATE_WORDS}.
      */
     outline(): { title: string; state: string }[];
+    /**
+     * The stable key of each section the editor publishes, in the same order
+     * as {@link outline}.
+     */
+    sectionKeys(): SectionKey[];
     /**
      * What the editor refuses about the stage that NO section answers for, as
      * the sentences a host would read out — the other half of `outline()`.
@@ -971,6 +977,8 @@ export function renderStageEditor<T extends StageType = StageType>(
       return written;
     },
     outline: () => readOutline(sectionsProbe.read()),
+    sectionKeys: () =>
+      sectionsProbe.read().map((section) => section.sectionKey),
     problems: () =>
       sectionsProbe.readProblems().map((problem) => readMessage(problem)),
     takeOverLock: () => {

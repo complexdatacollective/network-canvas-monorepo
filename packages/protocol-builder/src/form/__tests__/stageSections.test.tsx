@@ -92,7 +92,7 @@ function Revealable({ children }: Readonly<{ children: ReactNode }>) {
 
 const twoSections = (
   <>
-    <BuilderSection title="Page content">
+    <BuilderSection sectionKey="page-content" title="Page content">
       <Field
         name="title"
         label="Page heading"
@@ -100,7 +100,10 @@ const twoSections = (
         required={REQUIRED}
       />
     </BuilderSection>
-    <BuilderSection title="Interviewer guidance">
+    <BuilderSection
+      sectionKey="interviewer-guidance"
+      title="Interviewer guidance"
+    >
       <Field name="interviewScript" label="Script" component={InputField} />
     </BuilderSection>
   </>
@@ -141,7 +144,7 @@ describe('the sections a stage editor publishes to its host', () => {
 
   it('tells a subscriber when a control judges itself invalid', async () => {
     const { harness, probe } = renderEditor(
-      <BuilderSection title="Page content">
+      <BuilderSection sectionKey="page-content" title="Page content">
         <Field
           name="title"
           label="Page heading"
@@ -170,7 +173,7 @@ describe('the sections a stage editor publishes to its host', () => {
   it('tells a subscriber when a section arrives on the page', async () => {
     const { harness, probe } = renderEditor(
       <>
-        <BuilderSection title="Page content">
+        <BuilderSection sectionKey="page-content" title="Page content">
           <Field
             name="title"
             label="Page heading"
@@ -178,7 +181,10 @@ describe('the sections a stage editor publishes to its host', () => {
           />
         </BuilderSection>
         <Revealable>
-          <BuilderSection title="Interviewer guidance">
+          <BuilderSection
+            sectionKey="interviewer-guidance"
+            title="Interviewer guidance"
+          >
             <Field
               name="interviewScript"
               label="Script"

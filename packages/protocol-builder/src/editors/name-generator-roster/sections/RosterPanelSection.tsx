@@ -45,6 +45,7 @@ export default function RosterPanelSection() {
 
   return (
     <BuilderSection
+      sectionKey="roster-panel"
       title={intl.formatMessage(rosterPanelMessages.title)}
       description={intl.formatMessage(rosterPanelMessages.description)}
     >

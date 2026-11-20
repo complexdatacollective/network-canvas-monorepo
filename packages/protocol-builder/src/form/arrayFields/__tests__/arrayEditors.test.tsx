@@ -71,6 +71,7 @@ function renderList(
     }, [setDisabled]);
     return (
       <BuilderSection
+        sectionKey="form-fields"
         title={title}
         {...(optional ? { capability: OPTIONS_CAPABILITY } : {})}
       >

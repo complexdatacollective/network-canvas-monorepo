@@ -29,7 +29,7 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  *
  * The rule builders were brought INSIDE it. `@codaco/protocol-builder`’s
  * `fields/RuleSetField.tsx` mounts a rule list twice per stage editor, once for
- * Skip logic and once for Stage filter. Each rule set is one editable list with
+ * Skip logic and once for Filter network. Each rule set is one editable list with
  * one conventionally named add control ("Add new skip logic rule" / "Add new
  * filter rule"); the rule target is selected inside the row editor. Both
  * controls are therefore covered here with no widening and no allowlist.

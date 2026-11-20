@@ -283,6 +283,7 @@ export default function AlterLimitsSection() {
 
   return (
     <BuilderSection
+      sectionKey="nomination-limits"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
       capability={LIMITS_CAPABILITY}

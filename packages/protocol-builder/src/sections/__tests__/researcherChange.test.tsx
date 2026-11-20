@@ -80,7 +80,7 @@ const pickTheRosterFile = async (
 };
 
 const rosterFileSection = (
-  <BuilderSection title="Roster file">
+  <BuilderSection sectionKey="roster-source" title="Roster file">
     <Field<typeof RosterFilePicker>
       name="dataSource"
       label="Roster file"
@@ -155,6 +155,7 @@ describe('a capability whose prerequisite starts absent', () => {
         <>
           {rosterFileSection}
           <BuilderSection
+            sectionKey="card-display"
             title="Card display"
             capability={cardOptionsCapability}
             resetOn="dataSource"

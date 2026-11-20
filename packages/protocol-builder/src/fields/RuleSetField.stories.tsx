@@ -320,7 +320,7 @@ export const TheSaveIsRefusedWithNoRules: Story = {
 export const AFilterCannotAskAboutTheEgo: Story = {
   args: {
     stageId: fixtureStageId('name-generator-1'),
-    sectionTitle: 'Stage filter',
+    sectionTitle: 'Filter network',
     children: <StageFilterRules />,
   },
   play: async ({ canvasElement }) => {

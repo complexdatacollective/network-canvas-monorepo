@@ -1144,7 +1144,7 @@
   "protocolBuilder.networkFilter.hiddenEdgesTitle": "Les règles de filtrage masquent des valeurs configurées",
   "protocolBuilder.networkFilter.rulesHint": "Créez une ou plusieurs règles pour filtrer ce qui est affiché dans cette étape.",
   "protocolBuilder.networkFilter.rulesLabel": "Règles de filtrage",
-  "protocolBuilder.networkFilter.title": "Filtre de l’étape",
+  "protocolBuilder.networkFilter.title": "Filtrer le réseau",
   "protocolBuilder.nodeLabel.textPlaceholder": "Rédigez le libellé, et insérez des valeurs et de la logique depuis la barre d’outils…",
   "protocolBuilder.nodePanels.addLabel": "Ajouter un panneau",
   "protocolBuilder.nodePanels.addTitle": "Créer un panneau",

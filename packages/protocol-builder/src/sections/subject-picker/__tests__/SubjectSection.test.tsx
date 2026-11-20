@@ -128,7 +128,7 @@ describe('the section that says what a stage is about', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Edge setup',
-      'Stage filter',
+      'Filter network',
     ]);
   });
 
@@ -170,7 +170,7 @@ describe('the section that says what a stage is about', () => {
     expect(await harness.submit()).toBeNull();
     expect(harness.outline()).toEqual([
       { title: 'Edge setup', state: 'Finished' },
-      { title: 'Stage filter', state: 'Switched off' },
+      { title: 'Filter network', state: 'Switched off' },
     ]);
   });
 
@@ -903,7 +903,7 @@ describe('choosing a type for a stage that has never had one', () => {
     // reports about itself.
     expect(harness.outline()).toEqual([
       { title: 'Node setup', state: 'Finished' },
-      { title: 'Stage filter', state: 'Not finished' },
+      { title: 'Filter network', state: 'Not finished' },
     ]);
   });
 

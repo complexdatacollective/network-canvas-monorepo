@@ -351,6 +351,7 @@ export default function SearchOptionsSection() {
 
   return (
     <BuilderSection
+      sectionKey="roster-search"
       title={intl.formatMessage(messages.title)}
       description={shell.description}
       disabled={shell.disabled}

@@ -1,7 +1,8 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { translationText } from '../../localization/localizedText.ts';
+import { SECTION_KEYS } from '../../sections/sectionKeys.ts';
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
 import {
   fixtureLocalization,
@@ -236,6 +237,34 @@ describe('the interfaces the package’s editors claim', () => {
       expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
         labelOf(stageId),
       );
+    },
+  );
+
+  /**
+   * A host names a section by its key rather than by its translated title, so
+   * every section of every editor has one, the keys within one editor are
+   * distinct, and the key is on the section's element as well as in the list
+   * the editor publishes.
+   */
+  it.each(CLAIMS)(
+    'gives every section of $stageType its own key',
+    async ({ stageId }) => {
+      const harness = renderStageEditor({ stageId });
+      await screen.findByRole('textbox', { name: 'Stage name' });
+
+      // Every section registers as it mounts, so the published list and the
+      // elements on the page agree once the editor has finished arriving.
+      await waitFor(() => {
+        const onPage = [...document.querySelectorAll('[data-section-key]')].map(
+          (element) => element.getAttribute('data-section-key'),
+        );
+        expect(onPage.length).toBeGreaterThan(0);
+        expect(onPage).toEqual(harness.sectionKeys());
+      });
+
+      const keys = harness.sectionKeys();
+      expect(new Set(keys).size).toBe(keys.length);
+      for (const key of keys) expect(SECTION_KEYS).toContain(key);
     },
   );
 

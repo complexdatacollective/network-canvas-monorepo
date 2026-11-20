@@ -28,6 +28,7 @@ import { getProtocol } from '~/selectors/protocol';
 import { architectStageEditors } from '../architectStageEditors';
 import { readStageDraft } from '../stageDraftBeacon';
 import StageEditorChrome, { StageEditorHeader } from '../StageEditorChrome';
+import { loadWalkthrough } from '../walkthrough/parseWalkthrough';
 
 /**
  * The language chooser's editor in Architect, over this tab's own store, as
@@ -185,6 +186,29 @@ const finishedEditing = () =>
 describe('the language chooser’s languages in Architect', () => {
   afterEach(() => {
     window.history.replaceState(null, '', '/');
+  });
+
+  // The walkthrough points at sections by key, so the section Architect
+  // renders in place of the package's must carry the key the walkthrough
+  // names. (The other stage types are checked in walkthroughSections.test.tsx,
+  // which mounts editors without Architect's store.)
+  it('renders every section the Language Chooser walkthrough points at', async () => {
+    await openEditor();
+    const walkthrough = await loadWalkthrough('LanguageChooser');
+
+    const rendered = new Set(
+      [...document.querySelectorAll('[data-section-key]')].map((section) =>
+        section.getAttribute('data-section-key'),
+      ),
+    );
+    expect(
+      (walkthrough?.steps ?? []).flatMap((step) =>
+        step.section !== undefined && !rendered.has(step.section)
+          ? [`"${step.title}" names section "${step.section}"`]
+          : [],
+      ),
+    ).toEqual([]);
+    expect(walkthrough?.steps.length).toBeGreaterThan(0);
   });
 
   it('lists the protocol’s languages with the Languages page’s actions and links', async () => {

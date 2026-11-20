@@ -63,6 +63,7 @@ export default function FramingSection() {
 
   return (
     <BuilderSection
+      sectionKey="pedigree-wording"
       title={intl.formatMessage(messages.framingTitle)}
       description={intl.formatMessage(messages.framingDescription)}
     >

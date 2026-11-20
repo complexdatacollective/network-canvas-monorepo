@@ -72,6 +72,7 @@ export default function RelationshipsSection() {
 
   return (
     <BuilderSection
+      sectionKey="relationships"
       title={intl.formatMessage(messages.relationshipsTitle)}
       description={intl.formatMessage(messages.relationshipsDescription)}
     >
