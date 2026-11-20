@@ -2192,15 +2192,8 @@ const BLANK_TITLE: Readonly<Record<string, SectionDoc>> = {
 const inspector = async () =>
   within(await screen.findByRole('complementary', { name: 'Inspector' }));
 
-/** The visible label of the control that has focus, as a screen reader reads it. */
-function focusedLabel(): string {
-  const ids = document.activeElement?.getAttribute('aria-labelledby') ?? '';
-  return ids
-    .split(' ')
-    .map((id) => document.getElementById(id)?.textContent ?? '')
-    .join(' ')
-    .trim();
-}
+/** The Information page's rich text field, by the name a screen reader reads. */
+const pageTextField = () => screen.getByRole('textbox', { name: 'Rich Text' });
 
 describe('the validation problems', () => {
   it('are controls that open the screen they are about and focus the field', async () => {
@@ -2213,7 +2206,7 @@ describe('the validation problems', () => {
       await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
     );
 
-    await waitFor(() => expect(focusedLabel()).toMatch(/^Page content/));
+    await waitFor(() => expect(pageTextField()).toHaveFocus());
     expect(
       screen.getByRole('button', { name: 'Follow-upInformation' }),
     ).toHaveAttribute('aria-current', 'page');
@@ -2243,7 +2236,7 @@ describe('the validation problems', () => {
     document.addEventListener('focusin', record);
     try {
       fireEvent.click(discard);
-      await waitFor(() => expect(focusedLabel()).toMatch(/^Page content/));
+      await waitFor(() => expect(pageTextField()).toHaveFocus());
     } finally {
       document.removeEventListener('focusin', record);
     }
@@ -2335,7 +2328,7 @@ describe('the validation problems', () => {
       }),
     );
 
-    await waitFor(() => expect(focusedLabel()).toMatch(/^Page content/));
+    await waitFor(() => expect(pageTextField()).toHaveFocus());
   });
 
   it('open a section of the protocol that is not a screen', async () => {

@@ -133,6 +133,7 @@ export default defineConfig({
             '@codaco/fresco-ui > @tiptap/extension-placeholder',
             '@codaco/fresco-ui > @tiptap/pm/model',
             '@codaco/fresco-ui > @tiptap/pm/state',
+            '@codaco/fresco-ui > @tiptap/pm/view',
             '@codaco/fresco-ui > @tiptap/react',
             '@codaco/fresco-ui > @tiptap/starter-kit',
             '@codaco/fresco-ui > chromatic/isChromatic',
