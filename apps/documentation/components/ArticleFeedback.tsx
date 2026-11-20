@@ -3,13 +3,7 @@
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { posthog } from 'posthog-js';
-import {
-  type ReactNode,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
@@ -20,9 +14,6 @@ import {
   type ArticleFeedback as Feedback,
   type ArticleRating,
   articleFeedbackEvent,
-  parseArticleFeedback,
-  readStoredArticleFeedback,
-  saveArticleFeedback,
 } from '~/lib/analytics/articleFeedback';
 
 type Status = 'ratingSent' | 'ratingRemoved';
@@ -32,8 +23,6 @@ type Status = 'ratingSent' | 'ratingRemoved';
 type Announcement = { status: Status; id: number };
 
 const COMMUNITY_URL = 'https://community.networkcanvas.com';
-
-const subscribeToNothing = () => () => undefined;
 
 const renderCommunityLink = (chunks: ReactNode) => (
   <Link href={COMMUNITY_URL}>{chunks}</Link>
@@ -45,25 +34,14 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
   const questionId = useId();
   const commentId = useId();
 
-  // What this reader answered on an earlier visit. The page is statically
-  // exported, so the server renders it unanswered.
-  const stored = useSyncExternalStore(
-    subscribeToNothing,
-    () => readStoredArticleFeedback(docPath),
-    () => null,
-  );
-  const [sent, setSent] = useState<Feedback | null>(null);
-  const feedback = sent ?? parseArticleFeedback(stored);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const announce = (status: Status) =>
     setAnnouncement((previous) => ({ status, id: (previous?.id ?? 0) + 1 }));
-  // Sending a comment replaces the prompt, so focus moves to the thanks.
-  const focusThanks = useRef(false);
 
   const send = (next: Feedback) => {
-    setSent(next);
-    saveArticleFeedback(docPath, next);
+    setFeedback(next);
     // Analytics only starts on the production site; elsewhere the prompt
     // works the same and sends nothing.
     if (posthog.__loaded) {
@@ -96,18 +74,14 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
       comment: nextComment,
     });
     setDraft(null);
-    focusThanks.current = true;
   };
 
   if (comment !== '') {
     return (
       <section className="border-outline mt-12 border-t pt-6">
         <Paragraph
-          ref={(thanks: HTMLParagraphElement | null) => {
-            if (thanks === null || !focusThanks.current) return;
-            focusThanks.current = false;
-            thanks.focus();
-          }}
+          // Sending replaces the prompt, so focus moves to the thanks.
+          ref={(thanks: HTMLParagraphElement | null) => thanks?.focus()}
           tabIndex={-1}
           margin="none"
           className="font-bold focus:outline-none"

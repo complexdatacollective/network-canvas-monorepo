@@ -1,11 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  articleFeedbackEvent,
-  parseArticleFeedback,
-  readStoredArticleFeedback,
-  saveArticleFeedback,
-} from '../articleFeedback';
+import { articleFeedbackEvent } from '../articleFeedback';
 
 const RATING = '$survey_response_c5b666c2-1e43-4ff8-b212-ea3b3bd327ae';
 const COMMENT = '$survey_response_220d2d7a-3cb1-4061-9c03-dc02ff1b44e4';
@@ -45,28 +40,5 @@ describe('articleFeedbackEvent', () => {
     expect(event.$survey_completed).toBe(false);
     expect(event).not.toHaveProperty(RATING);
     expect(event).not.toHaveProperty(COMMENT);
-  });
-});
-
-describe('stored feedback', () => {
-  beforeEach(() => window.localStorage.clear());
-
-  it('round-trips per article', () => {
-    saveArticleFeedback('/a', {
-      submissionId: 's1',
-      rating: 'yes',
-      comment: 'x',
-    });
-    expect(parseArticleFeedback(readStoredArticleFeedback('/a'))).toEqual({
-      submissionId: 's1',
-      rating: 'yes',
-      comment: 'x',
-    });
-    expect(parseArticleFeedback(readStoredArticleFeedback('/b'))).toBeNull();
-  });
-
-  it('ignores a malformed stored value', () => {
-    window.localStorage.setItem('nc-docs-article-feedback:/a', '{"rating":1}');
-    expect(parseArticleFeedback(readStoredArticleFeedback('/a'))).toBeNull();
   });
 });

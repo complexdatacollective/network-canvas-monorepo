@@ -26,7 +26,6 @@ function renderFeedback() {
 describe('ArticleFeedback', () => {
   beforeEach(() => {
     capture.mockClear();
-    window.localStorage.clear();
   });
 
   afterEach(cleanup);
@@ -103,33 +102,5 @@ describe('ArticleFeedback', () => {
 
     expect(second).toHaveTextContent('Thanks. Your answer was sent.');
     expect(second).not.toBe(first);
-  });
-
-  it('shows a returning reader the rating they gave', async () => {
-    window.localStorage.setItem(
-      'nc-docs-article-feedback:/get-started/glossary',
-      JSON.stringify({ submissionId: 's1', rating: 'yes', comment: '' }),
-    );
-    renderFeedback();
-
-    expect(
-      await screen.findByRole('button', { name: 'Yes', pressed: true }),
-    ).toBeInTheDocument();
-    expect(capture).not.toHaveBeenCalled();
-  });
-
-  it('only thanks a returning reader who already commented', async () => {
-    window.localStorage.setItem(
-      'nc-docs-article-feedback:/get-started/glossary',
-      JSON.stringify({ submissionId: 's1', rating: 'yes', comment: 'Clear' }),
-    );
-    renderFeedback();
-
-    expect(
-      await screen.findByText('Thanks for your feedback.'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Thanks for your feedback.')).not.toHaveFocus();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(capture).not.toHaveBeenCalled();
   });
 });
