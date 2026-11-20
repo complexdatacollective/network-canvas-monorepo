@@ -7,7 +7,10 @@ import {
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
-import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import {
+  loadAllInterfacesFixture,
+  stageIdOfType,
+} from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { Timeline } from '../pageobjects/timeline.js';
 
@@ -344,12 +347,9 @@ for (const { viewportHeight, stageType } of [
   }) => {
     const { protocol, assets } = loadAllInterfacesFixture();
     await seed(protocol, { name: 'All Interfaces', assets });
-    const stage = protocol.stages.find(({ type }) => type === stageType);
-    if (!stage) throw new Error(`fixture has no ${stageType} stage`);
-
     const { outline, measure } = await openStuckSectionList(
       architectPage,
-      stage.id,
+      stageIdOfType(protocol, stageType),
       viewportHeight,
     );
     await expect(installNotice(architectPage)).toBeVisible();
@@ -630,12 +630,9 @@ for (const viewport of VIEWPORTS) {
     await gotoProtocol(architectPage);
 
     for (const type of EDITOR_TYPES_UNDER_TEST) {
-      const stage = protocol.stages.find(
-        (candidate) => candidate.type === type,
+      await architectPage.goto(
+        `/protocol/stage/${stageIdOfType(protocol, type)}`,
       );
-      if (!stage) throw new Error(`fixture has no ${type} stage`);
-
-      await architectPage.goto(`/protocol/stage/${stage.id}`);
       await expect(
         architectPage.getByRole('textbox', { name: 'Stage name' }),
       ).toBeVisible();

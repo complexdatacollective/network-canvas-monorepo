@@ -4,6 +4,7 @@ import { Redacted } from 'effect';
 import { StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { fixtureStageId } from '@codaco/protocol-builder/testing/protocolFixture';
 import {
   CurrentProtocolSchema,
   type ExtractedAsset,
@@ -26,15 +27,7 @@ vi.mock('~/utils/assetUtils', async (importOriginal) => ({
     Promise.resolve({ persisted: true }),
 }));
 
-/** The id of the first stage of `type` in the all-interfaces protocol. */
-const fixtureStageId = (type: string): string => {
-  const stage = allInterfaces.stages.find(
-    (candidate) => candidate.type === type,
-  );
-  if (stage === undefined) throw new Error(`No ${type} stage in the fixture`);
-  return stage.id;
-};
-const INFORMATION_STAGE_ID = fixtureStageId('Information');
+const INFORMATION_STAGE_ID = fixtureStageId('information-1');
 
 const PROTOCOL_ID = 'library-row-1';
 const EDIT = 'edit-1';

@@ -8,7 +8,10 @@ import {
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
-import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import {
+  loadAllInterfacesFixture,
+  stageIdOfType,
+} from '../helpers/load-fixture.js';
 import { readProtocolJson, readStageJson } from '../helpers/read-store.js';
 import { StagePreview } from '../pageobjects/preview.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
@@ -487,16 +490,11 @@ test('renders British spelling in the actual type dialog and in the stage editor
   // Two stage editors, because the copy in them is the protocol-builder
   // package's and its British overrides are a catalog of its own: a stage
   // editor reading American English is the failure this catches.
-  const stageIdOfType = (type: string) => {
-    const stage = protocol.stages.find((candidate) => candidate.type === type);
-    if (!stage) throw new Error(`Expected a ${type} stage in the fixture`);
-    return stage.id;
-  };
-  await page.goto(`/protocol/stage/${stageIdOfType('Narrative')}`);
+  await page.goto(`/protocol/stage/${stageIdOfType(protocol, 'Narrative')}`);
   await expect(
     page.getByRole('heading', { name: 'Visualisation presets' }),
   ).toBeVisible();
-  await page.goto(`/protocol/stage/${stageIdOfType('Geospatial')}`);
+  await page.goto(`/protocol/stage/${stageIdOfType(protocol, 'Geospatial')}`);
   await expect(
     page.getByRole('radiogroup', { name: 'Map outline and selection colour' }),
   ).toBeVisible();

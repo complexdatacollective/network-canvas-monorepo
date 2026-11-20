@@ -46,6 +46,7 @@ import {
   ASSETS_SECTION,
   STAGE_ORDER_SECTION,
 } from '@codaco/protocol-builder/host/protocolSections';
+import { fixtureStageId } from '@codaco/protocol-builder/testing/protocolFixture';
 import {
   createProtocolObjectId,
   CurrentProtocolSchema,
@@ -83,21 +84,13 @@ vi.mock('~/utils/assetUtils', async (importOriginal) => ({
   },
 }));
 
-/** The id of the first stage of `type` in the all-interfaces protocol. */
-const fixtureStageId = (type: string): string => {
-  const stage = allInterfaces.stages.find(
-    (candidate) => candidate.type === type,
-  );
-  if (stage === undefined) throw new Error(`No ${type} stage in the fixture`);
-  return stage.id;
-};
-const INFORMATION_STAGE_ID = fixtureStageId('Information');
-const EGO_FORM_STAGE_ID = fixtureStageId('EgoForm');
-const NAME_GENERATOR_STAGE_ID = fixtureStageId('NameGenerator');
-const FAMILY_PEDIGREE_STAGE_ID = fixtureStageId('FamilyPedigree');
-const NARRATIVE_PEDIGREE_STAGE_ID = fixtureStageId('NarrativePedigree');
-const GEOSPATIAL_STAGE_ID = fixtureStageId('Geospatial');
-const FINISH_STAGE_ID = fixtureStageId('FinishSession');
+const INFORMATION_STAGE_ID = fixtureStageId('information-1');
+const EGO_FORM_STAGE_ID = fixtureStageId('ego-form-1');
+const NAME_GENERATOR_STAGE_ID = fixtureStageId('name-generator-1');
+const FAMILY_PEDIGREE_STAGE_ID = fixtureStageId('family-pedigree-1');
+const NARRATIVE_PEDIGREE_STAGE_ID = fixtureStageId('narrative-pedigree-1');
+const GEOSPATIAL_STAGE_ID = fixtureStageId('geospatial-1');
+const FINISH_STAGE_ID = fixtureStageId('finish');
 
 const PROTOCOL_ID = 'library-row-1';
 
@@ -359,7 +352,7 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       sectionId: sectionId({
         kind: 'stage',
-        stageId: fixtureStageId('Sociogram'),
+        stageId: fixtureStageId('sociogram-1'),
       }),
     });
     const { id: _id, ...withoutId } = Redacted.value(template.document);
