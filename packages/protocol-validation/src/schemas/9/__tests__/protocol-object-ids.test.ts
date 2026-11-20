@@ -16,7 +16,7 @@ import validateProtocol from '../../../validation/validate-protocol.ts';
 import { assignProtocolObjectIds } from '../migration-object-ids.ts';
 import {
   isProtocolObjectId,
-  registeredProtocolObjectKinds,
+  PROTOCOL_OBJECT_KINDS,
 } from '../protocol-object-id.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { nameGeneratorStage } from '../stages/name-generator.ts';
@@ -151,9 +151,7 @@ describe('protocol object ids in schema 9', () => {
     const kinds = new Set(
       collectProtocolObjectIds(validProtocol()).map(({ kind }) => kind),
     );
-    expect([...kinds].toSorted()).toEqual(
-      registeredProtocolObjectKinds().toSorted(),
-    );
+    expect([...kinds].toSorted()).toEqual(PROTOCOL_OBJECT_KINDS.toSorted());
   });
 
   it('accepts the complete fixture, whose ids are UUIDs found nowhere else', () => {
@@ -162,7 +160,7 @@ describe('protocol object ids in schema 9', () => {
     expect(findDuplicateProtocolObjectIds(protocol)).toEqual([]);
   });
 
-  it.each(registeredProtocolObjectKinds())('requires a %s id', (kind) => {
+  it.each(PROTOCOL_OBJECT_KINDS)('requires a %s id', (kind) => {
     const protocol = validProtocol();
     const { path } = firstIdOfKind(protocol, kind);
     removeAt(protocol, path);
@@ -171,18 +169,15 @@ describe('protocol object ids in schema 9', () => {
     );
   });
 
-  it.each(registeredProtocolObjectKinds())(
-    'requires a %s id to be a UUID',
-    (kind) => {
-      const protocol = validProtocol();
-      const { path } = firstIdOfKind(protocol, kind);
-      setAt(protocol, path, 'readable-id');
-      expect(flatIssuesOf(protocol)).toContainEqual({
-        path,
-        message: 'An id must be a UUID.',
-      });
-    },
-  );
+  it.each(PROTOCOL_OBJECT_KINDS)('requires a %s id to be a UUID', (kind) => {
+    const protocol = validProtocol();
+    const { path } = firstIdOfKind(protocol, kind);
+    setAt(protocol, path, 'readable-id');
+    expect(flatIssuesOf(protocol)).toContainEqual({
+      path,
+      message: 'An id must be a UUID.',
+    });
+  });
 
   it('refuses one id on objects of unrelated kinds on different stages, at both', () => {
     const protocol = validProtocol();

@@ -4,34 +4,28 @@ import { z } from 'zod';
 const PROTOCOL_OBJECT_ID = 'protocolObjectId' as const;
 
 /**
- * What a marked object is. Carried on the marker so that a consumer can tell
- * the objects of one kind apart from the rest (the session migration rewrites
- * the prompt ids nodes record, and no other kind), and so that the schema
- * declares the inventory of kinds it marks.
+ * Every kind of object the schema marks. The kind is carried on the marker so
+ * that a consumer can tell the objects of one kind apart from the rest.
  */
-export type ProtocolObjectKind =
-  | 'stage'
-  | 'prompt'
-  | 'panel'
-  | 'informationItem'
-  | 'formField'
-  | 'rule'
-  | 'sortRule'
-  | 'additionalAttribute'
-  | 'rosterCardProperty'
-  | 'rosterSortableProperty'
-  | 'narrativePreset'
-  | 'narrativePresetEdge'
-  | 'narrativePresetHighlight'
-  | 'disease'
-  | 'composerEdge';
+export const PROTOCOL_OBJECT_KINDS = [
+  'stage',
+  'prompt',
+  'panel',
+  'informationItem',
+  'formField',
+  'rule',
+  'sortRule',
+  'additionalAttribute',
+  'rosterCardProperty',
+  'rosterSortableProperty',
+  'narrativePreset',
+  'narrativePresetEdge',
+  'narrativePresetHighlight',
+  'disease',
+  'composerEdge',
+] as const;
 
-/**
- * Every kind declared so far. A module-level registry for the reason
- * `stageReference` keeps one: the declaration is the marker call, so a kind
- * cannot be marked and left out of the inventory.
- */
-const KINDS = new Set<ProtocolObjectKind>();
+export type ProtocolObjectKind = (typeof PROTOCOL_OBJECT_KINDS)[number];
 
 /**
  * The identity of an object a researcher edits on its own: a UUID, unique
@@ -52,13 +46,11 @@ export type ProtocolObjectId = z.infer<typeof ProtocolObjectIdSchema>;
  * Uniqueness across the protocol is checked once, by the protocol and by
  * each stage (`withUniqueObjectIds`), rather than per array.
  */
-export const protocolObjectId = (kind: ProtocolObjectKind) => {
-  KINDS.add(kind);
-  return ProtocolObjectIdSchema.meta({ [PROTOCOL_OBJECT_ID]: kind });
-};
+export const protocolObjectId = (kind: ProtocolObjectKind) =>
+  ProtocolObjectIdSchema.meta({ [PROTOCOL_OBJECT_ID]: kind });
 
 const isProtocolObjectKind = (value: unknown): value is ProtocolObjectKind =>
-  typeof value === 'string' && [...KINDS].some((kind) => kind === value);
+  PROTOCOL_OBJECT_KINDS.some((kind) => kind === value);
 
 /** The kind this schema node marks, or undefined when it is not a marker. */
 export const getProtocolObjectKind = (
@@ -67,14 +59,6 @@ export const getProtocolObjectKind = (
   const kind = schema.meta()?.[PROTOCOL_OBJECT_ID];
   return isProtocolObjectKind(kind) ? kind : undefined;
 };
-
-/**
- * The kinds marked by whatever schema modules have been loaded, so it is
- * complete only once the protocol schema has been imported.
- */
-export const registeredProtocolObjectKinds = (): ProtocolObjectKind[] => [
-  ...KINDS,
-];
 
 /** Whether a value is usable as a protocol object id. */
 export const isProtocolObjectId = (value: unknown): value is ProtocolObjectId =>
