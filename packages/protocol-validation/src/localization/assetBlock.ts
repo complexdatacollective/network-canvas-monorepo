@@ -6,7 +6,7 @@ import {
   isAssetBlockSize,
 } from '@codaco/shared-consts';
 
-import { escapeMarkdownText } from './markdownText.ts';
+import { escapeMarkdownText, messageTextAsMarkdown } from './markdownText.ts';
 import { markdownTree } from './markdownTree.ts';
 import { type MessageNode, messageStructure } from './messageStructure.ts';
 
@@ -215,6 +215,21 @@ const descriptionMarkdown = (description: string | undefined): string =>
 /** The markdown a block is written as: a paragraph of its own. */
 export const assetBlockMarkdown = (block: AssetBlock): string =>
   `![${descriptionMarkdown(block.description)}](${assetBlockUrl(block)})`;
+
+/**
+ * The message a block is written as in localized text, where its
+ * description is a message whose words are plain text: the description's
+ * words are escaped as `assetBlockMarkdown` escapes them, and the values it
+ * shows, the versions it chooses between and a plural's count are left as
+ * they are (see `messageTextAsMarkdown`). Its address holds nothing ICU
+ * reads, so it is the same in either.
+ */
+export const assetBlockMessage = (block: AssetBlock): string =>
+  `![${
+    block.description === undefined
+      ? ''
+      : messageTextAsMarkdown(block.description)
+  }](${assetBlockUrl(block)})`;
 
 type MarkdownTreeNode = Readonly<{
   type: string;

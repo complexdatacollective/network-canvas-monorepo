@@ -83,4 +83,6 @@ from raw HTML. `SyntheticInterview` builds Information stages in the new shape:
 each language's page holds each part (title, text, block descriptions) as the
 interview showed it there, falling back as it does where a part has no
 translation in that language. `@codaco/protocol-validation` exports
-`resolveTextsInEachLocale`, which reads separately translated texts that way.
+`resolveTextsInEachLocale`, which reads separately translated texts that way,
+and `messageHeadingMarkdown` and `assetBlockMessage`, which write a heading or
+a block from a message, escaping only its words.

@@ -1,7 +1,7 @@
 import { invariant } from 'es-toolkit';
 
 import {
-  assetBlockMarkdown,
+  assetBlockMessage,
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
   defaultFinishSessionFields,
@@ -13,10 +13,9 @@ import {
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   escapeMarkdownText,
-  headingMarkdown,
   escapeMessageText,
   isBlankMessage,
-  isBlankText,
+  messageHeadingMarkdown,
   resolveTextsInEachLocale,
   type FinishMode,
   type FinishOutcome,
@@ -2769,9 +2768,15 @@ export class SyntheticInterview {
    * language or, where it had no translation there, in the one the interview
    * fell back to; the page in each language is each part as it was read
    * there (see `resolveTextsInEachLocale`), and a part that read as nothing
-   * is left out. Text written as a string is the default language's words as
-   * typed, so it is escaped as text; text written per language is a message
-   * already.
+   * is left out.
+   *
+   * Every part is a message: text written as a string is the default
+   * language's words as typed, so it is the message that shows them as
+   * written, and text written per language is a message already. The title
+   * and each description are plain text, so the words of each message are
+   * escaped as markdown, and what it shows of a value, the versions it
+   * chooses between and a plural's count are left as they are (see
+   * `messageHeadingMarkdown`); the text is markdown, and is left as it is.
    */
   private informationContent({
     title,
@@ -2789,26 +2794,18 @@ export class SyntheticInterview {
       written: string | LocalizedString;
       block: (words: string) => string;
     }[] = [
-      typeof title === 'string'
-        ? {
-            written: { [defaultLocale]: title },
-            block: (heading) =>
-              isBlankText(heading)
-                ? ''
-                : escapeMessageText(headingMarkdown(heading)),
-          }
-        : {
-            written: title,
-            block: (heading) =>
-              isBlankMessage(heading) ? '' : headingMarkdown(heading),
-          },
+      {
+        written: message(title),
+        block: (heading) =>
+          isBlankMessage(heading) ? '' : messageHeadingMarkdown(heading),
+      },
       ...(text === undefined
         ? []
         : [{ written: message(text), block: (body: string) => body }]),
       ...blocks.map(({ description, ...block }) => ({
         written: description === undefined ? '' : message(description),
         block: (described: string) =>
-          assetBlockMarkdown({
+          assetBlockMessage({
             ...block,
             ...(!isBlankMessage(described) && { description: described }),
           }),

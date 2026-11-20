@@ -1,3 +1,9 @@
+import {
+  type MessageNode,
+  messageStructure,
+  printMessageStructure,
+} from './messageStructure.ts';
+
 /**
  * A run of dashes opening a line, which is the only place CommonMark reads one
  * as anything but a hyphen: a bullet, a thematic break, or the underline of a
@@ -47,12 +53,9 @@ const TILDES = /~+/g;
 const strikesThrough = (value: string): boolean =>
   (value.match(TILDES)?.length ?? 0) > 1;
 
-/**
- * Plain text as markdown that renders it as written, the way Architect's rich
- * text editor stores what a researcher types: `*star*` stays two asterisks
- * around a word rather than becoming emphasis.
- */
-export const escapeMarkdownText = (value: string): string =>
+// Plain text as markdown that renders it as written; `tildes` is whether
+// what the text is read in strikes through, so its tildes are escaped.
+const escapeMarkdown = (value: string, tildes: boolean): string =>
   escapeAngleBrackets(value.replace(CHARACTER_REFERENCE, '&amp;'))
     .replace(/\\/g, '\\\\')
     .replace(/(^\d+)+(\.)/g, '$1\\$2')
@@ -68,18 +71,93 @@ export const escapeMarkdownText = (value: string): string =>
     .replace(/`/g, '\\`')
     .replace(/\[/g, '\\[')
     .replace(/\]/g, '\\]')
-    .replace(TILDES, (run) =>
-      strikesThrough(value) ? run.replaceAll('~', '\\~') : run,
-    );
+    .replace(TILDES, (run) => (tildes ? run.replaceAll('~', '\\~') : run));
 
 /**
- * Text already escaped as markdown, as a top-level heading. A heading is one
- * line, and a run of # that ends it would close the heading rather than show,
- * so it is escaped.
+ * Plain text as markdown that renders it as written, the way Architect's rich
+ * text editor stores what a researcher types: `*star*` stays two asterisks
+ * around a word rather than becoming emphasis.
  */
-export const headingLine = (escaped: string): string =>
-  `# ${escaped.replace(/(\s)(#+)$/, '$1\\$2')}`;
+export const escapeMarkdownText = (value: string): string =>
+  escapeMarkdown(value, strikesThrough(value));
+
+const oneLine = (text: string): string => text.replace(/\s+/g, ' ');
+
+/**
+ * Escaped text that ends a heading's line: a run of # there, or one that is
+ * all the line holds, would close the heading rather than show, so it is
+ * escaped.
+ */
+const headingEnd = (escaped: string): string =>
+  escaped.replace(/(^|\s)(#+)$/, '$1\\$2');
 
 /** Plain text as a top-level markdown heading that shows it as written. */
 export const headingMarkdown = (text: string): string =>
-  headingLine(escapeMarkdownText(text.trim().replace(/\s+/g, ' ')));
+  `# ${headingEnd(escapeMarkdownText(oneLine(text.trim())))}`;
+
+const mapText = (
+  nodes: readonly MessageNode[],
+  map: (text: string) => string,
+): MessageNode[] =>
+  nodes.map((node) => {
+    if (node.kind === 'text') return { kind: 'text', text: map(node.text) };
+    if (node.kind !== 'switch') return node;
+    return {
+      ...node,
+      versions: node.versions.map((version) => ({
+        key: version.key,
+        nodes: mapText(version.nodes, map),
+      })),
+    };
+  });
+
+// The words a message holds, with a space where it shows a value or chooses
+// between versions, so that words on either side of one are not read as one.
+const wordsOf = (nodes: readonly MessageNode[]): string =>
+  nodes
+    .map((node) => {
+      if (node.kind === 'text') return node.text;
+      if (node.kind !== 'switch') return ' ';
+      return ` ${node.versions.map((version) => wordsOf(version.nodes)).join(' ')} `;
+    })
+    .join('');
+
+/**
+ * A message whose words are plain text, as one line of markdown that shows
+ * them as written once its values are filled in. Only its words are escaped
+ * (see `escapeMarkdownText`), each run of them alone but for what takes more
+ * than one: two tildes strike through what is between them, a value
+ * included, so a tilde anywhere in the message is escaped when another is.
+ * `end` escapes what may end the line. What the message shows of a value,
+ * the versions it chooses between and a plural's count are left as they
+ * are, and its words keep the quoting ICU reads them with. A message that
+ * cannot be read is kept as written, for validation to report.
+ */
+const messageLine = (
+  message: string,
+  end: (escaped: string) => string,
+): string => {
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) return message.trim();
+  const tildes = strikesThrough(wordsOf(structure.nodes));
+  return printMessageStructure(
+    mapText(structure.nodes, (text) =>
+      end(escapeMarkdown(oneLine(text), tildes)),
+    ),
+  ).trim();
+};
+
+/**
+ * A message whose words are plain text (a label, a file's description) as a
+ * message of one line of markdown that shows them as written (see
+ * `escapeMessageText` for text written as a string).
+ */
+export const messageTextAsMarkdown = (message: string): string =>
+  messageLine(message, (escaped) => escaped);
+
+/**
+ * A message whose words are plain text as a message of a top-level markdown
+ * heading that shows them as written: `headingMarkdown` for a message.
+ */
+export const messageHeadingMarkdown = (message: string): string =>
+  `# ${messageLine(message, headingEnd)}`;

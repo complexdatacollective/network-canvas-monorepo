@@ -8,7 +8,9 @@ import {
   stageSchema,
   validateProtocol,
   analyzeProtocolLocalization,
+  assetBlocksInMarkdown,
   CurrentProtocolSchema,
+  dynamicMessageParts,
   escapeMessageText,
   type LocalizedString,
   messageText,
@@ -1994,6 +1996,163 @@ describe('addInformationStage content', () => {
           text: 'Hello',
         }),
       ).toEqual({ en: '# Welcome\n\nHello', fr: 'Hello' });
+    });
+  });
+
+  // A part written per language is a message, and a participant is shown it
+  // with its values filled in, read as markdown. Its words are escaped to
+  // show as written; the values, versions and count it shows are left as
+  // they are. A part written as a string is the words as typed.
+  describe('a part shows its values, and its words as written', () => {
+    type Value = string | number;
+    // The page as the interview reads it for these values (see
+    // `dynamicMessageParts`): a number is a plural's count, any other value
+    // a select's case, and each is shown as its text.
+    const shown = (message: string, values: Record<string, Value> = {}) =>
+      dynamicMessageParts(message, 'en', (name) => {
+        const value = values[name];
+        if (value === undefined) return { missing: true };
+        return typeof value === 'number'
+          ? { missing: false, count: value }
+          : { missing: false, case: value };
+      })
+        .map((part) =>
+          typeof part === 'string' ? part : String(values[part.argument]),
+        )
+        .join('');
+    const page = (
+      opts: Parameters<SyntheticInterview['addInformationStage']>[0],
+    ) => {
+      const synth = new SyntheticInterview();
+      synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+      synth.addInformationStage(opts);
+      return contentOf(synth).en ?? '';
+    };
+    // What a participant reads as a file's description: the image's
+    // alternative text, as the interview's markdown reads it.
+    const description = (message: string, values: Record<string, Value>) =>
+      assetBlocksInMarkdown(shown(message, values))[0]?.block.description;
+
+    const COUNT = '{count, plural, one {# item} other {# items}}';
+
+    it("shows a plural title's count as the number", () => {
+      const message = page({ title: { en: COUNT } });
+      expect(shown(message, { count: 1 })).toBe('# 1 item');
+      expect(shown(message, { count: 3 })).toBe('# 3 items');
+    });
+
+    it("escapes the words in a title's versions, and not its count", () => {
+      const message = page({
+        title: {
+          en: '{count, plural, one {# *new* item} other {# new_items <here>}}',
+        },
+      });
+      expect(shown(message, { count: 1 })).toBe('# 1 \\*new\\* item');
+      expect(shown(message, { count: 3 })).toBe('# 3 new\\_items &lt;here&gt;');
+    });
+
+    it("keeps a title's select and its values", () => {
+      const message = page({
+        title: {
+          en: 'Hi {name}: {relation, select, parent {*your* parent} other {someone}}',
+        },
+      });
+      expect(shown(message, { name: 'Ana', relation: 'parent' })).toBe(
+        '# Hi Ana: \\*your\\* parent',
+      );
+      expect(shown(message, { name: 'Ana', relation: 'friend' })).toBe(
+        '# Hi Ana: someone',
+      );
+    });
+
+    it("reads a title's quoted text as the words it quotes", () => {
+      expect(shown(page({ title: { en: "'<'tag> and ''quote''" } }))).toBe(
+        "# &lt;tag&gt; and 'quote'",
+      );
+      expect(shown(page({ title: { en: "Rock 'n' roll '{'live'}'" } }))).toBe(
+        "# Rock 'n' roll {live}",
+      );
+    });
+
+    it('escapes markdown in the words of a title', () => {
+      expect(shown(page({ title: { en: '1. *A*_b_ #\nnext' } }))).toBe(
+        '# 1\\. \\*A\\*\\_b\\_ \\# next',
+      );
+      // Two tildes strike through what is between them, a value included.
+      expect(shown(page({ title: { en: '~{name}~' } }), { name: 'Ana' })).toBe(
+        '# \\~Ana\\~',
+      );
+    });
+
+    it('does not let a run of # ending a title close the heading', () => {
+      expect(
+        shown(page({ title: { en: '{n, select, other {Chapter ##}}' } }), {
+          n: 'x',
+        }),
+      ).toBe('# Chapter \\##');
+      expect(shown(page({ title: { en: '#' } }))).toBe('# \\#');
+    });
+
+    it('shows a title written as a string as typed', () => {
+      expect(shown(page({ title: "Rock 'n' roll {live}" }))).toBe(
+        "# Rock 'n' roll {live}",
+      );
+      expect(shown(page({ title: 'Item #3 *x*' }))).toBe('# Item #3 \\*x\\*');
+      expect(shown(page({ title: '##' }))).toBe('# \\##');
+    });
+
+    it('keeps the text as the markdown it is written in', () => {
+      const message = page({
+        title: 'T',
+        text: {
+          en: '{count, plural, one {# *new* item} other {# *new* items}}',
+        },
+      });
+      expect(shown(message, { count: 3 })).toBe('# T\n\n3 *new* items');
+      expect(shown(page({ title: 'T', text: '*Hi* {name}' }))).toBe(
+        '# T\n\n*Hi* {name}',
+      );
+    });
+
+    it("reads a description's quoted text as the words it quotes", () => {
+      const message = page({
+        title: 'T',
+        blocks: [
+          { assetId: 'img-1', description: { en: "'<'tag> [b] ''quote''" } },
+        ],
+      });
+      expect(description(message, {})).toBe("<tag> [b] 'quote'");
+    });
+
+    // Validation refuses a block whose description shows a value or chooses
+    // between versions, so no participant reads this one; the page keeps
+    // the message as written, for that to be reported of it.
+    it("keeps the values and count a description's message shows", () => {
+      const message = page({
+        title: 'T',
+        blocks: [
+          {
+            assetId: 'img-1',
+            description: {
+              en: '{count, plural, one {# photo} other {# photos}} of {place} [draft] \\ *x*',
+            },
+          },
+        ],
+      });
+      expect(description(message, { count: 1, place: 'Oslo' })).toBe(
+        '1 photo of Oslo [draft] \\ *x*',
+      );
+      expect(description(message, { count: 3, place: 'Oslo' })).toBe(
+        '3 photos of Oslo [draft] \\ *x*',
+      );
+    });
+
+    it('shows a description written as a string as typed', () => {
+      const message = page({
+        title: 'T',
+        blocks: [{ assetId: 'img-1', description: "A [b] c\\d {e} it's #1" }],
+      });
+      expect(description(message, {})).toBe("A [b] c\\d {e} it's #1");
     });
   });
 

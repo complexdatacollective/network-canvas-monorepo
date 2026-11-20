@@ -120,6 +120,7 @@ export {
   type AssetBlockKind,
   type AssetBlockSize,
   assetBlockMarkdown,
+  assetBlockMessage,
   assetBlocksInMarkdown,
   assetBlocksInMessage,
   assetBlockUrl,
@@ -138,6 +139,7 @@ export {
 export {
   escapeMarkdownText,
   headingMarkdown,
+  messageHeadingMarkdown,
 } from './localization/markdownText.ts';
 export {
   escapeMessageText,

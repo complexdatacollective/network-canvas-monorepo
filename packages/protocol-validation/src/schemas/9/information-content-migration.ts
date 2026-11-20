@@ -5,23 +5,17 @@ import {
   type AssetBlock,
   type AssetBlockSize,
   assetBlockMarkdown,
-  assetBlockUrl,
+  assetBlockMessage,
   isAssetBlockKind,
 } from '../../localization/assetBlock.ts';
 import { assetInManifest } from '../../localization/assetBlockDisplay.ts';
 import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import {
-  escapeMarkdownText,
-  headingLine,
   headingMarkdown,
+  messageHeadingMarkdown,
 } from '../../localization/markdownText.ts';
 import { markdownTree } from '../../localization/markdownTree.ts';
-import {
-  type MessageNode,
-  messageStructure,
-  printMessageStructure,
-} from '../../localization/messageStructure.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import { resolveTextsInEachLocale } from '../../localization/resolveLocalizedString.ts';
 
@@ -47,37 +41,6 @@ type Part =
       kind: 'localized';
       messages: Readonly<Record<string, string>>;
     }>;
-
-const mapText = (
-  nodes: readonly MessageNode[],
-  map: (text: string) => string,
-): MessageNode[] =>
-  nodes.map((node) => {
-    if (node.kind === 'text') return { kind: 'text', text: map(node.text) };
-    if (node.kind !== 'switch') return node;
-    return {
-      ...node,
-      versions: node.versions.map((version) => ({
-        key: version.key,
-        nodes: mapText(version.nodes, map),
-      })),
-    };
-  });
-
-/**
- * A message of plain text as a message of markdown that shows the same
- * words: its text is escaped, and what it shows of a value is left alone. A
- * message that cannot be read is kept as written, for validation to report.
- */
-const plainMessageAsMarkdown = (message: string): string => {
-  const structure = messageStructure(message);
-  if (!('nodes' in structure)) return message;
-  return printMessageStructure(
-    mapText(structure.nodes, (text) =>
-      escapeMarkdownText(text.replace(/\s+/g, ' ')),
-    ),
-  );
-};
 
 /** The translations of localized text that say something. */
 const shownMessages = (text: Record<string, unknown>): Record<string, string> =>
@@ -108,9 +71,7 @@ const headingPart = (title: unknown): Part | undefined => {
     ? undefined
     : {
         kind: 'localized',
-        messages: mapMessages(messages, (message) =>
-          headingLine(plainMessageAsMarkdown(message).trim()),
-        ),
+        messages: mapMessages(messages, messageHeadingMarkdown),
       };
 };
 
@@ -556,12 +517,10 @@ const assetPart = (
   if (!isRecord(description)) return unnamed;
   const messages = shownMessages(description);
   if (Object.keys(messages).length === 0) return unnamed;
-  const url = assetBlockUrl(block);
   return {
     kind: 'localized',
-    messages: mapMessages(
-      messages,
-      (message) => `![${plainMessageAsMarkdown(message).trim()}](${url})`,
+    messages: mapMessages(messages, (message) =>
+      assetBlockMessage({ ...block, description: message }),
     ),
   };
 };

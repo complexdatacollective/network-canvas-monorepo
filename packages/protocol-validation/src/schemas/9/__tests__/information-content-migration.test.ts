@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { assetBlocksInMarkdown } from '../../../localization/assetBlock.ts';
+import { dynamicMessageParts } from '../../../localization/dynamicValueMessages.ts';
 import { markdownTree } from '../../../localization/markdownTree.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
@@ -750,6 +751,72 @@ describe('combineInformationContent', () => {
       expect(stage.content).toEqual({
         en: '# Hi {name}\n\n![Song for {name}](asset:tune?align=start&loop=false)',
         fr: '# Salut {name}\n\n![Song for {name}](asset:tune?align=start&loop=false)',
+      });
+    });
+
+    // What a participant reads: the page with its values filled in, as the
+    // interview reads it (see `dynamicMessageParts`). A number is a plural's
+    // count; any other value a select's case.
+    describe('shows the words of a message as written around its values', () => {
+      const shown = (
+        message: unknown,
+        values: Record<string, string | number> = {},
+      ) =>
+        dynamicMessageParts(String(message), 'en', (name) => {
+          const value = values[name];
+          if (value === undefined) return { missing: true };
+          return typeof value === 'number'
+            ? { missing: false, count: value }
+            : { missing: false, case: value };
+        })
+          .map((part) =>
+            typeof part === 'string' ? part : String(values[part.argument]),
+          )
+          .join('');
+      const page = (title: unknown, items: unknown[] = []) =>
+        (combined({ title, items }).content as Record<string, string>).en;
+
+      it("shows a plural's count as the number, and escapes its words", () => {
+        const content = page({
+          en: '{count, plural, one {# *new* item} other {# items}}',
+        });
+        expect(shown(content, { count: 1 })).toBe('# 1 \\*new\\* item');
+        expect(shown(content, { count: 3 })).toBe('# 3 items');
+      });
+
+      it('escapes two tildes on either side of a value', () => {
+        expect(shown(page({ en: '~{name}~' }), { name: 'Ana' })).toBe(
+          '# \\~Ana\\~',
+        );
+      });
+
+      it('does not let a run of # ending a version close the heading', () => {
+        expect(
+          shown(page({ en: '{n, select, other {Chapter ##}}' }), { n: 'x' }),
+        ).toBe('# Chapter \\##');
+        expect(shown(page({ en: '#' }))).toBe('# \\#');
+      });
+
+      it("shows a description's count as the number", () => {
+        const content = page({ en: 'T' }, [
+          asset('a', 'photo', {
+            description: {
+              en: '{count, plural, one {# photo} other {# photos}} [draft]',
+            },
+          }),
+        ]);
+        expect(
+          assetBlocksInMarkdown(shown(content, { count: 3 }))[0]?.block
+            .description,
+        ).toBe('3 photos [draft]');
+      });
+    });
+
+    it('writes a title of only # as a heading that shows it', () => {
+      const stage = combined({ title: '##', items: [] });
+      expect(markdownTree(String(stage.content)).children[0]).toMatchObject({
+        type: 'heading',
+        children: [{ value: '##' }],
       });
     });
 
