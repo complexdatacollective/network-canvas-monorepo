@@ -29,7 +29,6 @@ import {
 } from './family-pedigree-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
-import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { assignProtocolObjectIds } from './migration-object-ids.ts';
 import { createProtocolObjectId } from './protocol-object-id.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
@@ -44,19 +43,6 @@ const DEFAULT_LOCALE = 'en';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * The languages the migrated protocol declares. A document already written in
- * schema 9 form keeps its own: Fresco's deploy normalization re-runs this
- * migration over rows stored at schema 9, and declaring them English would
- * leave their text in languages the protocol no longer declares.
- */
-const localizationOf = (doc: Record<string, unknown>) => {
-  const declared = ProtocolLocalizationSchema.safeParse(doc.localization);
-  return declared.success
-    ? declared.data
-    : { defaultLocale: DEFAULT_LOCALE, locales: [DEFAULT_LOCALE] };
-};
 
 // Under schema 8 the runtime encrypted an attribute marked `encrypted` only
 // while `experiments.encryptedVariables` was on; otherwise it stored the
@@ -467,8 +453,8 @@ const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
  * published protocols use a body of spaces on purpose to show a panel with
  * only a title. Text that shows nothing is left out, and a title that shows
  * nothing takes the stage's label, as the 7 to 8 migration does for a panel
- * with no title. Text a document in schema 9 form already localized loses
- * only the translations that show nothing, which then fall back to another.
+ * with no title. Text already localized loses only the translations that
+ * show nothing, which then fall back to another.
  */
 const moveIntroductionPanelsToInformationStages = (
   protocol: unknown,
@@ -1064,23 +1050,10 @@ const repairInformationTextItems = (protocol: unknown) => {
 };
 
 /**
- * A document that already ends at its finish stage keeps it: Fresco's deploy
- * normalization re-runs this migration over rows stored at schema 9, and a
- * second finish stage would make every such row invalid.
- */
-const endsAtFinishStage = (stages: unknown): boolean => {
-  if (!Array.isArray(stages)) return false;
-  const last: unknown = stages.at(-1);
-  return isRecord(last) && last.type === 'FinishSession';
-};
-
-/**
  * Schema 8 ended every interview with a built-in screen the runtime added.
  * Schema 9 makes that screen a stage, so every migrated protocol gains one at
- * the end, carrying the text that screen showed, with the supplied text in
- * each of the protocol's languages that has it: English for a schema 8
- * document, which is recorded as English, and a schema 9 document's own
- * languages otherwise.
+ * the end, carrying the text that screen showed, in English, the language
+ * the migrated protocol is recorded in.
  */
 const finishStageFor = (localization: LocalizationDeclaration) =>
   createDefaultFinishSessionStage({
@@ -1128,11 +1101,9 @@ const withoutReservedMarker = (site: LocalizedStringSite): unknown => {
  * only ever rendered string end labels there, so any other value is dropped.
  * A non-string anywhere else was already invalid and is left for validation.
  *
- * Text that is already localized is kept, so a document written in schema 9
- * form comes through with its text in the languages it declares, less any
- * translation of an optional text that shows nothing. A string in
- * such a document is recorded in its default language. Either loses the
- * reserved marker first (see `withoutReservedMarker`).
+ * Text that is already localized, such as text an earlier repair wrote, is
+ * kept, less any translation of an optional text that shows nothing. Either
+ * loses the reserved marker first (see `withoutReservedMarker`).
  */
 const localizeSite = (
   original: LocalizedStringSite,
@@ -1149,8 +1120,7 @@ const localizeSite = (
     }
     return { kind: 'remove' };
   }
-  // Text already localized, in a document written in schema 9 form. An
-  // optional text loses its translations that show nothing, which schema 9
+  // Text already localized. An optional text loses its translations that show nothing, which schema 9
   // rejects, so those languages fall back to another; text left with none is
   // left out, as it would have shown nothing.
   if (site.optional && isRecord(site.value)) {
@@ -1226,7 +1196,10 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   // Before any repair removes or reorders a list item, so a refusal names
   // each item where the researcher will find it.
   recordOriginalPositions(migrated);
-  const localization = localizationOf(migrated);
+  const localization = {
+    defaultLocale: DEFAULT_LOCALE,
+    locales: [DEFAULT_LOCALE],
+  };
   // Before any stage is added, and before anything reads a stage's name.
   repairStageLabels(migrated);
   if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
@@ -1273,12 +1246,10 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
 
   const assembled = {
     ...migrated,
-    stages: endsAtFinishStage(migrated.stages)
-      ? migrated.stages
-      : [
-          ...(Array.isArray(migrated.stages) ? migrated.stages : []),
-          finishStageFor(localization),
-        ],
+    stages: [
+      ...(Array.isArray(migrated.stages) ? migrated.stages : []),
+      finishStageFor(localization),
+    ],
     ...(experiments !== undefined && {
       experiments: withoutEncryptedVariables(experiments),
     }),
@@ -1290,11 +1261,7 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   assignProtocolObjectIds(assembled);
 
   // None of the wording Network Canvas supplies is written in: the
-  // interview shows it for a protocol that does not hold it. A document
-  // already in schema 9 form keeps the wording it holds for the text it
-  // shows. The words are the interview's, so a copy of them cannot be told
-  // from a rewording here; the tool that next stores the protocol removes
-  // it (`withoutSuppliedWording`).
+  // interview shows it for a protocol that does not hold it.
   return withoutUnshownWording(assembled);
 };
 

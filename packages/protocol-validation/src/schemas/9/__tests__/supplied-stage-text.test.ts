@@ -6,7 +6,6 @@ import {
   stageWithoutSuppliedText,
   stageWordingShown,
   suppliedStageText,
-  withoutSuppliedWording,
 } from '../../../__tests__/suppliedWording.ts';
 import { withTestIds } from '../../../__tests__/testIds.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
@@ -92,43 +91,6 @@ describe('migrating a roster stage to schema 9', () => {
     const migrated = migrateProtocol(document, 9);
     expect(rosterOf(migrated)).not.toHaveProperty('panelTitle');
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
-  });
-
-  // Fresco's deploy normalization re-runs this migration over rows already
-  // stored at schema 9.
-  // The migration has no catalogue to hand, so it cannot tell a copy of
-  // Network Canvas's wording from a rewording: it writes none, and keeps what
-  // the stage holds. The tool that next stores the protocol removes a copy.
-  it('writes no heading on a roster already in schema 9 form, and keeps the one it holds', () => {
-    const document = {
-      ...validProtocol(),
-      schemaVersion: 8,
-      localization: { defaultLocale: 'en', locales: ['en', 'de'] },
-    };
-    const untitled = structuredClone(document);
-    delete rosterOf(untitled)!.panelTitle;
-    expect(rosterOf(migrateProtocol(untitled, 9))).not.toHaveProperty(
-      'panelTitle',
-    );
-
-    const titled = structuredClone(document);
-    Object.assign(rosterOf(titled)!, { panelTitle: { en: 'Services' } });
-    expect(rosterOf(migrateProtocol(titled, 9))?.panelTitle).toEqual({
-      en: 'Services',
-    });
-
-    const partly = structuredClone(document);
-    Object.assign(rosterOf(partly)!, {
-      panelTitle: { en: 'Available to add', de: 'Dienste' },
-    });
-    const migrated = migrateProtocol(partly, 9);
-    expect(rosterOf(migrated)?.panelTitle).toEqual({
-      en: 'Available to add',
-      de: 'Dienste',
-    });
-    expect(rosterOf(withoutSuppliedWording(migrated))?.panelTitle).toEqual({
-      de: 'Dienste',
-    });
   });
 });
 

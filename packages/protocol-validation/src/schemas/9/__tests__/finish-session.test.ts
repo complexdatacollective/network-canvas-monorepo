@@ -262,36 +262,6 @@ describe('v8 to v9 migration', () => {
     const migrated = migrateProtocol(schema8(), 9);
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
-
-  // A document that already ends at its finish stage keeps that stage, with
-  // whatever the researcher wrote in it, under a new id.
-  it('keeps the finish stage a document already ends at, rather than adding a second', () => {
-    const migrated = migrateProtocol(schema8(), 9);
-    const finishStage = migrated.stages.at(-1);
-    if (finishStage?.type !== 'FinishSession') {
-      throw new Error('no finish stage');
-    }
-    const edited = {
-      ...finishStage,
-      mode: 'automatic' as const,
-      finishedContent: { [migrated.localization.defaultLocale]: '# Thanks' },
-    };
-
-    const again = migrateProtocol(
-      {
-        ...migrated,
-        schemaVersion: 8,
-        stages: [...migrated.stages.slice(0, -1), edited],
-      },
-      9,
-    );
-
-    const kept = { ...edited, id: expect.any(String) };
-    expect(again.stages.filter(({ type }) => type === 'FinishSession')).toEqual(
-      [kept],
-    );
-    expect(again.stages.at(-1)).toEqual(kept);
-  });
 });
 
 describe('supplied finish text', () => {

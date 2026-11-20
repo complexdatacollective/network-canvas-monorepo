@@ -1320,21 +1320,6 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     });
   });
 
-  it('leaves a document already without panels as it is', () => {
-    const once = migrateProtocol(
-      schema8WithStages(
-        egoFormWithPanel({ title: 'Welcome', text: 'Hello' }),
-        alterFormWithPanel({ title: 'Welcome' }),
-      ),
-      9,
-    );
-    const { schemaVersion: _version, ...again } = once;
-
-    expect(
-      withoutIds(stagesMigratedFrom({ ...again, schemaVersion: 8 })),
-    ).toEqual(withoutIds(once.stages));
-  });
-
   // Two published protocols in the validation corpus failed here: their
   // panels' titles were a space, which schema 8 accepted.
   it('migrates and validates a schema 5 protocol whose panels have blank titles and text', async () => {

@@ -268,10 +268,7 @@ const introductionStage = (
   });
 };
 
-/**
- * A stage still in the schema 8 shape. One that already has the schema 9 keys
- * is left alone, which keeps the conversion from running twice on a stage.
- */
+/** A Family Pedigree stage in the schema 8 shape, with its `nodeConfig`. */
 const isSchema8FamilyPedigree = (stage: unknown): stage is Fields =>
   isRecord(stage) &&
   stage.type === 'FamilyPedigree' &&
