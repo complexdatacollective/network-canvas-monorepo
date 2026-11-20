@@ -87,7 +87,6 @@ describe.skipIf(!storeDb)('publishDraft', () => {
       versionNumber: 1,
       label: 'first',
       schemaVersion: 9,
-      migratedFromVersionId: null,
     });
 
     const [stored] = await store.rows<{
