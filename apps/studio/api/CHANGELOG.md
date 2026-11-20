@@ -1,5 +1,19 @@
 # @codaco/studio-api
 
+## 1.1.1
+
+### Patch Changes
+
+- Text that only a screen reader reads, such as the language menu's name and the names of icon-only buttons, is now English in every language, and is marked `lang="en"` where that does not also mark translated text, so a screen reader reads it in an English voice. Visible text, placeholders and tooltips stay translated.
+- Changes you make to the codebook while editing a stage are now part of that
+  stage's edit. This includes an attribute's validation rules, new attributes and
+  types, answer options, input controls, renamed attributes, encrypted attributes
+  and family pedigree symbols, and wording shared by every stage of a kind. The
+  stage editor shows these changes as unsaved
+  work, and they are saved together with the stage. Cancelling the stage undoes
+  them. Previously these changes were saved immediately and stayed even after the
+  stage was cancelled.
+
 ## 1.1.0
 
 ### Minor Changes
