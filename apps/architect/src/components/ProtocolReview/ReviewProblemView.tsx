@@ -857,7 +857,7 @@ const ReviewProblemView = ({
               </div>
               {current.rating === 'not_useful' && (
                 <div className="flex flex-col gap-2">
-                  <span id={reasonId} className="text-sm font-bold">
+                  <span id={reasonId}>
                     {intl.formatMessage(messages.ratingReason)}
                   </span>
                   <RadioGroupField
