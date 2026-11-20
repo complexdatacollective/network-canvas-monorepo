@@ -5,7 +5,6 @@ import {
   NodeSelection,
   Plugin,
   PluginKey,
-  Selection,
   TextSelection,
 } from '@tiptap/pm/state';
 import {
@@ -63,6 +62,12 @@ export type RichTextAssetBlockViewProps = Readonly<{
   selected: boolean;
   /** The field can be changed; a read-only or disabled one cannot. */
   editable: boolean;
+  /**
+   * Focus is in the field: in its text, or in something it shows over the
+   * page, such as what this view shows there. For what a view shows only
+   * while its block is being worked on.
+   */
+  active: boolean;
   update: (changes: Partial<RichTextAssetBlockAttributes>) => void;
   remove: () => void;
   /** Puts the caret back in the text, on this block. */
@@ -104,6 +109,9 @@ export const AssetBlocksContext = createContext<RichTextAssetBlocks | null>(
  */
 export const AssetBlocksEditableContext = createContext(true);
 
+/** Whether focus is in the field around a node view (see `active`). */
+export const AssetBlocksActiveContext = createContext(false);
+
 const isSize = (value: unknown): value is 'small' | 'medium' | 'large' =>
   value === 'small' || value === 'medium' || value === 'large';
 
@@ -136,6 +144,38 @@ const isInControls = (event: Event): boolean =>
 /** Spread on the element holding a view's controls (see `stopEvent`). */
 export const assetBlockControlsProps = { [CONTROLS_ATTRIBUTE]: '' } as const;
 
+// Set on an element inside a block whose controls are drawn somewhere else,
+// over the page: the id of the element that holds them.
+const CONTROLS_ID_ATTRIBUTE = 'data-asset-block-controls-id';
+
+/**
+ * Spread on an element inside a view whose controls are not inside the block
+ * but over the page, in the element with this `id`, so that Enter on the
+ * selected block still reaches them.
+ */
+export const assetBlockControlsAt = (id: string) =>
+  ({ [CONTROLS_ID_ATTRIBUTE]: id }) as const;
+
+const CONTROL =
+  ':is(input, button, [tabindex]):not([disabled], [tabindex="-1"])';
+
+/** The first control of the block drawn in `element`, wherever it is drawn. */
+const firstControlOf = (element: HTMLElement): HTMLElement | null => {
+  const inside = element.querySelector<HTMLElement>(
+    `[${CONTROLS_ATTRIBUTE}] ${CONTROL}`,
+  );
+  if (inside !== null) return inside;
+  const id = element
+    .querySelector(`[${CONTROLS_ID_ATTRIBUTE}]`)
+    ?.getAttribute(CONTROLS_ID_ATTRIBUTE);
+  if (id === null || id === undefined) return null;
+  return (
+    element.ownerDocument
+      .getElementById(id)
+      ?.querySelector<HTMLElement>(CONTROL) ?? null
+  );
+};
+
 const isAssetBlock = (node: unknown): boolean =>
   typeof node === 'object' &&
   node !== null &&
@@ -155,6 +195,7 @@ function AssetBlockView({
 }: ReactNodeViewProps) {
   const blocks = useContext(AssetBlocksContext);
   const editable = useContext(AssetBlocksEditableContext);
+  const active = useContext(AssetBlocksActiveContext);
   const attributes = attributesOf(node.attrs);
 
   return (
@@ -176,6 +217,7 @@ function AssetBlockView({
           attributes={attributes}
           selected={selected}
           editable={editable}
+          active={active}
           // A view may still be showing a control when the field stops being
           // editable, and a command changes the text whether or not the
           // editor is: neither does anything then.
@@ -294,9 +336,7 @@ export const AssetBlockNode = TiptapNode.create({
         }
         const element = editor.view.nodeDOM(selection.from);
         if (!(element instanceof HTMLElement)) return false;
-        const first = element.querySelector<HTMLElement>(
-          `[${CONTROLS_ATTRIBUTE}] :is(input, button, [tabindex]):not([disabled])`,
-        );
+        const first = firstControlOf(element);
         if (first === null) return false;
         first.focus();
         return true;
@@ -345,10 +385,11 @@ export const AssetBlockNode = TiptapNode.create({
 });
 
 /**
- * Puts a block showing `assetId` where the selection is, and the caret in
- * the paragraph after it. A block that would end the text brings an empty
- * paragraph with it, as a rule does: nothing else leaves somewhere to type
- * below it.
+ * Puts a block showing `assetId` where the selection is, and selects it: what
+ * a researcher does next with a file just placed is say how it shows, and its
+ * settings are there for a selected block. A block that would end the text
+ * brings an empty paragraph with it, as a rule does: nothing else leaves
+ * somewhere to type below it.
  */
 export const insertAssetBlock = (editor: Editor, assetId: string): boolean =>
   editor
@@ -356,12 +397,30 @@ export const insertAssetBlock = (editor: Editor, assetId: string): boolean =>
     .focus()
     .insertContent({ type: ASSET_BLOCK_NODE, attrs: { assetId } })
     .command(({ tr, dispatch }) => {
-      if (tr.doc.lastChild?.type.name !== ASSET_BLOCK_NODE) return true;
+      // Where the block went: it is the one that was not there before, once
+      // those that were are followed to where they are now.
+      const kept = new Set<number>();
+      tr.before.descendants((node, position) => {
+        if (node.type.name === ASSET_BLOCK_NODE) {
+          kept.add(tr.mapping.map(position));
+        }
+      });
+      let placed: number | undefined;
+      tr.doc.descendants((node, position) => {
+        if (node.type.name === ASSET_BLOCK_NODE && !kept.has(position)) {
+          placed = position;
+        }
+      });
       const paragraph = tr.doc.type.schema.nodes.paragraph;
-      if (paragraph === undefined) return true;
-      if (dispatch) {
+      if (!dispatch) return true;
+      if (
+        tr.doc.lastChild?.type.name === ASSET_BLOCK_NODE &&
+        paragraph !== undefined
+      ) {
         tr.insert(tr.doc.content.size, paragraph.create());
-        tr.setSelection(Selection.atEnd(tr.doc));
+      }
+      if (placed !== undefined) {
+        tr.setSelection(NodeSelection.create(tr.doc, placed));
       }
       return true;
     })

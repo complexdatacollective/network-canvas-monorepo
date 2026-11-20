@@ -38,10 +38,7 @@ import { isEqual } from 'es-toolkit';
 import {
   Bold,
   Check,
-  Heading1,
-  Heading2,
-  Heading3,
-  Heading4,
+  ChevronDown,
   Image,
   Italic,
   Link,
@@ -60,6 +57,10 @@ import {
 } from 'lucide-react';
 import {
   createContext,
+  Fragment as ReactFragment,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -74,6 +75,13 @@ import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, iconButtonVariants, Button } from '../../Button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '../../DropdownMenu';
 import Surface from '../../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import {
@@ -105,6 +113,7 @@ import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
 import {
   AssetBlockNode,
+  AssetBlocksActiveContext,
   AssetBlocksContext,
   AssetBlocksEditableContext,
   insertAssetBlock,
@@ -149,6 +158,18 @@ const messages = defineMessages({
     defaultMessage: 'Shows nothing',
     description:
       'Muted hint shown inside an empty version of a piece of text, such as the version shown when a participant’s name is not known. An empty version is allowed: in that case nothing is shown in its place. The hint is not part of the text.',
+  },
+  textStyleParagraph: {
+    id: 'frescoUi.richTextEditor.textStyleParagraph',
+    defaultMessage: 'Paragraph',
+    description:
+      'Choice in the rich text editor toolbar’s list of text styles, and what the list shows while the line the caret is in is ordinary text rather than a heading.',
+  },
+  textStyleHeading: {
+    id: 'frescoUi.richTextEditor.textStyleHeading',
+    defaultMessage: 'Heading {level}',
+    description:
+      'Choice in the rich text editor toolbar’s list of text styles, and what the list shows while the line the caret is in is a heading. {level} is the heading’s level, a number from 1 (the largest) to 4.',
   },
   linkUrlLabel: {
     id: 'frescoUi.richTextEditor.linkUrlLabel',
@@ -643,7 +664,10 @@ export type {
   RichTextAssetBlocks,
   RichTextAssetBlockViewProps,
 };
-export { assetBlockControlsProps } from './richText/assetBlockNode';
+export {
+  assetBlockControlsAt,
+  assetBlockControlsProps,
+} from './richText/assetBlockNode';
 
 // The toolbar's buttons for putting in a file, one for each kind of file.
 const ASSET_BLOCK_BUTTONS = [
@@ -1123,18 +1147,37 @@ const editorContainerVariants = cva({
   ],
 });
 
-// The groups wrap onto further lines where the field is narrower than they
-// are together: the field clips what overflows it, so a toolbar kept to one
-// line would put its last buttons out of reach.
+// The toolbar's bar. It is the element with the toolbar's role, which is what
+// a host that restyles the bar selects (the translation table's cell does).
 const toolbarStyles = cx(
-  'bg-surface-1 text-surface-1-contrast publish-colors order-1 flex w-full flex-wrap items-center gap-1 self-stretch border-b border-current/10 px-6 py-2',
+  'bg-surface-1 text-surface-1-contrast publish-colors order-1 w-full self-stretch border-b border-current/10 px-6 py-2',
 );
 
-// A group and the rule before it, kept together so a line never ends in a
-// rule with nothing after it.
-const toolbarSectionStyles = cx('flex items-center gap-1');
+// The toolbar is one line of controls that wraps where the field is narrower
+// than they are together: the field clips what overflows it, so a toolbar
+// kept to one line would put its last controls out of reach. A group breaks
+// across lines like any other part of the line, so no line is left short by
+// a group that would not fit whole.
+//
+// Every control is one piece with the space before it, and in that space the
+// first control of a group has a rule. The line starts that much before the
+// bar's edge, where this box cuts it off: the space before the first control
+// of any line is not drawn, and so neither is a rule in it. A line never
+// starts with a rule, or ends with one. The box leaves room for the ring of a
+// focused control (`focus-styles`), which is narrower than the rule is far.
+const toolbarClipStyles = cx('-mx-[5px] overflow-x-clip px-[5px]');
 
-const toolbarGroupStyles = cx('flex items-center');
+const toolbarLineStyles = cx('-ms-3 flex flex-wrap items-center gap-y-1');
+
+// The group's own element takes no box: its controls are the line's.
+const toolbarGroupStyles = cx('contents');
+
+const toolbarItemStyles = cx('flex items-center');
+
+// As wide as `toolbarLineStyles` starts before the bar's edge.
+const toolbarLeadStyles = cx('flex w-3 shrink-0 justify-center');
+
+const toolbarRuleStyles = cx('h-5 w-px bg-current/20');
 
 const toolbarButtonStyles = iconButtonVariants({
   size: 'sm',
@@ -1144,7 +1187,29 @@ const toolbarButtonStyles = iconButtonVariants({
     'text-base data-pressed:bg-primary data-pressed:text-primary-contrast [&>.lucide]:h-[1.2em] [&>.lucide]:w-[1.2em] [&>.lucide]:[stroke-width:2.4]',
 });
 
-const toolbarSeparatorStyles = cx('mx-2 h-5 w-px shrink-0 bg-current/20');
+// The control that says what kind of block the line is, and lists the others.
+// As wide whichever it names, so the controls after it stay where they are.
+const toolbarSelectStyles = buttonVariants({
+  size: 'sm',
+  color: 'dynamic',
+  variant: 'text',
+  textStyle: 'default',
+  className: 'h-10 w-36 gap-1 px-3 text-sm [&>.lucide]:size-4',
+});
+
+/** One group of the toolbar: what it is called, and the controls in it. */
+type ToolbarGroup = Readonly<{
+  key: string;
+  /** Read by a screen reader only, so English like the controls' own names. */
+  label: string;
+  items: readonly ReactNode[];
+  /** The toggle group the group is, where its controls are toggles. */
+  toggles?: ReactElement<Record<string, unknown>>;
+}>;
+
+/** Whether an entry of a group's list is a control, not one left out. */
+const isDrawn = (item: ReactNode): boolean =>
+  item !== false && item !== null && item !== undefined;
 
 const toolbarTokenButtonStyles = buttonVariants({
   size: 'sm',
@@ -1553,6 +1618,8 @@ export default function RichTextEditorField({
   // these blurs one before it focuses the other. Expanded versions fold back
   // to their pill once it is false.
   const [isActive, setIsActive] = useState(false);
+  // Whether the list of text styles is closing because one was chosen.
+  const textStylePicked = useRef(false);
   const inactiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -2170,27 +2237,13 @@ export default function RichTextEditorField({
     prepareLinkPopoverState();
   };
 
-  // The formatting CLUSTER (drives separators and toolbar presence) versus
-  // the toggle GROUP inside it: links render as a toolbar-level sibling of
-  // the toggles, so a links-only toolbar must not mount an empty group.
-  const showFormattingToggles = options.bold || options.italic;
-  const showTextFormatting = showFormattingToggles || options.links;
   const showHeadings = headingLevels.length > 0;
-  const showLists = options.lists.bullet || options.lists.ordered;
   const showThematicBreak = options.thematicBreak;
   const toolbarTokens = (tokensProp ?? []).filter(
     ({ inToolbar }) => inToolbar !== false,
   );
-  const showTokens =
-    toolbarTokens.length > 0 ||
-    insertMenu !== undefined ||
-    logicMenu !== undefined;
-  // What can be put in at the caret: a file as a block, a rule, an emoji.
-  // The emoji menu's button stands beside the others, in no group of its
-  // own: a group of one would only say its name twice.
+  // How a file is chosen, where the text can hold files as blocks.
   const pickAsset = holdsAssetBlocks ? assetBlocks?.pick : undefined;
-  const showInsert =
-    pickAsset !== undefined || showThematicBreak || offersEmoji;
   // A file is chosen in the consumer's picker, which takes focus and time,
   // and goes in where the caret was when it was asked for, in the field's
   // editor as it is by then.
@@ -2287,6 +2340,7 @@ export default function RichTextEditorField({
     Icon: typeof Syringe,
   ) => (
     <Popover
+      key={kind}
       open={openMenu === kind && !isDisabled}
       onOpenChange={(open) => {
         if (open && kind === 'emoji') askForEmoji();
@@ -2375,297 +2429,388 @@ export default function RichTextEditorField({
 
   // The toolbar's groups, in the order they are shown: what was done and can
   // be undone; what kind of block the line is; how its words are marked;
-  // lists; what can be put in at the caret; and last what is particular to
-  // this field, the values and logic its text can show. Each is drawn only
-  // when it has something to offer, and a separator stands between two that
-  // are, so no group knows which others are there.
-  const historyGroup = showHistory && (
-    <Toolbar.Group
-      className={toolbarGroupStyles}
-      lang="en"
-      aria-label="History"
-    >
-      <ToolbarButton
-        className={toolbarButtonStyles}
-        disabled={isDisabled || !historyState?.canUndo}
-        lang="en"
-        aria-label="Undo"
-        onClick={() => actInHistory('undo')}
-      >
-        <Undo />
-      </ToolbarButton>
-      <ToolbarButton
-        className={toolbarButtonStyles}
-        disabled={isDisabled || !historyState?.canRedo}
-        lang="en"
-        aria-label="Redo"
-        onClick={() => actInHistory('redo')}
-      >
-        <Redo />
-      </ToolbarButton>
-    </Toolbar.Group>
-  );
+  // lists; what can be put in at the caret; the files a text can hold; and
+  // last what is particular to this field, the values and logic its text can
+  // show. Each lists what it has to offer, and one with nothing is not drawn.
+  const historyItems = showHistory
+    ? [
+        <ToolbarButton
+          key="undo"
+          className={toolbarButtonStyles}
+          disabled={isDisabled || !historyState?.canUndo}
+          lang="en"
+          aria-label="Undo"
+          onClick={() => actInHistory('undo')}
+        >
+          <Undo />
+        </ToolbarButton>,
+        <ToolbarButton
+          key="redo"
+          className={toolbarButtonStyles}
+          disabled={isDisabled || !historyState?.canRedo}
+          lang="en"
+          aria-label="Redo"
+          onClick={() => actInHistory('redo')}
+        >
+          <Redo />
+        </ToolbarButton>,
+      ]
+    : [];
 
-  const textStyleGroup = showHeadings && (
-    <Toolbar.Group
-      lang="en"
-      aria-label="Text style"
-      className={toolbarGroupStyles}
-      render={
-        <ToggleGroup
-          value={getActiveHeadingValue()}
-          onValueChange={(values: string[]) => {
-            const newValue = values[0];
-            if (newValue === 'h1') {
-              actOn.chain().focus().toggleHeading({ level: 1 }).run();
-            } else if (newValue === 'h2') {
-              actOn.chain().focus().toggleHeading({ level: 2 }).run();
-            } else if (newValue === 'h3') {
-              actOn.chain().focus().toggleHeading({ level: 3 }).run();
-            } else if (newValue === 'h4') {
-              actOn.chain().focus().toggleHeading({ level: 4 }).run();
-            } else {
-              if (editorState.isH1) {
-                actOn.chain().focus().toggleHeading({ level: 1 }).run();
-              } else if (editorState.isH2) {
-                actOn.chain().focus().toggleHeading({ level: 2 }).run();
-              } else if (editorState.isH3) {
-                actOn.chain().focus().toggleHeading({ level: 3 }).run();
-              } else if (editorState.isH4) {
-                actOn.chain().focus().toggleHeading({ level: 4 }).run();
-              }
+  // What kind of block the line is: a paragraph, or a heading of one level.
+  // One of several, so it is chosen from a list that also says which it is
+  // now, rather than from a button for each.
+  const textStyles = [
+    {
+      value: 'paragraph',
+      label: intl.formatMessage(messages.textStyleParagraph),
+    },
+    ...headingLevels.map((level) => ({
+      value: `h${level}`,
+      label: intl.formatMessage(messages.textStyleHeading, { level }),
+    })),
+  ];
+  const textStyle = getActiveHeadingValue()[0] ?? 'paragraph';
+  const setTextStyle = (style: string) => {
+    const level = headingLevels.find((each) => `h${each}` === style);
+    // The caret goes back to the text, and the list closes without taking
+    // it for its button.
+    textStylePicked.current = true;
+    if (level === undefined) actOn.chain().focus().setParagraph().run();
+    else actOn.chain().focus().setHeading({ level }).run();
+  };
+  const textStyleItems = showHeadings
+    ? [
+        <DropdownMenu key="textStyle">
+          <DropdownMenuTrigger
+            disabled={isDisabled || !blocksEditable}
+            render={
+              <ToolbarButton
+                className={toolbarSelectStyles}
+                disabled={isDisabled || !blocksEditable}
+              />
             }
-          }}
-        />
-      }
-    >
-      {options.headings.h1 && (
-        <ToolbarToggleButton
-          className={toolbarButtonStyles}
-          disabled={isDisabled || !blocksEditable}
-          value="h1"
-          lang="en"
-          aria-label="Heading 1"
-        >
-          <Heading1 />
-        </ToolbarToggleButton>
-      )}
-      {options.headings.h2 && (
-        <ToolbarToggleButton
-          className={toolbarButtonStyles}
-          disabled={isDisabled || !blocksEditable}
-          value="h2"
-          lang="en"
-          aria-label="Heading 2"
-        >
-          <Heading2 />
-        </ToolbarToggleButton>
-      )}
-      {options.headings.h3 && (
-        <ToolbarToggleButton
-          className={toolbarButtonStyles}
-          disabled={isDisabled || !blocksEditable}
-          value="h3"
-          lang="en"
-          aria-label="Heading 3"
-        >
-          <Heading3 />
-        </ToolbarToggleButton>
-      )}
-      {options.headings.h4 && (
-        <ToolbarToggleButton
-          className={toolbarButtonStyles}
-          disabled={isDisabled || !blocksEditable}
-          value="h4"
-          lang="en"
-          aria-label="Heading 4"
-        >
-          <Heading4 />
-        </ToolbarToggleButton>
-      )}
-    </Toolbar.Group>
-  );
-
-  const formattingGroup = showTextFormatting && (
-    <>
-      {showFormattingToggles && (
-        // One element carrying both the toolbar-group and toggle-group
-        // behaviours: a ToggleGroup nested inside a Toolbar.Group wrapper
-        // renders two nested `group` roles announcing nothing new.
-        <Toolbar.Group
-          lang="en"
-          aria-label="Formatting"
-          className={toolbarGroupStyles}
-          render={
-            <ToggleGroup
-              value={getActiveFormattingValues()}
-              onValueChange={(values: string[]) => {
-                const shouldBeBold = values.includes('bold');
-                const shouldBeItalic = values.includes('italic');
-
-                if (shouldBeBold !== editorState.isBold) {
-                  actOn.chain().focus().toggleBold().run();
-                }
-                if (shouldBeItalic !== editorState.isItalic) {
-                  actOn.chain().focus().toggleItalic().run();
-                }
+          >
+            <span className="sr-only" lang="en">
+              {'Text style:'}
+            </span>{' '}
+            <span className="min-w-0 flex-1 truncate text-start">
+              {textStyles.find((style) => style.value === textStyle)?.label}
+            </span>
+            <ChevronDown aria-hidden />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            showArrow={false}
+            sideOffset={4}
+            finalFocus={() => {
+              const picked = textStylePicked.current;
+              textStylePicked.current = false;
+              return !picked;
+            }}
+          >
+            <DropdownMenuRadioGroup
+              value={textStyle}
+              onValueChange={(style: unknown) => {
+                if (typeof style === 'string') setTextStyle(style);
               }}
-              multiple
-            />
-          }
-        >
-          {options.bold && (
-            <ToolbarToggleButton
-              className={toolbarButtonStyles}
-              disabled={isDisabled}
-              value="bold"
-              lang="en"
-              aria-label="Bold"
             >
-              <Bold />
-            </ToolbarToggleButton>
-          )}
-          {options.italic && (
-            <ToolbarToggleButton
-              className={toolbarButtonStyles}
-              disabled={isDisabled}
-              value="italic"
-              lang="en"
-              aria-label="Italic"
-            >
-              <Italic />
-            </ToolbarToggleButton>
-          )}
-        </Toolbar.Group>
-      )}
-      {/* A toolbar-level sibling of the formatting toggles: it is not a
-                toggle, so it does not belong inside their group element. */}
-      {options.links && (
-        <Popover
-          // Closed by the render that makes the field unavailable, not
-          // by the effect that follows it: an effect leaves one commit
-          // in which the panel is on screen with its controls live.
-          open={isLinkPopoverOpen && !isDisabled}
-          onOpenChange={setLinkPopoverOpen}
-        >
-          {/*
+              {textStyles.map((style) => (
+                <DropdownMenuRadioItem
+                  key={style.value}
+                  value={style.value}
+                  // One choice, made and done with: unlike a set of switches,
+                  // the list has nothing more to offer once it is made.
+                  closeOnClick
+                >
+                  {style.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>,
+      ]
+    : [];
+
+  const formattingItems = [
+    options.bold && (
+      <ToolbarToggleButton
+        key="bold"
+        className={toolbarButtonStyles}
+        disabled={isDisabled}
+        value="bold"
+        lang="en"
+        aria-label="Bold"
+      >
+        <Bold />
+      </ToolbarToggleButton>
+    ),
+    options.italic && (
+      <ToolbarToggleButton
+        key="italic"
+        className={toolbarButtonStyles}
+        disabled={isDisabled}
+        value="italic"
+        lang="en"
+        aria-label="Italic"
+      >
+        <Italic />
+      </ToolbarToggleButton>
+    ),
+  ];
+
+  const listItems = [
+    options.lists.bullet && (
+      <ToolbarToggleButton
+        key="bullet"
+        className={toolbarButtonStyles}
+        disabled={isDisabled || !blocksEditable}
+        value="bullet"
+        lang="en"
+        aria-label="Bullet list"
+      >
+        <List />
+      </ToolbarToggleButton>
+    ),
+    options.lists.ordered && (
+      <ToolbarToggleButton
+        key="ordered"
+        className={toolbarButtonStyles}
+        disabled={isDisabled || !blocksEditable}
+        value="ordered"
+        lang="en"
+        aria-label="Numbered list"
+      >
+        <ListOrdered />
+      </ToolbarToggleButton>
+    ),
+  ];
+
+  // What goes in at the caret: a link on the words selected, a rule between
+  // two blocks, an emoji.
+  const insertItems = [
+    options.links && (
+      <Popover
+        key="link"
+        // Closed by the render that makes the field unavailable, not
+        // by the effect that follows it: an effect leaves one commit
+        // in which the panel is on screen with its controls live.
+        open={isLinkPopoverOpen && !isDisabled}
+        onOpenChange={setLinkPopoverOpen}
+      >
+        {/*
                     The trigger is told as well as the button it renders. A
                     disclosure works out its own availability, and this one
                     used to work out that it was available while every one of
                     its siblings was not: `aria-disabled="false"`, undimmed,
                     and ready to open on a press.
                 */}
-          <PopoverTrigger asChild disabled={isDisabled}>
-            <ToolbarButton
-              className={toolbarButtonStyles}
-              disabled={isDisabled}
-              lang="en"
-              aria-label={editorState.isLink ? 'Edit link' : 'Add link'}
-              // No `aria-pressed`: PopoverTrigger makes this a
-              // disclosure, and a disclosure must not also claim to be
-              // a toggle. Whether a link is present is already carried
-              // by the accessible name above; `data-pressed` drives the
-              // selected styling without asserting an ARIA state.
-              data-pressed={editorState.isLink ? true : undefined}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                selectLinkForEditing();
-              }}
-            >
-              <Link />
-            </ToolbarButton>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            side="bottom"
-            className="w-80"
-            // Named as its toolbar button is: "Add link" or "Edit link".
+        <PopoverTrigger asChild disabled={isDisabled}>
+          <ToolbarButton
+            className={toolbarButtonStyles}
+            disabled={isDisabled}
+            lang="en"
             aria-label={editorState.isLink ? 'Edit link' : 'Add link'}
+            // No `aria-pressed`: PopoverTrigger makes this a
+            // disclosure, and a disclosure must not also claim to be
+            // a toggle. Whether a link is present is already carried
+            // by the accessible name above; `data-pressed` drives the
+            // selected styling without asserting an ARIA state.
+            data-pressed={editorState.isLink ? true : undefined}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              selectLinkForEditing();
+            }}
           >
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                applyLink();
-              }}
+            <Link />
+          </ToolbarButton>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          side="bottom"
+          className="w-80"
+          // Named as its toolbar button is: "Add link" or "Edit link".
+          aria-label={editorState.isLink ? 'Edit link' : 'Add link'}
+        >
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              applyLink();
+            }}
+          >
+            <label
+              className="font-heading text-sm font-bold"
+              htmlFor={linkInputId}
             >
-              <label
-                className="font-heading text-sm font-bold"
-                htmlFor={linkInputId}
-              >
-                {intl.formatMessage(messages.linkUrlLabel)}
-              </label>
-              <InputField
-                ref={linkInputRef}
-                id={linkInputId}
-                name={linkInputId}
-                type="url"
-                required
-                value={linkHref}
-                onChange={(nextHref) => {
-                  setLinkHref(nextHref ?? '');
-                  setLinkValidationMessage('');
-                }}
-                onInvalid={(event) => {
-                  setLinkValidationMessage(
-                    event.currentTarget.validationMessage,
-                  );
-                }}
-                placeholder={intl.formatMessage(messages.linkUrlPlaceholder)}
+              {intl.formatMessage(messages.linkUrlLabel)}
+            </label>
+            <InputField
+              ref={linkInputRef}
+              id={linkInputId}
+              name={linkInputId}
+              type="url"
+              required
+              value={linkHref}
+              onChange={(nextHref) => {
+                setLinkHref(nextHref ?? '');
+                setLinkValidationMessage('');
+              }}
+              onInvalid={(event) => {
+                setLinkValidationMessage(event.currentTarget.validationMessage);
+              }}
+              placeholder={intl.formatMessage(messages.linkUrlPlaceholder)}
+              size="sm"
+              autoFocus
+              aria-invalid={Boolean(linkValidationMessage)}
+              aria-describedby={linkValidationMessage ? linkErrorId : undefined}
+            />
+            <div
+              id={linkErrorId}
+              className="text-destructive-ink min-h-5 text-sm leading-snug"
+              aria-live="polite"
+            >
+              {linkValidationMessage}
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                type="button"
                 size="sm"
-                autoFocus
-                aria-invalid={Boolean(linkValidationMessage)}
-                aria-describedby={
-                  linkValidationMessage ? linkErrorId : undefined
-                }
-              />
-              <div
-                id={linkErrorId}
-                className="text-destructive-ink min-h-5 text-sm leading-snug"
-                aria-live="polite"
+                variant="text"
+                color="destructive"
+                icon={<Trash2 />}
+                aria-label="Remove link"
+                disabled={!isEditingExistingLink}
+                onClick={removeLink}
               >
-                {linkValidationMessage}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="text"
-                  color="destructive"
-                  icon={<Trash2 />}
-                  aria-label="Remove link"
-                  disabled={!isEditingExistingLink}
-                  onClick={removeLink}
-                >
-                  {intl.formatMessage(messages.removeLinkShort)}
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  color="primary"
-                  icon={<Check />}
-                  aria-label="Apply link"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    applyLink();
-                  }}
-                >
-                  {intl.formatMessage(messages.applyLinkShort)}
-                </Button>
-              </div>
-            </form>
-          </PopoverContent>
-        </Popover>
-      )}
-    </>
-  );
+                {intl.formatMessage(messages.removeLinkShort)}
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                color="primary"
+                icon={<Check />}
+                aria-label="Apply link"
+                onClick={(event) => {
+                  event.preventDefault();
+                  applyLink();
+                }}
+              >
+                {intl.formatMessage(messages.applyLinkShort)}
+              </Button>
+            </div>
+          </form>
+        </PopoverContent>
+      </Popover>
+    ),
+    showThematicBreak && (
+      <ToolbarButton
+        key="thematicBreak"
+        className={toolbarButtonStyles}
+        disabled={isDisabled || !blocksEditable}
+        lang="en"
+        aria-label="Thematic break"
+        onClick={() => actOn.chain().focus().setHorizontalRule().run()}
+      >
+        <Minus />
+      </ToolbarButton>
+    ),
+    offersEmoji && renderMenu(emojiMenuContents, 'emoji', Smile),
+  ];
 
-  const listsGroup = showLists && (
-    <Toolbar.Group
-      lang="en"
-      aria-label="Lists"
-      className={toolbarGroupStyles}
-      render={
+  // The files the text can hold as blocks.
+  const mediaItems =
+    pickAsset === undefined
+      ? []
+      : ASSET_BLOCK_BUTTONS.map(({ kind, label, Icon }) => (
+          <ToolbarButton
+            key={kind}
+            className={toolbarButtonStyles}
+            disabled={isDisabled || !blocksEditable}
+            lang="en"
+            aria-label={label}
+            onClick={() => void pickAssetBlock(kind)}
+          >
+            <Icon />
+          </ToolbarButton>
+        ));
+
+  const dynamicContentItems = [
+    insertMenu !== undefined && renderMenu(insertMenu, 'values', Syringe),
+    logicMenu !== undefined && renderMenu(logicMenu, 'logic', Split),
+    ...toolbarTokens.map((token) => {
+      const missing =
+        requiredTokens.has(token.id) && !placedTokens.has(token.id);
+      return (
+        <ToolbarButton
+          key={token.id}
+          className={toolbarTokenButtonStyles}
+          disabled={isDisabled}
+          data-missing={missing || undefined}
+          aria-label={
+            missing
+              ? `Insert “${presentationalTextValue(token.label)}” (required in this text)`
+              : `Insert “${presentationalTextValue(token.label)}”`
+          }
+          onClick={() =>
+            actOn
+              .chain()
+              .focus()
+              .insertContent({
+                type: TOKEN_NODE,
+                attrs: { id: token.id },
+              })
+              .run()
+          }
+        >
+          <Plus aria-hidden />
+          <span {...presentationalTextProps(token.label)}>
+            {presentationalTextValue(token.label)}
+          </span>
+          {missing && (
+            <span
+              aria-hidden
+              className="bg-warning size-2 shrink-0 rounded-full"
+            />
+          )}
+        </ToolbarButton>
+      );
+    }),
+  ];
+
+  const toolbarGroups: readonly ToolbarGroup[] = [
+    { key: 'history', label: 'History', items: historyItems },
+    { key: 'textStyle', label: 'Text style', items: textStyleItems },
+    {
+      key: 'formatting',
+      label: 'Formatting',
+      items: formattingItems,
+      // One element carrying both the toolbar-group and toggle-group
+      // behaviours: a ToggleGroup nested inside a Toolbar.Group wrapper
+      // renders two nested `group` roles announcing nothing new.
+      toggles: (
+        <ToggleGroup
+          value={getActiveFormattingValues()}
+          onValueChange={(values: string[]) => {
+            const shouldBeBold = values.includes('bold');
+            const shouldBeItalic = values.includes('italic');
+
+            if (shouldBeBold !== editorState.isBold) {
+              actOn.chain().focus().toggleBold().run();
+            }
+            if (shouldBeItalic !== editorState.isItalic) {
+              actOn.chain().focus().toggleItalic().run();
+            }
+          }}
+          multiple
+        />
+      ),
+    },
+    {
+      key: 'lists',
+      label: 'Lists',
+      items: listItems,
+      toggles: (
         <ToggleGroup
           value={getActiveListValue()}
           onValueChange={(values: string[]) => {
@@ -2687,130 +2832,19 @@ export default function RichTextEditorField({
             }
           }}
         />
-      }
-    >
-      {options.lists.bullet && (
-        <ToolbarToggleButton
-          className={toolbarButtonStyles}
-          disabled={isDisabled || !blocksEditable}
-          value="bullet"
-          lang="en"
-          aria-label="Bullet list"
-        >
-          <List />
-        </ToolbarToggleButton>
-      )}
-      {options.lists.ordered && (
-        <ToolbarToggleButton
-          className={toolbarButtonStyles}
-          disabled={isDisabled || !blocksEditable}
-          value="ordered"
-          lang="en"
-          aria-label="Numbered list"
-        >
-          <ListOrdered />
-        </ToolbarToggleButton>
-      )}
-    </Toolbar.Group>
-  );
-
-  const insertGroup = showInsert && (
-    <>
-      {(pickAsset !== undefined || showThematicBreak) && (
-        <Toolbar.Group
-          className={toolbarGroupStyles}
-          lang="en"
-          aria-label="Insert"
-        >
-          {pickAsset !== undefined &&
-            ASSET_BLOCK_BUTTONS.map(({ kind, label, Icon }) => (
-              <ToolbarButton
-                key={kind}
-                className={toolbarButtonStyles}
-                disabled={isDisabled || !blocksEditable}
-                lang="en"
-                aria-label={label}
-                onClick={() => void pickAssetBlock(kind)}
-              >
-                <Icon />
-              </ToolbarButton>
-            ))}
-          {showThematicBreak && (
-            <ToolbarButton
-              className={toolbarButtonStyles}
-              disabled={isDisabled || !blocksEditable}
-              lang="en"
-              aria-label="Thematic break"
-              onClick={() => actOn.chain().focus().setHorizontalRule().run()}
-            >
-              <Minus />
-            </ToolbarButton>
-          )}
-        </Toolbar.Group>
-      )}
-      {offersEmoji && renderMenu(emojiMenuContents, 'emoji', Smile)}
-    </>
-  );
-
-  const dynamicContentGroup = showTokens && (
-    <Toolbar.Group
-      className={toolbarGroupStyles}
-      lang="en"
-      aria-label="Insert a placeholder"
-    >
-      {insertMenu !== undefined && renderMenu(insertMenu, 'values', Syringe)}
-      {logicMenu !== undefined && renderMenu(logicMenu, 'logic', Split)}
-      {toolbarTokens.map((token) => {
-        const missing =
-          requiredTokens.has(token.id) && !placedTokens.has(token.id);
-        return (
-          <ToolbarButton
-            key={token.id}
-            className={toolbarTokenButtonStyles}
-            disabled={isDisabled}
-            data-missing={missing || undefined}
-            aria-label={
-              missing
-                ? `Insert “${presentationalTextValue(token.label)}” (required in this text)`
-                : `Insert “${presentationalTextValue(token.label)}”`
-            }
-            onClick={() =>
-              actOn
-                .chain()
-                .focus()
-                .insertContent({
-                  type: TOKEN_NODE,
-                  attrs: { id: token.id },
-                })
-                .run()
-            }
-          >
-            <Plus aria-hidden />
-            <span {...presentationalTextProps(token.label)}>
-              {presentationalTextValue(token.label)}
-            </span>
-            {missing && (
-              <span
-                aria-hidden
-                className="bg-warning size-2 shrink-0 rounded-full"
-              />
-            )}
-          </ToolbarButton>
-        );
-      })}
-    </Toolbar.Group>
-  );
-
-  const toolbarGroups = [
-    { key: 'history', content: historyGroup },
-    { key: 'textStyle', content: textStyleGroup },
-    { key: 'formatting', content: formattingGroup },
-    { key: 'lists', content: listsGroup },
-    { key: 'insert', content: insertGroup },
-    { key: 'dynamicContent', content: dynamicContentGroup },
-  ].flatMap(({ key, content }) =>
-    content === false ? [] : [{ key, content }],
-  );
+      ),
+    },
+    { key: 'insert', label: 'Insert', items: insertItems },
+    { key: 'media', label: 'Insert a file', items: mediaItems },
+    {
+      key: 'dynamicContent',
+      label: 'Insert a placeholder',
+      items: dynamicContentItems,
+    },
+  ].flatMap((group) => {
+    const items = group.items.filter(isDrawn);
+    return items.length === 0 ? [] : [{ ...group, items }];
+  });
   const hasToolbar = toolbarGroups.length > 0;
 
   return (
@@ -2858,10 +2892,12 @@ export default function RichTextEditorField({
       <NestedEditingContext.Provider value={nestedEditing}>
         <AssetBlocksContext.Provider value={assetBlocks ?? null}>
           <AssetBlocksEditableContext.Provider value={!disabled && !readOnly}>
-            <EditorContent
-              editor={editor}
-              className={editorContentVariants({ singleLine })}
-            />
+            <AssetBlocksActiveContext.Provider value={isActive}>
+              <EditorContent
+                editor={editor}
+                className={editorContentVariants({ singleLine })}
+              />
+            </AssetBlocksActiveContext.Provider>
           </AssetBlocksEditableContext.Provider>
         </AssetBlocksContext.Provider>
       </NestedEditingContext.Provider>
@@ -2944,14 +2980,39 @@ export default function RichTextEditorField({
       {hasToolbar && (
         <FieldUnavailableContext.Provider value={isDisabled}>
           <Toolbar.Root className={toolbarStyles}>
-            {toolbarGroups.map(({ key, content }, index) => (
-              <div key={key} className={toolbarSectionStyles}>
-                {index > 0 && (
-                  <Toolbar.Separator className={toolbarSeparatorStyles} />
-                )}
-                {content}
+            <div className={toolbarClipStyles}>
+              <div className={toolbarLineStyles}>
+                {toolbarGroups.map(({ key, label, items, toggles }) => {
+                  const drawn = items.map((item, index) => (
+                    <span
+                      key={isValidElement(item) ? item.key : index}
+                      className={toolbarItemStyles}
+                    >
+                      <span aria-hidden className={toolbarLeadStyles}>
+                        {index === 0 && <span className={toolbarRuleStyles} />}
+                      </span>
+                      {item}
+                    </span>
+                  ));
+                  // A group of one names nothing its one control does not,
+                  // unless it is what makes that control a toggle.
+                  if (items.length === 1 && toggles === undefined) {
+                    return <ReactFragment key={key}>{drawn}</ReactFragment>;
+                  }
+                  return (
+                    <Toolbar.Group
+                      key={key}
+                      lang="en"
+                      aria-label={label}
+                      className={toolbarGroupStyles}
+                      {...(toggles !== undefined && { render: toggles })}
+                    >
+                      {drawn}
+                    </Toolbar.Group>
+                  );
+                })}
               </div>
-            ))}
+            </div>
           </Toolbar.Root>
         </FieldUnavailableContext.Provider>
       )}

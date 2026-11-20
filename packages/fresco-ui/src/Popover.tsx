@@ -240,6 +240,23 @@ type PopoverContentProps = Omit<
   align?: 'start' | 'center' | 'end';
   anchor?: Element | React.RefObject<Element | null> | null;
   /**
+   * How the popup keeps out of the way where it does not fit on its side.
+   * Base UI's own way unless given: it may move the popup to a side on the
+   * other axis, which suits a popup beside a button and not one under a
+   * block as wide as the page.
+   */
+  collisionAvoidance?: ComponentProps<
+    typeof BasePopover.Positioner
+  >['collisionAvoidance'];
+  /**
+   * How far the popup keeps from the edges of the window. Base UI's own few
+   * pixels unless given: a popup that stays open while the page is worked on
+   * asks for more, to leave clear the bars a page keeps along those edges.
+   */
+  collisionPadding?: ComponentProps<
+    typeof BasePopover.Positioner
+  >['collisionPadding'];
+  /**
    * Padding around the content. The default suits prose and forms; a popup
    * that holds a list of options takes `xs`, as menus and comboboxes do.
    */
@@ -255,6 +272,8 @@ function PopoverContent({
   className,
   align = 'center',
   anchor,
+  collisionAvoidance,
+  collisionPadding,
   spacing = 'md',
   ...props
 }: PopoverContentProps) {
@@ -276,6 +295,8 @@ function PopoverContent({
             align={align}
             {...(physicalSide ? { side: physicalSide } : {})}
             {...(anchor ? { anchor } : {})}
+            {...(collisionAvoidance ? { collisionAvoidance } : {})}
+            {...(collisionPadding === undefined ? {} : { collisionPadding })}
           >
             <BasePopover.Popup
               render={

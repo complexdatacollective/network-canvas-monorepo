@@ -26,6 +26,7 @@ const meta = {
     },
     selected: true,
     editable: true,
+    active: true,
     update: fn(),
     remove: fn(),
     returnToText: fn(),
@@ -35,14 +36,22 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A selected image: its picture and the settings that change how it shows. */
+/**
+ * A selected image in a field the researcher is in: its picture, and over the
+ * page beside it the settings that change how it shows.
+ */
 export const SelectedImage: Story = {
   play: async ({ canvasElement, args }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: 'Large' }));
+    // The settings stand over the page, outside the story's own element.
+    const settings = within(
+      await within(canvasElement.ownerDocument.body).findByRole('dialog', {
+        name: 'Image settings',
+      }),
+    );
+    await userEvent.click(settings.getByRole('button', { name: 'Large' }));
     await expect(args.update).toHaveBeenCalledWith({ size: 'large' });
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Remove from the text' }),
+      settings.getByRole('button', { name: 'Remove from the text' }),
     );
     await expect(args.remove).toHaveBeenCalled();
   },
@@ -53,7 +62,7 @@ export const NotSelected: Story = {
   args: { selected: false },
   play: async ({ canvasElement }) => {
     await expect(
-      within(canvasElement).queryByRole('button', {
+      within(canvasElement.ownerDocument.body).queryByRole('button', {
         name: 'Remove from the text',
       }),
     ).toBeNull();

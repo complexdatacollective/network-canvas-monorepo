@@ -91,13 +91,13 @@ const cell = (stage: string, row: string, language: string) =>
  */
 const formattedCell = (stage: string, language: string) =>
   screen.getByRole('button', {
-    name: cellName(stage, 'Page content', language),
+    name: cellName(stage, 'Content', language),
   });
 
 /** The same cell's editor, which focus opens in it. */
 const formattedEditor = async (stage: string, language: string) => {
   const editor = await screen.findByRole('textbox', {
-    name: cellName(stage, 'Page content', language),
+    name: cellName(stage, 'Content', language),
   });
   await waitFor(() => expect(editor).toHaveFocus());
   return editor;
@@ -169,10 +169,10 @@ describe('TranslationTable', () => {
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       // Welcome: label and the page's content.
       'Stage name',
-      'Page content',
+      'Content',
       // Thanks: label and the page's content.
       'Stage name',
-      'Page content',
+      'Content',
       // The person type's one answer option.
       'closeness › Option 1 label',
       // The words the interview itself shows, which Network Canvas supplies
@@ -483,9 +483,9 @@ describe('TranslationTable', () => {
     expect(shownCount()).toHaveTextContent('Showing 5 of 27 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Stage name',
-      'Page content',
+      'Content',
       'Stage name',
-      'Page content',
+      'Content',
       'closeness › Option 1 label',
     ]);
     const thanks = screen

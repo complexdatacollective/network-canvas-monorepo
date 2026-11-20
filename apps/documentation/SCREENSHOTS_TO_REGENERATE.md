@@ -84,13 +84,16 @@ An Information stage's page heading and list of items became one text, written
 in a single editor, with images, audio and video placed in it as blocks. This
 image predates that work:
 
-| Image                                                     | Page                                                          | What changed                                                                                                                                                                                                                                               |
-| --------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface-documentation/information/architect-items.png` | `design-protocols/interface-documentation/information.en.mdx` | Shows the removed **Page heading** field and the list of items. Recapture the **Page content** section: one editor holding a heading, a paragraph and an image block, with the image selected so its settings (Description, Display size, Alignment) show. |
+| Image                                                     | Page                                                          | What changed                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface-documentation/information/architect-items.png` | `design-protocols/interface-documentation/information.en.mdx` | Shows the removed **Page heading** field and the list of items. Recapture the **Content** section: the **Rich Text** editor holding a heading, a paragraph and an image block, with the image selected so that its resize handle and its settings (Description, Display size, Alignment) show beside it. |
+| `architect/localization/editor-missing-translation.png`   | `design-protocols/translating-your-protocol.en.mdx`           | Shows the removed **Page heading** field. Recapture any single-line text field with a language other than the default chosen and no translation, so that the note under it shows, and reword the image's description to name that field.                                                                 |
 
 Every Architect capture that shows a rich text editor's toolbar also predates
-its regrouping (undo and redo, text styles, formatting, lists, then the
-buttons that insert something); check them when they are next retaken.
+its regrouping (undo and redo, a list of text styles in place of the heading
+buttons, formatting, lists, then the buttons that insert something, the
+buttons that insert a file, and the ones that insert a placeholder); check
+them when they are next retaken.
 
 ## Interface documentation (Architect and interview captures)
 

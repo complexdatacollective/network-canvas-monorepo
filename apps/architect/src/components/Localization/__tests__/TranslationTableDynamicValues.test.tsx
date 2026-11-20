@@ -57,7 +57,7 @@ const title = (store: ReturnType<typeof renderTable>['store']): unknown => {
   return stage && 'content' in stage ? stage.content : undefined;
 };
 
-const cellName = (language: string) => new RegExp(`Page content ${language}$`);
+const cellName = (language: string) => new RegExp(`Content ${language}$`);
 
 const titleCell = (language: string) =>
   screen.getByRole('button', { name: cellName(language) });

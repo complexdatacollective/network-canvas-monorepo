@@ -64,7 +64,7 @@ const renderTable = () => {
 
 const pageContentCell = (language: string) =>
   screen.getByRole('button', {
-    name: new RegExp(`^Stage 1 .*Page content ${language}$`),
+    name: new RegExp(`^Stage 1 .*Content ${language}$`),
   });
 
 describe('TranslationTable: files placed in the text of an Information stage', () => {
@@ -97,7 +97,7 @@ describe('TranslationTable: files placed in the text of an Information stage', (
 
     await user.click(pageContentCell('English'));
     const editor = await screen.findByRole('textbox', {
-      name: /^Stage 1 .*Page content English$/,
+      name: /^Stage 1 .*Content English$/,
     });
     await waitFor(() => expect(editor).toHaveFocus());
     // The file is still a block in the cell being edited, not its alt text.

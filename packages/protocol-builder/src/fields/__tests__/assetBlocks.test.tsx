@@ -8,7 +8,7 @@ import type {
   RichTextAssetBlockViewProps,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 
-import { createAssetBlockView } from '../assetBlocks.tsx';
+import { createAssetBlockView, sizeNearest } from '../assetBlocks.tsx';
 
 const UNUSABLE =
   'This block’s resource is not in this protocol, or is not something a page can show.';
@@ -64,6 +64,7 @@ const setup = ({
     attributes: attributes(),
     selected: true,
     editable: true,
+    active: true,
     update,
     remove,
     returnToText,
@@ -89,6 +90,7 @@ describe('the settings of a block', () => {
   it.each([
     ['not selected', { selected: false }],
     ['selected in a field that cannot be edited', { editable: false }],
+    ['selected in a field focus has left', { active: false }],
   ])('are not shown when the block is %s', (_kind, props) => {
     setup(props);
     expect(description()).toBeNull();
@@ -107,11 +109,36 @@ describe('the settings of a block', () => {
     ).toBeInTheDocument();
   });
 
-  it('are marked as controls, so keys and clicks in them are not the text’s', () => {
+  it.each([
+    ['image', 'Image settings'],
+    ['audio', 'Audio settings'],
+    ['video', 'Video settings'],
+  ] as const)('stand over the page, named for the %s', (kind, name) => {
+    setup({ kind });
+    const settings = screen.getByRole('dialog', { name });
+    expect(settings).toContainElement(description());
+  });
+
+  it('are where the block says they are, for Enter on the block to reach', () => {
+    setup();
+    const named = document
+      .querySelector('[data-asset-block-controls-id]')
+      ?.getAttribute('data-asset-block-controls-id');
+    expect(named).toBeTruthy();
+    expect(
+      screen.getByRole('dialog', { name: 'Image settings' }),
+    ).toHaveAttribute('id', named);
+  });
+
+  it('do not take focus as they appear', () => {
     setup();
     expect(
-      description()?.closest('[data-asset-block-controls]'),
-    ).not.toBeNull();
+      screen.getByRole('dialog', { name: 'Image settings' }),
+    ).not.toContainElement(
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null,
+    );
   });
 
   describe('for an image', () => {
@@ -243,6 +270,20 @@ describe('the settings of a block', () => {
       });
     });
 
+    it('goes back to the block once the choosing is over, whatever was chosen', async () => {
+      for (const chosen of ['a2', undefined]) {
+        const pick = vi.fn(() => Promise.resolve(chosen));
+        const { user, returnToText } = setup({ pick });
+        await user.click(
+          screen.getByRole('button', { name: 'Change the image' }),
+        );
+        await waitFor(() => {
+          expect(returnToText).toHaveBeenCalledTimes(1);
+        });
+        cleanup();
+      }
+    });
+
     it('leaves the file alone when none is chosen', async () => {
       const pick = vi.fn(() => Promise.resolve(undefined));
       const { user, update } = setup({ pick });
@@ -341,5 +382,43 @@ describe('the alignment icons', () => {
     expect(leftToRight.start).not.toBe(leftToRight.end);
     expect(rightToLeft.start).toBe(leftToRight.end);
     expect(rightToLeft.end).toBe(leftToRight.start);
+  });
+});
+
+describe('the size a picture is dragged to', () => {
+  const heights = [
+    ['small', 192],
+    ['medium', 384],
+    ['large', 600],
+    ['full', 900],
+  ] as const;
+
+  it.each([
+    [0, 'small'],
+    [287, 'small'],
+    [289, 'medium'],
+    [491, 'medium'],
+    [493, 'large'],
+    [749, 'large'],
+    [751, 'full'],
+    [5000, 'full'],
+  ] as const)(
+    'is the size drawn nearest to %i pixels tall: %s',
+    (wanted, size) => {
+      expect(sizeNearest(wanted, heights)).toBe(size);
+    },
+  );
+
+  it('is the largest of the sizes that draw a small picture the same', () => {
+    // A picture 300 pixels tall at the page's width: medium, large and full
+    // size all draw it whole.
+    const small = [
+      ['small', 192],
+      ['medium', 300],
+      ['large', 300],
+      ['full', 300],
+    ] as const;
+    expect(sizeNearest(300, small)).toBe('full');
+    expect(sizeNearest(200, small)).toBe('small');
   });
 });

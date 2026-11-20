@@ -290,7 +290,7 @@ test('inserts a new Information stage at the clicked index', async ({
   // input handling — which `.fill()`'s direct DOM write bypasses — registers
   // the change into the form store.
   const contentField = architectPage.getByRole('textbox', {
-    name: 'Page content',
+    name: 'Rich Text',
   });
   await contentField.click();
   await contentField.pressSequentially('Minimal content.');
@@ -526,7 +526,7 @@ test('adds new stages before the stage that ends the interview', async ({
     .getByRole('textbox', { name: 'Stage name' })
     .fill('Appended Info Stage');
   const appendedContent = architectPage.getByRole('textbox', {
-    name: 'Page content',
+    name: 'Rich Text',
   });
   await appendedContent.click();
   await appendedContent.pressSequentially('Minimal content.');

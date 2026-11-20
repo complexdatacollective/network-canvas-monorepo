@@ -16,20 +16,25 @@ together in a single editor in Architect, in the order participants read them.
 The page heading is a heading at the top of the text. An image, audio recording
 or video is added from the editor's toolbar (Insert image, Insert audio, Insert
 video) and sits in the text as a block, which can be dragged to another place.
-Selecting a block shows its settings: a description for participants who cannot
-see or hear it, a display size for images and videos, where it sits across the
-page, and, for audio and video, whether it starts playing automatically and
-whether it repeats when it ends. Both are on unless you turn them off.
+Selecting a block opens its settings beside it: a description for participants
+who cannot see or hear it, a display size for images and videos, where it sits
+across the page, and, for audio and video, whether it starts playing
+automatically and whether it repeats when it ends. Both are on unless you turn
+them off. An image or video can also be resized by dragging the handle at its
+corner, which takes it to the nearest of the display sizes. The editor grows
+with the page, so all of it stays in view.
 
 Each language of a protocol has its own text, so a page can show a different
 file in each language. The translation table shows each file as a line naming
 it and keeps it in place while you edit the words around it, and the printable
 summary lists each file where it sits in the page, with its settings.
 
-The rich text editor's toolbar is regrouped: undo and redo, then text styles,
-formatting, lists, and everything that inserts something. It wraps onto a
-second line where the editor is too narrow for it, instead of hiding its last
-buttons.
+The rich text editor's toolbar is regrouped: undo and redo, the style of the
+line (one list offering Paragraph and each heading, in place of a button for
+each heading), bold and italic, lists, then what inserts something into the
+text (a link, a thematic break, an emoji), what inserts a file, and what
+inserts a placeholder. Where the editor is too narrow for it, it wraps onto
+another line a button at a time, instead of hiding its last buttons.
 
 Upgrading a protocol from schema 8 joins each Information stage's page heading
 and items into one text, in the order they were shown, so participants see the

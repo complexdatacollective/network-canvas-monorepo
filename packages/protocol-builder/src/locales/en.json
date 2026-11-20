@@ -4784,15 +4784,23 @@
     "description": "Placeholder in the empty field holding what this option is stored and exported as."
   },
   "protocolBuilder.pageContent.contentDescription": {
-    "defaultMessage": "Write the page participants will read. Use the toolbar to add headings, and to insert images, audio and video where they should appear.",
-    "description": "Description of the section where a researcher writes a page a participant reads instead of doing a task. The page is written in one text editor whose toolbar formats the text and inserts media files between its paragraphs."
+    "defaultMessage": "Create the content that participants will see on this stage.",
+    "description": "Description of the section where a researcher writes a page a participant reads instead of doing a task."
+  },
+  "protocolBuilder.pageContent.contentHint": {
+    "defaultMessage": "Use the toolbar to add headings and format text, as well as to insert images, audio and video.",
+    "description": "Guidance under the label of the text editor where a researcher writes a page a participant reads. The toolbar is the row of buttons above the text; it formats the text and inserts media files between its paragraphs."
+  },
+  "protocolBuilder.pageContent.contentLabel": {
+    "defaultMessage": "Rich Text",
+    "description": "Label of the text editor where a researcher writes a page a participant reads. Rich text is text that can hold headings, formatting and media files, as opposed to plain text."
   },
   "protocolBuilder.pageContent.contentPlaceholder": {
-    "defaultMessage": "Write your page here...",
+    "defaultMessage": "Type your page content...",
     "description": "Placeholder shown in the empty text editor where a researcher writes a page a participant reads. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.pageContent.pageTitle": {
-    "defaultMessage": "Page content",
+    "defaultMessage": "Content",
     "description": "Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task."
   },
   "protocolBuilder.pedigree.completenessClearConfirm": {

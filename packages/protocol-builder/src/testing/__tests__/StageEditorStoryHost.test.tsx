@@ -119,8 +119,12 @@ describe('what a family’s story tells the host', () => {
       await screen.findByLabelText('Choose a file from your computer'),
       new File(['a picture'], 'skyline.png', { type: 'image/png' }),
     );
+    // The browser closes. (The block it placed is selected, which opens the
+    // block's own settings, so "no dialog" is not what to wait for.)
     await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole('dialog', { name: 'Choose an image' }),
+      ).not.toBeInTheDocument(),
     );
     await user.click(screen.getByRole('button', { name: 'Save stage' }));
 

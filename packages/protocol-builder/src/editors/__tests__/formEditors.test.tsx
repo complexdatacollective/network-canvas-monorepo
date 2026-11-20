@@ -61,7 +61,7 @@ const FORM_EDITORS: FormEditorCase[] = [
     interfaceName: 'Information',
     stageId: 'information-1',
     editor: informationStageEditor,
-    sections: ['Page content', 'Skip logic', 'Interviewer guidance'],
+    sections: ['Content', 'Skip logic', 'Interviewer guidance'],
     ownedKeys: ['conditions', 'content', 'dynamicValues', 'label'],
   },
   {

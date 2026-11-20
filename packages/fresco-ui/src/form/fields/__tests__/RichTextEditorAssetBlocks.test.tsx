@@ -2,9 +2,11 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { JSONContent } from '@tiptap/react';
 import { type ComponentProps, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  assetBlockControlsAt,
   assetBlockControlsProps,
   type RichTextAssetBlockViewProps,
   type RichTextAssetBlocks,
@@ -33,6 +35,7 @@ function View({
   attributes,
   selected,
   editable,
+  active,
   update,
   remove,
 }: RichTextAssetBlockViewProps) {
@@ -41,6 +44,7 @@ function View({
       data-testid="view"
       data-selected={String(selected)}
       data-editable={String(editable)}
+      data-active={String(active)}
     >
       <output data-testid="attributes">{JSON.stringify(attributes)}</output>
       <div {...assetBlockControlsProps}>
@@ -96,8 +100,13 @@ const renderField = ({
 };
 
 const toolbar = () => within(screen.getByRole('toolbar'));
+// What a control is called: its label, or failing that the words it shows.
 const names = (elements: HTMLElement[]) =>
-  elements.map((element) => element.getAttribute('aria-label'));
+  elements.map(
+    (element) => element.getAttribute('aria-label') ?? element.textContent,
+  );
+const textStyle = () =>
+  toolbar().getByRole('button', { name: /^Text style: / });
 
 const everything: Partial<FieldProps> = {
   toolbarOptions: { links: true, thematicBreak: true },
@@ -116,15 +125,15 @@ describe('the toolbar of a multi-line field', () => {
 
     expect(names(toolbar().getAllByRole('group'))).toEqual([
       'History',
-      'Text style',
       'Formatting',
       'Lists',
       'Insert',
+      'Insert a file',
       'Insert a placeholder',
     ]);
   });
 
-  it('has its buttons in the order of its groups', async () => {
+  it('has its controls in the order of its groups', async () => {
     const field = renderField({
       ...everything,
       pick: vi.fn(() => Promise.resolve(undefined)),
@@ -135,77 +144,45 @@ describe('the toolbar of a multi-line field', () => {
     const inOrder = [
       'Undo',
       'Redo',
-      'Heading 1',
-      'Heading 4',
+      'Text style: Paragraph',
       'Bold',
       'Italic',
-      'Add link',
       'Bullet list',
       'Numbered list',
+      'Add link',
+      'Thematic break',
+      'Insert emoji',
       'Insert image',
       'Insert audio',
       'Insert video',
-      'Thematic break',
-      'Insert emoji',
       'Insert a value',
       'Insert logic',
     ].map((name) => buttons.indexOf(name));
     expect(inOrder).not.toContain(-1);
     expect(inOrder).toEqual(inOrder.toSorted((a, b) => a - b));
-    // Bullet before numbered, and the media buttons image, audio, video.
-    expect(buttons.indexOf('Bullet list')).toBeLessThan(
-      buttons.indexOf('Numbered list'),
-    );
     // Each group holds what its name says.
     const group = (name: string) =>
       names(within(screen.getByRole('group', { name })).getAllByRole('button'));
     expect(group('History')).toEqual(['Undo', 'Redo']);
+    expect(group('Formatting')).toEqual(['Bold', 'Italic']);
     expect(group('Lists')).toEqual(['Bullet list', 'Numbered list']);
     expect(group('Insert')).toEqual([
+      'Add link',
+      'Thematic break',
+      'Insert emoji',
+    ]);
+    expect(group('Insert a file')).toEqual([
       'Insert image',
       'Insert audio',
       'Insert video',
-      'Thematic break',
     ]);
   });
 
-  it('puts the emoji button after the insert group and before the placeholders', async () => {
-    const field = renderField({
-      ...everything,
-      pick: vi.fn(() => Promise.resolve(undefined)),
-    });
-    await field.editor();
-
-    const emoji = toolbar().getByRole('button', { name: 'Insert emoji' });
-    const insert = screen.getByRole('group', { name: 'Insert' });
-    const placeholders = screen.getByRole('group', {
-      name: 'Insert a placeholder',
-    });
-    expect(insert.compareDocumentPosition(emoji)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(emoji.compareDocumentPosition(placeholders)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-  });
-
-  it('separates consecutive groups with one separator each', async () => {
-    const field = renderField({
-      ...everything,
-      pick: vi.fn(() => Promise.resolve(undefined)),
-    });
-    await field.editor();
-
-    // Six groups, five gaps: one separator between each pair.
-    const separators = toolbar().getAllByRole('separator');
-    expect(separators).toHaveLength(5);
-  });
-
-  it('leaves out a separator for a group that is not shown', async () => {
+  it('makes no group of a control that stands alone', async () => {
     const field = renderField({
       toolbarOptions: {
         history: false,
-        headings: false,
+        headings: true,
         bold: false,
         italic: false,
         lists: true,
@@ -214,9 +191,59 @@ describe('the toolbar of a multi-line field', () => {
     });
     await field.editor();
 
-    // Lists, then Insert (media and emoji): two groups, one separator.
-    expect(names(toolbar().getAllByRole('group'))).toEqual(['Lists', 'Insert']);
-    expect(toolbar().getAllByRole('separator')).toHaveLength(1);
+    // The list of text styles and the emoji button each stand alone; the
+    // lists and the files are groups.
+    expect(names(toolbar().getAllByRole('group'))).toEqual([
+      'Lists',
+      'Insert a file',
+    ]);
+    expect(textStyle()).toBeInTheDocument();
+    expect(
+      toolbar().getByRole('button', { name: 'Insert emoji' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps a lone toggle in its group, which is what makes it a toggle', async () => {
+    const field = renderField({ toolbarOptions: { italic: false } });
+    await field.editor();
+
+    const formatting = screen.getByRole('group', { name: 'Formatting' });
+    expect(names(within(formatting).getAllByRole('button'))).toEqual(['Bold']);
+    expect(within(formatting).getByRole('button')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  // The rules between groups are drawn, not announced: the groups are what a
+  // screen reader is told, and a rule that started a line would be one too
+  // many (see `toolbarClipStyles`).
+  it('has no separators, and a rule only before the first control of a group', async () => {
+    const field = renderField({
+      ...everything,
+      pick: vi.fn(() => Promise.resolve(undefined)),
+    });
+    await field.editor();
+
+    expect(toolbar().queryAllByRole('separator')).toHaveLength(0);
+    const firstOfAGroup = [
+      'Undo',
+      'Text style: Paragraph',
+      'Bold',
+      'Bullet list',
+      'Add link',
+      'Insert image',
+      'Insert a value',
+    ];
+    for (const button of toolbar().getAllByRole('button')) {
+      const [name] = names([button]);
+      // Each control is one piece with the space before it.
+      const lead = button.previousElementSibling;
+      expect(lead).toHaveAttribute('aria-hidden', 'true');
+      expect(lead?.childElementCount, name ?? '').toBe(
+        firstOfAGroup.includes(name ?? '') ? 1 : 0,
+      );
+    }
   });
 
   it('marks every group name as English, since they are read by a screen reader', async () => {
@@ -229,6 +256,107 @@ describe('the toolbar of a multi-line field', () => {
     for (const group of toolbar().getAllByRole('group')) {
       expect(group.getAttribute('lang')).toBe('en');
     }
+  });
+});
+
+const heading = (level: number, text: string): JSONContent => ({
+  type: 'heading',
+  attrs: { level },
+  content: [{ type: 'text', text }],
+});
+
+describe('the text style of a line', () => {
+  it('is said by the control that changes it', async () => {
+    const field = renderField({
+      value: doc(heading(2, 'Title'), paragraph('Words')),
+    });
+    const editor = await field.editor();
+
+    await field.user.click(within(editor).getByText('Title'));
+    await waitFor(() => {
+      expect(textStyle()).toHaveAccessibleName('Text style: Heading 2');
+    });
+    await field.user.click(within(editor).getByText('Words'));
+    await waitFor(() => {
+      expect(textStyle()).toHaveAccessibleName('Text style: Paragraph');
+    });
+  });
+
+  it('lists a paragraph and each heading the field allows, with the line’s own marked', async () => {
+    const field = renderField({
+      toolbarOptions: { headings: { h3: false, h4: false } },
+      value: doc(heading(2, 'Title')),
+    });
+    const editor = await field.editor();
+    await field.user.click(within(editor).getByText('Title'));
+
+    await field.user.click(textStyle());
+    const styles = await screen.findAllByRole('menuitemradio');
+    expect(styles.map((style) => style.textContent)).toEqual([
+      'Paragraph',
+      'Heading 1',
+      'Heading 2',
+    ]);
+    expect(
+      styles.filter((style) => style.getAttribute('aria-checked') === 'true'),
+    ).toEqual([screen.getByRole('menuitemradio', { name: 'Heading 2' })]);
+  });
+
+  it('changes the line to the style chosen, and puts the caret back in it', async () => {
+    const field = renderField({ value: doc(paragraph('Hello')) });
+    const editor = await field.editor();
+    await field.user.click(within(editor).getByText('Hello'));
+
+    await field.user.click(textStyle());
+    await field.user.click(
+      await screen.findByRole('menuitemradio', { name: 'Heading 1' }),
+    );
+
+    await waitFor(() => {
+      expect(field.lastDocument()).toEqual(doc(heading(1, 'Hello')));
+    });
+    // Choosing closes the list: it is one choice, not a set of switches.
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(editor).toHaveFocus();
+    });
+    // Typed where the caret was left: a click here puts it at the line's start.
+    await field.user.keyboard('!');
+    await waitFor(() => {
+      expect(field.lastDocument()).toEqual(doc(heading(1, '!Hello')));
+    });
+
+    // And back to a paragraph, which no button of its own offered before.
+    await field.user.click(textStyle());
+    await field.user.click(
+      await screen.findByRole('menuitemradio', { name: 'Paragraph' }),
+    );
+    await waitFor(() => {
+      expect(field.lastDocument()).toEqual(doc(paragraph('!Hello')));
+    });
+  });
+
+  it('leaves focus on its control when its list is closed with nothing chosen', async () => {
+    const field = renderField({ value: doc(paragraph('Hello')) });
+    await field.editor();
+
+    await field.user.click(textStyle());
+    await screen.findByRole('menuitemradio', { name: 'Paragraph' });
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toContainElement(
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null,
+      );
+    });
+    await field.user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(textStyle()).toHaveFocus();
+    });
+    expect(field.onChange).not.toHaveBeenCalled();
   });
 });
 
@@ -274,17 +402,19 @@ describe('the toolbar of a single-line field', () => {
     });
     await field.editor();
 
+    // The one placeholder and the emoji button each stand alone.
     expect(names(toolbar().getAllByRole('group'))).toEqual([
       'History',
       'Formatting',
-      'Insert a placeholder',
     ]);
-    const buttons = names(toolbar().getAllByRole('button'));
-    expect(buttons).not.toContain('Insert image');
-    expect(buttons).not.toContain('Insert audio');
-    expect(buttons).not.toContain('Insert video');
-    expect(buttons).not.toContain('Heading 1');
-    expect(buttons).not.toContain('Bullet list');
+    expect(names(toolbar().getAllByRole('button'))).toEqual([
+      'Undo',
+      'Redo',
+      'Bold',
+      'Italic',
+      'Insert emoji',
+      'Insert “Name”',
+    ]);
   });
 
   it('draws no block for a block its value holds', async () => {
@@ -338,6 +468,15 @@ describe('inserting a block', () => {
       attrs: { assetId: 'a1' },
     });
     expect(emitted?.content?.[2]).toEqual(paragraph('Hello'));
+    // And it is the block that is selected, with the keyboard in the field:
+    // that is when a view shows what changes it.
+    await waitFor(() => {
+      expect(screen.getByTestId('view')).toHaveAttribute(
+        'data-selected',
+        'true',
+      );
+    });
+    expect(screen.getByTestId('view')).toHaveAttribute('data-active', 'true');
   });
 
   it.each(['image', 'audio', 'video'] as const)(
@@ -374,6 +513,13 @@ describe('inserting a block', () => {
     expect(types).toEqual(['assetBlock', 'paragraph']);
     expect(field.lastDocument()?.content?.at(-1)).toEqual({
       type: 'paragraph',
+    });
+    // The block is selected there too, and not the paragraph that came with it.
+    await waitFor(() => {
+      expect(screen.getByTestId('view')).toHaveAttribute(
+        'data-selected',
+        'true',
+      );
     });
   });
 
@@ -600,6 +746,111 @@ describe('typing where a block is', () => {
       type: 'assetBlock',
       attrs: { assetId: 'a1' },
     });
+  });
+});
+
+describe('where focus is', () => {
+  it('is told to the view: in the field, or out of it', async () => {
+    const field = renderField({
+      value: doc(block({ assetId: 'a1' }), paragraph('After')),
+    });
+    const editor = await field.editor();
+    render(<button type="button">Elsewhere</button>);
+    expect(screen.getByTestId('view')).toHaveAttribute('data-active', 'false');
+
+    await field.user.click(within(editor).getByText('After'));
+    await waitFor(() => {
+      expect(screen.getByTestId('view')).toHaveAttribute('data-active', 'true');
+    });
+
+    // In one of the view's own controls it is still in the field.
+    await field.user.click(screen.getByRole('button', { name: 'Make large' }));
+    await waitFor(() => {
+      expect(attributesShown().size).toBe('large');
+    });
+    expect(screen.getByTestId('view')).toHaveAttribute('data-active', 'true');
+
+    await field.user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('view')).toHaveAttribute(
+        'data-active',
+        'false',
+      );
+    });
+  });
+});
+
+/** A view whose controls are not in the block but over the page. */
+function ViewWithControlsElsewhere({
+  selected,
+  active,
+  returnToText,
+}: RichTextAssetBlockViewProps) {
+  return (
+    <div data-testid="view" {...assetBlockControlsAt('controls-of-a1')}>
+      {selected &&
+        active &&
+        createPortal(
+          <div id="controls-of-a1">
+            <span tabIndex={-1}>Not a control</span>
+            <input aria-label="Description" />
+            <button type="button" onClick={returnToText}>
+              Back to the text
+            </button>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+describe('controls a view draws over the page', () => {
+  // Nothing but a block, so the field can only open with it selected: the
+  // arrow keys are not something jsdom moves a caret with.
+  const openOnBlock = async () => {
+    const field = renderField({
+      autoFocus: true,
+      assetBlocks: { View: ViewWithControlsElsewhere },
+      value: doc(block({ assetId: 'a1' })),
+    });
+    const editor = await field.editor();
+    await waitFor(() => {
+      expect(editor).toHaveFocus();
+    });
+    await screen.findByRole('textbox', { name: 'Description' });
+    return { field, editor };
+  };
+
+  it('are reached with Enter on the selected block, at the first of them', async () => {
+    const { field } = await openOnBlock();
+
+    await field.user.keyboard('{Enter}');
+
+    expect(screen.getByRole('textbox', { name: 'Description' })).toHaveFocus();
+    // Enter went to the controls: it started no paragraph.
+    expect(field.onChange).not.toHaveBeenCalled();
+  });
+
+  it('stay while focus is in them, and hand it back to the block', async () => {
+    const { field, editor } = await openOnBlock();
+    await field.user.keyboard('{Enter}');
+    await field.user.keyboard('A harbour');
+    expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue(
+      'A harbour',
+    );
+
+    await field.user.click(
+      screen.getByRole('button', { name: 'Back to the text' }),
+    );
+
+    await waitFor(() => {
+      expect(editor).toHaveFocus();
+    });
+    // The block is still the selection, so its controls are still there.
+    expect(
+      screen.getByRole('textbox', { name: 'Description' }),
+    ).toBeInTheDocument();
+    expect(field.onChange).not.toHaveBeenCalled();
   });
 });
 

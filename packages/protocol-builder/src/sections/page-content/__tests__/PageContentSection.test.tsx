@@ -10,27 +10,27 @@ const openEditor = () => ({
 });
 
 describe('a page of content rather than a task', () => {
-  it('is one rich-text editor holding the whole page, named for the section', async () => {
+  it('is one rich-text editor holding the whole page, labelled Rich Text in a section named Content', async () => {
     const harness = renderStageEditor(openEditor());
 
     const editor = await screen.findByRole('textbox', {
-      name: 'Page content',
+      name: 'Rich Text',
     });
     expect(editor).toHaveTextContent('Welcome');
     expect(editor).toHaveTextContent('Welcome to this interview.');
     await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()[0]).toEqual({
-      title: 'Page content',
+      title: 'Content',
       state: 'Finished',
     });
   });
 
   it('offers the toolbar for text and for putting media into it', async () => {
     renderStageEditor(openEditor());
-    await screen.findByRole('textbox', { name: 'Page content' });
+    await screen.findByRole('textbox', { name: 'Rich Text' });
 
     for (const name of [
-      'Heading 1',
+      /^Text style:/,
       'Insert image',
       'Insert audio',
       'Insert video',

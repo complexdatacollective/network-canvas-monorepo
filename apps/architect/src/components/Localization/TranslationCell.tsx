@@ -542,8 +542,7 @@ const CELL_EDITOR_CLASSES = cx(
   '[&>:first-child]:min-h-0 [&>:first-child]:px-3 [&>:first-child]:py-2',
   '[&_.tiptap.ProseMirror]:min-h-0 [&>:first-child>.tiptap]:py-0',
   '[&_.tiptap_:is(h1,h2,h3,h4)]:mt-0 [&_.tiptap_:is(h1,h2,h3,h4)]:mb-2 [&_.tiptap_:is(h1,h2,h3,h4)]:font-[inherit] [&_.tiptap_:is(h1,h2,h3,h4)]:text-base [&_.tiptap_:is(h1,h2,h3,h4)]:font-semibold',
-  '[&_[role=toolbar]]:sticky [&_[role=toolbar]]:top-(--translation-table-sticky-top) [&_[role=toolbar]]:z-1 [&_[role=toolbar]]:mx-0.5 [&_[role=toolbar]]:mt-0.5 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:flex-wrap [&_[role=toolbar]]:gap-0.5 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
-  '[&_[role=toolbar]_[role=separator]]:mx-1',
+  '[&_[role=toolbar]]:sticky [&_[role=toolbar]]:top-(--translation-table-sticky-top) [&_[role=toolbar]]:z-1 [&_[role=toolbar]]:mx-0.5 [&_[role=toolbar]]:mt-0.5 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
 );
 
 const EDITABLE_SELECTOR = '[contenteditable="true"]';

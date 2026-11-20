@@ -60,7 +60,7 @@ const createFixture = () => ({
   editor: mountedAs(informationStageEditor.Information),
 });
 
-const pageEditor = () => screen.findByRole('textbox', { name: 'Page content' });
+const pageEditor = () => screen.findByRole('textbox', { name: 'Rich Text' });
 
 function DirtyFlag() {
   const dirty = useFormStore(selectIsFormDirty);
@@ -218,8 +218,7 @@ describe('the editor for a page of content', () => {
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Page content')
-          ?.state,
+        harness.outline().find((section) => section.title === 'Content')?.state,
       ).toBe('Has a problem'),
     );
   });

@@ -37,7 +37,7 @@ const WELCOME_TEXT_EN =
   '# Welcome to the study\n\nThank you for taking part.\n\nIt takes ten minutes.';
 
 /** The researcher's own texts' rows, named as the stage editor names them. */
-const WELCOME_TEXT_ROWS = ['Stage name', 'Page content'];
+const WELCOME_TEXT_ROWS = ['Stage name', 'Content'];
 
 /** Each stage text's row in the translation table. */
 const STAGE_TEXT_ROWS = [
@@ -417,15 +417,15 @@ test('adds a language, keeps the default language from being removed, translates
   await translationCell(page, 'Stage name', 'French').click();
   await page.keyboard.type('Bienvenue');
   await page.keyboard.press('Enter');
-  await expect(translationCell(page, 'Page content', 'French')).toBeFocused();
+  await expect(translationCell(page, 'Content', 'French')).toBeFocused();
   // Information text may hold several lines, whatever this one holds, so
   // Enter starts a new line in it; Ctrl+Enter moves on, and in the last row
   // checks the text where it is.
   await page.keyboard.type('Merci de votre participation.');
   await page.keyboard.press('Enter');
-  await expect(translationCell(page, 'Page content', 'French')).toBeFocused();
+  await expect(translationCell(page, 'Content', 'French')).toBeFocused();
   await expect(
-    translationCell(page, 'Page content', 'French').locator('p'),
+    translationCell(page, 'Content', 'French').locator('p'),
   ).toHaveCount(2);
   await page.keyboard.type('Cela prend dix minutes.');
   await page.keyboard.press('Control+Enter');
@@ -714,9 +714,9 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
   await page.goto('/protocol/localization?table=open');
 
   await translationTable(page)
-    .getByRole('button', { name: /Page content French$/ })
+    .getByRole('button', { name: /Content French$/ })
     .click();
-  const editor = translationCell(page, 'Page content', 'French');
+  const editor = translationCell(page, 'Content', 'French');
   await expect(editor).toBeFocused();
 
   // The toolbar sits above the text it formats, not over it, and stays there

@@ -202,7 +202,7 @@ test('discards an invalid stage draft before returning to the start screen', asy
   // invalid. The stage editor keeps this in its separate draft until the user
   // chooses "Finished Editing", so it must never replace the durable protocol
   // shown on the start screen.
-  await architectPage.getByRole('textbox', { name: 'Page content' }).fill('');
+  await architectPage.getByRole('textbox', { name: 'Rich Text' }).fill('');
 
   // The stage editor replaces ProjectActions with StageEditorNav, so leaving
   // the protocol from here uses Brand's app-header button rather than the

@@ -343,7 +343,7 @@ describe('TranslationTable with a large protocol', () => {
       const { user } = renderTable();
       await scrollTo(stageTop(10));
 
-      const name = /^Stage 10 .*Page content English$/;
+      const name = /^Stage 10 .*Content English$/;
       await user.click(screen.getByRole('button', { name }));
       const editor = await screen.findByRole('textbox', { name });
       await waitFor(() => expect(editor).toHaveFocus());
@@ -389,7 +389,7 @@ describe('TranslationTable with a large protocol', () => {
       const { user } = renderTable(protocol);
       await scrollTo(stageTop(10));
 
-      const name = /^Stage 10 .*Page content English$/;
+      const name = /^Stage 10 .*Content English$/;
       await user.click(screen.getByRole('button', { name }));
       const editor = await screen.findByRole('textbox', { name });
       await waitFor(() => expect(editor).toHaveFocus());

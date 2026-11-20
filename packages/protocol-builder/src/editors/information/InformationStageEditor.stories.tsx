@@ -77,7 +77,7 @@ export const ShowingAValue: Story = {
     await awaitPassiveEffects();
 
     const page = await canvas.findByRole('textbox', {
-      name: /^Page content/,
+      name: /^Rich Text/,
     });
     await userEvent.click(page);
     await userEvent.keyboard(' {{');

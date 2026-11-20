@@ -298,12 +298,12 @@ describe('the stage editor shell', () => {
     );
     // The host answers the acquire over a promise, so the form is drawn a turn
     // after the story mounts.
-    await screen.findByRole('heading', { name: 'Page content' });
+    await screen.findByRole('heading', { name: 'Content' });
 
     expect(headingLadder()).toEqual([
       'h1: Who you turn to',
       'h2: Stage name',
-      'h3: Page content',
+      'h3: Content',
       // The page's own heading, written in the text the section edits. It is
       // an `h1` element, which is how it looks, and says its place below the
       // section as `aria-level`.
@@ -330,13 +330,13 @@ describe('the stage editor shell', () => {
         <EnclosingHeadingLevel level="h3">{editor}</EnclosingHeadingLevel>
       </div>,
     );
-    await screen.findByRole('heading', { name: 'Page content' });
+    await screen.findByRole('heading', { name: 'Content' });
 
     expect(headingLadder()).toEqual([
       'h1: Interview',
       'h2: Who you turn to',
       'h3: Prompt configuration',
-      'h4: Page content',
+      'h4: Content',
       'h1: Welcome',
     ]);
     expect(screen.getByRole('heading', { name: 'Welcome' })).toHaveAttribute(

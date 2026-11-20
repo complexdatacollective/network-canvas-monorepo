@@ -24,6 +24,11 @@ export type SeedAsset = {
   // which `~/utils/bundleProtocol.ts` requires to carry `Blob` data (a
   // string there is treated as an apikey value and skipped from exports).
   data: string;
+  // What kind of file the `Blob` says it is. A browser draws a picture from a
+  // `Blob` only when this names an image type, so a spec that needs the
+  // picture drawn (and not just placed) gives it; without it the `Blob` has
+  // no type, as before.
+  mediaType?: string;
 };
 
 const DB_NAME = PROTOCOL_DB_NAME;
@@ -127,7 +132,10 @@ export async function seedProtocol(
             name: asset.name,
             // Built here (inside the evaluate callback) so it's a real,
             // browser-native `Blob` — see the `SeedAsset.data` comment.
-            data: new Blob([asset.data]),
+            data: new Blob(
+              [asset.data],
+              asset.mediaType === undefined ? {} : { type: asset.mediaType },
+            ),
           });
         }
       });
@@ -236,7 +244,10 @@ export async function seedLegacyProtocols(
               protocolId: id,
               name: asset.name,
               // Built here, in the browser, for the reason `seedProtocol` gives.
-              data: new Blob([asset.data]),
+              data: new Blob(
+                [asset.data],
+                asset.mediaType === undefined ? {} : { type: asset.mediaType },
+              ),
             });
           }
         }

@@ -29,7 +29,7 @@ export const fixEditMessages = defineMessages({
     id: 'architect.protocolReview.problem.textInLanguage',
     defaultMessage: '{name} · {language}',
     description:
-      'Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as "Page content › Page heading"; {language} is the language’s name. The dot is a separator.',
+      'Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as "Prompt collection › Prompt 1 › Prompt text"; {language} is the language’s name. The dot is a separator.',
   },
   minNodes: {
     id: 'architect.protocolReview.problem.minNodes',
