@@ -2364,6 +2364,33 @@ describe('the validation problems', () => {
     );
   });
 
+  it('focus the row of the object a problem is about, not the list it is in', async () => {
+    const first = '77777777-7777-4777-8777-777777777777';
+    const blank = '66666666-6666-4666-8666-666666666666';
+    await seedHost({
+      ...ENDS_AT_FINISH,
+      [`stage:${STAGE_B}`]: {
+        ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
+        items: [
+          { id: first, type: 'text', content: enUS('First item') },
+          { id: blank, type: 'text', content: enUS('') },
+        ],
+      },
+    });
+    renderEditor();
+    await findStageNameField();
+
+    // The item's text is edited in a dialog, so no field of the stage's form
+    // is that text: without the item's id the list is the nearest field.
+    fireEvent.click(
+      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
+    );
+
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute('data-item-id')).toBe(blank),
+    );
+  });
+
   it('go to the screen entry when the problem is about the screen and no field', async () => {
     renderEditor();
     await findStageNameField();

@@ -4,6 +4,10 @@ import {
   resolveFieldContainer,
   resolveFieldErrorTarget,
 } from '@codaco/fresco-ui/form/utils/focusFirstError';
+import {
+  findProtocolObjectRow,
+  focusProtocolObjectRow,
+} from '@codaco/protocol-builder/form/protocolObjectRow';
 
 /** How long to wait for a screen's form to appear before giving up on it. */
 const FIELD_WAIT_MS = 3000;
@@ -25,6 +29,13 @@ const FIELD_WAIT_MS = 3000;
  * instead, and failing that `fallback` runs: focus must end up somewhere that
  * names the problem, never on the page body.
  *
+ * `objectId` names the object the problem is about, where it has an id of its
+ * own. The row a list draws it in is more specific than any field that holds
+ * the whole list, so it outranks those: a problem with one prompt's text lands
+ * on that prompt's row, not on the prompt list, while a field drawn inside the
+ * row (an option's label typed in place) still outranks the row. A row is
+ * focusable however the lock stands, so it ends the wait at once.
+ *
  * A wait belongs to the opening that asked for it. `cancelFieldFocus` ends it,
  * and the caller calls it whenever something else is opened: a field of the
  * same name on the screen opened next is not the one the problem was about,
@@ -37,30 +48,45 @@ export function useFieldFocus(root: RefObject<HTMLElement | null>) {
   const cancelFieldFocus = useCallback(() => cancelPending.current?.(), []);
 
   const focusField = useCallback(
-    (fieldNames: readonly string[], fallback: () => void) => {
+    (
+      target: Readonly<{ fieldNames: readonly string[]; objectId?: string }>,
+      fallback: () => void,
+    ) => {
       cancelPending.current?.();
-      // A problem about the screen as a whole names no field to wait for.
-      if (fieldNames.length === 0) {
+      const { fieldNames, objectId } = target;
+      // A problem about the screen as a whole names nothing to wait for.
+      if (fieldNames.length === 0 && objectId === undefined) {
         fallback();
         return;
       }
 
-      const find = (acceptContainer: boolean): HTMLElement | undefined => {
+      type Found = Readonly<{ element: HTMLElement; isRow: boolean }>;
+      const find = (acceptContainer: boolean): Found | undefined => {
+        const row =
+          objectId === undefined
+            ? undefined
+            : findProtocolObjectRow(root.current, objectId);
         for (const name of fieldNames) {
+          const container = resolveFieldContainer(name, root.current);
+          if (container === undefined) continue;
+          if (row !== undefined && container.contains(row)) {
+            return { element: row, isRow: true };
+          }
           const control = resolveFieldErrorTarget(name, root.current);
           if (control === undefined) continue;
-          if (
-            acceptContainer ||
-            control !== resolveFieldContainer(name, root.current)
-          ) {
-            return control;
+          if (acceptContainer || control !== container) {
+            return { element: control, isRow: false };
           }
         }
-        return undefined;
+        return row === undefined ? undefined : { element: row, isRow: true };
       };
-      const land = (control: HTMLElement) => {
-        control.focus({ preventScroll: true });
-        control.scrollIntoView({ block: 'center' });
+      const land = ({ element, isRow }: Found) => {
+        if (isRow) {
+          focusProtocolObjectRow(element);
+          return;
+        }
+        element.focus({ preventScroll: true });
+        element.scrollIntoView({ block: 'center' });
       };
 
       const operable = find(false);
