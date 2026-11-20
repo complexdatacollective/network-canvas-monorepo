@@ -33,8 +33,11 @@ For developers:
 - A repeated id is reported once at each place it is used, as a `custom` issue
   with `params.rule === 'duplicateObjectId'`. Each issue from `validateProtocol`
   has an optional `objectId`, the id of the nearest object it is about, and
-  `enclosingProtocolObjectIdsIn` finds that id for paths into any part of a
-  protocol, such as a single stage.
+  `enclosingProtocolObjects` finds that object for paths into any part of a
+  protocol, such as a single stage. `withEnclosingObjectIds` adds the id to a
+  list of issues, `collectProtocolObjectIdsFromSchema` lists the ids in one part
+  of a protocol, and `deterministicProtocolObjectId` makes repeatable ids for
+  generated protocols.
 - `findDuplicateId`, `duplicateIdRefinement`, `uniqueFormFieldIds`,
   `uniqueFormFields` and `MAX_STAGE_ID_LENGTH` are removed, and
   `createDefaultFinishSessionStage` requires a `ProtocolObjectId`.
