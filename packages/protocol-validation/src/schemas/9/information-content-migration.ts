@@ -42,6 +42,21 @@ type Part =
       messages: Readonly<Record<string, string>>;
     }>;
 
+/**
+ * A piece of an Information page as it was drawn, apart from the others: its
+ * heading, a block of text, or a file. A heading, a text or a description is
+ * a string, in the page's default language, or a message for each language.
+ * A heading and a description are plain text; a text is markdown.
+ */
+export type InformationPagePart =
+  | Readonly<{ kind: 'heading'; text: unknown }>
+  | Readonly<{ kind: 'text'; text: unknown }>
+  | Readonly<{
+      kind: 'file';
+      block: Omit<AssetBlock, 'description'>;
+      description?: unknown;
+    }>;
+
 /** The translations of localized text that say something. */
 const shownMessages = (text: Record<string, unknown>): Record<string, string> =>
   Object.fromEntries(
@@ -483,10 +498,14 @@ const assetKindOf = (assetManifest: unknown, assetId: string): unknown => {
   return isRecord(asset) ? asset.type : undefined;
 };
 
-const assetPart = (
+/**
+ * The block an asset item becomes, with its description, or nothing where it
+ * showed no file.
+ */
+const itemFile = (
   item: Record<string, unknown>,
   assetManifest: unknown,
-): Part | undefined => {
+): InformationPagePart | undefined => {
   const { content: assetId, description, size } = item;
   // An item naming no file showed a notice that it was unavailable, and has
   // nothing a block could name.
@@ -496,17 +515,27 @@ const assetPart = (
   // block naming it would be refused when the protocol is checked.
   const kind = assetKindOf(assetManifest, assetId);
   if (!isAssetBlockKind(kind)) return undefined;
-  const block: AssetBlock = {
-    assetId,
-    // Size shaped images and videos only; an audio player has one height.
-    ...(kind !== 'audio' &&
-      typeof size === 'string' &&
-      SIZES[size] !== undefined && { size: SIZES[size] }),
-    // Audio played once where video repeated, and its player sat where a
-    // line of text starts where images were centred; a block repeats and is
-    // centred unless it says otherwise.
-    ...(kind === 'audio' && { align: 'start', loop: false }),
+  return {
+    kind: 'file',
+    block: {
+      assetId,
+      // Size shaped images and videos only; an audio player has one height.
+      ...(kind !== 'audio' &&
+        typeof size === 'string' &&
+        SIZES[size] !== undefined && { size: SIZES[size] }),
+      // Audio played once where video repeated, and its player sat where a
+      // line of text starts where images were centred; a block repeats and
+      // is centred unless it says otherwise.
+      ...(kind === 'audio' && { align: 'start', loop: false }),
+    },
+    description,
   };
+};
+
+const filePart = (
+  block: Omit<AssetBlock, 'description'>,
+  description: unknown,
+): Part => {
   if (typeof description === 'string' && !isBlankText(description)) {
     return {
       kind: 'plain',
@@ -525,10 +554,13 @@ const assetPart = (
   };
 };
 
-const itemPart = (item: unknown, assetManifest: unknown): Part | undefined => {
+const itemPart = (
+  item: unknown,
+  assetManifest: unknown,
+): InformationPagePart | undefined => {
   if (!isRecord(item)) return undefined;
-  if (item.type === 'text') return textPart(item.content);
-  if (item.type === 'asset') return assetPart(item, assetManifest);
+  if (item.type === 'text') return { kind: 'text', text: item.content };
+  if (item.type === 'asset') return itemFile(item, assetManifest);
   return undefined;
 };
 
@@ -727,29 +759,60 @@ const joinParts = (
   );
 };
 
+const pagePart = (part: InformationPagePart): Part | undefined => {
+  if (part.kind === 'heading') return headingPart(part.text);
+  if (part.kind === 'text') return textPart(part.text);
+  return filePart(part.block, part.description);
+};
+
+/**
+ * An Information page drawn as separate parts (a heading, blocks of text and
+ * files, in order), as one text that a participant reads as they read the
+ * parts. A heading is escaped to show as written; a text is left as it is,
+ * since it is markdown already; and each file is a block naming it (see
+ * `AssetBlock`), with its description. A text that left a code block or raw
+ * HTML open is closed where it ended (see `selfContained`), so the parts
+ * below it are still shown; and where texts would still read differently as
+ * one text than each read alone, they are written again in a form that does
+ * not (see `joinPlainParts`). A heading, text or description of only spaces
+ * showed nothing and is left out; a page that would then be empty takes
+ * `fallbackHeading` (the stage's name) as its heading, since the text must
+ * say something, and with nothing there either there is no text.
+ *
+ * Parts written as strings give a string, in the default language, for the
+ * caller to record as that language's text (escaped as a message, with
+ * `escapeMessageText`); where any part is written per language, the text is
+ * written per language (see `joinParts`).
+ */
+export const informationPageContent = (
+  parts: readonly InformationPagePart[],
+  {
+    defaultLocale,
+    fallbackHeading,
+  }: Readonly<{ defaultLocale: string; fallbackHeading?: unknown }>,
+): string | Record<string, string> | undefined => {
+  const written = parts.map(pagePart).filter((part) => part !== undefined);
+  const fallback =
+    written.length === 0 ? headingPart(fallbackHeading) : undefined;
+  const shown = fallback === undefined ? written : [fallback];
+  return shown.length === 0 ? undefined : joinParts(shown, defaultLocale);
+};
+
 /**
  * Schema 9 keeps an Information stage's page as one text, where schema 8
  * had a title the interview showed as a heading and a list of items below it,
  * each a block of text or a file. The page is written out in the order it
- * was shown: the title as a heading, escaped to show as written; each text
- * item as it is, since it was markdown already; and each file as a block
- * naming it (see `AssetBlock`), with its description and size. A text item
- * that left a code block or raw HTML open is closed where it ended (see
- * `selfContained`), so the items below it are still shown; and where the
- * items would still read differently as one text than each read alone, they
- * are written again in a form that does not (see `joinPlainParts`). An item
- * naming a file that is not an image, an audio recording or a video among the
- * protocol's assets showed a notice that it was unavailable, and is left out.
+ * was shown, as `informationPageContent` joins parts drawn apart: the title
+ * as its heading, each text item, and each file item as a block with its
+ * description and size. An item naming a file that is not an image, an
+ * audio recording or a video among the protocol's assets showed a notice
+ * that it was unavailable, and is left out.
  *
  * A file's description names it for a participant who cannot see or hear
  * it. A text item's was a note to the researcher that no participant saw,
  * and the text has nowhere to keep one, so it is left out, as is each item's
- * `id`.
- *
- * Schema 8 accepted a title or a text item of only spaces, which showed
- * nothing; each is left out, so the page still shows nothing in its place. A
- * page that would then be empty takes the stage's name as its heading, since
- * the text must say something.
+ * `id`. A page left with nothing to show takes the stage's name as its
+ * heading.
  *
  * A stage already written as one text is left as it is, so migrating one
  * document twice gives one result.
@@ -764,22 +827,23 @@ export const combineInformationContent = (
     if (stage.content !== undefined) continue;
     const { title, items, ...rest } = stage;
     if (title === undefined && items === undefined) continue;
-    const written = [
-      headingPart(title),
-      ...(Array.isArray(items) ? items : []).map((item: unknown) =>
-        itemPart(item, protocol.assetManifest),
-      ),
-    ].filter((part) => part !== undefined);
-    const fallback =
-      written.length === 0 ? headingPart(stage.label) : undefined;
-    const parts = fallback === undefined ? written : [fallback];
+    const parts: InformationPagePart[] = [
+      { kind: 'heading', text: title },
+      ...(Array.isArray(items) ? items : [])
+        .map((item: unknown) => itemPart(item, protocol.assetManifest))
+        .filter((part) => part !== undefined),
+    ];
+    const content = informationPageContent(parts, {
+      defaultLocale,
+      fallbackHeading: stage.label,
+    });
     for (const key of Object.keys(stage)) Reflect.deleteProperty(stage, key);
     Object.assign(
       stage,
       rest,
       // With nothing to show and no name either, the text is left for
       // validation to report.
-      parts.length > 0 && { content: joinParts(parts, defaultLocale) },
+      content !== undefined && { content },
     );
   }
 };

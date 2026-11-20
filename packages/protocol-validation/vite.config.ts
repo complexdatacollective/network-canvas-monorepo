@@ -116,6 +116,10 @@ export default defineConfig({
         'messages': resolve(__dirname, 'src/messages.ts'),
         'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
         'schema-version': resolve(__dirname, 'src/schemaVersion.ts'),
+        'testing/information-pages': resolve(
+          __dirname,
+          'src/testing/informationPages.ts',
+        ),
       },
       name: 'ProtocolValidation',
       // the proper extensions will be added

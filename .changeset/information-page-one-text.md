@@ -79,10 +79,9 @@ block is drawn with), `SegmentedSwitcherField` and `testing/assetBlock`, and
 `Popover` passes on `collisionAvoidance`, `collisionPadding` and
 `collisionBoundary`; and `RenderMarkdown` takes `blockImages`, which draws
 matching markdown images with a component of the caller's and never draws one
-from raw HTML. `SyntheticInterview` builds Information stages in the new shape:
-each language's page holds each part (title, text, block descriptions) as the
-interview showed it there, falling back as it does where a part has no
-translation in that language. `@codaco/protocol-validation` exports
-`resolveTextsInEachLocale`, which reads separately translated texts that way,
-and `messageHeadingMarkdown` and `assetBlockMessage`, which write a heading or
-a block from a message, escaping only its words.
+from raw HTML. `@codaco/protocol-validation` exports `informationPageContent`,
+which joins a page drawn as parts (a heading, text, files) into its one text
+exactly as the 8 to 9 migration does, and `./testing/information-pages`, the
+pages its tests check that against. `SyntheticInterview` builds Information
+stages in the new shape through it: `addInformationStage`'s title, text and
+blocks are joined as a migrated page's title and items are.

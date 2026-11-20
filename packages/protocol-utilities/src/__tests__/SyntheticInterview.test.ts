@@ -1958,10 +1958,13 @@ describe('addInformationStage content', () => {
       });
     });
 
-    it('reads a part only in another language there in the default language too', () => {
+    // The page is written in the languages a part is written in; a
+    // participant reading the default language falls back to it, as they
+    // fell back to the text.
+    it('writes a page only in the language a part alone is written in', () => {
       expect(
         informationIn(EN_FR, { title: 'Welcome', text: { fr: 'Bonjour' } }),
-      ).toEqual({ en: '# Welcome\n\nBonjour', fr: '# Welcome\n\nBonjour' });
+      ).toEqual({ fr: '# Welcome\n\nBonjour' });
     });
 
     it("reads a part without a language in that language's closest relative", () => {
@@ -1989,13 +1992,15 @@ describe('addInformationStage content', () => {
       ).toEqual({ en: '# Welcome\n\nHello', fr: '# Bienvenue\n\nHello' });
     });
 
-    it('shows nothing for a translation that is blank, and keeps the rest', () => {
+    // Schema 9 holds no blank translation: it is left out, and the
+    // language falls back to another, as the migration does.
+    it('leaves out a translation that is blank', () => {
       expect(
         informationIn(EN_FR, {
           title: { en: 'Welcome', fr: '  ' },
           text: 'Hello',
         }),
-      ).toEqual({ en: '# Welcome\n\nHello', fr: 'Hello' });
+      ).toEqual({ en: '# Welcome\n\nHello' });
     });
   });
 
@@ -2154,6 +2159,74 @@ describe('addInformationStage content', () => {
       });
       expect(description(message, {})).toBe("A [b] c\\d {e} it's #1");
     });
+  });
+
+  // The title, the text and each file were once drawn apart, so what the
+  // text left open ended with it. In one page it would run on over the
+  // files below, as the Information migration closes it for.
+  describe('text that leaves something open', () => {
+    const page = (
+      opts: Parameters<SyntheticInterview['addInformationStage']>[0],
+    ) => {
+      const synth = new SyntheticInterview();
+      synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+      synth.addInformationStage(opts);
+      return contentOf(synth).en ?? '';
+    };
+    // The files a participant is shown, as the interview's markdown reads
+    // the page: a file swallowed by a code block or a comment is not one.
+    const filesShown = (text: string | LocalizedString) =>
+      assetBlocksInMarkdown(
+        messageText(
+          page({
+            title: 'T',
+            text,
+            blocks: [{ assetId: 'photo', description: 'Map' }],
+          }),
+        ),
+      ).map(({ block }) => block);
+
+    it.each([
+      ['a code block fenced with backticks', '```\nExample'],
+      ['a code block with a longer fence', '````\nExample'],
+      ['a code block fenced with tildes', '~~~\nExample'],
+      ['an HTML comment', '<!-- note'],
+      ['a pre element', '<pre>\nkept as typed'],
+      ['a processing instruction', '<?php echo 1'],
+    ])('closes %s, so the file below it is still shown', (_what, text) => {
+      expect(filesShown(text)).toEqual([
+        { assetId: 'photo', description: 'Map' },
+      ]);
+    });
+
+    it('closes each language of text written per language', () => {
+      expect(filesShown({ en: '```\nExample' })).toEqual([
+        { assetId: 'photo', description: 'Map' },
+      ]);
+    });
+
+    // The interview reads a page's raw HTML as one document, where an
+    // element left open holds what follows and bold is opened again in
+    // every block below.
+    it.each([
+      ['bold', 'Read <strong>this', 'Read <strong>this</strong>'],
+      ['a raw block', '<div>\n\nInside', '<div>\n\nInside\n\n</div>'],
+    ])('ends %s the text left open before the file', (_what, text, ended) => {
+      expect(
+        page({
+          title: 'T',
+          text,
+          blocks: [{ assetId: 'photo' }],
+        }),
+      ).toBe(`# T\n\n${ended}\n\n![](asset:photo)`);
+    });
+  });
+
+  it('takes the stage label as the heading of a page with nothing else', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+    synth.addInformationStage({ title: ' ', text: ' ', label: 'Intro screen' });
+    expect(contentOf(synth)).toEqual({ en: '# Intro screen' });
   });
 
   it('writes text given as a string in the default language set after the stage is added', () => {

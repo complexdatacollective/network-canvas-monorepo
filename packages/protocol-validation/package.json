@@ -19,7 +19,8 @@
     ".": "./src/index.ts",
     "./messages": "./src/messages.ts",
     "./locales": "./src/locales/catalogs.ts",
-    "./schema-version": "./src/schemaVersion.ts"
+    "./schema-version": "./src/schemaVersion.ts",
+    "./testing/information-pages": "./src/testing/informationPages.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -40,6 +41,10 @@
       "./schema-version": {
         "types": "./dist/schema-version.d.ts",
         "import": "./dist/schema-version.js"
+      },
+      "./testing/information-pages": {
+        "types": "./dist/testing/information-pages.d.ts",
+        "import": "./dist/testing/information-pages.js"
       }
     },
     "access": "public"

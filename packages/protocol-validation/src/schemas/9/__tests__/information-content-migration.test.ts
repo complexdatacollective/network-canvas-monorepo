@@ -4,6 +4,14 @@ import { assetBlocksInMarkdown } from '../../../localization/assetBlock.ts';
 import { dynamicMessageParts } from '../../../localization/dynamicValueMessages.ts';
 import { markdownTree } from '../../../localization/markdownTree.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
+import {
+  assetItem,
+  INFORMATION_PAGE_ASSETS,
+  TEXT_PIECES,
+  TEXTS_LEAVING_HTML_OPEN,
+  TEXTS_LEFT_OPEN,
+  textItem,
+} from '../../../testing/informationPages.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
 import { combineInformationContent } from '../information-content-migration.ts';
@@ -15,11 +23,7 @@ const EN_FR = { defaultLocale: 'en', locales: ['en', 'fr'] } as const;
 
 type Fields = Record<string, unknown>;
 
-const MANIFEST = {
-  photo: { id: 'photo', type: 'image', name: 'photo.png', source: 'photo.png' },
-  clip: { id: 'clip', type: 'video', name: 'clip.mp4', source: 'clip.mp4' },
-  tune: { id: 'tune', type: 'audio', name: 'tune.mp3', source: 'tune.mp3' },
-};
+const MANIFEST = INFORMATION_PAGE_ASSETS;
 
 /** A protocol holding one Information stage, combined in place. */
 const combined = (
@@ -36,18 +40,9 @@ const combined = (
   return result;
 };
 
-const text = (id: string, content: unknown): Fields => ({
-  id,
-  type: 'text',
-  content,
-});
+const text = textItem;
 
-const asset = (id: string, content: unknown, extra: Fields = {}): Fields => ({
-  id,
-  type: 'asset',
-  content,
-  ...extra,
-});
+const asset = assetItem;
 
 describe('combineInformationContent', () => {
   it('writes the title as a heading, then each item in order, joined by blank lines', () => {
@@ -150,14 +145,7 @@ describe('combineInformationContent', () => {
     // Schema 8 drew each item alone, so what one left open ended with it.
     // Each case is what the item is closed with; without it the image below
     // is read as part of the item, and is no block.
-    it.each([
-      ['an HTML comment', '<!-- note: check wording', '-->'],
-      ['a code block fenced with backticks', '```\ncode', '```'],
-      ['a code block with a longer fence', '````\ncode', '````'],
-      ['a code block fenced with tildes', '~~~\ncode', '~~~'],
-      ['a pre element', '<pre>\nkept as typed', '</pre>'],
-      ['a processing instruction', '<?php echo 1', '?>'],
-    ])(
+    it.each(TEXTS_LEFT_OPEN)(
       'closes %s, so the items below it are still shown',
       (_what, open, close) => {
         const { content } = combined({
@@ -216,40 +204,7 @@ describe('combineInformationContent', () => {
           items: items.map((content, index) => text(`t${index}`, content)),
         }).content;
 
-      it.each([
-        [
-          'a link, after its last words',
-          '<a href="https://example.com">First',
-          '<a href="https://example.com">First</a>',
-        ],
-        [
-          'bold and italics, innermost first',
-          'Read <strong>this <em>now',
-          'Read <strong>this <em>now</em></strong>',
-        ],
-        ['a heading, in its own HTML', '<h2>A heading', '<h2>A heading</h2>'],
-        [
-          'a list, in its own HTML',
-          '<ul><li>A raw list',
-          '<ul><li>A raw list</li></ul>',
-        ],
-        ['a paragraph, in its own HTML', '<p>Raw', '<p>Raw</p>'],
-        [
-          'emphasis the blocks below were drawn inside, after them',
-          '<em>First\n\nand second',
-          '<em>First\n\nand second\n\n</em>',
-        ],
-        [
-          'a raw block the markdown below was drawn inside, after it',
-          '<div>\n\nInside',
-          '<div>\n\nInside\n\n</div>',
-        ],
-        [
-          'several ends after the item, behind an empty comment that makes them HTML',
-          '<strong>a <em>b\n\nc',
-          '<strong>a <em>b\n\nc\n\n<!----></em></strong>',
-        ],
-      ])('ends %s', (_what, open, ended) => {
+      it.each(TEXTS_LEAVING_HTML_OPEN)('ends %s', (_what, open, ended) => {
         expect(page(open, 'Second')).toBe(`${ended}\n\nSecond`);
       });
 
@@ -449,31 +404,7 @@ describe('combineInformationContent', () => {
 
     // Each is something one text reads across the whole of it, or that the
     // text before it can change the reading of.
-    const PIECES = [
-      'A paragraph.',
-      '- a\n- b',
-      '* a\n\n* b',
-      '+ a',
-      '1. a\n2. b',
-      '1) a',
-      '3. third',
-      '- a\n  - nested\n\n  second paragraph',
-      'Uses [label] and [other][label].\n\n[label]: https://example.com/one',
-      'Says [label] and means it.',
-      '[label]: https://example.com/two "Two"\n\nAnother [label].',
-      '![picture][label]\n\n[label]: https://example.com/three.png',
-      '    indented code',
-      '```\nfenced and left open',
-      '<!-- a comment left open',
-      '> a quotation',
-      'Heading\n===',
-      '---',
-      '| a | b |\n| - | - |\n| 1 | 2 |',
-      '- [ ] a task',
-      '~~struck~~ and www.example.com',
-      'Line one  \nline two\\\nline three',
-      'A note[^1].\n\n[^1]: The note, with a [label].',
-    ];
+    const PIECES = TEXT_PIECES;
 
     it('reads every pair of items, joined, as each read alone', () => {
       for (const first of PIECES) {

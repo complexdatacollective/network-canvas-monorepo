@@ -1,7 +1,6 @@
 import { invariant } from 'es-toolkit';
 
 import {
-  assetBlockMessage,
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
   defaultFinishSessionFields,
@@ -14,9 +13,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   escapeMarkdownText,
   escapeMessageText,
-  isBlankMessage,
-  messageHeadingMarkdown,
-  resolveTextsInEachLocale,
+  informationPageContent,
   type FinishMode,
   type FinishOutcome,
   type Experiments,
@@ -2763,67 +2760,35 @@ export class SyntheticInterview {
   }
 
   /**
-   * An Information page's markdown in each language its parts are written in.
-   * Each part was once a text of its own, which a participant read in their
-   * language or, where it had no translation there, in the one the interview
-   * fell back to; the page in each language is each part as it was read
-   * there (see `resolveTextsInEachLocale`), and a part that read as nothing
-   * is left out.
-   *
-   * Every part is a message: text written as a string is the default
-   * language's words as typed, so it is the message that shows them as
-   * written, and text written per language is a message already. The title
-   * and each description are plain text, so the words of each message are
-   * escaped as markdown, and what it shows of a value, the versions it
-   * chooses between and a plural's count are left as they are (see
-   * `messageHeadingMarkdown`); the text is markdown, and is left as it is.
+   * An Information page, its parts joined into one text exactly as the 8 to
+   * 9 migration joins a page's title and items (see
+   * `informationPageContent`): the title is the page's heading, the text
+   * follows, then each block. Text written as a string is the default
+   * language's (the title and a description plain text, the text markdown);
+   * text written per language is a message. Unlike a migrated item, a block
+   * is written with the settings given, and names its file whether or not
+   * the protocol holds it.
    */
-  private informationContent({
-    title,
-    text,
-    blocks,
-  }: NonNullable<StageEntry['information']>): Record<string, string> {
-    const { defaultLocale } = this.localization;
-    const message = (input: TextInput): LocalizedString =>
-      typeof input === 'string'
-        ? { [defaultLocale]: escapeMessageText(input) }
-        : input;
-    // Each part as it is written by language (a string where it is the same
-    // in every language), with how its words make a block of the page.
-    const parts: {
-      written: string | LocalizedString;
-      block: (words: string) => string;
-    }[] = [
+  private informationContent(
+    { title, text, blocks }: NonNullable<StageEntry['information']>,
+    label: TextInput,
+  ): LocalizedString | undefined {
+    const content = informationPageContent(
+      [
+        { kind: 'heading', text: title },
+        ...(text === undefined ? [] : [{ kind: 'text' as const, text }]),
+        ...blocks.map(({ description, ...block }) => ({
+          kind: 'file' as const,
+          block,
+          description,
+        })),
+      ],
       {
-        written: message(title),
-        block: (heading) =>
-          isBlankMessage(heading) ? '' : messageHeadingMarkdown(heading),
+        defaultLocale: this.localization.defaultLocale,
+        fallbackHeading: label,
       },
-      ...(text === undefined
-        ? []
-        : [{ written: message(text), block: (body: string) => body }]),
-      ...blocks.map(({ description, ...block }) => ({
-        written: description === undefined ? '' : message(description),
-        block: (described: string) =>
-          assetBlockMessage({
-            ...block,
-            ...(!isBlankMessage(described) && { description: described }),
-          }),
-      })),
-    ];
-    const read = resolveTextsInEachLocale(
-      parts.map((part) => part.written),
-      defaultLocale,
     );
-    return Object.fromEntries(
-      Object.entries(read).map(([locale, words]) => [
-        locale,
-        parts
-          .map((part, index) => part.block(words[index] ?? ''))
-          .filter((paragraph) => !isBlankMessage(paragraph))
-          .join('\n\n'),
-      ]),
-    );
+    return content === undefined ? undefined : this.localized(content);
   }
 
   private buildComposerField(
@@ -3044,7 +3009,8 @@ export class SyntheticInterview {
     }
 
     if (stage.information) {
-      config.content = this.informationContent(stage.information);
+      const content = this.informationContent(stage.information, stage.label);
+      if (content !== undefined) config.content = content;
     }
 
     if (stage.mode !== undefined) {

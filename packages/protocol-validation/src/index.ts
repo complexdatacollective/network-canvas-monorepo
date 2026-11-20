@@ -120,7 +120,6 @@ export {
   type AssetBlockKind,
   type AssetBlockSize,
   assetBlockMarkdown,
-  assetBlockMessage,
   assetBlocksInMarkdown,
   assetBlocksInMessage,
   assetBlockUrl,
@@ -139,7 +138,6 @@ export {
 export {
   escapeMarkdownText,
   headingMarkdown,
-  messageHeadingMarkdown,
 } from './localization/markdownText.ts';
 export {
   escapeMessageText,
@@ -156,7 +154,6 @@ export {
 export {
   type ResolvedLocalizedString,
   resolveLocalizedString,
-  resolveTextsInEachLocale,
 } from './localization/resolveLocalizedString.ts';
 export {
   MigrationChain,
@@ -225,6 +222,12 @@ export {
   type LocalizedTextLines,
   type LocalizedTextShape,
 } from './schemas/9/localized-string.ts';
+// An Information page drawn as parts, joined into its one text: what the
+// 8 to 9 migration writes, and what a synthetic interview builds.
+export {
+  type InformationPagePart,
+  informationPageContent,
+} from './schemas/9/information-content-migration.ts';
 // A stage's dynamic values: the bindings, the path vocabulary, and the one
 // table of what each site can show, which validation and Architect share.
 export {
