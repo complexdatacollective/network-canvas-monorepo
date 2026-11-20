@@ -374,7 +374,7 @@ describe('the results', () => {
     );
   });
 
-  it('has the feedback and review buttons under the list, and nothing about when, by whom or reviewing again', async () => {
+  it('has Dismiss review, feedback and the review button under the list, and nothing about when, by whom or reviewing again', async () => {
     await reviewed(store);
     renderToolbar(store);
 
@@ -386,8 +386,8 @@ describe('the results', () => {
       .map(nameOf);
     expect(outsideTheList).toEqual([
       'Close',
-      'Leave feedback on this review',
       'Dismiss review',
+      'Leave feedback on this review',
       'Go through 4 problems',
     ]);
     expect(within(panel).queryByRole('radiogroup')).toBeNull();
@@ -525,8 +525,8 @@ describe('the results', () => {
     ).toBeNull();
     expect(within(panel).getAllByRole('button').map(nameOf)).toEqual([
       'Close',
-      'Leave feedback on this review',
       'Dismiss review',
+      'Leave feedback on this review',
     ]);
   });
 
