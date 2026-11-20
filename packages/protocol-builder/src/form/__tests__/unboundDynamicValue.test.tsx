@@ -65,16 +65,4 @@ describe('a stage text that shows a value the stage does not bind', () => {
       ).toHaveFocus(),
     );
   });
-
-  it('draws the value as a missing pill in the text', async () => {
-    const harness = openWithUnboundValue();
-    await harness.opened();
-
-    const pill = screen
-      .getByRole('textbox', { name: 'Page heading' })
-      .querySelector('[data-token="ghost"]');
-    expect(pill).toHaveTextContent('Missing: ghost');
-    expect(pill).toHaveAttribute('data-variant', 'missing');
-    expect(pill?.querySelector('.lucide-triangle-alert')).toBeInTheDocument();
-  });
 });

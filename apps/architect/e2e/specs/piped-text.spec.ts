@@ -161,12 +161,10 @@ test.describe('text that names a value it does not bind', () => {
     await seed(protocolNamingUnboundValue());
     await openStage(page, INFO_STAGE_ID);
 
-    // The text shows, the unbound name as a pill that says it is missing.
+    // The text shows, the unbound name as a pill carrying the recorded name.
     const heading = piped.textbox(PAGE_HEADING);
-    await expect(heading).toHaveText('Missing: ghost welcome');
-    await expect(
-      heading.locator('[data-token][data-variant="missing"]'),
-    ).toHaveText('Missing: ghost');
+    await expect(heading).toHaveText('ghost welcome');
+    await expect(heading.getByText('ghost', { exact: true })).toBeVisible();
     await expect(heading).toHaveAttribute('aria-invalid', 'true');
     await expect(
       piped
@@ -216,10 +214,10 @@ test.describe('text that names a value it does not bind', () => {
     });
     const cellName = /^Stage 2 .*Page content › Page heading English$/;
 
-    // Read: the cell shows the value as missing.
+    // Read: the cell shows the name the text recorded.
     const cell = table.getByRole('button', { name: cellName });
     await expect(cell.locator('xpath=ancestor::td')).toContainText(
-      'Missing: ghost welcome',
+      'ghost welcome',
     );
     await expect(cell).toHaveAttribute('aria-invalid', 'false');
 
@@ -227,7 +225,7 @@ test.describe('text that names a value it does not bind', () => {
     await cell.click();
     const box = table.getByRole('textbox', { name: cellName });
     await expect(box).toBeFocused();
-    await expect(box).toHaveText('Missing: ghost welcome');
+    await expect(box).toHaveText('ghost welcome');
     await page.keyboard.press('End');
     await page.keyboard.type(' there');
     await table

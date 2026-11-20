@@ -25,12 +25,13 @@ of the language. Values show as pills in the stage editors, the translation
 table and the protocol summary. Showing a value is optional in every
 language: a translation may leave out a value the default-language text
 shows. Text that shows values a field cannot edit is shown as it is, with a
-note saying why. A value the text refers to that does not exist, as a
-protocol edited outside Architect can hold, shows as a red pill with a
-warning icon that reads "Missing:" and the value's name, and the stage is not
-saved until it is replaced or removed: the message is "This text refers to a
-value that does not exist", with the name. When a stage is not saved because
-of its piped text, the first field with a problem takes focus.
+note saying why. An attribute that a piped value shows cannot be deleted
+from the codebook, including while the stage that shows it is still unsaved.
+A protocol whose text refers to a value that does not exist is refused with
+"This text refers to a value that does not exist" and the name, and one whose
+formatted text has a line break inside a version is refused too. When a stage
+is not saved because of its piped text, the first field with a problem takes
+focus.
 
 - `@codaco/fresco-ui`'s rich text editor opens its insert menu from an icon
   button (a syringe icon, named and tipped by the menu's label), and every
@@ -49,9 +50,7 @@ of its piped text, the first field with a problem takes focus.
   folds it. A version's edits belong to the field's undo history, undone and
   redone from the version or the line around it, and choosing from the menu
   hands the caret back to the text. The editor keeps its history when a host
-  passes the same placeholders in another order. A placeholder marked
-  `missing`, and `TokenPill`'s `missing` variant, draw the pill as a problem:
-  in the destructive colour, opening with a warning icon.
+  passes the same placeholders in another order.
 - `@codaco/protocol-validation` exports `messageStructure` and
   `printMessageStructure`, which turn an ICU message into the tree of
   versions the editor shows and back, and `pluralValueExamples`, the plural

@@ -1,5 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 
+import { parseDynamicValuePath } from '@codaco/protocol-validation';
 import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import type { RootState } from '~/ducks/store';
 
@@ -37,6 +38,24 @@ const isUsedMapEquals = (a: IsUsedMap, b: IsUsedMap): boolean => {
 const getLiveStageValues = (_state: RootState) => readStageDraft().stage;
 
 /**
+ * The variables a stage's piped text shows. A binding names its attribute
+ * inside a longer path (`ego.<id>`), which the string search below cannot
+ * find.
+ */
+const dynamicValueVariablesOf = (stage: unknown): string[] => {
+  if (typeof stage !== 'object' || stage === null) return [];
+  if (!('dynamicValues' in stage)) return [];
+  const bindings = stage.dynamicValues;
+  if (typeof bindings !== 'object' || bindings === null) return [];
+  return Object.values(bindings).flatMap((binding: unknown) => {
+    if (typeof binding !== 'object' || binding === null) return [];
+    if (!('path' in binding) || typeof binding.path !== 'string') return [];
+    const parsed = parseDynamicValuePath(binding.path);
+    return parsed?.kind === 'attribute' ? [parsed.variableId] : [];
+  });
+};
+
+/**
  * Gets a key value object describing which variables are in use, including by
  * the stage currently being edited but not yet saved.
  *
@@ -71,10 +90,13 @@ export const getIsUsed = createSelector(
     const referencedVariables = new Set(Object.values(variableIndex));
 
     const liveStageData = liveValues ? JSON.stringify(liveValues) : '';
+    const shownByLiveStage = new Set(dynamicValueVariablesOf(liveValues));
 
     return variableIds.reduce<IsUsedMap>((memo, variableId) => {
       const inProtocol = referencedVariables.has(variableId);
-      const inLiveStage = liveStageData.includes(`"${variableId}"`);
+      const inLiveStage =
+        liveStageData.includes(`"${variableId}"`) ||
+        shownByLiveStage.has(variableId);
 
       memo[variableId] = inProtocol || inLiveStage;
       return memo;

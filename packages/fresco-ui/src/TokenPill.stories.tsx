@@ -31,8 +31,6 @@ import { TokenizedText, TokenPill } from '@codaco/fresco-ui/TokenPill';
 - \`token\`: what the text records for the placeholder.
 - \`label\`: what the pill says, and what a screen reader reads.
 - \`selected\`: outlines the pill, as the editor does while the caret is on it.
-- \`variant\`: \`value\` (the default), \`logic\`, or \`missing\` for a value the
-  text names that nothing supplies.
 - \`TokenizedText\` \`parts\`: a run of words, or \`{ token }\`; \`tokens\`: the
   label of each token the text may hold.
 `,
@@ -65,26 +63,6 @@ export const InText: Story = {
     const pill = canvasElement.querySelector('[data-token="#"]');
     await expect(pill).toHaveTextContent('Number');
     await expect(pill).toBeVisible();
-  },
-};
-
-/**
- * A value the text names that nothing supplies. The pill is drawn as a
- * problem, with a warning icon, and its label says what is wrong in words.
- */
-export const Missing: Story = {
-  args: { token: 'nickname', label: 'Missing: nickname', variant: 'missing' },
-  decorators: [
-    (Story) => (
-      <p>
-        Welcome, <Story />
-      </p>
-    ),
-  ],
-  play: async ({ canvasElement }) => {
-    const pill = canvasElement.querySelector('[data-token="nickname"]');
-    await expect(pill).toHaveAttribute('data-variant', 'missing');
-    await expect(pill?.querySelector('.lucide-triangle-alert')).toBeVisible();
   },
 };
 

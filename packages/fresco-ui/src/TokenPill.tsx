@@ -1,7 +1,7 @@
 'use client';
 
 import type { DOMOutputSpec } from '@tiptap/pm/model';
-import { Split, Syringe, TriangleAlert } from 'lucide-react';
+import { Split, Syringe } from 'lucide-react';
 import { type ComponentPropsWithoutRef, Fragment } from 'react';
 
 import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
@@ -58,28 +58,9 @@ type TokenPillProps = Omit<ComponentPropsWithoutRef<'span'>, 'children'> & {
 /**
  * What a pill stands for: a `value` filled in later, or `logic`, a piece of
  * text that reads differently by case. Logic is drawn in a colour and with an
- * icon of its own, so it can be told from a value in a line of pills. A
- * `missing` pill is a value the text names that nothing supplies: it is drawn
- * as a problem, and its label should say so in words.
+ * icon of its own, so it can be told from a value in a line of pills.
  */
-export type TokenPillVariant = 'value' | 'logic' | 'missing';
-
-const variantClasses: Record<TokenPillVariant, string> = {
-  value:
-    'border-primary/40 bg-primary/10 data-selected:outline-primary [&.ProseMirror-selectednode]:outline-primary',
-  logic:
-    'border-info/50 bg-info/10 data-selected:outline-info [&.ProseMirror-selectednode]:outline-info',
-  missing:
-    // Filled, with the outline set off from it, so the words keep their
-    // contrast and a selected pill still shows its outline.
-    'border-destructive bg-destructive text-destructive-contrast data-selected:outline-offset-2 data-selected:outline-destructive [&.ProseMirror-selectednode]:outline-offset-2 [&.ProseMirror-selectednode]:outline-destructive',
-};
-
-const variantIcons = {
-  value: Syringe,
-  logic: Split,
-  missing: TriangleAlert,
-} satisfies Record<TokenPillVariant, typeof Syringe>;
+export type TokenPillVariant = 'value' | 'logic';
 
 export const tokenPillClasses = (
   className?: string,
@@ -93,7 +74,9 @@ export const tokenPillClasses = (
     // in, so a pill in a bold label or a heading reads as it does in the
     // editor.
     'font-body font-bold data-selected:outline-2 [&.ProseMirror-selectednode]:outline-2',
-    variantClasses[variant],
+    variant === 'logic'
+      ? 'border-info/50 bg-info/10 data-selected:outline-info [&.ProseMirror-selectednode]:outline-info'
+      : 'border-primary/40 bg-primary/10 data-selected:outline-primary [&.ProseMirror-selectednode]:outline-primary',
     className,
   );
 
@@ -117,11 +100,12 @@ const splitFirstWord = (label: string): readonly [string, string] => {
 const SVG = 'http://www.w3.org/2000/svg';
 
 /**
- * An icon a pill opens with, as DOM the editor builds itself: lucide's own
- * drawing of it, attribute for attribute. Hidden from screen readers; the
- * pill's words name it.
+ * The icon a pill opens with, lucide's `Syringe` (a value injected into the
+ * text), as DOM
+ * the editor builds itself: lucide's own drawing of it, attribute for
+ * attribute. Hidden from screen readers; the pill's words name it.
  */
-const iconSpec = (name: string, paths: readonly string[]): DOMOutputSpec => [
+const tokenPillIconSpec: DOMOutputSpec = [
   `${SVG} svg`,
   {
     'xmlns': SVG,
@@ -132,27 +116,18 @@ const iconSpec = (name: string, paths: readonly string[]): DOMOutputSpec => [
     'stroke-linecap': 'round',
     'stroke-linejoin': 'round',
     'aria-hidden': 'true',
-    'class': `lucide lucide-${name} ${tokenPillIconClasses}`,
+    'class': `lucide lucide-syringe ${tokenPillIconClasses}`,
   },
-  ...paths.map((d): DOMOutputSpec => [`${SVG} path`, { d }]),
+  [`${SVG} path`, { d: 'm18 2 4 4' }],
+  [`${SVG} path`, { d: 'm17 7 3-3' }],
+  [
+    `${SVG} path`,
+    { d: 'M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5' },
+  ],
+  [`${SVG} path`, { d: 'm9 11 4 4' }],
+  [`${SVG} path`, { d: 'm5 19-3 3' }],
+  [`${SVG} path`, { d: 'm14 4 6 6' }],
 ];
-
-/** Lucide's `Syringe`: a value injected into the text. */
-const tokenPillIconSpec = iconSpec('syringe', [
-  'm18 2 4 4',
-  'm17 7 3-3',
-  'M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5',
-  'm9 11 4 4',
-  'm5 19-3 3',
-  'm14 4 6 6',
-]);
-
-/** Lucide's `TriangleAlert`, for a value the text names that is missing. */
-const missingIconSpec = iconSpec('triangle-alert', [
-  'm21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3',
-  'M12 9v4',
-  'M12 17h.01',
-]);
 
 /**
  * A pill's contents as DOM the editor builds itself, as `TokenPill` draws
@@ -161,16 +136,10 @@ const missingIconSpec = iconSpec('triangle-alert', [
  */
 export const tokenPillContentSpec = (
   label: TokenPillLabel,
-  missing = false,
 ): (DOMOutputSpec | string)[] => {
   const [first, rest] = splitFirstWord(presentationalTextValue(label));
   return [
-    [
-      'span',
-      { class: tokenPillLeadClasses },
-      missing ? missingIconSpec : tokenPillIconSpec,
-      first,
-    ],
+    ['span', { class: tokenPillLeadClasses }, tokenPillIconSpec, first],
     ...(rest === '' ? [] : [rest]),
   ];
 };
@@ -188,7 +157,7 @@ export const TokenPillContent = ({
   variant?: TokenPillVariant;
 }) => {
   const [first, rest] = splitFirstWord(presentationalTextValue(label));
-  const Icon = variantIcons[variant];
+  const Icon = variant === 'logic' ? Split : Syringe;
   return (
     <>
       <span className={tokenPillLeadClasses}>
@@ -221,7 +190,7 @@ export const TokenPill = ({
       {...props}
       {...language}
       data-token={token}
-      data-variant={variant === 'value' ? undefined : variant}
+      data-variant={variant === 'logic' ? 'logic' : undefined}
       data-selected={selected || undefined}
       className={tokenPillClasses(className, variant)}
     >

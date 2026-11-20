@@ -4,7 +4,6 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { withMod } from '@codaco/fresco-ui/testing/modKey';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
@@ -15,7 +14,6 @@ const TITLE_FIELD = 'title';
 const TITLE_LABEL = 'Page heading';
 const INSERT_LABEL =
   'Inject piped text from interview metadata or a network attribute';
-const UNREADABLE = 'Welcome, {name';
 
 const title = (
   <Field<typeof DynamicTextField>
@@ -118,86 +116,6 @@ export const UndoingAValue: Story = {
     await waitFor(() =>
       expect(editor.querySelector('[data-versions-element]')).not.toBeNull(),
     );
-  },
-};
-
-/**
- * A heading stored in words this field cannot read, as an imported or
- * hand-written protocol can hold. It is shown as it is rather than opened in
- * the editor, which would rewrite it, and the stage is not saved with it.
- */
-export const AnUnreadableText: Story = {
-  args: {
-    seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'information-1' });
-      const { document } = host.store.read(stage);
-      host.store.applyAsCollaborator(stage, {
-        ...document,
-        [TITLE_FIELD]: { 'en-US': UNREADABLE },
-      });
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    await expect(
-      await canvas.findByText(
-        'This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.',
-      ),
-    ).toBeVisible();
-    await expect(canvas.getByText(UNREADABLE)).toBeVisible();
-    await expect(
-      canvas.queryByRole('textbox', { name: TITLE_LABEL }),
-    ).not.toBeInTheDocument();
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
-    await expect(
-      await canvas.findByText(/Text is not valid message syntax/),
-    ).toBeVisible();
-    await expect(
-      canvas.getByRole('status', { name: 'Save status' }),
-    ).toHaveTextContent('Nothing saved yet.');
-    await expect(canvas.getByText(UNREADABLE)).toBeVisible();
-  },
-};
-
-/**
- * A heading that names a value which does not exist, as a hand-written
- * protocol can. The value keeps its place in the text as a pill drawn as a
- * problem, and the stage is not saved until it is replaced or removed.
- */
-export const AMissingValue: Story = {
-  args: {
-    seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'information-1' });
-      const { document } = host.store.read(stage);
-      host.store.applyAsCollaborator(stage, {
-        ...document,
-        [TITLE_FIELD]: { 'en-US': 'Welcome, {nickname}' },
-      });
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    const editor = await canvas.findByRole('textbox', { name: TITLE_LABEL });
-    const pill = editor.querySelector('[data-token="nickname"]');
-    await expect(pill).toHaveTextContent('Missing: nickname');
-    await expect(pill).toHaveAttribute('data-variant', 'missing');
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
-    await waitFor(async () => {
-      await expect(
-        canvas.getAllByText(
-          /This text refers to a value that does not exist: "nickname"\./,
-        ).length,
-      ).toBeGreaterThan(0);
-    });
-    await expect(
-      canvas.getByRole('status', { name: 'Save status' }),
-    ).toHaveTextContent('Nothing saved yet.');
   },
 };
 

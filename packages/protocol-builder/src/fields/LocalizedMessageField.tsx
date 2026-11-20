@@ -46,7 +46,6 @@ import {
   MessageNodesSummary,
   numberSwitchLabels,
   pluralCategories,
-  UnreadableMessage,
 } from './DynamicTextField.tsx';
 import {
   type MessageArgumentLabels,
@@ -634,15 +633,9 @@ export function LocalizedMessageVersions({
     onMessageChange(nextMessage);
   };
 
+  // As in `DynamicMessageEditor`: validation refuses such a text.
   if (parsed === undefined && message !== '') {
-    return (
-      <UnreadableMessage
-        id={id}
-        name={name}
-        message={message}
-        className={className}
-      />
-    );
+    throw new Error(`The text of "${name}" cannot be opened for editing.`);
   }
 
   return (

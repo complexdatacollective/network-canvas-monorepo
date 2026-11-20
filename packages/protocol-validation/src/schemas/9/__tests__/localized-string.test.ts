@@ -437,3 +437,30 @@ describe('schema version boundary', () => {
     ).toContainEqual(['localization']);
   });
 });
+
+describe('a line break inside a version of formatted text', () => {
+  const VERSIONS =
+    'Hello\n\n{name, select, missing {there} other {{name},\nwelcome}}';
+  const REFUSAL = /A version of this text cannot contain a line break\./;
+  const textOf = (format: 'plain' | 'markdown') =>
+    localizedString(
+      z.string(),
+      { format, lines: 'multiple' },
+      { dynamicValues: 'stageText' },
+    );
+
+  it('is refused where the text is markdown', () => {
+    expect(issuesOf(textOf('markdown'), { en: VERSIONS })).toEqual([
+      { message: expect.stringMatching(REFUSAL), path: ['en'] },
+    ]);
+  });
+
+  it('is accepted outside the versions, and in plain text', () => {
+    expect(
+      issuesOf(textOf('markdown'), {
+        en: 'Hello\n\n{name, select, missing {there} other {{name}}}',
+      }),
+    ).toEqual([]);
+    expect(issuesOf(textOf('plain'), { en: VERSIONS })).toEqual([]);
+  });
+});

@@ -389,30 +389,6 @@ describe('LocalizedMessageField', () => {
     expect(saved.current).toBeUndefined();
   });
 
-  it('keeps a text it cannot read as it is, and refuses to save it', async () => {
-    const user = userEvent.setup();
-    const unreadable = 'Add {name';
-    const saved = renderItem({ en: unreadable });
-
-    expect(
-      await screen.findByText(
-        'This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.',
-      ),
-    ).toBeVisible();
-    expect(screen.getByText(unreadable).tagName).toBe('PRE');
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-
-    expect(
-      await screen.findByText(
-        'This text uses something it cannot show. Write it again here.',
-      ),
-    ).toBeVisible();
-    expect(saved.current).toBeUndefined();
-    expect(screen.getByText(unreadable)).toHaveTextContent(/^Add \{name$/);
-  });
-
   it('removes the translation when the text is emptied', async () => {
     const user = userEvent.setup();
     const saved = renderItem({ en: 'Add parents' });

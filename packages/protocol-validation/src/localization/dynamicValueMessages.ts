@@ -5,6 +5,8 @@ import {
   TYPE,
 } from '@formatjs/icu-messageformat-parser';
 
+import { holdsLineBreak } from '@codaco/shared-consts';
+
 import { isBlankText } from './blankText.ts';
 import type { LocaleTag } from './localeTag.ts';
 import type { MessagePart } from './messageArguments.ts';
@@ -250,6 +252,36 @@ const BLANK_PROBLEM =
 
 const MARKER_PROBLEM =
   'Text cannot contain the private-use character U+E000: the interview uses it to place values.';
+
+/**
+ * Why `message`, as formatted text, cannot hold its versions, or undefined
+ * when it can: a version of a piece of text is part of one line, so it holds
+ * no line break. Text outside any version may run over several lines.
+ */
+export const findVersionLineBreakProblem = (
+  message: string,
+): string | undefined => {
+  const elements = parseMessage(message);
+  if (typeof elements === 'string') return undefined;
+  const breaks = (
+    nodes: readonly MessageFormatElement[],
+    inVersion: boolean,
+  ): boolean =>
+    nodes.some((node) => {
+      if (node.type === TYPE.literal) {
+        return inVersion && holdsLineBreak(node.value);
+      }
+      if (node.type === TYPE.select || node.type === TYPE.plural) {
+        return Object.values(node.options).some((option) =>
+          breaks(option.value, true),
+        );
+      }
+      return false;
+    });
+  return breaks(elements, false)
+    ? 'A version of this text cannot contain a line break. Put the line break outside the versions.'
+    : undefined;
+};
 
 /**
  * Why `message` cannot be the text of a site that may show dynamic values,
