@@ -1,4 +1,4 @@
-import { v4 } from 'uuid';
+import { v4, v5 } from 'uuid';
 import { z } from 'zod';
 
 const PROTOCOL_OBJECT_ID = 'protocolObjectId' as const;
@@ -83,3 +83,13 @@ export const isProtocolObjectId = (value: unknown): value is ProtocolObjectId =>
 /** A new, random protocol object id, for an object being created. */
 export const createProtocolObjectId = (): ProtocolObjectId =>
   ProtocolObjectIdSchema.parse(v4());
+
+/**
+ * A function that names protocol object ids by label within `namespace` (a
+ * UUID), for a generator that must give the same objects the same ids every
+ * time it runs. Changing the namespace changes every id it gives.
+ */
+export const deterministicProtocolObjectId =
+  (namespace: string) =>
+  (label: string): ProtocolObjectId =>
+    ProtocolObjectIdSchema.parse(v5(label, namespace));

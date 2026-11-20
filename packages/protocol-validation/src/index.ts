@@ -407,6 +407,7 @@ export {
 // how a host finds, checks and renews the ids a protocol or a part of one holds.
 export {
   createProtocolObjectId,
+  deterministicProtocolObjectId,
   isProtocolObjectId,
   type ProtocolObjectId,
   ProtocolObjectIdSchema,

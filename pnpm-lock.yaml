@@ -2037,9 +2037,6 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
-      uuid:
-        specifier: 'catalog:'
-        version: 14.0.3
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -3340,11 +3337,7 @@ importers:
         specifier: 'catalog:'
         version: 5.0.5(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(@vitest/browser-playwright@5.0.5)(@vitest/coverage-v8@5.0.5)(@vitest/ui@5.0.5)(jsdom@30.1.3(@noble/hashes@2.4.0))(vite@8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.106.1)(sass@1.106.1)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
 
-  packages/protocols:
-    devDependencies:
-      uuid:
-        specifier: 'catalog:'
-        version: 14.0.3
+  packages/protocols: {}
 
   packages/sample-protocol: {}
 

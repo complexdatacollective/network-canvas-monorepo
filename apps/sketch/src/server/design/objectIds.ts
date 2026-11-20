@@ -1,9 +1,7 @@
-import { v5 } from 'uuid';
-
 import {
   collectProtocolObjectIds,
+  deterministicProtocolObjectId,
   type ProtocolObjectId,
-  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 
 // The namespace of every id Sketch gives a protocol object. It must never
@@ -11,8 +9,7 @@ import {
 // set of ids.
 const SKETCH_ID_NAMESPACE = '4c3f0f7e-5a2b-4d8e-9b61-0f2a7d9c3e15';
 
-const sketchObjectId = (name: string): ProtocolObjectId =>
-  ProtocolObjectIdSchema.parse(v5(name, SKETCH_ID_NAMESPACE));
+const sketchObjectId = deterministicProtocolObjectId(SKETCH_ID_NAMESPACE);
 
 /**
  * The id of the stage the compiler names `name` (a design stage's id, or a

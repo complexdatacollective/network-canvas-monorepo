@@ -1,10 +1,10 @@
 import { invariant } from 'es-toolkit';
-import { v5 } from 'uuid';
 
 import {
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
   defaultFinishSessionFields,
+  deterministicProtocolObjectId,
   DEFAULT_FINISH_SESSION_TEXT,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   type PedigreeDefaultGenderIdentityValue,
@@ -24,7 +24,6 @@ import {
   type MessageArguments,
   messageText,
   type ProtocolObjectId,
-  ProtocolObjectIdSchema,
   stageWithoutUnshownWording,
   suppliedStageSettingPaths,
   type Stage,
@@ -466,8 +465,9 @@ const formFieldId = (variableId: string): string => `field-${variableId}`;
 // the build, so the same seed and the same calls give the same ids.
 const SYNTHETIC_OBJECT_ID_NAMESPACE = '2093416d-2251-4bf9-8c45-6771fe7c1b65';
 
-const syntheticObjectId = (name: string): ProtocolObjectId =>
-  ProtocolObjectIdSchema.parse(v5(name, SYNTHETIC_OBJECT_ID_NAMESPACE));
+const syntheticObjectId = deterministicProtocolObjectId(
+  SYNTHETIC_OBJECT_ID_NAMESPACE,
+);
 
 /**
  * The id of a row. Any id a caller gave the row is a label, combined with the

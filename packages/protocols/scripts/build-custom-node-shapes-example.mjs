@@ -7,12 +7,11 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { v5 } from 'uuid';
-
 import {
   parseNodeShapeSvg,
   serializeNodeShapeSvg,
 } from '../../fresco-ui/src/node/nodeShapeSvg.ts';
+import { deterministicProtocolObjectId } from '../../protocol-validation/src/schemas/9/protocol-object-id.ts';
 
 const exampleDir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -43,7 +42,7 @@ const en = (text) => ({ en: text });
 // The namespace of the example's protocol object ids. It must never change:
 // a different namespace gives every rebuild of the example different ids.
 const ID_NAMESPACE = '7e2dcd4e-cd48-4335-b1a0-fc083f6e175f';
-const objectId = (name) => v5(name, ID_NAMESPACE);
+const objectId = deterministicProtocolObjectId(ID_NAMESPACE);
 
 const assetManifest = {};
 
