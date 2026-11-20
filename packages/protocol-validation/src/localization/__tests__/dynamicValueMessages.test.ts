@@ -184,25 +184,18 @@ describe('findDynamicValueProblem', () => {
   });
 
   it('does not take a name from Object.prototype for a value', () => {
-    refused('{constructor}', '"constructor" is not a value');
+    refused('{constructor}', 'does not exist: "constructor"');
     refused(
       '{toString, select, missing {x} other {y}}',
-      '"toString" is not a value',
+      'does not exist: "toString"',
     );
   });
 
   it('names an unbound value', () => {
-    refused('{other}', '"other" is not a value this text can show here');
-    expect(findDynamicValueProblem('{x}', {}, 'en')).toContain(
-      'No values have been set up for this text yet.',
+    refused(
+      '{other}',
+      'This text refers to a value that does not exist: "other".',
     );
-    expect(
-      findDynamicValueProblem(
-        '{x}',
-        { nickname: { cases: [], numeric: false, optional: false } },
-        'en',
-      ),
-    ).toContain('The values set up for this text are "nickname".');
   });
 
   it('chooses versions by a value it cannot show as words, but never shows it', () => {

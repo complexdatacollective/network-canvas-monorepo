@@ -48,7 +48,7 @@ describe('DynamicMessageSummary', () => {
 
     const strong = summary.querySelector('strong');
     expect(strong?.querySelector('[data-token="name"]')).toHaveTextContent(
-      'name',
+      'Missing: name',
     );
     const link = summary.querySelector('a');
     expect(link).toHaveAttribute('href', 'https://example.com');
@@ -56,7 +56,9 @@ describe('DynamicMessageSummary', () => {
     expect(
       summary.querySelector('em [data-token="place"]'),
     ).toBeInTheDocument();
-    expect(summary).toHaveTextContent('Read name at this site with place');
+    expect(summary).toHaveTextContent(
+      'Read Missing: name at this site with Missing: place',
+    );
     expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
   });
 
@@ -67,9 +69,11 @@ describe('DynamicMessageSummary', () => {
     );
     const summary = getByTestId('summary');
 
-    expect(summary).toHaveTextContent(/^You have n\.$/);
+    expect(summary).toHaveTextContent(/^You have Missing: n\.$/);
     expect(summary.querySelectorAll('[data-token]')).toHaveLength(1);
-    expect(summary.querySelector('[data-token="n"]')).toHaveTextContent('n');
+    expect(summary.querySelector('[data-token="n"]')).toHaveTextContent(
+      'Missing: n',
+    );
     expect(summary.textContent).not.toContain('friend');
   });
 
@@ -81,7 +85,7 @@ describe('DynamicMessageSummary', () => {
     const summary = getByTestId('summary');
 
     const strong = summary.querySelector('strong');
-    expect(strong).toHaveTextContent(/^Hello name today$/);
+    expect(strong).toHaveTextContent(/^Hello Missing: name today$/);
     expect(strong?.querySelectorAll('[data-token="name"]')).toHaveLength(1);
     expect(summary.textContent).not.toContain('there');
     expect(summary.textContent).not.toContain('**');
@@ -133,14 +137,14 @@ describe('DynamicMessageSummary', () => {
 
     expect(summary.querySelector('h1')).toBeNull();
     expect(summary.querySelectorAll('p[data-host]')).toHaveLength(1);
-    expect(summary).toHaveTextContent(/Title name\s*Body/);
+    expect(summary).toHaveTextContent(/Title Missing: name\s*Body/);
   });
 
   it('shows plain text as written, with its values as pills', () => {
     const { getByTestId } = renderSummary('Hi **{name}**', false);
     const summary = getByTestId('summary');
     expect(summary.querySelector('strong')).toBe(null);
-    expect(summary.textContent).toBe('Hi **name**');
+    expect(summary.textContent).toBe('Hi **Missing: name**');
     expect(summary.querySelector('[data-token="name"]')).toBeInTheDocument();
   });
 });

@@ -5,7 +5,8 @@ import { informationStageEditor } from '../../editors/information/InformationSta
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
-const NOT_A_VALUE = /"ghost" is not a value this text can show here/;
+const NOT_A_VALUE =
+  /This text refers to a value that does not exist: "ghost"\./;
 
 const openWithUnboundValue = () => {
   const { type, fields } = loadFixtureStage('information-1');
@@ -65,16 +66,15 @@ describe('a stage text that shows a value the stage does not bind', () => {
     );
   });
 
-  it('says that the stage has set up no values, not that none can be had', async () => {
+  it('draws the value as a missing pill in the text', async () => {
     const harness = openWithUnboundValue();
     await harness.opened();
 
-    expect(await harness.submit()).toBeNull();
-
-    expect(
-      await screen.findAllByText(
-        /No values have been set up for this text yet\./,
-      ),
-    ).not.toHaveLength(0);
+    const pill = screen
+      .getByRole('textbox', { name: 'Page heading' })
+      .querySelector('[data-token="ghost"]');
+    expect(pill).toHaveTextContent('Missing: ghost');
+    expect(pill).toHaveAttribute('data-variant', 'missing');
+    expect(pill?.querySelector('.lucide-triangle-alert')).toBeInTheDocument();
   });
 });

@@ -43,9 +43,12 @@ describe('DynamicMessageEditor', () => {
 
     const editor = await screen.findByRole('textbox');
     await waitFor(() =>
-      expect(editor).toHaveTextContent('Hello gone, welcome'),
+      expect(editor).toHaveTextContent('Hello Missing: gone, welcome'),
     );
-    expect(editor.querySelector('[data-token="gone"]')).toBeInTheDocument();
+    expect(editor.querySelector('[data-token="gone"]')).toHaveAttribute(
+      'data-variant',
+      'missing',
+    );
     expect(onMessageChange).not.toHaveBeenCalled();
   });
 });

@@ -307,15 +307,8 @@ const argumentOf = (
 ): DynamicValueArgument | undefined =>
   Object.hasOwn(values, name) ? values[name] : undefined;
 
-const describeAllowed = (values: DynamicValueArguments): string => {
-  const names = Object.keys(values);
-  return names.length === 0
-    ? 'No values have been set up for this text yet.'
-    : `The values set up for this text are ${names.map((name) => `"${name}"`).join(', ')}.`;
-};
-
-const unknownValue = (name: string, values: DynamicValueArguments): string =>
-  `"${name}" is not a value this text can show here. ${describeAllowed(values)}`;
+const unknownValue = (name: string): string =>
+  `This text refers to a value that does not exist: "${name}".`;
 
 const unguarded = (name: string): string =>
   `"${name}" can be missing, so the text needs a version for when it is missing ({${name}, select, ${MISSING_CASE} {…} other {…}}), and can show it only in the other versions.`;
@@ -332,7 +325,7 @@ const findElementsProblem = (
         break;
       case TYPE.argument: {
         const value = argumentOf(values, element.value);
-        if (value === undefined) return unknownValue(element.value, values);
+        if (value === undefined) return unknownValue(element.value);
         if (value.unshowable !== undefined) {
           return `"${element.value}" cannot be shown as words: ${value.unshowable}`;
         }
@@ -344,7 +337,7 @@ const findElementsProblem = (
       case TYPE.select: {
         const name = element.value;
         const value = argumentOf(values, name);
-        if (value === undefined) return unknownValue(name, values);
+        if (value === undefined) return unknownValue(name);
         const hasMissing = MISSING_CASE in element.options;
         for (const [key, option] of Object.entries(element.options)) {
           if (
@@ -372,7 +365,7 @@ const findElementsProblem = (
       case TYPE.plural: {
         const name = element.value;
         const value = argumentOf(values, name);
-        if (value === undefined) return unknownValue(name, values);
+        if (value === undefined) return unknownValue(name);
         if (!value.numeric || element.pluralType !== 'cardinal') {
           return `"${name}" is not a number, so it cannot choose a version of the text by number.`;
         }

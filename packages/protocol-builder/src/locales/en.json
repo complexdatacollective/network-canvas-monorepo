@@ -1639,6 +1639,10 @@
     "defaultMessage": "Insert logic",
     "description": "Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu."
   },
+  "protocolBuilder.dynamicText.missingValue": {
+    "defaultMessage": "Missing: {name}",
+    "description": "Label of a red warning pill inside a text a participant reads, in place of a piped value the text refers to that does not exist in the protocol (for example because its attribute was deleted). {name} is the name the text uses for that value, as it was written."
+  },
   "protocolBuilder.dynamicText.needsAnswerLabels": {
     "defaultMessage": "Add labels for its yes and no answers first",
     "description": "Second line of an entry in the insert-a-value menu that cannot be chosen yet. The entry is a yes-or-no attribute without its own words for its two answers, so the text has nothing in the protocol’s languages to show for it. The researcher can add those words where the attribute is set up."
@@ -1714,10 +1718,6 @@
   "protocolBuilder.dynamicText.versionOtherwise": {
     "defaultMessage": "Otherwise",
     "description": "Label of the last row of an “If” in a piece of text: the wording shown when none of the rows above applied."
-  },
-  "protocolBuilder.dynamicText.writeAgain": {
-    "defaultMessage": "Write it again",
-    "description": "Button under a notice saying a stored text cannot be shown or edited in its field. Pressing it discards the stored text and gives an empty text field in its place, so the researcher can write the text afresh."
   },
   "protocolBuilder.dynamicText.yes": {
     "defaultMessage": "Yes",

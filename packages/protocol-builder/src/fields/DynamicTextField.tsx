@@ -11,7 +11,6 @@ import {
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import { Button } from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
   type RichTextEditorToken,
@@ -363,11 +362,11 @@ const messages = defineMessages({
     description:
       'Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed.',
   },
-  writeAgain: {
-    id: 'protocolBuilder.dynamicText.writeAgain',
-    defaultMessage: 'Write it again',
+  missingValue: {
+    id: 'protocolBuilder.dynamicText.missingValue',
+    defaultMessage: 'Missing: {name}',
     description:
-      'Button under a notice saying a stored text cannot be shown or edited in its field. Pressing it discards the stored text and gives an empty text field in its place, so the researcher can write the text afresh.',
+      'Label of a red warning pill inside a text a participant reads, in place of a piped value the text refers to that does not exist in the protocol (for example because its attribute was deleted). {name} is the name the text uses for that value, as it was written.',
   },
 });
 
@@ -384,14 +383,9 @@ type Naming = Readonly<{
   groupLabel: (choice: DynamicValueChoice) => string;
 }>;
 
-/**
- * A value the stage cannot offer, called by the name the text records for
- * it, as it was written.
- */
-const recordedName = (name: string): TokenPillLabel => ({
-  text: name,
-  dir: 'auto',
-});
+/** What the pill of a value that does not exist says, in the interface's words. */
+const missingValueLabel = (intl: IntlShape, name: string): string =>
+  intl.formatMessage(messages.missingValue, { name });
 
 const namingFor = (
   intl: IntlShape,
@@ -534,9 +528,16 @@ const messageLabelsFor = ({
 }: MessageLabelInputs): MessageDocumentLabels => ({
   switchSummary: (node) => {
     const choice = choiceByName.get(node.argument);
-    return choice === undefined
-      ? recordedName(node.argument)
-      : naming.valueLabel(choice);
+    if (choice !== undefined) return naming.valueLabel(choice);
+    const isCondition =
+      conditionIdOf(
+        Object.hasOwn(bindings, node.argument)
+          ? bindings[node.argument]
+          : undefined,
+      ) !== undefined;
+    return isCondition
+      ? { text: node.argument, dir: 'auto' }
+      : missingValueLabel(intl, node.argument);
   },
   switchLabel: (node) => {
     const choice = choiceByName.get(node.argument);
@@ -1011,7 +1012,7 @@ export function DynamicMessageEditor({
     },
   );
   // A value the text already names that this place cannot offer now, such as
-  // an attribute whose type has changed, keeps a pill under its own name, so
+  // an attribute that was deleted, keeps a pill that says it is missing, so
   // the editor still holds the text and an edit never drops its words.
   const unofferedTokens: RichTextEditorToken[] = [
     ...new Set([
@@ -1028,14 +1029,18 @@ export function DynamicMessageEditor({
             : undefined,
         ) === undefined,
     )
-    .flatMap((bindingName) => [
-      { id: bindingName, label: recordedName(bindingName), inToolbar: false },
-      {
-        id: countTokenId(bindingName),
-        label: recordedName(bindingName),
-        inToolbar: false,
-      },
-    ]);
+    .flatMap((bindingName) => {
+      const label = missingValueLabel(intl, bindingName);
+      return [
+        { id: bindingName, label, inToolbar: false, missing: true },
+        {
+          id: countTokenId(bindingName),
+          label,
+          inToolbar: false,
+          missing: true,
+        },
+      ];
+    });
   const tokens = [...offeredTokens, ...unofferedTokens];
 
   const insertMenu: RichTextInsertMenu = {
@@ -1308,10 +1313,6 @@ export function DynamicMessageEditor({
       ? asConditionDraft(conditionValues[editing.conditionId])
       : NEW_CONDITION;
 
-  // The editor that takes the place of a text the researcher chose to write
-  // again takes focus, which the button it replaces was holding.
-  const [rewriting, setRewriting] = useState(false);
-
   const problem = useMemo(() => {
     if (!showsProblems || message === '' || parsed === undefined) {
       return undefined;
@@ -1328,13 +1329,6 @@ export function DynamicMessageEditor({
         name={name}
         message={message}
         className={className}
-        {...(!readOnly &&
-          disabled !== true && {
-            onWriteAgain: () => {
-              setRewriting(true);
-              onMessageChange(undefined);
-            },
-          })}
       />
     );
   }
@@ -1361,7 +1355,7 @@ export function DynamicMessageEditor({
         aria-invalid={ariaInvalid === true || problem !== undefined}
         aria-required={ariaRequired}
         placeholder={placeholder}
-        autoFocus={autoFocus === true || rewriting}
+        autoFocus={autoFocus}
         disabled={disabled}
         readOnly={readOnly}
         singleLine={singleLine}
@@ -1404,21 +1398,18 @@ export function DynamicMessageEditor({
 
 /**
  * In place of an editor, text it cannot hold, kept as it is stored. The
- * frame's classes still place the note where the editor would be. Where the
- * text may be written, `onWriteAgain` discards it for an empty editor.
+ * frame's classes still place the note where the editor would be.
  */
 export function UnreadableMessage({
   id,
   name,
   message,
   className,
-  onWriteAgain,
 }: Readonly<{
   id: string;
   name: string;
   message: string;
   className?: string;
-  onWriteAgain?: () => void;
 }>) {
   const intl = useAppIntl();
   return (
@@ -1430,11 +1421,6 @@ export function UnreadableMessage({
         <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
           {message}
         </pre>
-        {onWriteAgain !== undefined && (
-          <Button size="sm" className="self-start" onClick={onWriteAgain}>
-            {intl.formatMessage(messages.writeAgain)}
-          </Button>
-        )}
       </div>
     </div>
   );
@@ -1567,6 +1553,7 @@ export function MessageNodesSummary({
   multiline,
   blockMarkdown = SECTION_MARKDOWN,
   valueLabel,
+  isMissing,
   switchSummary,
   versionLabel,
 }: Readonly<{
@@ -1583,6 +1570,8 @@ export function MessageNodesSummary({
   blockMarkdown?: BlockMarkdown;
   /** What a value's pill says, by the name the message gives it. */
   valueLabel: (argument: string) => TokenPillLabel;
+  /** Whether the message names a value that does not exist by `argument`. */
+  isMissing?: (argument: string) => boolean;
   /** What a set of versions' pill says. */
   switchSummary: (node: MessageSwitch) => TokenPillLabel;
   /**
@@ -1599,7 +1588,12 @@ export function MessageNodesSummary({
   const labelLanguage = useTokenPillLanguage();
 
   const renderSwitch = (node: MessageSwitch, key: number): ReactNode => (
-    <TokenPill key={key} token={node.argument} label={switchSummary(node)} />
+    <TokenPill
+      key={key}
+      token={node.argument}
+      label={switchSummary(node)}
+      {...(isMissing?.(node.argument) === true && { variant: 'missing' })}
+    />
   );
 
   // The words of one level of the message, each value and each set of
@@ -1667,7 +1661,12 @@ export function MessageNodesSummary({
       const piece = held[index];
       if (piece === undefined) return undefined;
       return typeof piece === 'string' ? (
-        <TokenPill key={at} token={piece} label={valueLabel(piece)} />
+        <TokenPill
+          key={at}
+          token={piece}
+          label={valueLabel(piece)}
+          {...(isMissing?.(piece) === true && { variant: 'missing' })}
+        />
       ) : (
         renderSwitch(piece, at)
       );
@@ -1744,7 +1743,7 @@ export function DynamicMessageSummary({
   const valueLabel = (argument: string) => {
     const choice = choiceByName.get(argument);
     return choice === undefined
-      ? recordedName(argument)
+      ? missingValueLabel(intl, argument)
       : naming.valueLabel(choice);
   };
 
@@ -1755,6 +1754,12 @@ export function DynamicMessageSummary({
       multiline={message.includes('\n')}
       blockMarkdown={blockMarkdown}
       valueLabel={valueLabel}
+      isMissing={(argument) =>
+        !choiceByName.has(argument) &&
+        conditionIdOf(
+          Object.hasOwn(bindings, argument) ? bindings[argument] : undefined,
+        ) === undefined
+      }
       switchSummary={labels.switchSummary}
     />
   );

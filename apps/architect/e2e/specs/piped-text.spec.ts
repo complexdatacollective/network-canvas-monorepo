@@ -161,15 +161,19 @@ test.describe('text that names a value it does not bind', () => {
     await seed(protocolNamingUnboundValue());
     await openStage(page, INFO_STAGE_ID);
 
-    // The text shows, the unbound name as a pill carrying the recorded name.
+    // The text shows, the unbound name as a pill that says it is missing.
     const heading = piped.textbox(PAGE_HEADING);
-    await expect(heading).toHaveText('ghost welcome');
-    await expect(heading.getByText('ghost', { exact: true })).toBeVisible();
+    await expect(heading).toHaveText('Missing: ghost welcome');
+    await expect(
+      heading.locator('[data-token][data-variant="missing"]'),
+    ).toHaveText('Missing: ghost');
     await expect(heading).toHaveAttribute('aria-invalid', 'true');
     await expect(
       piped
         .field(PAGE_HEADING)
-        .getByText(/"ghost" is not a value this text can show here/),
+        .getByText(
+          /This text refers to a value that does not exist: "ghost"\./,
+        ),
     ).toBeVisible();
     // The stage's outline already says which section has the problem.
     const section = editor
@@ -185,11 +189,11 @@ test.describe('text that names a value it does not bind', () => {
       .getByRole('alert')
       .filter({ hasText: 'Page content:' });
     await expect(summary).toContainText(
-      '"ghost" is not a value this text can show here',
+      'This text refers to a value that does not exist: "ghost".',
     );
     await expect(page).toHaveURL(/\/protocol\/stage\/info$/);
     await expect(section).toHaveAccessibleName(
-      /Has a problem\. "ghost" is not a value this text can show here/,
+      /Has a problem\. This text refers to a value that does not exist: "ghost"\./,
     );
 
     await allowErroneousWriteToLand(page);
@@ -212,10 +216,10 @@ test.describe('text that names a value it does not bind', () => {
     });
     const cellName = /^Stage 2 .*Page content › Page heading English$/;
 
-    // Read: the cell shows the name the text recorded.
+    // Read: the cell shows the value as missing.
     const cell = table.getByRole('button', { name: cellName });
     await expect(cell.locator('xpath=ancestor::td')).toContainText(
-      'ghost welcome',
+      'Missing: ghost welcome',
     );
     await expect(cell).toHaveAttribute('aria-invalid', 'false');
 
@@ -223,7 +227,7 @@ test.describe('text that names a value it does not bind', () => {
     await cell.click();
     const box = table.getByRole('textbox', { name: cellName });
     await expect(box).toBeFocused();
-    await expect(box).toHaveText('ghost welcome');
+    await expect(box).toHaveText('Missing: ghost welcome');
     await page.keyboard.press('End');
     await page.keyboard.type(' there');
     await table
@@ -234,7 +238,9 @@ test.describe('text that names a value it does not bind', () => {
       'true',
     );
     await expect(
-      table.getByText(/"ghost" is not a value this text can show here/),
+      table.getByText(
+        /This text refers to a value that does not exist: "ghost"\./,
+      ),
     ).toBeVisible();
 
     // Saving the table does not accept it.

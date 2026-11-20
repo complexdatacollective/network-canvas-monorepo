@@ -162,20 +162,42 @@ export const AnUnreadableText: Story = {
   },
 };
 
-/** The notice's button drops the text and hands over an empty field. */
-export const WritingAnUnreadableTextAgain: Story = {
-  args: AnUnreadableText.args,
+/**
+ * A heading that names a value which does not exist, as a hand-written
+ * protocol can. The value keeps its place in the text as a pill drawn as a
+ * problem, and the stage is not saved until it is replaced or removed.
+ */
+export const AMissingValue: Story = {
+  args: {
+    seedEdit: (host) => {
+      const stage = sectionId({ kind: 'stage', stageId: 'information-1' });
+      const { document } = host.store.read(stage);
+      host.store.applyAsCollaborator(stage, {
+        ...document,
+        [TITLE_FIELD]: { 'en-US': 'Welcome, {nickname}' },
+      });
+    },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Write it again' }),
-    );
+    const editor = await canvas.findByRole('textbox', { name: TITLE_LABEL });
+    const pill = editor.querySelector('[data-token="nickname"]');
+    await expect(pill).toHaveTextContent('Missing: nickname');
+    await expect(pill).toHaveAttribute('data-variant', 'missing');
 
-    const field = await canvas.findByRole('textbox', { name: TITLE_LABEL });
-    await expect(field).toHaveFocus();
-    await expect(canvas.queryByText(UNREADABLE)).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
+    await waitFor(async () => {
+      await expect(
+        canvas.getAllByText(
+          /This text refers to a value that does not exist: "nickname"\./,
+        ).length,
+      ).toBeGreaterThan(0);
+    });
+    await expect(
+      canvas.getByRole('status', { name: 'Save status' }),
+    ).toHaveTextContent('Nothing saved yet.');
   },
 };
 

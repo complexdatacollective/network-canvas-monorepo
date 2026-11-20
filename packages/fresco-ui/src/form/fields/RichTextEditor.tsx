@@ -250,6 +250,11 @@ export type RichTextEditorToken = Readonly<{
    * builds, is held and shown without one. Defaults to true.
    */
   inToolbar?: boolean;
+  /**
+   * A placeholder the text names that nothing supplies. Its pill is drawn as
+   * a problem; `label` should say what is wrong in words.
+   */
+  missing?: boolean;
 }>;
 
 /** The node type a token is held as: `{ type: 'token', attrs: { id } }`. */
@@ -301,6 +306,10 @@ const createTokenNode = (
   // as it was written.
   const labelOf = (id: unknown): TokenPillLabel =>
     typeof id === 'string' ? (labels.get(id) ?? { text: id, dir: 'auto' }) : '';
+  const missing = new Set(
+    tokens.flatMap((token) => (token.missing === true ? [token.id] : [])),
+  );
+  const isMissing = (id: unknown) => typeof id === 'string' && missing.has(id);
 
   return TiptapNode.create({
     name: TOKEN_NODE,
@@ -338,13 +347,20 @@ const createTokenNode = (
         'span',
         mergeAttributes(HTMLAttributes, {
           // A pointer, not the text cursor: the pill is one object.
-          class: tokenPillClasses('cursor-pointer'),
+          class: tokenPillClasses(
+            'cursor-pointer',
+            isMissing(node.attrs.id) ? 'missing' : 'value',
+          ),
+          ...(isMissing(node.attrs.id) && { 'data-variant': 'missing' }),
           contenteditable: 'false',
           // The interface's words in the interface's language, whatever
           // language the text around it is in; a name in its own direction.
           ...tokenPillLanguage(labelOf(node.attrs.id), interfaceLanguage),
         }),
-        ...tokenPillContentSpec(labelOf(node.attrs.id)),
+        ...tokenPillContentSpec(
+          labelOf(node.attrs.id),
+          isMissing(node.attrs.id),
+        ),
       ];
     },
 
@@ -1528,10 +1544,11 @@ export default function RichTextEditorField({
   // only what a pill shows; which are required is the toolbar's.
   const tokensKey = JSON.stringify(
     (tokensProp ?? [])
-      .map(({ id: tokenId, label, text }) => ({
+      .map(({ id: tokenId, label, text, missing }) => ({
         id: tokenId,
         label,
         ...(text !== undefined && { text }),
+        ...(missing === true && { missing }),
       }))
       .toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
   );
