@@ -34,11 +34,7 @@ several, such as a separate ending for participants who are not eligible.
   stages without validating the stages themselves.
 - The v8 to v9 migration appends a finish stage in `confirmation` mode, with
   a UUID id, outcome `completed`, and the text the interview has always shown there, in English under the protocol's default
-  language. Its notes say so. A recorded interview that was on the old
-  finish screen resumes on the new finish stage. Run again over a document
-  already in schema 9 form, it keeps a finish stage the document already ends
-  at, and gives one that has none the supplied text in the document's own
-  languages.
+  language. Its notes say so.
 - A finish stage's name and text may have no translation at all while a
   protocol is being written, so a protocol in a language Network Canvas has no
   closing text for starts without any. `validateProtocol` still refuses a
