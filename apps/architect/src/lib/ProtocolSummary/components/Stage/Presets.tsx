@@ -1,16 +1,19 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { narrativePresetMessages } from '@codaco/protocol-builder/editors/narrative/narrativePresetMessages';
 import type { LocalizedString } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import EntityBadge from '../EntityBadge';
 import MiniTable from '../MiniTable';
+import type { FilterType } from '../Rules';
 import {
   DefaultLanguageText,
   SummaryText,
   useMultilingualSummary,
 } from '../SummaryText';
 import Variable from '../Variable';
+import Filter from './Filter';
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
   presets: {
@@ -29,6 +32,7 @@ type PresetsProps = {
     groupVariable?: string;
     edges?: { display?: { type: string; label: LocalizedString }[] };
     highlight?: { variable: string; label: LocalizedString }[];
+    filter?: FilterType;
   }> | null;
 };
 
@@ -63,6 +67,19 @@ const Presets = ({ presets = null }: PresetsProps) => {
                       id={preset.layoutVariable ?? ''}
                     />,
                   ],
+                  // A narrative stage has no filter of its own: each preset
+                  // narrows the network for itself, so the rules are listed
+                  // with the preset they belong to.
+                  ...(preset.filter
+                    ? [
+                        [
+                          intl.formatMessage(
+                            narrativePresetMessages.presetFilterTitle,
+                          ),
+                          <Filter key="filter" filter={preset.filter} />,
+                        ],
+                      ]
+                    : []),
                   [
                     intl.formatMessage(summaryMessages.showEdges),
                     <ul key="show-edges" className="flex flex-col gap-1">

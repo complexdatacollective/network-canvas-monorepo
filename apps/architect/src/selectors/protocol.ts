@@ -135,7 +135,13 @@ export const getStageList = createSelector([getProtocol], (protocol) => {
     id: stage.id,
     type: stage.type,
     label: declaredTranslationText(stage.label, protocol?.localization),
-    hasFilter: 'filter' in stage ? !!stage.filter : false,
+    // A narrative stage is filtered preset by preset rather than as a whole.
+    hasFilter:
+      stage.type === 'Narrative'
+        ? stage.presets.some((preset) => !!preset.filter)
+        : 'filter' in stage
+          ? !!stage.filter
+          : false,
     hasSkipLogic: !!stage.skipLogic,
     skipLogic: stage.skipLogic
       ? { destination: stage.skipLogic.destination }

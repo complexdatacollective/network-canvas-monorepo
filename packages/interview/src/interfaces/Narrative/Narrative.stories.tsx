@@ -515,6 +515,41 @@ const buildWithFreeDraw = () => {
   return si;
 };
 
+// Two presets over one layout, each with a filter of its own: the first shows
+// only close friends, the second everyone.
+const buildPresetFilters = () => {
+  const { si, nt, layoutVar1, closeVar } = createNarrativeInterview(116);
+  si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
+  const stage = si.addStage('Narrative', { initialNodes: { count: 6 } });
+  stage.addPreset({
+    label: 'Close friends',
+    layoutVariable: layoutVar1.id,
+    filter: {
+      rules: [
+        {
+          id: 'close-friends',
+          type: 'node',
+          options: {
+            type: nt.id,
+            attribute: closeVar.id,
+            operator: 'EXACTLY',
+            value: true,
+          },
+        },
+      ],
+    },
+  });
+  stage.addPreset({ label: 'Everyone', layoutVariable: layoutVar1.id });
+  [true, false, true, false, false, false].forEach((close, index) => {
+    si.setNodeAttribute(index, closeVar.id, close);
+  });
+  si.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+  return si;
+};
+
 const buildWithRepositioning = () => {
   const { si, layoutVar1 } = createNarrativeInterview(109);
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
@@ -1211,6 +1246,42 @@ export const WithFreeDraw: Story = {
 
 export const WithRepositioning: Story = {
   render: () => <NarrativeStoryWrapper buildFn={buildWithRepositioning} />,
+};
+
+/** Where each person on the canvas sits, as the percentages the canvas writes. */
+const nodePositions = (canvasElement: HTMLElement) =>
+  [
+    ...canvasElement.querySelectorAll<HTMLElement>(
+      // A node is the canvas's only child centred on its own position.
+      '[data-testid="narrative"] [role="application"] > [style*="translate"]',
+    ),
+  ].map((node) => `${node.style.left} ${node.style.top}`);
+
+/**
+ * Each preset shows the part of the network its own filter leaves: the first
+ * only close friends, the second everyone.
+ */
+export const PresetFilters: Story = {
+  render: () => <NarrativeStoryWrapper buildFn={buildPresetFilters} />,
+  play: async ({ canvasElement, userEvent }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole(
+      'button',
+      { name: 'Close friends' },
+      { timeout: 10_000 },
+    );
+    await waitFor(() => expect(nodePositions(canvasElement)).toHaveLength(2));
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Next preset' }));
+    await canvas.findByRole('button', { name: 'Everyone' });
+    await waitFor(() => expect(nodePositions(canvasElement)).toHaveLength(6));
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Previous preset' }),
+    );
+    await canvas.findByRole('button', { name: 'Close friends' });
+    await waitFor(() => expect(nodePositions(canvasElement)).toHaveLength(2));
+  },
 };
 
 export const AllBehaviours: Story = {

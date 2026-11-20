@@ -4191,6 +4191,34 @@
     "defaultMessage": "Enter a label for this edge type.",
     "description": "Shown when the label of a drawn edge type is left empty."
   },
+  "protocolBuilder.networkCanvas.presetFilterClearConfirm": {
+    "defaultMessage": "Clear filter",
+    "description": "Action that confirms switching one narrative preset’s filter off and discarding its rules."
+  },
+  "protocolBuilder.networkCanvas.presetFilterClearDescription": {
+    "defaultMessage": "This will clear the filter, and delete any rules you have created for it. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching one narrative preset’s filter off throws away every rule in it."
+  },
+  "protocolBuilder.networkCanvas.presetFilterClearTitle": {
+    "defaultMessage": "This will clear this preset’s filter",
+    "description": "Title of the dialog asking a researcher to confirm switching off one narrative preset’s filter, which throws away every rule in it."
+  },
+  "protocolBuilder.networkCanvas.presetFilterDescription": {
+    "defaultMessage": "Filter the nodes and edges shown in this preset. A preset with no filter shows the whole network.",
+    "description": "Description of the preset-filter part of the dialog for one narrative preset. A node is one member of the network; an edge is a connection between two members."
+  },
+  "protocolBuilder.networkCanvas.presetFilterRulesHint": {
+    "defaultMessage": "Create one or more rules that must match in order for a node or edge to be shown in this preset.",
+    "description": "Guidance under one narrative preset’s filter rules."
+  },
+  "protocolBuilder.networkCanvas.presetFilterRulesLabel": {
+    "defaultMessage": "Filter rules",
+    "description": "Label of the rule builder narrowing which members of the network one narrative preset shows."
+  },
+  "protocolBuilder.networkCanvas.presetFilterTitle": {
+    "defaultMessage": "Preset filter",
+    "description": "Heading of the part of the dialog for one narrative preset that narrows which members of the network the preset shows. Each preset has a filter of its own, so two presets on one stage can show different parts of the network."
+  },
   "protocolBuilder.networkCanvas.presetGroupEmpty": {
     "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group by.",
     "description": "Shown in place of the preset grouping-attribute picker when the node type this stage is about has no categorical attribute in the codebook. \"This type\" is that node type."

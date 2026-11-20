@@ -47,6 +47,21 @@ Language Chooser page (its stage editor) and Preview Mode (the Preview language
 menu). Still outstanding for Translating Your Protocol: the **Change language**
 dialog, and a **Summary** tab stage listing a text in every language.
 
+## Narrative preset filters (schema 9)
+
+Schema 9 gives each Narrative preset a filter of its own and removes the
+stage's filter. These Architect captures of the Building a protocol tutorial
+predate that work (the Architect Classic captures are still right):
+
+| Image              | Page                                                    | What changed                                                                              |
+| ------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `edit-preset.png`  | `design-protocols/tutorials/building-a-protocol.en.mdx` | The preset dialog has a **Preset filter** group between the layout and grouping settings. |
+| `edit-preset2.png` | `design-protocols/tutorials/building-a-protocol.en.mdx` | Same dialog, further down. Recapture with `edit-preset.png` so the two still join up.     |
+| `narrative.png`    | `design-protocols/tutorials/building-a-protocol.en.mdx` | The Narrative stage editor no longer has a stage filter section.                          |
+
+The Narrative interface page (`interface-documentation/narrative.en.md`) has no
+capture of the preset filter yet; one would help.
+
 ## Stage introduction panels removed (schema 9)
 
 Schema 9 removed the introduction panel from the Per Alter Form, Per Alter

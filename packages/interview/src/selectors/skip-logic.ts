@@ -28,7 +28,7 @@ type RoutableStage = {
   subject?: { entity: string; type?: string };
   filter?: Filter;
   behaviours?: object;
-  presets?: readonly { layoutVariable?: string }[];
+  presets?: readonly { layoutVariable?: string; filter?: Filter }[];
 };
 
 export type AvailableStage = {
@@ -94,43 +94,66 @@ const SUBJECTS_NEEDED: Partial<Record<string, number>> = {
 };
 
 /**
- * Whether a subject appears on the stage's interface. A Narrative draws only
- * the people placed in the layout of one of its presets; every other stage
- * shows each subject of its type.
+ * How many of its subject type a Narrative draws, counted as far as
+ * `needed`. Each preset draws the people its own filter leaves who are placed
+ * in its layout, so the stage shows someone when any preset does.
  */
-const isShown = (stage: RoutableStage, entity: NcNode | NcEdge): boolean => {
-  if (stage.type !== 'Narrative') return true;
-  const attributes = entity[entityAttributesProperty];
-  return (stage.presets ?? []).some(
-    ({ layoutVariable }) =>
-      layoutVariable !== undefined && Boolean(attributes[layoutVariable]),
-  );
+const narrativeSubjectsShown = (
+  stage: RoutableStage,
+  network: NcNetwork,
+  subjectType: string | undefined,
+  needed: number,
+): number => {
+  let most = 0;
+  for (const { layoutVariable, filter } of stage.presets ?? []) {
+    if (layoutVariable === undefined) continue;
+    const visible = filter ? networkFilter(filter)(network) : network;
+    let count = 0;
+    for (const node of visible.nodes) {
+      if (
+        node.type === subjectType &&
+        Boolean(node[entityAttributesProperty][layoutVariable])
+      ) {
+        count += 1;
+      }
+      if (count >= needed) return count;
+    }
+    most = Math.max(most, count);
+  }
+  return most;
 };
 
 /**
  * Whether a stage that works with its subjects has none to work with,
  * counting the subjects its interface shows: those of the stage's subject
- * type in the network its filter leaves. A Narrative that lets the
- * participant draw still has something to do on an empty canvas.
+ * type in the network its filter leaves. A Narrative has a filter for each
+ * preset instead, and draws only the people placed in a preset's layout; one
+ * that lets the participant draw still has something to do on an empty
+ * canvas.
  */
 const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
   const needed = stage.type ? SUBJECTS_NEEDED[stage.type] : undefined;
   const subject = stage.subject;
   if (needed === undefined || !subject) return false;
-  if (
-    stage.type === 'Narrative' &&
-    stage.behaviours &&
-    'freeDraw' in stage.behaviours &&
-    stage.behaviours.freeDraw === true
-  ) {
-    return false;
+  if (stage.type === 'Narrative') {
+    if (
+      stage.behaviours &&
+      'freeDraw' in stage.behaviours &&
+      stage.behaviours.freeDraw === true
+    ) {
+      return false;
+    }
+    return (
+      narrativeSubjectsShown(stage, network, subject.type, needed) < needed
+    );
   }
 
   const visible = stage.filter ? networkFilter(stage.filter)(network) : network;
-  const entities = subject.entity === 'edge' ? visible.edges : visible.nodes;
+  const entities: readonly (NcNode | NcEdge)[] =
+    subject.entity === 'edge' ? visible.edges : visible.nodes;
   let count = 0;
   for (const entity of entities) {
-    if (entity.type === subject.type && isShown(stage, entity)) count += 1;
+    if (entity.type === subject.type) count += 1;
     if (count >= needed) return false;
   }
   return true;

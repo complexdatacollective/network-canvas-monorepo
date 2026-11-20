@@ -14,7 +14,6 @@ import { baseStageSchema } from './base.ts';
 
 export const narrativeStage = baseStageSchema.extend({
   type: z.literal('Narrative'),
-  filter: FilterSchema.optional(),
   subject: NodeStageSubjectSchema,
   presets: z
     .array(
@@ -30,6 +29,9 @@ export const narrativeStage = baseStageSchema.extend({
         groupVariable: entityAttributeReference({
           subject: 'stageSubject',
         }).optional(),
+        // Which part of the network this preset shows. A Narrative has no
+        // filter of its own: each preset may narrow the network differently.
+        filter: FilterSchema.optional(),
         edges: z
           .strictObject({
             // Each edge type the preset draws, with the words its legend

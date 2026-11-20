@@ -39,6 +39,21 @@ type Json = Record<string, unknown>;
 
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null;
 
+// A Narrative has no filter of its own: each view narrows the network
+// for itself, so the design's one filter goes to every view.
+const filterInPresets = (st: Json): Json => {
+  const { filter, ...stage } = st;
+  if (filter === undefined || !Array.isArray(stage.presets)) return st;
+  return {
+    ...stage,
+    presets: stage.presets.map((preset: unknown) =>
+      isObject(preset)
+        ? { ...preset, filter: structuredClone(filter) }
+        : preset,
+    ),
+  };
+};
+
 /**
  * What compile() emits: the INPUT side of the schema 9 protocol schema (before
  * zod's transforms and brands). The compiler assembles stages from plain
@@ -1160,47 +1175,49 @@ export const compile = (
       }
       case 'narrative':
         push(
-          withFilter({
-            ...base(s.id, 'Narrative', label(s.id, humanise(s.id))),
-            subject: nodeSubject(s.nodeTypeId),
-            presets: s.views.map((v, i) => ({
-              id: `view${i + 1}`,
-              label: localized(
-                pick(W.prompt.get(`${s.id}/view${i + 1}`)?.text, v.label),
-              ),
-              layoutVariable: key(scope, 'layout'),
-              ...(v.groupByAttributeId
-                ? { groupVariable: key(scope, v.groupByAttributeId) }
-                : {}),
-              ...(v.relationshipIds.length
-                ? {
-                    edges: {
-                      // the legend names each relationship shown
-                      display: v.relationshipIds.map((r) => ({
-                        type: relKey.get(r),
-                        label: localized(relName(r)),
+          filterInPresets(
+            withFilter({
+              ...base(s.id, 'Narrative', label(s.id, humanise(s.id))),
+              subject: nodeSubject(s.nodeTypeId),
+              presets: s.views.map((v, i) => ({
+                id: `view${i + 1}`,
+                label: localized(
+                  pick(W.prompt.get(`${s.id}/view${i + 1}`)?.text, v.label),
+                ),
+                layoutVariable: key(scope, 'layout'),
+                ...(v.groupByAttributeId
+                  ? { groupVariable: key(scope, v.groupByAttributeId) }
+                  : {}),
+                ...(v.relationshipIds.length
+                  ? {
+                      edges: {
+                        // the legend names each relationship shown
+                        display: v.relationshipIds.map((r) => ({
+                          type: relKey.get(r),
+                          label: localized(relName(r)),
+                        })),
+                      },
+                    }
+                  : {}),
+                ...(v.highlightAttributeIds.length
+                  ? {
+                      // the legend names each highlighted attribute
+                      highlight: v.highlightAttributeIds.map((h) => ({
+                        variable: key(scope, h),
+                        label: localized(attrIn(scope, h)!.label),
                       })),
-                    },
-                  }
-                : {}),
-              ...(v.highlightAttributeIds.length
-                ? {
-                    // the legend names each highlighted attribute
-                    highlight: v.highlightAttributeIds.map((h) => ({
-                      variable: key(scope, h),
-                      label: localized(attrIn(scope, h)!.label),
-                    })),
-                  }
-                : {}),
-            })),
-            background: { concentricCircles: 4, skewedTowardCenter: true },
-            // keep participant-placed positions; re-run the force layout only if the map was automatic
-            behaviours: {
-              automaticLayout: lastSociogramAuto.get(s.nodeTypeId) ?? true,
-              allowRepositioning: true,
-              freeDraw: true,
-            },
-          }),
+                    }
+                  : {}),
+              })),
+              background: { concentricCircles: 4, skewedTowardCenter: true },
+              // keep participant-placed positions; re-run the force layout only if the map was automatic
+              behaviours: {
+                automaticLayout: lastSociogramAuto.get(s.nodeTypeId) ?? true,
+                allowRepositioning: true,
+                freeDraw: true,
+              },
+            }),
+          ),
           src,
         );
         break;

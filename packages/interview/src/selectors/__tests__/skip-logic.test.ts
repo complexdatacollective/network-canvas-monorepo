@@ -318,6 +318,56 @@ describe('buildStageAvailabilityMap', () => {
       ).toEqual(['available', 'available']);
     });
 
+    it('takes a Narrative off the route when every preset’s own filter leaves no one placed in its layout', () => {
+      const onlyAged = (age: number): Filter => ({
+        rules: [
+          {
+            id: `aged-${age}`,
+            type: 'node' as const,
+            options: {
+              type: 'person',
+              attribute: asEntityAttributeReference('age'),
+              operator: 'EXACTLY' as const,
+              value: age,
+            },
+          },
+        ],
+      });
+      const placed = { x: 0.5, y: 0.5 };
+      const stages = [
+        {
+          ...nodeStage('story', 'Narrative'),
+          presets: [
+            { layoutVariable: 'close', filter: onlyAged(30) },
+            { layoutVariable: 'work', filter: onlyAged(40) },
+          ],
+        },
+        finishStage(),
+      ];
+
+      // Each person is placed in a layout, but in the one whose filter
+      // leaves them out.
+      expect(
+        kinds(
+          stages,
+          withEntities([
+            node('a', 'person', { age: 40, close: placed }),
+            node('b', 'person', { age: 30, work: placed }),
+          ]),
+        ),
+      ).toEqual(['empty', 'available']);
+      // One preset's filter leaves someone its layout places.
+      expect(
+        kinds(
+          stages,
+          withEntities([
+            node('a', 'person', { age: 40, close: placed }),
+            node('b', 'person', { age: 40, work: placed }),
+          ]),
+        ),
+      ).toEqual(['available', 'available']);
+    });
+
     it('keeps a Narrative the participant can draw on when it shows no one', () => {
       expect(
         kinds(

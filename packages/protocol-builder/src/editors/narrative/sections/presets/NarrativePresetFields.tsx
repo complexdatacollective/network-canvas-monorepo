@@ -9,6 +9,7 @@ import Section from '@codaco/fresco-ui/Section';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
 import { LocalizedInputField } from '../../../../fields/LocalizedStringField.tsx';
+import { FilterRuleSetField } from '../../../../fields/RuleSetField.tsx';
 import VariablePickerField from '../../../../fields/VariablePickerField.tsx';
 import type {
   RowEditorProps,
@@ -23,6 +24,12 @@ import {
   useLocalizedText,
   useProtocolLocalization,
 } from '../../../../localization/ProtocolLocalization.tsx';
+import {
+  type RowFilterClearWords,
+  useRowFilterCapability,
+  useRowFilterValidation,
+} from '../../../../rules/rowFilter.ts';
+import { isRuleSetValue } from '../../../../rules/ruleSet.ts';
 import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
   BOOLEAN_TYPES,
@@ -49,6 +56,7 @@ const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
 const GROUP_VARIABLE_FIELD = 'groupVariable';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const HIGHLIGHT_FIELD = 'highlight';
+const FILTER_FIELD = 'filter';
 const HIGHLIGHT_LABELS_FIELD = 'highlightLabels';
 const DISPLAY_LABELS_FIELD = 'displayLabels';
 
@@ -158,6 +166,13 @@ export function collapseNarrativePreset(row: RowValues): RowValues {
     : { ...withoutEdges, edges: nextEdges };
 }
 
+/** What switching a preset's filter off destroys, in its own words. */
+const PRESET_FILTER_CLEAR_WORDS: RowFilterClearWords = {
+  title: messages.presetFilterClearTitle,
+  description: messages.presetFilterClearDescription,
+  confirmLabel: messages.presetFilterClearConfirm,
+};
+
 /** The picker takes an open prop bag from the field wrapper. */
 const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
@@ -217,8 +232,10 @@ function LegendLabelField({
  * One saved way of looking at the network.
  *
  * A preset is a whole picture the researcher switches to while the participant
- * talks: where the nodes sit, which of them are outlined together, which
- * connections are drawn, and which stand out. Every part of it names a
+ * talks: where the nodes sit, which part of the network is shown, which nodes
+ * are outlined together, which connections are drawn, and which stand out.
+ * The filter is the preset's own — a narrative stage has none — so two
+ * presets can show different parts of the network. Every other part names a
  * codebook attribute or an edge type, all read live from the protocol here, so
  * a collaborator's change to the codebook changes what this dialog offers
  * without the dialog asking for it.
@@ -246,6 +263,13 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     onCreated: (variableId) => setRowValue(LAYOUT_VARIABLE_FIELD, variableId),
   });
   const edgeChoicesOffered = useEdgeTypeChoices();
+  // The same rules a stage's own filter may hold, judged the same way: a
+  // preset's filter narrows the nodes and edges it shows.
+  const filterValidation = useRowFilterValidation('filter');
+  const { hasRules, requestFilterOpenChange } = useRowFilterCapability(
+    item[FILTER_FIELD],
+    PRESET_FILTER_CLEAR_WORDS,
+  );
 
   const committedLayout = asText(item[LAYOUT_VARIABLE_FIELD]);
   const committedGroup = asText(item[GROUP_VARIABLE_FIELD]);
@@ -382,6 +406,29 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
           {...createProps}
         />
         {editor}
+      </Section>
+
+      <Section
+        title={intl.formatMessage(messages.presetFilterTitle)}
+        description={intl.formatMessage(messages.presetFilterDescription)}
+        // Optional, and most presets have none — an unfiltered preset shows
+        // the whole network, which is what its absence means — so it is a
+        // switch like a side panel's filter rather than an empty rule builder
+        // every preset opens on.
+        toggleable
+        defaultOpen={hasRules}
+        onOpenChange={requestFilterOpenChange}
+      >
+        <Field<typeof FilterRuleSetField>
+          name={FILTER_FIELD}
+          component={FilterRuleSetField}
+          label={intl.formatMessage(messages.presetFilterRulesLabel)}
+          hint={intl.formatMessage(messages.presetFilterRulesHint)}
+          initialValue={
+            isRuleSetValue(item[FILTER_FIELD]) ? item[FILTER_FIELD] : undefined
+          }
+          {...filterValidation}
+        />
       </Section>
 
       <Section

@@ -3,6 +3,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { withMod } from '@codaco/fresco-ui/testing/modKey';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
@@ -107,11 +108,11 @@ export const UndoingAValue: Story = {
     ).not.toBeVisible();
     await waitFor(() => expect(editor).toHaveFocus());
 
-    await userEvent.keyboard('{Control>}z{/Control}');
+    await userEvent.keyboard(withMod('z'));
     await waitFor(() =>
       expect(editor.querySelector('[data-versions-element]')).toBeNull(),
     );
-    await userEvent.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await userEvent.keyboard(withMod('{Shift>}z{/Shift}'));
     await waitFor(() =>
       expect(editor.querySelector('[data-versions-element]')).not.toBeNull(),
     );

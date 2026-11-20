@@ -1760,6 +1760,83 @@ describe('Migrating Narrative preset labels from schema 8 to 9', () => {
   });
 });
 
+// A schema 8 Narrative stage with two presets, holding the settings given.
+const schema8Narrative = (settings: Record<string, unknown>) => ({
+  ...createBaseProtocol(),
+  schemaVersion: 8,
+  stages: [
+    {
+      id: 'narrative',
+      type: 'Narrative',
+      label: 'Tell the story',
+      subject: { entity: 'node', type: 'person' },
+      presets: [
+        { id: 'first', label: 'Closeness', layoutVariable: 'layoutPosition' },
+        { id: 'second', label: 'Support', layoutVariable: 'layoutPosition' },
+      ],
+      background: { concentricCircles: 3 },
+      ...settings,
+    },
+  ],
+});
+
+describe('Migrating a Narrative stage filter from schema 8 to 9', () => {
+  const filter = { join: 'AND', rules: [nameRule, ageRule] };
+
+  it('copies the stage filter to every preset, and leaves the stage none', () => {
+    const [stage] = stagesMigratedFrom(schema8Narrative({ filter }));
+
+    expect(stage).toMatchObject({
+      presets: [
+        { id: 'first', filter },
+        { id: 'second', filter },
+      ],
+    });
+    expect(stage).not.toHaveProperty('filter');
+  });
+
+  it('gives each preset a copy of its own', () => {
+    const [stage] = stagesMigratedFrom(schema8Narrative({ filter }));
+    const [first, second] = (stage as { presets: { filter: object }[] })
+      .presets;
+
+    expect(first?.filter).not.toBe(second?.filter);
+  });
+
+  it('gives a preset no filter where the stage had none', () => {
+    const [stage] = stagesMigratedFrom(schema8Narrative({}));
+
+    expect(stage).not.toHaveProperty('presets.0.filter');
+    expect(stage).not.toHaveProperty('presets.1.filter');
+  });
+
+  it('produces a protocol schema 9 accepts', () => {
+    const result = ProtocolSchemaV9.safeParse(
+      migrateProtocol(schema8Narrative({ filter }), 9),
+    );
+
+    expect(result.error?.issues ?? []).toEqual([]);
+  });
+
+  // Fresco re-runs this migration over rows already in schema 9 form.
+  it('leaves a preset its own filter when run over a stage already converted', () => {
+    const own = { rules: [nameRule] };
+    const base = schema8Narrative({});
+    const [stage] = stagesMigratedFrom({
+      ...base,
+      stages: base.stages.map((narrative) => ({
+        ...narrative,
+        presets: narrative.presets.map((preset, index) =>
+          index === 0 ? { ...preset, filter: own } : preset,
+        ),
+      })),
+    });
+
+    expect(stage).toMatchObject({ presets: [{ filter: own }, {}] });
+    expect(stage).not.toHaveProperty('presets.1.filter');
+  });
+});
+
 // The base protocol with its Name Generator form titled as given, as schema 8
 // stored it.
 const migratedFormTitle = (title: string, nodeTypeName = 'Person') => {
