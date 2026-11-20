@@ -79,4 +79,8 @@ block is drawn with), `SegmentedSwitcherField` and `testing/assetBlock`, and
 `Popover` passes on `collisionAvoidance`, `collisionPadding` and
 `collisionBoundary`; and `RenderMarkdown` takes `blockImages`, which draws
 matching markdown images with a component of the caller's and never draws one
-from raw HTML. `SyntheticInterview` builds Information stages in the new shape.
+from raw HTML. `SyntheticInterview` builds Information stages in the new shape:
+each language's page holds each part (title, text, block descriptions) as the
+interview showed it there, falling back as it does where a part has no
+translation in that language. `@codaco/protocol-validation` exports
+`resolveTextsInEachLocale`, which reads separately translated texts that way.

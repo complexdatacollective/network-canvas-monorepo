@@ -154,6 +154,7 @@ export {
 export {
   type ResolvedLocalizedString,
   resolveLocalizedString,
+  resolveTextsInEachLocale,
 } from './localization/resolveLocalizedString.ts';
 export {
   MigrationChain,

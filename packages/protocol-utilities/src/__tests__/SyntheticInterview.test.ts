@@ -1877,6 +1877,132 @@ describe('addInformationStage content', () => {
       fr: '# Bienvenue\n\n![Carte](asset:img-1)',
     });
   });
+
+  // Each part was once a text of its own, which a participant read in their
+  // language or, without a translation there, as the interview falls back.
+  // The page in each language is those parts as they were read there.
+  describe('a part without a translation reads as the interview falls back', () => {
+    const informationIn = (
+      localization: { defaultLocale: string; locales: string[] },
+      opts: Parameters<SyntheticInterview['addInformationStage']>[0],
+    ) => {
+      const synth = new SyntheticInterview();
+      synth.setLocalization(localization);
+      synth.addInformationStage(opts);
+      return contentOf(synth);
+    };
+    const EN_FR = { defaultLocale: 'en', locales: ['en', 'fr'] };
+
+    it('keeps text written once under a translated title', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: { en: 'Welcome', fr: 'Bienvenue' },
+          text: 'Please read these instructions.',
+        }),
+      ).toEqual({
+        en: '# Welcome\n\nPlease read these instructions.',
+        fr: '# Bienvenue\n\nPlease read these instructions.',
+      });
+    });
+
+    it('keeps a title written once above translated text', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: 'Welcome',
+          text: { en: 'Hello', fr: 'Bonjour' },
+        }),
+      ).toEqual({
+        en: '# Welcome\n\nHello',
+        fr: '# Welcome\n\nBonjour',
+      });
+    });
+
+    it('keeps a translated part missing one language in the default language', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: { en: 'Welcome', fr: 'Bienvenue' },
+          text: { en: 'Hello' },
+        }),
+      ).toEqual({ en: '# Welcome\n\nHello', fr: '# Bienvenue\n\nHello' });
+    });
+
+    it('keeps a description written once, and one missing a language', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: { en: 'Welcome', fr: 'Bienvenue' },
+          blocks: [
+            { assetId: 'img-1', description: 'A map' },
+            { assetId: 'img-2', description: { en: 'A tree' } },
+            { assetId: 'img-3' },
+          ],
+        }),
+      ).toEqual({
+        en: '# Welcome\n\n![A map](asset:img-1)\n\n![A tree](asset:img-2)\n\n![](asset:img-3)',
+        fr: '# Bienvenue\n\n![A map](asset:img-1)\n\n![A tree](asset:img-2)\n\n![](asset:img-3)',
+      });
+    });
+
+    it('keeps a translated description under a title written once', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: 'Welcome',
+          blocks: [
+            { assetId: 'img-1', description: { en: 'Map', fr: 'Carte' } },
+          ],
+        }),
+      ).toEqual({
+        en: '# Welcome\n\n![Map](asset:img-1)',
+        fr: '# Welcome\n\n![Carte](asset:img-1)',
+      });
+    });
+
+    it('reads a part only in another language there in the default language too', () => {
+      expect(
+        informationIn(EN_FR, { title: 'Welcome', text: { fr: 'Bonjour' } }),
+      ).toEqual({ en: '# Welcome\n\nBonjour', fr: '# Welcome\n\nBonjour' });
+    });
+
+    it("reads a part without a language in that language's closest relative", () => {
+      expect(
+        informationIn(
+          { defaultLocale: 'en', locales: ['en', 'fr', 'fr-CA'] },
+          {
+            title: { 'en': 'Welcome', 'fr-CA': 'Bienvenue' },
+            text: { en: 'Hello', fr: 'Bonjour' },
+          },
+        ),
+      ).toEqual({
+        'en': '# Welcome\n\nHello',
+        'fr': '# Bienvenue\n\nBonjour',
+        'fr-CA': '# Bienvenue\n\nBonjour',
+      });
+    });
+
+    it('writes no page in a language no part has', () => {
+      expect(
+        informationIn(
+          { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
+          { title: { en: 'Welcome', fr: 'Bienvenue' }, text: 'Hello' },
+        ),
+      ).toEqual({ en: '# Welcome\n\nHello', fr: '# Bienvenue\n\nHello' });
+    });
+
+    it('shows nothing for a translation that is blank, and keeps the rest', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: { en: 'Welcome', fr: '  ' },
+          text: 'Hello',
+        }),
+      ).toEqual({ en: '# Welcome\n\nHello', fr: 'Hello' });
+    });
+  });
+
+  it('writes text given as a string in the default language set after the stage is added', () => {
+    const synth = new SyntheticInterview();
+    synth.addInformationStage({ title: 'Bienvenue', text: 'Lisez ceci.' });
+    synth.setLocalization({ defaultLocale: 'fr', locales: ['fr'] });
+    expect(contentOf(synth)).toEqual({ fr: '# Bienvenue\n\nLisez ceci.' });
+  });
 });
 
 describe('validation rules on generated nodes', () => {

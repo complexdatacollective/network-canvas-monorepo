@@ -106,3 +106,40 @@ export function resolveLocalizedString(
     matchedBy: resolved.matchedBy,
   };
 }
+
+/**
+ * Texts shown one after another, each translated on its own, as they read in
+ * each language any of them has a translation in: for that language, each
+ * text is the translation `resolveLocalizedString` shows a participant
+ * reading in it, falling back as it does where the text has none. A string
+ * is one text in every language and names none. A language no text has is
+ * left out, since text joined from these falls back there as each one would.
+ *
+ * Every language a text holds counts as one of the protocol's, so text that
+ * holds only languages the protocol does not declare, which validation
+ * reports, still reads as something; text holding no translation at all
+ * reads as empty.
+ */
+export function resolveTextsInEachLocale(
+  texts: readonly (string | LocaleKeyedText)[],
+  defaultLocale: LocaleTag,
+): Record<LocaleTag, string[]> {
+  const locales = new Set<LocaleTag>(
+    texts.flatMap((text) =>
+      typeof text === 'string' ? [] : Object.keys(text),
+    ),
+  );
+  return Object.fromEntries(
+    [...locales].map((locale) => [
+      locale,
+      texts.map((text) => {
+        if (typeof text === 'string') return text;
+        const held = Object.keys(text);
+        if (held.length === 0) return '';
+        return resolveLocalizedString(text, { defaultLocale, locales: held }, [
+          locale,
+        ]).text;
+      }),
+    ]),
+  );
+}

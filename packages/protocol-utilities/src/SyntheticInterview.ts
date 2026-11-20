@@ -15,10 +15,12 @@ import {
   escapeMarkdownText,
   headingMarkdown,
   escapeMessageText,
+  isBlankMessage,
+  isBlankText,
+  resolveTextsInEachLocale,
   type FinishMode,
   type FinishOutcome,
   type Experiments,
-  type LocaleTag,
   type LocalizedString,
   collectLocalizedStrings,
   findBuiltInWordingProblems,
@@ -1093,7 +1095,7 @@ export class SyntheticInterview {
       label: opts?.label ?? title,
       interviewScript: opts?.interviewScript,
       skipLogic: opts?.skipLogic,
-      content: this.informationContent(title, opts?.text, opts?.blocks ?? []),
+      information: { title, text: opts?.text, blocks: opts?.blocks ?? [] },
       prompts: [],
       presets: [],
       panels: [],
@@ -2762,55 +2764,69 @@ export class SyntheticInterview {
   }
 
   /**
-   * An Information page's markdown in each language its inputs are written
-   * in. Text written as a string is the default language's words as typed, so
-   * it is escaped as text; text written per language is a message already.
+   * An Information page's markdown in each language its parts are written in.
+   * Each part was once a text of its own, which a participant read in their
+   * language or, where it had no translation there, in the one the interview
+   * fell back to; the page in each language is each part as it was read
+   * there (see `resolveTextsInEachLocale`), and a part that read as nothing
+   * is left out. Text written as a string is the default language's words as
+   * typed, so it is escaped as text; text written per language is a message
+   * already.
    */
-  private informationContent(
-    title: TextInput,
-    text: TextInput | undefined,
-    blocks: readonly AssetBlockInput[],
-  ): Record<string, string> {
+  private informationContent({
+    title,
+    text,
+    blocks,
+  }: NonNullable<StageEntry['information']>): Record<string, string> {
     const { defaultLocale } = this.localization;
-    const inputs = [title, text, ...blocks.map((block) => block.description)];
-    const locales = new Set<LocaleTag>(
-      inputs.flatMap((input) => {
-        if (input === undefined) return [];
-        return typeof input === 'object' ? Object.keys(input) : [defaultLocale];
-      }),
-    );
-    const content: Record<string, string> = {};
-    for (const locale of locales) {
-      const read = (input: TextInput | undefined, escapeText: boolean) => {
-        if (input === undefined) return undefined;
-        if (typeof input === 'string') {
-          if (locale !== defaultLocale) return undefined;
-          return escapeText ? escapeMessageText(input) : input;
-        }
-        return input[locale];
-      };
-      const heading = read(title, false);
-      const paragraphs = [
-        heading === undefined || heading === ''
-          ? undefined
-          : typeof title === 'string'
-            ? escapeMessageText(headingMarkdown(heading))
-            : headingMarkdown(heading),
-        read(text, true),
-        ...blocks.map((block) => {
-          const described = read(block.description, true);
-          return assetBlockMarkdown({
+    const message = (input: TextInput): LocalizedString =>
+      typeof input === 'string'
+        ? { [defaultLocale]: escapeMessageText(input) }
+        : input;
+    // Each part as it is written by language (a string where it is the same
+    // in every language), with how its words make a block of the page.
+    const parts: {
+      written: string | LocalizedString;
+      block: (words: string) => string;
+    }[] = [
+      typeof title === 'string'
+        ? {
+            written: { [defaultLocale]: title },
+            block: (heading) =>
+              isBlankText(heading)
+                ? ''
+                : escapeMessageText(headingMarkdown(heading)),
+          }
+        : {
+            written: title,
+            block: (heading) =>
+              isBlankMessage(heading) ? '' : headingMarkdown(heading),
+          },
+      ...(text === undefined
+        ? []
+        : [{ written: message(text), block: (body: string) => body }]),
+      ...blocks.map(({ description, ...block }) => ({
+        written: description === undefined ? '' : message(description),
+        block: (described: string) =>
+          assetBlockMarkdown({
             ...block,
-            description: described,
-          });
-        }),
-      ].filter(
-        (paragraph): paragraph is string =>
-          paragraph !== undefined && paragraph !== '',
-      );
-      content[locale] = paragraphs.join('\n\n');
-    }
-    return content;
+            ...(!isBlankMessage(described) && { description: described }),
+          }),
+      })),
+    ];
+    const read = resolveTextsInEachLocale(
+      parts.map((part) => part.written),
+      defaultLocale,
+    );
+    return Object.fromEntries(
+      Object.entries(read).map(([locale, words]) => [
+        locale,
+        parts
+          .map((part, index) => part.block(words[index] ?? ''))
+          .filter((paragraph) => !isBlankMessage(paragraph))
+          .join('\n\n'),
+      ]),
+    );
   }
 
   private buildComposerField(
@@ -3028,6 +3044,10 @@ export class SyntheticInterview {
 
     if (stage.content !== undefined) {
       config.content = this.localized(stage.content);
+    }
+
+    if (stage.information) {
+      config.content = this.informationContent(stage.information);
     }
 
     if (stage.mode !== undefined) {

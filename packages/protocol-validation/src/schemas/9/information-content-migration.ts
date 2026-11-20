@@ -23,6 +23,7 @@ import {
   printMessageStructure,
 } from '../../localization/messageStructure.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
+import { resolveTextsInEachLocale } from '../../localization/resolveLocalizedString.ts';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -740,12 +741,12 @@ const joinPlainParts = (
  * (see `joinPlainParts`), for the migration to record in the protocol's
  * language with the rest of its text. Where a part is already localized,
  * which only a document written for schema 9 before it kept a page as one
- * text can be, the page is written once for each language any part has: a
- * part without that language reads there as it does in the default
- * language, or failing that in whichever language it has, which is what the
- * interview showed in its place. Those are joined as they are: a message is
- * not markdown until its values are filled in, and cannot be written again
- * from what it reads as.
+ * text can be, the page is written once for each language any part has,
+ * each part as the interview showed it to a participant reading that
+ * language: its own translation, or failing that the one the interview fell
+ * back to (see `resolveTextsInEachLocale`). Those are joined as they are: a
+ * message is not markdown until its values are filled in, and cannot be
+ * written again from what it reads as.
  */
 const joinParts = (
   parts: readonly Part[],
@@ -753,24 +754,16 @@ const joinParts = (
 ): string | Record<string, string> => {
   const plain = parts.filter((part) => part.kind === 'plain');
   if (plain.length === parts.length) return joinPlainParts(plain);
-  const locales = new Set<string>();
-  for (const part of parts) {
-    if (part.kind !== 'localized') continue;
-    for (const locale of Object.keys(part.messages)) locales.add(locale);
-  }
-  const messageIn = (part: Part, locale: string): string => {
-    if (part.kind === 'plain') return escapeMessageText(part.markdown);
-    return (
-      part.messages[locale] ??
-      part.messages[defaultLocale] ??
-      Object.values(part.messages)[0] ??
-      ''
-    );
-  };
+  const read = resolveTextsInEachLocale(
+    parts.map((part) =>
+      part.kind === 'plain' ? escapeMessageText(part.markdown) : part.messages,
+    ),
+    defaultLocale,
+  );
   return Object.fromEntries(
-    [...locales].map((locale) => [
+    Object.entries(read).map(([locale, messages]) => [
       locale,
-      parts.map((part) => messageIn(part, locale)).join(BETWEEN_BLOCKS),
+      messages.join(BETWEEN_BLOCKS),
     ]),
   );
 };

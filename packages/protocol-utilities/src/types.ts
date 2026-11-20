@@ -404,8 +404,15 @@ export type StageEntry = {
   convexHullVariable?: string;
   // FinishSession
   mode?: FinishMode;
-  // FinishSession's closing text and Information's one markdown text
+  // FinishSession's closing text
   content?: TextInput;
+  /** Information's parts, written as one markdown text when the protocol is
+   * built, in the languages it has then. */
+  information?: {
+    title: TextInput;
+    text?: TextInput;
+    blocks: readonly AssetBlockInput[];
+  };
   finishedContent?: TextInput;
   outcome?: FinishOutcome;
 };

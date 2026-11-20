@@ -327,14 +327,7 @@ const levelTexts = (nodes: readonly MessageNode[]): string[] => {
   return [text, ...nested];
 };
 
-/**
- * Every file a localized message names as a block: in its own text, and in
- * each version a `select` or `plural` chooses between, since any of them may
- * be the one a participant is shown. One in a version is found so that it can
- * be reported: a version is a line of words, and holds no block. A message
- * that cannot be read as ICU is searched as it is written.
- */
-export const assetBlocksInMessage = (
+const readAssetBlocksInMessage = (
   message: string,
 ): readonly AssetBlockInText[] => {
   // The text is always read. Looking for `asset:` in it first would save the
@@ -357,4 +350,35 @@ export const assetBlocksInMessage = (
       problems: [...problems, { kind: 'inVersion' } as const],
     })),
   ];
+};
+
+// Validation reads each translation that can hold blocks several times (for
+// the asset references, for the blocks' problems, for whether a page shows a
+// file), and an editor checks the protocol again after each change, mostly
+// to text that has not changed. Parsing markdown is the costly part, and its
+// result is only ever read, so one reading serves every reader. Bounded, so
+// that an editor producing a new message with each keystroke cannot grow it
+// without limit.
+const BLOCK_READINGS_KEPT = 500;
+const blockReadings = new Map<string, readonly AssetBlockInText[]>();
+
+/**
+ * Every file a localized message names as a block: in its own text, and in
+ * each version a `select` or `plural` chooses between, since any of them may
+ * be the one a participant is shown. One in a version is found so that it can
+ * be reported: a version is a line of words, and holds no block. A message
+ * that cannot be read as ICU is searched as it is written.
+ */
+export const assetBlocksInMessage = (
+  message: string,
+): readonly AssetBlockInText[] => {
+  const known = blockReadings.get(message);
+  if (known !== undefined) return known;
+  const read = readAssetBlocksInMessage(message);
+  if (blockReadings.size >= BLOCK_READINGS_KEPT) {
+    const oldest = blockReadings.keys().next();
+    if (!oldest.done) blockReadings.delete(oldest.value);
+  }
+  blockReadings.set(message, read);
+  return read;
 };

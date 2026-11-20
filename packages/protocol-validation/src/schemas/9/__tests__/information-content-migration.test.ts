@@ -680,6 +680,38 @@ describe('combineInformationContent', () => {
       });
     });
 
+    it("reads a language a part lacks as that language's closest relative", () => {
+      const stage = combined(
+        {
+          title: { 'en': 'Welcome', 'fr-CA': 'Bienvenue' },
+          items: [text('a', { en: 'Hello', fr: 'Bonjour' })],
+        },
+        {
+          localization: { defaultLocale: 'en', locales: ['en', 'fr', 'fr-CA'] },
+        },
+      );
+      expect(stage.content).toEqual({
+        'en': '# Welcome\n\nHello',
+        'fr': '# Bienvenue\n\nBonjour',
+        'fr-CA': '# Bienvenue\n\nBonjour',
+      });
+    });
+
+    it('reads a part with neither the language nor the default in its first language by tag', () => {
+      const stage = combined(
+        {
+          title: { en: 'Welcome' },
+          items: [text('a', { es: 'Hola', de: 'Hallo' })],
+        },
+        { localization: { defaultLocale: 'en', locales: ['en', 'de', 'es'] } },
+      );
+      expect(stage.content).toEqual({
+        en: '# Welcome\n\nHallo',
+        es: '# Welcome\n\nHola',
+        de: '# Welcome\n\nHallo',
+      });
+    });
+
     it('leaves out the translations of a part that show nothing', () => {
       const stage = combined(
         {
