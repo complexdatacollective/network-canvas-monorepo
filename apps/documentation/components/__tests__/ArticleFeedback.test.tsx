@@ -118,6 +118,34 @@ describe('ArticleFeedback', () => {
       screen.getByRole('button', { name: 'Change your feedback' }),
     );
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(screen.getByRole('textbox')).toHaveFocus();
+  });
+
+  it('keeps focus in the box when the reader removes their feedback', () => {
+    renderFeedback();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'Add an example' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Change your feedback' }),
+    );
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(capture).toHaveBeenLastCalledWith(
+      'survey sent',
+      expect.not.objectContaining({
+        '$survey_response_220d2d7a-3cb1-4061-9c03-dc02ff1b44e4':
+          expect.anything(),
+      }),
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Your feedback was removed.',
+    );
+    expect(screen.getByRole('textbox')).toHaveFocus();
   });
 
   it('shows a returning reader the answer they gave', async () => {

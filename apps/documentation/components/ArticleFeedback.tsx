@@ -58,7 +58,11 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const announce = (status: Status) =>
     setAnnouncement((previous) => ({ status, id: (previous?.id ?? 0) + 1 }));
+  // Whatever control the reader pressed may unmount or turn disabled, so
+  // focus moves to the control that replaces it.
   const focusEditButton = useRef(false);
+  const focusCommentBox = useRef(false);
+  const commentBox = useRef<HTMLTextAreaElement | null>(null);
 
   const send = (next: Feedback) => {
     setSent(next);
@@ -95,8 +99,12 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
       comment: nextComment,
     });
     announce(nextComment === '' ? 'commentRemoved' : 'commentSent');
-    focusEditButton.current = true;
     setDraft(null);
+    if (nextComment === '') {
+      commentBox.current?.focus();
+    } else {
+      focusEditButton.current = true;
+    }
   };
 
   const editing = rating !== null && (draft !== null || comment === '');
@@ -136,6 +144,12 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
             {t('commentLabel')}
           </label>
           <TextAreaField
+            ref={(box: HTMLTextAreaElement | null) => {
+              commentBox.current = box;
+              if (box === null || !focusCommentBox.current) return;
+              focusCommentBox.current = false;
+              box.focus();
+            }}
             id={commentId}
             maxLength={ARTICLE_COMMENT_MAX_LENGTH}
             className="[&>textarea]:field-sizing-content [&>textarea]:max-h-60 [&>textarea]:min-h-24"
@@ -170,6 +184,7 @@ export default function ArticleFeedback({ docPath }: { docPath: string }) {
               className="-ms-3"
               icon={<MessageSquare aria-hidden />}
               onClick={() => {
+                focusCommentBox.current = true;
                 setDraft(comment);
                 setAnnouncement(null);
               }}
