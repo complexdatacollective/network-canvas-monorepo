@@ -626,8 +626,27 @@ are translations keyed by declared language, stored inside the section that owns
 them, so a structural diff names a stage by its label in the default language,
 or in another declared language that has one when the default has none. A
 protocol created in Studio declares English (`en`), as one migrated from schema
-8 does, because nothing asks the researcher for a language yet. A draft branched from a version stored under an older schema is migrated to
-the current one, so it can be edited.
+8 does, because nothing asks the researcher for a language yet.
+
+#### Schema versions
+
+Studio supports exactly one protocol schema version: the current one,
+`CURRENT_SCHEMA_VERSION` from `@codaco/protocol-validation`. That holds while
+the current version is still unreleased. Studio does not migrate protocols, and
+it does not migrate interview data.
+
+- Every protocol, draft, published version and interview that Studio stores is
+  in the current schema.
+- Studio never upgrades a stored protocol or a stored interview from one schema
+  version to another. No stored interview is rewritten because the schema
+  changed.
+- Data written under an unreleased schema version is development data. A change
+  to an unreleased schema needs no handling for documents or deployments that
+  already exist; recreate the data.
+
+`api/src/protocol/migrate.ts` and `api/src/protocol/upgrade-pinned.ts` predate
+this rule and still carry stored versions and in-flight sessions across a schema
+change. They are not a pattern to extend, and they are due to be removed.
 
 ### Tenancy
 

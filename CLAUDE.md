@@ -286,6 +286,18 @@ Network Canvas uses a protocol-based system where:
 3. The `@codaco/interview` runtime executes them in Interviewer or another host.
 4. Completed interview data can be transformed by `@codaco/network-exporters`.
 
+### Schema versions and migration
+
+- **Studio supports only the current schema version**, including while that
+  version is unreleased. It does not migrate protocols or interview data. See
+  "Schema versions" in `apps/studio/README.md`.
+- **Stored interviews are never rewritten by a protocol migration**, in any
+  app. Fresco and Interviewer do not upgrade stored protocols either.
+- **A protocol migration need not be deterministic.** Migrating one file twice
+  may give different results (for example different object ids).
+- **Data in an unreleased schema version is development data.** Change an
+  unreleased schema in place, with no handling for existing documents.
+
 ## Development Guidelines
 
 Before adding code for any feature, fix, or refactor, search for the existing package, module, helper, component, or pattern. Prefer reuse, composition, or a focused extension over a parallel implementation. If nothing fits, state what you checked and why the new code belongs in its chosen package.
