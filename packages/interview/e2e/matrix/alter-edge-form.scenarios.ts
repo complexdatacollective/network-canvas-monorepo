@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -220,7 +221,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
             rules: [
               {
                 type: 'node',
-                id: 'keep-included',
+                id: createProtocolObjectId(),
                 options: {
                   type: nt.id,
                   attribute: 'excluded',

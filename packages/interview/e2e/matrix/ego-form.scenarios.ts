@@ -1,5 +1,8 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { ComponentType } from '@codaco/protocol-validation';
+import {
+  type ComponentType,
+  createProtocolObjectId,
+} from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
@@ -1786,7 +1789,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           minor: {
             rules: [
               {
-                id: 'under-18',
+                id: createProtocolObjectId(),
                 type: 'ego',
                 options: {
                   attribute: ageVar.id,
