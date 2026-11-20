@@ -169,9 +169,9 @@ const convertBoundaries = (
 };
 
 /**
- * Each prompt keeps its id and text and names its attribute `attribute`.
- * Schema 9 needs at least one prompt, so an empty list is left out. An id
- * that is not a UUID, such as `pedigree`, is replaced with the others.
+ * Each prompt keeps its text and names its attribute `attribute`. Schema 9
+ * needs at least one prompt, so an empty list is left out. The prompt's id is
+ * replaced later, with every other id, by `assignProtocolObjectIds`.
  */
 const convertNominationPrompts = (prompts: unknown): unknown => {
   if (!Array.isArray(prompts)) return prompts;

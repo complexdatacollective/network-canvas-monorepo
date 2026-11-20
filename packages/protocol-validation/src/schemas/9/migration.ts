@@ -5,15 +5,12 @@ import {
   normalizeCodebookName,
 } from '@codaco/shared-consts';
 
-import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
+import { isBlankText } from '../../localization/blankText.ts';
 import { labelComparisonKey } from '../../localization/duplicateLabels.ts';
 import { DYNAMIC_VALUE_MARKER } from '../../localization/dynamicValueMessages.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
-import {
-  escapeMessageText,
-  messageText,
-} from '../../localization/messageSyntax.ts';
+import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import {
   createMigration,
   type ProtocolDocument,
@@ -411,21 +408,17 @@ const remapShapeMappings = (
 };
 
 /**
- * Text that shows nothing in any language: a schema 8 string, or the
- * translations of text already localized. Blank translations are removed
- * from localized text, so the text left says something in every language it
- * has, or is `undefined` when nothing is left.
+ * A schema 8 string that shows nothing becomes `undefined`. Anything else is
+ * returned as it is, including the localized default an earlier repair
+ * wrote, which always says something.
  */
-const withoutBlankText = (text: unknown): unknown => {
-  if (typeof text === 'string') return isBlankText(text) ? undefined : text;
-  if (!isRecord(text)) return text;
-  const kept = Object.entries(text).filter(
-    ([, message]) => typeof message !== 'string' || !isBlankMessage(message),
-  );
-  return kept.length === 0 ? undefined : Object.fromEntries(kept);
-};
+const withoutBlankText = (text: unknown): unknown =>
+  typeof text === 'string' && isBlankText(text) ? undefined : text;
 
-/** Text that says something, as a schema 8 string or a localized record. */
+/**
+ * Text that says something: a schema 8 string, or the localized default an
+ * earlier repair wrote.
+ */
 const shownText = (text: unknown) => {
   const shown = withoutBlankText(text);
   return typeof shown === 'string' || isRecord(shown) ? shown : undefined;
@@ -453,8 +446,7 @@ const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
  * published protocols use a body of spaces on purpose to show a panel with
  * only a title. Text that shows nothing is left out, and a title that shows
  * nothing takes the stage's label, as the 7 to 8 migration does for a panel
- * with no title. Text already localized loses only the translations that
- * show nothing, which then fall back to another.
+ * with no title.
  */
 const moveIntroductionPanelsToInformationStages = (
   protocol: unknown,
@@ -479,6 +471,8 @@ const moveIntroductionPanelsToInformationStages = (
       stages.push(stage);
       continue;
     }
+    // Unique only so skip logic can be retargeted to the new stage below;
+    // `assignProtocolObjectIds` replaces it with every other id.
     const id = createProtocolObjectId();
     if (typeof stage.id === 'string') retargets.set(stage.id, id);
     stages.push({
@@ -511,8 +505,6 @@ const moveIntroductionPanelsToInformationStages = (
  * showed a stage with no heading. Schema 9 requires the title to say
  * something, so a title that shows nothing takes the stage's label, as an
  * introduction panel's does; a label is required to say something already.
- * Text already localized loses only its translations that show nothing, which
- * then fall back to another.
  */
 const repairInformationTitles = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -526,9 +518,7 @@ const repairInformationTitles = (protocol: unknown) => {
  * Schema 9 requires the caption of a Categorical Bin's bin for answers not
  * listed to say something, where schema 8 accepted text of only spaces, which
  * showed an unlabelled bin. One that shows nothing takes the default the 7 to
- * 8 migration gives a missing one, "Other". Text already localized loses only
- * its translations that show nothing, as an introduction panel's does. The
- * question that bin asks (`otherVariablePrompt`) is not repaired: the
+ * 8 migration gives a missing one, "Other". The question that bin asks (`otherVariablePrompt`) is not repaired: the
  * migration does not write a question, so a blank one is refused.
  */
 const repairOtherBinText = (
@@ -555,9 +545,7 @@ const repairOtherBinText = (
  * A Tie-Strength Census prompt's decline label must say something in schema 9,
  * where schema 8 accepted text of only spaces, which showed the participant an
  * unnamed decline option. One that shows nothing takes the default the 7 to 8
- * migration gives a missing one, "No relationship". Text already localized
- * loses only its translations that show nothing, as an introduction panel's
- * does.
+ * migration gives a missing one, "No relationship".
  */
 const repairTieStrengthDeclineLabels = (
   protocol: unknown,
@@ -780,8 +768,7 @@ const addComposerCaptions = (protocol: unknown) => {
  * label of only spaces, which showed a preset with no name. A preset label
  * that shows nothing takes the default the 7 to 8 migration gives a missing
  * one, "Preset" and its position; a highlight label, the attribute's name, as
- * `addLegendLabels` gives one. Text already localized loses only its
- * translations that show nothing, which then fall back to another.
+ * `addLegendLabels` gives one.
  */
 const repairNarrativeLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -811,8 +798,7 @@ const repairNarrativeLabels = (protocol: unknown) => {
  * where schema 8 accepted a title of only spaces, which showed a form with no
  * heading. One that shows nothing takes the default the 7 to 8 migration
  * gives a missing one: "Add" and the name of the stage's node type, or "Add"
- * alone. Text already localized loses only its translations that show
- * nothing, which then fall back to another.
+ * alone.
  */
 const repairFormTitles = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -834,12 +820,11 @@ const repairFormTitles = (protocol: unknown) => {
 };
 
 /**
- * Whether a value is text the repairs below may replace: a schema 8 string or
- * text already localized. Anything else, missing or of another type, schema 8
- * already rejected, so it is left for validation to report.
+ * Whether a value is text the repairs below may replace: a schema 8 string.
+ * Anything else, missing or of another type, schema 8 already rejected, so it
+ * is left for validation to report.
  */
-const isText = (value: unknown): value is string | Record<string, unknown> =>
-  typeof value === 'string' || isRecord(value);
+const isText = (value: unknown): value is string => typeof value === 'string';
 
 /**
  * Schema 9 requires a stage's name to say something, as the stages menu lists
@@ -847,8 +832,7 @@ const isText = (value: unknown): value is string | Record<string, unknown> =>
  * takes the name the 7 to 8 migration gives a stage with none, "Stage" and
  * its position, such as "Stage 3". It runs before the migration adds any
  * stage, so the position is the one the stage had in schema 8, and before
- * anything that reads the name. Text already localized loses only its
- * translations that show nothing, which then fall back to another.
+ * anything that reads the name.
  */
 const repairStageLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -880,8 +864,6 @@ const optionLabelFor = (value: unknown): string | undefined => {
  * runs after the option values are normalized, so the label reads the value
  * as schema 9 stores it. The label is markdown, so the value is escaped to
  * show as written. Only the label changes, never the value an answer records.
- * Text already localized loses only its translations that show nothing, which
- * then fall back to another.
  */
 const repairOptionLabels = (codebook: unknown) => {
   for (const variables of variableRecordsOf(codebook)) {
@@ -912,8 +894,6 @@ const repairOptionLabels = (codebook: unknown) => {
  * something, where schema 8 accepted a title of only spaces, which showed a
  * panel with no heading. One that shows nothing takes the default the 7 to 8
  * migration gives a missing one, "Panel" and its position, such as "Panel 1".
- * Text already localized loses only its translations that show nothing,
- * which then fall back to another.
  */
 const repairPanelTitles = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -933,8 +913,7 @@ const repairPanelTitles = (protocol: unknown) => {
  * with no name. One that shows nothing takes the name of the attribute it
  * reads, as a form field's question does, looked up on the stage's node
  * type; the roster column's own name stands in when the node type has no
- * such attribute. Text already localized loses only its translations that
- * show nothing, which then fall back to another.
+ * such attribute.
  */
 const repairRosterPropertyLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -963,19 +942,6 @@ const repairRosterPropertyLabels = (protocol: unknown) => {
 };
 
 /**
- * Every text a label shows: a schema 8 string, which is plain text, or each
- * translation of text already localized, which is a message and so is read
- * back to the text it shows (`Type '{'A'}'` shows `Type {A}`).
- */
-const textsOf = (label: unknown): string[] => {
-  if (typeof label === 'string') return [label];
-  if (!isRecord(label)) return [];
-  return Object.values(label)
-    .filter((text): text is string => typeof text === 'string')
-    .map(messageText);
-};
-
-/**
  * Schema 9 requires a Narrative Pedigree condition's label to say something,
  * where schema 8 accepted a label of only spaces, which showed the participant
  * an unnamed condition. One that shows nothing takes the name of the attribute
@@ -983,8 +949,7 @@ const textsOf = (label: unknown): string[] => {
  * on the node type of the Family Pedigree the stage shows; the attribute's id
  * stands in for a missing name. Two conditions on one stage must have
  * different labels, so a name another condition already uses is followed by a
- * number, such as "Diabetes 2". Text already localized loses only its
- * translations that show nothing, which then fall back to another.
+ * number, such as "Diabetes 2".
  */
 const repairDiseaseLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -1013,8 +978,11 @@ const repairDiseaseLabels = (protocol: unknown) => {
       const used = new Set(
         diseases
           .filter((other) => other !== disease)
-          .flatMap((other) => textsOf(other.label))
-          .filter((text) => !isBlankText(text))
+          .flatMap((other) =>
+            isText(other.label) && !isBlankText(other.label)
+              ? [other.label]
+              : [],
+          )
           .map(labelComparisonKey),
       );
       const name = nameOrKey(variables[disease.attribute], disease.attribute);
@@ -1031,8 +999,7 @@ const repairDiseaseLabels = (protocol: unknown) => {
  * Schema 9 requires the text of an Information stage's text item to say
  * something, where schema 8 accepted text of only spaces, which showed
  * nothing. Such an item is removed, so the stage still shows nothing in its
- * place. Text already localized loses only its translations that show
- * nothing, which then fall back to another.
+ * place.
  */
 const repairInformationTextItems = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -1057,6 +1024,7 @@ const repairInformationTextItems = (protocol: unknown) => {
  */
 const finishStageFor = (localization: LocalizationDeclaration) =>
   createDefaultFinishSessionStage({
+    // Replaced, with every other id, by `assignProtocolObjectIds`.
     id: createProtocolObjectId(),
     localization,
   });
@@ -1067,80 +1035,41 @@ type SiteChange =
   | { kind: 'keep' };
 
 /**
- * Schema 9 reserves `DYNAMIC_VALUE_MARKER` in text that may show dynamic
- * values, as the place the interview puts each value. Schema 8 text could
- * hold it, as a private-use character no font draws, so it is dropped there
- * rather than leaving the text invalid, or an optional text left out.
- */
-const holdsMarker = (text: unknown): text is string =>
-  typeof text === 'string' && text.includes(DYNAMIC_VALUE_MARKER);
-
-const withoutMarker = (text: unknown) =>
-  holdsMarker(text) ? text.replaceAll(DYNAMIC_VALUE_MARKER, '') : text;
-
-const withoutReservedMarker = (site: LocalizedStringSite): unknown => {
-  if (site.dynamicValues === undefined) return site.value;
-  if (!isRecord(site.value)) return withoutMarker(site.value);
-  if (!Object.values(site.value).some(holdsMarker)) return site.value;
-  return Object.fromEntries(
-    Object.entries(site.value).map(([locale, text]) => [
-      locale,
-      withoutMarker(text),
-    ]),
-  );
-};
-
-/**
  * A string that shows nothing follows the site's own rule: where the field
  * accepts it, it is kept as data, and where it does not, an optional field is
  * left out. A required field is wrapped regardless, so validation reports what
  * schema 8 already rejected.
  *
+ * Schema 9 reserves `DYNAMIC_VALUE_MARKER` in text that may show dynamic
+ * values, as the place the interview puts each value. Schema 8 text could
+ * hold it, as a private-use character no font draws, so it is dropped there
+ * rather than leaving the text invalid, or an optional text left out.
+ *
  * Schema 8 typed every site as a string except the end labels of a Network
  * Composer scale, whose parameter record accepted any value. The interview
  * only ever rendered string end labels there, so any other value is dropped.
  * A non-string anywhere else was already invalid and is left for validation.
- *
- * Text that is already localized, such as text an earlier repair wrote, is
- * kept, less any translation of an optional text that shows nothing. Either
- * loses the reserved marker first (see `withoutReservedMarker`).
+ * The localized default an earlier repair wrote is kept as it is.
  */
 const localizeSite = (
-  original: LocalizedStringSite,
+  site: LocalizedStringSite,
   defaultLocale: string,
 ): SiteChange => {
-  const value = withoutReservedMarker(original);
-  // Stripped text must be written back even where it would otherwise be kept.
-  const changed = value !== original.value;
-  const site = changed ? { ...original, value } : original;
   if (typeof site.value === 'string') {
-    const localized = { [defaultLocale]: escapeMessageText(site.value) };
+    const text =
+      site.dynamicValues === undefined
+        ? site.value
+        : site.value.replaceAll(DYNAMIC_VALUE_MARKER, '');
+    const localized = { [defaultLocale]: escapeMessageText(text) };
     if (site.schema.safeParse(localized).success || !site.optional) {
       return { kind: 'set', value: localized };
     }
     return { kind: 'remove' };
   }
-  // Text already localized. An optional text loses its translations that show nothing, which schema 9
-  // rejects, so those languages fall back to another; text left with none is
-  // left out, as it would have shown nothing.
-  if (site.optional && isRecord(site.value)) {
-    const shown = withoutBlankText(site.value);
-    if (shown === undefined) return { kind: 'remove' };
-    if (isRecord(shown) && site.schema.safeParse(shown).success) {
-      return Object.keys(shown).length === Object.keys(site.value).length &&
-        !changed
-        ? { kind: 'keep' }
-        : { kind: 'set', value: shown };
-    }
-  }
-  if (site.schema.safeParse(site.value).success) {
-    return changed ? { kind: 'set', value: site.value } : { kind: 'keep' };
-  }
+  if (site.schema.safeParse(site.value).success) return { kind: 'keep' };
   return site.looseContainer && site.optional
     ? { kind: 'remove' }
-    : changed
-      ? { kind: 'set', value: site.value }
-      : { kind: 'keep' };
+    : { kind: 'keep' };
 };
 
 /**
@@ -1153,25 +1082,12 @@ const joinSingleLineText = (protocol: unknown) => {
   for (const site of collectLocalizedStringSites(ProtocolSchemaV9, protocol)) {
     const key = site.path.at(-1);
     if (site.lines !== 'single' || key === undefined) continue;
-    const texts = isRecord(site.value)
-      ? Object.entries(site.value)
-      : [['', site.value] as const];
-    let changed = false;
-    const joined = texts.map(([locale, text]) => {
-      if (typeof text !== 'string' || !holdsLineBreak(text)) {
-        return [locale, text] as const;
-      }
-      const line = asOneLine(text);
-      if (isBlankText(line)) return [locale, text] as const;
-      changed = true;
-      return [locale, line] as const;
-    });
-    if (!changed) continue;
-    Reflect.set(
-      containerAt(protocol, site.path.slice(0, -1)),
-      key,
-      isRecord(site.value) ? Object.fromEntries(joined) : joined[0]?.[1],
-    );
+    if (typeof site.value !== 'string' || !holdsLineBreak(site.value)) {
+      continue;
+    }
+    const line = asOneLine(site.value);
+    if (isBlankText(line)) continue;
+    Reflect.set(containerAt(protocol, site.path.slice(0, -1)), key, line);
   }
 };
 
