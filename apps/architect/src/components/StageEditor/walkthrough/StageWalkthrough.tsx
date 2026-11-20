@@ -245,7 +245,11 @@ function WalkthroughCard({
       */}
       <motion.div
         aria-hidden
-        className="ring-warning pointer-events-none fixed z-10 rounded ring-4"
+        className={cx(
+          'ring-warning pointer-events-none fixed rounded ring-4',
+          // A control in the toolbar is ringed over the toolbar.
+          step.control === undefined ? 'z-10' : 'z-30',
+        )}
         style={{
           top: ring.top,
           left: ring.left,

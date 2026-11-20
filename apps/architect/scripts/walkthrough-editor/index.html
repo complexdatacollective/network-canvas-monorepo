@@ -706,16 +706,20 @@
           'div',
           { className: `insert${always ? ' always' : ''}` },
           h('button', { onclick: add(newStep()) }, '+ Step'),
-          h(
-            'button',
-            {
-              onclick: add({
-                type: 'include',
-                name: Object.keys(meta.shared)[0] ?? '',
-              }),
-            },
-            '+ Shared steps',
-          ),
+          // A shared file cannot include another: every walkthrough that
+          // includes it would stop loading.
+          current.path.startsWith('shared/')
+            ? null
+            : h(
+                'button',
+                {
+                  onclick: add({
+                    type: 'include',
+                    name: Object.keys(meta.shared)[0] ?? '',
+                  }),
+                },
+                '+ Shared steps',
+              ),
         );
       }
 
@@ -1199,10 +1203,30 @@
       }
 
       // ---- Loading and saving ----------------------------------------------
+      let loads = 0;
       async function load(path) {
+        // Another file can be asked for, or the open one edited, while this
+        // request is out; then its answer no longer applies.
+        const request = ++loads;
+        const shown = current;
+        const edits = shown === undefined ? '' : serialize(shown.doc);
         const { ok, body } = await api(
           `/api/file?path=${encodeURIComponent(path)}`,
         );
+        if (request !== loads) return;
+        if (
+          current !== shown ||
+          (shown !== undefined && serialize(shown.doc) !== edits)
+        ) {
+          if (current !== undefined) {
+            history.replaceState(
+              null,
+              '',
+              `#${encodeURIComponent(current.path)}`,
+            );
+          }
+          return;
+        }
         if (!ok) {
           toast(body.error);
           return;
