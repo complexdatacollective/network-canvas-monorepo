@@ -1,39 +1,9 @@
-import {
-  createDefaultFinishSessionStage,
-  createProtocolObjectId,
-  CURRENT_SCHEMA_VERSION,
-  type CurrentProtocol,
-} from '@codaco/protocol-validation';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 /** @public */
 export class SectionizeError extends Error {}
-
-// Nothing asks the researcher for a language yet, so a new protocol declares
-// English, as a protocol migrated from schema 8 does. Every interview has to
-// end at a finish stage, so a new protocol starts with the one Network Canvas
-// supplies, and the stages a researcher adds go in front of it. It holds none
-// of the interview's shared words: the interview shows Network Canvas's
-// wording for a protocol that does not hold any.
-export function emptyProtocol(name: string): CurrentProtocol {
-  const localization: CurrentProtocol['localization'] = {
-    defaultLocale: 'en',
-    locales: ['en'],
-  };
-  return {
-    name,
-    schemaVersion: CURRENT_SCHEMA_VERSION,
-    localization,
-    codebook: {},
-    stages: [
-      createDefaultFinishSessionStage({
-        id: createProtocolObjectId(),
-        localization,
-      }),
-    ],
-  };
-}
 
 export function sectionizeProtocol(
   protocol: CurrentProtocol,

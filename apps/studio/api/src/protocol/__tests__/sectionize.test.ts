@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { createEmptyProtocol } from '@codaco/protocol-builder-core/empty-protocol';
 import {
   isProtocolObjectId,
   validateProtocol,
@@ -9,7 +10,7 @@ import { contentHash } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { validateSection } from '@codaco/studio-sync/section-validation';
 
-import { emptyProtocol, sectionizeProtocol } from '../sectionize.ts';
+import { sectionizeProtocol } from '../sectionize.ts';
 import { versionContentHash } from '../version-hash.ts';
 import { FIXTURES, baseProtocol, readFixtureProtocol } from './helpers.ts';
 
@@ -79,7 +80,7 @@ describe('a new protocol', () => {
   // A schema 9 interview has to end at a finish stage, so a protocol with no
   // stages at all is not one validation admits.
   it('starts with the supplied finish stage and validates', async () => {
-    const protocol = emptyProtocol('New study');
+    const protocol = createEmptyProtocol({ name: 'New study' });
     const finishStageId = protocol.stages[0]?.id;
     expect(protocol.stages).toEqual([
       expect.objectContaining({
@@ -108,9 +109,23 @@ describe('a new protocol', () => {
     });
   });
 
+  // Studio stores a protocol as sections, so each one the new protocol is
+  // split into has to be one the host will hold.
+  it('splits into sections that each validate', () => {
+    for (const [id, doc] of Object.entries(
+      sectionizeProtocol(createEmptyProtocol({ name: 'New study' })),
+    )) {
+      const result = validateSection(id, doc);
+      expect(
+        result.success,
+        `section ${id}: ${JSON.stringify(result.success ? [] : result.issues)}`,
+      ).toBe(true);
+    }
+  });
+
   it('gives each new protocol its own finish stage id', () => {
-    expect(emptyProtocol('One').stages[0]?.id).not.toBe(
-      emptyProtocol('Two').stages[0]?.id,
+    expect(createEmptyProtocol({ name: 'One' }).stages[0]?.id).not.toBe(
+      createEmptyProtocol({ name: 'Two' }).stages[0]?.id,
     );
   });
 });

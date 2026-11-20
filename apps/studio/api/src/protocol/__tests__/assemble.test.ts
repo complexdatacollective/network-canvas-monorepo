@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { createEmptyProtocol } from '@codaco/protocol-builder-core/empty-protocol';
 import { canonicalize } from '@codaco/studio-sync/apply';
 import {
   assembleProtocolSections,
   ProtocolAssemblyError,
 } from '@codaco/studio-sync/protocol-document';
 
-import { emptyProtocol, sectionizeProtocol } from '../sectionize.ts';
+import { sectionizeProtocol } from '../sectionize.ts';
 import { BASE_PROTOCOL_IDS, baseProtocol } from './helpers.ts';
 
 describe('assembleProtocolSections', () => {
@@ -43,7 +44,7 @@ describe('assembleProtocolSections', () => {
   // researcher's own wording for the entries the stages it has now show, and
   // none of Network Canvas's, which the interview shows by itself.
   it('holds the interface text for the stages it has now', () => {
-    const protocol = emptyProtocol('Study');
+    const protocol = createEmptyProtocol({ name: 'Study' });
     const finishStageId = protocol.stages[0]?.id;
     const sections = sectionizeProtocol(protocol);
     sections.settings = {
