@@ -194,8 +194,15 @@ describe('findDynamicValueProblem', () => {
   it('names an unbound value', () => {
     refused('{other}', '"other" is not a value this text can show here');
     expect(findDynamicValueProblem('{x}', {}, 'en')).toContain(
-      'No values are available here.',
+      'No values have been set up for this text yet.',
     );
+    expect(
+      findDynamicValueProblem(
+        '{x}',
+        { nickname: { cases: [], numeric: false, optional: false } },
+        'en',
+      ),
+    ).toContain('The values set up for this text are "nickname".');
   });
 
   it('chooses versions by a value it cannot show as words, but never shows it', () => {

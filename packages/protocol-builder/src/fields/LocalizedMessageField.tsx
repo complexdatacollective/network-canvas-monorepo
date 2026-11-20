@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { z } from 'zod/mini';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
@@ -613,6 +613,10 @@ export function LocalizedMessageVersions({
       ? lastEmitted.current.content
       : parsed;
 
+  // As in `DynamicMessageEditor`: the editor that replaces a text being
+  // written again takes the focus its button held.
+  const [rewriting, setRewriting] = useState(false);
+
   const handleChange = (next: unknown) => {
     if (typeof next !== 'object' || next === null) return;
     const document = next as RichTextContent;
@@ -641,6 +645,13 @@ export function LocalizedMessageVersions({
         name={name}
         message={message}
         className={className}
+        {...(!readOnly &&
+          disabled !== true && {
+            onWriteAgain: () => {
+              setRewriting(true);
+              onMessageChange(undefined);
+            },
+          })}
       />
     );
   }
@@ -652,7 +663,7 @@ export function LocalizedMessageVersions({
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
       aria-invalid={ariaInvalid}
-      autoFocus={autoFocus}
+      autoFocus={autoFocus || rewriting}
       disabled={disabled}
       readOnly={readOnly}
       singleLine

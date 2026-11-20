@@ -310,8 +310,8 @@ const argumentOf = (
 const describeAllowed = (values: DynamicValueArguments): string => {
   const names = Object.keys(values);
   return names.length === 0
-    ? 'No values are available here.'
-    : `The values available here are ${names.map((name) => `"${name}"`).join(', ')}.`;
+    ? 'No values have been set up for this text yet.'
+    : `The values set up for this text are ${names.map((name) => `"${name}"`).join(', ')}.`;
 };
 
 const unknownValue = (name: string, values: DynamicValueArguments): string =>

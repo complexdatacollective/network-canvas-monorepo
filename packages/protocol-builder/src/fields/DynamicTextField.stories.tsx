@@ -162,6 +162,23 @@ export const AnUnreadableText: Story = {
   },
 };
 
+/** The notice's button drops the text and hands over an empty field. */
+export const WritingAnUnreadableTextAgain: Story = {
+  args: AnUnreadableText.args,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Write it again' }),
+    );
+
+    const field = await canvas.findByRole('textbox', { name: TITLE_LABEL });
+    await expect(field).toHaveFocus();
+    await expect(canvas.queryByText(UNREADABLE)).not.toBeInTheDocument();
+  },
+};
+
 /** Held elsewhere: the text can be read, and nothing can be inserted. */
 export const ASpectator: Story = {
   args: {

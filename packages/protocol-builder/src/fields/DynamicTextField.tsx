@@ -11,6 +11,7 @@ import {
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
+import { Button } from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
   type RichTextEditorToken,
@@ -361,6 +362,12 @@ const messages = defineMessages({
       'This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.',
     description:
       'Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed.',
+  },
+  writeAgain: {
+    id: 'protocolBuilder.dynamicText.writeAgain',
+    defaultMessage: 'Write it again',
+    description:
+      'Button under a notice saying a stored text cannot be shown or edited in its field. Pressing it discards the stored text and gives an empty text field in its place, so the researcher can write the text afresh.',
   },
 });
 
@@ -1301,6 +1308,10 @@ export function DynamicMessageEditor({
       ? asConditionDraft(conditionValues[editing.conditionId])
       : NEW_CONDITION;
 
+  // The editor that takes the place of a text the researcher chose to write
+  // again takes focus, which the button it replaces was holding.
+  const [rewriting, setRewriting] = useState(false);
+
   const problem = useMemo(() => {
     if (!showsProblems || message === '' || parsed === undefined) {
       return undefined;
@@ -1317,6 +1328,13 @@ export function DynamicMessageEditor({
         name={name}
         message={message}
         className={className}
+        {...(!readOnly &&
+          disabled !== true && {
+            onWriteAgain: () => {
+              setRewriting(true);
+              onMessageChange(undefined);
+            },
+          })}
       />
     );
   }
@@ -1343,7 +1361,7 @@ export function DynamicMessageEditor({
         aria-invalid={ariaInvalid === true || problem !== undefined}
         aria-required={ariaRequired}
         placeholder={placeholder}
-        autoFocus={autoFocus}
+        autoFocus={autoFocus === true || rewriting}
         disabled={disabled}
         readOnly={readOnly}
         singleLine={singleLine}
@@ -1386,18 +1404,21 @@ export function DynamicMessageEditor({
 
 /**
  * In place of an editor, text it cannot hold, kept as it is stored. The
- * frame's classes still place the note where the editor would be.
+ * frame's classes still place the note where the editor would be. Where the
+ * text may be written, `onWriteAgain` discards it for an empty editor.
  */
 export function UnreadableMessage({
   id,
   name,
   message,
   className,
+  onWriteAgain,
 }: Readonly<{
   id: string;
   name: string;
   message: string;
   className?: string;
+  onWriteAgain?: () => void;
 }>) {
   const intl = useAppIntl();
   return (
@@ -1409,6 +1430,11 @@ export function UnreadableMessage({
         <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
           {message}
         </pre>
+        {onWriteAgain !== undefined && (
+          <Button size="sm" className="self-start" onClick={onWriteAgain}>
+            {intl.formatMessage(messages.writeAgain)}
+          </Button>
+        )}
       </div>
     </div>
   );

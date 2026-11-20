@@ -1715,6 +1715,10 @@
     "defaultMessage": "Otherwise",
     "description": "Label of the last row of an “If” in a piece of text: the wording shown when none of the rows above applied."
   },
+  "protocolBuilder.dynamicText.writeAgain": {
+    "defaultMessage": "Write it again",
+    "description": "Button under a notice saying a stored text cannot be shown or edited in its field. Pressing it discards the stored text and gives an empty text field in its place, so the researcher can write the text afresh."
+  },
   "protocolBuilder.dynamicText.yes": {
     "defaultMessage": "Yes",
     "description": "Label of the version of a piece of text shown when a yes-or-no attribute is yes."

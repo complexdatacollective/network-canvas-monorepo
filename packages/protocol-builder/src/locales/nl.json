@@ -423,6 +423,7 @@
   "protocolBuilder.dynamicText.switchHasNoLabels": "Een schakelaar heeft geen labels voor zijn antwoorden. Gebruik in plaats daarvan een formulering per antwoord.",
   "protocolBuilder.dynamicText.today": "Datum van vandaag",
   "protocolBuilder.dynamicText.unreadable": "Deze tekst gebruikt iets wat Architect hier niet kan weergeven, dus je kunt hem niet in dit veld bewerken. Hij blijft ongewijzigd bewaard.",
+  "protocolBuilder.dynamicText.writeAgain": "Opnieuw schrijven",
   "protocolBuilder.dynamicText.versionKnown": "Indien bekend",
   "protocolBuilder.dynamicText.versionMissing": "Indien onbekend",
   "protocolBuilder.dynamicText.versionNumbers": "Als het getal {numbers} is",

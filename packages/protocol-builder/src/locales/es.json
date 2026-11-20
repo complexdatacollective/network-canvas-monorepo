@@ -423,6 +423,7 @@
   "protocolBuilder.dynamicText.switchHasNoLabels": "Un interruptor no tiene etiquetas para sus respuestas. En su lugar, usa una redacción distinta para cada respuesta.",
   "protocolBuilder.dynamicText.today": "Fecha de hoy",
   "protocolBuilder.dynamicText.unreadable": "Este texto usa algo que Architect no puede mostrar aquí, así que no se puede editar en este campo. Se conserva tal como está.",
+  "protocolBuilder.dynamicText.writeAgain": "Volver a escribirlo",
   "protocolBuilder.dynamicText.versionKnown": "Si se conoce",
   "protocolBuilder.dynamicText.versionMissing": "Si no se conoce",
   "protocolBuilder.dynamicText.versionNumbers": "Cuando el número es {numbers}",

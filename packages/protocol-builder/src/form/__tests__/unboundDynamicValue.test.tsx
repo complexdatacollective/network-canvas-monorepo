@@ -51,4 +51,30 @@ describe('a stage text that shows a value the stage does not bind', () => {
     expect(name).not.toBeNull();
     expect(within(name ?? heading).queryByText(NOT_A_VALUE)).toBeNull();
   });
+
+  it('moves focus to the field the text is in', async () => {
+    const harness = openWithUnboundValue();
+    await harness.opened();
+
+    expect(await harness.submit()).toBeNull();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Page heading' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('says that the stage has set up no values, not that none can be had', async () => {
+    const harness = openWithUnboundValue();
+    await harness.opened();
+
+    expect(await harness.submit()).toBeNull();
+
+    expect(
+      await screen.findAllByText(
+        /No values have been set up for this text yet\./,
+      ),
+    ).not.toHaveLength(0);
+  });
 });

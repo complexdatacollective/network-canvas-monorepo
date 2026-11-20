@@ -423,6 +423,7 @@
   "protocolBuilder.dynamicText.switchHasNoLabels": "开关的回答没有标签。请改为每个回答使用不同的措辞。",
   "protocolBuilder.dynamicText.today": "今天的日期",
   "protocolBuilder.dynamicText.unreadable": "此文本包含 Architect 无法在此处显示的内容，因此无法在此字段中编辑。文本将保持原样。",
+  "protocolBuilder.dynamicText.writeAgain": "重新编写",
   "protocolBuilder.dynamicText.versionKnown": "已知时",
   "protocolBuilder.dynamicText.versionMissing": "未知时",
   "protocolBuilder.dynamicText.versionNumbers": "当数值为{numbers}时",

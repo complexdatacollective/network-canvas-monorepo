@@ -428,6 +428,7 @@
   "protocolBuilder.dynamicText.versionNumbers": "When it is {numbers}",
   "protocolBuilder.dynamicText.versionOtherAnswer": "Any other answer",
   "protocolBuilder.dynamicText.versionOtherwise": "Otherwise",
+  "protocolBuilder.dynamicText.writeAgain": "Write it again",
   "protocolBuilder.dynamicText.yes": "Yes",
   "protocolBuilder.entitySelect.edgeChangeBlockedTitle": "Cannot change edge type",
   "protocolBuilder.entitySelect.edgeChangeTargetDeletedTitle": "That edge type has been deleted",

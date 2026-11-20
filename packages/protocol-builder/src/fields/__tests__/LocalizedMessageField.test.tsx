@@ -413,6 +413,26 @@ describe('LocalizedMessageField', () => {
     expect(screen.getByText(unreadable)).toHaveTextContent(/^Add \{name$/);
   });
 
+  it('lets a text it cannot read be written again', async () => {
+    const user = userEvent.setup();
+    const saved = renderItem({ en: 'Add {name' });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Write it again' }),
+    );
+
+    const line = await findLine();
+    await waitFor(() => expect(line).toHaveFocus());
+    expect(screen.queryByText('Add {name')).not.toBeInTheDocument();
+
+    await user.keyboard('Add parents');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(saved.current?.item).toEqual({ en: 'Add parents' });
+    });
+  });
+
   it('removes the translation when the text is emptied', async () => {
     const user = userEvent.setup();
     const saved = renderItem({ en: 'Add parents' });

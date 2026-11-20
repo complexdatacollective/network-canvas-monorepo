@@ -423,6 +423,7 @@
   "protocolBuilder.dynamicText.switchHasNoLabels": "Un Toggle n’a pas de libellés pour ses réponses. Utilisez plutôt une formulation différente pour chaque réponse.",
   "protocolBuilder.dynamicText.today": "Date du jour",
   "protocolBuilder.dynamicText.unreadable": "Ce texte contient un élément qu’Architect ne peut pas afficher ici. Le texte ne peut donc pas être modifié dans ce champ ; il est conservé tel quel.",
+  "protocolBuilder.dynamicText.writeAgain": "Réécrire le texte",
   "protocolBuilder.dynamicText.versionKnown": "Si connu",
   "protocolBuilder.dynamicText.versionMissing": "Si inconnu",
   "protocolBuilder.dynamicText.versionNumbers": "Quand le nombre vaut {numbers}",
