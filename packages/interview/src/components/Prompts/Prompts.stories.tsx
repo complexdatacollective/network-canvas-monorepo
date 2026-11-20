@@ -126,7 +126,7 @@ type Story = StoryObj<typeof meta>;
 export const SinglePrompt: Story = {
   args: {
     prompts: singlePrompt,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
   },
   parameters: {
     docs: {
@@ -141,7 +141,7 @@ export const SinglePrompt: Story = {
 export const MultiplePrompts: Story = {
   args: {
     prompts: multiplePrompts,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
   },
   parameters: {
     docs: {
@@ -176,7 +176,7 @@ export const MultiplePrompts: Story = {
 export const WithMarkdown: Story = {
   args: {
     prompts: markdownPrompts,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
   },
   parameters: {
     docs: {
@@ -198,7 +198,7 @@ export const WithMarkdown: Story = {
 export const LongPromptText: Story = {
   args: {
     prompts: longPrompts,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
   },
   parameters: {
     docs: {
@@ -228,7 +228,8 @@ function InteractiveNavigationDemo() {
     setCurrentIndex((prev) => Math.min(multiplePrompts.length - 1, prev + 1));
   };
 
-  const currentPromptId = multiplePrompts[currentIndex]?.id ?? 'prompt-1';
+  const currentPromptId =
+    multiplePrompts[currentIndex]?.id ?? testId('prompt-1');
 
   return (
     <div className="flex flex-col gap-6">
@@ -349,7 +350,7 @@ export const InteractiveNavigation: Story = {
 export const AccessibilityDemo: Story = {
   args: {
     prompts: multiplePrompts,
-    currentPromptId: 'prompt-2',
+    currentPromptId: testId('prompt-2'),
   },
   parameters: {
     docs: {
@@ -391,7 +392,7 @@ export const AccessibilityDemo: Story = {
 export const CustomClassName: Story = {
   args: {
     prompts: singlePrompt,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
     className: cx('text-3xl'),
   },
   parameters: {
