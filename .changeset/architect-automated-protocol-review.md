@@ -37,11 +37,10 @@ asks an AI model to look for problems in your protocol and suggest fixes.
   unless you untick it. While it is ticked, the team keeps a copy of your
   study details, the protocol and the review for 90 days, and uses them only
   to improve this feature. Unticked, the service keeps nothing.
-- A review you shared also tells the team what you did with each problem (had
-  it fixed for you, fixed it yourself or dismissed it), and asks whether each
-  problem was **Useful** or **Not useful**, and why not.
-- Under any review, shared or not, **Leave feedback on this review** lets you
-  tell the team what you thought of it. Writing feedback is optional.
+- Under any review, shared or not, each problem asks whether it was
+  **Useful** or **Not useful**, and why not, and **Leave feedback on this
+  review** lets you tell the team what you thought of the review. Answers go
+  to the team without the text of the problems. Both are optional.
 - The service is free and limited: 5 reviews an hour for each browser, and a
   daily and a monthly budget for each provider, shared by everyone who uses
   it. A provider whose budget is spent is greyed out until it starts again,

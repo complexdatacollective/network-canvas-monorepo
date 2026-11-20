@@ -18,7 +18,6 @@ import {
   commentOnReview,
   decideFinding,
   dismissReview,
-  getIsProtocolReviewShared,
   getProtocolReviewComment,
   getProtocolReviewFindings,
   rateFinding,
@@ -155,20 +154,54 @@ afterEach(() => {
 });
 
 describe('feedback on a review that was not shared', () => {
-  it('sends nothing about its problems, and keeps no rating', async () => {
+  it('sends a rated problem without the review id, and nothing for one only decided', async () => {
     await reviewed(false);
-    expect(getIsProtocolReviewShared(store.getState())).toBe(false);
+    expect(
+      (
+        await readReviewRecord(
+          store.getState().protocolReview.record?.protocolId ?? '',
+        )
+      ).review?.shared,
+    ).toBe(false);
 
     await store.dispatch(decideFinding('title', 'fix'));
     await store.dispatch(decideFinding('advice', 'dismissed'));
-    expect(await store.dispatch(rateFinding('prompt', 'useful'))).toEqual({
-      ok: false,
-      reason: 'no_review',
-    });
     await store.dispatch(sendFeedback());
-    await store.dispatch(dismissReview());
-
     expect(problemEvents()).toEqual([]);
+
+    expect(
+      await store.dispatch(rateFinding('title', 'not_useful', 'wrong')),
+    ).toEqual({ ok: true });
+    await store.dispatch(sendFeedback());
+    expect(problemEvents()).toEqual([
+      {
+        $survey_id: PROBLEM_SURVEY_ID,
+        $survey_submission_id: `${RESULT.reviewId}:title`,
+        $survey_completed: true,
+        [RATING]: 'Not useful',
+        [REASON]: 'It is wrong about my protocol',
+        finding_id: 'title',
+        shared: false,
+        outcome: 'fixed',
+        severity: 'suggestion',
+        category: 'burden',
+        provider: 'anthropic',
+      },
+    ]);
+
+    // A rated problem's outcome is sent again when it changes, and a rating
+    // taken back leaves the response incomplete.
+    await store.dispatch(undoFix('title'));
+    await store.dispatch(sendFeedback());
+    expect(latestByFinding().title).toMatchObject({ outcome: 'undecided' });
+    await store.dispatch(rateFinding('title', null));
+    await store.dispatch(sendFeedback());
+    expect(problemEvents()).toHaveLength(3);
+    expect(latestByFinding().title).toMatchObject({ $survey_completed: false });
+    expect(latestByFinding().title).not.toHaveProperty(RATING);
+
+    await store.dispatch(dismissReview());
+    expect(problemEvents()).toHaveLength(3);
     expect(commentEvents()).toEqual([]);
   });
 
@@ -194,7 +227,6 @@ describe('feedback on a review that was not shared', () => {
 describe('feedback on a shared review', () => {
   it('sends nothing while nothing has been done with the review', async () => {
     await reviewed(true);
-    expect(getIsProtocolReviewShared(store.getState())).toBe(true);
     await store.dispatch(sendFeedback());
     expect(posthog.capture).not.toHaveBeenCalled();
   });
@@ -212,6 +244,7 @@ describe('feedback on a shared review', () => {
         $survey_completed: false,
         review_id: RESULT.reviewId,
         finding_id: 'title',
+        shared: true,
         outcome: 'fixed',
         severity: 'suggestion',
         category: 'burden',

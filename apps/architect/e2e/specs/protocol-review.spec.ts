@@ -702,7 +702,7 @@ test.describe('asking for a review', () => {
     );
     expect(service.bodies.map((body) => body.share)).toEqual([false, false]);
 
-    // A review that was not shared asks for no rating, but still takes
+    // A review that was not shared still asks for a rating and takes
     // written feedback.
     const popover = popoverOf(page);
     await expect(
@@ -717,7 +717,9 @@ test.describe('asking for a review', () => {
       view.getByRole('group', {
         name: 'Was it useful to be told about this problem?',
       }),
-    ).toHaveCount(0);
+    ).toHaveAccessibleDescription(
+      'Your answer is sent to the Network Canvas team.',
+    );
   });
 
   test('a shared review asks for a rating on each problem and takes written feedback', async ({

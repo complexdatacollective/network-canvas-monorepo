@@ -369,14 +369,6 @@ export const getProtocolReviewSummary = createSelector(
       : null,
 );
 
-/**
- * Whether the stored review was shared with the team. Its problems are rated,
- * and reported to the team, only then; written feedback is asked for on any
- * review.
- */
-export const getIsProtocolReviewShared = (state: RootState): boolean =>
-  selectRecord(state)?.review?.shared === true;
-
 /** What the researcher last sent about the review as a whole; empty when nothing. */
 export const getProtocolReviewComment = (state: RootState): string =>
   selectRecord(state)?.review?.comment ?? '';
@@ -728,26 +720,21 @@ const outcomeOf = (
   return stored.edited === true ? 'fixed_edited' : 'fixed';
 };
 
-/**
- * How the review was received, as the protocol and the record now show it.
- * Only a shared review's problems are reported.
- */
+/** How the review was received, as the protocol and the record now show it. */
 const reviewFeedback = (
   review: StoredReview,
   protocol: CurrentProtocol,
 ): ReviewFeedback => ({
-  findings: review.shared
-    ? Object.fromEntries(
-        review.findings.map((stored) => [
-          stored.finding.id,
-          {
-            outcome: outcomeOf(stored, protocol),
-            rating: stored.rating?.rating ?? null,
-            reason: stored.rating?.reason ?? null,
-          },
-        ]),
-      )
-    : {},
+  findings: Object.fromEntries(
+    review.findings.map((stored) => [
+      stored.finding.id,
+      {
+        outcome: outcomeOf(stored, protocol),
+        rating: stored.rating?.rating ?? null,
+        reason: stored.rating?.reason ?? null,
+      },
+    ]),
+  ),
   comment: review.comment ?? '',
 });
 
@@ -1500,9 +1487,8 @@ export const undoFix =
 
 /**
  * Records whether the researcher found a problem useful, and why not when
- * they said; null takes the rating back. Kept only for a review that was
- * shared, since it is asked for the team: it is sent to them with the rest
- * of the feedback.
+ * they said; null takes the rating back. It is sent to the team with the rest
+ * of the feedback, whether or not the review was shared.
  */
 export const rateFinding =
   (
@@ -1515,7 +1501,7 @@ export const rateFinding =
     if (found === null) return refused('no_review');
     if (found === undefined) return refused('not_found');
     const { review } = found.record;
-    if (!review?.shared) return refused('no_review');
+    if (!review) return refused('no_review');
     const saved = await saveRecord(dispatch, getState, {
       ...found.record,
       review: {
@@ -1618,10 +1604,11 @@ const dueFeedback = (getState: GetState): DueFeedback | null => {
   const sent = review.feedbackSent ?? untouchedFeedback(review);
   const findings = review.findings.filter((stored) => {
     const now = feedback.findings[stored.finding.id];
-    return (
-      now !== undefined &&
-      !sameFindingFeedback(now, sent.findings[stored.finding.id])
-    );
+    const before = sent.findings[stored.finding.id];
+    if (now === undefined || sameFindingFeedback(now, before)) return false;
+    // An unshared review's outcomes already go out as decision events, so
+    // only a problem that is or was rated is sent from it.
+    return review.shared === true || now.rating !== null || !!before?.rating;
   });
   const comment = feedback.comment !== sent.comment;
   if (findings.length === 0 && !comment) return null;
@@ -1639,6 +1626,7 @@ const captureDueFeedback = ({
     if (!findingFeedback) continue;
     captureFindingFeedback({
       reviewId: review.reviewId,
+      shared: review.shared === true,
       provider: review.provider,
       finding: stored.finding,
       feedback: findingFeedback,

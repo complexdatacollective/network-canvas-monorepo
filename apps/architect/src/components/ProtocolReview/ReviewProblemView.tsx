@@ -25,7 +25,6 @@ import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
   type DecisionRefusal,
   decideFinding,
-  getIsProtocolReviewShared,
   getProtocolReviewFindings,
   rateFinding,
   type ReviewFindingView,
@@ -211,7 +210,13 @@ const messages = defineMessages({
     id: 'architect.protocolReview.problem.ratingQuestion',
     defaultMessage: 'Was it useful to be told about this problem?',
     description:
-      'Question under a problem found by the automated protocol review, shown when the review was shared with the Network Canvas team. Two buttons, Useful and Not useful, answer it.',
+      'Question under a problem found by the automated protocol review. Two buttons, Useful and Not useful, answer it.',
+  },
+  ratingHint: {
+    id: 'architect.protocolReview.problem.ratingHint',
+    defaultMessage: 'Your answer is sent to the Network Canvas team.',
+    description:
+      'Note under the question asking whether a problem found by the automated protocol review was useful. The answer goes to the Network Canvas team whether or not the review was shared with them, without the text of the problem. "Network Canvas" is a product name and is not translated.',
   },
   ratingUseful: {
     id: 'architect.protocolReview.problem.ratingUseful',
@@ -471,10 +476,10 @@ const ReviewProblemView = ({
       nextUndecided(getProtocolReviewFindings(state), index, current.id) !==
       null,
   );
-  const shared = useAppSelector(getIsProtocolReviewShared);
   const checkingId = useId();
   const summaryId = useId();
   const ratingId = useId();
+  const ratingHintId = useId();
   const reasonId = useId();
 
   const [busy, setBusy] = useState(false);
@@ -808,59 +813,61 @@ const ReviewProblemView = ({
                 </div>
               ))}
             </section>
-            {shared && (
-              <section className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <span id={ratingId} className="me-auto text-sm font-bold">
-                    {intl.formatMessage(messages.ratingQuestion)}
-                  </span>
-                  <div
-                    role="group"
-                    aria-labelledby={ratingId}
-                    className="flex flex-wrap items-center gap-2"
+            <section className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span id={ratingId} className="me-auto text-sm font-bold">
+                  {intl.formatMessage(messages.ratingQuestion)}
+                </span>
+                <div
+                  role="group"
+                  aria-labelledby={ratingId}
+                  aria-describedby={ratingHintId}
+                  className="flex flex-wrap items-center gap-2"
+                >
+                  <Button
+                    size="sm"
+                    aria-pressed={current.rating === 'useful'}
+                    icon={<ThumbsUp aria-hidden />}
+                    onClick={() => void rate('useful')}
                   >
-                    <Button
-                      size="sm"
-                      aria-pressed={current.rating === 'useful'}
-                      icon={<ThumbsUp aria-hidden />}
-                      onClick={() => void rate('useful')}
-                    >
-                      {intl.formatMessage(messages.ratingUseful)}
-                    </Button>
-                    <Button
-                      size="sm"
-                      aria-pressed={current.rating === 'not_useful'}
-                      icon={<ThumbsDown aria-hidden />}
-                      onClick={() => void rate('not_useful')}
-                    >
-                      {intl.formatMessage(messages.ratingNotUseful)}
-                    </Button>
-                  </div>
+                    {intl.formatMessage(messages.ratingUseful)}
+                  </Button>
+                  <Button
+                    size="sm"
+                    aria-pressed={current.rating === 'not_useful'}
+                    icon={<ThumbsDown aria-hidden />}
+                    onClick={() => void rate('not_useful')}
+                  >
+                    {intl.formatMessage(messages.ratingNotUseful)}
+                  </Button>
                 </div>
-                {current.rating === 'not_useful' && (
-                  <div className="flex flex-col gap-2">
-                    <span id={reasonId} className="text-sm font-bold">
-                      {intl.formatMessage(messages.ratingReason)}
-                    </span>
-                    <RadioGroupField
-                      size="sm"
-                      aria-labelledby={reasonId}
-                      options={FEEDBACK_REASONS.map((reason) => ({
-                        value: reason,
-                        label: intl.formatMessage(reasonMessages[reason]),
-                      }))}
-                      value={current.ratingReason ?? ''}
-                      onChange={(value) => {
-                        const reason = FEEDBACK_REASONS.find(
-                          (candidate) => candidate === value,
-                        );
-                        if (reason) void rate('not_useful', reason);
-                      }}
-                    />
-                  </div>
-                )}
-              </section>
-            )}
+              </div>
+              <Paragraph id={ratingHintId} intent="smallText" margin="none">
+                {intl.formatMessage(messages.ratingHint)}
+              </Paragraph>
+              {current.rating === 'not_useful' && (
+                <div className="flex flex-col gap-2">
+                  <span id={reasonId} className="text-sm font-bold">
+                    {intl.formatMessage(messages.ratingReason)}
+                  </span>
+                  <RadioGroupField
+                    size="sm"
+                    aria-labelledby={reasonId}
+                    options={FEEDBACK_REASONS.map((reason) => ({
+                      value: reason,
+                      label: intl.formatMessage(reasonMessages[reason]),
+                    }))}
+                    value={current.ratingReason ?? ''}
+                    onChange={(value) => {
+                      const reason = FEEDBACK_REASONS.find(
+                        (candidate) => candidate === value,
+                      );
+                      if (reason) void rate('not_useful', reason);
+                    }}
+                  />
+                </div>
+              )}
+            </section>
             {availability === 'checking' && (
               <span id={checkingId} className="sr-only" lang="en">
                 {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text */}

@@ -104,9 +104,9 @@ export type StoredReview = {
   /**
    * Whether the review was sent with sharing on, so the service holds a copy
    * of it. The protocol's `shareReviews` is the choice for the next review;
-   * this is what was done with this one. Only a shared review's problems are
-   * reported and rated. Absent from reviews saved before it existed, which
-   * read as not shared.
+   * this is what was done with this one. Only a shared review's feedback
+   * carries its id, and only a shared review's unrated problems are reported.
+   * Absent from reviews saved before it existed, which read as not shared.
    */
   shared?: boolean;
   /** What the researcher wrote about the review as a whole, as they sent it. */

@@ -2727,13 +2727,17 @@
     "defaultMessage": "Problem {position, number} of {total, number}",
     "description": "Shows which problem found by the automated protocol review is open, when going through them one at a time."
   },
+  "architect.protocolReview.problem.ratingHint": {
+    "defaultMessage": "Your answer is sent to the Network Canvas team.",
+    "description": "Note under the question asking whether a problem found by the automated protocol review was useful. The answer goes to the Network Canvas team whether or not the review was shared with them, without the text of the problem. \"Network Canvas\" is a product name and is not translated."
+  },
   "architect.protocolReview.problem.ratingNotUseful": {
     "defaultMessage": "Not useful",
     "description": "Button that rates a problem found by the automated protocol review as not useful. Pressing it again takes the rating back."
   },
   "architect.protocolReview.problem.ratingQuestion": {
     "defaultMessage": "Was it useful to be told about this problem?",
-    "description": "Question under a problem found by the automated protocol review, shown when the review was shared with the Network Canvas team. Two buttons, Useful and Not useful, answer it."
+    "description": "Question under a problem found by the automated protocol review. Two buttons, Useful and Not useful, answer it."
   },
   "architect.protocolReview.problem.ratingReason": {
     "defaultMessage": "Why not? (optional)",
@@ -2932,8 +2936,8 @@
     "description": "Item in the list of what is sent for review, shown on the first step of the dialog. The next three steps are where the researcher describes their study."
   },
   "architect.protocolReview.wizard.sending.shareHint": {
-    "defaultMessage": "When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. The team also receives what you do with each problem the review finds, and any Useful or Not useful rating you give a problem. We will use this information only for the purposes of improving this feature.",
-    "description": "Explanation under the share checkbox. {days} is how long a shared review is kept. \"What you do with each problem\" means whether the researcher has it fixed for them, fixes it themselves or dismisses it. \"Useful\" and \"Not useful\" are the names of two buttons that rate a problem, and must match their translations. \"Network Canvas\" is a product name and is not translated."
+    "defaultMessage": "When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. We will use this information only for the purposes of improving this feature.",
+    "description": "Explanation under the share checkbox. {days} is how long a shared review is kept. \"Network Canvas\" is a product name and is not translated."
   },
   "architect.protocolReview.wizard.sending.shareLabel": {
     "defaultMessage": "Share the results of this review with the Network Canvas team",

@@ -1,5 +1,5 @@
 /**
- * What becomes of a problem, as feedback on a shared review reports it:
+ * What becomes of a problem, as feedback on a review reports it:
  *
  * - `undecided`: nothing has been done with it yet;
  * - `fixed`: Architect made the suggested fix;

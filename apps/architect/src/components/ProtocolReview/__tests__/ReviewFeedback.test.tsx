@@ -103,25 +103,27 @@ afterEach(() => {
 });
 
 describe('a review that was not shared', () => {
-  it('asks for no rating and sends nothing about its problems', async () => {
+  it('asks for a rating, says where it goes, and sends it without the review id', async () => {
     await reviewed(store, false);
     renderToolbar(store);
-    const panel = await openPanel();
-
+    const problem = await openProblem('The prompt is vague');
+    const rating = problem.getByRole('group', {
+      name: 'Was it useful to be told about this problem?',
+    });
+    expect(rating).toHaveAccessibleDescription(
+      'Your answer is sent to the Network Canvas team.',
+    );
     await userEvent.click(
-      within(panel).getByRole('button', { name: /The prompt is vague/ }),
+      within(rating).getByRole('button', { name: 'Useful' }),
     );
-    const problem = within(
-      await screen.findByRole('dialog', { name: 'The prompt is vague' }),
+    await waitFor(() =>
+      expect(ratingOf(store, 'prompt')).toEqual(['useful', null]),
     );
-    expect(
-      problem.queryByRole('group', {
-        name: 'Was it useful to be told about this problem?',
-      }),
-    ).not.toBeInTheDocument();
-    await userEvent.click(problem.getByRole('button', { name: 'Dismiss' }));
     await store.dispatch(sendFeedback());
-    expect(surveyEvents()).toEqual([]);
+    const [event, ...rest] = surveyEvents();
+    expect(rest).toEqual([]);
+    expect(event).toMatchObject({ finding_id: 'prompt', shared: false });
+    expect(event).not.toHaveProperty('review_id');
   });
 
   it('still takes written feedback on the review', async () => {
