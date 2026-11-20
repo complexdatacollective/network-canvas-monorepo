@@ -82,7 +82,9 @@ Choose between dark and light modes to suit your preferences and reduce eye stra
 
 ### 8. Analytics
 
-The documentation site records pageviews, page leaves and exceptions with PostHog (`posthog-js`), initialized in `instrumentation-client.ts` when client-side JS loads.
+The documentation site records pageviews, page leaves, exceptions, autocaptured clicks and session recordings with PostHog (`posthog-js`), initialized in `instrumentation-client.ts` when client-side JS loads.
+
+Each article ends with "Did this article help?" (`components/ArticleFeedback.tsx`). The reader's Yes or No, and anything they write in the optional box (up to 2,000 characters), are sent as responses to the PostHog survey "Documentation article feedback", along with the article's path, section and language. The survey and question ids are in `lib/analytics/articleFeedback.ts`.
 
 The site is a static export, so the same bundle is served in production, on Netlify deploy previews and locally. Analytics therefore start only when the page was loaded from the live site's hostname (`lib/analytics/isProductionHost.ts`); every other origin records nothing.
 
