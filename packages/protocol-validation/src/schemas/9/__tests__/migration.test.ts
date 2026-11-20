@@ -3,10 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { testId } from '../../../__tests__/testIds.ts';
 import { MigrationResultInvalidError } from '../../../migration/errors.ts';
-import {
-  migrateProtocol,
-  migrateProtocolWithSessions,
-} from '../../../migration/migrate-protocol.ts';
+import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import {
   collectProtocolObjectIds,
   findDuplicateProtocolObjectIds,
@@ -724,70 +721,6 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     });
   });
 
-  it('rewrites recorded answers that hold a value merged into one of another type', () => {
-    const { migrateSession } = migrateProtocolWithSessions(
-      asSchema8Protocol(protocolWithCategoryValues([1, 'work', '1'])),
-    );
-    const person = (_uid: string, category: unknown) => ({
-      _uid,
-      type: 'person',
-      attributes: { category },
-    });
-    const result = migrateSession({
-      network: {
-        ego: { _uid: 'ego', attributes: {} },
-        nodes: [
-          person('a', ['1']),
-          person('b', ['1', 1, 'work']),
-          person('c', [1]),
-          { _uid: 'd', type: 'place', attributes: { category: ['1'] } },
-        ],
-        edges: [],
-      },
-      stageMetadata: {},
-      currentStep: 0,
-    });
-    if (!result.success) throw result.error;
-
-    expect(
-      result.session.network.nodes.map(({ attributes }) => attributes),
-    ).toEqual([
-      { category: [1] },
-      { category: [1, 'work'] },
-      { category: [1] },
-      { category: ['1'] },
-    ]);
-  });
-
-  it('leaves an encrypted answer as stored when its option values merge', () => {
-    const { migrateSession } = migrateProtocolWithSessions(
-      asSchema8Protocol(protocolWithCategoryValues(['1', 'work', 1])),
-    );
-    const ciphertext = [1, 7, 1, 42];
-    const result = migrateSession({
-      network: {
-        ego: { _uid: 'ego', attributes: {} },
-        nodes: [
-          {
-            _uid: 'a',
-            type: 'person',
-            attributes: { category: ciphertext },
-            _secureAttributes: { category: { iv: [1, 2], salt: [3, 4] } },
-          },
-          { _uid: 'b', type: 'person', attributes: { category: [1] } },
-        ],
-        edges: [],
-      },
-      stageMetadata: {},
-      currentStep: 0,
-    });
-    if (!result.success) throw result.error;
-
-    expect(
-      result.session.network.nodes.map(({ attributes }) => attributes),
-    ).toEqual([{ category: ciphertext }, { category: ['1'] }]);
-  });
-
   it.each([
     ['spaces around it', ' friend ', 'friend'],
     ['a tab inside it', 'close\tfriend', 'close friend'],
@@ -839,7 +772,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     ).toMatchObject({ options: [{ value: 'friend' }, { value: 'family' }] });
   });
 
-  it('rewrites rules and recorded answers that hold a repaired value', () => {
+  it('rewrites rules that hold a repaired value', () => {
     const protocol = protocolWithCategoryValues([' friend', 'family']);
     const rule = (value: unknown) => ({
       type: 'node' as const,
@@ -862,33 +795,13 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
         ...rest,
       ],
     });
-    const { protocol: migrated, migrateSession } =
-      migrateProtocolWithSessions(schema8);
+    const migrated = migrateProtocol(schema8, 9);
 
     expect(withoutIds(migrated.stages[0])).toMatchObject(
       objectWithoutIds({
         skipLogic: { filter: { rules: [rule(['friend'])] } },
       }),
     );
-    const result = migrateSession({
-      network: {
-        ego: { _uid: 'ego', attributes: {} },
-        nodes: [
-          {
-            _uid: 'a',
-            type: 'person',
-            attributes: { category: [' friend', 'family'] },
-          },
-        ],
-        edges: [],
-      },
-      stageMetadata: {},
-      currentStep: 0,
-    });
-    if (!result.success) throw result.error;
-    expect(result.session.network.nodes[0]?.attributes).toEqual({
-      category: ['friend', 'family'],
-    });
   });
 
   // The attribute only ever offered one answer, and no repair can invent a
@@ -2322,112 +2235,6 @@ describe('Migrating protocol object ids from schema 8 to 9', () => {
 
     expect(() => migrated(document)).not.toThrow();
     expect(document).toEqual(copy);
-  });
-
-  describe('in a recorded session', () => {
-    const migrateRecordedSession = (
-      document: unknown,
-      node: Record<string, unknown>,
-      currentStep = 0,
-    ) => {
-      const { protocol, migrateSession } =
-        migrateProtocolWithSessions(document);
-      const result = migrateSession({
-        network: {
-          ego: { _uid: 'ego', attributes: {} },
-          nodes: [{ _uid: 'a', type: 'person', attributes: {}, ...node }],
-          edges: [],
-        },
-        stageMetadata: {},
-        currentStep,
-      });
-      if (!result.success) throw result.error;
-      return { protocol, session: result.session };
-    };
-
-    it('leaves the stage and prompt ids a node recorded as they were', () => {
-      const document = schema8WithStages(...formStages());
-      const { session } = migrateRecordedSession(document, {
-        stageId: 'name-generator',
-        promptIDs: ['p2'],
-      });
-
-      expect(session.network.nodes[0]).toMatchObject({
-        stageId: 'name-generator',
-        promptIDs: ['p2'],
-      });
-    });
-
-    it('resumes at the same stage when every stage id was replaced', () => {
-      const document = schema8WithStages(...formStages());
-      // The Alter Form, which gains an Information stage before it.
-      const { protocol, session } = migrateRecordedSession(document, {}, 3);
-
-      expect(protocol.stages[session.currentStep]?.id).toBe(
-        stageLabelled(protocol, 'About them')?.id,
-      );
-    });
-  });
-
-  it('migrates a schema 7 protocol and its sessions in one step', () => {
-    const document = {
-      schemaVersion: 7,
-      codebook: {
-        node: {
-          person: {
-            name: 'Person',
-            color: 'node-color-seq-1',
-            variables: {
-              name: { name: 'name', type: 'text', component: 'Text' },
-            },
-          },
-        },
-        edge: {},
-        ego: {},
-      },
-      stages: [
-        {
-          id: 'names',
-          type: 'NameGenerator',
-          label: 'Names',
-          subject: { entity: 'node', type: 'person' },
-          prompts: [{ id: 'p1', text: 'Who?' }],
-          form: { fields: [{ variable: 'name', prompt: 'Name?' }] },
-        },
-      ],
-    };
-    const { protocol, migrateSession } = migrateProtocolWithSessions(
-      document,
-      9,
-      { name: 'Schema 7' },
-    );
-    const result = migrateSession({
-      network: {
-        ego: { _uid: 'ego', attributes: {} },
-        nodes: [
-          {
-            _uid: 'a',
-            type: 'person',
-            attributes: {},
-            stageId: 'names',
-            promptIDs: ['p1'],
-          },
-        ],
-        edges: [],
-      },
-      stageMetadata: {},
-      currentStep: 0,
-    });
-    if (!result.success) throw result.error;
-    const [stage] = protocol.stages;
-
-    expect(protocol.schemaVersion).toBe(9);
-    expect(isProtocolObjectId(stage?.id)).toBe(true);
-    expect(result.session.currentStep).toBe(0);
-    expect(result.session.network.nodes[0]).toMatchObject({
-      stageId: 'names',
-      promptIDs: ['p1'],
-    });
   });
 });
 

@@ -577,7 +577,7 @@ describe('the migration id pass', () => {
     const source = getAt(document, ['stages', pedigree, 'sourceStageId']);
     const sourceIndex = stages.findIndex((stage) => stage.id === source);
 
-    const stageRenames = assignProtocolObjectIds(document);
+    assignProtocolObjectIds(document);
 
     const idAt = (index: number) => getAt(document, ['stages', index, 'id']);
     const destination = getAt(document, [
@@ -593,6 +593,5 @@ describe('the migration id pass', () => {
       idAt(sourceIndex),
     );
     expect(sourceIndex).toBeGreaterThanOrEqual(0);
-    expect(stageRenames.get(oldId)).toBe(idAt(2));
   });
 });

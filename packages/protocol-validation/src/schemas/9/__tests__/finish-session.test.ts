@@ -3,10 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { withInterfaceText } from '../../../__tests__/suppliedWording.ts';
 import { testId } from '../../../__tests__/testIds.ts';
-import {
-  migrateProtocol,
-  migrateProtocolWithSessions,
-} from '../../../migration/migrate-protocol.ts';
+import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
   BUILT_IN_WORDING_MISSING,
@@ -243,28 +240,6 @@ describe('v8 to v9 migration', () => {
       migrated.stages.filter((stage) => stage.type === 'FinishSession'),
     ).toHaveLength(1);
     expect(isProtocolObjectId(finishStage?.id)).toBe(true);
-  });
-
-  // The engine used to show its own finish screen one place past the last
-  // stage; the appended finish stage takes that place, so a session that was
-  // there, or anywhere before it, resumes where it was.
-  it('resumes a session that was on the old finish screen at the finish stage', () => {
-    const document = schema8();
-    const { protocol, migrateSession } = migrateProtocolWithSessions(document);
-    const finishIndex = protocol.stages.length - 1;
-    expect(protocol.stages[finishIndex]?.type).toBe('FinishSession');
-    const at = (currentStep: number) => {
-      const result = migrateSession({
-        network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
-        stageMetadata: {},
-        currentStep,
-      });
-      if (!result.success) throw result.error;
-      return result.session.currentStep;
-    };
-    expect(at(document.stages.length)).toBe(finishIndex);
-    expect(at(document.stages.length + 3)).toBe(finishIndex);
-    expect(at(0)).toBe(0);
   });
 
   it('gives the finish stage an id no schema 8 stage holds', () => {

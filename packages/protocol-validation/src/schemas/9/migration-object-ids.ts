@@ -12,13 +12,8 @@ import { ProtocolStructureSchema } from './protocol-structure.ts';
  * id it had before. Each stage reference names the new id of the stage it
  * named; where one id was on several stages, it names the first of them.
  * `document` is changed in place.
- *
- * Returns each old stage id mapped to the new id of the first stage that had
- * it.
  */
-export const assignProtocolObjectIds = (
-  document: Record<string, unknown>,
-): ReadonlyMap<string, string> => {
+export const assignProtocolObjectIds = (document: Record<string, unknown>) => {
   unshareObjects(document);
   const stageRenames = new Map<string, string>();
   for (const { id, path, objectKind } of findMarkedObjects(
@@ -32,5 +27,4 @@ export const assignProtocolObjectIds = (
     }
   }
   rewriteStageReferences(ProtocolStructureSchema, document, stageRenames);
-  return stageRenames;
 };

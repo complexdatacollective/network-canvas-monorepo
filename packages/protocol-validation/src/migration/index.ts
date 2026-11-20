@@ -2,69 +2,10 @@
  * The migration chain: the registered steps that carry a protocol document
  * forward one schema version at a time, and the machinery that walks them.
  *
- * A host that migrates a stored protocol in place keeps every interview
- * already recorded against it pointing at the migrated protocol. (No Network
- * Canvas host does so any more: Interviewer and Fresco keep schema 8
- * protocols and interviews as they are, running them in a bundled schema 8
- * interview, and upgrade only a protocol being imported, which has no
- * interviews yet.) A session refers to its protocol
- * by stage INDEX — its resume position (`currentStep`) and each stage's
- * record (`stageMetadata`, keyed by index) — and holds data collected under
- * the old codebook. So every step answers for the sessions as well as the
- * document, in two parts:
- *
- * STAGE-INDEX CHANGES ARE HANDLED BY THE FRAMEWORK. After every step, when the
- * step added, removed or reordered stages, each session's stage records and
- * resume position follow their stages, matched by id between the protocol
- * before and after that step (`stageMovement` and `remapStageIndices`,
- * session.ts). A session resumes at the same stage in its new position, or at
- * the next surviving stage when its stage was removed; a stage inserted
- * before it is not visited retroactively, and the finish position stays the
- * finish position. A step never remaps indices itself.
- *
- * A MIGRATION THAT CHANGES HOW A SESSION REPRESENTS ITS DATA MUST PROVIDE A
- * SESSION STEP. A step that re-spells a recorded answer (a scalar becoming a
- * single-element array, an option's `value` being rewritten), or changes the
- * shape of a stage's metadata, declares `migrateSession` beside `migrate`, in
- * the same `createMigration` definition. It receives each session — already
- * at the step's new stage positions — together with the protocol before and
- * after the step, and returns the session as the target version reads it.
- * Hosts run it through `migrateProtocolWithSessions` (migrate-protocol.ts),
- * which migrates a protocol and returns the migrator for the sessions
- * recorded against it, for the host to apply in the same transaction as the
- * protocol write. Neither half may be left out: a migration whose effect on
- * sessions cannot be expressed is not a migration, and belongs in the schema
- * as a rejection the researcher resolves.
- *
- * Rules ABOUT a value (validation, input control, option labels, prompt text)
- * change nothing a session holds, and need no session step.
- *
- * Session steps are pure: a function of the session and the two protocols
- * only, deterministic, and never modifying either protocol (the snapshots
- * they receive are frozen).
- *
- * Steps that change stage positions (remapped by the framework):
- * - `migrationV7toV8` drops EgoForm / AlterForm / AlterEdgeForm stages left
- *   with no fields (v8 requires at least one).
- * - `migrationV8toV9` inserts an Information stage before a Family Pedigree
- *   that had an introduction screen (schema 9's pedigree has none), and
- *   appends a finish stage in place of the engine's own finish screen. It
- *   also gives every stage a new id, and declares the replacements
- *   (`stageIdChanges`) so that stages are matched across it.
- *
- * Steps that declare a session step:
- * - `migrationV8toV9`: the redesigned pedigree keeps a different stage
- *   record, which its session step translates
- *   (schemas/9/family-pedigree-session-migration.ts); and a session on the
- *   engine's old finish screen, which the framework keeps past the last
- *   stage, resumes at the appended finish stage.
- *
- * One exception predates session migrations and is not repaired by one:
- * `migrationV7toV8` coerces boolean and fractional ordinal/categorical option
- * values to their string form (v8 admits neither), without rewriting answers
- * already recorded with the old value. Hosts migrated their stored v7
- * protocols before session migrations existed, so a session step added now
- * would reach almost none of the sessions concerned.
+ * A migration changes a protocol document only. No Network Canvas host
+ * rewrites a stored interview when a protocol's schema changes, and no host
+ * upgrades a stored protocol: Interviewer and Fresco migrate a protocol only
+ * as it is imported, and Studio stores only the current schema version.
  */
 
 // Import the actual protocol types for each version
@@ -78,8 +19,6 @@ import {
   MigrationStepError,
   VersionMismatchError,
 } from './errors.ts';
-import type { RecordedSessionStep, SessionDocument } from './session.ts';
-import { deepFreeze, stageIdsOf, stageMovement } from './session.ts';
 
 // Map schema versions to their inferred types. Versions 7 and 8 have loose
 // stub schemas. A complete schema is left out: a step builds its output
@@ -97,24 +36,6 @@ export type ProtocolDocument<V extends SchemaVersion> =
         schemaVersion: V;
         [key: string]: unknown;
       };
-
-/**
- * How the data a session holds changes across one step. It receives a session
- * (its own copy, which it may change) whose stage records and resume position
- * already sit at the step's new stage indices, and the protocol as it was
- * before the step and as the step left it, both frozen. It returns the session
- * as the step's target version reads it. It must be pure and deterministic.
- */
-export type SessionMigrationStep<
-  From extends SchemaVersion,
-  To extends SchemaVersion,
-> = (
-  session: SessionDocument,
-  protocols: {
-    before: ProtocolDocument<From>;
-    after: ProtocolDocument<To>;
-  },
-) => SessionDocument;
 
 export type ProtocolMigration<
   From extends SchemaVersion,
@@ -135,23 +56,6 @@ export type ProtocolMigration<
     deps: Deps,
     targetVersion?: SchemaVersion,
   ) => ProtocolDocument<To>;
-  /**
-   * Required of a step that changes how a session represents its data (see
-   * the header). Absent, sessions pass through the step unchanged apart from
-   * the stage positions the framework moves.
-   */
-  migrateSession?: SessionMigrationStep<From, To>;
-  /**
-   * Required of a step that gives existing stages new ids: each replaced
-   * stage id in `before`, mapped to the id the step gave that stage. The
-   * framework matches stages across the step through it, so a session's stage
-   * records and resume position follow a stage whose id changed. It is asked
-   * only after `migrate` has run on the same `before`, so a step whose new
-   * ids are not reproducible can answer from what that run recorded.
-   */
-  stageIdChanges?: (
-    before: ProtocolDocument<From>,
-  ) => ReadonlyMap<string, string>;
 };
 
 /**
@@ -173,10 +77,6 @@ export function createMigration<
     deps: Deps,
     targetVersion?: SchemaVersion,
   ) => ProtocolDocument<To>;
-  migrateSession?: SessionMigrationStep<From, To>;
-  stageIdChanges?: (
-    before: ProtocolDocument<From>,
-  ) => ReadonlyMap<string, string>;
 }): ProtocolMigration<From, To, Deps> {
   return config;
 }
@@ -262,37 +162,11 @@ export class MigrationChain {
     targetVersion: To,
     dependencies: Record<string, unknown> = {},
   ): ProtocolDocument<To> {
-    return this.run(document, targetVersion, dependencies, false).document;
-  }
-
-  /**
-   * `migrate`, also returning, for `createSessionMigrator`, each step on the
-   * path that moved stages or declares a session step: how it moved stages,
-   * and its session step with the protocol before and after it, frozen.
-   */
-  migrateWithSessionSteps<From extends SchemaVersion, To extends SchemaVersion>(
-    document: ProtocolDocument<From>,
-    targetVersion: To,
-    dependencies: Record<string, unknown> = {},
-  ): { document: ProtocolDocument<To>; sessionSteps: RecordedSessionStep[] } {
-    return this.run(document, targetVersion, dependencies, true);
-  }
-
-  private run<From extends SchemaVersion, To extends SchemaVersion>(
-    document: ProtocolDocument<From>,
-    targetVersion: To,
-    dependencies: Record<string, unknown>,
-    recordSessionSteps: boolean,
-  ): { document: ProtocolDocument<To>; sessionSteps: RecordedSessionStep[] } {
     const fromVersion = document.schemaVersion;
-    const sessionSteps: RecordedSessionStep[] = [];
 
     if ((fromVersion as SchemaVersion) === targetVersion) {
-      return {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the document is already at the target version (checked just above), but the types cannot relate From to To
-        document: document as unknown as ProtocolDocument<To>,
-        sessionSteps,
-      };
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the document is already at the target version (checked just above), but the types cannot relate From to To
+      return document as unknown as ProtocolDocument<To>;
     }
 
     if ((fromVersion as number) > (targetVersion as number)) {
@@ -318,70 +192,17 @@ export class MigrationChain {
       if (!migration) {
         throw new MigrationNotPossibleError(currentVersion, targetVersion);
       }
-
-      if (!recordSessionSteps) {
-        current = this.executeStep(
-          current,
-          migration,
-          dependencies,
-          targetVersion,
-        );
-        currentVersion = migration.to;
-        continue;
-      }
-
-      // Read before the step runs, in case it changes its input in place. A
-      // step that declares a session step or stage id changes is given the
-      // frozen copy, so both answer about the very document it migrated.
-      const before =
-        migration.migrateSession || migration.stageIdChanges
-          ? deepFreeze(structuredClone(current))
-          : undefined;
-      const storedIds = stageIdsOf(current);
       current = this.executeStep(
-        before ?? current,
+        current,
         migration,
         dependencies,
         targetVersion,
       );
-      const stageRenames =
-        before && migration.stageIdChanges
-          ? migration.stageIdChanges(before)
-          : undefined;
-      const beforeIds = storedIds.map((id) =>
-        id === undefined ? id : (stageRenames?.get(id) ?? id),
-      );
-      const stages = stageMovement(beforeIds, stageIdsOf(current));
-      const migrateSession = migration.migrateSession;
-      if (stages.kind !== 'none' || migrateSession) {
-        sessionSteps.push({
-          from: migration.from,
-          to: migration.to,
-          stages,
-          ...(migrateSession
-            ? {
-                migrateSession: {
-                  run: (session, protocols) =>
-                    migrateSession(
-                      session,
-                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- recorded steps hold the frozen before/after documents of this same step, typed unknown only to keep RecordedSessionStep version-free
-                      protocols as {
-                        before: ProtocolDocument<SchemaVersion>;
-                        after: ProtocolDocument<SchemaVersion>;
-                      },
-                    ),
-                  before,
-                  after: deepFreeze(structuredClone(current)),
-                },
-              }
-            : {}),
-        });
-      }
       currentVersion = migration.to;
     }
 
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the loop runs until the version reaches To; the version is a runtime value the types cannot follow
-    return { document: current as ProtocolDocument<To>, sessionSteps };
+    return current as ProtocolDocument<To>;
   }
 
   getMigrationPath(from: SchemaVersion, to: SchemaVersion): SchemaVersion[] {

@@ -1,7 +1,6 @@
 import {
   asOneLine,
   CodebookNameSchema,
-  entitySecureAttributesMeta,
   holdsLineBreak,
   normalizeCodebookName,
 } from '@codaco/shared-consts';
@@ -20,7 +19,6 @@ import {
   type ProtocolDocument,
 } from '../../migration/index.ts';
 import { recordOriginalPositions } from '../../migration/originalPositions.ts';
-import type { SessionDocument } from '../../migration/session.ts';
 import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
@@ -29,10 +27,6 @@ import {
   migrateFamilyPedigreeStages,
   migrateNarrativePedigreeStages,
 } from './family-pedigree-migration.ts';
-import {
-  migrateFamilyPedigreeSessionRecords,
-  resumeUnstartedPedigreeAtIntroduction,
-} from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
@@ -215,7 +209,7 @@ const removeContradictionsOf = (
  * compares them (`optionValueKey`), so `1` and `"1"` collide. Where the two
  * are exactly equal, answers already recorded, and filters and skip logic
  * that name the value, still refer to the option kept; where they differ in
- * type, `remapMergedOptionValues` and the session step rewrite them to it.
+ * type, `remapMergedOptionValues` rewrites them to it.
  */
 const removeDuplicateOptionValues = (codebook: unknown) => {
   for (const variables of variableRecordsOf(codebook)) {
@@ -427,37 +421,6 @@ const remapShapeMappings = (
       seen.add(value);
       return [{ ...entry, value }];
     });
-  }
-};
-
-/**
- * Rewrites a session's answers that hold a removed option value to the
- * value kept, reading which values were merged from the schema 8 codebook.
- */
-const remapMergedOptionAnswers = (
-  network: SessionDocument['network'],
-  schema8Protocol: unknown,
-) => {
-  const merged = mergedOptionValuesOf(
-    isRecord(schema8Protocol) ? schema8Protocol.codebook : undefined,
-  );
-  for (const { entity, type, attribute, kept } of merged) {
-    const entities =
-      entity === 'ego'
-        ? [network.ego]
-        : network[entity === 'node' ? 'nodes' : 'edges'].filter(
-            (candidate) => candidate.type === type,
-          );
-    for (const candidate of entities) {
-      const { attributes } = candidate;
-      if (!isRecord(attributes) || !Object.hasOwn(attributes, attribute))
-        continue;
-      // An encrypted answer holds ciphertext, not option values: rewriting
-      // it would corrupt the protected answer, so it is left as stored.
-      const secure: unknown = candidate[entitySecureAttributesMeta];
-      if (isRecord(secure) && Object.hasOwn(secure, attribute)) continue;
-      attributes[attribute] = withKeptValues(attributes[attribute], kept);
-    }
   }
 };
 
@@ -1101,23 +1064,6 @@ const repairInformationTextItems = (protocol: unknown) => {
 };
 
 /**
- * A session the framework left past the last stage, where the interview
- * engine's own finish screen used to be, resumes on the finish stage the
- * migration appended in its place.
- */
-const resumeAtAppendedFinishStage = (
-  session: { currentStep: number },
-  after: unknown,
-) => {
-  const stages =
-    typeof after === 'object' && after !== null && 'stages' in after
-      ? after.stages
-      : undefined;
-  if (!Array.isArray(stages) || stages.length === 0) return;
-  session.currentStep = Math.min(session.currentStep, stages.length - 1);
-};
-
-/**
  * A document that already ends at its finish stage keeps it: Fresco's deploy
  * normalization re-runs this migration over rows stored at schema 9, and a
  * second finish stage would make every such row invalid.
@@ -1334,14 +1280,14 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
           finishStageFor(localization),
         ],
     ...(experiments !== undefined && {
-      experiments: withoutEncryptedVariables(structuredClone(experiments)),
+      experiments: withoutEncryptedVariables(experiments),
     }),
     schemaVersion: 9 as const,
     localization,
   };
   // Last, so that every object the steps above add or move is given its id
   // where it ends up, and every stage reference they wrote is rewritten.
-  const stageRenames = assignProtocolObjectIds(assembled);
+  assignProtocolObjectIds(assembled);
 
   // None of the wording Network Canvas supplies is written in: the
   // interview shows it for a protocol that does not hold it. A document
@@ -1349,43 +1295,7 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   // shows. The words are the interview's, so a copy of them cannot be told
   // from a rewording here; the tool that next stores the protocol removes
   // it (`withoutSuppliedWording`).
-  return { document: withoutUnshownWording(assembled), stageRenames };
-};
-
-// The new ids are random, so the stage renames of a migration can only be
-// read from the run that made them. They are kept against the document that
-// run was given, which the framework also hands to `stageIdChanges` and to
-// the session step.
-const stageRenamesByInput = new WeakMap<object, ReadonlyMap<string, string>>();
-
-const stageRenamesFor = (
-  before: ProtocolDocument<8>,
-): ReadonlyMap<string, string> => {
-  const stageRenames = stageRenamesByInput.get(before);
-  if (stageRenames === undefined) {
-    throw new Error(
-      'The stage ids of a schema 8 document can only be read after it has been migrated.',
-    );
-  }
-  return stageRenames;
-};
-
-// The schema 8 document with its stages under the ids the migration gave
-// them, so the pedigree's session step can match its stages to the migrated
-// ones by id.
-const withNewStageIds = (
-  before: unknown,
-  stageRenames: ReadonlyMap<string, string>,
-): unknown => {
-  if (!isRecord(before) || !Array.isArray(before.stages)) return before;
-  return {
-    ...before,
-    stages: before.stages.map((stage: unknown) => {
-      if (!isRecord(stage) || typeof stage.id !== 'string') return stage;
-      const id = stageRenames.get(stage.id);
-      return id === undefined ? stage : { ...stage, id };
-    }),
-  };
+  return withoutUnshownWording(assembled);
 };
 
 const migrationV8toV9 = createMigration({
@@ -1421,32 +1331,7 @@ const migrationV8toV9 = createMigration({
 - A Narrative stage's filter now belongs to each of its presets, so each preset can show a different part of the network. A filter on an existing Narrative stage is copied to every preset of that stage, so the stage shows the same people as before.
 - A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
-  migrate: (input) => {
-    const { document, stageRenames } = migrateDocument(input);
-    stageRenamesByInput.set(input, stageRenames);
-    return document;
-  },
-  stageIdChanges: stageRenamesFor,
-  // A pedigree's introduction screen becomes a stage of its own, which moves
-  // the pedigree and every stage after it one place on; the framework moves
-  // each session's stage records and resume position with their stages
-  // before this runs. A session on a pedigree it had not started had not yet
-  // seen the introduction, so it resumes on the new stage instead. The
-  // redesigned pedigree keeps a different stage record, which is translated
-  // without losing anything the participant recorded.
-  //
-  // The finish stage this step appends is the screen the interview engine
-  // used to add after the last stage. The framework keeps a session that was
-  // on that screen past the end of the stages, so it resumes on the finish
-  // stage instead.
-  migrateSession: (session, { before, after }) => {
-    remapMergedOptionAnswers(session.network, before);
-    resumeAtAppendedFinishStage(session, after);
-    const renamedBefore = withNewStageIds(before, stageRenamesFor(before));
-    resumeUnstartedPedigreeAtIntroduction(session, after, renamedBefore);
-    migrateFamilyPedigreeSessionRecords(session, after, renamedBefore);
-    return session;
-  },
+  migrate: migrateDocument,
 });
 
 export default migrationV8toV9;
