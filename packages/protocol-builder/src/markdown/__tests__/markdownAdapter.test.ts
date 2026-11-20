@@ -9,7 +9,10 @@ import {
 } from '../markdownAdapter.ts';
 
 const roundTrip = (value: string, inline = false) =>
-  richTextContentToMarkdown(markdownToRichTextContent(value, inline), inline);
+  richTextContentToMarkdown(
+    markdownToRichTextContent(value, { inline }),
+    inline,
+  );
 
 describe('RichText markdown adapter', () => {
   it('round-trips the full Architect toolbar markdown subset', () => {
@@ -108,7 +111,7 @@ describe('RichText markdown adapter', () => {
   it('does not emit link marks for inline content', () => {
     const content = markdownToRichTextContent(
       '[Help](https://example.com) label',
-      true,
+      { inline: true },
     );
 
     expect(content.content?.[0]?.content?.[0]?.marks).toBeUndefined();

@@ -10,7 +10,10 @@ import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
 import { labelComparisonKey } from '../../localization/duplicateLabels.ts';
 import { DYNAMIC_VALUE_MARKER } from '../../localization/dynamicValueMessages.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
-import { escapeMarkdownText } from '../../localization/markdownText.ts';
+import {
+  escapeMarkdownText,
+  headingMarkdown,
+} from '../../localization/markdownText.ts';
 import {
   escapeMessageText,
   messageText,
@@ -32,10 +35,7 @@ import {
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
-import {
-  combineInformationContent,
-  headingMarkdown,
-} from './information-content-migration.ts';
+import { combineInformationContent } from './information-content-migration.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
@@ -1322,7 +1322,7 @@ const migrationV8toV9 = createMigration({
   to: 9,
   dependencies: {},
   notes: `- Introduction panels within interfaces other than the Ego Form have been removed, so participant-facing instructions on those stages use the Information interface. The content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.
-- The page heading, text and media of an Information stage are now one piece of text, which you edit as a single document. The page heading is now a heading at the top of the text, and each image, audio recording or video is a block within the text, in the place it was shown before. A page heading that contained only spaces is left out, as is a file that is no longer among the protocol's resources; if the page then has nothing to show, it shows the name of the stage as its heading. A description you had written for a block of text, which participants never saw, is not kept.
+- The page heading, text and media of an Information stage are now one piece of text, which you edit as a single document. The page heading is now a heading at the top of the text, and each image, audio recording or video is a block within the text, in the place it was shown before. A page heading that contained only spaces is left out, as is a file that is no longer among the protocol's resources; if the page then has nothing to show, it shows the name of the stage as its heading. A description you had written for a text item, which participants never saw, is not kept.
 - Protocols can now be written in multiple languages. Existing protocols are presumed to be in English. If your protocol is written in another language, change its default language on the Languages page in Architect.
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol.
 - Encrypted attributes are no longer experimental: the Anonymisation interface can be added in Architect like any other interface.
@@ -1334,7 +1334,7 @@ const migrationV8toV9 = createMigration({
 - Several places that accepted empty text, or text made up only of spaces, now require some text:
   - On a Categorical Bin stage, the label of the bin for answers not listed must now contain some text. Where it contained only spaces, it now reads "Other".
   - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
-  - Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator's form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.
+  - Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator's form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone. A text item on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.
   - The name of a stage must now contain some text. Where it was empty or contained only spaces, it now reads "Stage" followed by the stage's position, such as "Stage 3".
   - The label of each option of a categorical, ordinal or Boolean attribute must now contain some text. Where it was empty or contained only spaces, it now shows the option's value; on a Boolean attribute it reads "Yes" for the true choice and "No" for the false one instead. Answers already recorded are not changed.
   - Other titles and labels that participants see must now contain some text. Where one was empty or contained only spaces, the title of a side panel on a Name Generator stage now reads "Panel" followed by its position, such as "Panel 1"; the label of a property shown on the cards of a Name Generator Roster stage, or used to sort them, now uses the name of its attribute; and the label of a condition on a Narrative Pedigree stage now uses the name of the attribute that records it, followed by a number if another condition on the stage already has that label.

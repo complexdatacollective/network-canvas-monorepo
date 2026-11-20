@@ -15,7 +15,7 @@ import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import ArchitectLocaleSwitcher from '~/i18n/ArchitectLocaleSwitcher';
 import { cx } from '~/utils/cva';
-import { NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
+import { NAV_BAR_REACH_VARIABLE, NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 
 import { NAV_ITEM_CLASS_NAME } from './NavLink';
 // `publish-colors`: dynamic-color controls on the bar derive their hover
@@ -68,6 +68,11 @@ type NavShellProps = {
   end?: React.ReactNode;
 };
 
+// The bar reaches from the top of the header to its own foot: down past the
+// space the header keeps above it, by its own height.
+const reachOfBar = (bar: HTMLElement, height: number): number =>
+  bar.offsetTop + height;
+
 const NavShell = ({ leading, items, end }: NavShellProps) => {
   const shouldReduceMotion = usePrefersReducedMotion();
   const isFirstMount = useRunOnce('nav-bar-entrance');
@@ -95,6 +100,10 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
   // anything scrolled into view lands beneath it, and the stage editor's
   // section list sticks directly underneath it.
   const navHeight = usePublishedBlockHeight(NAV_HEIGHT_VARIABLE);
+  const barReach = usePublishedBlockHeight<HTMLDivElement>(
+    NAV_BAR_REACH_VARIABLE,
+    reachOfBar,
+  );
 
   const isAtStart = location === '/';
   const handleReturnToStart = useCallback(
@@ -108,6 +117,7 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
       className="phone-landscape:px-6 pointer-events-none sticky top-0 z-20 w-full px-4 py-5 print:static print:hidden"
     >
       <motion.div
+        ref={barReach}
         className={cx(
           NAV_SURFACE,
           'phone-landscape:pe-10 phone-landscape:ps-6 @container mx-auto flex max-w-7xl flex-wrap items-center gap-5 rounded-full py-3 ps-6 pe-6',

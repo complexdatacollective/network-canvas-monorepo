@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
 import {
   messageStructure,
   printMessageStructure,
@@ -43,20 +44,24 @@ const roundTrip = (message: string, format = WITH_BLOCKS) =>
     documentToMessageNodes(toDocument(message, format), format),
   );
 
+/** Why the message cannot be shown in the editor, if it cannot. */
+const problemOf = (message: string, format = WITH_BLOCKS) => {
+  try {
+    toDocument(message, format);
+  } catch (error) {
+    if (error instanceof MessageDocumentProblem) return error.kind;
+    throw error;
+  }
+  return undefined;
+};
+
 describe('a message holding asset blocks', () => {
   it('shows an asset image as a block in the editor’s document', () => {
     const document = toDocument('![A map](asset:a1?size=small)');
     expect(document.content).toEqual([
       {
         type: 'assetBlock',
-        attrs: {
-          assetId: 'a1',
-          description: 'A map',
-          size: 'small',
-          align: 'center',
-          autoplay: true,
-          loop: true,
-        },
+        attrs: assetBlockAttributes({ description: 'A map', size: 'small' }),
       },
     ]);
   });
@@ -99,15 +104,7 @@ describe('a message holding asset blocks', () => {
     ['its description', '![Hello {name}](asset:a1)'],
     ['its address', '![A map](asset:{name})'],
   ])('cannot be shown with a value in %s', (_kind, message) => {
-    expect(() => toDocument(message)).toThrow(MessageDocumentProblem);
-    try {
-      toDocument(message);
-    } catch (error) {
-      expect(error).toBeInstanceOf(MessageDocumentProblem);
-      expect(error instanceof MessageDocumentProblem && error.kind).toBe(
-        'valueInLinkAddress',
-      );
-    }
+    expect(problemOf(message)).toBe('valueInLinkAddress');
   });
 
   it('does not refuse a value in an image’s description where blocks are not held', () => {
@@ -121,16 +118,6 @@ describe('a message holding asset blocks', () => {
 // as its description, so the message is refused instead, as validation
 // reports it.
 describe('a file written where the editor holds no block', () => {
-  const problemOf = (message: string, format = WITH_BLOCKS) => {
-    try {
-      toDocument(message, format);
-    } catch (error) {
-      if (error instanceof MessageDocumentProblem) return error.kind;
-      throw error;
-    }
-    return undefined;
-  };
-
   it.each([
     [
       'a version',

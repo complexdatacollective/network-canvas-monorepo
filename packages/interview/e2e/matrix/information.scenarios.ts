@@ -5,7 +5,47 @@ import { assetBlockMarkdown } from '@codaco/protocol-validation';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
+import type { SyntheticAssetSpec } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios } from './types.js';
+
+// The files the scenarios' blocks name. Each scenario registers the ones it
+// uses with its interview (`addFiles`) and lists them as its `assets`, which
+// is where the payload's manifest and the files served are taken from.
+const IMAGE = {
+  assetId: 'img-1',
+  name: 'quadrant',
+  type: 'image',
+  source: 'quadrant.png',
+  localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
+} satisfies SyntheticAssetSpec;
+
+const AUDIO = {
+  assetId: 'audio-1',
+  name: 'clip',
+  type: 'audio',
+  source: 'click_the_thing.mp3',
+  localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'click_the_thing.mp3'),
+} satisfies SyntheticAssetSpec;
+
+const VIDEO = {
+  assetId: 'video-1',
+  name: 'welcome',
+  type: 'video',
+  source: 'withSound.mp4',
+  localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'withSound.mp4'),
+} satisfies SyntheticAssetSpec;
+
+/** `VIDEO`, under the name a researcher filed it as for one scenario. */
+const INTRO_VIDEO = { ...VIDEO, name: 'intro' } satisfies SyntheticAssetSpec;
+
+type FileAsset = Extract<SyntheticAssetSpec, { localPath: string }>;
+
+/** Registers `files` with the interview, as `synth.addAsset` takes them. */
+function addFiles(synth: SyntheticInterview, ...files: FileAsset[]): void {
+  for (const { assetId, name, type, source } of files) {
+    synth.addAsset({ id: assetId, name, type, source });
+  }
+}
 
 export const informationScenarios: InterfaceScenarios = {
   interfaceType: 'Information',
@@ -64,12 +104,7 @@ export const informationScenarios: InterfaceScenarios = {
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();
-        synth.addAsset({
-          id: 'img-1',
-          name: 'quadrant',
-          type: 'image',
-          source: 'quadrant.png',
-        });
+        addFiles(synth, IMAGE);
         synth.addInformationStage({
           title: 'Image sizes',
           blocks: [
@@ -80,15 +115,7 @@ export const informationScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      assets: [
-        {
-          assetId: 'img-1',
-          name: 'quadrant',
-          type: 'image',
-          source: 'quadrant.png',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
-        },
-      ],
+      assets: [IMAGE],
       run: async ({ page }) => {
         const images = page.locator('main img[src*="quadrant.png"]');
         await expect(images).toHaveCount(3);
@@ -127,18 +154,7 @@ export const informationScenarios: InterfaceScenarios = {
       covers: ['asset-block.audio', 'asset-block.description'],
       build: () => {
         const synth = new SyntheticInterview();
-        synth.addAsset({
-          id: 'audio-1',
-          name: 'clip',
-          type: 'audio',
-          source: 'click_the_thing.mp3',
-        });
-        synth.addAsset({
-          id: 'video-1',
-          name: 'welcome',
-          type: 'video',
-          source: 'withSound.mp4',
-        });
+        addFiles(synth, AUDIO, VIDEO);
         synth.addInformationStage({
           title: 'Media stage',
           blocks: [
@@ -149,22 +165,7 @@ export const informationScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      assets: [
-        {
-          assetId: 'audio-1',
-          name: 'clip',
-          type: 'audio',
-          source: 'click_the_thing.mp3',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'click_the_thing.mp3'),
-        },
-        {
-          assetId: 'video-1',
-          name: 'welcome',
-          type: 'video',
-          source: 'withSound.mp4',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'withSound.mp4'),
-        },
-      ],
+      assets: [AUDIO, VIDEO],
       run: async ({ page }) => {
         const audios = page.locator('main audio');
         await expect(audios).toHaveCount(2);
@@ -190,12 +191,7 @@ export const informationScenarios: InterfaceScenarios = {
       visual: true,
       build: () => {
         const synth = new SyntheticInterview();
-        synth.addAsset({
-          id: 'video-1',
-          name: 'intro',
-          type: 'video',
-          source: 'withSound.mp4',
-        });
+        addFiles(synth, INTRO_VIDEO);
         synth.addInformationStage({
           title: 'Video stage',
           blocks: [
@@ -208,15 +204,7 @@ export const informationScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      assets: [
-        {
-          assetId: 'video-1',
-          name: 'intro',
-          type: 'video',
-          source: 'withSound.mp4',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'withSound.mp4'),
-        },
-      ],
+      assets: [INTRO_VIDEO],
       run: async ({ page }) => {
         const video = page.locator('main video');
         await expect(video).toBeVisible();
@@ -237,12 +225,7 @@ export const informationScenarios: InterfaceScenarios = {
       covers: ['asset-block-ordering'],
       build: () => {
         const synth = new SyntheticInterview();
-        synth.addAsset({
-          id: 'img-1',
-          name: 'quadrant',
-          type: 'image',
-          source: 'quadrant.png',
-        });
+        addFiles(synth, IMAGE);
         synth.addInformationStage({
           title: 'Ordered stage',
           text: [
@@ -253,15 +236,7 @@ export const informationScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      assets: [
-        {
-          assetId: 'img-1',
-          name: 'quadrant',
-          type: 'image',
-          source: 'quadrant.png',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
-        },
-      ],
+      assets: [IMAGE],
       run: async ({ page }) => {
         // The page shows what its text holds in the order it holds it: text,
         // image, text
@@ -296,18 +271,7 @@ export const informationScenarios: InterfaceScenarios = {
       covers: ['asset-block.align'],
       build: () => {
         const synth = new SyntheticInterview();
-        synth.addAsset({
-          id: 'img-1',
-          name: 'quadrant',
-          type: 'image',
-          source: 'quadrant.png',
-        });
-        synth.addAsset({
-          id: 'audio-1',
-          name: 'clip',
-          type: 'audio',
-          source: 'click_the_thing.mp3',
-        });
+        addFiles(synth, IMAGE, AUDIO);
         synth.addInformationStage({
           title: 'Alignment',
           // Long enough that the page is wider than an audio player, which has
@@ -352,22 +316,7 @@ export const informationScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      assets: [
-        {
-          assetId: 'img-1',
-          name: 'quadrant',
-          type: 'image',
-          source: 'quadrant.png',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'quadrant.png'),
-        },
-        {
-          assetId: 'audio-1',
-          name: 'clip',
-          type: 'audio',
-          source: 'click_the_thing.mp3',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'click_the_thing.mp3'),
-        },
-      ],
+      assets: [IMAGE, AUDIO],
       run: async ({ page }) => {
         // An image held to a height is drawn in a box as wide as the page, so
         // where it sits is where the picture sits inside that box.
@@ -402,18 +351,7 @@ export const informationScenarios: InterfaceScenarios = {
       covers: ['asset-block.autoplay', 'asset-block.loop'],
       build: () => {
         const synth = new SyntheticInterview();
-        synth.addAsset({
-          id: 'audio-1',
-          name: 'clip',
-          type: 'audio',
-          source: 'click_the_thing.mp3',
-        });
-        synth.addAsset({
-          id: 'video-1',
-          name: 'welcome',
-          type: 'video',
-          source: 'withSound.mp4',
-        });
+        addFiles(synth, AUDIO, VIDEO);
         synth.addInformationStage({
           title: 'Playback',
           blocks: [
@@ -434,22 +372,7 @@ export const informationScenarios: InterfaceScenarios = {
         });
         return synth;
       },
-      assets: [
-        {
-          assetId: 'audio-1',
-          name: 'clip',
-          type: 'audio',
-          source: 'click_the_thing.mp3',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'click_the_thing.mp3'),
-        },
-        {
-          assetId: 'video-1',
-          name: 'welcome',
-          type: 'video',
-          source: 'withSound.mp4',
-          localPath: path.join(DEV_PROTOCOL_ASSETS_DIR, 'withSound.mp4'),
-        },
-      ],
+      assets: [AUDIO, VIDEO],
       run: async ({ page }) => {
         const player = (name: string) => page.locator(`[aria-label="${name}"]`);
         await expect(player('Audio by default')).toHaveAttribute(

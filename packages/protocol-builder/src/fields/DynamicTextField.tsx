@@ -101,7 +101,7 @@ import {
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
 import ConditionDialog from '../rules/ConditionDialog.tsx';
-import { useStageAssetBlocks } from './assetBlocks.tsx';
+import { StageAssetBlocks } from './assetBlocks/StageAssetBlocks.tsx';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
 
 const PLAIN_LINE: LocalizedTextShape = { format: 'plain', lines: 'single' };
@@ -1564,12 +1564,15 @@ export function MessageNodesSummary({
   nodes: readonly MessageNode[];
   /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
-  /** Whether the words run over several lines, as a field on one line never does. */
+  /**
+   * Whether the text's field holds several lines, as a field on one line
+   * never does: a property of the field, not of the words it holds today.
+   */
   multiline: boolean;
   /**
-   * How markdown with line breaks (an Information screen's text) draws its
-   * paragraphs, headings and rules; text on one line keeps only inline
-   * formatting and lists, as a label does.
+   * How markdown in a field of several lines (an Information screen's text)
+   * draws its paragraphs, headings, rules and files; text on one line keeps
+   * only inline formatting and lists, as a label does.
    */
   blockMarkdown?: BlockMarkdown;
   /** What a value's pill says, by the name the message gives it. */
@@ -1695,6 +1698,7 @@ export function MessageNodesSummary({
 export function DynamicMessageSummary({
   message,
   markdown,
+  multiline,
   locale,
   site,
   blockMarkdown,
@@ -1702,7 +1706,14 @@ export function DynamicMessageSummary({
   message: string;
   /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
-  /** How markdown with line breaks is drawn (see `MessageNodesSummary`). */
+  /**
+   * Whether the text's field holds several lines, so that its markdown is
+   * drawn with its blocks (see `MessageNodesSummary`), as its editor draws
+   * them. A property of the field, not of the text it holds today: a page
+   * that is one file and nothing else is still a page.
+   */
+  multiline: boolean;
+  /** How markdown with blocks is drawn (see `MessageNodesSummary`). */
   blockMarkdown?: BlockMarkdown;
   locale: LocaleTag;
   site: Pick<DynamicMessageSite, 'context' | 'bindings'>;
@@ -1744,7 +1755,7 @@ export function DynamicMessageSummary({
     <MessageNodesSummary
       nodes={structure.nodes}
       markdown={markdown}
-      multiline={message.includes('\n')}
+      multiline={multiline}
       blockMarkdown={blockMarkdown}
       valueLabel={valueLabel}
       switchSummary={labels.switchSummary}
@@ -1871,40 +1882,40 @@ export default function DynamicTextField({
     singleLine,
     assetBlocks: holdsAssetBlocks,
   } = textFieldPropsFor(shape);
-  const { assetBlocks, picker } = useStageAssetBlocks(holdsAssetBlocks);
   const { localization, locale } = useEditingLanguage();
   const defaultLocale = localization?.defaultLocale;
 
   return (
-    <>
-      <LocalizedStringField
-        value={value}
-        onChange={onChange}
-        hideUntranslatedNote={hideUntranslatedNote}
-      >
-        {(translation) => (
-          <DynamicMessageEditor
-            id={id}
-            name={name}
-            ariaDescribedBy={ariaDescribedBy}
-            ariaLabelledBy={ariaLabelledBy}
-            ariaInvalid={ariaInvalid}
-            ariaRequired={ariaRequired === true}
-            placeholder={placeholder}
-            autoFocus={autoFocus}
-            disabled={disabled}
-            readOnly={readOnly === true || translation.readOnly}
-            markdown={markdown}
-            singleLine={singleLine}
-            {...(assetBlocks !== undefined && { assetBlocks })}
-            message={translation.message}
-            onMessageChange={translation.onMessageChange}
-            locale={locale ?? defaultLocale ?? 'en'}
-            site={site}
-          />
-        )}
-      </LocalizedStringField>
-      {picker}
-    </>
+    <StageAssetBlocks enabled={holdsAssetBlocks}>
+      {(assetBlocks) => (
+        <LocalizedStringField
+          value={value}
+          onChange={onChange}
+          hideUntranslatedNote={hideUntranslatedNote}
+        >
+          {(translation) => (
+            <DynamicMessageEditor
+              id={id}
+              name={name}
+              ariaDescribedBy={ariaDescribedBy}
+              ariaLabelledBy={ariaLabelledBy}
+              ariaInvalid={ariaInvalid}
+              ariaRequired={ariaRequired === true}
+              placeholder={placeholder}
+              autoFocus={autoFocus}
+              disabled={disabled}
+              readOnly={readOnly === true || translation.readOnly}
+              markdown={markdown}
+              singleLine={singleLine}
+              {...(assetBlocks !== undefined && { assetBlocks })}
+              message={translation.message}
+              onMessageChange={translation.onMessageChange}
+              locale={locale ?? defaultLocale ?? 'en'}
+              site={site}
+            />
+          )}
+        </LocalizedStringField>
+      )}
+    </StageAssetBlocks>
   );
 }

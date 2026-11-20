@@ -1,3 +1,11 @@
+import {
+  ASSET_BLOCK_DEFAULTS,
+  type AssetBlockAlignment,
+  type AssetBlockSize,
+  isAssetBlockAlignment,
+  isAssetBlockSize,
+} from '@codaco/shared-consts';
+
 import { escapeMarkdownText } from './markdownText.ts';
 import { markdownTree } from './markdownTree.ts';
 import { type MessageNode, messageStructure } from './messageStructure.ts';
@@ -36,36 +44,28 @@ export type AssetBlock = Readonly<{
   loop?: boolean;
 }>;
 
-export const ASSET_BLOCK_SIZES = ['small', 'medium', 'large'] as const;
-export type AssetBlockSize = (typeof ASSET_BLOCK_SIZES)[number];
-
-export const ASSET_BLOCK_ALIGNMENTS = ['start', 'center', 'end'] as const;
-export type AssetBlockAlignment = (typeof ASSET_BLOCK_ALIGNMENTS)[number];
-
-/** How a block is shown where it does not say: the settings left unwritten. */
-export const ASSET_BLOCK_DEFAULTS = {
-  align: 'center',
-  autoplay: true,
-  loop: true,
-} as const satisfies Required<Pick<AssetBlock, 'align' | 'autoplay' | 'loop'>>;
-
-/** The kinds of file a block can show. */
-export type AssetBlockKind = 'image' | 'audio' | 'video';
-
-export const isAssetBlockKind = (value: unknown): value is AssetBlockKind =>
-  value === 'image' || value === 'audio' || value === 'video';
+// The words a block's settings are written in are shared-consts', so that
+// what draws a block without reading its markdown holds the same list. They
+// are exported here too, beside the grammar that writes them.
+export {
+  ASSET_BLOCK_ALIGNMENTS,
+  ASSET_BLOCK_DEFAULTS,
+  ASSET_BLOCK_KINDS,
+  ASSET_BLOCK_SIZES,
+  type AssetBlockAlignment,
+  type AssetBlockAttributes,
+  type AssetBlockKind,
+  type AssetBlockSize,
+  isAssetBlockAlignment,
+  isAssetBlockKind,
+  isAssetBlockSize,
+} from '@codaco/shared-consts';
 
 const SCHEME = 'asset:';
 
 /** Whether a markdown image's address names a file of the protocol. */
 export const isAssetBlockUrl = (url: string): boolean =>
   url.slice(0, SCHEME.length).toLowerCase() === SCHEME;
-
-const isSize = (value: string): value is AssetBlockSize =>
-  ASSET_BLOCK_SIZES.some((size) => size === value);
-
-const isAlignment = (value: string): value is AssetBlockAlignment =>
-  ASSET_BLOCK_ALIGNMENTS.some((alignment) => alignment === value);
 
 // `encodeURIComponent` leaves these as they are, and each means something in
 // a markdown address (a parenthesis closes it) or in an ICU message (an
@@ -177,10 +177,10 @@ export const readAssetBlockUrl = (
     const invalid = () =>
       problems.push({ kind: 'invalidValue', setting, value });
     if (setting === 'size') {
-      if (isSize(value)) size = value;
+      if (isAssetBlockSize(value)) size = value;
       else invalid();
     } else if (setting === 'align') {
-      if (isAlignment(value)) align = value;
+      if (isAssetBlockAlignment(value)) align = value;
       else invalid();
     } else if (setting === 'autoplay' || setting === 'loop') {
       const flag = BOOLEANS[value];

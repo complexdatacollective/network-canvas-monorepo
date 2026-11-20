@@ -11,6 +11,7 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { defaultLanguageText } from '../helpers/localized-text.js';
 import { readProtocolJson, settleAfterRefusal } from '../helpers/read-store.js';
 import { acknowledgeRefusal } from '../helpers/refusal.js';
+import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
 import { Toolbar } from '../pageobjects/toolbar.js';
 
@@ -289,9 +290,7 @@ test('inserts a new Information stage at the clicked index', async ({
   // it filled. Real keystrokes (not `.fill()`) so Tiptap/ProseMirror's own
   // input handling — which `.fill()`'s direct DOM write bypasses — registers
   // the change into the form store.
-  const contentField = architectPage.getByRole('textbox', {
-    name: 'Rich Text',
-  });
+  const contentField = new StageEditor(architectPage).richText();
   await contentField.click();
   await contentField.pressSequentially('Minimal content.');
 
@@ -525,9 +524,7 @@ test('adds new stages before the stage that ends the interview', async ({
   await architectPage
     .getByRole('textbox', { name: 'Stage name' })
     .fill('Appended Info Stage');
-  const appendedContent = architectPage.getByRole('textbox', {
-    name: 'Rich Text',
-  });
+  const appendedContent = new StageEditor(architectPage).richText();
   await appendedContent.click();
   await appendedContent.pressSequentially('Minimal content.');
   await new Toolbar(architectPage).button('finished-editing').click();

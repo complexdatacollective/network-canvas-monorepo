@@ -1,21 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { type ReactNode, useState } from 'react';
+import type { ReactNode } from 'react';
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-
-import StageEditorShell from '../form/StageEditorShell.tsx';
-import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
-import { ResourceClientProvider } from '../resources/client.tsx';
+import { assetBlockFrameVariants } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
 import {
-  createStoryHost,
+  ASSET_BLOCK_ALIGNMENTS,
+  ASSET_BLOCK_SIZES,
+} from '@codaco/shared-consts';
+
+import {
   IMAGE_RESOURCE,
   PROTOCOL_RESOURCES,
   type StoryResource,
-} from '../resources/components/storyFixtures.ts';
-import PageContentSection from '../sections/page-content/PageContentSection.tsx';
-import { StageEditSession } from '../stageEdit.tsx';
-import { createAssetBlockView } from './assetBlocks.tsx';
+} from '../../resources/components/storyFixtures.ts';
+import { PageContentStoryHost } from '../../testing/PageContentStoryHost.tsx';
+import { messages } from './assetBlockMessages.ts';
+import { createAssetBlockView } from './AssetBlockView.tsx';
+import { SETTINGS_MARGIN } from './settingsPlacement.ts';
 
 // What a block's view draws, from stand-ins for where its files come from.
 const View = createAssetBlockView({
@@ -30,14 +32,7 @@ const meta = {
   title: 'Protocol Builder/Fields/Asset blocks',
   component: View,
   args: {
-    attributes: {
-      assetId: 'a1',
-      description: '',
-      size: 'small',
-      align: 'center',
-      autoplay: true,
-      loop: true,
-    },
+    attributes: assetBlockAttributes({ size: 'small' }),
     selected: true,
     editable: true,
     active: true,
@@ -103,6 +98,11 @@ export const NotSelected: Story = {
 /** A block naming a file the protocol no longer holds says so. */
 export const MissingFile: Story = {
   args: { attributes: { ...meta.args.attributes, assetId: 'missing' } },
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement).getByText(messages.unusable.defaultMessage),
+    ).toBeVisible();
+  },
 };
 
 // A square picture that is drawn, so that it has a corner: held to a size, it
@@ -155,14 +155,14 @@ const expectCornerOfTheBox = async (scope: Element) => {
 };
 
 /**
- * A view drawn alone, in a stand-in for the block the editor draws around it:
- * outlined as the editor outlines a selected block.
+ * A view drawn alone, in the frame the editor draws around a selected block,
+ * so that its corner is measured against the editor's own outline.
  */
 function Outlined({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div
       data-asset-block=""
-      className="outline-primary rounded-sm outline-2 outline-offset-4"
+      className={assetBlockFrameVariants({ selected: true })}
     >
       {children}
     </div>
@@ -215,8 +215,7 @@ export const CornerOfAPictureAtTheEndOfRightToLeftText: Story = {
   play: cornerIsAtTheBoxsCorner,
 };
 
-const SIZE_CHOICES = [null, 'small', 'medium', 'large'] as const;
-const ALIGNMENTS = ['start', 'center', 'end'] as const;
+const SIZE_CHOICES = [null, ...ASSET_BLOCK_SIZES] as const;
 
 /**
  * A picture at each size and in each place across the page, each selected:
@@ -230,7 +229,7 @@ export const CornerAtEverySize: Story = {
     return (
       <div dir="ltr" className="flex w-[600px] flex-col gap-10">
         {SIZE_CHOICES.flatMap((size) =>
-          ALIGNMENTS.map((align) => (
+          ASSET_BLOCK_ALIGNMENTS.map((align) => (
             <div
               key={`${size}-${align}`}
               data-testid={`${size ?? 'full'}-${align}`}
@@ -261,6 +260,54 @@ export const SmallPicture: Story = {
   play: cornerIsAtTheBoxsCorner,
 };
 
+// How much of the page the host in `KeptClearOfTheHostsBars` covers with bars
+// of its own, at the top and the bottom.
+const BARS = { top: 120, bottom: 100 } as const;
+
+/**
+ * A page that scrolls in a frame whose host covers its top and bottom with
+ * bars of its own, and says so (`--protocol-builder-covered-top` and
+ * `-bottom`): the settings of a picture low in the frame stand clear of both.
+ */
+export const KeptClearOfTheHostsBars: Story = {
+  tags: ONE_DIRECTION,
+  render: function InAFrame(args) {
+    return (
+      <div
+        data-testid="frame"
+        dir="ltr"
+        className="h-[560px] w-[600px] overflow-y-auto [--protocol-builder-covered-bottom:100px] [--protocol-builder-covered-top:120px]"
+      >
+        <div className="h-[340px]" />
+        <Outlined>
+          <DrawnView {...args} />
+        </Outlined>
+        <div className="h-[800px]" />
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const frame = within(canvasElement)
+      .getByTestId('frame')
+      .getBoundingClientRect();
+    const settings = await within(canvasElement.ownerDocument.body).findByRole(
+      'dialog',
+      { name: 'Image settings' },
+    );
+    // Clear of each bar by the space the settings keep from it.
+    await waitFor(() => {
+      const box = settings.getBoundingClientRect();
+      expect(box.height).toBeGreaterThan(0);
+      expect(box.top).toBeGreaterThanOrEqual(
+        frame.top + BARS.top + SETTINGS_MARGIN - 0.5,
+      );
+      expect(box.bottom).toBeLessThanOrEqual(
+        frame.bottom - BARS.bottom - SETTINGS_MARGIN + 0.5,
+      );
+    });
+  },
+};
+
 /** A second picture to choose in place of the first: square, where it is wide. */
 const SQUARE_RESOURCE: StoryResource = Object.freeze({
   kind: 'image',
@@ -274,53 +321,45 @@ const SQUARE_RESOURCE: StoryResource = Object.freeze({
 
 /**
  * A page being written in a stage editor, its text holding the block `block`
- * spells: the real editor, over a host holding real files, with the
- * resource browser a block's settings open.
+ * spells, over a host that also holds the square picture to replace a file
+ * with.
  */
 function PageHost({ block }: Readonly<{ block: string }>) {
-  const [host] = useState(() =>
-    createStoryHost({
-      resources: [...PROTOCOL_RESOURCES, SQUARE_RESOURCE],
-      stage: {
-        stageId: 'welcome-screen',
-        type: 'Information',
-        fields: {
-          label: { 'en-US': 'Welcome' },
-          content: {
-            'en-US': `Welcome to the study.\n\n${block}\n\nPlease read on.`,
-          },
-        },
-      },
-    }),
-  );
   return (
-    <DialogProvider>
-      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
-        <ResourceClientProvider>
-          <StageEditSession target={{ sectionId: host.sectionId }}>
-            <main className="mx-auto max-w-4xl p-6">
-              <StageEditorShell>
-                <PageContentSection />
-              </StageEditorShell>
-            </main>
-          </StageEditSession>
-        </ResourceClientProvider>
-      </ProtocolBuilder>
-    </DialogProvider>
+    <PageContentStoryHost
+      resources={[...PROTOCOL_RESOURCES, SQUARE_RESOURCE]}
+      content={`Welcome to the study.\n\n${block}\n\nPlease read on.`}
+    />
   );
 }
 
-/** Selects the block in the page, and waits for its settings. */
+/**
+ * Whether `media` is drawn: a picture once it has loaded, which until then
+ * has no height, so its block has none either; a player once it has a box.
+ */
+const isDrawn = (media: Element): boolean =>
+  media instanceof HTMLImageElement
+    ? media.complete && media.naturalWidth > 0
+    : media.getBoundingClientRect().height > 0;
+
+/**
+ * Selects the block in the page, and waits for its settings. Clicked once
+ * its file is drawn: the preview arrives after the block, and a click where
+ * an empty block is lands in the text around it.
+ */
 const selectBlock = async (canvasElement: HTMLElement, name: string) => {
-  const block = await waitFor(() => {
+  const { block, target } = await waitFor(() => {
     const found =
       canvasElement.querySelector<HTMLElement>('[data-asset-block]');
-    if (found === null) throw new Error('No block yet');
-    return found;
+    const media = found?.querySelector('img, video, audio');
+    if (found === null || media === null || media === undefined) {
+      throw new Error('No file in the block yet');
+    }
+    if (!isDrawn(media)) throw new Error('The file is not drawn yet');
+    return { block: found, target: media };
   });
   // Clicked where it is drawn, as a pointer clicks: the text finds what was
   // clicked from where the click was.
-  const target = block.querySelector('img, video, audio') ?? block;
   const { left, top, width, height } = target.getBoundingClientRect();
   await userEvent.pointer({
     keys: '[MouseLeft]',
@@ -362,7 +401,7 @@ export const ReplacingThePicture: Story = {
     );
     const file = settings.getByRole('group', { name: 'Image' });
     await expect(file).toHaveAccessibleDescription(
-      'The file shown here. Choose another to replace it, and its settings are kept.',
+      'The file shown here. Choosing another keeps the description and other settings.',
     );
     await expect(within(file).getByText('Neighbourhood photo')).toBeVisible();
 
@@ -456,5 +495,61 @@ export const VideoSettings: Story = {
     await expect(
       settings.getByRole('button', { name: 'Delete' }),
     ).toBeInTheDocument();
+  },
+};
+
+/**
+ * A picture in English text, edited in an Arabic interface. The size the
+ * corner is dragged to is named in the interface's words, over the text, so
+ * it says the interface's language; the description, typed in settings that
+ * stand over the page, is the text's own, and says the text's language.
+ */
+export const InterfaceWordsInTextOfAnotherLanguage: Story = {
+  globals: { appLocale: 'ar' },
+  // The text's direction is fixed by its language, whichever way the
+  // interface reads, so there is no other direction to draw it in.
+  tags: ONE_DIRECTION,
+  render: function Drawn(args) {
+    return (
+      <div lang="en-US" dir="ltr" className="w-[600px]">
+        <Outlined>
+          <DrawnView {...args} />
+        </Outlined>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const languageOf = (element: Element) => ({
+      lang: element.closest('[lang]')?.getAttribute('lang'),
+      dir: element.closest('[dir]')?.getAttribute('dir'),
+    });
+    const settings = await within(canvasElement.ownerDocument.body).findByRole(
+      'dialog',
+      { name: 'Image settings' },
+    );
+    const description = within(settings).getByRole('textbox');
+    await expect(languageOf(description)).toEqual({
+      lang: 'en-US',
+      dir: 'ltr',
+    });
+    // What the settings say themselves is the interface's.
+    const label = settings.querySelector(`label[for="${description.id}"]`);
+    if (label === null) throw new Error('The description has no label');
+    await expect(languageOf(label).lang).toBe('ar');
+
+    const corner = await waitFor(() => {
+      const found = canvasElement.querySelector('[data-asset-block-resize]');
+      if (!(found instanceof HTMLElement)) throw new Error('No corner yet');
+      return found;
+    });
+    await userEvent.pointer({ keys: '[MouseLeft>]', target: corner });
+    const sizeName = await waitFor(() => {
+      const found = corner.nextElementSibling;
+      if (found === null) throw new Error('No size named yet');
+      return found;
+    });
+    await expect(languageOf(sizeName)).toEqual({ lang: 'ar', dir: 'rtl' });
+    await expect(getComputedStyle(sizeName).fontFamily).toMatch(/Readex Pro/);
+    await userEvent.pointer({ keys: '[/MouseLeft]', target: corner });
   },
 };

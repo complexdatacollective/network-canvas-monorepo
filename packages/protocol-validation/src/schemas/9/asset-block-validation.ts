@@ -3,6 +3,7 @@ import {
   assetBlocksInMessage,
   isAssetBlockKind,
 } from '../../localization/assetBlock.ts';
+import { assetInManifest } from '../../localization/assetBlockDisplay.ts';
 import type { LocalizedStringHit } from '../../utils/collectLocalizedStrings.ts';
 
 type AssetBlockProblem = Readonly<{
@@ -67,7 +68,7 @@ export const findAssetBlockProblems = (
               if (problems.some((problem) => problem.kind === 'holdsValue')) {
                 return found;
               }
-              const asset = assetManifest?.[block.assetId];
+              const asset = assetInManifest(assetManifest, block.assetId);
               if (asset === undefined) {
                 return [
                   ...found,

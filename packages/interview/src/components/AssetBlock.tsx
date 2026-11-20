@@ -4,15 +4,21 @@ import { type ReactNode, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
+import {
+  assetBlockAudioRowVariants,
+  assetBlockMediaVariants,
+} from '@codaco/fresco-ui/assetBlockLayout';
 import type { MarkdownBlockImages } from '@codaco/fresco-ui/RenderMarkdown';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
-  ASSET_BLOCK_DEFAULTS,
   type AssetBlock,
   type AssetBlockAlignment,
+  assetBlockFile,
+  assetBlockSettings,
   type AssetBlockSize,
+  assetInManifest,
   isAssetBlockUrl,
   readAssetBlockUrl,
 } from '@codaco/protocol-validation';
@@ -61,40 +67,11 @@ function getMediaMimeType(
   return MEDIA_MIME_TYPES[ext] ?? fallback;
 }
 
-// Size applies to images and videos. Each size is a band the height is held
-// to; without one the file is as tall as it is at the page's full width.
-function getSizeClass(size: AssetBlockSize | undefined): string {
-  return cx(
-    size === 'small' && 'max-h-48',
-    size === 'medium' && 'max-h-96',
-    size === 'large' && 'max-h-[60vh]',
-  );
-}
-
-// An image or video held to a height is drawn inside a box as wide as the
-// page, so where it sits across the page is where it sits in that box. At the
-// page's full width there is nowhere else for it to sit.
-function getPositionClass(align: AssetBlockAlignment): string {
-  return cx(
-    align === 'start' && 'object-left rtl:object-right',
-    align === 'end' && 'object-right rtl:object-left',
-  );
-}
-
-// An audio player is as wide as the browser draws it, and sits in its line.
-function getJustifyClass(align: AssetBlockAlignment): string {
-  return cx(
-    align === 'start' && 'justify-start',
-    align === 'center' && 'justify-center',
-    align === 'end' && 'justify-end',
-  );
-}
-
 // In E2E the video never loads (preload="none"), so its element box would
 // collapse to the browser-default ~150px and every size would mask identically.
 // Pin the empty element to the height its size band implies (the same bands
-// getSizeClass caps to) so the masked screenshot reflects the real video
-// footprint. Sizeless videos fall back to a 16:9 box.
+// assetBlockMediaVariants caps to) so the masked screenshot reflects the real
+// video footprint. Sizeless videos fall back to a 16:9 box.
 function getE2EVideoBoxClass(size: AssetBlockSize | undefined): string {
   return cx(
     size === 'small' && 'h-48',
@@ -152,7 +129,7 @@ function VideoPlayer({
   // Disable autoPlay and preload to prevent browser crashes in headless E2E tests.
   // MIME type derives from the source filename, falling back to the display name.
   const mimeType = getMediaMimeType(source ?? name, 'video/mp4');
-  const sizeClass = getSizeClass(size);
+  const sizeClass = assetBlockMediaVariants({ size });
 
   return (
     <div
@@ -183,8 +160,7 @@ function VideoPlayer({
         preload={isE2E ? 'none' : 'auto'}
         className={cx(
           'w-full object-contain',
-          sizeClass,
-          size !== undefined && getPositionClass(align),
+          assetBlockMediaVariants({ size, align }),
           isE2E && getE2EVideoBoxClass(size),
           (state === 'loading' && !isE2E) || state === 'error'
             ? 'invisible h-0'
@@ -251,15 +227,18 @@ function descriptionOf(description: string | undefined): string | undefined {
 function AssetBlockView({ block }: { block: AssetBlock }) {
   const { isE2E } = useContractFlags();
   const assetManifest = useSelector(getAssetManifest);
-  const assetMeta = assetManifest[block.assetId];
-  const { url, isLoading } = useAssetUrl(block.assetId);
+  const file = assetBlockFile(assetManifest, block.assetId);
+  // The file's name as it was added, which says what type of file a player
+  // is handed better than the name it is shown by.
+  const source = assetInManifest(assetManifest, block.assetId)?.source;
+  // A file a page cannot show is never asked for.
+  const { url, isLoading } = useAssetUrl(
+    file === undefined ? undefined : block.assetId,
+  );
   const description = descriptionOf(block.description);
-  const { size } = block;
-  const align = block.align ?? ASSET_BLOCK_DEFAULTS.align;
-  const autoplay = block.autoplay ?? ASSET_BLOCK_DEFAULTS.autoplay;
-  const loop = block.loop ?? ASSET_BLOCK_DEFAULTS.loop;
+  const { size, align, autoplay, loop } = assetBlockSettings(block);
 
-  if (!assetMeta) {
+  if (file === undefined) {
     return (
       <Block>
         <ItemFallback />
@@ -269,7 +248,7 @@ function AssetBlockView({ block }: { block: AssetBlock }) {
 
   if (isLoading) {
     const sizeClass =
-      assetMeta.type === 'image'
+      file.kind === 'image'
         ? cx(
             size === 'small' && 'min-h-48',
             size === 'medium' && 'min-h-96',
@@ -292,69 +271,56 @@ function AssetBlockView({ block }: { block: AssetBlock }) {
     );
   }
 
-  switch (assetMeta.type) {
-    case 'image':
-      return (
-        <Block>
-          <img
-            src={url}
-            alt={description ?? ''}
-            className={cx(
-              'size-full object-contain',
-              getSizeClass(size),
-              size !== undefined && getPositionClass(align),
-            )}
-          />
-        </Block>
-      );
-    case 'audio':
-      return (
-        <Block className={cx('flex', getJustifyClass(align))}>
-          {/* oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol assets carry no caption file (the asset schema has no field for one), so there is no track to point at. */}
-          <audio
-            controls
-            autoPlay={autoplay}
-            loop={loop}
-            aria-label={description ?? 'Audio'}
-            lang={description ? undefined : 'en'}
-          >
-            <source
-              src={url}
-              type={getMediaMimeType(
-                assetMeta.source ?? assetMeta.name,
-                'audio/mpeg',
-              )}
-            />
-          </audio>
-        </Block>
-      );
-    case 'video':
-      return (
-        <Block>
-          <VideoPlayer
-            src={url}
-            name={assetMeta.name}
-            description={description}
-            source={assetMeta.source}
-            isE2E={isE2E}
-            size={size}
-            align={align}
-            autoplay={autoplay}
-            loop={loop}
-          />
-        </Block>
-      );
-    case 'network':
-    case 'geojson':
-    case 'apikey':
-      return (
-        <Block>
-          <ItemFallback />
-        </Block>
-      );
-    default:
-      return null;
+  if (file.kind === 'image') {
+    return (
+      <Block>
+        <img
+          src={url}
+          alt={description ?? ''}
+          className={cx(
+            'size-full object-contain',
+            assetBlockMediaVariants({ size, align }),
+          )}
+        />
+      </Block>
+    );
   }
+
+  if (file.kind === 'audio') {
+    return (
+      <Block className={assetBlockAudioRowVariants({ align })}>
+        {/* oxlint-disable-next-line jsx-a11y/media-has-caption -- protocol assets carry no caption file (the asset schema has no field for one), so there is no track to point at. */}
+        <audio
+          controls
+          autoPlay={autoplay}
+          loop={loop}
+          aria-label={description ?? 'Audio'}
+          lang={description ? undefined : 'en'}
+        >
+          <source
+            src={url}
+            type={getMediaMimeType(source ?? file.name, 'audio/mpeg')}
+          />
+        </audio>
+      </Block>
+    );
+  }
+
+  return (
+    <Block>
+      <VideoPlayer
+        src={url}
+        name={file.name}
+        description={description}
+        source={source}
+        isE2E={isE2E}
+        size={size}
+        align={align}
+        autoplay={autoplay}
+        loop={loop}
+      />
+    </Block>
+  );
 }
 
 /** The block a markdown image names, drawn from its address and its text. */

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/react';
-import { useState } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { action } from 'storybook/actions';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { z } from 'zod/mini';
@@ -11,6 +11,8 @@ import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
 import {
+  ASSET_BLOCK_OUTLINE_OFFSET,
+  ASSET_BLOCK_OUTLINE_WIDTH,
   assetBlockControlsProps,
   type RichTextAssetBlockViewProps,
   type RichTextAssetBlocks,
@@ -1365,6 +1367,27 @@ const storyAssetBlocks: RichTextAssetBlocks = {
   View: StoryAssetBlockView,
 };
 
+/** The field as wide as a page's content, holding its text as it changes. */
+function PageContentField({
+  initial,
+  ...props
+}: Omit<ComponentProps<typeof RichTextEditorField>, 'value' | 'onChange'> & {
+  initial: JSONContent;
+}) {
+  const [value, setValue] = useState<JSONContent | undefined>(initial);
+  return (
+    <div className="w-[48rem]">
+      <RichTextEditorField
+        {...props}
+        aria-label="Page content"
+        changeMode="input"
+        value={value}
+        onChange={setValue}
+      />
+    </div>
+  );
+}
+
 /**
  * A field whose text can hold files as blocks among its paragraphs. The
  * consumer chooses a file (`pick`) and draws a block (`View`); the toolbar
@@ -1372,29 +1395,21 @@ const storyAssetBlocks: RichTextAssetBlocks = {
  * to it, press Enter to reach its controls, Escape to come back out.
  */
 export const WithAssetBlocks: Story = {
-  render: (args) => {
-    const [value, setValue] = useState<JSONContent | undefined>({
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Before the picture' }],
-        },
-      ],
-    });
-    return (
-      <div className="w-[48rem]">
-        <RichTextEditorField
-          {...args}
-          aria-label="Page content"
-          changeMode="input"
-          assetBlocks={storyAssetBlocks}
-          value={value}
-          onChange={setValue}
-        />
-      </div>
-    );
-  },
+  render: (args) => (
+    <PageContentField
+      {...args}
+      assetBlocks={storyAssetBlocks}
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Before the picture' }],
+          },
+        ],
+      }}
+    />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const editor = await canvas.findByRole('textbox', { name: 'Page content' });
@@ -1404,6 +1419,14 @@ export const WithAssetBlocks: Story = {
     await expect(summary).toHaveTextContent(
       'image-1, size full, aligned center',
     );
+    // The block just placed is selected, and outlined as its consumer is told
+    // it is: a consumer places things on that outline by these numbers.
+    const block = summary.closest('[data-asset-block]');
+    if (block === null) throw new Error('No block around the view');
+    await waitFor(() => expect(block).toHaveAttribute('data-selected'));
+    const outline = getComputedStyle(block);
+    await expect(outline.outlineWidth).toBe(`${ASSET_BLOCK_OUTLINE_WIDTH}px`);
+    await expect(outline.outlineOffset).toBe(`${ASSET_BLOCK_OUTLINE_OFFSET}px`);
   },
 };
 
@@ -1413,27 +1436,19 @@ export const WithAssetBlocks: Story = {
  * The control that opens it keeps to the toolbar's size.
  */
 export const TextStyleMenu: Story = {
-  render: (args) => {
-    const [value, setValue] = useState<JSONContent | undefined>({
-      type: 'doc',
-      content: [1, 2, 3, 4].map((level) => ({
-        type: 'heading',
-        attrs: { level },
-        content: [{ type: 'text', text: `Heading ${level}` }],
-      })),
-    });
-    return (
-      <div className="w-[48rem]">
-        <RichTextEditorField
-          {...args}
-          aria-label="Page content"
-          changeMode="input"
-          value={value}
-          onChange={setValue}
-        />
-      </div>
-    );
-  },
+  render: (args) => (
+    <PageContentField
+      {...args}
+      initial={{
+        type: 'doc',
+        content: [1, 2, 3, 4].map((level) => ({
+          type: 'heading',
+          attrs: { level },
+          content: [{ type: 'text', text: `Heading ${level}` }],
+        })),
+      }}
+    />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
@@ -1483,39 +1498,83 @@ export const TextStyleMenu: Story = {
 };
 
 /**
+ * Text in English, written in an Arabic interface: the field sits in a region
+ * that says the text's language, as a host marks the translation it edits.
+ * The words the field writes itself, the text style's name and the
+ * placeholder, say the interface's language, and so take its typeface.
+ */
+export const InterfaceWordsInTextOfAnotherLanguage: Story = {
+  globals: { appLocale: 'ar' },
+  render: (args) => (
+    <div lang="en-US" dir="ltr" data-testid="text-region">
+      <PageContentField
+        {...args}
+        placeholder="Type your page content..."
+        initial={{ type: 'doc', content: [{ type: 'paragraph' }] }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    const trigger = canvas.getByRole('button', { name: /^Text style: / });
+    const label = trigger.querySelector(':scope > span:not(.sr-only)');
+    if (label === null) throw new Error('The text style shows no name');
+    const languageOf = (element: Element) => ({
+      lang: element.closest('[lang]')?.getAttribute('lang'),
+      dir: element.closest('[dir]')?.getAttribute('dir'),
+    });
+    await expect(languageOf(label)).toEqual({ lang: 'ar', dir: 'rtl' });
+    // Set in the Arabic typeface, which `:lang(ar)` gives (arabic-text.css),
+    // where the text's own paragraphs are not.
+    const face = (element: Element) => getComputedStyle(element).fontFamily;
+    await expect(face(label)).toMatch(/Readex Pro/);
+    // The empty text's placeholder: its paragraph says the interface's
+    // language until something is typed, and the placeholder reads in its
+    // own direction while the caret stays where the text starts.
+    const empty = editor.querySelector('p');
+    if (empty === null) throw new Error('The text holds no paragraph');
+    await expect(empty).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(empty, '::before').unicodeBidi).toBe(
+      'plaintext',
+    );
+    await userEvent.click(editor);
+    await userEvent.keyboard('Hello');
+    await waitFor(() => expect(editor).toHaveTextContent('Hello'));
+    const typed = editor.querySelector('p');
+    if (typed === null) throw new Error('The text holds no paragraph');
+    await expect(typed).not.toHaveAttribute('lang');
+    await expect(languageOf(typed).lang).toBe('en-US');
+    await expect(face(typed)).not.toMatch(/Readex Pro/);
+  },
+};
+
+/**
  * Text selected across a block: the block is covered in the colour of the
  * selected text around it, as it is copied, cut or typed over with it. A
  * block selected by itself is outlined instead (`WithAssetBlocks`).
  */
 export const SelectionAcrossAnAssetBlock: Story = {
-  render: (args) => {
-    const [value, setValue] = useState<JSONContent | undefined>({
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Before the picture' }],
-        },
-        { type: 'assetBlock', attrs: { assetId: 'image-1' } },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'After the picture' }],
-        },
-      ],
-    });
-    return (
-      <div className="w-[48rem]">
-        <RichTextEditorField
-          {...args}
-          aria-label="Page content"
-          changeMode="input"
-          assetBlocks={storyAssetBlocks}
-          value={value}
-          onChange={setValue}
-        />
-      </div>
-    );
-  },
+  render: (args) => (
+    <PageContentField
+      {...args}
+      assetBlocks={storyAssetBlocks}
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Before the picture' }],
+          },
+          { type: 'assetBlock', attrs: { assetId: 'image-1' } },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'After the picture' }],
+          },
+        ],
+      }}
+    />
+  ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const editor = await canvas.findByRole('textbox', { name: 'Page content' });

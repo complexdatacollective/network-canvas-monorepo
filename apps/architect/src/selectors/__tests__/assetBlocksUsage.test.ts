@@ -1,33 +1,39 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RootState } from '~/ducks/modules/root';
+import type {
+  CurrentProtocol,
+  LocalizedString,
+} from '@codaco/protocol-validation';
+import { testProtocol } from '~/__tests__/helpers';
+import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
+import { type RootState, rootReducer } from '~/ducks/modules/root';
 
 import { getAssetIndex } from '../indexes';
 import { getUnusedAssets } from '../issues';
 
-const assetManifest = {
-  a: { id: 'a', type: 'image', name: 'a.png' },
-  b: { id: 'b', type: 'audio', name: 'b.mp3' },
-  c: { id: 'c', type: 'video', name: 'c.mp4' },
-  d: { id: 'd', type: 'image', name: 'd.png' },
-  e: { id: 'e', type: 'image', name: 'e.png' },
+type Stage = CurrentProtocol['stages'][number];
+
+const assetManifest: CurrentProtocol['assetManifest'] = {
+  a: { id: 'a', type: 'image', name: 'a.png', source: 'a.png' },
+  b: { id: 'b', type: 'audio', name: 'b.mp3', source: 'b.mp3' },
+  c: { id: 'c', type: 'video', name: 'c.mp4', source: 'c.mp4' },
+  d: { id: 'd', type: 'image', name: 'd.png', source: 'd.png' },
+  e: { id: 'e', type: 'image', name: 'e.png', source: 'e.png' },
 };
 
-const stateWith = (stages: object[]): RootState =>
-  ({
-    activeProtocol: {
-      present: {
-        schemaVersion: 9,
-        name: 'test',
+const stateWith = (stages: Stage[]): RootState =>
+  rootReducer(
+    undefined,
+    setActiveProtocol(
+      testProtocol({
         localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
-        codebook: { node: {} },
         assetManifest,
         stages,
-      },
-    },
-  }) as unknown as RootState;
+      }),
+    ),
+  );
 
-const information = (content: Record<string, string>) => ({
+const information = (content: LocalizedString): Stage => ({
   id: 'info',
   type: 'Information',
   label: { en: 'Info' },
@@ -92,10 +98,12 @@ describe('assets shown as blocks in the text of an Information stage', () => {
     const state = stateWith([
       {
         id: 'names',
-        type: 'NameGenerator',
+        type: 'DyadCensus',
         label: { en: 'Names' },
         subject: { entity: 'node', type: 'person' },
-        prompts: [{ id: 'p1', text: { en: '![](asset:a)' } }],
+        prompts: [
+          { id: 'p1', text: { en: '![](asset:a)' }, createEdge: 'knows' },
+        ],
       },
     ]);
 

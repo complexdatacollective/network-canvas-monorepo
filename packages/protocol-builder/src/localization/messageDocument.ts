@@ -392,7 +392,10 @@ const versionLine = (
   }
   const [before, middle, after] = edgeSpace(markdown);
   const parsed = restoreMarkers(
-    markdownToRichTextContent(LINE_LEAD + middle, true, true),
+    markdownToRichTextContent(LINE_LEAD + middle, {
+      inline: true,
+      links: true,
+    }),
     pieces,
   );
   const line = withoutLineLead(parsed.content?.[0]?.content ?? []);
@@ -489,12 +492,11 @@ export const messageToDocument = (
     throw new MessageDocumentProblem('misplacedFile');
   }
   return restoreMarkers(
-    markdownToRichTextContent(
-      top.text,
-      format.singleLine,
-      true,
-      format.assetBlocks === true,
-    ),
+    markdownToRichTextContent(top.text, {
+      inline: format.singleLine,
+      links: true,
+      assetBlocks: format.assetBlocks === true,
+    }),
     top.pieces,
   );
 };

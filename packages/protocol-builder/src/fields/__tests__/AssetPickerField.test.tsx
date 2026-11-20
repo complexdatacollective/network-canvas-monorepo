@@ -266,7 +266,7 @@ describe('AssetPickerField', () => {
     expect(preview.tagName).toBe('AUDIO');
   });
 
-  it('shows a compact field as one line: the name, and a button to change it', async () => {
+  it('shows a field laid out as a line: the name, and a button to change it', async () => {
     const user = userEvent.setup();
     const { fieldValue } = renderResourceEditor({
       resources: [imageSeed, secondImageSeed],
@@ -277,7 +277,7 @@ describe('AssetPickerField', () => {
           name="backgroundImage"
           label="Background image"
           kind="image"
-          compact
+          layout="line"
         />
       ),
     });
@@ -625,6 +625,42 @@ describe('AssetPickerField', () => {
     await waitFor(() => expect(fieldValue('backgroundImage')).toBeUndefined());
     expect(await screen.findByText('No resource selected.')).toBeVisible();
     expect(await staged()).toEqual([]);
+  });
+
+  it('offers no discard on a line, beside settings that take the file away', async () => {
+    const user = userEvent.setup();
+    const { fieldValue } = renderResourceEditor({
+      children: (
+        <Field
+          component={AssetPickerField}
+          name="backgroundImage"
+          label="Background image"
+          kind="image"
+          layout="line"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an image' }),
+    );
+    await user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+    );
+    await waitFor(() =>
+      expect(fieldValue('backgroundImage')).toBe('staged-resource-1'),
+    );
+
+    // Imported, and named on the line: what a card would offer to discard.
+    const group = screen.getByRole('group', { name: 'Background image' });
+    expect(await within(group).findByText('skyline.png')).toBeVisible();
+    expect(
+      within(group).getByRole('button', { name: 'Change the image' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Discard this resource' }),
+    ).toBeNull();
   });
 
   /**

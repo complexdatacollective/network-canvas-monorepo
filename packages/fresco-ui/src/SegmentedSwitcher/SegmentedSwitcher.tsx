@@ -30,6 +30,8 @@ export type SegmentedSwitcherProps<T extends string> = {
    */
   'variant'?: 'outline' | 'glass';
   'className'?: string;
+  /** Whether every segment ignores the pointer and the keyboard. */
+  'disabled'?: boolean;
   /** For a switcher that is a field's control, which the field names. */
   'id'?: string;
   'aria-describedby'?: string;
@@ -97,6 +99,7 @@ export default function SegmentedSwitcher<T extends string>({
   'aria-describedby': ariaDescribedBy,
   id,
   className,
+  disabled,
 }: SegmentedSwitcherProps<T>) {
   const layoutId = useId();
   const reduced = usePrefersReducedMotion();
@@ -119,6 +122,7 @@ export default function SegmentedSwitcher<T extends string>({
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
+        disabled={disabled}
         value={[value]}
         multiple={false}
         onValueChange={(next) => {

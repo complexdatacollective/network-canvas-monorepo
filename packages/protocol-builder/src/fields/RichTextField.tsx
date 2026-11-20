@@ -74,7 +74,10 @@ const RichTextField = ({
   const markdown = typeof value === 'string' ? value : null;
   const normalizedContent = useMemo(
     () =>
-      markdownToRichTextContent(markdown, singleLine, false, holdsAssetBlocks),
+      markdownToRichTextContent(markdown, {
+        inline: singleLine,
+        assetBlocks: holdsAssetBlocks,
+      }),
     [markdown, singleLine, holdsAssetBlocks],
   );
 
@@ -112,12 +115,10 @@ const RichTextField = ({
     if (
       isEqual(
         normalizedContent,
-        markdownToRichTextContent(
-          nextMarkdown,
-          singleLine,
-          false,
-          holdsAssetBlocks,
-        ),
+        markdownToRichTextContent(nextMarkdown, {
+          inline: singleLine,
+          assetBlocks: holdsAssetBlocks,
+        }),
       )
     ) {
       return;

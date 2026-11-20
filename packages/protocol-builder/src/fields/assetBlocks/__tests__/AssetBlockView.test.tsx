@@ -8,37 +8,21 @@ import type {
   RichTextAssetBlockKind,
   RichTextAssetBlockViewProps,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
 
-import {
-  createAssetBlockView,
-  heightDraggedTo,
-  settingsPlacement,
-  sizeNearest,
-} from '../assetBlocks.tsx';
-
-const UNUSABLE =
-  'This block’s resource is not in this protocol, or is not something a page can show.';
+import { messages } from '../assetBlockMessages.ts';
+import { createAssetBlockView } from '../AssetBlockView.tsx';
 
 type Known = { kind: RichTextAssetBlockKind; name: string } | undefined;
 
-const attributes = (
-  changes: Partial<RichTextAssetBlockViewProps['attributes']> = {},
-): RichTextAssetBlockViewProps['attributes'] => ({
-  assetId: 'a1',
-  description: '',
-  size: null,
-  align: 'center',
-  autoplay: true,
-  loop: true,
-  ...changes,
-});
+const attributes = assetBlockAttributes;
 
 const IMAGE_DESCRIPTION_HINT =
   'This is read aloud to participants who use screen reader technology. Leave it blank if the image is decorative.';
 const SIZE_HINT =
   'How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.';
 const FILE_HINT =
-  'The file shown here. Choose another to replace it, and its settings are kept.';
+  'The file shown here. Choosing another keeps the description and other settings.';
 
 /**
  * A stand-in for the resource picker: a field's control that says which file
@@ -49,9 +33,17 @@ const FileField = ({
   kind,
   value,
   onChange,
+  onBrowserOpenChange,
   'aria-labelledby': labelledBy,
   'aria-describedby': describedBy,
-}: CreateFormFieldProps<string, 'div', { kind: RichTextAssetBlockKind }>) => (
+}: CreateFormFieldProps<
+  string,
+  'div',
+  {
+    kind: RichTextAssetBlockKind;
+    onBrowserOpenChange?: (open: boolean) => void;
+  }
+>) => (
   <div
     role="group"
     id={id}
@@ -69,13 +61,18 @@ const FileField = ({
     <button type="button" onClick={() => onChange?.(undefined)}>
       Let it go
     </button>
+    <button type="button" onClick={() => onBrowserOpenChange?.(true)}>
+      Browse
+    </button>
+    <button type="button" onClick={() => onBrowserOpenChange?.(false)}>
+      Stop browsing
+    </button>
   </div>
 );
 
 const setup = ({
   kind = 'image',
   known,
-  pick,
   textDirection,
   withFileField = false,
   ...props
@@ -85,7 +82,6 @@ const setup = ({
   textDirection?: 'ltr' | 'rtl';
   /** `null`: the protocol holds no such file. */
   known?: Known | null;
-  pick?: RichTextAssetBlockViewProps['pick'];
   /** Whether the page offers a way to replace a block's file. */
   withFileField?: boolean;
 } & Partial<RichTextAssetBlockViewProps> = {}) => {
@@ -117,19 +113,26 @@ const setup = ({
     update,
     remove,
     returnToText,
-    ...(pick !== undefined && { pick }),
     ...props,
   };
-  render(
+  const drawn = (shown: ComponentProps<typeof View>) =>
     textDirection === undefined ? (
-      <View {...viewProps} />
+      <View {...shown} />
     ) : (
       <div dir={textDirection}>
-        <View {...viewProps} />
+        <View {...shown} />
       </div>
-    ),
-  );
-  return { user, update, remove, returnToText };
+    );
+  const { rerender } = render(drawn(viewProps));
+  return {
+    user,
+    update,
+    remove,
+    returnToText,
+    /** Draws the view again, with `changes` to what it was given. */
+    redraw: (changes: Partial<RichTextAssetBlockViewProps>) =>
+      rerender(drawn({ ...viewProps, ...changes })),
+  };
 };
 
 const sizeButton = (name: string) => screen.getByRole('button', { name });
@@ -361,9 +364,21 @@ describe('the settings of a block', () => {
       expect(update).not.toHaveBeenCalled();
     });
 
+    it('stay while the file field’s browser is open, wherever focus is', async () => {
+      const { user, redraw } = setup({ withFileField: true });
+      await user.click(screen.getByRole('button', { name: 'Browse' }));
+      // Focus leaves the field as the settings are hidden for the browser,
+      // before the browser takes it: the browser is the settings', and stays.
+      redraw({ active: false });
+      expect(fileField('Image')).toBeInTheDocument();
+      // Closed, with focus nowhere in the field, it takes the settings with it.
+      await user.click(screen.getByRole('button', { name: 'Stop browsing' }));
+      expect(fileField('Image')).toBeNull();
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
     it('offers no way to replace the file where the page has none', () => {
-      // A way to choose a file for a new block is not one to replace a file.
-      setup({ pick: vi.fn(() => Promise.resolve('a2')) });
+      setup();
       expect(fileField('Image')).toBeNull();
       expect(
         screen.queryByRole('button', { name: 'Change the image' }),
@@ -416,7 +431,9 @@ describe('the drawing of a block', () => {
 
   it('says so when the file is not in the protocol or cannot be shown', () => {
     setup({ known: null, attributes: attributes({ assetId: 'gone' }) });
-    expect(screen.getByText(UNUSABLE)).toBeInTheDocument();
+    expect(
+      screen.getByText(messages.unusable.defaultMessage),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('preview')).toBeNull();
   });
 
@@ -452,119 +469,5 @@ describe('the alignment icons', () => {
     expect(leftToRight.start).not.toBe(leftToRight.end);
     expect(rightToLeft.start).toBe(leftToRight.end);
     expect(rightToLeft.end).toBe(leftToRight.start);
-  });
-});
-
-describe('the size a picture is dragged to', () => {
-  const heights = [
-    ['small', 192],
-    ['medium', 384],
-    ['large', 600],
-    ['full', 900],
-  ] as const;
-
-  it.each([
-    [0, 'small'],
-    [287, 'small'],
-    [289, 'medium'],
-    [491, 'medium'],
-    [493, 'large'],
-    [749, 'large'],
-    [751, 'full'],
-    [5000, 'full'],
-  ] as const)(
-    'is the size drawn nearest to %i pixels tall: %s',
-    (wanted, size) => {
-      expect(sizeNearest(wanted, heights)).toBe(size);
-    },
-  );
-
-  it('is the largest of the sizes that draw a small picture the same', () => {
-    // A picture 300 pixels tall at the page's width: medium, large and full
-    // size all draw it whole.
-    const small = [
-      ['small', 192],
-      ['medium', 300],
-      ['large', 300],
-      ['full', 300],
-    ] as const;
-    expect(sizeNearest(300, small)).toBe('full');
-    expect(sizeNearest(200, small)).toBe('small');
-  });
-});
-
-describe('the height a picture’s corner is dragged to', () => {
-  // A picture twice as wide as it is tall, 100 pixels tall when taken hold of.
-  const RATIO = 2;
-
-  it('is the height it was until the corner moves', () => {
-    expect(heightDraggedTo(100, { across: 0, down: 0 }, RATIO)).toBe(100);
-  });
-
-  it('follows the corner down, or up', () => {
-    expect(heightDraggedTo(100, { across: 0, down: 40 }, RATIO)).toBe(140);
-    expect(heightDraggedTo(100, { across: 0, down: -40 }, RATIO)).toBe(60);
-  });
-
-  it('follows the corner across as the picture’s shape has it', () => {
-    // 80 pixels wider is 40 pixels taller, at twice as wide as tall.
-    expect(heightDraggedTo(100, { across: 80, down: 0 }, RATIO)).toBe(140);
-    expect(heightDraggedTo(100, { across: -80, down: 0 }, RATIO)).toBe(60);
-  });
-
-  it('takes the move that says the most', () => {
-    // Down by 10 says 110; across by 80 says 140.
-    expect(heightDraggedTo(100, { across: 80, down: 10 }, RATIO)).toBe(140);
-    // Across by 10 says 105; down by 50 says 150.
-    expect(heightDraggedTo(100, { across: 10, down: 50 }, RATIO)).toBe(150);
-    // Shrinking counts as much as growing: up by 30 says 70.
-    expect(heightDraggedTo(100, { across: 20, down: -30 }, RATIO)).toBe(70);
-  });
-});
-
-describe('where a block’s settings stand', () => {
-  // A page seen in the whole of a window 1000 pixels tall keeps 96 clear at
-  // the top and 90 at the bottom, and the settings stand 10 from the file.
-  const WINDOW = { top: 0, bottom: 1000 };
-
-  it('stand under the file where they fit there', () => {
-    expect(settingsPlacement({ top: 110, bottom: 302 }, 450, WINDOW)).toEqual({
-      side: 'bottom',
-      overlaps: false,
-    });
-  });
-
-  it('stand over the file where they fit only there', () => {
-    expect(settingsPlacement({ top: 700, bottom: 892 }, 450, WINDOW)).toEqual({
-      side: 'top',
-      overlaps: false,
-    });
-  });
-
-  it('cover the file from the side with more room where they fit on neither', () => {
-    // 304 under the file, 298 over it.
-    expect(settingsPlacement({ top: 404, bottom: 596 }, 450, WINDOW)).toEqual({
-      side: 'bottom',
-      overlaps: true,
-    });
-    // 244 under it, 358 over it.
-    expect(settingsPlacement({ top: 464, bottom: 656 }, 450, WINDOW)).toEqual({
-      side: 'top',
-      overlaps: true,
-    });
-  });
-
-  it('measure the room from where the page is seen, below a banner over it', () => {
-    // Over the file there would be 594 in the whole window, and is 524 in a
-    // page seen from 70 pixels down.
-    expect(
-      settingsPlacement({ top: 700, bottom: 892 }, 550, WINDOW).overlaps,
-    ).toBe(false);
-    expect(
-      settingsPlacement({ top: 700, bottom: 892 }, 550, {
-        top: 70,
-        bottom: 1000,
-      }).overlaps,
-    ).toBe(true);
   });
 });

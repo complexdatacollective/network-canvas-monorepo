@@ -61,6 +61,21 @@ describe('files shown as blocks in an Information page', () => {
     ]);
   });
 
+  it.each(['constructor', 'toString', 'hasOwnProperty'])(
+    'reports "%s" as a file not in the manifest, not one every object inherits',
+    (assetId) => {
+      const { index, issues } = issuesWith({
+        en: `# T\n\n![](asset:${assetId})`,
+      });
+      expect(issues).toEqual([
+        {
+          path: ['stages', index, 'content', 'en'],
+          message: `This text shows the file "${assetId}", which is not an asset in the manifest.`,
+        },
+      ]);
+    },
+  );
+
   it.each([
     ['escaped', '![](asset\\:gone)'],
     ['a numbered character', '![](asset&#58;gone)'],

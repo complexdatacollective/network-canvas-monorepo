@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { RichTextAssetBlockKind } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 
-import { unsupportedResourceKindMessage } from '../../resources/components/resourceKinds.ts';
-import { readMessage } from '../../testing/i18n.ts';
-import { useStageAssetBlocks } from '../assetBlocks.tsx';
+import { unsupportedResourceKindMessage } from '../../../resources/components/resourceKinds.ts';
+import { readMessage } from '../../../testing/i18n.ts';
+import { useStageAssetBlocks } from '../StageAssetBlocks.tsx';
 
 // The resource browser is its own component with its own tests; here it is a
 // stand-in that says what it was asked for and answers as the test tells it.
@@ -18,7 +18,7 @@ const browser = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('../../resources/components/ResourceBrowserDialog.tsx', () => ({
+vi.mock('../../../resources/components/ResourceBrowserDialog.tsx', () => ({
   default: (props: {
     open: boolean;
     kind: string;
@@ -37,8 +37,8 @@ vi.mock('../../resources/components/ResourceBrowserDialog.tsx', () => ({
     ) : null,
 }));
 
-vi.mock('../../resources/client.tsx', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../resources/client.tsx')>()),
+vi.mock('../../../resources/client.tsx', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../resources/client.tsx')>()),
   useResourceClient: () => ({ referenceStaged: browser.reference }),
 }));
 

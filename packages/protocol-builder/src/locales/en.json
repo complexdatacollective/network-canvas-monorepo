@@ -204,8 +204,8 @@
     "description": "Label of a checkbox in the settings of an audio recording or video placed in the text of a page participants read. When ticked, the recording starts by itself as the participant reaches the page; when clear, the participant starts it."
   },
   "protocolBuilder.assetBlock.fileHint": {
-    "defaultMessage": "The file shown here. Choose another to replace it, and its settings are kept.",
-    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text."
+    "defaultMessage": "The file shown here. Choosing another keeps the description and other settings.",
+    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text. \"The description and other settings\" are this image, recording or video's own settings in the same panel (its description, display size, alignment and playback); they stay as they are when a different file is chosen."
   },
   "protocolBuilder.assetBlock.imageFileLabel": {
     "defaultMessage": "Image",

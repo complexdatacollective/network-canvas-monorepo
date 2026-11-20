@@ -8,6 +8,8 @@ import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson, readStageJson } from '../helpers/read-store.js';
 import { StagePreview } from '../pageobjects/preview.js';
+import { writeHeadingAndText } from '../pageobjects/rich-text.js';
+import { StageEditor } from '../pageobjects/stage-editor.js';
 
 test.use({ locale: 'es-MX' });
 
@@ -145,18 +147,12 @@ test('authors an Information stage in Spanish and previews it in the protocol’
   await page
     .getByRole('textbox', { name: 'Nombre de la etapa' })
     .fill('Stage_Research_1');
-  // The page is one text: a heading, then its words. `# ` opens a heading as
-  // the editor's own input rule; the text itself goes in as an insertion so
-  // that its underscores are not read as emphasis.
-  const pageContent = page.getByRole('textbox', {
-    name: 'Contenido de la página',
-  });
-  await expect(pageContent).toBeEditable();
-  await pageContent.click();
-  await page.keyboard.type('# ');
-  await page.keyboard.insertText('Participant_Heading_EN');
-  await page.keyboard.press('Enter');
-  await page.keyboard.insertText('Participant_Content_EN');
+  // The page is one text: a heading, then its words.
+  await writeHeadingAndText(
+    new StageEditor(page).richText('Texto enriquecido'),
+    'Participant_Heading_EN',
+    'Participant_Content_EN',
+  );
   await page.getByRole('button', { name: 'Finalizar edición' }).click();
   await page.waitForURL('**/protocol');
   const stage = await readStageJson(page, 0);

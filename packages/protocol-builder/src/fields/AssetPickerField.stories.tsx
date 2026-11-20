@@ -37,7 +37,7 @@ type StagePreset =
   /** A sociogram whose background is a picture drawn behind the nodes. */
   | 'canvas-background'
   /** The welcome image, on one line, as dense settings show a file. */
-  | 'compact';
+  | 'line';
 
 type StageScenario = Readonly<{ stage: StoryStage; children: ReactNode }>;
 
@@ -160,7 +160,7 @@ const STAGE_SCENARIOS: Readonly<
       />
     ),
   }),
-  'compact': (holding) => ({
+  'line': (holding) => ({
     stage: {
       stageId: 'sociogram-1',
       type: 'Sociogram',
@@ -178,7 +178,7 @@ const STAGE_SCENARIOS: Readonly<
         nameMode="path"
         label="Welcome image"
         kind="image"
-        compact
+        layout="line"
       />
     ),
   }),
@@ -339,8 +339,8 @@ export const Chosen: Story = {
  * (an image placed in a text): the resource's name, marked with its kind, and
  * a quieter button to change it. No picture and no card.
  */
-export const Compact: Story = {
-  args: { stage: 'compact', holding: IMAGE_RESOURCE.id },
+export const OnOneLine: Story = {
+  args: { stage: 'line', holding: IMAGE_RESOURCE.id },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const field = within(

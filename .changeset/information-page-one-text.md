@@ -1,4 +1,5 @@
 ---
+'@codaco/shared-consts': minor
 '@codaco/protocol-validation': minor
 '@codaco/protocol-utilities': major
 '@codaco/fresco-ui': minor
@@ -61,14 +62,21 @@ markdown string declared with `assetBlocks: true`, in place of `title` and
 `items`, and the `Item` type is gone. A file is written as a markdown image in
 a paragraph of its own whose address names an asset:
 `![description](asset:<assetId>?size=small|medium|large&align=start|end&autoplay=false&loop=false)`.
+`@codaco/shared-consts` exports what a block can be (`ASSET_BLOCK_KINDS`,
+`ASSET_BLOCK_SIZES`, `ASSET_BLOCK_ALIGNMENTS`, `ASSET_BLOCK_DEFAULTS`, their
+guards and the `AssetBlockAttributes` type).
 `@codaco/protocol-validation` exports the grammar (`assetBlockMarkdown`,
-`readAssetBlockUrl`, `assetBlocksInMessage` and others), reports a block whose
+`readAssetBlockUrl`, `assetBlocksInMessage` and others) and how a block is
+shown (`assetBlockFile`, `assetBlockSettings`, `assetBlockAlignmentShows`), reports a block whose
 asset is missing or is not an image, audio or video, or that is written where
 none can be shown (inside a heading, a link, struck-through words, a table
 cell, a `select` or `plural` version, or with a dynamic value in its
 description or address), reading the text in the markdown the interview shows
 it in (CommonMark with GitHub's additions), and counts each block as
 an asset reference. `RichTextEditor` takes `assetBlocks` (a block view and an
-optional picker), and `RenderMarkdown` takes `blockImages`, which draws
+optional picker); `@codaco/fresco-ui` adds `assetBlockLayout` (the classes a
+block is drawn with), `SegmentedSwitcherField` and `testing/assetBlock`, and
+`Popover` passes on `collisionAvoidance`, `collisionPadding` and
+`collisionBoundary`; and `RenderMarkdown` takes `blockImages`, which draws
 matching markdown images with a component of the caller's and never draws one
 from raw HTML. `SyntheticInterview` builds Information stages in the new shape.

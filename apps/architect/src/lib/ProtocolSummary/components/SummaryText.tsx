@@ -1,4 +1,9 @@
-import { createContext, useCallback, useContext } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  useCallback,
+  useContext,
+} from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -58,6 +63,23 @@ const languageAttributes = (locale: LocaleTag) => ({
   lang: locale,
   dir: getLocaleMetadata(locale).direction,
 });
+
+// The language of the translation being drawn, for what is drawn inside it
+// in the interface's words (a file placed in a page) and has protocol text
+// of its own to mark.
+const TranslationLanguageContext = createContext<LocaleTag | undefined>(
+  undefined,
+);
+
+/**
+ * `lang` and `dir` of the translation being drawn, for protocol text drawn
+ * inside something that is itself in the interface's language; nothing
+ * outside a translation.
+ */
+export const useTranslationLanguage = () => {
+  const locale = useContext(TranslationLanguageContext);
+  return locale === undefined ? {} : languageAttributes(locale);
+};
 
 type SummaryTextProps = {
   value: LocalizedString | undefined;
@@ -145,7 +167,7 @@ const showsValues = (text: string) => {
  * versions, one for each case it distinguishes, with its placeholders named;
  * text that shows values reads with each value as a pill.
  */
-const TranslationContent = ({
+const TranslationText = ({
   text,
   format,
   locale,
@@ -175,6 +197,9 @@ const TranslationContent = ({
       <DynamicMessageSummary
         message={text}
         markdown={format === 'markdown'}
+        // The summary draws all markdown with its blocks, as it does text
+        // without values (`Markdown`), whatever lines the text holds today.
+        multiline
         blockMarkdown={blockMarkdownWith(blockImages)}
         locale={locale}
         site={dynamicSite}
@@ -188,6 +213,13 @@ const TranslationContent = ({
     literal
   );
 };
+
+/** One translation, its language known to what is drawn inside it. */
+const TranslationContent = (props: ComponentProps<typeof TranslationText>) => (
+  <TranslationLanguageContext.Provider value={props.locale}>
+    <TranslationText {...props} />
+  </TranslationLanguageContext.Provider>
+);
 
 /**
  * What participants using `locale` see in place of the missing translation:

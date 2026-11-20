@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { withMod } from '@codaco/fresco-ui/testing/modKey';
 
 import PageContentSection from '../../../sections/page-content/PageContentSection.tsx';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
@@ -213,7 +214,7 @@ describe('the editor for a page of content', () => {
     const editor = await pageEditor();
 
     await harness.user.click(editor);
-    await harness.user.keyboard('{Control>}a{/Control}{Backspace}');
+    await harness.user.keyboard(`${withMod('a')}{Backspace}`);
 
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>

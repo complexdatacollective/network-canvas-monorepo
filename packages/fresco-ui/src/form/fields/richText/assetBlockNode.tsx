@@ -15,40 +15,39 @@ import {
 } from '@tiptap/react';
 import { type ComponentType, createContext, useContext } from 'react';
 
-import { cx } from '../../../utils/cva';
+import {
+  ASSET_BLOCK_DEFAULTS,
+  type AssetBlockAttributes,
+  type AssetBlockKind,
+  isAssetBlockAlignment,
+  isAssetBlockSize,
+} from '@codaco/shared-consts';
+
+import { cva } from '../../../utils/cva';
 
 export const ASSET_BLOCK_NODE = 'assetBlock';
 
 /** The kinds of file a block can show. */
-export type RichTextAssetBlockKind = 'image' | 'audio' | 'video';
+export type RichTextAssetBlockKind = AssetBlockKind;
 
 /**
  * A file shown as a block among the text's paragraphs, as the value holds
- * it: `{ type: 'assetBlock', attrs }`. The editor does not know what a file
+ * it (see `RichTextAssetBlockContent`). The editor does not know what a file
  * is or where it lives, only the id its consumer gave it and how the block
  * is to be shown.
  */
-export type RichTextAssetBlockAttributes = Readonly<{
-  /** The file, by the id the consumer's picker gave. */
-  assetId: string;
-  /** What the file shows or says, for a reader who cannot see or hear it. */
-  description: string;
-  /** How tall the file may be shown; `null` leaves it its own height. */
-  size: 'small' | 'medium' | 'large' | null;
-  /** Where the file sits across the text. */
-  align: 'start' | 'center' | 'end';
-  /** Whether audio or video starts by itself. */
-  autoplay: boolean;
-  /** Whether audio or video starts again when it ends. */
-  loop: boolean;
+export type RichTextAssetBlockAttributes = AssetBlockAttributes;
+
+/** A block as the value holds it, among the document's paragraphs. */
+export type RichTextAssetBlockContent = Readonly<{
+  type: typeof ASSET_BLOCK_NODE;
+  attrs: RichTextAssetBlockAttributes;
 }>;
 
 const DEFAULTS: Omit<RichTextAssetBlockAttributes, 'assetId'> = {
   description: '',
   size: null,
-  align: 'center',
-  autoplay: true,
-  loop: true,
+  ...ASSET_BLOCK_DEFAULTS,
 };
 
 /** Lets the researcher choose a file of one kind (see `RichTextAssetBlocks`). */
@@ -73,8 +72,6 @@ export type RichTextAssetBlockViewProps = Readonly<{
   remove: () => void;
   /** Puts the caret back in the text, on this block. */
   returnToText: () => void;
-  /** The field's way of choosing a file, where it has one. */
-  pick?: PickAssetBlock;
 }>;
 
 /**
@@ -97,27 +94,62 @@ export type RichTextAssetBlocks = Readonly<{
   View: ComponentType<RichTextAssetBlockViewProps>;
 }>;
 
-/** The consumer's side of the blocks in the editor around a node view. */
-export const AssetBlocksContext = createContext<RichTextAssetBlocks | null>(
-  null,
-);
+/** What a block's node view is told of the field around it. */
+type AssetBlockField = Readonly<{
+  /** The consumer's side of the blocks; `null` where it gave none. */
+  blocks: RichTextAssetBlocks | null;
+  /**
+   * Whether the field can be changed. The field says so here because the
+   * editor does not: making it read-only or disabled changes no text, so
+   * nothing draws a block's view again, and one that asked the editor would
+   * go on showing what it showed when it was last drawn.
+   */
+  editable: boolean;
+  /** Whether focus is in the field (see `RichTextAssetBlockViewProps.active`). */
+  active: boolean;
+}>;
+
+export const AssetBlockFieldContext = createContext<AssetBlockField>({
+  blocks: null,
+  editable: true,
+  active: false,
+});
 
 /**
- * Whether the field around a node view can be changed. The field says so
- * here because the editor does not: making it read-only or disabled changes
- * no text, so nothing draws a block's view again, and one that asked the
- * editor would go on showing what it showed when it was last drawn.
+ * How far outside a selected block its outline is drawn, in pixels: the
+ * frame's `outline-offset-4`. For a consumer that places something on that
+ * outline.
  */
-export const AssetBlocksEditableContext = createContext(true);
+export const ASSET_BLOCK_OUTLINE_OFFSET = 4;
 
-/** Whether focus is in the field around a node view (see `active`). */
-export const AssetBlocksActiveContext = createContext(false);
+/** How wide a selected block's outline is, in pixels: `outline-2`. */
+export const ASSET_BLOCK_OUTLINE_WIDTH = 2;
 
-const isSize = (value: unknown): value is 'small' | 'medium' | 'large' =>
-  value === 'small' || value === 'medium' || value === 'large';
-
-const isAlign = (value: unknown): value is 'start' | 'center' | 'end' =>
-  value === 'start' || value === 'center' || value === 'end';
+/**
+ * The element the editor draws around a block's view. Its outline, when the
+ * block is selected, is `ASSET_BLOCK_OUTLINE_WIDTH` wide and
+ * `ASSET_BLOCK_OUTLINE_OFFSET` outside it; a story checks the drawn outline
+ * against both (`WithAssetBlocks`).
+ */
+export const assetBlockFrameVariants = cva({
+  // Nothing in a block is text to select. A browser that reads words out of
+  // a picture (Safari does) would otherwise let them be selected in it, as if
+  // the page held them.
+  base: 'relative my-4 rounded-sm outline-offset-4 select-none',
+  variants: {
+    selected: {
+      true: 'outline-primary outline-2',
+      false: '',
+    },
+    // Part of a selection of text, it is covered in the colour selected text
+    // is: the browser draws that over words, and not over a block.
+    inSelectedText: {
+      true: 'after:pointer-events-none after:absolute after:inset-0 after:rounded-sm after:bg-[Highlight] after:opacity-40',
+      false: '',
+    },
+  },
+  defaultVariants: { selected: false, inSelectedText: false },
+});
 
 /** A node's attributes as the view reads them, whatever the value held. */
 const attributesOf = (
@@ -128,8 +160,8 @@ const attributesOf = (
     typeof attrs.description === 'string'
       ? attrs.description
       : DEFAULTS.description,
-  size: isSize(attrs.size) ? attrs.size : DEFAULTS.size,
-  align: isAlign(attrs.align) ? attrs.align : DEFAULTS.align,
+  size: isAssetBlockSize(attrs.size) ? attrs.size : DEFAULTS.size,
+  align: isAssetBlockAlignment(attrs.align) ? attrs.align : DEFAULTS.align,
   autoplay: attrs.autoplay !== false,
   loop: attrs.loop !== false,
 });
@@ -201,9 +233,7 @@ function AssetBlockView({
   updateAttributes,
   deleteNode,
 }: ReactNodeViewProps) {
-  const blocks = useContext(AssetBlocksContext);
-  const editable = useContext(AssetBlocksEditableContext);
-  const active = useContext(AssetBlocksActiveContext);
+  const { blocks, editable, active } = useContext(AssetBlockFieldContext);
   const attributes = attributesOf(node.attrs);
   // Only while the field has focus: a selection the field has lost is not
   // what the keys act on, and the page may by then have selected something
@@ -217,17 +247,7 @@ function AssetBlockView({
       data-asset-block=""
       data-selected={selected || undefined}
       data-in-selected-text={inSelectedText || undefined}
-      className={cx(
-        // Nothing in a block is text to select. A browser that reads words
-        // out of a picture (Safari does) would otherwise let them be
-        // selected in it, as if the page held them.
-        'relative my-4 rounded-sm outline-offset-4 select-none',
-        selected && 'outline-primary outline-2',
-        // Part of a selection of text, it is covered in the colour selected
-        // text is: the browser draws that over words, and not over a block.
-        inSelectedText &&
-          'after:pointer-events-none after:absolute after:inset-0 after:rounded-sm after:bg-[Highlight] after:opacity-40',
-      )}
+      className={assetBlockFrameVariants({ selected, inSelectedText })}
     >
       {blocks === null ? null : (
         <blocks.View
@@ -251,7 +271,6 @@ function AssetBlockView({
             deleteNode();
             editor.view.focus();
           }}
-          pick={blocks.pick}
           returnToText={() => {
             const position = getPos();
             if (position === undefined) return;
@@ -299,16 +318,18 @@ export const AssetBlockNode = TiptapNode.create({
         default: DEFAULTS.size,
         parseHTML: (element) => {
           const size = element.getAttribute('data-size');
-          return isSize(size) ? size : DEFAULTS.size;
+          return isAssetBlockSize(size) ? size : DEFAULTS.size;
         },
         renderHTML: (attributes) =>
-          isSize(attributes.size) ? { 'data-size': attributes.size } : {},
+          isAssetBlockSize(attributes.size)
+            ? { 'data-size': attributes.size }
+            : {},
       },
       align: {
         default: DEFAULTS.align,
         parseHTML: (element) => {
           const align = element.getAttribute('data-align');
-          return isAlign(align) ? align : DEFAULTS.align;
+          return isAssetBlockAlignment(align) ? align : DEFAULTS.align;
         },
         renderHTML: (attributes) => ({ 'data-align': attributes.align }),
       },

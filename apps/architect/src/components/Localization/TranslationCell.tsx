@@ -20,8 +20,8 @@ import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   AssetBlockLine,
   createAssetBlockImages,
-  createAssetBlockView,
-} from '@codaco/protocol-builder/fields/assetBlocks';
+} from '@codaco/protocol-builder/fields/assetBlocks/assetBlockImages';
+import { createAssetBlockView } from '@codaco/protocol-builder/fields/assetBlocks/AssetBlockView';
 import {
   DynamicMessageEditor,
   type DynamicMessageSite,
@@ -41,10 +41,10 @@ import {
 import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import { textFieldPropsFor } from '@codaco/protocol-builder/localization/textShape';
 import {
+  assetBlockFile,
   type DynamicValues,
   type DynamicValueSite,
   dynamicValueContextFor,
-  isAssetBlockKind,
   nodeLabelValueContext,
   type LocaleTag,
   type LocalizedString,
@@ -182,11 +182,8 @@ const cellMarkdownComponents = {
 };
 
 /** The file a block names, as the protocol being translated holds it. */
-const useProtocolAsset = (assetId: string) => {
-  const asset = useAppSelector(getDisplayAssetManifest)[assetId];
-  if (asset === undefined || !isAssetBlockKind(asset.type)) return undefined;
-  return { kind: asset.type, name: asset.name };
-};
+const useProtocolAsset = (assetId: string) =>
+  assetBlockFile(useAppSelector(getDisplayAssetManifest), assetId);
 
 // A file a text holds as a block is one line in a cell that shows the text
 // (see `createAssetBlockImages`), and the same line in a cell that edits it,
@@ -271,7 +268,7 @@ const Fallback = ({
   locale,
   localization,
   messageArguments,
-  dynamicSite,
+  dynamic,
   assetBlocks = false,
 }: {
   id: string;
@@ -282,8 +279,11 @@ const Fallback = ({
   locale: LocaleTag;
   localization: ProtocolLocalization;
   messageArguments?: MessageArguments;
-  /** Where text with values sits, for text that shows them. */
-  dynamicSite?: DynamicMessageSite;
+  /**
+   * For text that shows values: where it sits, and whether its field holds
+   * several lines (see `DynamicMessageSummary`).
+   */
+  dynamic?: Readonly<{ site: DynamicMessageSite; singleLine: boolean }>;
 }) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
@@ -319,12 +319,13 @@ const Fallback = ({
       )}
     >
       <div lang={shown.lang} className="w-full text-current/60">
-        {dynamicSite !== undefined ? (
+        {dynamic !== undefined ? (
           <DynamicMessageSummary
             message={shown.text}
             markdown={format === 'markdown'}
+            multiline={!dynamic.singleLine}
             locale={shown.lang}
-            site={dynamicSite}
+            site={dynamic.site}
             blockMarkdown={
               assetBlocks ? CELL_ASSET_BLOCK_MARKDOWN : CELL_BLOCK_MARKDOWN
             }
@@ -1081,7 +1082,7 @@ const DynamicCell = ({
                   assetBlocks={assetBlocks}
                   locale={locale}
                   localization={localization}
-                  dynamicSite={site}
+                  dynamic={{ site, singleLine }}
                 />
               </div>
             )}
@@ -1116,7 +1117,7 @@ const DynamicCell = ({
                   assetBlocks={assetBlocks}
                   locale={locale}
                   localization={localization}
-                  dynamicSite={site}
+                  dynamic={{ site, singleLine }}
                 />
               ) : (
                 <div
@@ -1129,6 +1130,7 @@ const DynamicCell = ({
                   <DynamicMessageSummary
                     message={message}
                     markdown={markdown}
+                    multiline={!singleLine}
                     locale={locale}
                     site={site}
                     blockMarkdown={

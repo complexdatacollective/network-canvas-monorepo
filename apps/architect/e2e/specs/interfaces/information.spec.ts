@@ -1,60 +1,29 @@
-import type { Locator, Page } from '@playwright/test';
-
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-
-import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
+import {
+  DRAWN_FILES,
+  expect,
+  gotoProtocol,
+  informationProtocol,
+  PHOTO_ASSET,
+  PHOTO_FILE,
+  test,
+} from '../../fixtures/information-page.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
-import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
+import {
+  pageText,
+  readProtocolJson,
+  readStageJson,
+} from '../../helpers/read-store.js';
+import { AssetBlocks, placeBlockAt } from '../../pageobjects/asset-block.js';
+import { writeHeadingAndText } from '../../pageobjects/rich-text.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
-import { Timeline } from '../../pageobjects/timeline.js';
 
 // The page is ONE rich text: a heading is a heading in it, and each image,
 // audio recording or video is a block in it, saved as a markdown image whose
-// address names a protocol resource (`![alt](asset:<id>?size=medium)`).
-
-/**
- * The page's editor: the "Rich Text" field of the "Content" section. The
- * toolbar above it formats the text and inserts media.
- */
-const pageEditor = (page: Page) =>
-  page.getByRole('textbox', { name: 'Rich Text' });
-
-/**
- * What changes how a selected image shows. It stands over the page beside the
- * image, and is there only while the image is selected and the researcher is
- * in the field.
- */
-const imageSettings = (page: Page) =>
-  page.getByRole('dialog', { name: 'Image settings' });
-
-/**
- * Types a heading, then a paragraph, as a researcher does: `# ` opens a
- * heading through the editor's own input rule, and the words go in as
- * insertions so that nothing in them is read as markdown shorthand.
- */
-async function writeHeadingAndText(
-  page: Page,
-  heading: string,
-  text: string,
-): Promise<void> {
-  const editor = pageEditor(page);
-  await expect(editor).toBeEditable();
-  await editor.click();
-  await page.keyboard.type('# ');
-  await page.keyboard.insertText(heading);
-  await page.keyboard.press('Enter');
-  await page.keyboard.insertText(text);
-}
-
-/** The English text the stage committed, once it holds `fragment`. */
-function pageText(stage: unknown): string | undefined {
-  if (typeof stage !== 'object' || stage === null) return undefined;
-  const content: unknown = Reflect.get(stage, 'content');
-  if (typeof content !== 'object' || content === null) return undefined;
-  const english: unknown = Reflect.get(content, 'en');
-  return typeof english === 'string' ? english : undefined;
-}
+// address names a protocol resource (`![alt](asset:<id>?size=medium)`). The
+// page's editor is the "Rich Text" field of the "Content" section
+// (`StageEditor.richText()`); the toolbar above it formats the text and
+// inserts media, and has a spec of its own (`rich-text-toolbar.spec.ts`).
 
 test('creates a valid Information stage from scratch', async ({
   architectPage,
@@ -68,7 +37,7 @@ test('creates a valid Information stage from scratch', async ({
   await editor.setStageName('About This Study');
 
   await writeHeadingAndText(
-    architectPage,
+    editor.richText(),
     'Welcome',
     'Thanks for taking part.',
   );
@@ -89,111 +58,21 @@ test('creates a valid Information stage from scratch', async ({
   );
 });
 
-const PHOTO_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
-  <rect width="80" height="80" fill="#6ecae8" />
-</svg>`;
-
-const GARDEN_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80">
-  <rect width="120" height="80" fill="#8fd18f" />
-</svg>`;
-
-const PHOTO_ASSET = {
-  'photo-asset': {
-    name: 'photo.svg',
-    type: 'image' as const,
-    source: 'photo.svg',
-  },
-};
-
-// A second image, a recording and a video, for a page with more than one kind
-// of file, or more than one file to choose between.
-const MORE_ASSETS = {
-  'garden-asset': {
-    name: 'garden.svg',
-    type: 'image' as const,
-    source: 'garden.svg',
-  },
-  'clip-asset': {
-    name: 'clip.mp4',
-    type: 'video' as const,
-    source: 'clip.mp4',
-  },
-};
-
-const withPage = (content: string): CurrentProtocol => ({
-  ...emptyProtocol(),
-  assetManifest: PHOTO_ASSET,
-  stages: [
-    {
-      id: 'info-1',
-      type: 'Information',
-      label: { en: 'About This Study' },
-      content: { en: content },
-    },
-    ...emptyProtocol().stages,
-  ],
-});
-
-const seedOptions = {
-  assets: [{ assetId: 'photo-asset', name: 'photo.svg', data: PHOTO_SVG }],
-};
-
-/** `seedOptions`, with each file stored as the kind it is, so it is drawn. */
-const drawnSeedOptions = {
-  assets: [
-    {
-      assetId: 'photo-asset',
-      name: 'photo.svg',
-      data: PHOTO_SVG,
-      mediaType: 'image/svg+xml',
-    },
-    {
-      assetId: 'garden-asset',
-      name: 'garden.svg',
-      data: GARDEN_SVG,
-      mediaType: 'image/svg+xml',
-    },
-    { assetId: 'clip-asset', name: 'clip.mp4', data: 'not a video' },
-  ],
-};
-
-/** `withPage`, with the further files of `MORE_ASSETS` among its resources. */
-const withPageAndFiles = (content: string): CurrentProtocol => {
-  const protocol = withPage(content);
-  return {
-    ...protocol,
-    assetManifest: { ...protocol.assetManifest, ...MORE_ASSETS },
-  };
-};
-
-/** The block, of all a page's text holds, that is the image named `name`. */
-const blockOf = (page: Page, name: string) =>
-  pageEditor(page)
-    .locator('[data-asset-block]')
-    .filter({ has: page.getByRole('img', { name, exact: true }) });
-
-/**
- * Saves the stage from the text, as a researcher does once a block is done
- * with: the caret back in the text takes the block's settings off the page.
- */
-async function saveFromText(page: Page, paragraph: string): Promise<void> {
-  await pageEditor(page).locator('p', { hasText: paragraph }).click();
-  await expect(page.getByRole('dialog', { name: /settings$/ })).toHaveCount(0);
-  await new StageEditor(page).save();
-}
-
 test('places an image in the text from the toolbar, with its settings', async ({
   architectPage,
   seed,
 }) => {
-  await seed({ ...emptyProtocol(), assetManifest: PHOTO_ASSET }, seedOptions);
+  await seed(
+    { ...emptyProtocol(), assetManifest: PHOTO_ASSET },
+    {
+      assets: PHOTO_FILE,
+    },
+  );
   await gotoProtocol(architectPage);
   const editor = new StageEditor(architectPage);
   await editor.createNew('Information');
   await editor.setStageName('About This Study');
-  await writeHeadingAndText(architectPage, 'Welcome', 'Look at this.');
+  await writeHeadingAndText(editor.richText(), 'Welcome', 'Look at this.');
 
   await editor
     .section('Content')
@@ -213,10 +92,9 @@ test('places an image in the text from the toolbar, with its settings', async ({
   // The image just placed is selected, which shows its settings beside it. An
   // image has a size and a description, and no playback. With no description
   // yet, it is named for its file.
-  await expect(
-    pageEditor(architectPage).getByRole('img', { name: 'photo.svg' }),
-  ).toBeVisible();
-  const settings = imageSettings(architectPage);
+  const blocks = new AssetBlocks(architectPage);
+  await expect(blocks.image('photo.svg')).toBeVisible();
+  const settings = blocks.settings();
   await expect(settings).toBeVisible();
   await settings.getByLabel('Description', { exact: true }).fill('A photo');
   await settings
@@ -239,23 +117,23 @@ test('places an image in the text from the toolbar, with its settings', async ({
 
 test('deletes a placed image from the text, keeping its file among the resources', async ({
   architectPage,
-  seed,
+  openInformationPage,
 }) => {
-  await seed(
-    withPage('# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.'),
-    seedOptions,
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.',
+    ),
+    PHOTO_FILE,
   );
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
+  const blocks = new AssetBlocks(architectPage);
 
   // Clicking a block selects it and shows its settings.
-  await pageEditor(architectPage).getByRole('img', { name: 'A photo' }).click();
-  await imageSettings(architectPage)
+  await blocks.image('A photo').click();
+  await blocks
+    .settings()
     .getByRole('button', { name: 'Delete', exact: true })
     .click();
-  await expect(
-    pageEditor(architectPage).getByRole('img', { name: 'A photo' }),
-  ).toHaveCount(0);
+  await expect(blocks.image('A photo')).toHaveCount(0);
 
   await new StageEditor(architectPage).save();
 
@@ -272,18 +150,20 @@ test('deletes a placed image from the text, keeping its file among the resources
 
 test('keeps a placed image, byte for byte, through an edit of the text around it', async ({
   architectPage,
-  seed,
+  openInformationPage,
 }) => {
   const block = '![A photo](asset:photo-asset?size=large&align=end)';
-  await seed(withPage(`# Welcome\n\n${block}\n\nBye`), seedOptions);
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
+  await openInformationPage(
+    informationProtocol(`# Welcome\n\n${block}\n\nBye`),
+    PHOTO_FILE,
+  );
+  const editor = new StageEditor(architectPage);
 
   // The caret goes to the end of the last paragraph, after the block.
-  await pageEditor(architectPage).locator('p').last().click();
+  await editor.richText().locator('p').last().click();
   await architectPage.keyboard.press('End');
   await architectPage.keyboard.insertText('!');
-  await new StageEditor(architectPage).save();
+  await editor.save();
 
   const stage = await readStageJson(architectPage, 0, (saved) =>
     (pageText(saved) ?? '').endsWith('Bye!'),
@@ -291,39 +171,41 @@ test('keeps a placed image, byte for byte, through an edit of the text around it
   expect(pageText(stage)).toBe(`# Welcome\n\n${block}\n\nBye!`);
 });
 
-test('shows an image\u2019s settings only while it is selected and the researcher is in the field', async ({
+test('shows an image’s settings only while it is selected and the researcher is in the field', async ({
   architectPage,
-  seed,
+  openInformationPage,
 }) => {
-  await seed(
-    withPage('# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.'),
-    seedOptions,
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.',
+    ),
+    PHOTO_FILE,
   );
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-  const settings = imageSettings(architectPage);
+  const pageEditor = new StageEditor(architectPage).richText();
+  const blocks = new AssetBlocks(architectPage);
+  const settings = blocks.settings();
   const description = settings.getByLabel('Description', { exact: true });
-  await expect(pageEditor(architectPage)).toBeEditable();
+  await expect(pageEditor).toBeEditable();
   await expect(settings).toBeHidden();
 
   // Selecting the image shows them, and leaves the keyboard in the text.
-  await pageEditor(architectPage).getByRole('img', { name: 'A photo' }).click();
+  await blocks.image('A photo').click();
   await expect(settings).toBeVisible();
-  await expect(pageEditor(architectPage)).toBeFocused();
+  await expect(pageEditor).toBeFocused();
 
   // Enter goes into them; Escape comes back to the image, still selected.
   await architectPage.keyboard.press('Enter');
   await expect(description).toBeFocused();
   await architectPage.keyboard.press('Escape');
-  await expect(pageEditor(architectPage)).toBeFocused();
+  await expect(pageEditor).toBeFocused();
   await expect(settings).toBeVisible();
 
   // The caret going into the text takes them away.
-  await pageEditor(architectPage).locator('p', { hasText: 'Bye.' }).click();
+  await pageEditor.locator('p', { hasText: 'Bye.' }).click();
   await expect(settings).toBeHidden();
 
   // And so does leaving the field with the image still selected.
-  await pageEditor(architectPage).getByRole('img', { name: 'A photo' }).click();
+  await blocks.image('A photo').click();
   await expect(settings).toBeVisible();
   await architectPage.getByRole('textbox', { name: 'Stage name' }).focus();
   await expect(settings).toBeHidden();
@@ -331,28 +213,27 @@ test('shows an image\u2019s settings only while it is selected and the researche
 
 test('resizes an image by dragging its corner, a size at a time', async ({
   architectPage,
-  seed,
+  openInformationPage,
 }) => {
-  await seed(
-    withPage('# Welcome\n\n![A photo](asset:photo-asset?size=large)\n\nBye.'),
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=large)\n\nBye.',
+    ),
     // Stored as the image it is, so that the picture is drawn: a picture that
     // cannot be drawn has no corner to take hold of.
-    drawnSeedOptions,
+    DRAWN_FILES,
   );
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-  const image = pageEditor(architectPage).getByRole('img', { name: 'A photo' });
+  const blocks = new AssetBlocks(architectPage);
+  const image = blocks.image('A photo');
   await image.click();
-  const settings = imageSettings(architectPage);
+  const settings = blocks.settings();
   await expect(settings).toBeVisible();
 
   // The whole picture in view, so the pointer stays on the page as it goes.
   await image.evaluate((element) =>
     element.scrollIntoView({ block: 'center' }),
   );
-  const handle = await architectPage
-    .locator('[data-asset-block-resize]')
-    .boundingBox();
+  const handle = await blocks.resizeCorner().boundingBox();
   if (handle === null) throw new Error('The corner is not drawn');
   const x = handle.x + handle.width / 2;
   const y = handle.y + handle.height / 2;
@@ -367,7 +248,7 @@ test('resizes an image by dragging its corner, a size at a time', async ({
   // While it is dragged, the size it would take is named beside the corner,
   // and the settings stand aside.
   const pill = (name: string) =>
-    pageEditor(architectPage).getByText(name, { exact: true });
+    new StageEditor(architectPage).richText().getByText(name, { exact: true });
   await expect(pill('Medium')).toBeVisible();
   await expect(settings).toBeHidden();
   await architectPage.mouse.move(x, y - 220, { steps: 10 });
@@ -379,7 +260,7 @@ test('resizes an image by dragging its corner, a size at a time', async ({
     settings.getByRole('button', { name: 'Small', exact: true, pressed: true }),
   ).toBeVisible();
 
-  await saveFromText(architectPage, 'Bye.');
+  await blocks.saveFromText('Bye.');
   const stage = await readStageJson(architectPage, 0, (saved) =>
     (pageText(saved) ?? '').includes('size=small'),
   );
@@ -396,25 +277,22 @@ for (const [align, corner] of [
 ] as const) {
   test(`puts the resize corner on the bottom ${corner} of the outline of an image aligned to the ${align}`, async ({
     architectPage,
-    seed,
+    openInformationPage,
   }) => {
     const address = `size=small&align=${align}`;
-    await seed(
-      withPage(`# Welcome\n\n![A photo](asset:photo-asset?${address})\n\nBye.`),
-      drawnSeedOptions,
+    await openInformationPage(
+      informationProtocol(
+        `# Welcome\n\n![A photo](asset:photo-asset?${address})\n\nBye.`,
+      ),
+      DRAWN_FILES,
     );
-    await gotoProtocol(architectPage);
-    await new Timeline(architectPage).openStage('About This Study');
-    await pageEditor(architectPage)
-      .getByRole('img', { name: 'A photo' })
-      .click();
-    await expect(imageSettings(architectPage)).toBeVisible();
-    const block = blockOf(architectPage, 'A photo');
+    const blocks = new AssetBlocks(architectPage);
+    await blocks.image('A photo').click();
+    await expect(blocks.settings()).toBeVisible();
+    const block = blocks.block('A photo');
     await expect(block).toHaveAttribute('data-selected', 'true');
 
-    const handle = await architectPage
-      .locator('[data-asset-block-resize]')
-      .boundingBox();
+    const handle = await blocks.resizeCorner().boundingBox();
     if (handle === null) throw new Error('The corner is not drawn');
     const outline = await block.evaluate((element) => {
       const box = element.getBoundingClientRect();
@@ -443,18 +321,18 @@ for (const [align, corner] of [
 
 test('replaces the file of a placed image, keeping its settings', async ({
   architectPage,
-  seed,
+  openInformationPage,
 }) => {
-  await seed(
-    withPageAndFiles(
+  await openInformationPage(
+    informationProtocol(
       '# Welcome\n\n![A photo](asset:photo-asset?size=small&align=end)\n\nBye.',
+      { moreFiles: true },
     ),
-    drawnSeedOptions,
+    DRAWN_FILES,
   );
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-  await pageEditor(architectPage).getByRole('img', { name: 'A photo' }).click();
-  const settings = imageSettings(architectPage);
+  const blocks = new AssetBlocks(architectPage);
+  await blocks.image('A photo').click();
+  const settings = blocks.settings();
 
   // The file the block shows, with the way to choose another.
   const file = settings.getByRole('group', { name: 'Image', exact: true });
@@ -504,7 +382,7 @@ test('replaces the file of a placed image, keeping its settings', async ({
     }),
   ).toBeVisible();
 
-  await saveFromText(architectPage, 'Bye.');
+  await blocks.saveFromText('Bye.');
   const stage = await readStageJson(architectPage, 0, (saved) =>
     (pageText(saved) ?? '').includes('asset:garden-asset'),
   );
@@ -515,32 +393,34 @@ test('replaces the file of a placed image, keeping its settings', async ({
 
 test('marks a block that a selection of the text runs across, and outlines one selected by itself', async ({
   architectPage,
-  seed,
+  openInformationPage,
 }) => {
-  await seed(
-    withPage('# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.'),
-    drawnSeedOptions,
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.',
+    ),
+    DRAWN_FILES,
   );
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-  const block = blockOf(architectPage, 'A photo');
-  await expect(pageEditor(architectPage)).toBeEditable();
+  const pageEditor = new StageEditor(architectPage).richText();
+  const blocks = new AssetBlocks(architectPage);
+  const block = blocks.block('A photo');
+  await expect(pageEditor).toBeEditable();
 
   // Everything selected: the block is part of the selection, not selected on
   // its own, so it has no settings.
-  await pageEditor(architectPage).locator('p', { hasText: 'Bye.' }).click();
+  await pageEditor.locator('p', { hasText: 'Bye.' }).click();
   await expect(block).not.toHaveAttribute('data-in-selected-text');
   await architectPage.keyboard.press('ControlOrMeta+a');
   await expect(block).toHaveAttribute('data-in-selected-text', 'true');
   await expect(block).not.toHaveAttribute('data-selected');
-  await expect(imageSettings(architectPage)).toHaveCount(0);
+  await expect(blocks.settings()).toHaveCount(0);
 
   // A caret in the text selects nothing.
-  await pageEditor(architectPage).locator('p', { hasText: 'Bye.' }).click();
+  await pageEditor.locator('p', { hasText: 'Bye.' }).click();
   await expect(block).not.toHaveAttribute('data-in-selected-text');
 
   // The block clicked is selected by itself: outlined, and not marked.
-  await pageEditor(architectPage).getByRole('img', { name: 'A photo' }).click();
+  await blocks.image('A photo').click();
   await expect(block).toHaveAttribute('data-selected', 'true');
   await expect(block).not.toHaveAttribute('data-in-selected-text');
   expect(
@@ -551,59 +431,25 @@ test('marks a block that a selection of the text runs across, and outlines one s
   ).toBeGreaterThan(0);
 });
 
-test('shows each text style in the list of them as it is set in the text', async ({
-  architectPage,
-  seed,
-}) => {
-  await seed(withPage('# Welcome\n\nBye.'), seedOptions);
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-  await pageEditor(architectPage).locator('p', { hasText: 'Bye.' }).click();
-  await new StageEditor(architectPage)
-    .section('Content')
-    .getByRole('button', { name: /^Text style:\s*Paragraph$/ })
-    .click();
-  const fontSize = (name: string) =>
-    architectPage
-      .getByRole('menuitemradio', { name, exact: true })
-      .getByText(name, { exact: true })
-      .evaluate((element) =>
-        Number.parseFloat(getComputedStyle(element).fontSize),
-      );
-  const paragraph = await fontSize('Paragraph');
-  const heading = await fontSize('Heading 1');
-  expect(heading).toBeGreaterThan(paragraph);
-  // The list's own button is not a sample: it is set as the toolbar is.
-  const trigger = await new StageEditor(architectPage)
-    .section('Content')
-    .getByRole('button', { name: /^Text style:/ })
-    .evaluate((element) =>
-      Number.parseFloat(getComputedStyle(element).fontSize),
-    );
-  expect(trigger).toBeLessThan(heading);
-});
-
 test('reaches and uses Delete in a video’s settings in a short window', async ({
   architectPage,
-  seed,
+  openInformationPage,
 }) => {
   // Shorter than an ordinary window, so that the whole of a video's settings
   // cannot be seen at once (they can at 1280×720).
   await architectPage.setViewportSize({ width: 1280, height: 560 });
-  await seed(
-    withPageAndFiles(
+  await openInformationPage(
+    informationProtocol(
       '# Welcome\n\n![A clip](asset:clip-asset?size=medium)\n\nBye.',
+      { moreFiles: true },
     ),
-    drawnSeedOptions,
+    DRAWN_FILES,
   );
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-  const block = pageEditor(architectPage).locator('[data-asset-block]');
+  const blocks = new AssetBlocks(architectPage);
+  const block = blocks.blocks();
   await expect(block).toHaveCount(1);
   await block.click();
-  const settings = architectPage.getByRole('dialog', {
-    name: 'Video settings',
-  });
+  const settings = blocks.settings('Video');
   await expect(settings).toBeVisible();
 
   // The settings stay in the window, below the bar at its top (and below the
@@ -655,26 +501,110 @@ test('reaches and uses Delete in a video’s settings in a short window', async 
   expect(pageText(stage)).toBe('# Welcome\n\nBye.');
 });
 
-/**
- * Scrolls the page so that the top of `block` is `top` pixels from the top of
- * the window.
- */
-async function placeBlockAt(block: Locator, top: number): Promise<void> {
-  await block.evaluate((element, wanted) => {
-    let scroller: Element | null = element.parentElement;
-    while (
-      scroller !== null &&
-      !(
-        scroller.scrollHeight > scroller.clientHeight &&
-        /auto|scroll/.test(getComputedStyle(scroller).overflowY)
-      )
-    ) {
-      scroller = scroller.parentElement;
-    }
-    const target = scroller ?? document.scrollingElement;
-    if (target === null) throw new Error('Nothing scrolls');
-    target.scrollTop += element.getBoundingClientRect().top - wanted;
-  }, top);
+// The bar at the top of the window and the action toolbar at its bottom stand
+// over the page, and each publishes how far into the page it reaches
+// (`--architect-nav-bar-reach`, `--architect-action-toolbar-reach`). A large
+// image's settings do not fit beside it, so they are held against one bar or
+// the other, and keep 8px clear of it. Where the image is decides which: held
+// below the top bar when the image is lower down, above the toolbar when it
+// is at the top.
+for (const [width, height, cases] of [
+  [
+    1440,
+    1000,
+    [
+      ['top bar', 300],
+      ['action toolbar', 0],
+    ],
+  ],
+  [
+    1280,
+    720,
+    [
+      ['top bar', 200],
+      ['action toolbar', 0],
+    ],
+  ],
+] as const) {
+  for (const [bar, top] of cases) {
+    test(`keeps an image’s settings 8px clear of the ${bar} at ${width}×${height}`, async ({
+      architectPage,
+      openInformationPage,
+    }) => {
+      await architectPage.setViewportSize({ width, height });
+      const lines = (from: number) =>
+        Array.from({ length: 20 }, (_, index) => `Line ${from + index}.`).join(
+          '\n\n',
+        );
+      await openInformationPage(
+        informationProtocol(
+          `# Welcome\n\n${lines(1)}\n\n![A photo](asset:photo-asset?size=large)\n\n${lines(21)}`,
+        ),
+        DRAWN_FILES,
+      );
+      const blocks = new AssetBlocks(architectPage);
+      await blocks.image('A photo').click();
+      const settings = blocks.settings();
+      await expect(settings).toBeVisible();
+      await placeBlockAt(blocks.block('A photo'), top);
+
+      // What each bar publishes is how far it really reaches into the page:
+      // the top bar from the top of what the page scrolls in, and the toolbar
+      // (the fixed box drawn around its controls) from the bottom of the
+      // window.
+      const toolbar = architectPage.getByRole('toolbar', {
+        name: 'Stage editor actions',
+      });
+      await expect(toolbar).toBeVisible();
+      const bars = await toolbar.evaluate((controls) => {
+        const root = getComputedStyle(document.documentElement);
+        const header = document.querySelector('header');
+        const topBar = header?.firstElementChild?.getBoundingClientRect();
+        const page = header?.parentElement?.getBoundingClientRect();
+        let fixed: Element | null = controls;
+        while (fixed !== null && getComputedStyle(fixed).position !== 'fixed') {
+          fixed = fixed.parentElement;
+        }
+        if (topBar === undefined || page === undefined || fixed === null) {
+          throw new Error('A bar is not drawn');
+        }
+        return {
+          topBar: topBar.bottom,
+          topBarReach: topBar.bottom - page.top,
+          publishedTopBarReach: Number.parseFloat(
+            root.getPropertyValue('--architect-nav-bar-reach'),
+          ),
+          toolbar: fixed.getBoundingClientRect().top,
+          toolbarReach: window.innerHeight - fixed.getBoundingClientRect().top,
+          publishedToolbarReach: Number.parseFloat(
+            root.getPropertyValue('--architect-action-toolbar-reach'),
+          ),
+        };
+      });
+      expect(bars.publishedTopBarReach).toBeCloseTo(bars.topBarReach, 0);
+      expect(bars.publishedToolbarReach).toBeCloseTo(bars.toolbarReach, 0);
+
+      // Clear of both, and held 8px (to the pixel) from the one it is against.
+      await expect
+        .poll(async () => {
+          const box = await settings.boundingBox();
+          if (box === null) throw new Error('The settings are not drawn');
+          return {
+            belowTopBar: Math.round(box.y - bars.topBar),
+            aboveToolbar: Math.round(bars.toolbar - (box.y + box.height)),
+          };
+        })
+        .toEqual(
+          bar === 'top bar'
+            ? { belowTopBar: 8, aboveToolbar: expect.any(Number) }
+            : { belowTopBar: expect.any(Number), aboveToolbar: 8 },
+        );
+      const box = await settings.boundingBox();
+      if (box === null) throw new Error('The settings are not drawn');
+      expect(box.y - bars.topBar).toBeGreaterThanOrEqual(7.5);
+      expect(bars.toolbar - (box.y + box.height)).toBeGreaterThanOrEqual(7.5);
+    });
+  }
 }
 
 // A small image in a long page, at the top of the window (just under the
@@ -688,28 +618,25 @@ for (const [where, top] of [
 ] as const) {
   test(`shows the whole of an image’s settings at 1440×1000 with the image at the ${where} of the window`, async ({
     architectPage,
-    seed,
+    openInformationPage,
   }) => {
     await architectPage.setViewportSize({ width: 1440, height: 1000 });
     const lines = (from: number) =>
       Array.from({ length: 20 }, (_, index) => `Line ${from + index}.`).join(
         '\n\n',
       );
-    await seed(
-      withPageAndFiles(
+    await openInformationPage(
+      informationProtocol(
         `# Welcome\n\n${lines(1)}\n\n![A photo](asset:photo-asset?size=small)\n\n${lines(21)}`,
+        { moreFiles: true },
       ),
-      drawnSeedOptions,
+      DRAWN_FILES,
     );
-    await gotoProtocol(architectPage);
-    await new Timeline(architectPage).openStage('About This Study');
-    const image = pageEditor(architectPage).getByRole('img', {
-      name: 'A photo',
-    });
-    await image.click();
-    const settings = imageSettings(architectPage);
+    const blocks = new AssetBlocks(architectPage);
+    await blocks.image('A photo').click();
+    const settings = blocks.settings();
     await expect(settings).toBeVisible();
-    await placeBlockAt(blockOf(architectPage, 'A photo'), top);
+    await placeBlockAt(blocks.block('A photo'), top);
 
     // Seen whole where they are, without scrolling the page or the settings.
     for (const part of [
@@ -737,13 +664,14 @@ for (const [where, top] of [
 
 test('shows the whole page however long it is, with nothing of it scrolled out of sight inside the field', async ({
   architectPage,
-  seed,
+  openInformationPage,
 }) => {
   const lines = Array.from({ length: 80 }, (_, index) => `Line ${index + 1}.`);
-  await seed(withPage(lines.join('\n\n')), seedOptions);
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-  const field = pageEditor(architectPage);
+  await openInformationPage(
+    informationProtocol(lines.join('\n\n')),
+    PHOTO_FILE,
+  );
+  const field = new StageEditor(architectPage).richText();
   await expect(field.locator('p')).toHaveCount(80);
 
   // Taller than the window, so a limit on the field's height would bite.
@@ -771,103 +699,3 @@ test('shows the whole page however long it is, with nothing of it scrolled out o
   });
   expect(holdingBack).toEqual([]);
 });
-
-// The toolbar holds more than one line of controls at most widths. Its groups
-// break across lines, so a line is filled before the next begins, and the rule
-// that marks where a group starts is drawn only between two controls.
-for (const width of [1280, 1024, 820, 640, 480]) {
-  test(`wraps the toolbar a control at a time at ${width}px, with no rule at either end of a line`, async ({
-    architectPage,
-    seed,
-  }) => {
-    await architectPage.setViewportSize({ width, height: 720 });
-    await seed(withPage('# Welcome\n\nBye.'), seedOptions);
-    await gotoProtocol(architectPage);
-    await new Timeline(architectPage).openStage('About This Study');
-    await expect(pageEditor(architectPage)).toBeEditable();
-    const toolbar = new StageEditor(architectPage)
-      .section('Content')
-      .getByRole('toolbar');
-    await expect(
-      toolbar.getByRole('button', { name: 'Insert video', exact: true }),
-    ).toBeVisible();
-
-    const drawn = await toolbar.evaluate((bar) => {
-      // The bar shows of its line of controls what is inside this box.
-      const clip = bar.firstElementChild;
-      if (clip === null) throw new Error('The toolbar holds nothing');
-      const shown = clip.getBoundingClientRect();
-      const controls = Array.from(bar.querySelectorAll('button')).map(
-        (button) => {
-          const box = button.getBoundingClientRect();
-          // Each control is one piece with the space before it, which is
-          // where the rule of a group's first control is drawn.
-          const rule =
-            button.previousElementSibling?.firstElementChild?.getBoundingClientRect();
-          return {
-            name: button.getAttribute('aria-label') ?? button.textContent,
-            left: box.left,
-            right: box.right,
-            middle: (box.top + box.bottom) / 2,
-            // A rule is seen where it is inside what the bar shows of itself.
-            rule:
-              rule !== undefined &&
-              rule.width > 0 &&
-              rule.right > shown.left &&
-              rule.left < shown.right
-                ? { left: rule.left, right: rule.right }
-                : undefined,
-          };
-        },
-      );
-      const lines: (typeof controls)[] = [];
-      for (const control of controls) {
-        const line = lines.find(
-          ([first]) =>
-            first !== undefined && Math.abs(first.middle - control.middle) < 4,
-        );
-        if (line === undefined) lines.push([control]);
-        else line.push(control);
-      }
-      // The bar's own padding is where the focus ring of a control at its
-      // edge is drawn; its controls run from one side of that to the other.
-      const padding = Number.parseFloat(getComputedStyle(clip).paddingLeft);
-      return {
-        start: shown.left + padding,
-        end: shown.right - padding,
-        lines: lines.map((line) => line.toSorted((a, b) => a.left - b.left)),
-      };
-    });
-
-    expect(drawn.lines.length).toBeGreaterThan(1);
-    for (const [index, line] of drawn.lines.entries()) {
-      const names = line.map((control) => control.name).join(', ');
-      const first = line[0];
-      const last = line.at(-1);
-      if (first === undefined || last === undefined) continue;
-      // The line begins at the bar's edge, with a control and not a rule.
-      expect(first.left, names).toBeCloseTo(drawn.start, 0);
-      // Every rule seen has a control on each side of it, on its own line.
-      for (const { rule, name } of line) {
-        if (rule === undefined) continue;
-        expect(
-          line.some((control) => control.right <= rule.left + 0.5),
-          `a control before the rule at "${name}"`,
-        ).toBe(true);
-        expect(
-          line.some((control) => control.left >= rule.right - 0.5),
-          `a control after the rule at "${name}"`,
-        ).toBe(true);
-      }
-      // And the line is full: the control that begins the next one, with the
-      // space before it, would not have fitted at the end of this one.
-      const next = drawn.lines[index + 1]?.[0];
-      if (next !== undefined) {
-        expect(
-          last.right + 12 + (next.right - next.left),
-          `"${next.name}" after "${last.name}"`,
-        ).toBeGreaterThan(drawn.end);
-      }
-    }
-  });
-}

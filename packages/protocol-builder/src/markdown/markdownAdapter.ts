@@ -1,12 +1,16 @@
 import markdown from 'remark-parse';
 import { unified } from 'unified';
 
+import type {
+  RichTextAssetBlockAttributes,
+  RichTextAssetBlockContent,
+} from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import {
-  ASSET_BLOCK_ALIGNMENTS,
-  ASSET_BLOCK_DEFAULTS,
-  ASSET_BLOCK_SIZES,
   assetBlockMarkdown,
+  assetBlockSettings,
   escapeMarkdownText,
+  isAssetBlockAlignment,
+  isAssetBlockSize,
   readAssetBlockUrl,
 } from '@codaco/protocol-validation';
 
@@ -228,7 +232,7 @@ const paragraphFromInline = (content: RichTextContent[]): RichTextContent =>
   content.length > 0 ? { type: 'paragraph', content } : { type: 'paragraph' };
 
 /** The editor's node for a file shown as a block (fresco-ui's). */
-const ASSET_BLOCK = 'assetBlock';
+const ASSET_BLOCK = 'assetBlock' satisfies RichTextAssetBlockContent['type'];
 
 type BlockParseOptions = {
   /** Whether a markdown image naming a file of the protocol is a block. */
@@ -243,20 +247,18 @@ type BlockParseOptions = {
  */
 const assetBlockFromImage = (
   node: MarkdownNode,
-): RichTextContent | undefined => {
+): RichTextAssetBlockContent | undefined => {
   if (node.type !== 'image' || typeof node.url !== 'string') return undefined;
   const reading = readAssetBlockUrl(node.url);
   if (reading === undefined) return undefined;
-  const { assetId, size, align, autoplay, loop } = reading.block;
+  const { size, ...settings } = assetBlockSettings(reading.block);
   return {
     type: ASSET_BLOCK,
     attrs: {
-      assetId,
+      assetId: reading.block.assetId,
       description: node.alt ?? '',
       size: size ?? null,
-      align: align ?? ASSET_BLOCK_DEFAULTS.align,
-      autoplay: autoplay ?? ASSET_BLOCK_DEFAULTS.autoplay,
-      loop: loop ?? ASSET_BLOCK_DEFAULTS.loop,
+      ...settings,
     },
   };
 };
@@ -418,17 +420,26 @@ const inlineDocumentFromMarkdown = (
   };
 };
 
-export const markdownToRichTextContent = (
-  value: string | null | undefined,
-  inline = false,
+type MarkdownReadOptions = Readonly<{
+  /** Whether the text is one line, read as a single paragraph. */
+  inline?: boolean;
   /** Whether a line (`inline`) keeps its links. A document always does. */
-  links = false,
+  links?: boolean;
   /**
    * Whether a document's images that name a file of the protocol are read as
    * blocks, for a field declared to hold them. Elsewhere, and in a line, an
-   * image is its description, as before.
+   * image is its description.
    */
-  assetBlocks = false,
+  assetBlocks?: boolean;
+}>;
+
+export const markdownToRichTextContent = (
+  value: string | null | undefined,
+  {
+    inline = false,
+    links = false,
+    assetBlocks = false,
+  }: MarkdownReadOptions = {},
 ): RichTextContent => {
   if (!value || !/\S/.test(value)) {
     return cloneEmptyDocument();
@@ -745,22 +756,21 @@ const serializeListItem = (
   return item;
 };
 
-const isOneOf = <Value extends string>(
-  values: readonly Value[],
-  value: unknown,
-): value is Value => values.some((candidate) => candidate === value);
-
-// A block that names no file shows nothing and is written as nothing.
+// A block that names no file shows nothing and is written as nothing. The
+// node is read as the editor's (`RichTextAssetBlockAttributes`), each
+// setting checked, since a value saved by hand may hold anything.
 const serializeAssetBlock = (node: RichTextContent): string => {
-  const { assetId, description, size, align, autoplay, loop } =
-    node.attrs ?? {};
+  const attributes: Partial<
+    Record<keyof RichTextAssetBlockAttributes, unknown>
+  > = node.attrs ?? {};
+  const { assetId, description, size, align, autoplay, loop } = attributes;
   if (typeof assetId !== 'string' || assetId === '') return '';
   return assetBlockMarkdown({
     assetId,
     ...(typeof description === 'string' &&
       description.trim() !== '' && { description }),
-    ...(isOneOf(ASSET_BLOCK_SIZES, size) && { size }),
-    ...(isOneOf(ASSET_BLOCK_ALIGNMENTS, align) && { align }),
+    ...(isAssetBlockSize(size) && { size }),
+    ...(isAssetBlockAlignment(align) && { align }),
     ...(autoplay === false && { autoplay }),
     ...(loop === false && { loop }),
   });

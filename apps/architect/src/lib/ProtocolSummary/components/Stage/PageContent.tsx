@@ -3,8 +3,12 @@ import { type ComponentProps, useContext } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { MarkdownBlockImages } from '@codaco/fresco-ui/RenderMarkdown';
+import { useTokenPillLanguage } from '@codaco/fresco-ui/TokenPill';
+import { assetBlockDescription } from '@codaco/protocol-builder/fields/assetBlocks/assetBlockDescription';
 import {
-  isAssetBlockKind,
+  assetBlockAlignmentShows,
+  assetBlockFile,
+  assetBlockSettings,
   isAssetBlockUrl,
   type LocalizedString,
   readAssetBlockUrl,
@@ -15,7 +19,7 @@ import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 import DualLink from '../DualLink';
 import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
-import { SummaryMarkdown } from '../SummaryText';
+import { SummaryMarkdown, useTranslationLanguage } from '../SummaryText';
 import SectionFrame from './SectionFrame';
 
 const messages = defineMessages({
@@ -112,12 +116,6 @@ const SIZE_MESSAGES = {
   large: messages.sizeLarge,
 } as const;
 
-// A value the text shows inside a description is held, where the summary
-// draws text that shows values, by a private-use character.
-const PRIVATE_USE = /[-\u{F0000}-\u{FFFFD}\u{100000}-\u{10FFFD}]/gu;
-
-type AssetData = { name?: string; type?: string };
-
 /**
  * A file placed in a page's text, where the summary prints that text: which
  * file it is, linked to its entry among the protocol's resources, where its
@@ -128,58 +126,59 @@ const PageContentFile = ({
   alt,
 }: ComponentProps<MarkdownBlockImages['Block']>) => {
   const intl = useAppIntl();
+  // The file is described in the summary's own words, inside a translation
+  // in its own language; the description the block gives the file is that
+  // translation's text.
+  const interfaceLanguage = useTokenPillLanguage();
+  const translationLanguage = useTranslationLanguage();
   const { protocol } = useContext(SummaryContext);
   const block = readAssetBlockUrl(url)?.block;
-  // Looked up by the id as written: an id may hold a dot or a bracket, which
-  // a path would read as a way into the entry.
-  const manifest: Record<string, AssetData | undefined> =
-    protocol.assetManifest ?? {};
-  const data =
-    block !== undefined && Object.hasOwn(manifest, block.assetId)
-      ? manifest[block.assetId]
-      : undefined;
+  const file =
+    block === undefined
+      ? undefined
+      : assetBlockFile(protocol.assetManifest, block.assetId);
 
-  if (
-    block === undefined ||
-    data === undefined ||
-    !isAssetBlockKind(data.type)
-  ) {
+  if (block === undefined || file === undefined) {
     return (
-      <div className="my-2 italic">
+      <div {...interfaceLanguage} className="my-2 italic">
         {intl.formatMessage(messages.fileNotFound)}
       </div>
     );
   }
 
-  const description = alt.replace(PRIVATE_USE, '').trim();
-  const plays = data.type !== 'image';
-  const autoplay = block.autoplay !== false;
-  const loop = block.loop !== false;
-  // An image or video with no size is as wide as the page, so it has nowhere
-  // else to sit; an audio player always has room around it.
+  const description = assetBlockDescription(alt);
+  const plays = file.kind !== 'image';
+  const { autoplay, loop } = assetBlockSettings(block);
   const placed =
     block.align !== undefined &&
-    (data.type === 'audio' || block.size !== undefined);
+    assetBlockAlignmentShows(file.kind, block.size);
 
   return (
-    <div data-asset-block={data.type} className="my-2">
+    <div {...interfaceLanguage} data-asset-block={file.kind} className="my-2">
       <MiniTable
         rotated
         rows={[
           [
             intl.formatMessage(summaryMessages.type),
-            formatAssetType(data.type, intl),
+            formatAssetType(file.kind, intl),
           ],
           [
             intl.formatMessage(summaryMessages.name),
             <DualLink key="name" to={`#asset-${block.assetId}`}>
-              <bdi>{data.name}</bdi>
+              <bdi>{file.name}</bdi>
             </DualLink>,
           ],
           ...(description === ''
             ? []
-            : [[intl.formatMessage(messages.description), description]]),
-          ...(block.size === undefined || data.type === 'audio'
+            : [
+                [
+                  intl.formatMessage(messages.description),
+                  <span key="description" {...translationLanguage}>
+                    {description}
+                  </span>,
+                ],
+              ]),
+          ...(block.size === undefined || file.kind === 'audio'
             ? []
             : [
                 [

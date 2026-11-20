@@ -8,8 +8,9 @@ import {
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { PHOTO_ASSET, PHOTO_FILE } from '../fixtures/information-page.js';
 import { emptyProtocol } from '../fixtures/seed.js';
-import { readProtocolJson } from '../helpers/read-store.js';
+import { informationContent, readProtocolJson } from '../helpers/read-store.js';
 
 /**
  * The Languages page (`/protocol/localization`), which manages the protocol's
@@ -121,11 +122,6 @@ function englishProtocol(): CurrentProtocol {
       ],
     }),
   );
-}
-
-function welcomeContent(protocol: CurrentProtocol) {
-  const stage = protocol.stages[0];
-  return stage?.type === 'Information' ? stage.content : undefined;
 }
 
 /**
@@ -443,13 +439,13 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(page).toHaveURL(/\/protocol\/localization$/);
   await expect(openTable).toBeFocused();
   const translated = await readProtocolJson(page, (protocol) =>
-    Object.hasOwn(welcomeContent(protocol) ?? {}, 'fr'),
+    Object.hasOwn(informationContent(protocol.stages[0]) ?? {}, 'fr'),
   );
   expect(translated.stages[0]?.label).toEqual({
     en: STAGE_NAME,
     fr: 'Bienvenue',
   });
-  expect(welcomeContent(translated)).toEqual({
+  expect(informationContent(translated.stages[0])).toEqual({
     en: WELCOME_TEXT_EN,
     fr: 'Merci de votre participation.\n\nCela prend dix minutes.',
   });
@@ -737,3 +733,63 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
   await expect(editor.getByLabel('If known', { exact: true })).toBeVisible();
   await toolbarClearsText();
 });
+
+// A page that is nothing but a file placed in it has no words of its own to
+// translate, so its cells in the table are only read. They still say what the
+// page shows: the file, by its description. With values among the page's
+// settings, a cell is drawn as text that shows them, which must say the same.
+for (const withValues of [false, true]) {
+  test(`names the file in the translation table for a page that is only a file${withValues ? ', with values set for the page' : ''}`, async ({
+    architectPage: page,
+    seed,
+  }) => {
+    const block = '![A photo](asset:photo-asset?size=medium)';
+    await seed(
+      CurrentProtocolSchema.parse(
+        withInterfaceText({
+          ...emptyProtocol({ defaultLocale: 'en', locales: ['en', 'fr'] }),
+          assetManifest: PHOTO_ASSET,
+          codebook: withValues
+            ? {
+                ego: {
+                  variables: {
+                    firstName: { name: 'first_name', type: 'text' },
+                  },
+                },
+              }
+            : {},
+          stages: [
+            {
+              id: 'welcome',
+              type: 'Information',
+              label: { en: STAGE_NAME, fr: 'Bienvenue' },
+              content: { en: block, fr: block },
+              ...(withValues
+                ? { dynamicValues: { name: { path: 'ego.firstName' } } }
+                : {}),
+            },
+            ...emptyProtocol({ defaultLocale: 'en', locales: ['en', 'fr'] })
+              .stages,
+          ],
+        }),
+      ),
+      { assets: PHOTO_FILE },
+    );
+    await gotoProtocol(page);
+    await page.goto('/protocol/localization?table=open');
+    await expect(translationTableDialog(page)).toBeVisible();
+
+    for (const language of ['English', 'French']) {
+      const cell = translationTable(page)
+        .getByRole('cell')
+        .filter({
+          has: page.getByRole('button', {
+            name: new RegExp(`^Stage 1 .*Content ${language}$`),
+          }),
+        });
+      await expect(cell).toHaveCount(1);
+      await expect(cell.locator('[data-asset-block]')).toHaveCount(1);
+      await expect(cell.locator('[data-asset-block]')).toHaveText(/A photo/);
+    }
+  });
+}

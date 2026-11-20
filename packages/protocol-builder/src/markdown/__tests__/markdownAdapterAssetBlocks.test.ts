@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { assetBlocksInMarkdown } from '@codaco/protocol-validation';
+import { assetBlockAttributes } from '@codaco/fresco-ui/testing/assetBlock';
+import {
+  ASSET_BLOCK_ALIGNMENTS,
+  ASSET_BLOCK_SIZES,
+  assetBlocksInMarkdown,
+} from '@codaco/protocol-validation';
 
 import {
   type RichTextContent,
@@ -9,23 +14,17 @@ import {
 } from '../markdownAdapter.ts';
 
 const read = (value: string) =>
-  markdownToRichTextContent(value, false, false, true);
+  markdownToRichTextContent(value, { assetBlocks: true });
 
 const write = (content: RichTextContent) => richTextContentToMarkdown(content);
 
 const roundTrip = (value: string) => write(read(value));
 
+// Settings as loose as a saved value may hold, so a test can hand the
+// writer one the editor could not have set.
 const blockNode = (attrs: Record<string, unknown>): RichTextContent => ({
   type: 'assetBlock',
-  attrs: {
-    assetId: 'a1',
-    description: '',
-    size: null,
-    align: 'center',
-    autoplay: true,
-    loop: true,
-    ...attrs,
-  },
+  attrs: { ...assetBlockAttributes(), ...attrs },
 });
 
 const paragraph = (text?: string): RichTextContent =>
@@ -146,7 +145,7 @@ describe('where an asset image is not a block', () => {
     const content = markdownToRichTextContent('![A map](asset:a1)');
     expect(JSON.stringify(content)).not.toContain('assetBlock');
     expect(content).toEqual(
-      markdownToRichTextContent('![A map](asset:a1)', false, false, false),
+      markdownToRichTextContent('![A map](asset:a1)', { assetBlocks: false }),
     );
     expect(content.content?.[0]).toEqual(paragraph('A map'));
   });
@@ -155,21 +154,18 @@ describe('where an asset image is not a block', () => {
     ['inline', true, false],
     ['inline with links', true, true],
   ])('is never one in a line (%s)', (_kind, inline, links) => {
-    const content = markdownToRichTextContent(
-      'See ![A map](asset:a1) here',
+    const content = markdownToRichTextContent('See ![A map](asset:a1) here', {
       inline,
       links,
-      true,
-    );
+      assetBlocks: true,
+    });
     expect(JSON.stringify(content)).not.toContain('assetBlock');
   });
 
   it('is unchanged for an image that does not name a file of the protocol', () => {
     const withBlocks = markdownToRichTextContent(
       'Text ![Logo](https://example.org/logo.png) more',
-      false,
-      false,
-      true,
+      { assetBlocks: true },
     );
     const without = markdownToRichTextContent(
       'Text ![Logo](https://example.org/logo.png) more',
@@ -240,20 +236,17 @@ describe('writing a block as markdown', () => {
 });
 
 describe('a block through markdown and back', () => {
-  const sizes = [null, 'small', 'medium', 'large'] as const;
-  const aligns = ['start', 'center', 'end'] as const;
+  // Every setting a block can be given, so a new size or position is
+  // covered as soon as it exists.
+  const sizes = [null, ...ASSET_BLOCK_SIZES];
   const flags = [true, false] as const;
   const combinations = sizes.flatMap((size) =>
-    aligns.flatMap((align) =>
+    ASSET_BLOCK_ALIGNMENTS.flatMap((align) =>
       flags.flatMap((autoplay) =>
         flags.map((loop) => ({ size, align, autoplay, loop })),
       ),
     ),
   );
-
-  it('covers every combination of settings', () => {
-    expect(combinations).toHaveLength(4 * 3 * 2 * 2);
-  });
 
   it.each(combinations)('returns the same block for %j', (settings) => {
     const node = blockNode({ ...settings, description: 'A map' });

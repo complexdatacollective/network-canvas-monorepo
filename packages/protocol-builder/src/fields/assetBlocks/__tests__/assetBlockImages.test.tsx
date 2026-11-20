@@ -4,16 +4,16 @@ import { describe, expect, it } from 'vitest';
 import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import type { LocaleTag } from '@codaco/protocol-validation';
 
-import type { ProtocolLocalization } from '../../localization/localizedText.ts';
-import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
-import { createAssetBlockImages } from '../assetBlocks.tsx';
+import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
+import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import {
   type DynamicMessageSite,
   DynamicMessageSummary,
-} from '../DynamicTextField.tsx';
+} from '../../DynamicTextField.tsx';
+import { createAssetBlockImages } from '../assetBlockImages.tsx';
+import { messages } from '../assetBlockMessages.ts';
 
-const UNUSABLE =
-  'This block’s resource is not in this protocol, or is not something a page can show.';
+const UNUSABLE = messages.unusable.defaultMessage;
 
 const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 const LOCALE: LocaleTag = 'en';
@@ -94,6 +94,7 @@ describe('a message summary holding a value and a block', () => {
           <DynamicMessageSummary
             message={message}
             markdown
+            multiline
             locale={LOCALE}
             site={SITE}
             blockMarkdown={{
@@ -124,6 +125,15 @@ describe('a message summary holding a value and a block', () => {
     expect(summary).toHaveTextContent(UNUSABLE);
     expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
     expect(summary.textContent).not.toContain('asset:');
+  });
+
+  it('draws the block of a text that holds nothing else', () => {
+    const { getByTestId } = renderSummary('![A map](asset:a1)', images);
+    const summary = getByTestId('summary');
+
+    expect(
+      summary.querySelector('[data-asset-block="image"]'),
+    ).toHaveTextContent('image: A map');
   });
 
   it('draws no block when the host gives none', () => {

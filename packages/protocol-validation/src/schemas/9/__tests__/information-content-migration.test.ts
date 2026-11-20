@@ -204,6 +204,66 @@ describe('combineInformationContent', () => {
       });
     });
 
+    // The interview reads a page's raw HTML and its markdown as one HTML
+    // document, where an element left open holds what follows, and a link
+    // or emphasis left open is opened again in every block below. Each item
+    // is ended where the parser read it as it read alone; the interview
+    // package checks the pages these give are drawn as the items were.
+    describe('raw HTML', () => {
+      const page = (...items: string[]): unknown =>
+        combined({
+          items: items.map((content, index) => text(`t${index}`, content)),
+        }).content;
+
+      it.each([
+        [
+          'a link, after its last words',
+          '<a href="https://example.com">First',
+          '<a href="https://example.com">First</a>',
+        ],
+        [
+          'bold and italics, innermost first',
+          'Read <strong>this <em>now',
+          'Read <strong>this <em>now</em></strong>',
+        ],
+        ['a heading, in its own HTML', '<h2>A heading', '<h2>A heading</h2>'],
+        [
+          'a list, in its own HTML',
+          '<ul><li>A raw list',
+          '<ul><li>A raw list</li></ul>',
+        ],
+        ['a paragraph, in its own HTML', '<p>Raw', '<p>Raw</p>'],
+        [
+          'emphasis the blocks below were drawn inside, after them',
+          '<em>First\n\nand second',
+          '<em>First\n\nand second\n\n</em>',
+        ],
+        [
+          'a raw block the markdown below was drawn inside, after it',
+          '<div>\n\nInside',
+          '<div>\n\nInside\n\n</div>',
+        ],
+        [
+          'several ends after the item, behind an empty comment that makes them HTML',
+          '<strong>a <em>b\n\nc',
+          '<strong>a <em>b\n\nc\n\n<!----></em></strong>',
+        ],
+      ])('ends %s', (_what, open, ended) => {
+        expect(page(open, 'Second')).toBe(`${ended}\n\nSecond`);
+      });
+
+      it.each([
+        ['an element its paragraph ends', '<span>Inline'],
+        [
+          'what it closes itself',
+          'Some <em>words</em> and <a href="x">a link</a>',
+        ],
+        ['a void element', 'A<br>break'],
+      ])('leaves %s as written', (_what, written) => {
+        expect(page(written, 'Second')).toBe(`${written}\n\nSecond`);
+      });
+    });
+
     it('drops the spaces an item opens with, which below a list would make it part of the last item', () => {
       const { content } = combined({
         title: 'T',

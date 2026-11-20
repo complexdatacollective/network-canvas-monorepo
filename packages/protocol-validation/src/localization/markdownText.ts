@@ -71,3 +71,15 @@ export const escapeMarkdownText = (value: string): string =>
     .replace(TILDES, (run) =>
       strikesThrough(value) ? run.replaceAll('~', '\\~') : run,
     );
+
+/**
+ * Text already escaped as markdown, as a top-level heading. A heading is one
+ * line, and a run of # that ends it would close the heading rather than show,
+ * so it is escaped.
+ */
+export const headingLine = (escaped: string): string =>
+  `# ${escaped.replace(/(\s)(#+)$/, '$1\\$2')}`;
+
+/** Plain text as a top-level markdown heading that shows it as written. */
+export const headingMarkdown = (text: string): string =>
+  headingLine(escapeMarkdownText(text.trim().replace(/\s+/g, ' ')));

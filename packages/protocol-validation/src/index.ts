@@ -112,21 +112,33 @@ export {
 export {
   ASSET_BLOCK_ALIGNMENTS,
   ASSET_BLOCK_DEFAULTS,
+  ASSET_BLOCK_KINDS,
   ASSET_BLOCK_SIZES,
   type AssetBlock,
   type AssetBlockAlignment,
+  type AssetBlockAttributes,
   type AssetBlockKind,
   type AssetBlockSize,
   assetBlockMarkdown,
   assetBlocksInMarkdown,
   assetBlocksInMessage,
   assetBlockUrl,
+  isAssetBlockAlignment,
   isAssetBlockKind,
+  isAssetBlockSize,
   isAssetBlockUrl,
   readAssetBlockUrl,
 } from './localization/assetBlock.ts';
-export { escapeMarkdownText } from './localization/markdownText.ts';
-export { headingMarkdown } from './schemas/9/information-content-migration.ts';
+export {
+  assetBlockAlignmentShows,
+  assetBlockFile,
+  assetBlockSettings,
+  assetInManifest,
+} from './localization/assetBlockDisplay.ts';
+export {
+  escapeMarkdownText,
+  headingMarkdown,
+} from './localization/markdownText.ts';
 export {
   escapeMessageText,
   messageText,

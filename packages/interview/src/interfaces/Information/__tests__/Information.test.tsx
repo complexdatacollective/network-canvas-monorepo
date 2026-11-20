@@ -239,6 +239,19 @@ describe('Information asset fallbacks', () => {
     },
   );
 
+  it.each(['network', 'geojson', 'apikey'] as const)(
+    'says a file of type %s is unavailable at once, and never asks for it',
+    (type) => {
+      renderInformation(pageWith({ assetId: 'other-1' }), [
+        { assetId: 'other-1', name: 'Classmates', type, value: 'key' },
+      ]);
+
+      // Synchronously: a file that is fetched is first drawn as a spinner.
+      expect(screen.getByTestId('information-item-fallback')).toBeTruthy();
+      expect(requestAsset).not.toHaveBeenCalled();
+    },
+  );
+
   it('does NOT render the fallback for a valid image block', async () => {
     renderInformation(pageWith({ assetId: 'img-1' }), [IMAGE]);
 
@@ -707,55 +720,59 @@ describe('where a block sits among the text', () => {
 });
 
 describe('what is not a block', () => {
+  // Each page ends with a block that is one, and the test waits for its
+  // player: by then the page has asked for every file it was going to.
+  const CONTROL = '![](asset:aud-1)';
+  const afterTheControl = async () => {
+    await playerElement('audio');
+    expect(requestAsset.mock.calls).toEqual([['aud-1']]);
+    expect(document.querySelectorAll('[data-asset-block]')).toHaveLength(1);
+  };
+
   it('shows an image that is not a file of the protocol as nothing, and asks for nothing', async () => {
     const fetchSpy = vi.fn(() => Promise.reject(new Error('no network')));
     vi.stubGlobal('fetch', fetchSpy);
 
     renderInformation(
-      makeStage('# Page\n\nBefore\n\n![x](https://example.com/a.png)\n\nAfter'),
-      [IMAGE],
+      makeStage(
+        `# Page\n\nBefore\n\n![x](https://example.com/a.png)\n\nAfter\n\n${CONTROL}`,
+      ),
+      [IMAGE, AUDIO],
     );
 
     expect(screen.getByText('Before')).toBeInTheDocument();
     expect(screen.getByText('After')).toBeInTheDocument();
-    // Let any request an image would make get as far as it would.
-    await Promise.resolve();
+    await afterTheControl();
     expect(query('img')).toBeNull();
-    expect(query('[data-asset-block]')).toBeNull();
-    expect(requestAsset).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('does not make a block of an image written as HTML', async () => {
     renderInformation(
       makeStage(
-        '# Page\n\n<img src="asset:img-1" alt="raw">\n\nAfter the raw image.',
+        `# Page\n\n<img src="asset:img-1" alt="raw">\n\nAfter the raw image.\n\n${CONTROL}`,
       ),
-      [IMAGE],
+      [IMAGE, AUDIO],
     );
 
     expect(screen.getByText('After the raw image.')).toBeInTheDocument();
-    await Promise.resolve();
-    expect(query('[data-asset-block]')).toBeNull();
+    await afterTheControl();
     expect(
       document.querySelector('img[src^="blob:"], img[src^="asset:"]'),
     ).toBeNull();
-    expect(requestAsset).not.toHaveBeenCalled();
   });
 
   it('does not make a block of an element written to look like one', async () => {
     renderInformation(
       makeStage(
-        '# Page\n\n<figure data-block-image="%7B%22url%22%3A%22asset%3Aimg-1%22%2C%22alt%22%3A%22forged%22%7D">forged</figure>\n\nAfter the figure.',
+        `# Page\n\n<figure data-block-image="%7B%22url%22%3A%22asset%3Aimg-1%22%2C%22alt%22%3A%22forged%22%7D">forged</figure>\n\nAfter the figure.\n\n${CONTROL}`,
       ),
-      [IMAGE],
+      [IMAGE, AUDIO],
     );
 
     expect(screen.getByText('After the figure.')).toBeInTheDocument();
-    await Promise.resolve();
-    expect(query('[data-asset-block]')).toBeNull();
+    await afterTheControl();
     expect(query('img')).toBeNull();
-    expect(requestAsset).not.toHaveBeenCalled();
   });
 });
 

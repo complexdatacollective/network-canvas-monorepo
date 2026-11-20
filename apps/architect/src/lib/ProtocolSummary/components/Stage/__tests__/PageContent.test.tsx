@@ -5,13 +5,15 @@ import { describe, expect, it } from 'vitest';
 
 import type {
   CurrentProtocol,
+  LocaleTag,
   LocalizedString,
 } from '@codaco/protocol-validation';
+import { testProtocol } from '~/__tests__/helpers';
 
 import SummaryContext from '../../SummaryContext';
 import Stage from '../Stage';
 
-const manifest = {
+const manifest: CurrentProtocol['assetManifest'] = {
   map: { id: 'map', type: 'image', name: 'map.png', source: 'map.png' },
   song: { id: 'song', type: 'audio', name: 'song.mp3', source: 'song.mp3' },
   clip: { id: 'clip', type: 'video', name: 'clip.mp4', source: 'clip.mp4' },
@@ -23,15 +25,12 @@ const manifest = {
   },
 };
 
-const protocolIn = (locales: string[]) =>
-  ({
-    schemaVersion: 9,
+const protocolIn = (locales: LocaleTag[]) =>
+  testProtocol({
     name: 'Summary protocol',
     localization: { defaultLocale: locales[0] ?? 'en', locales },
-    codebook: { node: {}, edge: {}, ego: {} },
     assetManifest: manifest,
-    stages: [],
-  }) as unknown as CurrentProtocol;
+  });
 
 const render = (ui: ReactElement) =>
   renderBare(ui, {
@@ -45,7 +44,7 @@ const render = (ui: ReactElement) =>
 const renderStage = (
   type: string,
   content: LocalizedString,
-  locales: string[] = ['en'],
+  locales: LocaleTag[] = ['en'],
 ) => {
   const protocol = protocolIn(locales);
   return render(
@@ -263,5 +262,76 @@ describe('Protocol Summary page content', () => {
     expect(document.querySelector('[data-asset-block]')).toBeNull();
     // A finish stage prints its closing text through its own section.
     expect(screen.getByText('Thank you')).toBeInTheDocument();
+  });
+});
+
+describe('a file printed inside text of another language', () => {
+  // The `lang` and `dir` that apply to an element: its own, or the nearest
+  // ancestor's.
+  const languageOf = (element: Element) => ({
+    lang: element.closest('[lang]')?.getAttribute('lang'),
+    dir: element.closest('[dir]')?.getAttribute('dir'),
+  });
+
+  const descriptionIn = (block: Element, text: string) =>
+    within(block as HTMLElement).getByText(text);
+
+  it('is described in the summary’s language, its description in the text’s', () => {
+    renderStage(
+      'Information',
+      { ar: '![خريطة المنطقة](asset:map?size=medium)' },
+      ['ar'],
+    );
+
+    const block = only('image');
+    // The summary's own words: the interface's language, English here.
+    expect(
+      languageOf(within(block as HTMLElement).getByText('Medium')),
+    ).toEqual({ lang: 'en', dir: 'ltr' });
+    expect(languageOf(descriptionIn(block, 'خريطة المنطقة'))).toEqual({
+      lang: 'ar',
+      dir: 'rtl',
+    });
+  });
+
+  it('gives each translation’s description that translation’s language', () => {
+    renderStage(
+      'Information',
+      {
+        en: '![A map](asset:map)',
+        ar: '![خريطة](asset:map)',
+      },
+      ['en', 'ar'],
+    );
+
+    const blockSaying = (text: string) => {
+      const found = blocks('image').find((block) =>
+        block.textContent?.includes(text),
+      );
+      if (found === undefined) throw new Error(`No block says ${text}`);
+      return found;
+    };
+    expect(blocks('image')).toHaveLength(2);
+    expect(languageOf(descriptionIn(blockSaying('A map'), 'A map'))).toEqual({
+      lang: 'en',
+      dir: 'ltr',
+    });
+    const arabic = blockSaying('خريطة');
+    expect(languageOf(descriptionIn(arabic, 'خريطة'))).toEqual({
+      lang: 'ar',
+      dir: 'rtl',
+    });
+    expect(
+      languageOf(within(arabic as HTMLElement).getByText('Image')),
+    ).toEqual({ lang: 'en', dir: 'ltr' });
+  });
+
+  it('says a file it cannot find in the summary’s language', () => {
+    renderStage('Information', { ar: '![](asset:gone)' }, ['ar']);
+
+    expect(languageOf(screen.getByText(/is not among this protocol/))).toEqual({
+      lang: 'en',
+      dir: 'ltr',
+    });
   });
 });

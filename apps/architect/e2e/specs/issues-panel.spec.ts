@@ -35,7 +35,7 @@ test('names the offending field on the first open of the issues panel', async ({
 
   // Clearing Information's required page content is the smallest way to make
   // the stage fail its own validation.
-  await architectPage.getByRole('textbox', { name: 'Rich Text' }).fill('');
+  await new StageEditor(architectPage).richText().fill('');
 
   // A failed submit opens the panel by itself. Nothing is edited afterwards, so
   // this is the first — and for most researchers, only — pass over these rows.
@@ -78,7 +78,7 @@ test('sends focus to the control an issue row names', async ({
     defaultLanguageText(protocol, informationStage.label),
   );
 
-  const heading = architectPage.getByRole('textbox', { name: 'Rich Text' });
+  const heading = new StageEditor(architectPage).richText();
   await heading.fill('');
   await architectPage.getByRole('button', { name: 'Finished Editing' }).click();
 

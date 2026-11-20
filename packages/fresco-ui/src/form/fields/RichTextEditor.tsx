@@ -1,8 +1,6 @@
 'use client';
 
-import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
-import { Toolbar } from '@base-ui/react/toolbar';
 import {
   type AnyExtension,
   createNodeFromContent,
@@ -26,7 +24,7 @@ import {
   Slice,
 } from '@tiptap/pm/model';
 import { Plugin, PluginKey, Selection } from '@tiptap/pm/state';
-import type { EditorView } from '@tiptap/pm/view';
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
 import {
   EditorContent,
   type JSONContent,
@@ -38,7 +36,6 @@ import { isEqual } from 'es-toolkit';
 import {
   Bold,
   Check,
-  ChevronDown,
   Image,
   Italic,
   Link,
@@ -56,13 +53,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import {
-  createContext,
-  Fragment as ReactFragment,
-  isValidElement,
-  type ReactElement,
-  type ReactNode,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -74,20 +65,10 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppDirection, useAppIntl } from '@codaco/app-i18n/react';
 import { linesOf } from '@codaco/shared-consts';
 
-import { buttonVariants, iconButtonVariants, Button } from '../../Button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from '../../DropdownMenu';
+import { buttonVariants, Button } from '../../Button';
 import Surface from '../../layout/Surface';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
-import {
-  presentationalTextProps,
-  presentationalTextValue,
-} from '../../PresentationalText';
+import { presentationalTextValue } from '../../PresentationalText';
 import {
   controlVariants,
   inputControlVariants,
@@ -112,16 +93,22 @@ import { textEntryDirection } from '../textEntryDirection';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
 import {
+  AssetBlockFieldContext,
   AssetBlockNode,
-  AssetBlocksActiveContext,
-  AssetBlocksContext,
-  AssetBlocksEditableContext,
   insertAssetBlock,
   type RichTextAssetBlockAttributes,
+  type RichTextAssetBlockContent,
   type RichTextAssetBlockKind,
   type RichTextAssetBlocks,
   type RichTextAssetBlockViewProps,
 } from './richText/assetBlockNode';
+import {
+  EditorToolbar,
+  ToolbarButton,
+  toolbarButtonStyles,
+  type ToolbarGroup,
+  ToolbarToggleButton,
+} from './richText/EditorToolbar';
 import {
   EMOJI_MENU_LIMIT,
   type EmojiSuggestion,
@@ -137,6 +124,7 @@ import {
   type RichTextInsertMenu,
   type RichTextInsertMenuItem,
 } from './richText/InsertMenu';
+import { type HeadingLevel, TextStyleMenu } from './richText/TextStyleMenu';
 import {
   hasVersionRowBeside,
   NestedEditingContext,
@@ -158,18 +146,6 @@ const messages = defineMessages({
     defaultMessage: 'Shows nothing',
     description:
       'Muted hint shown inside an empty version of a piece of text, such as the version shown when a participant’s name is not known. An empty version is allowed: in that case nothing is shown in its place. The hint is not part of the text.',
-  },
-  textStyleParagraph: {
-    id: 'frescoUi.richTextEditor.textStyleParagraph',
-    defaultMessage: 'Paragraph',
-    description:
-      'Choice in the rich text editor toolbar’s list of text styles, and what the list shows while the line the caret is in is ordinary text rather than a heading.',
-  },
-  textStyleHeading: {
-    id: 'frescoUi.richTextEditor.textStyleHeading',
-    defaultMessage: 'Heading {level}',
-    description:
-      'Choice in the rich text editor toolbar’s list of text styles, and what the list shows while the line the caret is in is a heading. {level} is the heading’s level, a number from 1 (the largest) to 4.',
   },
   linkUrlLabel: {
     id: 'frescoUi.richTextEditor.linkUrlLabel',
@@ -194,55 +170,12 @@ const messages = defineMessages({
   },
 });
 
-/**
- * Whether the toolbar is unavailable because the FIELD is — read-only, or
- * disabled while its form submits — rather than because of where the caret
- * happens to be.
- *
- * The two are different states, and a button says them differently. A live
- * toolbar keeps an unavailable button focusable and marked `aria-disabled`,
- * which is what the ARIA toolbar pattern asks for: a keyboard user can arrow
- * onto Undo and be told there is nothing to undo. A toolbar belonging to a
- * field nobody can edit has nothing to go and read, so its buttons are
- * unavailable the way every other control on the form is — disabled outright,
- * and out of the tab order.
- */
-const FieldUnavailableContext = createContext(false);
-
-function useUnavailableProps() {
-  const unavailable = useContext(FieldUnavailableContext);
-  return unavailable
-    ? ({ 'focusableWhenDisabled': false, 'aria-disabled': true } as const)
-    : {};
-}
-
-const ToolbarToggleButton = (props: Toolbar.Button.Props) => {
-  const unavailable = useUnavailableProps();
-  return <Toolbar.Button {...props} {...unavailable} render={<Toggle />} />;
-};
-
-const ToolbarButton = (props: Toolbar.Button.Props) => {
-  const unavailable = useUnavailableProps();
-  return <Toolbar.Button {...props} {...unavailable} />;
-};
-
 // Get the classes from the typography components
 const paragraphClasses = paragraphVariants();
 const h1Classes = headingVariants({ level: 'h1' });
 const h2Classes = headingVariants({ level: 'h2' });
 const h3Classes = headingVariants({ level: 'h3' });
 const h4Classes = headingVariants({ level: 'h4' });
-
-// Each style as the list of text styles shows it: its name set the way a line
-// of that style is set in the text, so the list shows how large each one is.
-// Without the space a paragraph or heading keeps around it among others.
-const TEXT_STYLE_SAMPLES: Readonly<Record<string, string>> = {
-  paragraph: paragraphVariants({ margin: 'none' }),
-  h1: headingVariants({ level: 'h1', margin: 'none' }),
-  h2: headingVariants({ level: 'h2', margin: 'none' }),
-  h3: headingVariants({ level: 'h3', margin: 'none' }),
-  h4: headingVariants({ level: 'h4', margin: 'none' }),
-};
 
 /**
  * A document that is one paragraph and cannot become two.
@@ -671,13 +604,17 @@ const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
 export type { RichTextInsertMenu, RichTextInsertMenuItem };
 export type {
   RichTextAssetBlockAttributes,
+  RichTextAssetBlockContent,
   RichTextAssetBlockKind,
   RichTextAssetBlocks,
   RichTextAssetBlockViewProps,
 };
 export {
+  ASSET_BLOCK_OUTLINE_OFFSET,
+  ASSET_BLOCK_OUTLINE_WIDTH,
   assetBlockControlsAt,
   assetBlockControlsProps,
+  assetBlockFrameVariants,
 } from './richText/assetBlockNode';
 
 // The toolbar's buttons for putting in a file, one for each kind of file.
@@ -762,7 +699,7 @@ const SingleLineInput = Extension.create({
 });
 
 type ExtensionOptions = {
-  headingLevels: (1 | 2 | 3 | 4)[];
+  headingLevels: HeadingLevel[];
   /**
    * The level of the heading the field sits under, or 0 at the top of a page.
    * The text's own headings are its reader's outline, not the page's: an `h1`
@@ -976,6 +913,45 @@ const createEmojiSuggestions = (hooks: EmojiSuggestionHooks) =>
   });
 
 // Factory function to create custom extensions with typography classes
+const PLACEHOLDER_LANGUAGE = new PluginKey('placeholderLanguage');
+
+/**
+ * The placeholder is the interface's words, drawn by the empty paragraph it
+ * stands in for (`data-placeholder`, through `::before`), in a field whose
+ * region is in the language of the text being written. While the text is
+ * empty, the paragraph says the interface's language, so the placeholder is
+ * read and set as that language; the first letter typed ends it, and what is
+ * typed is in the region's. Its direction is its own (`unicode-bidi:
+ * plaintext` on the placeholder), so the caret stays where the text starts.
+ */
+const createPlaceholderLanguage = (lang: string) =>
+  Extension.create({
+    name: 'placeholderLanguage',
+    addProseMirrorPlugins() {
+      return [
+        new Plugin({
+          key: PLACEHOLDER_LANGUAGE,
+          props: {
+            decorations: ({ doc }) => {
+              const only = doc.firstChild;
+              if (
+                doc.childCount !== 1 ||
+                only === null ||
+                only.type.name !== 'paragraph' ||
+                only.content.size !== 0
+              ) {
+                return DecorationSet.empty;
+              }
+              return DecorationSet.create(doc, [
+                Decoration.node(0, only.nodeSize, { lang }),
+              ]);
+            },
+          },
+        }),
+      ];
+    },
+  });
+
 function createCustomExtensions({
   headingLevels,
   enclosingHeadingDepth,
@@ -1134,6 +1110,7 @@ function createCustomExtensions({
         placeholder,
         showOnlyWhenEditable: !placeholderWhenReadOnly,
       }),
+      createPlaceholderLanguage(interfaceLanguage.lang),
     );
   }
 
@@ -1157,70 +1134,6 @@ const editorContainerVariants = cva({
     editorContainerOwnVariants,
   ],
 });
-
-// The toolbar's bar. It is the element with the toolbar's role, which is what
-// a host that restyles the bar selects (the translation table's cell does).
-const toolbarStyles = cx(
-  'bg-surface-1 text-surface-1-contrast publish-colors order-1 w-full self-stretch border-b border-current/10 px-6 py-2',
-);
-
-// The toolbar is one line of controls that wraps where the field is narrower
-// than they are together: the field clips what overflows it, so a toolbar
-// kept to one line would put its last controls out of reach. A group breaks
-// across lines like any other part of the line, so no line is left short by
-// a group that would not fit whole.
-//
-// Every control is one piece with the space before it, and in that space the
-// first control of a group has a rule. The line starts that much before the
-// bar's edge, where this box cuts it off: the space before the first control
-// of any line is not drawn, and so neither is a rule in it. A line never
-// starts with a rule, or ends with one. The box leaves room for the ring of a
-// focused control (`focus-styles`), which is narrower than the rule is far.
-const toolbarClipStyles = cx('-mx-[5px] overflow-x-clip px-[5px]');
-
-const toolbarLineStyles = cx('-ms-3 flex flex-wrap items-center gap-y-1');
-
-// The group's own element takes no box: its controls are the line's.
-const toolbarGroupStyles = cx('contents');
-
-const toolbarItemStyles = cx('flex items-center');
-
-// As wide as `toolbarLineStyles` starts before the bar's edge.
-const toolbarLeadStyles = cx('flex w-3 shrink-0 justify-center');
-
-const toolbarRuleStyles = cx('h-5 w-px bg-current/20');
-
-const toolbarButtonStyles = iconButtonVariants({
-  size: 'sm',
-  color: 'dynamic',
-  variant: 'text',
-  className:
-    'text-base data-pressed:bg-primary data-pressed:text-primary-contrast [&>.lucide]:h-[1.2em] [&>.lucide]:w-[1.2em] [&>.lucide]:[stroke-width:2.4]',
-});
-
-// The control that says what kind of block the line is, and lists the others.
-// As wide whichever it names, so the controls after it stay where they are.
-const toolbarSelectStyles = buttonVariants({
-  size: 'sm',
-  color: 'dynamic',
-  variant: 'text',
-  textStyle: 'default',
-  className: 'h-10 w-36 gap-1 px-3 text-sm [&>.lucide]:size-4',
-});
-
-/** One group of the toolbar: what it is called, and the controls in it. */
-type ToolbarGroup = Readonly<{
-  key: string;
-  /** Read by a screen reader only, so English like the controls' own names. */
-  label: string;
-  items: readonly ReactNode[];
-  /** The toggle group the group is, where its controls are toggles. */
-  toggles?: ReactElement<Record<string, unknown>>;
-}>;
-
-/** Whether an entry of a group's list is a control, not one left out. */
-const isDrawn = (item: ReactNode): boolean =>
-  item !== false && item !== null && item !== undefined;
 
 const toolbarTokenButtonStyles = buttonVariants({
   size: 'sm',
@@ -1272,6 +1185,7 @@ const editorContentVariants = cva({
     '[&_.tiptap_p.is-editor-empty:first-child::before]:h-0',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:italic',
     '[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+    '[&_.tiptap_p.is-editor-empty:first-child::before]:[unicode-bidi:plaintext]',
   ),
   variants: {
     singleLine: {
@@ -1629,9 +1543,6 @@ export default function RichTextEditorField({
   // these blurs one before it focuses the other. Expanded versions fold back
   // to their pill once it is false.
   const [isActive, setIsActive] = useState(false);
-  // Whether the list of text styles is closing because one was chosen.
-  const textStylePicked = useRef(false);
-  const [isTextStyleOpen, setIsTextStyleOpen] = useState(false);
   const inactiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -1643,6 +1554,15 @@ export default function RichTextEditorField({
   );
   const options = normalizeToolbarOptions(toolbarOptions, singleLine);
   const holdsAssetBlocks = assetBlocks !== undefined && !singleLine;
+  // What a block's view is told of the field around it.
+  const assetBlockField = useMemo(
+    () => ({
+      blocks: assetBlocks ?? null,
+      editable: !disabled && !readOnly,
+      active: isActive,
+    }),
+    [assetBlocks, disabled, readOnly, isActive],
+  );
   // By what they say rather than by identity or order: a host passing a
   // fresh array on every render, or the same placeholders in another order,
   // would otherwise rebuild the editor, and a rebuilt editor starts its undo
@@ -1774,7 +1694,7 @@ export default function RichTextEditorField({
           options.headings.h3 && 3,
           options.headings.h4 && 4,
         ] as const
-      ).filter((level): level is 1 | 2 | 3 | 4 => typeof level === 'number'),
+      ).filter((level): level is HeadingLevel => typeof level === 'number'),
     [
       options.headings.h1,
       options.headings.h2,
@@ -2164,12 +2084,12 @@ export default function RichTextEditorField({
     return values;
   };
 
-  const getActiveHeadingValue = () => {
-    if (editorState.isH1) return ['h1'];
-    if (editorState.isH2) return ['h2'];
-    if (editorState.isH3) return ['h3'];
-    if (editorState.isH4) return ['h4'];
-    return [];
+  const activeHeadingLevel = (): HeadingLevel | undefined => {
+    if (editorState.isH1) return 1;
+    if (editorState.isH2) return 2;
+    if (editorState.isH3) return 3;
+    if (editorState.isH4) return 4;
+    return undefined;
   };
 
   const getActiveListValue = () => {
@@ -2469,94 +2389,27 @@ export default function RichTextEditorField({
       ]
     : [];
 
-  // What kind of block the line is: a paragraph, or a heading of one level.
-  // One of several, so it is chosen from a list that also says which it is
-  // now, rather than from a button for each.
-  const textStyles = [
-    {
-      value: 'paragraph',
-      label: intl.formatMessage(messages.textStyleParagraph),
-    },
-    ...headingLevels.map((level) => ({
-      value: `h${level}`,
-      label: intl.formatMessage(messages.textStyleHeading, { level }),
-    })),
-  ];
-  const textStyle = getActiveHeadingValue()[0] ?? 'paragraph';
   // Nothing in a field that cannot be edited changes its text, and neither
   // does the style of a line inside a version, which is a line of words.
   const textStyleUnavailable = isDisabled || !blocksEditable;
-  const setTextStyle = (style: string) => {
+  const pickTextStyle = (level: HeadingLevel | undefined) => {
     // The editor is asked as well as this render: a list that is closing is
     // still drawn for a moment as it was when it was open, and a choice made
     // in that moment would arrive with what was true then.
-    if (textStyleUnavailable || !editor.isEditable) return;
-    const level = headingLevels.find((each) => `h${each}` === style);
-    // The caret goes back to the text, and the list closes without taking
-    // it for its button.
-    textStylePicked.current = true;
+    if (textStyleUnavailable || !editor.isEditable) return false;
     if (level === undefined) actOn.chain().focus().setParagraph().run();
     else actOn.chain().focus().setHeading({ level }).run();
+    return true;
   };
   const textStyleItems = showHeadings
     ? [
-        <DropdownMenu
+        <TextStyleMenu
           key="textStyle"
-          // Closed with the field, like the other things its toolbar opens:
-          // a list left open over a field that can no longer be edited would
-          // go on offering to change it.
-          open={isTextStyleOpen && !textStyleUnavailable}
-          onOpenChange={setIsTextStyleOpen}
-        >
-          <DropdownMenuTrigger
-            disabled={textStyleUnavailable}
-            render={
-              <ToolbarButton
-                className={toolbarSelectStyles}
-                disabled={textStyleUnavailable}
-              />
-            }
-          >
-            <span className="sr-only" lang="en">
-              {'Text style:'}
-            </span>{' '}
-            <span className="min-w-0 flex-1 truncate text-start">
-              {textStyles.find((style) => style.value === textStyle)?.label}
-            </span>
-            <ChevronDown aria-hidden />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            showArrow={false}
-            sideOffset={4}
-            finalFocus={() => {
-              const picked = textStylePicked.current;
-              textStylePicked.current = false;
-              return !picked;
-            }}
-          >
-            <DropdownMenuRadioGroup
-              value={textStyle}
-              onValueChange={(style: unknown) => {
-                if (typeof style === 'string') setTextStyle(style);
-              }}
-            >
-              {textStyles.map((style) => (
-                <DropdownMenuRadioItem
-                  key={style.value}
-                  value={style.value}
-                  // One choice, made and done with: unlike a set of switches,
-                  // the list has nothing more to offer once it is made.
-                  closeOnClick
-                >
-                  <span className={TEXT_STYLE_SAMPLES[style.value]}>
-                    {style.label}
-                  </span>
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>,
+          levels={headingLevels}
+          active={activeHeadingLevel()}
+          unavailable={textStyleUnavailable}
+          onPick={pickTextStyle}
+        />,
       ]
     : [];
 
@@ -2627,12 +2480,11 @@ export default function RichTextEditorField({
         onOpenChange={setLinkPopoverOpen}
       >
         {/*
-                    The trigger is told as well as the button it renders. A
-                    disclosure works out its own availability, and this one
-                    used to work out that it was available while every one of
-                    its siblings was not: `aria-disabled="false"`, undimmed,
-                    and ready to open on a press.
-                */}
+          The trigger is told as well as the button it renders. A disclosure
+          works out its own availability, and left to itself this one counts
+          as available while every one of its siblings is not:
+          `aria-disabled="false"`, undimmed, and ready to open on a press.
+        */}
         <PopoverTrigger asChild disabled={isDisabled}>
           <ToolbarButton
             className={toolbarButtonStyles}
@@ -2792,7 +2644,9 @@ export default function RichTextEditorField({
           }
         >
           <Plus aria-hidden />
-          <span {...presentationalTextProps(token.label)}>
+          {/* Named as its pill is, in the interface's language: the toolbar
+              sits in the region of the text's own. */}
+          <span {...tokenPillLanguage(token.label, interfaceLanguage)}>
             {presentationalTextValue(token.label)}
           </span>
           {missing && (
@@ -2869,11 +2723,7 @@ export default function RichTextEditorField({
       label: 'Insert a placeholder',
       items: dynamicContentItems,
     },
-  ].flatMap((group) => {
-    const items = group.items.filter(isDrawn);
-    return items.length === 0 ? [] : [{ ...group, items }];
-  });
-  const hasToolbar = toolbarGroups.length > 0;
+  ];
 
   return (
     <div
@@ -2918,16 +2768,12 @@ export default function RichTextEditorField({
       }}
     >
       <NestedEditingContext.Provider value={nestedEditing}>
-        <AssetBlocksContext.Provider value={assetBlocks ?? null}>
-          <AssetBlocksEditableContext.Provider value={!disabled && !readOnly}>
-            <AssetBlocksActiveContext.Provider value={isActive}>
-              <EditorContent
-                editor={editor}
-                className={editorContentVariants({ singleLine })}
-              />
-            </AssetBlocksActiveContext.Provider>
-          </AssetBlocksEditableContext.Provider>
-        </AssetBlocksContext.Provider>
+        <AssetBlockFieldContext.Provider value={assetBlockField}>
+          <EditorContent
+            editor={editor}
+            className={editorContentVariants({ singleLine })}
+          />
+        </AssetBlockFieldContext.Provider>
       </NestedEditingContext.Provider>
       {triggered !== null && (
         // Where the trigger was typed, for the insert menu to open beside.
@@ -3005,45 +2851,7 @@ export default function RichTextEditorField({
             : `${highlighted.emoji} ${highlighted.names[0] ?? ''}`}
         </span>
       )}
-      {hasToolbar && (
-        <FieldUnavailableContext.Provider value={isDisabled}>
-          <Toolbar.Root className={toolbarStyles}>
-            <div className={toolbarClipStyles}>
-              <div className={toolbarLineStyles}>
-                {toolbarGroups.map(({ key, label, items, toggles }) => {
-                  const drawn = items.map((item, index) => (
-                    <span
-                      key={isValidElement(item) ? item.key : index}
-                      className={toolbarItemStyles}
-                    >
-                      <span aria-hidden className={toolbarLeadStyles}>
-                        {index === 0 && <span className={toolbarRuleStyles} />}
-                      </span>
-                      {item}
-                    </span>
-                  ));
-                  // A group of one names nothing its one control does not,
-                  // unless it is what makes that control a toggle.
-                  if (items.length === 1 && toggles === undefined) {
-                    return <ReactFragment key={key}>{drawn}</ReactFragment>;
-                  }
-                  return (
-                    <Toolbar.Group
-                      key={key}
-                      lang="en"
-                      aria-label={label}
-                      className={toolbarGroupStyles}
-                      {...(toggles !== undefined && { render: toggles })}
-                    >
-                      {drawn}
-                    </Toolbar.Group>
-                  );
-                })}
-              </div>
-            </div>
-          </Toolbar.Root>
-        </FieldUnavailableContext.Provider>
-      )}
+      <EditorToolbar groups={toolbarGroups} unavailable={isDisabled} />
     </div>
   );
 }
