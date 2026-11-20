@@ -29,7 +29,6 @@ import {
   fixtureProtocolSections,
   loadFixtureStage,
 } from './protocolFixture.ts';
-import { testObjectId } from './testObjectId.ts';
 
 /** DOM id of the stage form, so a play function can address it. */
 const STAGE_FORM_ID = 'stage-form';
@@ -43,8 +42,8 @@ const COLLABORATOR = {
 export type StageEditorStoryHostProps = Readonly<{
   /**
    * The stage this story opens: a stage of the shared all-interfaces protocol,
-   * by its handle (`'sociogram-1'`, see `FIXTURE_STAGE_TYPES`) or its own id,
-   * or the name `stage` is added under, which is given an id of its own.
+   * by its handle (`'sociogram-1'`, see `FIXTURE_STAGE_TYPES`) or its own id.
+   * With `stage`, the protocol object id `stage` is filed under.
    */
   stageId: string;
   /**
@@ -135,12 +134,12 @@ export function StageEditorStoryHost({
   createResourceId,
   collaboratorRevision,
 }: StageEditorStoryHostProps) {
-  const stageId =
-    addedStage === undefined
-      ? loadFixtureStage(named).id
-      : isProtocolObjectId(named)
-        ? named
-        : testObjectId(named);
+  if (addedStage !== undefined && !isProtocolObjectId(named)) {
+    throw new Error(
+      `A story adding a stage files it under a protocol object id, not "${named}".`,
+    );
+  }
+  const stageId = addedStage === undefined ? loadFixtureStage(named).id : named;
   const [saved, setSaved] = useState<SectionDoc | null>(null);
   const [host] = useState(() => {
     const assetManifest = { ...fixtureAssetManifest(), ...assets };
