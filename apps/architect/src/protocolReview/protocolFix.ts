@@ -189,13 +189,19 @@ const NOT_REFERENCES = new Set(['label', 'negative']);
  * What a member without an id refers to: everything else it holds that is
  * text, a number, or true or false (`NOT_REFERENCES`). An answer option's
  * `value`, the edge `type` a narrative preset displays, the `variable` it
- * highlights or a roster sorts by.
+ * highlights or a roster sorts by. A number reads as its text, as the
+ * protocol compares answer values (`optionValueKey`): `1` and `"1"` are the
+ * same answer.
  */
 const referenceOf: MemberKey = (member) => {
   if (!isJsonObject(member) || idOf(member) !== null) return null;
   const held = Object.entries(member)
     .filter(([key, value]) => !NOT_REFERENCES.has(key) && isScalar(value))
-    .toSorted(([a], [b]) => a.localeCompare(b));
+    .map(([key, value]) => [
+      key,
+      typeof value === 'number' ? String(value) : value,
+    ])
+    .toSorted(([a], [b]) => String(a).localeCompare(String(b)));
   return held.length === 0 ? null : JSON.stringify(held);
 };
 
@@ -346,33 +352,87 @@ const onlyDefaultLanguage = (
 };
 
 /**
- * Whether `operation` writes or removes a translation in a language other
- * than `protocol`'s default one, by its path or, for something it adds,
- * inside what it adds. A member it only moves (`markMoves`) keeps the
- * translations it has.
+ * Where a member with an id sits in its array, as a path spelled with its id,
+ * when `operation` removes it from `current`; null otherwise.
+ */
+const removedMemberPath = (
+  current: unknown,
+  operation: StoredOperation,
+): string | null => {
+  const segments = parsePath(operation.path);
+  if (operation.op !== 'remove' || segments === null) return null;
+  const parent = readPath(current, segments.slice(0, -1));
+  const member = readPath(current, segments);
+  return parent.found &&
+    Array.isArray(parent.value) &&
+    member.found &&
+    isJsonObject(member.value) &&
+    member.value.id === segments.at(-1)
+    ? formatPath(segments)
+    : null;
+};
+
+/**
+ * Where the member `operation` inserts will sit, as a path spelled with its
+ * id; null when it is not an insert of a member with an id.
+ */
+const insertedMemberPath = (
+  operation: StoredOperation,
+  value: unknown,
+): string | null => {
+  const segments = parsePath(operation.path);
+  if (operation.op !== 'insert' || segments === null) return null;
+  return isJsonObject(value) && typeof value.id === 'string'
+    ? formatPath([...segments.slice(0, -1), value.id])
+    : null;
+};
+
+/**
+ * Whether any of `operations` writes or removes a translation in a language
+ * other than `protocol`'s default one: by its path, or inside a member it
+ * adds. A member it adds in place of one with the same id it removed may
+ * keep that one's translations as they were (`normalizeOperations`), and a
+ * member it only moves (`markMoves`) keeps the ones it has. Read
+ * sequentially, each operation against what the ones before it made.
  */
 const writesOtherLanguage = (
   protocol: CurrentProtocol,
-  operation: StoredOperation,
+  operations: readonly StoredOperation[],
 ): boolean => {
   const { locales, defaultLocale } = protocol.localization;
-  const segments = parsePath(operation.path);
-  const last = segments?.at(-1);
-  if (
-    segments !== null &&
-    last !== undefined &&
-    last !== defaultLocale &&
-    locales.includes(last)
-  ) {
-    const parent = readPath(protocol, segments.slice(0, -1));
-    if (parent.found && isLocalizedValue(parent.value, locales)) return true;
+  let current: unknown = protocol;
+  const removed = new Map<string, unknown>();
+  for (const operation of operations) {
+    const segments = parsePath(operation.path);
+    const last = segments?.at(-1);
+    if (
+      segments !== null &&
+      last !== undefined &&
+      last !== defaultLocale &&
+      locales.includes(last)
+    ) {
+      const parent = readPath(current, segments.slice(0, -1));
+      if (parent.found && isLocalizedValue(parent.value, locales)) return true;
+    }
+    if (operation.op === 'insert' && !operation.moves) {
+      const value = parseJson(operation.value);
+      const at = insertedMemberPath(operation, value);
+      const replaced = at === null ? undefined : removed.get(at);
+      const allowed = keepTranslations(
+        onlyDefaultLanguage(value, locales, defaultLocale),
+        replaced,
+        locales,
+      );
+      if (JSON.stringify(allowed) !== JSON.stringify(value)) return true;
+    }
+    const at = removedMemberPath(current, operation);
+    const member = segments === null ? null : readPath(current, segments);
+    if (at !== null && member?.found) removed.set(at, member.value);
+    const applied = applyOperations(current, [operation]);
+    if (!applied.ok) return false;
+    current = applied.result;
   }
-  if (operation.op !== 'insert' || operation.moves) return false;
-  const value = parseJson(operation.value);
-  return (
-    JSON.stringify(onlyDefaultLanguage(value, locales, defaultLocale)) !==
-    JSON.stringify(value)
-  );
+  return false;
 };
 
 /**
@@ -387,7 +447,9 @@ const writesOtherLanguage = (
  *   translation (`onlyDefaultLanguage`) and keeps the others;
  * - a `set` of anything that holds texts (a prompt, an option, a list of
  *   them, a stage) does the same for each text inside it
- *   (`keepTranslations`).
+ *   (`keepTranslations`);
+ * - an `insert` of a member with the id of one the fix removed from that
+ *   array does the same against the member it removed.
  *
  * Read sequentially against `protocol` with each operation applied in turn,
  * so a later operation sees what an earlier one made. Operations past one
@@ -412,10 +474,31 @@ const normalizeEach = (
   const { locales, defaultLocale } = protocol.localization;
   let current: unknown = protocol;
   const normalized: StoredOperation[] = [];
+  const removed = new Map<string, unknown>();
   let applying = true;
   for (const operation of operations) {
     let next: StoredOperation = operation;
     const segments = parsePath(operation.path);
+    if (applying && operation.op === 'insert') {
+      const value = parseJson(operation.value);
+      const at = insertedMemberPath(operation, value);
+      const replaced = at === null ? undefined : removed.get(at);
+      if (replaced !== undefined) {
+        const kept = JSON.stringify(
+          keepTranslations(
+            onlyDefaultLanguage(value, locales, defaultLocale),
+            replaced,
+            locales,
+          ),
+        );
+        if (kept !== operation.value) next = { ...operation, value: kept };
+      }
+    }
+    const at = applying ? removedMemberPath(current, operation) : null;
+    if (at !== null && segments !== null) {
+      const member = readPath(current, segments);
+      if (member.found) removed.set(at, member.value);
+    }
     if (applying && operation.op === 'set' && segments !== null) {
       const target = readPath(current, segments);
       const written = parseJson(operation.value);
@@ -506,7 +589,7 @@ export const recordFix = (
     !applied.ok ||
     !fixStaysInBounds(recorded) ||
     recorded.some((o) => o.op === 'insert' && writesPlaceholder(o)) ||
-    recorded.some((o) => writesOtherLanguage(reviewed, o))
+    writesOtherLanguage(reviewed, recorded)
   ) {
     return { operations: recorded, targets: null, expected: null };
   }

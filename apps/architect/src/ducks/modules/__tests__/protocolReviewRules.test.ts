@@ -203,8 +203,8 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
     const stage = {
       id: 'added',
       type: 'Information',
-      label: { en: 'Added', fr: 'Ajouté' },
-      title: { en: 'Added', fr: 'Ajouté' },
+      label: { en: 'Added' },
+      title: { en: 'Added' },
       items: [],
     };
     await reviewed(store, [

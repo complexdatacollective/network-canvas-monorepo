@@ -179,6 +179,24 @@ describe('a fix that replaces more than one text', () => {
     });
   });
 
+  it('keeps an option’s translations when a fix rewords it and writes its value as text', () => {
+    const protocol = withOptions([
+      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
+      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Frequently' }, value: '1' },
+        { label: { en: 'Rarely' }, value: 2 },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Frequently', fr: 'Souvent' }, value: '1' },
+        { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+      ],
+    });
+  });
+
   it('keeps each translation with its label when a fix swaps the values', () => {
     const protocol = withOptions([
       { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
@@ -313,6 +331,37 @@ describe('a fix that changes another language', () => {
     ],
   ])('is not offered when it %s', (_, operation) => {
     expect(recordFix(makeProtocol(), [operation]).targets).toBeNull();
+  });
+
+  it('is not offered when it writes a translation of a text an earlier edit adds', () => {
+    expect(
+      recordFix(makeProtocol(), [
+        op('set', '/stages/welcome/introductionPanel', { en: 'Before' }),
+        op('set', '/stages/welcome/introductionPanel/fr', 'Avant'),
+      ]).targets,
+    ).toBeNull();
+  });
+
+  it('keeps the translations of a stage it removes and adds again with only the default language', () => {
+    const protocol = makeProtocol();
+    const [welcome] = protocol.stages;
+    const { operations, targets } = recordFix(protocol, [
+      op('remove', '/stages/welcome'),
+      op('insert', '/stages/names', {
+        ...welcome,
+        label: { en: 'Welcome' },
+        title: { en: 'Hi there' },
+      }),
+    ]);
+    expect(targets).not.toBeNull();
+    const applied = applyOperations(protocol, operations);
+    expect(
+      applied.ok && (applied.result as CurrentProtocol).stages[0],
+    ).toMatchObject({
+      id: 'welcome',
+      label: { fr: 'Bienvenue' },
+      title: { en: 'Hi there', fr: 'Bonjour' },
+    });
   });
 
   it('is offered when it moves a stage that has translations', () => {
