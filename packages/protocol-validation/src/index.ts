@@ -109,7 +109,11 @@ export {
   MISSING_CASE,
   pluralValueExamples,
 } from './localization/dynamicValueMessages.ts';
-export { escapeMarkdownText } from './localization/markdownText.ts';
+export {
+  escapeMarkdownText,
+  markdownAsEdited,
+  VERSION_LINE_LEAD,
+} from './localization/markdownText.ts';
 export {
   escapeMessageText,
   messageText,

@@ -10,6 +10,7 @@ import { holdsLineBreak } from '@codaco/shared-consts';
 
 import { isBlankText } from './blankText.ts';
 import type { LocaleTag } from './localeTag.ts';
+import { markdownAsEdited, versionLineMarkdown } from './markdownText.ts';
 import type { MessagePart } from './messageArguments.ts';
 
 /**
@@ -293,19 +294,33 @@ const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
 
 /**
  * Whether a link's address or title holds a value or a choice of versions:
- * both are fixed text. Each version is read as markdown of its own, as the
- * editor reads it.
+ * both are fixed text. The text and each of its versions is read as markdown
+ * of its own, twice: as written, which is how the interview renders it, and
+ * as the editor reads it (`markdownAsEdited`, `versionLineMarkdown`). The two
+ * differ where a `>` or a version's leading spaces decide what is a link, and
+ * a link in either reading counts.
  */
-const linkHoldsValue = (nodes: readonly MessageFormatElement[]): boolean => {
+const linkHoldsValue = (
+  nodes: readonly MessageFormatElement[],
+  inVersion = false,
+): boolean => {
   const markdown = nodes
     .map((node) =>
       node.type === TYPE.literal ? node.value : DYNAMIC_VALUE_MARKER,
     )
     .join('');
+  const readings = [
+    markdown,
+    inVersion ? versionLineMarkdown(markdown) : markdownAsEdited(markdown),
+  ];
   return (
     (markdown.includes(DYNAMIC_VALUE_MARKER) &&
-      linkAddressHoldsValue(fromMarkdown(markdown))) ||
-    nodes.some((node) => versionsOf(node).some(linkHoldsValue))
+      readings.some((reading) =>
+        linkAddressHoldsValue(fromMarkdown(reading)),
+      )) ||
+    nodes.some((node) =>
+      versionsOf(node).some((version) => linkHoldsValue(version, true)),
+    )
   );
 };
 

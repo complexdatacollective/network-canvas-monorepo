@@ -152,6 +152,12 @@ describe('messageToDocument', () => {
     '[Your page](https://example.com "For {name}")',
     '{kind, select, a {[you](https://example.com/{name})} other {none}}',
     '[Your page](https://example.com/{kind, select, a {one} other {two}})',
+    // Read as the editor reads it: a version without the spaces at its ends,
+    // and a `>` as text, so neither an indent nor a tag hides the link.
+    '{kind, select, a {    [you](https://example.com/{name})} other {none}}',
+    '{kind, select, a {\t[you](https://example.com/{name})} other {none}}',
+    '<span title="[you](https://example.com/{name})">',
+    '<div>\n[you](https://example.com/{name})\n</div>',
   ])(
     'refuses a value inside a link address, as validation does: %s',
     (message) => {

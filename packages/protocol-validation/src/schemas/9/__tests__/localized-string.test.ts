@@ -471,6 +471,14 @@ describe('a value inside a link address of formatted text', () => {
 
   it.each([
     ['in the address', '[Your page](https://example.com/{today})'],
+    [
+      'in a version that opens with spaces',
+      '{today, select, missing {hello} other {    [you](https://example.com/{today})}}',
+    ],
+    [
+      'inside what would be a tag',
+      '<span title="[you](https://example.com/{today})">',
+    ],
     ['in the title', '[Your page](https://example.com "For {name}")'],
     [
       'in an address written between angle brackets',
