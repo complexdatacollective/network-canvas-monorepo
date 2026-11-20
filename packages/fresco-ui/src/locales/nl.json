@@ -144,6 +144,8 @@
   "frescoUi.richTextEditor.emojiMenu": "Emoji invoegen",
   "frescoUi.richTextEditor.emptyVersion": "Toont niets",
   "frescoUi.richTextEditor.insertMenuNoMatches": "Niets komt overeen met je zoekopdracht.",
+  "frescoUi.richTextEditor.insertMenuRequired": "Vereist in deze tekst",
+  "frescoUi.richTextEditor.insertMenuRequiredMissing": "Er ontbreekt nog een vereist onderdeel in deze tekst",
   "frescoUi.richTextEditor.insertMenuSearch": "Zoeken",
   "frescoUi.richTextEditor.linkUrlLabel": "URL van de link",
   "frescoUi.richTextEditor.linkUrlPlaceholder": "https://example.com",

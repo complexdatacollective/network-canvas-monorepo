@@ -422,7 +422,6 @@
   "protocolBuilder.dynamicText.secondNodeLabel": "Secondo nodo: etichetta",
   "protocolBuilder.dynamicText.switchHasNoLabels": "Un Toggle non ha etichette per le sue risposte. Usa invece una formulazione diversa per ogni risposta.",
   "protocolBuilder.dynamicText.today": "Data di oggi",
-  "protocolBuilder.dynamicText.unreadable": "Questo testo usa qualcosa che Architect non può mostrare qui, quindi non può essere modificato in questo campo. Viene mantenuto così com’è.",
   "protocolBuilder.dynamicText.versionKnown": "Se noto",
   "protocolBuilder.dynamicText.versionMissing": "Se non noto",
   "protocolBuilder.dynamicText.versionNumbers": "Quando il valore è {numbers}",

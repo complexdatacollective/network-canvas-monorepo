@@ -1691,10 +1691,6 @@
     "defaultMessage": "Today’s date",
     "description": "A value a researcher can insert into text a participant reads: the date on the day the participant reads it."
   },
-  "protocolBuilder.dynamicText.unreadable": {
-    "defaultMessage": "This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.",
-    "description": "Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed."
-  },
   "protocolBuilder.dynamicText.versionKnown": {
     "defaultMessage": "If known",
     "description": "Label of the version of a piece of text shown when the value it depends on has been given."

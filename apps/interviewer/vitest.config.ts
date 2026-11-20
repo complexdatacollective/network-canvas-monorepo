@@ -155,6 +155,7 @@ export default defineConfig({
             '@codaco/interview > react-redux',
             '@codaco/interview > redux-logger',
             '@codaco/protocol-validation > csvtojson',
+            '@codaco/protocol-validation > mdast-util-from-markdown',
             'chromatic/isChromatic',
             'jszip',
             // Reached through @codaco/interview: OnlineStatusProvider imports

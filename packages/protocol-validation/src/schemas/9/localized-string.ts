@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { holdsLineBreak } from '@codaco/shared-consts';
 
 import { isBlankMessage } from '../../localization/blankText.ts';
-import { findDynamicMessageSyntaxProblem } from '../../localization/dynamicValueMessages.ts';
+import {
+  findDynamicMessageSyntaxProblem,
+  findFormattedMessageProblem,
+} from '../../localization/dynamicValueMessages.ts';
 import {
   canonicalizeLocale,
   isCanonicalLocale,
@@ -266,7 +269,11 @@ export const localizedString = (
     lines,
     dynamicValues === undefined
       ? findMessageSyntaxProblem
-      : findDynamicMessageSyntaxProblem,
+      : format === 'markdown'
+        ? (message) =>
+            findDynamicMessageSyntaxProblem(message) ??
+            findFormattedMessageProblem(message)
+        : findDynamicMessageSyntaxProblem,
   ).meta({
     [LOCALIZED_STRING]: {
       format,

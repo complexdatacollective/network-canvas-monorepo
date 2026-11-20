@@ -579,6 +579,14 @@
     "defaultMessage": "Nothing matches your search.",
     "description": "Shown in the rich text editor’s insert menu when the search matches nothing that can be inserted."
   },
+  "frescoUi.richTextEditor.insertMenuRequired": {
+    "defaultMessage": "Required in this text",
+    "description": "Marker on an entry in the rich text editor’s insert menu, such as a person’s name, that the text being written must include and does not include yet."
+  },
+  "frescoUi.richTextEditor.insertMenuRequiredMissing": {
+    "defaultMessage": "Something this text requires is not in it yet",
+    "description": "Second line of the tooltip, and part of the accessible name, of the toolbar button that opens the rich text editor’s insert menu, while the menu offers something, such as a person’s name, that the text being written must include and does not include yet."
+  },
   "frescoUi.richTextEditor.insertMenuSearch": {
     "defaultMessage": "Search",
     "description": "Accessible name and placeholder of the search box in the rich text editor’s insert menu, which filters the things that can be inserted into the text."

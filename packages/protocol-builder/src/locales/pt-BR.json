@@ -422,7 +422,6 @@
   "protocolBuilder.dynamicText.secondNodeLabel": "Segundo nó: rótulo",
   "protocolBuilder.dynamicText.switchHasNoLabels": "Um Toggle não tem rótulos para suas respostas. Em vez disso, use um texto diferente para cada resposta.",
   "protocolBuilder.dynamicText.today": "Data de hoje",
-  "protocolBuilder.dynamicText.unreadable": "Este texto usa algo que o Architect não consegue mostrar aqui, então não pode ser editado neste campo. Ele é mantido como está.",
   "protocolBuilder.dynamicText.versionKnown": "Se conhecido",
   "protocolBuilder.dynamicText.versionMissing": "Se desconhecido",
   "protocolBuilder.dynamicText.versionNumbers": "Quando o valor for {numbers}",
