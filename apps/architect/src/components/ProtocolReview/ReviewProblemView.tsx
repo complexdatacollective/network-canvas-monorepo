@@ -35,6 +35,7 @@ import {
   ChangeLabel,
   fixEditMessages,
   FixText,
+  headingsNameLanguage,
   NowBox,
   useFixEditContexts,
 } from './fixEditText';
@@ -60,12 +61,11 @@ const messages = defineMessages({
     description:
       'Heading of the part of a problem that describes how the automated protocol review suggests fixing it.',
   },
-  otherTranslations: {
-    id: 'architect.protocolReview.problem.otherTranslations',
-    defaultMessage:
-      'This protocol also has this text in {languages}. Fix for me does not change {count, plural, one {that version} other {those versions}}, so check {count, plural, one {it} other {them}} after the fix.',
+  translationsUnchanged: {
+    id: 'architect.protocolReview.problem.translationsUnchanged',
+    defaultMessage: 'Not changed: {languages}',
     description:
-      'Note under a suggested change to a text that the protocol also has in other languages. {languages} is a list of language names, already joined for the reader’s language (for example "Spanish and French"); {count} is how many. "Fix for me" is the name of a button and must match its translation.',
+      'Short note under one text a suggested fix rewords, naming the languages whose translation of that text the fix leaves as it is. {languages} is a list of language names, already joined for the reader’s language (for example "Spanish and French").',
   },
   changed: {
     id: 'architect.protocolReview.problem.changed',
@@ -410,6 +410,20 @@ const ReviewProblemView = ({
   const [, navigate] = useLocation();
   const languageName = useLanguageName();
   const editContexts = useFixEditContexts(current.textEdits);
+  const languageList = (locales: readonly string[]) =>
+    intl.formatList(
+      locales.map((locale) => languageName(locale)),
+      { type: 'conjunction' },
+    );
+  // A fix that rewords several languages names each in the heading over its
+  // boxes; otherwise the boxes' own labels do.
+  const labelsNameLanguage = !headingsNameLanguage(current.textEdits);
+  const labelLanguage = (edit: FixTextEdit) =>
+    labelsNameLanguage &&
+    edit.locale !== null &&
+    edit.otherTranslations.length > 0
+      ? languageName(edit.locale)
+      : undefined;
   const anotherUndecided = useAppSelector(
     (state) =>
       nextUndecided(getProtocolReviewFindings(state), index, current.id) !==
@@ -676,7 +690,11 @@ const ReviewProblemView = ({
                     </span>
                   )}
                   <div className="flex flex-col gap-4">
-                    <NowBox id={`${current.id}${edit.path}-now`} edit={edit} />
+                    <NowBox
+                      id={`${current.id}${edit.path}-now`}
+                      edit={edit}
+                      language={labelLanguage(edit)}
+                    />
                     <AfterFixBox
                       edit={edit}
                       contextId={
@@ -689,7 +707,13 @@ const ReviewProblemView = ({
                           ? summaryId
                           : `${current.id}${edit.path}-now`
                       }
-                      label={intl.formatMessage(fixEditMessages.afterFix)}
+                      label={
+                        labelLanguage(edit)
+                          ? intl.formatMessage(fixEditMessages.afterFixIn, {
+                              language: labelLanguage(edit),
+                            })
+                          : intl.formatMessage(fixEditMessages.afterFix)
+                      }
                       editLabel={intl.formatMessage(messages.editValue)}
                       resetLabel={intl.formatMessage(messages.useSuggestion)}
                       notANumber={intl.formatMessage(messages.notANumber)}
@@ -708,14 +732,8 @@ const ReviewProblemView = ({
                   </div>
                   {edit.otherTranslations.length > 0 && (
                     <Paragraph intent="smallText" margin="none">
-                      {intl.formatMessage(messages.otherTranslations, {
-                        languages: intl.formatList(
-                          edit.otherTranslations.map((locale) =>
-                            languageName(locale),
-                          ),
-                          { type: 'conjunction' },
-                        ),
-                        count: edit.otherTranslations.length,
+                      {intl.formatMessage(messages.translationsUnchanged, {
+                        languages: languageList(edit.otherTranslations),
                       })}
                     </Paragraph>
                   )}

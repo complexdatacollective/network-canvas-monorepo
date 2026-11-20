@@ -51,6 +51,7 @@ import {
 } from '~/protocolReview/fixEngine';
 import {
   editProtocol,
+  fixStaysInBounds,
   protocolAsReviewed,
   protocolReplacement,
   recordFix,
@@ -345,7 +346,11 @@ export const getIsProtocolReviewRecordRead = (state: RootState): boolean =>
 
 const selectRecord = (state: RootState) => selectReview(state).record;
 
-/** The stored review of the active protocol: when, and in which language. */
+/**
+ * The stored review of the active protocol: when, in which language, and
+ * which language its fixes write (null for a review saved before that was
+ * kept).
+ */
 export const getProtocolReviewSummary = createSelector(
   [selectRecord],
   (record) =>
@@ -354,6 +359,7 @@ export const getProtocolReviewSummary = createSelector(
           reviewId: record.review.reviewId,
           createdAt: record.review.createdAt,
           locale: record.review.locale,
+          defaultLocale: record.review.defaultLocale ?? null,
         }
       : null,
 );
@@ -597,6 +603,7 @@ const availabilityOf = (
 ): FixAvailability => {
   if (stored.operations.length === 0) return 'none';
   if (stored.targets === null) return 'invalid';
+  if (!fixStaysInBounds(stored.operations)) return 'invalid';
   if (!placeholdersReplaceable(protocol, stored.operations)) return 'invalid';
   if (
     !fixFits(protocolAsReviewed(protocol), stored.operations, stored.targets)
@@ -1022,6 +1029,7 @@ export const startReview =
         reviewId: result.reviewId,
         createdAt: Date.now(),
         locale,
+        defaultLocale: reviewed.localization.defaultLocale,
         provider,
         stageIds: reviewed.stages.map((stage) => stage.id),
         findings,
@@ -1255,7 +1263,11 @@ export const decideFinding =
 
     if (!getProtocolOwnedHere(getState())) return refused('not_owned');
     const { stored } = found;
-    if (stored.operations.length === 0 || stored.targets === null) {
+    if (
+      stored.operations.length === 0 ||
+      stored.targets === null ||
+      !fixStaysInBounds(stored.operations)
+    ) {
       return refused('invalid');
     }
     if (
