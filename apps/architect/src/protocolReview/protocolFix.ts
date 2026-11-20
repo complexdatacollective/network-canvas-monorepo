@@ -316,6 +316,66 @@ const keepTranslations = (
 };
 
 /**
+ * `value` with each localized string in it cut to its translation in the
+ * default language. The review is asked to write that language only, and
+ * Architect tells the researcher that a fix changes no other.
+ */
+const onlyDefaultLanguage = (
+  value: unknown,
+  locales: readonly string[],
+  defaultLocale: string,
+): unknown => {
+  if (isLocalizedValue(value, locales)) {
+    const text = value[defaultLocale];
+    return text === undefined ? {} : { [defaultLocale]: text };
+  }
+  if (Array.isArray(value)) {
+    return value.map((member: unknown) =>
+      onlyDefaultLanguage(member, locales, defaultLocale),
+    );
+  }
+  if (isJsonObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, member]) => [
+        key,
+        onlyDefaultLanguage(member, locales, defaultLocale),
+      ]),
+    );
+  }
+  return value;
+};
+
+/**
+ * Whether `operation` writes or removes a translation in a language other
+ * than `protocol`'s default one, by its path or, for something it adds,
+ * inside what it adds. A member it only moves (`markMoves`) keeps the
+ * translations it has.
+ */
+const writesOtherLanguage = (
+  protocol: CurrentProtocol,
+  operation: StoredOperation,
+): boolean => {
+  const { locales, defaultLocale } = protocol.localization;
+  const segments = parsePath(operation.path);
+  const last = segments?.at(-1);
+  if (
+    segments !== null &&
+    last !== undefined &&
+    last !== defaultLocale &&
+    locales.includes(last)
+  ) {
+    const parent = readPath(protocol, segments.slice(0, -1));
+    if (parent.found && isLocalizedValue(parent.value, locales)) return true;
+  }
+  if (operation.op !== 'insert' || operation.moves) return false;
+  const value = parseJson(operation.value);
+  return (
+    JSON.stringify(onlyDefaultLanguage(value, locales, defaultLocale)) !==
+    JSON.stringify(value)
+  );
+};
+
+/**
  * The fix's operations rewritten to treat translations the way Architect's
  * own editors do. Editing a text in Architect replaces the translation in the
  * language being edited and keeps every other translation as it is
@@ -323,8 +383,8 @@ const keepTranslations = (
  *
  * - a `set` of plain text where the protocol holds a localized string writes
  *   that text as the default language's translation, keeping the others;
- * - a `set` of a localized string over a localized string replaces the
- *   translations it names and keeps the ones it does not;
+ * - a `set` of a localized string writes only its default language's
+ *   translation (`onlyDefaultLanguage`) and keeps the others;
  * - a `set` of anything that holds texts (a prompt, an option, a list of
  *   them, a stage) does the same for each text inside it
  *   (`keepTranslations`).
@@ -358,7 +418,11 @@ const normalizeEach = (
     const segments = parsePath(operation.path);
     if (applying && operation.op === 'set' && segments !== null) {
       const target = readPath(current, segments);
-      const value = parseJson(operation.value);
+      const written = parseJson(operation.value);
+      const value =
+        written === undefined
+          ? undefined
+          : onlyDefaultLanguage(written, locales, defaultLocale);
       if (
         target.found &&
         isLocalizedValue(target.value, locales) &&
@@ -369,11 +433,11 @@ const normalizeEach = (
           path: formatPath([...segments, defaultLocale]),
           value: operation.value,
         };
-      } else if (target.found && value !== undefined) {
+      } else if (value !== undefined) {
         const kept = JSON.stringify(
-          keepTranslations(value, target.value, locales),
+          target.found ? keepTranslations(value, target.value, locales) : value,
         );
-        if (kept !== JSON.stringify(value)) {
+        if (kept !== JSON.stringify(written)) {
           next = { op: 'set', path: operation.path, value: kept };
         }
       }
@@ -436,11 +500,13 @@ export const recordFix = (
   // A placeholder inside something the fix adds cannot be replaced before the
   // fix is made (only the texts a fix sets can be edited), so such a fix is
   // not offered: it would put the placeholder in front of participants. Nor
-  // is one that reaches outside the interview and its data model.
+  // is one that reaches outside the interview and its data model, or one
+  // that changes a language other than the default.
   if (
     !applied.ok ||
     !fixStaysInBounds(recorded) ||
-    recorded.some((o) => o.op === 'insert' && writesPlaceholder(o))
+    recorded.some((o) => o.op === 'insert' && writesPlaceholder(o)) ||
+    recorded.some((o) => writesOtherLanguage(reviewed, o))
   ) {
     return { operations: recorded, targets: null, expected: null };
   }

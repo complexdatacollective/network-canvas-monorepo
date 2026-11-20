@@ -1325,7 +1325,7 @@ describe('one problem at a time, in the panel', () => {
     ).toBeVisible();
   });
 
-  it('previews a fix that replaces a whole localized text, translation by translation', async () => {
+  it('previews a fix that replaces a whole localized text, changing only the default language', async () => {
     await reviewed(store, {
       ...RESULT,
       findings: [
@@ -1364,15 +1364,8 @@ describe('one problem at a time, in the panel', () => {
     );
     expect(within(dialog).getByText('Hello')).toBeVisible();
     expect(within(dialog).getByText('Welcome to our study')).toBeVisible();
-    expect(within(dialog).getByText('Bonjour')).toBeVisible();
-    expect(
-      within(dialog).getByText('Bienvenue dans notre étude'),
-    ).toBeVisible();
-    expect(
-      within(dialog).getByText('Page content › Page heading · English'),
-    ).toBeVisible();
-    expect(
-      within(dialog).getByText('Page content › Page heading · French'),
-    ).toBeVisible();
+    expect(within(dialog).getByText('Not changed: French')).toBeVisible();
+    expect(within(dialog).queryByText('Bienvenue dans notre étude')).toBeNull();
+    expect(within(dialog).queryByText(/· French/)).toBeNull();
   });
 });

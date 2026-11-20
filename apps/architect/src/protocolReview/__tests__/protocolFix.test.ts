@@ -268,15 +268,62 @@ describe('a fix that replaces more than one text', () => {
     });
   });
 
-  it('leaves a value that names every translation as written', () => {
+  it('writes only the default language of a value that names other translations', () => {
     const protocol = makeProtocol();
-    const operations = [
+    const normalized = normalizeOperations(protocol, [
       op('set', '/stages/names/prompts/p1', {
         id: 'p1',
         text: { en: 'Who?', fr: 'Qui ?' },
       }),
-    ];
-    expect(normalizeOperations(protocol, operations)).toEqual(operations);
+    ]);
+    const applied = applyOperations(protocol, normalized);
+    expect(applied.ok && promptText(applied.result)).toEqual({
+      en: 'Who?',
+      fr: 'Nommez',
+    });
+  });
+
+  it('writes nothing new in another language of a text it adds', () => {
+    const protocol = makeProtocol();
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/stages/welcome/introductionPanel', {
+        en: 'Before you start',
+        fr: 'Avant de commencer',
+      }),
+    ]);
+    expect(normalized).toEqual([
+      op('set', '/stages/welcome/introductionPanel', {
+        en: 'Before you start',
+      }),
+    ]);
+  });
+});
+
+describe('a fix that changes another language', () => {
+  it.each([
+    ['sets a translation', op('set', '/stages/welcome/title/fr', 'Salut')],
+    ['removes a translation', op('remove', '/stages/welcome/title/fr')],
+    [
+      'adds something translated',
+      op('insert', '/stages/-', {
+        id: 'support',
+        type: 'Information',
+        title: { en: 'Support', fr: 'Aide' },
+      }),
+    ],
+  ])('is not offered when it %s', (_, operation) => {
+    expect(recordFix(makeProtocol(), [operation]).targets).toBeNull();
+  });
+
+  it('is offered when it moves a stage that has translations', () => {
+    const protocol = makeProtocol();
+    const [welcome] = protocol.stages;
+    expect(
+      recordFix(protocol, [
+        op('remove', '/stages/welcome'),
+        op('insert', '/stages/-', welcome),
+      ]).targets,
+    ).not.toBeNull();
   });
 });
 
