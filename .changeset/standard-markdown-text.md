@@ -41,6 +41,9 @@ The editor's link box asks you to correct any other address. Telephone links
 are now kept when you save, and saving without making a change no longer
 changes where any link leads.
 
+Italic words written directly beside a letter, a digit or an emoji, such as
+part of a word, now stay italic when participants see them.
+
 For developers:
 
 - `@codaco/fresco-ui`: `RenderMarkdown` reads standard CommonMark only. It no

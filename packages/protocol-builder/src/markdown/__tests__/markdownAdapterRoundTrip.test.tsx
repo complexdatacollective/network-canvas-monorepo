@@ -611,4 +611,53 @@ describe('text typed in the editor', () => {
       expect(roundTrip(saved, shape)).toBe(saved);
     }
   });
+
+  const marked = (value: string, mark: 'bold' | 'italic'): RichTextContent => ({
+    type: 'text',
+    text: value,
+    marks: [{ type: mark }],
+  });
+
+  // Bold or italic words right beside a letter, a digit or an emoji: the
+  // delimiter written for them must be one that markdown reads there.
+  const BESIDE_WORDS: readonly (readonly [string, RichTextContent[]])[] = (
+    ['bold', 'italic'] as const
+  ).flatMap((mark) =>
+    ['a', '1', '😄'].flatMap(
+      (neighbour) =>
+        [
+          [
+            `${mark} words before ${neighbour}`,
+            [marked('hello', mark), text(neighbour)],
+          ],
+          [
+            `${mark} words after ${neighbour}`,
+            [text(neighbour), marked('hello', mark)],
+          ],
+          [
+            `${mark} words between ${neighbour}s`,
+            [text(neighbour), marked('hello', mark), text(neighbour)],
+          ],
+        ] as const,
+    ),
+  );
+
+  it.each(
+    SHAPES.flatMap((shape) =>
+      BESIDE_WORDS.map(
+        ([name, content]) => [shape.name, name, content, shape] as const,
+      ),
+    ),
+  )(
+    'in %s, %s is drawn as the editor shows it',
+    (_name, _words, content, shape) => {
+      const document = paragraph(...content);
+      const saved = richTextContentToMarkdown(
+        document,
+        shape.lines === 'single',
+      );
+      expect(drawn(saved, shape)).toEqual(read(editorElements(document)));
+      expect(roundTrip(saved, shape)).toBe(saved);
+    },
+  );
 });

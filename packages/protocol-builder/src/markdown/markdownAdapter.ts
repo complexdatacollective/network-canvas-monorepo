@@ -7,6 +7,7 @@ import { showHtmlAsTyped } from '@codaco/fresco-ui/markdownTypedHtml';
 import {
   assetBlockMarkdown,
   assetBlockSettings,
+  ASCII_PUNCTUATION,
   escapeMarkdownText,
   isAssetBlockAlignment,
   isAssetBlockSize,
@@ -541,12 +542,49 @@ const joinedTextRuns = (nodes: RichTextContent[]): RichTextContent[] =>
     return joined;
   }, []);
 
+/**
+ * Whether markdown reads `char` as neither white space nor punctuation.
+ * Beside such a character `_` can neither open nor close emphasis, since an
+ * underscore inside a word (`snake_case`) is read as typed; `*` can.
+ */
+const isWordCharacter = (char: string | undefined): boolean =>
+  char !== undefined &&
+  !/\s/u.test(char) &&
+  !ASCII_PUNCTUATION.test(char) &&
+  !/\p{P}/u.test(char);
+
+type InlinePiece = Readonly<{ node?: RichTextContent; markdown: string }>;
+
+/**
+ * Inline pieces as markdown, each italic one written with `*` in place of
+ * `_` where what is written beside it is a letter, a digit, an emoji or
+ * another word character, so that the emphasis is still read there.
+ */
+const joinWithItalicDelimiters = (pieces: readonly InlinePiece[]): string =>
+  pieces
+    .map(({ node, markdown }, index) => {
+      if (
+        node?.type !== 'text' ||
+        !getMark(node, 'italic') ||
+        getMark(node, 'bold') ||
+        !markdown.startsWith('_')
+      ) {
+        return markdown;
+      }
+      const before = Array.from(pieces[index - 1]?.markdown ?? '').at(-1);
+      const after = Array.from(pieces[index + 1]?.markdown ?? '')[0];
+      return isWordCharacter(before) || isWordCharacter(after)
+        ? `*${markdown.slice(1, -1)}*`
+        : markdown;
+    })
+    .join('');
+
 const serializeInline = (
   content: RichTextContent[] | undefined,
   options: SerializeInlineOptions = {},
 ): string => {
   const nodes = joinedTextRuns(content ?? []);
-  const parts: string[] = [];
+  const parts: InlinePiece[] = [];
   let index = 0;
 
   while (index < nodes.length) {
@@ -560,22 +598,24 @@ const serializeInline = (
     const target = options.links === false ? undefined : getLinkTarget(node);
 
     if (!target || node.type !== 'text') {
-      parts.push(serializeInlineNode(node, options));
+      parts.push({ node, markdown: serializeInlineNode(node, options) });
       index += 1;
       continue;
     }
 
     const end = findLinkRunEnd(nodes, index, target);
-    const inner = nodes
-      .slice(index, end)
-      .map((runNode) => serializeInlineNode(runNode, options))
-      .join('');
+    const inner = joinWithItalicDelimiters(
+      nodes.slice(index, end).map((runNode) => ({
+        node: runNode,
+        markdown: serializeInlineNode(runNode, options),
+      })),
+    );
 
-    parts.push(serializeLink(inner, target));
+    parts.push({ markdown: serializeLink(inner, target) });
     index = end;
   }
 
-  return parts.join('');
+  return joinWithItalicDelimiters(parts);
 };
 
 const getInlineContent = (node: RichTextContent): RichTextContent[] => {
