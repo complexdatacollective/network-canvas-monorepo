@@ -125,7 +125,7 @@ const featureDefinitions = [
   {
     id: 'responsiveSvg',
     group: 'architect',
-    href: `${documentationRoot}/design-protocols/responsive-svg-backgrounds`,
+    href: `${documentationRoot}/design-protocols/tutorials/responsive-svg-backgrounds`,
     motif: 'responsive-sociogram-backgrounds',
   },
   {

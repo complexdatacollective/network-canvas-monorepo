@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Writing User-Facing Text'
+  short_description: 'Write standard, complete English for readers'
+  default_prompt: 'Use $writing-user-facing-text to write or copy edit this text so that it uses complete sentences, standard terms and concrete wording.'

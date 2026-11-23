@@ -106,12 +106,6 @@ const renderSavingAndBackingUpLink = (chunks: ReactNode[]) => (
   </ExternalLink>
 );
 
-const renderProtocolGalleryLink = (chunks: ReactNode[]) => (
-  <ExternalLink href={documentationLinks.protocolGallery}>
-    {chunks}
-  </ExternalLink>
-);
-
 const chromeMessages = defineMessages({
   templateCount: {
     id: 'architect.home.libraryPanel.templateCount',
@@ -1142,7 +1136,7 @@ const LibraryPanel = ({
               message:
                 additionalMessages.lookingForInspirationBrowseExampleResearch,
               values: {
-                ExternalLink: renderProtocolGalleryLink,
+                ExternalLink: renderProtocolGallerySiteLink,
               },
             })}
           </Paragraph>

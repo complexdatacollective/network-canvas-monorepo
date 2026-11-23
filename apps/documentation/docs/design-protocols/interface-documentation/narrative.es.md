@@ -1,7 +1,7 @@
 ---
 title: Narrativa
 navOrder: 10
-translatedFrom: a46584880230bf4eddb9c3788a8f1ecdbb76364f
+translatedFrom: 8b47e33a2105ed6cee4ac4dd2130b5f65611824b
 ---
 
 <InterfaceSummary type="Narrative">
@@ -45,7 +45,7 @@ Una etapa «Narrativa» necesita al menos una vista predefinida. En cada vista p
 - **Atributo de disposición**: el atributo que se usa para colocar los nodos en esta vista predefinida.
 - **Atributo de agrupación** (opcional): un atributo categórico que se usa para dibujar envolventes convexas alrededor de los nodos que comparten cada valor.
 - **Vínculos mostrados** (opcional): uno o varios tipos de vínculo que se dibujan. Cada tipo de vínculo que eliges también necesita una etiqueta, que quienes participan ven en el selector de vistas predefinidas. Inicialmente es el nombre del tipo de vínculo, y puedes traducirla como cualquier otro texto.
-- **Resaltado de nodos** (opcional): uno o varios atributos booleanos; los nodos cuyo valor es verdadero se resaltan mientras la vista predefinida está activa. Cada atributo que eliges también necesita una etiqueta, que quienes participan ven en el selector de vistas predefinidas. Inicialmente, la etiqueta es el nombre del atributo, y puedes traducirla como cualquier otro texto (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol#labels-in-a-narrative-stages-legend)).
+- **Resaltado de nodos** (opcional): uno o varios atributos booleanos; los nodos cuyo valor es verdadero se resaltan mientras la vista predefinida está activa. Cada atributo que eliges también necesita una etiqueta, que quienes participan ven en el selector de vistas predefinidas. Inicialmente, la etiqueta es el nombre del atributo, y puedes traducirla como cualquier otro texto (consulta [Traducir tu protocolo](/es/design-protocols/tutorials/translating-your-protocol#labels-in-a-narrative-stages-legend)).
 
 Las opciones de grupos, vínculos y resaltado se eligen entre los atributos que ya hay en tu libro de códigos, así que define los atributos que necesita una vista predefinida antes de crearla.
 
@@ -71,7 +71,7 @@ En Architect Classic, el filtro pertenece a toda la etapa «Narrativa» y se apl
 
 ### Fondo {#background}
 
-Como en una etapa «Sociograma», el fondo de una etapa «Narrativa» puede ser una serie de círculos concéntricos o una imagen de fondo personalizada. Como imagen de fondo funciona mejor un SVG adaptable, porque mantiene legibles las zonas y las etiquetas cuando cambia la forma del lienzo. Consulta [Fondos SVG adaptables](/es/design-protocols/responsive-svg-backgrounds) para saber cómo prepararlo.
+Como en una etapa «Sociograma», el fondo de una etapa «Narrativa» puede ser una serie de círculos concéntricos o una imagen de fondo personalizada. Como imagen de fondo funciona mejor un SVG adaptable, porque mantiene legibles las zonas y las etiquetas cuando cambia la forma del lienzo. Consulta [Crear imágenes de fondo adaptables](/es/design-protocols/tutorials/responsive-svg-backgrounds) para saber cómo prepararlo.
 
 ### Comportamientos {#behaviors}
 
@@ -85,11 +85,11 @@ Tres comportamientos de la etapa cambian la forma en que quienes participan pued
 
 ### Personalizar la redacción predeterminada {#customize-built-in-wording}
 
-La sección **Personalizar la redacción predeterminada** del editor de etapas contiene los encabezados de los paneles, en **Textos exclusivos de esta etapa**. Cada uno empieza con la redacción de Network Canvas, en todos los idiomas para los que Network Canvas la tiene, y puedes cambiarla y traducirla como cualquier otro texto. Tu protocolo solo conserva la redacción que cambias (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un encabezado solo está en la sección mientras alguna vista predefinida resalta atributos, muestra vínculos o agrupa nodos, y se elimina cuando ninguna lo hace.
+La sección **Personalizar la redacción predeterminada** del editor de etapas contiene los encabezados de los paneles, en **Textos exclusivos de esta etapa**. Cada uno empieza con la redacción de Network Canvas, en todos los idiomas para los que Network Canvas la tiene, y puedes cambiarla y traducirla como cualquier otro texto. Tu protocolo solo conserva la redacción que cambias (consulta [Palabras que aporta Network Canvas](/es/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). Un encabezado solo está en la sección mientras alguna vista predefinida resalta atributos, muestra vínculos o agrupa nodos, y se elimina cuando ninguna lo hace.
 
 La información emergente de las herramientas de dibujo es la misma en todas las etapas «Narrativa», así que está en **Textos comunes a todas las etapas de este tipo**, en la misma sección, mientras **Dibujo libre** está activado. Un cambio en ella se aplica a todas esas etapas, y se guarda en cuanto sales del campo. Hay tres textos: **Información emergente de activar o desactivar el dibujo** nombra el botón que activa y desactiva el dibujo; **Información emergente de congelar o descongelar las anotaciones**, el botón que congela y descongela las anotaciones, y **Información emergente de restablecer las anotaciones**, el botón que las borra.
 
-La información emergente de los botones que pausan y reanudan la disposición automática es [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text), compartido con la interfaz «Sociograma», y se reformula y traduce en la tabla de traducciones, en **Botones**.
+La información emergente de los botones que pausan y reanudan la disposición automática es [texto de entrevista](/es/design-protocols/tutorials/translating-your-protocol#interview-text), compartido con la interfaz «Sociograma», y se reformula y traduce en la tabla de traducciones, en **Botones**.
 
 </AppOnly>
 

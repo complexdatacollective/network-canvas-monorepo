@@ -1,7 +1,7 @@
 ---
 title: Sociograma
 navOrder: 9
-translatedFrom: 7d27d8de5bb6cbb8e8e7d3af7ce752394bb09036
+translatedFrom: b8d1cf8eca3c5c236b0e15b8c4567c8303fc1fdb
 ---
 
 <InterfaceSummary type="Sociogram">
@@ -24,7 +24,7 @@ Una etapa «Sociograma» se construye a partir de una o varias [preguntas](/es/d
 
 Cada pregunta tiene un **atributo de disposición**, que almacena la posición de cada nodo en el lienzo como un par de coordenadas. Ahí se registran los datos espaciales que recoges en la etapa «Sociograma».
 
-Si usas el mismo atributo de disposición en todas las preguntas de una etapa, la posición de cada nodo se conserva cuando la persona participante pasa de una tarea a otra, de modo que va perfeccionando una única disposición compartida. Si quieres medidas espaciales independientes, asigna a cada pregunta un atributo de disposición distinto: reutilizar un atributo sustituye las coordenadas anteriores. Las posiciones se almacenan como coordenadas normalizadas que un [fondo SVG adaptable](/es/design-protocols/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) permite convertir en zonas con significado durante el análisis.
+Si usas el mismo atributo de disposición en todas las preguntas de una etapa, la posición de cada nodo se conserva cuando la persona participante pasa de una tarea a otra, de modo que va perfeccionando una única disposición compartida. Si quieres medidas espaciales independientes, asigna a cada pregunta un atributo de disposición distinto: reutilizar un atributo sustituye las coordenadas anteriores. Las posiciones se almacenan como coordenadas normalizadas que un [fondo SVG adaptable](/es/design-protocols/tutorials/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) permite convertir en zonas con significado durante el análisis.
 
 ### Colocación automática o manual {#automatic-or-manual-positioning}
 
@@ -35,7 +35,7 @@ Un ajuste de la etapa, **Modo de disposición**, decide cómo llegan los nodos a
 
 ### Fondo {#background}
 
-Una etapa «Sociograma» puede tener como fondo una serie de círculos concéntricos o una imagen de fondo personalizada. Para el fondo de círculos concéntricos, eliges cuántos círculos se dibujan y, si quieres, puedes ajustar su espaciado para que los anillos centrales sean proporcionalmente más grandes. Como imagen de fondo funciona mejor un SVG adaptable, porque mantiene legibles las zonas y las etiquetas cuando el lienzo cambia de forma entre la orientación vertical y la horizontal (consulta [Fondos SVG adaptables](/es/design-protocols/responsive-svg-backgrounds)).
+Una etapa «Sociograma» puede tener como fondo una serie de círculos concéntricos o una imagen de fondo personalizada. Para el fondo de círculos concéntricos, eliges cuántos círculos se dibujan y, si quieres, puedes ajustar su espaciado para que los anillos centrales sean proporcionalmente más grandes. Como imagen de fondo funciona mejor un SVG adaptable, porque mantiene legibles las zonas y las etiquetas cuando el lienzo cambia de forma entre la orientación vertical y la horizontal (consulta [Crear imágenes de fondo adaptables](/es/design-protocols/tutorials/responsive-svg-backgrounds)).
 
 <GoodPractice>
 
@@ -63,7 +63,7 @@ La creación de vínculos y la alternancia de atributos son los dos comportamien
 
 ### Información emergente de los botones de pausa y reanudación {#pause-and-resume-tooltips}
 
-La información emergente de los botones que pausan y reanudan la simulación de la disposición automática es [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text), compartido con la etapa «Narrativa», así que el editor de etapas no tiene ninguna sección para ella. Se reformula y traduce en la tabla de traducciones, en **Botones**, y un protocolo solo la contiene mientras alguna etapa usa la disposición automática.
+La información emergente de los botones que pausan y reanudan la simulación de la disposición automática es [texto de entrevista](/es/design-protocols/tutorials/translating-your-protocol#interview-text), compartido con la etapa «Narrativa», así que el editor de etapas no tiene ninguna sección para ella. Se reformula y traduce en la tabla de traducciones, en **Botones**, y un protocolo solo la contiene mientras alguna etapa usa la disposición automática.
 
 </AppOnly>
 
