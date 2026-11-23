@@ -1,6 +1,7 @@
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { getMarkdownAttributeValues } from '@codaco/fresco-ui/RenderMarkdown';
 import {
+  ASCII_PUNCTUATION,
   type Conditions,
   DYNAMIC_VALUE_MARKER,
   type DynamicValueBinding,
@@ -13,6 +14,7 @@ import {
   type IntrinsicDynamicValue,
   type LocaleTag,
   type LocalizedString,
+  markdownTree,
   parseDynamicValuePath,
   type Variable,
 } from '@codaco/protocol-validation';
@@ -401,8 +403,7 @@ export const resolveDynamicText = (
 
 // Every ASCII punctuation character, each of which CommonMark lets a
 // backslash make literal.
-const MARKDOWN_PUNCTUATION = /[!-/:-@[-`{-~]/g;
-const IS_MARKDOWN_PUNCTUATION = /^[!-/:-@[-`{-~]$/;
+const MARKDOWN_PUNCTUATION = new RegExp(ASCII_PUNCTUATION.source, 'g');
 
 /** A value as markdown that renders as exactly its text. */
 const literalMarkdown = (value: string): string =>
@@ -416,31 +417,101 @@ const literalMarkdown = (value: string): string =>
     // A character reference shows the same space but never forms a block.
     .replace(/^ /, '&#32;');
 
-// Markdown can also find a token across the edge of a value. A `<` or `&`
-// in the researcher's words just before a value could open an autolink, an
-// HTML tag or a character reference that the value and the words after it
-// complete (`<https:`, the answer `//evil.example`, then `>`; or `&`, the
-// answer `copy`, then `;`). Such a `<` or `&`, one that nothing has closed
-// before the value, is escaped: it shows the same character and opens nothing.
-const RUN_BEFORE = /\S*$/;
-const CLOSES: Readonly<Record<string, string>> = { '<': '>', '&': ';' };
+/** A node of the markdown tree, as far as finding what holds a place. */
+type TreeNode = Readonly<{
+  type: string;
+  position?: Readonly<{
+    start: Readonly<{ offset?: number }>;
+    end: Readonly<{ offset?: number }>;
+  }>;
+  children?: readonly TreeNode[];
+}>;
 
-const escapeOpenTokens = (markdown: string): string => {
-  const run = RUN_BEFORE.exec(markdown)?.[0] ?? '';
-  const start = markdown.length - run.length;
-  let escaped = '';
-  let backslashes = 0;
-  for (let offset = 0; offset < run.length; offset += 1) {
-    const character = run.charAt(offset);
-    const closer = CLOSES[character];
-    const open =
-      closer !== undefined &&
-      backslashes % 2 === 0 &&
-      !run.slice(offset + 1).includes(closer);
-    escaped += open ? `\\${character}` : character;
-    backslashes = character === '\\' ? backslashes + 1 : 0;
+const holds = (node: TreeNode, offset: number): boolean =>
+  (node.position?.start.offset ?? Infinity) <= offset &&
+  offset < (node.position?.end.offset ?? -Infinity);
+
+/** The nodes that hold `offset` in the text, outermost first. */
+const nodesHolding = (root: TreeNode, offset: number): TreeNode[] => {
+  const path: TreeNode[] = [];
+  let node: TreeNode | undefined = root;
+  while (node !== undefined) {
+    path.push(node);
+    node = node.children?.find((child) => holds(child, offset));
   }
-  return markdown.slice(0, start) + escaped;
+  return path;
+};
+
+/**
+ * Where markdown reads what is written at `offset`: in words (`text`), or
+ * in something whose characters are not read as markdown (`code`, a code
+ * span, raw HTML, an address in angle brackets), with the node that is.
+ */
+const placeOf = (
+  root: TreeNode,
+  source: string,
+  offset: number,
+): Readonly<{ words: boolean; node: TreeNode | undefined }> => {
+  const path = nodesHolding(root, offset);
+  const verbatim = path.find(
+    (node) =>
+      node.type === 'code' ||
+      node.type === 'inlineCode' ||
+      node.type === 'html' ||
+      (node.type === 'link' &&
+        source.charAt(node.position?.start.offset ?? -1) === '<'),
+  );
+  if (verbatim !== undefined) return { words: false, node: verbatim };
+  const node = path.at(-1);
+  return { words: node?.type === 'text', node };
+};
+
+const precededByEscape = (text: string, offset: number): boolean =>
+  (/\\*$/.exec(text.slice(0, offset))?.[0].length ?? 0) % 2 === 1;
+
+/**
+ * Markdown can find a token across the edge of a value: a `<` or `&` in the
+ * researcher's words before a value can open an address in angle brackets,
+ * HTML or a character reference that the value and the words after it
+ * complete (`<https:`, the answer `//evil.example`, then `>`; or `&`, the
+ * answer `copy`, then `;`). Which do is read from the text with a marker in
+ * each value's place (`probe`), where a marker stands for any value: a `<`
+ * or `&` in words that nothing closes before the next value, or a `<` that
+ * opens HTML or an address holding a value. Each is escaped, which shows
+ * the same character and opens nothing. A `<` or `&` in code or in an
+ * address in angle brackets is never changed, since markdown shows those
+ * characters as typed.
+ */
+const openingsBeforeValues = (
+  probe: string,
+  tree: TreeNode,
+  words: readonly Readonly<{ from: number; to: number }>[],
+  values: readonly number[],
+): Set<number> => {
+  const escaped = new Set<number>();
+  for (const { from, to } of words) {
+    for (let offset = from; offset < to; offset += 1) {
+      const character = probe.charAt(offset);
+      if (character !== '<' && character !== '&') continue;
+      if (precededByEscape(probe, offset)) continue;
+      const value = values.find((at) => at > offset);
+      if (value === undefined) continue;
+      const between = probe.slice(offset + 1, value);
+      const { words: inWords, node } = placeOf(tree, probe, offset);
+      const opens = inWords
+        ? character === '&'
+          ? /^#?[\da-z]*$/i.test(between)
+          : !between.includes('>') && !/\n[^\S\n]*\n/.test(between)
+        : character === '<' &&
+          node !== undefined &&
+          node.type !== 'code' &&
+          node.type !== 'inlineCode' &&
+          node.position?.start.offset === offset &&
+          holds(node, value);
+      if (opens) escaped.add(offset);
+    }
+  }
+  return escaped;
 };
 
 // A value before a `]` could also be, or end, a link label that matches one of
@@ -462,7 +533,7 @@ const unmatchableLabelEnd = (markdown: string): string => {
     character === undefined ||
     codePoint === undefined ||
     character === DYNAMIC_VALUE_MARKER ||
-    IS_MARKDOWN_PUNCTUATION.test(character)
+    ASCII_PUNCTUATION.test(character)
   ) {
     return markdown;
   }
@@ -472,8 +543,12 @@ const unmatchableLabelEnd = (markdown: string): string => {
 /**
  * Markdown for resolved text: the researcher's words as written, and each
  * value as `valueMarkdown` writes it, kept apart from the words around it so
- * that together they can never form an autolink, HTML, a character reference
- * or a link label. A value written as nothing is left out.
+ * that together they can never form an address in angle brackets, HTML, a
+ * character reference or a link label (see `openingsBeforeValues` and
+ * `unmatchableLabelEnd`). What is decided is read from the text with a
+ * marker in each value's place, so code and addresses in angle brackets,
+ * which markdown shows as typed, are never changed. A value written as
+ * nothing is left out.
  */
 export const joinMarkdownParts = (
   parts: readonly DynamicTextPart[],
@@ -482,23 +557,58 @@ export const joinMarkdownParts = (
     index: number,
   ) => string,
 ): string => {
+  const written = parts.map((part, index) =>
+    typeof part === 'string' ? part : valueMarkdown(part, index),
+  );
+  const shown = parts
+    .map((part, index) => ({ part, index, markdown: written[index] ?? '' }))
+    .filter(
+      ({ part, markdown }) => typeof part === 'string' || markdown !== '',
+    );
+
+  // The text with a marker in each value's place.
+  let probe = '';
+  const words: { from: number; to: number }[] = [];
+  const values = new Map<number, number>();
+  for (const { part, index } of shown) {
+    if (typeof part === 'string') {
+      words.push({ from: probe.length, to: probe.length + part.length });
+      probe += part;
+    } else {
+      values.set(index, probe.length);
+      probe += `${DYNAMIC_VALUE_MARKER}${index}${DYNAMIC_VALUE_MARKER}`;
+    }
+  }
+  const escapes = openingsBeforeValues(probe, markdownTree(probe), words, [
+    ...values.values(),
+  ]);
+  // Offsets count UTF-16 code units, as the parser's do.
+  const escapedProbe = probe
+    .split('')
+    .map((unit, offset) => (escapes.has(offset) ? `\\${unit}` : unit))
+    .join('');
+  const escapedTree = markdownTree(escapedProbe);
+  const shift = (offset: number) =>
+    offset + [...escapes].filter((at) => at < offset).length;
+
   const plain = parts.map((part) =>
     typeof part === 'string' ? part : part.text,
   );
   let joined = '';
-  for (const [index, part] of parts.entries()) {
+  let wordsIndex = 0;
+  for (const { part, index, markdown } of shown) {
     if (typeof part === 'string') {
-      joined += part;
+      const { from, to } = words[wordsIndex] ?? { from: 0, to: 0 };
+      wordsIndex += 1;
+      joined += escapedProbe.slice(shift(from), shift(to));
       continue;
     }
-    const markdown = valueMarkdown(part, index);
-    if (markdown === '') continue;
-    const following = plain.slice(index + 1).join('');
-    joined =
-      escapeOpenTokens(joined) +
-      (LABEL_END_AFTER.test(following)
+    const at = values.get(index) ?? 0;
+    const inWords = placeOf(escapedTree, escapedProbe, shift(at)).words;
+    joined +=
+      inWords && LABEL_END_AFTER.test(plain.slice(index + 1).join(''))
         ? unmatchableLabelEnd(markdown)
-        : markdown);
+        : markdown;
   }
   return joined;
 };

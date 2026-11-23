@@ -353,11 +353,22 @@ const AUTOLINK_SPLITS: readonly (readonly [string, string, string])[] = [
 const hrefs = (html: string): string[] =>
   [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? '');
 
+/**
+ * Markdown as text of several lines draws it, links included, so that a
+ * test of where links lead can fail.
+ */
+const drawnWithLinks = (markdown: string): string =>
+  renderToStaticMarkup(
+    createElement(
+      RenderMarkdown,
+      { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS },
+      markdown,
+    ),
+  );
+
 /** The links the researcher's words make on their own. */
 const authoredHrefs = (before: string, after: string): string[] =>
-  [before, after].flatMap((text) =>
-    hrefs(renderToStaticMarkup(createElement(RenderMarkdown, null, text))),
-  );
+  [before, after].flatMap((text) => hrefs(drawnWithLinks(text)));
 
 describe('markdownSource', () => {
   const HOSTILE =
@@ -381,22 +392,20 @@ describe('markdownSource', () => {
     );
   });
 
-  it('never puts a value in a link destination', () => {
-    for (const destination of ['', 'https:']) {
-      const source = markdownSource({
-        text: '',
-        parts: [
-          `[details](${destination}`,
-          { name: 'name', text: '//evil.example' },
-          ')',
-        ],
-      });
-      const html = renderToStaticMarkup(
-        createElement(RenderMarkdown, null, source),
-      );
-      expect(html).not.toContain('evil');
-      expect(html).not.toMatch(/href="[^"]*(?:evil|%3C)/);
-    }
+  it.each([
+    ['[details](', '//evil.example'],
+    ['[details](https:', '//evil.example'],
+    ['[details](', 'https://evil.example'],
+    ['[details](https://', 'evil.example'],
+    ['[details](mailto:', 'evil@x.example'],
+  ])('never puts a value in a link destination: %j %j', (before, value) => {
+    const source = markdownSource({
+      text: '',
+      parts: [before, { name: 'name', text: value }, ')'],
+    });
+    const html = drawnWithLinks(source);
+    expect(html).not.toContain('evil');
+    expect(html).not.toMatch(/href="[^"]*(?:evil|%3C)/);
   });
 
   it('keeps a value in a link’s text, and the researcher’s destination', () => {
@@ -457,9 +466,7 @@ describe('markdownSource', () => {
         text: '',
         parts: [before, { name: 'name', text: value }, `${after}${definition}`],
       });
-      const html = renderToStaticMarkup(
-        createElement(RenderMarkdown, null, source),
-      );
+      const html = drawnWithLinks(source);
       const label = JSON.stringify([before, after]);
       expect(html, label).not.toContain('friend.example');
       expect(html, label).toContain('friend');
@@ -472,14 +479,37 @@ describe('markdownSource', () => {
         text: '',
         parts: [before, { name: 'name', text: value }, after],
       });
-      const html = renderToStaticMarkup(
-        createElement(RenderMarkdown, null, source),
-      );
+      const html = drawnWithLinks(source);
       expect(hrefs(html), JSON.stringify([before, value, after])).toEqual(
         authoredHrefs(before, after),
       );
       expect(getMarkdownLabelText(source)).toBe(`${before}${value}${after}`);
     }
+  });
+
+  // What markdown shows as typed (code, an address in angle brackets) is
+  // never changed by a value beside it, and a value in it shows as itself.
+  it.each([
+    [
+      'an address in angle brackets just before a value',
+      'See <https://a.example/?a=1&b=2>',
+      'Ada',
+      '',
+      // The address as a link, its `&` as typed, then the value.
+      'See https://a.example/?a=1&amp;b=2Ada',
+      ['https://a.example/?a=1&amp;b=2'],
+    ],
+    ['an `&` in code', 'Type `AT&T`', 'Ada', '', 'Type AT&amp;TAda', []],
+    ['a `<` in code around a value', '`<', 'Ada', '>`', '&lt;Ada&gt;', []],
+    ['a `[` in code around a value', 'Type `[', 'Ada', ']`', 'Type [Ada]', []],
+  ])('leaves %s as typed', (_case, before, value, after, shown, links) => {
+    const source = markdownSource({
+      text: '',
+      parts: [before, { name: 'name', text: value }, after],
+    });
+    const html = drawnWithLinks(source);
+    expect(html.replace(/<[^>]*>/g, '')).toBe(shown);
+    expect(hrefs(html)).toEqual(links);
   });
 
   it('keeps the researcher’s emphasis around a value after an escaped `<`', () => {
