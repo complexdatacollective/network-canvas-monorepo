@@ -13,6 +13,7 @@ import {
   fixtureTypeId,
   fixtureVariableId,
 } from '../testing/protocolFixture.ts';
+import { testVariableId } from '../testing/testId.ts';
 import BinAttributeField, {
   type BinAttributeSlot,
 } from './BinAttributeField.tsx';
@@ -21,6 +22,10 @@ const PERSON = fixtureTypeId('node', 'person');
 const CONTACT_FREQ = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
   'contactFreq',
+);
+const CONTACT_TYPE = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactType',
 );
 
 /** Whose attributes a bin prompt sorts, which the stage's subject decides. */
@@ -113,7 +118,7 @@ const meta = {
     stageId: fixtureStageId('ordinal-bin-1'),
     // What the host stands in for is the row dialog that edits one question.
     sectionTitle: 'The scale',
-    children: <TheScale committed="contactFreq" />,
+    children: <TheScale committed={CONTACT_FREQ} />,
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof FieldStoryHost>;
@@ -183,7 +188,9 @@ export const AnAttributeThatMustBeChosen: Story = {
  * so this host reaches the control's sentence and not that one.
  */
 export const AnAttributeNothingOffers: Story = {
-  args: { children: <TheScale committed="withdrawn_attribute" /> },
+  args: {
+    children: <TheScale committed={testVariableId('withdrawn_attribute')} />,
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -254,7 +261,7 @@ export const TheOtherBin: Story = {
   args: {
     stageId: fixtureStageId('categorical-bin-1'),
     sectionTitle: 'The bins',
-    children: <TheBins committed="contactType" />,
+    children: <TheBins committed={CONTACT_TYPE} />,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

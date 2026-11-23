@@ -10,7 +10,10 @@ import type { VariableType } from '@codaco/protocol-validation';
 
 import type { RuleChoiceOption } from '../rules/ruleCodebook.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import { fixtureStageId } from '../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureVariableId,
+} from '../testing/protocolFixture.ts';
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
@@ -36,14 +39,17 @@ type RuleAttribute = Readonly<{
 }>;
 
 const AGE: RuleAttribute = {
-  value: 'age',
+  value: fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age'),
   label: 'age',
   type: 'number',
   operator: 'GREATER_THAN',
 };
 
 const CONTACT_TYPE: RuleAttribute = {
-  value: 'contactType',
+  value: fixtureVariableId(
+    { entity: 'node', typeName: 'person' },
+    'contactType',
+  ),
   label: 'contactType',
   type: 'categorical',
   operator: 'INCLUDES',
@@ -55,7 +61,7 @@ const CONTACT_TYPE: RuleAttribute = {
 };
 
 const NAME: RuleAttribute = {
-  value: 'name',
+  value: fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name'),
   label: 'name',
   type: 'text',
   operator: 'CONTAINS',

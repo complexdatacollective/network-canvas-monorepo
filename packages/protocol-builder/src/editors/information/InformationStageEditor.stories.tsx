@@ -4,7 +4,10 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
-import { fixtureStageId } from '../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { informationStageEditor } from './InformationStageEditor.ts';
 
@@ -96,7 +99,9 @@ export const ShowingAValue: Story = {
         canvas.getByRole('region', {
           name: 'What the host was asked to commit',
         }),
-      ).toHaveTextContent('"path": "ego.ego_name"');
+      ).toHaveTextContent(
+        `"egoName": { "path": "ego.${fixtureVariableId('ego', 'ego_name')}" }`,
+      );
     });
   },
 };

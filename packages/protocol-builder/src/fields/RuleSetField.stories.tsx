@@ -257,7 +257,7 @@ export const AddingARule: Story = {
     await expect(
       await canvas.findByRole('button', { name: /^Edit rule:/ }),
     ).toBeInTheDocument();
-    await expect(canvas.getByText(PERSON)).toBeInTheDocument();
+    await expect(canvas.getByText('person')).toBeInTheDocument();
     await expect(canvas.getByText('exists')).toBeInTheDocument();
   },
 };

@@ -128,7 +128,9 @@ export const RulesForTheAttribute: Story = {
     const committed = canvas.getByRole('region', {
       name: 'What the host was asked to commit',
     });
-    await expect(committed).toHaveTextContent('"quickAdd": "name"');
+    await expect(committed).toHaveTextContent(
+      `"quickAdd": "${fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name')}"`,
+    );
     await expect(committed).not.toHaveTextContent('validation');
   },
 };
