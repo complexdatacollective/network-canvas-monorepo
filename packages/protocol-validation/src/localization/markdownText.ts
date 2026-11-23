@@ -56,3 +56,27 @@ export const escapeMarkdownText = (value: string): string =>
     .replace(/`/g, '\\`')
     .replace(/\[/g, '\\[')
     .replace(/\]/g, '\\]');
+
+/**
+ * Stored markdown as the editor reads it. A literal `>` is text, as it was to
+ * the editor before this one, so stored content does not turn into block
+ * quotes or HTML on first edit. The validator reads formatted text through
+ * this too, so the two cannot disagree about where a link is.
+ */
+export const markdownAsEdited = (value: string): string =>
+  value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
+
+/**
+ * What stands at the start of a version while it is read as markdown. A
+ * version sits inside a line, so text at its start (`# means`, `1. `) is not
+ * the start of a heading or list; a private-use character authored text
+ * cannot hold keeps markdown from taking it as one.
+ */
+export const VERSION_LINE_LEAD = '\uE002';
+
+/**
+ * A version's markdown as the editor reads it: one line, without the spaces
+ * at its ends, behind `VERSION_LINE_LEAD`.
+ */
+export const versionLineMarkdown = (markdown: string): string =>
+  markdownAsEdited(VERSION_LINE_LEAD + markdown.trim());

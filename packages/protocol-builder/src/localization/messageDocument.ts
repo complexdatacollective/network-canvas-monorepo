@@ -13,7 +13,9 @@ import {
   MISSING_CASE,
   type MessageNode,
   type MessageSwitch,
+  messageStructure,
   type MessageVersion,
+  VERSION_LINE_LEAD,
 } from '@codaco/protocol-validation';
 
 import {
@@ -225,7 +227,7 @@ const isRichTextVersion = (value: unknown): value is RichTextVersion =>
   Array.isArray(value.content) &&
   value.content.every((node) => typeof node === 'object' && node !== null);
 
-const isSwitchMeta = (value: unknown): value is SwitchMeta =>
+export const isSwitchMeta = (value: unknown): value is SwitchMeta =>
   typeof value === 'object' &&
   value !== null &&
   'argument' in value &&
@@ -242,20 +244,16 @@ const MARKER = /(\d+)/g;
 const markerFor = (index: number) => `${MARKER_OPEN}${index}${MARKER_CLOSE}`;
 const holdsMarker = (text: string) => text.includes(MARKER_OPEN);
 
-// A version sits inside a line, so text at its start (`# means`, `1. `) is
-// not the start of a heading or list. Reading it behind this stand-in keeps
-// markdown from taking it as one. (Writing needs none: the editor escapes
-// such text wherever it is.)
-const LINE_LEAD = '\uE002';
-
+// A version is read behind `VERSION_LINE_LEAD`, which is then taken off.
+// (Writing needs none: the editor escapes such text wherever it is.)
 const withoutLineLead = (
   line: readonly RichTextContent[],
 ): RichTextContent[] => {
   const [first, ...rest] = line;
-  if (first?.type !== 'text' || !first.text?.startsWith(LINE_LEAD)) {
+  if (first?.type !== 'text' || !first.text?.startsWith(VERSION_LINE_LEAD)) {
     return [...line];
   }
-  const text = first.text.slice(LINE_LEAD.length);
+  const text = first.text.slice(VERSION_LINE_LEAD.length);
   return text === '' ? rest : [{ ...first, text }, ...rest];
 };
 
@@ -267,7 +265,7 @@ const withoutLineLead = (
  */
 type MessageDocumentProblemKind = 'valueInLinkAddress' | 'linesInVersion';
 
-export class MessageDocumentProblem extends Error {
+class MessageDocumentProblem extends Error {
   readonly kind: MessageDocumentProblemKind;
 
   constructor(kind: MessageDocumentProblemKind) {
@@ -358,7 +356,7 @@ const versionLine = (
   }
   const [before, middle, after] = edgeSpace(markdown);
   const parsed = restoreMarkers(
-    markdownToRichTextContent(LINE_LEAD + middle, true, true),
+    markdownToRichTextContent(VERSION_LINE_LEAD + middle, true, true),
     pieces,
   );
   const line = withoutLineLead(parsed.content?.[0]?.content ?? []);
@@ -637,3 +635,25 @@ export const documentToMessageNodes = (
   document: RichTextContent,
   format: MessageDocumentFormat,
 ): MessageNode[] => messageNodesOf(document, format, false, undefined);
+
+/**
+ * The editor's document for the stored text of the field `name`. Validation
+ * refuses a protocol holding text the editor cannot hold, so one that reaches
+ * an editor is a fault, and this throws.
+ */
+export const openMessageDocument = (
+  name: string,
+  message: string,
+  format: MessageDocumentFormat,
+  labels: MessageDocumentLabels,
+): RichTextContent => {
+  const fault = (cause?: unknown) =>
+    new Error(`The text of "${name}" cannot be opened for editing.`, { cause });
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) throw fault();
+  try {
+    return messageToDocument(structure.nodes, format, labels);
+  } catch (error) {
+    throw error instanceof MessageDocumentProblem ? fault(error) : error;
+  }
+};

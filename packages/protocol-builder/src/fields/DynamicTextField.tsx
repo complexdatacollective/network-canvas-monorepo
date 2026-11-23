@@ -10,7 +10,6 @@ import {
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert } from '@codaco/fresco-ui/Alert';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
   type RichTextEditorToken,
@@ -85,8 +84,8 @@ import {
   ifRowOf,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
-  MessageDocumentProblem,
   messageToDocument,
+  openMessageDocument,
 } from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import {
@@ -354,13 +353,6 @@ const messages = defineMessages({
     defaultMessage: 'No',
     description:
       'Label of the version of a piece of text shown when a yes-or-no attribute is no.',
-  },
-  unreadable: {
-    id: 'protocolBuilder.dynamicText.unreadable',
-    defaultMessage:
-      'This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.',
-    description:
-      'Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed.',
   },
 });
 
@@ -1051,20 +1043,13 @@ export function DynamicMessageEditor({
     ]),
   ).concat(JSON.stringify([conditionValues, writesConditions]));
 
-  // The stored message as the editor's document, or why it cannot be one.
-  const parsed = useMemo(() => {
-    const structure = messageStructure(message);
-    if (!('nodes' in structure)) return undefined;
-    try {
-      return messageToDocument(structure.nodes, format, labels);
-    } catch (error) {
-      if (error instanceof MessageDocumentProblem) return undefined;
-      throw error;
-    }
+  const parsed = useMemo(
+    () => openMessageDocument(name, message, format, labels),
     // The labels follow the bindings, the language and the codebook's names
     // (`labelsKey`); the message decides the document.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [message, format, locale, bindings, intl, labelsKey]);
+    [name, message, format, locale, bindings, intl, labelsKey],
+  );
 
   // As `RichTextField` does: the editor gets its own last document back
   // while that document still writes the stored message, so a round trip
@@ -1302,24 +1287,11 @@ export function DynamicMessageEditor({
       : NEW_CONDITION;
 
   const problem = useMemo(() => {
-    if (!showsProblems || message === '' || parsed === undefined) {
-      return undefined;
-    }
+    if (!showsProblems || message === '') return undefined;
     const values = dynamicValueArgumentsAt(bindings, context);
     return findDynamicValueProblem(message, values, locale);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [showsProblems, message, parsed, bindings, context, locale]);
-
-  if (parsed === undefined && message !== '') {
-    return (
-      <UnreadableMessage
-        id={id}
-        name={name}
-        message={message}
-        className={className}
-      />
-    );
-  }
+  }, [showsProblems, message, bindings, context, locale]);
 
   const toolbarOptions = markdown
     ? richTextToolbarFor(singleLine)
@@ -1380,36 +1352,6 @@ export function DynamicMessageEditor({
           onCancel={() => setEditing(null)}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * In place of an editor, text it cannot hold, kept as it is stored. The
- * frame's classes still place the note where the editor would be.
- */
-export function UnreadableMessage({
-  id,
-  name,
-  message,
-  className,
-}: Readonly<{
-  id: string;
-  name: string;
-  message: string;
-  className?: string;
-}>) {
-  const intl = useAppIntl();
-  return (
-    <div className={className}>
-      <div id={id} data-name={name} className="flex flex-col gap-2">
-        <Alert variant="warning" density="compact">
-          {intl.formatMessage(messages.unreadable)}
-        </Alert>
-        <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
-          {message}
-        </pre>
-      </div>
     </div>
   );
 }

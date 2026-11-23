@@ -122,6 +122,7 @@ export default defineConfig({
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
+            '@codaco/protocol-validation > mdast-util-from-markdown',
             'd3-force',
             'zod',
             'zod/mini',
