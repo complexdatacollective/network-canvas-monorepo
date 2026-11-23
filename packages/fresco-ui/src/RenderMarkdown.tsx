@@ -12,8 +12,14 @@ import {
   useContext,
   useMemo,
 } from 'react';
-import ReactMarkdown, { type Components, type Options } from 'react-markdown';
+import ReactMarkdown, {
+  type Components,
+  defaultUrlTransform,
+  type Options,
+  type UrlTransform,
+} from 'react-markdown';
 
+import { linkAddress } from './linkAddress';
 import {
   BLOCK_IMAGE_ELEMENT,
   blockImageOf,
@@ -27,16 +33,21 @@ import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 import { OrderedList, UnorderedList } from './typography/UnorderedList';
 
-export const ALLOWED_MARKDOWN_LABEL_TAGS = [
+/**
+ * What text of one line is drawn with: the formatting the editor offers for
+ * one line, bold and italics, and nothing else. A link, a list or anything
+ * else markdown reads in one line is drawn as its words, as the editor shows
+ * it, so what a participant sees is what the researcher saw when writing it.
+ */
+export const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong'];
+/** What text of several lines is drawn with: what the editor offers for it. */
+export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   'em',
   'strong',
+  'a',
   'ul',
   'ol',
   'li',
-  'a',
-];
-export const ALLOWED_MARKDOWN_SECTION_TAGS = [
-  ...ALLOWED_MARKDOWN_LABEL_TAGS,
   'h1',
   'h2',
   'h3',
@@ -44,7 +55,6 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   'p',
   'br',
   'hr',
-  'a',
 ];
 
 // Text is read as standard CommonMark and nothing more: no syntax
@@ -54,10 +64,19 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
 // plugins of its own; this one always runs first.
 const showHtmlAsTypedPlugin = () => showHtmlAsTyped;
 
+// A link is drawn only where its address passes the one rule the editor
+// shares (see `linkAddress`); any other is drawn as its words. Every other
+// address, such as an image's, keeps react-markdown's own handling.
+const urlTransform: UrlTransform = (url, key, node) =>
+  node.tagName === 'a' && key === 'href'
+    ? (linkAddress(url) ?? null)
+    : defaultUrlTransform(url);
+
 const defaultMarkdownOptions = {
   allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
   remarkPlugins: [showHtmlAsTypedPlugin],
   unwrapDisallowed: true,
+  urlTransform,
 } satisfies Options;
 
 const renderedText = (node: unknown): string => {
@@ -267,6 +286,7 @@ const RenderMarkdown = ({
       unwrapDisallowed={
         unwrapDisallowed ?? defaultMarkdownOptions.unwrapDisallowed
       }
+      urlTransform={defaultMarkdownOptions.urlTransform}
       {...props}
     >
       {children}

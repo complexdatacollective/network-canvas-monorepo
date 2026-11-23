@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
+  ALLOWED_MARKDOWN_LABEL_TAGS,
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -81,14 +82,19 @@ export const fixEditMessages = defineMessages({
 export const FixText = ({
   text,
   markdown,
+  singleLine,
 }: {
   text: string;
   markdown: boolean;
+  /** The text is one line, drawn with what the editor offers for one line. */
+  singleLine: boolean;
 }) =>
   markdown ? (
     // As the interview reads it: the stored markdown, unchanged.
     <RenderMarkdown
-      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      allowedElements={
+        singleLine ? ALLOWED_MARKDOWN_LABEL_TAGS : ALLOWED_MARKDOWN_SECTION_TAGS
+      }
       render={<span className="wrap-break-word" />}
     >
       {text}
@@ -224,7 +230,11 @@ export const NowBox = ({
         {edit.now === null ? (
           <span>{intl.formatMessage(fixEditMessages.notSet)}</span>
         ) : (
-          <FixText text={edit.now} markdown={edit.markdown} />
+          <FixText
+            text={edit.now}
+            markdown={edit.markdown}
+            singleLine={edit.singleLine}
+          />
         )}
       </div>
     </div>

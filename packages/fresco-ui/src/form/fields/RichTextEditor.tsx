@@ -68,6 +68,7 @@ import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, Button } from '../../Button';
 import Surface from '../../layout/Surface';
+import { linkAddress } from '../../linkAddress';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import { presentationalTextValue } from '../../PresentationalText';
 import {
@@ -1047,6 +1048,10 @@ function createCustomExtensions({
         ? {
             openOnClick: false,
             protocols: ['mailto'],
+            // Only an address the interview draws as a link is made one
+            // (see `linkAddress`), so a link is never shown here that the
+            // participant would read as words.
+            isAllowedUri: (url) => linkAddress(url) !== undefined,
             HTMLAttributes: {
               class: 'text-link underline underline-offset-4',
               rel: 'noopener noreferrer',

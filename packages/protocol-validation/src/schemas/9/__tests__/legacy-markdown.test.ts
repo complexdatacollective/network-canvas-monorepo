@@ -51,7 +51,12 @@ const legacyReading = (markdown: string, lines: Lines): Root => {
     ],
     mdastExtensions: [gfmAutolinkLiteralFromMarkdown()],
   });
-  // A bare address is a link only where the field can hold one.
+  // A bare address is a link only where the field can hold one. Text of one
+  // line holds none: the interview draws every link in it as its words (see
+  // fresco-ui's `ALLOWED_MARKDOWN_LABEL_TAGS`), so a bare address there is
+  // compared as its words. A link the text writes out, or an address in angle
+  // brackets, is left as written and compared as the link the parser reads,
+  // though in one line it too is drawn as its words.
   const bare = (node: Nodes): boolean =>
     node.type === 'link' &&
     (node.position === undefined ||

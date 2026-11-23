@@ -66,6 +66,7 @@
     "./ProgressRing": "./src/ProgressRing.tsx",
     "./reducedMotion": "./src/reducedMotion.ts",
     "./ProtocolCard": "./src/ProtocolCard.tsx",
+    "./linkAddress": "./src/linkAddress.ts",
     "./markdownTypedHtml": "./src/markdownTypedHtml.ts",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
@@ -426,6 +427,10 @@
       "./ProtocolCard": {
         "types": "./dist/ProtocolCard.d.ts",
         "default": "./dist/ProtocolCard.js"
+      },
+      "./linkAddress": {
+        "types": "./dist/linkAddress.d.ts",
+        "default": "./dist/linkAddress.js"
       },
       "./markdownTypedHtml": {
         "types": "./dist/markdownTypedHtml.d.ts",

@@ -307,7 +307,8 @@ describe('RichText markdown adapter', () => {
     );
   });
 
-  it('drops unsafe markdown link schemes while keeping safe and relative URLs', () => {
+  // The rule is fresco-ui's `linkAddress`, which the interview draws with.
+  it('keeps links to whole web, email and telephone addresses, and shows any other as its words', () => {
     expect(
       roundTrip(
         [
@@ -315,12 +316,13 @@ describe('RichText markdown adapter', () => {
           '[Data](data:text/html,Hello)',
           '[HTTP](https://example.com/a%20path)',
           '[Mail](mailto:team@example.com)',
+          '[Phone](tel:+15555550123)',
           '[Protocol](//example.com/x)',
           '[Relative](/docs/a%20path)',
         ].join(' '),
       ),
     ).toBe(
-      'Unsafe Data [HTTP](https://example.com/a%20path) [Mail](mailto:team@example.com) [Protocol](//example.com/x) [Relative](/docs/a%20path)',
+      'Unsafe Data [HTTP](https://example.com/a%20path) [Mail](mailto:team@example.com) [Phone](tel:+15555550123) Protocol Relative',
     );
   });
 

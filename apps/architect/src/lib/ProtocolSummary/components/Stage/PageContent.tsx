@@ -241,7 +241,11 @@ const PageContent = ({ content = null }: PageContentProps) => {
       {/* A page opens with its heading, which has no space of its own above
           it, so the frame's would leave it against the section's title. */}
       <div className="mt-3">
-        <SummaryMarkdown value={content} blockImages={PAGE_CONTENT_FILES} />
+        <SummaryMarkdown
+          value={content}
+          multiline
+          blockImages={PAGE_CONTENT_FILES}
+        />
       </div>
     </SectionFrame>
   );

@@ -31,7 +31,9 @@ const interviewWords = (text: string) => {
 };
 
 const fixWords = (text: string) => {
-  const { container, unmount } = render(<FixText text={text} markdown />);
+  const { container, unmount } = render(
+    <FixText text={text} markdown singleLine={false} />,
+  );
   const shown = words(container);
   unmount();
   return shown;

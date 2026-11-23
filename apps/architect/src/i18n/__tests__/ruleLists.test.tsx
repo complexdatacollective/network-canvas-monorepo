@@ -137,9 +137,9 @@ it.each(['default', 'summary'] as const)(
         expect(token).toBe(tokens[index]);
       });
       expect(second.querySelector('strong')).toHaveTextContent('Bravo');
-      expect(
-        within(third).getByRole('link', { name: 'Isabel' }),
-      ).toHaveAttribute('href', 'https://example.org/authored');
+      // An option label is one line, which shows a link as its words.
+      expect(within(third).queryByRole('link')).not.toBeInTheDocument();
+      expect(third).toHaveTextContent('Isabel');
       expect(rule).toEqual(original);
     }
   },

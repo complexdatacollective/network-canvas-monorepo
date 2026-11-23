@@ -9,6 +9,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import {
+  ALLOWED_MARKDOWN_LABEL_TAGS,
   ALLOWED_MARKDOWN_SECTION_TAGS,
   type MarkdownBlockImages,
   RenderMarkdown,
@@ -85,7 +86,12 @@ type SummaryTextProps = {
   value: LocalizedString | undefined;
 };
 
-type Format = 'plain' | 'markdown';
+/**
+ * How a text is written: plain, or markdown of one line or of several. One
+ * line is drawn with what the editor offers for one line (bold and italics),
+ * as the interview draws it.
+ */
+type Format = 'plain' | 'markdown-line' | 'markdown-lines';
 
 /** How markdown that holds files as blocks is drawn where it shows values. */
 const blockMarkdownWith = (
@@ -196,10 +202,8 @@ const TranslationText = ({
     return (
       <DynamicMessageSummary
         message={text}
-        markdown={format === 'markdown'}
-        // The summary draws all markdown with its blocks, as it does text
-        // without values (`Markdown`), whatever lines the text holds today.
-        multiline
+        markdown={format !== 'plain'}
+        multiline={format === 'markdown-lines'}
         blockMarkdown={blockMarkdownWith(blockImages)}
         locale={locale}
         site={dynamicSite}
@@ -212,9 +216,13 @@ const TranslationText = ({
   // is already escaped by whatever wrote it, so rewriting it here could only
   // make the summary read differently from the participant's screen (a file
   // whose address is written between angle brackets read as its source).
-  return format === 'markdown' ? (
+  return format !== 'plain' ? (
     <RenderMarkdown
-      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      allowedElements={
+        format === 'markdown-lines'
+          ? ALLOWED_MARKDOWN_SECTION_TAGS
+          : ALLOWED_MARKDOWN_LABEL_TAGS
+      }
       blockImages={blockImages}
       render={<span />}
     >
@@ -368,12 +376,19 @@ export const SummaryText = ({ value }: SummaryTextProps) => (
 
 export const SummaryMarkdown = ({
   value,
+  multiline = false,
   blockImages,
 }: SummaryTextProps & {
+  /** Whether the text's field holds several lines, as its schema declares. */
+  multiline?: boolean;
   /** How a file the text holds as a block is drawn; without it, it is not. */
   blockImages?: MarkdownBlockImages;
 }) => (
-  <LocalizedText value={value} format="markdown" blockImages={blockImages} />
+  <LocalizedText
+    value={value}
+    format={multiline ? 'markdown-lines' : 'markdown-line'}
+    blockImages={blockImages}
+  />
 );
 
 /** A message that reads differently by what it is about: its versions. */

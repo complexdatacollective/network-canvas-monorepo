@@ -2,6 +2,7 @@ import type {
   RichTextAssetBlockAttributes,
   RichTextAssetBlockContent,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import { linkAddress } from '@codaco/fresco-ui/linkAddress';
 import { showHtmlAsTyped } from '@codaco/fresco-ui/markdownTypedHtml';
 import {
   assetBlockMarkdown,
@@ -76,10 +77,6 @@ const escapeLinkDestination = (value: string): string =>
 const escapeLinkTitle = (value: string): string =>
   value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
-const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
-const LINK_PROTOCOL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
-const SCHEME_DELIMITER_PATTERN = /[/?#]/;
-
 type InlineParseOptions = {
   links?: boolean;
   definitions?: Definitions;
@@ -87,62 +84,6 @@ type InlineParseOptions = {
 
 type SerializeInlineOptions = {
   links?: boolean;
-};
-
-const hasUnsafeSchemeCharacters = (href: string): boolean => {
-  const colonIndex = href.indexOf(':');
-
-  if (colonIndex === -1) {
-    return false;
-  }
-
-  const delimiterIndex = href.search(SCHEME_DELIMITER_PATTERN);
-
-  if (delimiterIndex !== -1 && delimiterIndex < colonIndex) {
-    return false;
-  }
-
-  return /\s/.test(href.slice(0, colonIndex));
-};
-
-const hasControlCharacter = (href: string): boolean =>
-  Array.from(href).some((character) => {
-    const code = character.charCodeAt(0);
-    return code <= 0x1f || code === 0x7f;
-  });
-
-const sanitizeLinkDestination = (
-  value: string | null | undefined,
-): string | undefined => {
-  const href = value?.trim();
-
-  if (!href) {
-    return undefined;
-  }
-
-  if (hasControlCharacter(href) || hasUnsafeSchemeCharacters(href)) {
-    return undefined;
-  }
-
-  if (href.startsWith('//')) {
-    try {
-      const url = new URL(href, 'https://networkcanvas.local');
-      return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  if (!LINK_PROTOCOL_PATTERN.test(href)) {
-    return href;
-  }
-
-  try {
-    const url = new URL(href);
-    return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
-  } catch {
-    return undefined;
-  }
 };
 
 const addMark = (
@@ -185,7 +126,7 @@ const inlineFromMarkdown = (
           : node.identifier === undefined
             ? undefined
             : options.definitions?.get(node.identifier);
-      const href = sanitizeLinkDestination(target?.url);
+      const href = linkAddress(target?.url);
       const content = childrenAsInline(node, options);
 
       if (!href || options.links === false) {
@@ -492,7 +433,7 @@ const getLinkTarget = (node: RichTextContent): LinkTarget | undefined => {
     return undefined;
   }
 
-  const safeHref = sanitizeLinkDestination(href);
+  const safeHref = linkAddress(href);
 
   if (!safeHref) {
     return undefined;
@@ -585,11 +526,35 @@ const findLinkRunEnd = (
   return end;
 };
 
+/**
+ * Pieces of text side by side with the same formatting, as one piece, as the
+ * editor holds them. Escaping reads a character's line so far (a `>` is
+ * escaped after a `<`), so text escaped in pieces could be written one way
+ * and, once the editor had joined it, another.
+ */
+const joinedTextRuns = (nodes: RichTextContent[]): RichTextContent[] =>
+  nodes.reduce<RichTextContent[]>((joined, node) => {
+    const last = joined.at(-1);
+    if (
+      last?.type === 'text' &&
+      node.type === 'text' &&
+      JSON.stringify(last.marks ?? []) === JSON.stringify(node.marks ?? [])
+    ) {
+      joined[joined.length - 1] = {
+        ...last,
+        text: `${last.text ?? ''}${node.text ?? ''}`,
+      };
+      return joined;
+    }
+    joined.push(node);
+    return joined;
+  }, []);
+
 const serializeInline = (
   content: RichTextContent[] | undefined,
   options: SerializeInlineOptions = {},
 ): string => {
-  const nodes = content ?? [];
+  const nodes = joinedTextRuns(content ?? []);
   const parts: string[] = [];
   let index = 0;
 

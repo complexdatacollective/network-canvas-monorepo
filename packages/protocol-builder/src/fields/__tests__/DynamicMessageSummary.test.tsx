@@ -40,9 +40,10 @@ const renderSummary = (message: string, markdown: boolean, multiline = false) =>
   );
 
 describe('DynamicMessageSummary', () => {
-  it('keeps the emphasis and links of markdown around its values', () => {
+  it('keeps the emphasis and links of markdown of several lines around its values', () => {
     const { getByTestId } = renderSummary(
       'Read **{name}** at [this site](https://example.com) with _{place}_',
+      true,
       true,
     );
     const summary = getByTestId('summary');

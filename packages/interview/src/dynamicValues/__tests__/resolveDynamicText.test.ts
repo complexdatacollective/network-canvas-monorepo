@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
   getMarkdownLabelText,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -403,8 +404,13 @@ describe('markdownSource', () => {
       text: '',
       parts: ['[About ', { name: 'name', text: 'Ada' }, '](https://a.example)'],
     });
+    // Text of several lines, which is drawn with its links.
     const html = renderToStaticMarkup(
-      createElement(RenderMarkdown, null, source),
+      createElement(
+        RenderMarkdown,
+        { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS },
+        source,
+      ),
     );
     expect(html).toContain('href="https://a.example"');
     expect(html).toContain('>About Ada<');

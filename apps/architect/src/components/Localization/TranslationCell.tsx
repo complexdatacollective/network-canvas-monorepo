@@ -16,7 +16,10 @@ import {
   type RichTextAssetBlocks,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  ALLOWED_MARKDOWN_LABEL_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import {
   AssetBlockLine,
   createAssetBlockImages,
@@ -211,13 +214,21 @@ const CELL_ASSET_BLOCK_MARKDOWN: BlockMarkdown = {
 const CellMarkdown = ({
   children,
   assetBlocks,
+  singleLine,
 }: {
   children: string;
   /** Whether the text holds files as blocks, which a cell then names. */
   assetBlocks: boolean;
+  /**
+   * Whether the text is one line, which is drawn with only what the editor
+   * offers for one line (bold and italics), as the interview draws it.
+   */
+  singleLine: boolean;
 }) => (
   <RenderMarkdown
-    allowedElements={CELL_MARKDOWN_ELEMENTS}
+    allowedElements={
+      singleLine ? ALLOWED_MARKDOWN_LABEL_TAGS : CELL_MARKDOWN_ELEMENTS
+    }
     components={cellMarkdownComponents}
     blockImages={assetBlocks ? CELL_BLOCK_IMAGES : undefined}
     unwrapDisallowed
@@ -270,12 +281,15 @@ const Fallback = ({
   messageArguments,
   dynamic,
   assetBlocks = false,
+  singleLine = false,
 }: {
   id: string;
   value: LocalizedString | undefined;
   format: LocalizedStringFormat;
   /** Whether the text holds files as blocks (see `CellMarkdown`). */
   assetBlocks?: boolean;
+  /** Whether the text is one line (see `CellMarkdown`). */
+  singleLine?: boolean;
   locale: LocaleTag;
   localization: ProtocolLocalization;
   messageArguments?: MessageArguments;
@@ -337,7 +351,9 @@ const Fallback = ({
             locale={shown.lang}
           />
         ) : format === 'markdown' ? (
-          <CellMarkdown assetBlocks={assetBlocks}>{shown.text}</CellMarkdown>
+          <CellMarkdown assetBlocks={assetBlocks} singleLine={singleLine}>
+            {shown.text}
+          </CellMarkdown>
         ) : (
           shown.text
         )}
@@ -476,6 +492,7 @@ const PlainTextCell = ({
             id={fallbackId}
             value={rowValueWithCell(row, locale, text)}
             format={row.format}
+            singleLine={singleLine}
             locale={locale}
             localization={localization}
           />
@@ -765,6 +782,7 @@ const RichTextCell = ({
                 value={value}
                 format={row.format}
                 assetBlocks={assetBlocks}
+                singleLine={singleLine}
                 locale={locale}
                 localization={localization}
               />
@@ -796,6 +814,7 @@ const RichTextCell = ({
                 value={value}
                 format={row.format}
                 assetBlocks={assetBlocks}
+                singleLine={singleLine}
                 locale={locale}
                 localization={localization}
               />
@@ -804,7 +823,9 @@ const RichTextCell = ({
                 id={contentId}
                 className={cx(CELL_TEXT_CLASSES, 'col-start-1 row-start-1')}
               >
-                <CellMarkdown assetBlocks={assetBlocks}>{text}</CellMarkdown>
+                <CellMarkdown assetBlocks={assetBlocks} singleLine={singleLine}>
+                  {text}
+                </CellMarkdown>
               </div>
             )}
           </div>

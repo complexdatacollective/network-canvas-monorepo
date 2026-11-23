@@ -364,6 +364,9 @@ const SCHEMA_9_TEXTS = [
   'Some _emphasis_ here',
   'Some **strong** words',
   'A [link](https://example.org/a) in a sentence',
+  'Write to <https://example.org> or <help@example.org>',
+  '- a list marker',
+  '1. a numbered marker',
   '- first\n- second\n\n1. one\n2. two',
   '# A heading\n\nWords under it',
   'Line one  \nLine two',
@@ -372,90 +375,12 @@ const SCHEMA_9_TEXTS = [
   '<div>\nA block of HTML\n</div>',
   'A shortcode typed by hand :smile:',
   'An emoji 😄 in a sentence',
+  // Which addresses are links is one rule, fresco-ui's `linkAddress`.
+  'Read [the docs](/docs/page) first',
+  'Mail [us](mailto:help@example.org) or [call](tel:+15555550123)',
+  'Do not [run](javascript:alert(1)) this',
+  'See [here](https://example.com"\\>a) now',
 ];
-
-type Readings = Readonly<{
-  drawn: string[];
-  editor: string[];
-  saved: string[];
-}>;
-
-/**
- * Where (a), (b) and (c) do not agree: the text as stored, its shape, and
- * the three readings, so that a change to any of them is seen here. These
- * are not accepted differences; each is a place where saving a text without
- * a change takes away something a participant saw.
- */
-const DISAGREEMENTS: readonly (readonly [string, Shape, Readings])[] = [
-  // The editor offers no links in one-line text, so it drops a link the
-  // interview draws there, and a save removes it.
-  [
-    '<https://example.org>',
-    LINE,
-    {
-      drawn: ['⟨link https://example.org/⟩https://example.org⟩'],
-      editor: ['https://example.org'],
-      saved: ['https://example.org'],
-    },
-  ],
-  [
-    '[label](https://example.org)',
-    LINE,
-    {
-      drawn: ['⟨link https://example.org/⟩label⟩'],
-      editor: ['label'],
-      saved: ['label'],
-    },
-  ],
-  [
-    'A [link](https://example.org/a) in a sentence',
-    LINE,
-    {
-      drawn: ['A ⟨link https://example.org/a⟩link⟩ in a sentence'],
-      editor: ['A link in a sentence'],
-      saved: ['A link in a sentence'],
-    },
-  ],
-  // A one-line label draws a list; the editor reads one line as words.
-  [
-    '- [ ] first',
-    LINE,
-    {
-      drawn: ['• [ ] first'],
-      editor: ['[ ] first'],
-      saved: ['[ ] first'],
-    },
-  ],
-  // A bare address the old reading found inside typed HTML, which the
-  // migration wrote as a link: the interview draws it, but the editor drops
-  // a link whose address is not a valid URL.
-  ...[PAGE, BLOCKS].map(
-    (shape) =>
-      [
-        schema8MarkdownAsStandard(
-          'Some <em>words</em> and <a href="https://example.com">a link</a>',
-          'multiple',
-        ),
-        shape,
-        {
-          drawn: [
-            'Some <em>words</em> and <a href="⟨link https://example.com%22%3Ea⟩https://example.com">a⟩ link</a>',
-          ],
-          editor: [
-            'Some <em>words</em> and <a href="https://example.com">a link</a>',
-          ],
-          saved: [
-            'Some <em>words</em> and <a href="https://example.com">a link</a>',
-          ],
-        },
-      ] satisfies readonly [string, Shape, Readings],
-  ),
-];
-
-const isDisagreement = (stored: string, shape: Shape) =>
-  DISAGREEMENTS.some(
-    ([each, eachShape]) => each === stored && eachShape === shape,
-  );
 
 const cases = (
   texts: readonly string[],
@@ -465,7 +390,6 @@ const cases = (
     texts
       .map((text) => [text, prepare(text, shape)] as const)
       .filter(([, stored]) => accepts(shape, stored))
-      .filter(([, stored]) => !isDisagreement(stored, shape))
       .map(([text, stored]) => [shape.name, text, shape, stored] as const),
   );
 
@@ -493,19 +417,6 @@ describe('the interview, the editor and a save without changes show stored text 
       expectOneReading(stored, shape);
     },
   );
-
-  it.each(
-    DISAGREEMENTS.map(
-      ([stored, shape, readings]) =>
-        [stored, shape.name, shape, readings] as const,
-    ),
-  )('records how %j disagrees in %s', (stored, _name, shape, readings) => {
-    expect({
-      drawn: drawn(stored, shape),
-      editor: shownByEditor(stored, shape),
-      saved: drawn(roundTrip(stored, shape), shape),
-    }).toEqual(readings);
-  });
 
   it('keeps an emoji shortcode typed in schema 9 as it was typed', () => {
     for (const shape of SHAPES) {

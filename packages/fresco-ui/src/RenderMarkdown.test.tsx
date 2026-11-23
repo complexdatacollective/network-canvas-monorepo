@@ -1,6 +1,6 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import remarkGfm from 'remark-gfm';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { escapeMarkdownText } from '@codaco/protocol-validation';
 
@@ -195,7 +195,7 @@ it('draws tildes as typed, not as struck-through words', () => {
 
 it('makes an explicit link a link, and leaves a bare address as words', () => {
   render(
-    <RenderMarkdown>
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
       {'[Isabel](https://example.org) and https://example.com'}
     </RenderMarkdown>,
   );
@@ -207,15 +207,79 @@ it('makes an explicit link a link, and leaves a bare address as words', () => {
   );
 });
 
-it('renders a javascript: link as text with no href', () => {
-  // react-markdown's default urlTransform removes the href.
-  const { container } = render(
-    <RenderMarkdown>{'[Isabel](javascript:alert(1))'}</RenderMarkdown>,
+it('opens a link outside the app', () => {
+  const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+  render(
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'Visit [docs](https://example.com)'}
+    </RenderMarkdown>,
   );
 
-  expect(container).toHaveTextContent('Isabel');
+  fireEvent.click(screen.getByRole('link', { name: 'docs' }));
+
+  expect(open).toHaveBeenCalledWith(
+    'https://example.com',
+    '_blank',
+    'noopener,noreferrer',
+  );
+  open.mockRestore();
+});
+
+// One line is drawn with what the editor offers for one line: bold and
+// italics. A link, an address between angle brackets and a list are words.
+it('draws a link and a list in one line as their words', () => {
+  const { container, rerender } = render(
+    <RenderMarkdown>
+      {'**Ask** [Isabel](https://example.org) at <https://example.com>'}
+    </RenderMarkdown>,
+  );
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  expect(container.querySelector('[href]')).toBeNull();
+  expect(container.querySelector('strong')).toHaveTextContent('Ask');
+  expect(container.textContent).toBe('Ask Isabel at https://example.com');
+
+  rerender(<RenderMarkdown>{'- [ ] first'}</RenderMarkdown>);
+  expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  expect(container.textContent?.trim()).toBe('[ ] first');
+});
+
+/**
+ * A link is drawn only where its address passes `linkAddress`, the rule the
+ * editor shares; any other is drawn as its words, with no address at all.
+ */
+describe('which link addresses are links', () => {
+  it.each([
+    ['a web address', 'https://example.org/a'],
+    ['an email address', 'mailto:help@example.org'],
+    ['a telephone number', 'tel:+15555550123'],
+  ])('draws %s as a link', (_kind, address) => {
+    render(
+      <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+        {`[Isabel](${address})`}
+      </RenderMarkdown>,
+    );
+    expect(screen.getByRole('link', { name: 'Isabel' })).toHaveAttribute(
+      'href',
+      address,
+    );
+  });
+
+  it.each([
+    ['a relative address', '/docs/page'],
+    ['an address with no scheme', 'example.org'],
+    ['an address only starting with //', '//example.org'],
+    ['an address the URL parser rejects', 'https://example.com"\\>a'],
+    ['a script', 'javascript:alert(1)'],
+    ['a data address', 'data:text/html,hi'],
+  ])('draws a link to %s as its words', (_kind, address) => {
+    const { container } = render(
+      <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+        {`[Isabel](${address})`}
+      </RenderMarkdown>,
+    );
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(container.querySelector('[href]')).toBeNull();
+    expect(container).toHaveTextContent('Isabel');
+  });
 });
 
 it('retains custom components and wrapper props', () => {
@@ -236,7 +300,10 @@ it('retains custom components and wrapper props', () => {
 
 it('adds a caller’s remark plugins, and still shows HTML as typed', () => {
   const { container } = render(
-    <RenderMarkdown remarkPlugins={[remarkGfm]}>
+    <RenderMarkdown
+      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      remarkPlugins={[remarkGfm]}
+    >
       {'~~Isabel~~ https://example.org <em>Zelda</em>'}
     </RenderMarkdown>,
   );

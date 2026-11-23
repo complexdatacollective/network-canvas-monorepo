@@ -53,6 +53,7 @@ const IntroductionPanel = ({
                     <SummaryMarkdown
                       key="text"
                       value={introductionPanel.text}
+                      multiline
                     />,
                   ],
                 ]
@@ -64,7 +65,7 @@ const IntroductionPanel = ({
           <Heading level="h1">
             <SummaryText value={introductionPanel.title} />
           </Heading>
-          <SummaryMarkdown value={introductionPanel.text} />
+          <SummaryMarkdown value={introductionPanel.text} multiline />
         </>
       )}
     </SectionFrame>
