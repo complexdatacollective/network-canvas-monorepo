@@ -1,11 +1,14 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { testVariableId } from '../../__tests__/testIds';
 import type { DynamicValueEntities } from '../DynamicValueScope';
 import { useValuesUntilExit } from '../useValuesUntilExit';
 
+const NAME = testVariableId('name');
+
 const named = (label: string | undefined): DynamicValueEntities => ({
-  attributes: { node: { name: label } },
+  attributes: { node: { [NAME]: label } },
   labels: { node: label },
 });
 
@@ -53,7 +56,7 @@ describe('useValuesUntilExit', () => {
 
   it('names the outgoing content as it was last shown', () => {
     // A label that decrypts after the content appears.
-    const attributes = { node: { name: [1, 2, 3] } };
+    const attributes = { node: { [NAME]: [1, 2, 3] } };
     const locked: DynamicValueEntities = { attributes, labels: { node: '🔒' } };
     const decrypted: DynamicValueEntities = {
       attributes,
@@ -70,7 +73,7 @@ describe('useValuesUntilExit', () => {
   });
 
   it('settles when the values are new objects with the same content', () => {
-    const attributes = { node: { name: 'Ada' } };
+    const attributes = { node: { [NAME]: 'Ada' } };
     const { result, rerender } = renderHook(
       ({ key, values }) => useValuesUntilExit(key, values),
       {

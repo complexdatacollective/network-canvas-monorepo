@@ -15,8 +15,11 @@ import type { Tracker } from '../../../analytics/tracker';
 import { updateNode } from '../../../store/modules/session';
 import type { RootState } from '../../../store/store';
 import {
+  AGE_VARIABLE,
   createEncryptionStore,
   encryptedVariables,
+  NAME_VARIABLE,
+  NICKNAME_VARIABLE,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import {
@@ -47,7 +50,9 @@ const copiedTo = (node: NcNode, id: string): NcNode => ({
 /** `node` with its records replaced by ones schema 8 would have written. */
 const asSchema8 = (node: NcNode): NcNode => ({
   ...node,
-  [entitySecureAttributesMeta]: { name: { iv: [1, 2, 3], salt: [4, 5, 6] } },
+  [entitySecureAttributesMeta]: {
+    [NAME_VARIABLE]: { iv: [1, 2, 3], salt: [4, 5, 6] },
+  },
 });
 
 async function lockedStore(nodes: NcNode[]) {
@@ -67,7 +72,7 @@ describe('storedEncryptedNames', () => {
     const bea = await encryptedPerson('bea', 'Bea', PASSPHRASE);
     const names = storedEncryptedNames(
       [bea, person('tom', { name: 'Tom' }), person('unnamed')],
-      'name',
+      NAME_VARIABLE,
       encryptedVariables,
     );
 
@@ -78,9 +83,9 @@ describe('storedEncryptedNames', () => {
           status: 'encrypted',
           value: {
             nodeId: 'bea',
-            variableId: 'name',
-            iv: bea[entitySecureAttributesMeta]?.name?.iv,
-            data: bea[entityAttributesProperty].name,
+            variableId: NAME_VARIABLE,
+            iv: bea[entitySecureAttributesMeta]?.[NAME_VARIABLE]?.iv,
+            data: bea[entityAttributesProperty][NAME_VARIABLE],
           },
         },
       },
@@ -90,21 +95,25 @@ describe('storedEncryptedNames', () => {
   test('finds ciphertext that lost its record under an encrypted variable unreadable, and bytes under any other variable a plain answer', () => {
     const orphan = person('orphan', { name: [1, 2, 3], age: [4, 5, 6] });
 
-    expect(storedEncryptedNames([orphan], 'name', encryptedVariables)).toEqual([
+    expect(
+      storedEncryptedNames([orphan], NAME_VARIABLE, encryptedVariables),
+    ).toEqual([
       {
         personId: 'orphan',
         stored: { status: 'unreadable', reason: 'missing-metadata' },
       },
     ]);
-    expect(storedEncryptedNames([orphan], 'age', encryptedVariables)).toEqual(
-      [],
-    );
+    expect(
+      storedEncryptedNames([orphan], AGE_VARIABLE, encryptedVariables),
+    ).toEqual([]);
   });
 
   test('finds a name schema 8 encrypted unreadable', async () => {
     const legacy = asSchema8(await encryptedPerson('bea', 'Bea', PASSPHRASE));
 
-    expect(storedEncryptedNames([legacy], 'name', encryptedVariables)).toEqual([
+    expect(
+      storedEncryptedNames([legacy], NAME_VARIABLE, encryptedVariables),
+    ).toEqual([
       {
         personId: 'bea',
         stored: { status: 'unreadable', reason: 'legacy-format' },
@@ -122,7 +131,7 @@ describe('readDecryptedNames', () => {
         await encryptedPerson('dee', 'Dee', PASSPHRASE),
         person('orphan', { name: [1, 2, 3] }),
       ],
-      'name',
+      NAME_VARIABLE,
       encryptedVariables,
     );
     const outcomes = new Map<string, DecryptOutcome>([
@@ -148,13 +157,13 @@ describe('decryptDetails', () => {
     expect(
       await decryptDetails(
         bea,
-        ['name', 'nickname'],
+        [NAME_VARIABLE, NICKNAME_VARIABLE],
         encryptedVariables,
         scope,
       ),
     ).toEqual({
       status: 'ready',
-      values: new Map([['name', 'Bea']]),
+      values: new Map([[NAME_VARIABLE, 'Bea']]),
       unavailable: [],
       unreadable: [],
     });
@@ -164,7 +173,7 @@ describe('decryptDetails', () => {
     const bea = await encryptedPerson('bea', 'Bea', PASSPHRASE);
 
     expect(
-      await decryptDetails(bea, ['name'], encryptedVariables, undefined),
+      await decryptDetails(bea, [NAME_VARIABLE], encryptedVariables, undefined),
     ).toEqual({ status: 'locked' });
   });
 
@@ -172,7 +181,7 @@ describe('decryptDetails', () => {
     expect(
       await decryptDetails(
         person('tom', { name: 'Tom' }),
-        ['name'],
+        [NAME_VARIABLE],
         encryptedVariables,
         undefined,
       ),
@@ -190,11 +199,11 @@ describe('decryptDetails', () => {
     const scope = await unlockedScope([bea, moved]);
 
     expect(
-      await decryptDetails(moved, ['name'], encryptedVariables, scope),
+      await decryptDetails(moved, [NAME_VARIABLE], encryptedVariables, scope),
     ).toEqual({
       status: 'ready',
       values: new Map(),
-      unavailable: ['name'],
+      unavailable: [NAME_VARIABLE],
       unreadable: ['decryption-failed'],
     });
   });
@@ -209,14 +218,14 @@ describe('decryptDetails', () => {
     expect(
       await decryptDetails(
         legacy,
-        ['name', 'nickname'],
+        [NAME_VARIABLE, NICKNAME_VARIABLE],
         encryptedVariables,
         undefined,
       ),
     ).toEqual({
       status: 'ready',
       values: new Map(),
-      unavailable: ['name', 'nickname'],
+      unavailable: [NAME_VARIABLE, NICKNAME_VARIABLE],
       unreadable: ['legacy-format', 'missing-metadata'],
     });
   });
@@ -238,7 +247,7 @@ describe('useDecryptedNames', () => {
       () =>
         useDecryptedNames({
           nodes: useSelector(selectNodes),
-          nameAttribute: 'name',
+          nameAttribute: NAME_VARIABLE,
           variables: encryptedVariables,
         }),
       { wrapper },
@@ -322,7 +331,7 @@ describe('useDecryptedNames', () => {
       store.dispatch(
         updateNode({
           nodeId: 'bea',
-          attributePatch: { set: { name: 'Beatrice' }, unset: [] },
+          attributePatch: { set: { [NAME_VARIABLE]: 'Beatrice' }, unset: [] },
           currentStep: 0,
         }),
       ),

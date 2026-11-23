@@ -6,6 +6,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import {
   type AddRelativeRequest,
   availableParentChoices,
@@ -141,7 +142,10 @@ describe('the stand-in rule', () => {
       ),
     );
     expect(result.people).toEqual([
-      { id: 'stand-in-1', details: { sex: ['male'] } },
+      {
+        id: 'stand-in-1',
+        details: { [config.sexAssignedAtBirthAttribute]: ['male'] },
+      },
     ]);
     expect(result.links).toEqual([
       {
@@ -161,7 +165,10 @@ describe('the stand-in rule', () => {
       ),
     );
     expect(result.people).toEqual([
-      { id: 'stand-in-1', details: { sex: ['female'] } },
+      {
+        id: 'stand-in-1',
+        details: { [config.sexAssignedAtBirthAttribute]: ['female'] },
+      },
     ]);
     expect(result.links).toEqual([
       { source: 'stand-in-1', target: 'ego', kind: 'biological' },
@@ -351,7 +358,7 @@ describe('the stand-in rule', () => {
           link('dad', 'ego', 'biological'),
           {
             ...link('standIn', 'friend', 'partner'),
-            type: 'knows',
+            type: testTypeId('knows'),
           },
         ],
       ),
@@ -379,7 +386,9 @@ describe('the stand-in rule', () => {
           link('dad', 'ego', 'biological'),
           {
             ...link('standIn', 'friend', 'biological'),
-            [entityAttributesProperty]: { otherKind: ['biological'] },
+            [entityAttributesProperty]: {
+              [testVariableId('otherKind')]: ['biological'],
+            },
           },
         ],
       ),
@@ -532,7 +541,7 @@ describe('the stand-in rule', () => {
       family: f,
       anchorId: 'ego',
       newPersonId: 'added',
-      details: { sex: ['unknown'] },
+      details: { [config.sexAssignedAtBirthAttribute]: ['unknown'] },
       request: parentRequest('biological'),
       createId: ids(),
       sexAttribute: config.sexAssignedAtBirthAttribute,
@@ -556,7 +565,10 @@ describe('the stand-in rule', () => {
       ),
     );
     expect(result.updatedPeople).toEqual([
-      { id: 'standIn', details: { sex: ['female'] } },
+      {
+        id: 'standIn',
+        details: { [config.sexAssignedAtBirthAttribute]: ['female'] },
+      },
     ]);
     expect(result.removedLinkIds).toEqual([]);
   });
@@ -583,7 +595,11 @@ describe('the stand-in rule', () => {
         ),
       );
       expect(result.updatedPeople).toEqual([
-        { id: 'standIn', details: {}, unset: ['sex'] },
+        {
+          id: 'standIn',
+          details: {},
+          unset: [config.sexAssignedAtBirthAttribute],
+        },
       ]);
     },
   );
@@ -607,7 +623,11 @@ describe('the stand-in rule', () => {
       ),
     );
     expect(result.updatedPeople).toEqual([
-      { id: 'standIn', details: {}, unset: ['sex'] },
+      {
+        id: 'standIn',
+        details: {},
+        unset: [config.sexAssignedAtBirthAttribute],
+      },
     ]);
   });
 
@@ -693,7 +713,7 @@ describe('additions keep the stand-in rule', () => {
       family: f,
       anchorId: 'ego',
       newPersonId: 'added',
-      details: { sex: ['male'] },
+      details: { [config.sexAssignedAtBirthAttribute]: ['male'] },
       request: parentRequest('biological'),
       createId: ids(),
       sexAttribute: config.sexAssignedAtBirthAttribute,
@@ -740,7 +760,7 @@ describe('additions keep the stand-in rule', () => {
     });
     expect(result.people).toContainEqual({
       id: 'stand-in-1',
-      details: { sex: ['male'] },
+      details: { [config.sexAssignedAtBirthAttribute]: ['male'] },
     });
   });
 });

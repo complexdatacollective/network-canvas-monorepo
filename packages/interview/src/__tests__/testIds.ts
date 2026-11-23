@@ -1,6 +1,43 @@
-import { deterministicProtocolObjectId } from '@codaco/protocol-validation';
+import {
+  deterministicEntityTypeId,
+  deterministicProtocolObjectId,
+  deterministicVariableId,
+  isEntityTypeId,
+  isVariableId,
+  renameCodebookIds,
+} from '@codaco/protocol-validation';
 
 /** A protocol object id a test can name: the same UUID for the same label. */
 export const testId = deterministicProtocolObjectId(
   '3f1c2b6e-8a47-4f5d-9c1e-7b0a2d4e6f81',
 );
+
+/** A node or edge type id a test can name: the same UUID for the same label. */
+export const testTypeId = deterministicEntityTypeId(
+  'cb567160-7751-4b91-9971-f821294263d4',
+);
+
+/** A variable id a test can name: the same UUID for the same label. */
+export const testVariableId = deterministicVariableId(
+  '2999a633-ed2f-49ce-b5ab-ce9c27dd7e3c',
+);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * A protocol fixture written with readable codebook keys, with each node or
+ * edge type key that is not a UUID replaced by `testTypeId` of it, each
+ * variable key that is not a UUID by `testVariableId` of it, and every
+ * reference to them following. A test names an entry as `testVariableId('age')`.
+ * Network data a test hands the interview with it names the same ids.
+ */
+export const withTestCodebookIds = <T>(protocol: T): T => {
+  const copy = structuredClone(protocol);
+  if (!isRecord(copy)) return copy;
+  renameCodebookIds(copy, {
+    typeId: (key) => (isEntityTypeId(key) ? key : testTypeId(key)),
+    variableId: (key) => (isVariableId(key) ? key : testVariableId(key)),
+  });
+  return copy;
+};

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../../__tests__/testIds';
 import { participantsFamily } from '../../pedigree-common/membership';
 import { readFamily } from '../model';
 import {
@@ -293,7 +294,9 @@ describe('relationshipWrites', () => {
         config,
       ),
     );
-    expect(relationshipWrites(nodes, family, config, 'rel')).toEqual([
+    expect(
+      relationshipWrites(nodes, family, config, testVariableId('rel')),
+    ).toEqual([
       { personId: 'ego', relationship: undefined },
       { personId: 'dad', relationship: 'parent' },
       { personId: 'kid', relationship: 'child' },

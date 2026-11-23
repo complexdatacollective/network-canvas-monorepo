@@ -24,7 +24,10 @@ import {
   createEncryptionStore,
   encryptedVariables,
   encryptionFor,
+  AGE_VARIABLE,
   makeEncryptedPerson,
+  NAME_VARIABLE,
+  NICKNAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from '../../../Anonymisation/__tests__/encryptionFixtures';
@@ -128,7 +131,7 @@ async function unreadablePerson(): Promise<NcNode> {
 /** The plaintext of a node's stored name, which must be bound to its id. */
 async function storedName(node: NcNode | undefined) {
   const stored = node
-    ? readEncryptedAttribute(node, 'name', encryptedVariables)
+    ? readEncryptedAttribute(node, NAME_VARIABLE, encryptedVariables)
     : undefined;
   if (stored?.status !== 'encrypted') {
     throw new Error('Expected the name to be stored encrypted');
@@ -175,7 +178,7 @@ describe('NodeForm editing a person with an encrypted answer', () => {
       await store.dispatch(
         addSessionNode({
           type: NODE_TYPE,
-          attributeData: { age: 30 },
+          attributeData: { [AGE_VARIABLE]: 30 },
           useEncryption: true,
           currentStep: 0,
         }),
@@ -210,7 +213,7 @@ describe('NodeForm editing a person with an encrypted answer', () => {
     const [saved] = store.getState().session.network.nodes;
     expect(saved?.[entityAttributesProperty]).toEqual({
       ...person[entityAttributesProperty],
-      age: 41,
+      [AGE_VARIABLE]: 41,
     });
     expect(saved?.[entitySecureAttributesMeta]).toEqual(
       person[entitySecureAttributesMeta],
@@ -298,11 +301,11 @@ describe('NodeForm adding a person with an encrypted answer', () => {
 // from the person's name, which is.
 const nicknameVariables: Record<string, Variable> = {
   ...encryptedVariables,
-  nickname: {
+  [NICKNAME_VARIABLE]: {
     name: 'nickname',
     type: 'text',
     component: 'Text',
-    validation: { differentFrom: asEntityAttributeReference('name') },
+    validation: { differentFrom: asEntityAttributeReference(NAME_VARIABLE) },
   },
 };
 
@@ -317,7 +320,7 @@ const nicknameStages: Parameters<typeof createEncryptionStore>[1] = [
       fields: [
         {
           id: testId('field-1'),
-          variable: asEntityAttributeReference('nickname'),
+          variable: asEntityAttributeReference(NICKNAME_VARIABLE),
           prompt: { en: 'Nickname' },
         },
       ],
@@ -366,8 +369,9 @@ describe('NodeForm whose answer is checked against a protected one', () => {
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-        .nickname,
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        NICKNAME_VARIABLE
+      ],
     ).toBe('Ali');
   });
 
@@ -392,7 +396,7 @@ describe('NodeForm whose answer is checked against a protected one', () => {
       store
         .getState()
         .session.network.nodes.map(
-          (node) => node[entityAttributesProperty].nickname,
+          (node) => node[entityAttributesProperty][NICKNAME_VARIABLE],
         ),
     ).toEqual([undefined, 'Alice']);
   });

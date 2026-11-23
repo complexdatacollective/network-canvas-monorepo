@@ -10,6 +10,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../hooks/useInterviewNavigation';
@@ -48,15 +49,20 @@ beforeEach(() => {
   scroll.atBottom = false;
 });
 
+const PERSON_TYPE = testTypeId('person');
+const FRIEND_TYPE = testTypeId('friend');
+const NAME_VAR = testVariableId('name');
+const NICKNAME_VAR = testVariableId('nickname');
+
 // One required question and one optional one, on every kind of form.
 const variables = {
-  name: {
+  [NAME_VAR]: {
     name: 'Name',
     type: 'text',
     component: 'Text',
     validation: { required: true },
   },
-  nickname: {
+  [NICKNAME_VAR]: {
     name: 'Nickname',
     type: 'text',
     component: 'Text',
@@ -65,8 +71,8 @@ const variables = {
 
 const form = {
   fields: [
-    { id: 'field-1', variable: 'name', prompt: { en: 'Name' } },
-    { id: 'field-2', variable: 'nickname', prompt: { en: 'Nickname' } },
+    { id: 'field-1', variable: NAME_VAR, prompt: { en: 'Name' } },
+    { id: 'field-2', variable: NICKNAME_VAR, prompt: { en: 'Nickname' } },
   ],
 };
 
@@ -77,8 +83,10 @@ const nodeType = {
 };
 
 const codebook = {
-  node: { person: { ...nodeType, variables } },
-  edge: { friend: { name: 'Friend', color: 'edge-color-seq-1', variables } },
+  node: { [PERSON_TYPE]: { ...nodeType, variables } },
+  edge: {
+    [FRIEND_TYPE]: { name: 'Friend', color: 'edge-color-seq-1', variables },
+  },
   ego: { variables },
 };
 
@@ -91,7 +99,7 @@ const stageFor = (kind: Kind) => {
         id: 'stage',
         type: 'AlterForm',
         label: { en: 'Form' },
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON_TYPE },
         form,
       };
     case 'alter edge':
@@ -99,7 +107,7 @@ const stageFor = (kind: Kind) => {
         id: 'stage',
         type: 'AlterEdgeForm',
         label: { en: 'Form' },
-        subject: { entity: 'edge', type: 'friend' },
+        subject: { entity: 'edge', type: FRIEND_TYPE },
         form,
       };
     case 'ego':
@@ -120,8 +128,8 @@ const stageFor = (kind: Kind) => {
 function renderForm(kind: Kind, answers: Record<string, string>) {
   const plainNode = (id: string) => ({
     [entityPrimaryKeyProperty]: id,
-    type: 'person',
-    [entityAttributesProperty]: kind === 'alter' ? answers : { name: id },
+    type: PERSON_TYPE,
+    [entityAttributesProperty]: kind === 'alter' ? answers : { [NAME_VAR]: id },
   });
   const network = {
     ego: { [entityAttributesProperty]: kind === 'ego' ? answers : {} },
@@ -131,7 +139,7 @@ function renderForm(kind: Kind, answers: Record<string, string>) {
         ? [
             {
               [entityPrimaryKeyProperty]: 'edge-1',
-              type: 'friend',
+              type: FRIEND_TYPE,
               from: 'a',
               to: 'b',
               [entityAttributesProperty]: answers,
@@ -205,7 +213,7 @@ describe.each<Kind>(['alter', 'alter edge', 'ego'])(
   'Next readiness on the %s form',
   (kind) => {
     it('is not ready while an optional question is unanswered and unseen', async () => {
-      const { isReady } = renderForm(kind, { name: 'Ada' });
+      const { isReady } = renderForm(kind, { [NAME_VAR]: 'Ada' });
       await screen.findByRole('textbox', { name: 'Nickname' });
       await act(() => Promise.resolve());
 
@@ -213,7 +221,7 @@ describe.each<Kind>(['alter', 'alter edge', 'ego'])(
     });
 
     it('is ready once every question is answered, without scrolling or leaving the last question', async () => {
-      const { isReady } = renderForm(kind, { name: 'Ada' });
+      const { isReady } = renderForm(kind, { [NAME_VAR]: 'Ada' });
       const nickname = await screen.findByRole('textbox', {
         name: 'Nickname',
       });
@@ -226,7 +234,7 @@ describe.each<Kind>(['alter', 'alter edge', 'ego'])(
     });
 
     it('is ready when the required questions are answered and the form has been scrolled to the end', async () => {
-      const { isReady, rerender } = renderForm(kind, { name: 'Ada' });
+      const { isReady, rerender } = renderForm(kind, { [NAME_VAR]: 'Ada' });
       await screen.findByRole('textbox', { name: 'Nickname' });
 
       scroll.atBottom = true;
@@ -239,7 +247,7 @@ describe.each<Kind>(['alter', 'alter edge', 'ego'])(
 
     it('is not ready at the end of the form while a required question is unanswered', async () => {
       scroll.atBottom = true;
-      const { isReady } = renderForm(kind, { nickname: 'Countess' });
+      const { isReady } = renderForm(kind, { [NICKNAME_VAR]: 'Countess' });
       await screen.findByRole('textbox', { name: 'Nickname' });
       await act(() => Promise.resolve());
 

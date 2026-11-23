@@ -9,7 +9,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -27,6 +27,7 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import {
   createEncryptionStore,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
@@ -65,7 +66,7 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', StubObserver);
 });
 
-const EDGE_TYPE = 'friendship';
+const EDGE_TYPE = testTypeId('friendship');
 
 const edgeTypes: Codebook['edge'] = {
   [EDGE_TYPE]: {
@@ -78,7 +79,7 @@ const edgeTypes: Codebook['edge'] = {
 const byName: SortRule[] = [
   {
     id: testId('sort-name'),
-    property: asEntityAttributeReference('name'),
+    property: asEntityAttributeReference(NAME_VARIABLE),
     direction: 'asc',
   },
 ];

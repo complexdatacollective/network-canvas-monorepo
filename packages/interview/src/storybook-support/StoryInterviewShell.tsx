@@ -176,7 +176,7 @@ const StoryInterviewShell = (props: {
    * check what was stored. */
   onSync?: SyncHandler;
   /** Changes the payload once it is parsed, for what SuperJSON cannot carry
-   * (such as an attribute id `__proto__`, which it refuses). */
+   * (such as an attribute key `__proto__`, which it refuses). */
   preparePayload?: (payload: InterviewPayload) => InterviewPayload;
 }) => {
   const { preparePayload } = props;

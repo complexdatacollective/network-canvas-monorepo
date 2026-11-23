@@ -19,7 +19,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../contract/types';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -37,10 +37,10 @@ import session, {
 import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
-const NODE_TYPE = 'person';
-const NAME_VAR = 'name';
-const NICKNAME_VAR = 'nickname';
-const NOTES_VAR = 'notes';
+const NODE_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const NICKNAME_VAR = testVariableId('nickname');
+const NOTES_VAR = testVariableId('notes');
 const NODE_ID = 'node-1';
 const PASSPHRASE = 'protocol form passphrase';
 

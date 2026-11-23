@@ -7,6 +7,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../../__tests__/testIds';
 import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import BinSummary from '../BinSummary';
 
@@ -16,9 +17,11 @@ import BinSummary from '../BinSummary';
 vi.mock('../../../Anonymisation/useNodeLabel', async () => {
   const { entityAttributesProperty: attributes } =
     await import('@codaco/shared-consts');
+  const { testVariableId: variableId } =
+    await import('../../../../__tests__/testIds');
   return {
     useNodeLabel: (node?: NcNode) =>
-      node?.[attributes]?.name as string | undefined,
+      node?.[attributes]?.[variableId('name')] as string | undefined,
   };
 });
 
@@ -27,8 +30,8 @@ const LONG_LABEL =
 
 const makeNode = (name: string, index: number): NcNode => ({
   [entityPrimaryKeyProperty]: `node-${index}`,
-  [entityAttributesProperty]: { name },
-  type: 'person',
+  [entityAttributesProperty]: { [testVariableId('name')]: name },
+  type: testTypeId('person'),
 });
 
 const makeNodes = (count: number, firstLabel = LONG_LABEL) =>

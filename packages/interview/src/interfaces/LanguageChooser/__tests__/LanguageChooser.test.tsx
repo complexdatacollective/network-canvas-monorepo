@@ -20,7 +20,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testVariableId } from '../../../__tests__/testIds';
 import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import Shell from '../../../Shell';
 import { suppliedStageText } from '../../../wording/suppliedWording';
@@ -92,7 +92,9 @@ function makePayload({
       network: {
         ego: {
           [entityPrimaryKeyProperty]: 'ego-1',
-          [entityAttributesProperty]: { existing: 'answer' },
+          [entityAttributesProperty]: {
+            [testVariableId('existing')]: 'answer',
+          },
         },
         nodes: [],
         edges: [],

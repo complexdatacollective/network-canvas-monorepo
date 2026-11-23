@@ -23,7 +23,17 @@ type Stage = {
   }[];
 };
 
-type CegrmProtocol = { stages: Stage[] };
+type CodebookEntry = { name: string };
+
+type CegrmProtocol = {
+  stages: Stage[];
+  codebook: {
+    node: Record<
+      string,
+      CodebookEntry & { variables: Record<string, CodebookEntry> }
+    >;
+  };
+};
 
 const require = createRequire(import.meta.url);
 
@@ -61,13 +71,34 @@ const getStage = ({ type, label }: StageKey): Stage => {
   return stage;
 };
 
+// Codebook ids are UUIDs, so the type and its variables are found by name.
+const keyNamed = (record: Record<string, CodebookEntry>, name: string) => {
+  const matches = Object.keys(record).filter(
+    (key) => record[key]?.name === name,
+  );
+  const [key] = matches;
+  if (key === undefined || matches.length > 1) {
+    throw new Error(`The CEGRM template has no single "${name}"`);
+  }
+  return key;
+};
+
+const personType = keyNamed(protocol.codebook.node, 'Person');
+const personVariables = protocol.codebook.node[personType]?.variables ?? {};
+const variableId = (name: string) => keyNamed(personVariables, name);
+
 const person = (
   id: string,
   attributes: NcNode[typeof entityAttributesProperty],
 ): NcNode => ({
   [entityPrimaryKeyProperty]: id,
-  type: 'person',
-  [entityAttributesProperty]: attributes,
+  type: personType,
+  [entityAttributesProperty]: Object.fromEntries(
+    Object.entries(attributes).map(([name, value]) => [
+      variableId(name),
+      value,
+    ]),
+  ),
 });
 
 // Four people, as the stages see them part-way through an interview.
@@ -110,7 +141,7 @@ describe('the CEGRM template tells family from non-kin by the non_kin mark', () 
           variable,
           value,
         })),
-      ).toEqual([{ variable: 'non_kin', value: true }]);
+      ).toEqual([{ variable: variableId('non_kin'), value: true }]);
     }
   });
 

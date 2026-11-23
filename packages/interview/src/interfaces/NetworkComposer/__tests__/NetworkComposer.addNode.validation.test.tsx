@@ -21,7 +21,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
@@ -44,9 +44,9 @@ beforeAll(() => {
   }
 });
 
-const NODE_TYPE = 'person';
-const QUICK_ADD_VAR = 'var-quick-add';
-const LAYOUT_VAR = 'var-layout';
+const NODE_TYPE = testTypeId('person');
+const QUICK_ADD_VAR = testVariableId('var-quick-add');
+const LAYOUT_VAR = testVariableId('var-layout');
 
 function buildStage() {
   return {

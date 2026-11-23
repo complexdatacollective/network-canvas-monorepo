@@ -16,7 +16,9 @@ import {
 import type { InterviewPayload } from '../contract/types';
 import Shell from '../Shell';
 import { updateEgo } from '../store/modules/session';
-import { testId } from './testIds';
+import { testId, testVariableId } from './testIds';
+
+const AGREES = testVariableId('agrees');
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -78,7 +80,7 @@ const payload = {
     codebook: {
       ego: {
         variables: {
-          agrees: { name: 'agrees', type: 'boolean' },
+          [AGREES]: { name: 'agrees', type: 'boolean' },
         },
       },
       node: {},
@@ -106,7 +108,7 @@ const payload = {
                 id: testId('does-not-agree'),
                 type: 'ego',
                 options: {
-                  attribute: asEntityAttributeReference('agrees'),
+                  attribute: asEntityAttributeReference(AGREES),
                   operator: 'EXACTLY',
                   value: false,
                 },
@@ -139,7 +141,7 @@ function liveStore() {
   return store;
 }
 
-const declined = { set: { agrees: false }, unset: [] };
+const declined = { set: { [AGREES]: false }, unset: [] };
 
 async function renderShell(
   onExit?: () => void,

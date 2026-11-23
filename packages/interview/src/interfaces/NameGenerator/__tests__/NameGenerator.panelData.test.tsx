@@ -13,7 +13,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
@@ -50,9 +50,9 @@ vi.mock('../../../hooks/useMediaQuery', () => ({ default: () => false }));
 
 const { default: NameGenerator } = await import('../NameGenerator');
 
-const NODE_TYPE = 'person';
-const NAME_VAR = 'var-name';
-const NICKNAME_VAR = 'var-nickname';
+const NODE_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('var-name');
+const NICKNAME_VAR = testVariableId('var-nickname');
 const PASSPHRASE = 'name generator passphrase';
 
 const variables: Record<string, Variable> = {

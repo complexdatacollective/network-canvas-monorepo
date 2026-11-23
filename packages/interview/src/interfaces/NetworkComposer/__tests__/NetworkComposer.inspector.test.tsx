@@ -17,7 +17,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
@@ -104,13 +104,12 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
 });
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'knows';
-const QUICK_ADD_VAR = 'var-quick-add';
-const LAYOUT_VAR = 'var-layout';
-const NODE_NAME_VAR = 'var-name';
-const EDGE_STRENGTH_VAR = 'var-strength';
-const PROTOTYPE_VAR = '__proto__';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('knows');
+const QUICK_ADD_VAR = testVariableId('var-quick-add');
+const LAYOUT_VAR = testVariableId('var-layout');
+const NODE_NAME_VAR = testVariableId('var-name');
+const EDGE_STRENGTH_VAR = testVariableId('var-strength');
 
 const nodeForm = {
   fields: [
@@ -155,30 +154,34 @@ const stage = {
   },
 };
 
-const codebook = {
-  node: {
-    [NODE_TYPE]: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' as const },
-      variables: {
-        [QUICK_ADD_VAR]: {
-          name: 'name',
-          type: 'text' as const,
-          component: 'Text' as const,
-        },
-        [LAYOUT_VAR]: {
-          name: 'position',
-          type: 'layout' as const,
-        },
-        [NODE_NAME_VAR]: {
-          name: 'Full name',
-          type: 'text' as const,
-          component: 'Text' as const,
-        },
-      },
-    },
+const nodeNameVariable = {
+  name: 'Full name',
+  type: 'text' as const,
+  component: 'Text' as const,
+};
+
+const personVariables = {
+  [QUICK_ADD_VAR]: {
+    name: 'name',
+    type: 'text' as const,
+    component: 'Text' as const,
   },
+  [LAYOUT_VAR]: {
+    name: 'position',
+    type: 'layout' as const,
+  },
+  [NODE_NAME_VAR]: nodeNameVariable,
+};
+
+const personType = {
+  name: 'Person',
+  color: 'node-color-seq-1',
+  shape: { default: 'circle' as const },
+  variables: personVariables,
+};
+
+const codebook = {
+  node: { [NODE_TYPE]: personType },
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
@@ -404,85 +407,6 @@ describe('NetworkComposer inspector — node', () => {
     );
   });
 
-  it('restarts autosave after each edit to an opaque __proto__ field', async () => {
-    const prototypeDescriptor = Object.getOwnPropertyDescriptor(
-      Object.prototype,
-      '__proto__',
-    );
-    const prototypeStage = {
-      ...stage,
-      nodeForm: {
-        fields: [
-          {
-            id: testId('field-1'),
-            variable: PROTOTYPE_VAR,
-            component: 'Text',
-            label: { en: 'Prototype value' },
-          },
-        ],
-      },
-    };
-    const prototypeCodebook = {
-      ...codebook,
-      node: {
-        ...codebook.node,
-        [NODE_TYPE]: {
-          ...codebook.node[NODE_TYPE],
-          variables: {
-            ...codebook.node[NODE_TYPE].variables,
-            [PROTOTYPE_VAR]: {
-              component: 'Text',
-              name: 'Prototype value',
-              type: 'text',
-            },
-          },
-        },
-      },
-    };
-    const store = makeStore(false, prototypeStage, prototypeCodebook);
-    renderInterface(store, prototypeStage);
-
-    const nodeA = await screen.findByRole('button', { name: /alice/i });
-    act(() => {
-      tapNode(nodeA);
-    });
-    const input = await screen.findByLabelText('Prototype value');
-
-    fireEvent.change(input, { target: { value: 'first value' } });
-    await waitFor(
-      () => {
-        const node = store
-          .getState()
-          .session.network.nodes.find(
-            (candidate) => candidate[entityPrimaryKeyProperty] === NODE_A_ID,
-          );
-        expect(node?.[entityAttributesProperty]?.[PROTOTYPE_VAR]).toBe(
-          'first value',
-        );
-      },
-      { timeout: 2000 },
-    );
-
-    fireEvent.change(input, { target: { value: 'final value' } });
-    await waitFor(
-      () => {
-        const node = store
-          .getState()
-          .session.network.nodes.find(
-            (candidate) => candidate[entityPrimaryKeyProperty] === NODE_A_ID,
-          );
-        const attributes = node?.[entityAttributesProperty];
-        expect(Object.hasOwn(attributes ?? {}, PROTOTYPE_VAR)).toBe(true);
-        expect(attributes?.[PROTOTYPE_VAR]).toBe('final value');
-        expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
-        expect(
-          Object.getOwnPropertyDescriptor(Object.prototype, '__proto__'),
-        ).toEqual(prototypeDescriptor);
-      },
-      { timeout: 2000 },
-    );
-  });
-
   it('clicking Delete in the inspector removes the node', async () => {
     const store = makeStore();
     renderInterface(store);
@@ -598,8 +522,8 @@ describe('NetworkComposer inspector — undo and redo with the drawer open', () 
 });
 
 describe('NetworkComposer inspector — undo and redo changing what the drawer shows', () => {
-  const NICKNAME_VAR = 'var-nickname';
-  const GROUP_VAR = 'var-group';
+  const NICKNAME_VAR = testVariableId('var-nickname');
+  const GROUP_VAR = testVariableId('var-group');
 
   const twoQuestionStage = {
     ...stage,
@@ -624,7 +548,6 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
       ],
     },
   };
-  const personType = codebook.node[NODE_TYPE];
   const twoQuestionCodebook = {
     ...codebook,
     node: {
@@ -1030,11 +953,11 @@ describe('NetworkComposer inspector — leaving an edit', () => {
     ...codebook,
     node: {
       [NODE_TYPE]: {
-        ...codebook.node[NODE_TYPE],
+        ...personType,
         variables: {
-          ...codebook.node[NODE_TYPE].variables,
+          ...personVariables,
           [NODE_NAME_VAR]: {
-            ...codebook.node[NODE_TYPE].variables[NODE_NAME_VAR],
+            ...nodeNameVariable,
             validation: { required: true },
           },
         },

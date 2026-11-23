@@ -1,18 +1,24 @@
 import { describe, expect, test } from 'vitest';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import {
   readSharedFamilyRecord,
   sharedRecordWrites,
   stepsSharingFamily,
 } from '../sharedRecord';
 
+const PERSON = testTypeId('person');
+const PET = testTypeId('pet');
+const FAMILY = testTypeId('family');
+const OTHER_FAMILY = testTypeId('otherFamily');
+
 const BINDINGS = {
-  nameAttribute: 'name',
-  sexAssignedAtBirthAttribute: 'sex',
-  egoAttribute: 'isEgo',
-  kindAttribute: 'kind',
-  gestationalCarrierAttribute: 'carried',
-  currentPartnerAttribute: 'current',
+  nameAttribute: testVariableId('name'),
+  sexAssignedAtBirthAttribute: testVariableId('sex'),
+  egoAttribute: testVariableId('isEgo'),
+  kindAttribute: testVariableId('kind'),
+  gestationalCarrierAttribute: testVariableId('carried'),
+  currentPartnerAttribute: testVariableId('current'),
 };
 
 const pedigree = (
@@ -48,11 +54,11 @@ const both = (steps: number[]) => ({ standIns: steps, generatedLabels: steps });
 // share labels.
 describe('stepsSharingFamily', () => {
   const stages = [
-    pedigree('person', 'family'),
+    pedigree(PERSON, FAMILY),
     { type: 'Information' },
-    pedigree('person', 'family'),
-    pedigree('person', 'otherFamily'),
-    pedigree('pet', 'family'),
+    pedigree(PERSON, FAMILY),
+    pedigree(PERSON, OTHER_FAMILY),
+    pedigree(PET, FAMILY),
   ];
 
   test('every Family Pedigree stage over the same people and relationships', () => {
@@ -75,8 +81,8 @@ describe('stepsSharingFamily', () => {
     'a stage binding another %s records another family, sharing nothing',
     (binding) => {
       const differing = [
-        pedigree('person', 'family'),
-        pedigree('person', 'family', { [binding]: 'other' }),
+        pedigree(PERSON, FAMILY),
+        pedigree(PERSON, FAMILY, { [binding]: testVariableId('other') }),
       ];
       expect(stepsSharingFamily(differing, 0)).toEqual(both([0]));
       expect(stepsSharingFamily(differing, 1)).toEqual(both([1]));
@@ -85,8 +91,8 @@ describe('stepsSharingFamily', () => {
 
   test('a stage naming people through another attribute shares the stand-ins, not the labels', () => {
     const differing = [
-      pedigree('person', 'family'),
-      pedigree('person', 'family', { nameAttribute: 'otherName' }),
+      pedigree(PERSON, FAMILY),
+      pedigree(PERSON, FAMILY, { nameAttribute: testVariableId('otherName') }),
     ];
     expect(stepsSharingFamily(differing, 0)).toEqual({
       standIns: [0, 1],

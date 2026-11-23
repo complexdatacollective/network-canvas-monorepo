@@ -23,7 +23,11 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../../__tests__/testIds';
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+} from '../../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
@@ -52,8 +56,8 @@ beforeAll(() => {
   vi.stubGlobal('ResizeObserver', StubResizeObserver);
 });
 
-const NODE_TYPE = 'person';
-const VARIABLE = 'answer';
+const NODE_TYPE = testTypeId('person');
+const VARIABLE = testVariableId('answer');
 const FIELD_LABEL = 'Your answer';
 const UNIQUE_ERROR = 'Must be unique.';
 

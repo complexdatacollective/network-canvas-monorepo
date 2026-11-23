@@ -18,7 +18,7 @@ import {
 } from '@codaco/shared-consts';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import protocol from '../../../store/modules/protocol';
@@ -33,8 +33,8 @@ import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import DyadCensus from '../DyadCensus';
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'friend';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('friend');
 
 const twoPromptStage = {
   id: testId('dc1'),

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId } from '../../__tests__/testIds';
 import {
   createEntityIdPseudonymiser,
   pseudonymiseEntityIds,
 } from '../entityIds';
+
+const PERSON = testTypeId('person');
 
 describe('createEntityIdPseudonymiser', () => {
   it('never returns the id it was given', () => {
@@ -56,7 +59,7 @@ describe('pseudonymiseEntityIds', () => {
       {
         installation_id: 'install-1',
         distinct_id: 'session-1',
-        node_type: 'person',
+        node_type: PERSON,
         bin_index: 2,
       },
       createEntityIdPseudonymiser(),
@@ -64,17 +67,17 @@ describe('pseudonymiseEntityIds', () => {
     expect(props).toEqual({
       installation_id: 'install-1',
       distinct_id: 'session-1',
-      node_type: 'person',
+      node_type: PERSON,
       bin_index: 2,
     });
   });
 
   it('passes through an omitted id rather than inventing one', () => {
     const props = pseudonymiseEntityIds(
-      { node_id: undefined, node_type: 'person' },
+      { node_id: undefined, node_type: PERSON },
       createEntityIdPseudonymiser(),
     );
-    expect(props).toEqual({ node_id: undefined, node_type: 'person' });
+    expect(props).toEqual({ node_id: undefined, node_type: PERSON });
   });
 
   it('does not mutate the props it was handed', () => {

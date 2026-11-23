@@ -18,12 +18,12 @@ const options = (values: readonly string[], label: (value: string) => string) =>
 
 const codebook = {
   node: {
-    person: {
+    [config.personType]: {
       name: 'person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        sex: {
+        [config.sexAssignedAtBirthAttribute]: {
           name: 'sex',
           type: 'categorical',
           options: options(PEDIGREE_SEX_ASSIGNED_AT_BIRTH, (v) => `Sex ${v}`),
@@ -32,11 +32,11 @@ const codebook = {
     },
   },
   edge: {
-    family: {
+    [config.relationshipType]: {
       name: 'family',
       color: 'edge-color-seq-1',
       variables: {
-        kind: {
+        [config.kindAttribute]: {
           name: 'kind',
           type: 'categorical',
           options: options(PEDIGREE_RELATIONSHIP_KINDS, (v) => `Kind ${v}`),

@@ -13,14 +13,17 @@ import { beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
-import type { TitlelessForm } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type TitlelessForm,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
@@ -65,11 +68,15 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver);
 });
 
+const PERSON_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const CLOSENESS_VAR = testVariableId('closeness');
+
 const form: TitlelessForm = {
   fields: [
     {
       id: testId('field-1'),
-      variable: 'name' as never,
+      variable: asEntityAttributeReference(NAME_VAR),
       prompt: { en: 'Person name' },
     },
   ],
@@ -77,37 +84,37 @@ const form: TitlelessForm = {
 
 const person: NcNode = {
   [entityPrimaryKeyProperty]: 'person-1',
-  type: 'person',
-  [entityAttributesProperty]: { name: 'Ada' },
+  type: PERSON_TYPE,
+  [entityAttributesProperty]: { [NAME_VAR]: 'Ada' },
 };
 
 const secondPerson: NcNode = {
   [entityPrimaryKeyProperty]: 'person-2',
-  type: 'person',
-  [entityAttributesProperty]: { name: 'Grace' },
+  type: PERSON_TYPE,
+  [entityAttributesProperty]: { [NAME_VAR]: 'Grace' },
 };
 
 const namelessPerson: NcNode = {
   [entityPrimaryKeyProperty]: 'person-3',
-  type: 'person',
-  [entityAttributesProperty]: { name: '' },
+  type: PERSON_TYPE,
+  [entityAttributesProperty]: { [NAME_VAR]: '' },
+};
+
+const personType = {
+  name: 'Person',
+  color: 'node-color-seq-1',
+  shape: { default: 'circle' },
+  variables: {
+    [NAME_VAR]: {
+      name: 'Name',
+      type: 'text',
+      component: 'Text',
+    },
+  },
 };
 
 const codebook = {
-  node: {
-    person: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' },
-      variables: {
-        name: {
-          name: 'Name',
-          type: 'text',
-          component: 'Text',
-        },
-      },
-    },
-  },
+  node: { [PERSON_TYPE]: personType },
   edge: {},
   ego: { variables: {} },
 };
@@ -115,10 +122,10 @@ const codebook = {
 const requiredNameCodebook = {
   ...codebook,
   node: {
-    person: {
-      ...codebook.node.person,
+    [PERSON_TYPE]: {
+      ...personType,
       variables: {
-        name: {
+        [NAME_VAR]: {
           name: 'Name',
           type: 'text',
           component: 'Text',
@@ -149,12 +156,12 @@ describe('SlidesForm navigation ownership', () => {
           localization: { defaultLocale: 'en', locales: ['en'] },
           codebook: {
             node: {
-              person: {
+              [PERSON_TYPE]: {
                 name: 'Person',
                 color: 'node-color-seq-1',
                 shape: { default: 'circle' },
                 variables: {
-                  name: {
+                  [NAME_VAR]: {
                     name: 'Name',
                     type: 'text',
                     component: 'Text',
@@ -170,7 +177,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'hidden-alter-form',
               type: 'AlterForm',
               label: { en: 'Hidden form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form,
               skipLogic: {
                 action: 'SKIP',
@@ -201,7 +208,7 @@ describe('SlidesForm navigation ownership', () => {
               <SlidesForm
                 form={form}
                 items={[person]}
-                subject={{ entity: 'node', type: 'person' }}
+                subject={{ entity: 'node', type: PERSON_TYPE }}
                 updateItem={vi.fn().mockResolvedValue({ success: true })}
                 moveForward={navigation.moveForward}
                 renderHeader={() => <span>Person header</span>}
@@ -257,7 +264,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form,
             },
             {
@@ -284,7 +291,7 @@ describe('SlidesForm navigation ownership', () => {
           <SlidesForm
             form={form}
             items={[person, secondPerson]}
-            subject={{ entity: 'node', type: 'person' }}
+            subject={{ entity: 'node', type: PERSON_TYPE }}
             updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
@@ -343,7 +350,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form,
             },
             {
@@ -370,7 +377,7 @@ describe('SlidesForm navigation ownership', () => {
           <SlidesForm
             form={form}
             items={[namelessPerson]}
-            subject={{ entity: 'node', type: 'person' }}
+            subject={{ entity: 'node', type: PERSON_TYPE }}
             updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
@@ -431,7 +438,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form,
             },
             {
@@ -458,7 +465,7 @@ describe('SlidesForm navigation ownership', () => {
           <SlidesForm
             form={form}
             items={[namelessPerson]}
-            subject={{ entity: 'node', type: 'person' }}
+            subject={{ entity: 'node', type: PERSON_TYPE }}
             updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
@@ -483,7 +490,9 @@ describe('SlidesForm navigation ownership', () => {
     // This person starts without a name, and the name is required — so the
     // form is invalid before and after, and only the dirty test decides
     // whether the participant is stopped.
-    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    const field = await screen.findByRole('textbox', {
+      name: 'Person name',
+    });
     fireEvent.change(field, { target: { value: 'Ada' } });
     await screen.findByDisplayValue('Ada');
     fireEvent.change(field, { target: { value: '' } });
@@ -520,7 +529,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form,
             },
             {
@@ -547,7 +556,7 @@ describe('SlidesForm navigation ownership', () => {
           <SlidesForm
             form={form}
             items={[person]}
-            subject={{ entity: 'node', type: 'person' }}
+            subject={{ entity: 'node', type: PERSON_TYPE }}
             updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
@@ -569,7 +578,9 @@ describe('SlidesForm navigation ownership', () => {
       </TestProtocolLocalization>,
     );
 
-    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    const field = await screen.findByRole('textbox', {
+      name: 'Person name',
+    });
     fireEvent.change(field, { target: { value: '' } });
     await screen.findByDisplayValue('');
 
@@ -613,7 +624,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form,
             },
             {
@@ -640,7 +651,7 @@ describe('SlidesForm navigation ownership', () => {
           <SlidesForm
             form={form}
             items={[person]}
-            subject={{ entity: 'node', type: 'person' }}
+            subject={{ entity: 'node', type: PERSON_TYPE }}
             updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
@@ -662,7 +673,9 @@ describe('SlidesForm navigation ownership', () => {
       </TestProtocolLocalization>,
     );
 
-    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    const field = await screen.findByRole('textbox', {
+      name: 'Person name',
+    });
     fireEvent.change(field, { target: { value: '' } });
     await screen.findByDisplayValue('');
 
@@ -714,7 +727,7 @@ describe('SlidesForm going back from the first slide', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form,
             },
           ],
@@ -736,7 +749,7 @@ describe('SlidesForm going back from the first slide', () => {
           <SlidesForm
             form={form}
             items={[person, secondPerson]}
-            subject={{ entity: 'node', type: 'person' }}
+            subject={{ entity: 'node', type: PERSON_TYPE }}
             updateItem={updateItem}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
@@ -764,7 +777,9 @@ describe('SlidesForm going back from the first slide', () => {
   it('saves the answers before leaving the stage', async () => {
     const { onStepChange, updateItem, back } = renderFirstSlide();
 
-    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    const field = await screen.findByRole('textbox', {
+      name: 'Person name',
+    });
     fireEvent.change(field, { target: { value: 'Ada Lovelace' } });
     await screen.findByDisplayValue('Ada Lovelace');
 
@@ -779,7 +794,9 @@ describe('SlidesForm going back from the first slide', () => {
   it('asks before discarding answers that cannot be saved, and stays when they are kept', async () => {
     const { onStepChange, updateItem, back } = renderFirstSlide();
 
-    const field = await screen.findByRole('textbox', { name: 'Person name' });
+    const field = await screen.findByRole('textbox', {
+      name: 'Person name',
+    });
     fireEvent.change(field, { target: { value: '' } });
     await screen.findByDisplayValue('');
 
@@ -810,7 +827,7 @@ describe('SlidesForm moving on from a complete form', () => {
     fields: [
       {
         id: testId('field-1'),
-        variable: 'closeness' as never,
+        variable: asEntityAttributeReference(CLOSENESS_VAR),
         prompt: { en: 'How close?' },
       },
     ],
@@ -848,10 +865,10 @@ describe('SlidesForm moving on from a complete form', () => {
           codebook: {
             ...codebook,
             node: {
-              person: {
-                ...codebook.node.person,
+              [PERSON_TYPE]: {
+                ...personType,
                 variables: {
-                  closeness: {
+                  [CLOSENESS_VAR]: {
                     name: 'Closeness',
                     type: 'ordinal',
                     component: 'RadioGroup',
@@ -869,7 +886,7 @@ describe('SlidesForm moving on from a complete form', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form: closenessForm,
             },
             {
@@ -905,7 +922,7 @@ describe('SlidesForm moving on from a complete form', () => {
             <SlidesForm
               form={closenessForm}
               items={nodes}
-              subject={{ entity: 'node', type: 'person' }}
+              subject={{ entity: 'node', type: PERSON_TYPE }}
               updateItem={updateItem}
               moveForward={navigation.moveForward}
               renderHeader={(item) => (
@@ -943,7 +960,7 @@ describe('SlidesForm moving on from a complete form', () => {
 
   const unanswered = (id: string): NcNode => ({
     [entityPrimaryKeyProperty]: id,
-    type: 'person',
+    type: PERSON_TYPE,
     [entityAttributesProperty]: {},
   });
 
@@ -999,7 +1016,7 @@ describe('SlidesForm moving on from a complete form', () => {
     const { updateItem } = renderClosenessSlides([
       {
         ...unanswered('person-1'),
-        [entityAttributesProperty]: { closeness: 1 },
+        [entityAttributesProperty]: { [CLOSENESS_VAR]: 1 },
       },
       unanswered('person-2'),
     ]);
@@ -1024,7 +1041,7 @@ describe('SlidesForm moving on from a complete form', () => {
       [
         {
           ...unanswered('person-1'),
-          [entityAttributesProperty]: { closeness: 1 },
+          [entityAttributesProperty]: { [CLOSENESS_VAR]: 1 },
         },
         unanswered('person-2'),
       ],
@@ -1062,11 +1079,11 @@ describe('SlidesForm moving on from a complete form', () => {
       [
         {
           ...unanswered('person-1'),
-          [entityAttributesProperty]: { closeness: 1 },
+          [entityAttributesProperty]: { [CLOSENESS_VAR]: 1 },
         },
         {
           ...unanswered('person-2'),
-          [entityAttributesProperty]: { closeness: 1 },
+          [entityAttributesProperty]: { [CLOSENESS_VAR]: 1 },
         },
       ],
       0,

@@ -10,7 +10,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { buildDatePickerBoundProps } from '../buildDatePickerBoundProps';
 
 /**
@@ -122,7 +122,7 @@ function renderedWindow(parameters: {
   return window;
 }
 
-const variableId = 'lastSeen';
+const variableId = testVariableId('lastSeen');
 
 function egoCodebook(parameters: {
   anchor: string;

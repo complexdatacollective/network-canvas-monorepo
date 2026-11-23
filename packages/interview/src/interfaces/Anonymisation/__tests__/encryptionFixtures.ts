@@ -13,7 +13,7 @@ import {
   type StageMetadata,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { createInitialNetwork } from '../../../contract/network';
 import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import { store as createStore } from '../../../store/store';
@@ -21,22 +21,27 @@ import { deriveInterviewKey } from '../encryptionFormat';
 import { installEncryptionKey } from '../unlockEncryption';
 import { generateSecureAttributes } from '../utils';
 
-export const NODE_TYPE = 'person';
+export const NODE_TYPE = testTypeId('person');
+
+/** The ids of the person's variables. */
+export const NAME_VARIABLE = testVariableId('name');
+export const NICKNAME_VARIABLE = testVariableId('nickname');
+export const AGE_VARIABLE = testVariableId('age');
 
 export const encryptedVariables: Record<string, Variable> = {
-  name: {
+  [NAME_VARIABLE]: {
     name: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  nickname: {
+  [NICKNAME_VARIABLE]: {
     name: 'nickname',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  age: { name: 'age', type: 'number', component: 'Number' },
+  [AGE_VARIABLE]: { name: 'age', type: 'number', component: 'Number' },
 };
 
 const personDefinition = {
@@ -93,7 +98,7 @@ export async function makeEncryptedPerson(
   const { key } = await encryptionFor(passphrase);
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
-      { name, age: 40 },
+      { [NAME_VARIABLE]: name, [AGE_VARIABLE]: 40 },
       encryptedVariables,
       key,
       id,
@@ -120,12 +125,12 @@ const nameGeneratorStages: Stages = [
       fields: [
         {
           id: testId('field-1'),
-          variable: asEntityAttributeReference('name'),
+          variable: asEntityAttributeReference(NAME_VARIABLE),
           prompt: { en: 'Name' },
         },
         {
           id: testId('field-2'),
-          variable: asEntityAttributeReference('age'),
+          variable: asEntityAttributeReference(AGE_VARIABLE),
           prompt: { en: 'Age' },
         },
       ],
@@ -145,12 +150,12 @@ export const alterFormStages: Stages = [
       fields: [
         {
           id: testId('field-1'),
-          variable: asEntityAttributeReference('name'),
+          variable: asEntityAttributeReference(NAME_VARIABLE),
           prompt: { en: 'Name' },
         },
         {
           id: testId('field-2'),
-          variable: asEntityAttributeReference('age'),
+          variable: asEntityAttributeReference(AGE_VARIABLE),
           prompt: { en: 'Age' },
         },
       ],

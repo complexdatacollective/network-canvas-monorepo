@@ -11,16 +11,19 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import type { ProtocolPayload } from '../../contract/types';
 import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { getPlacedNodes, getUnplacedNodes } from '../canvas';
 
+const PERSON = testTypeId('person');
+const LAYOUT = testVariableId('layout');
+
 describe('Sociogram placement selectors', () => {
   it('classifies a node with no layout key as unplaced', () => {
-    const layoutVariable = asEntityAttributeReference('layout');
+    const layoutVariable = asEntityAttributeReference(LAYOUT);
     const protocolState: ProtocolPayload = {
       id: 'protocol',
       hash: 'hash',
@@ -31,12 +34,12 @@ describe('Sociogram placement selectors', () => {
       localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
         node: {
-          person: {
+          [PERSON]: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
-              layout: {
+              [LAYOUT]: {
                 name: 'Layout',
                 type: 'layout',
               },
@@ -52,7 +55,7 @@ describe('Sociogram placement selectors', () => {
           type: 'Sociogram',
           label: { en: 'Sociogram' },
           background: { concentricCircles: 4 },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           prompts: [
             {
               id: testId('prompt'),
@@ -65,14 +68,14 @@ describe('Sociogram placement selectors', () => {
     };
     const missingLayoutNode: NcNode = {
       [entityPrimaryKeyProperty]: 'missing-layout',
-      type: 'person',
+      type: PERSON,
       [entityAttributesProperty]: {},
     };
     const placedNode: NcNode = {
       [entityPrimaryKeyProperty]: 'placed',
-      type: 'person',
+      type: PERSON,
       [entityAttributesProperty]: {
-        layout: { x: 0.5, y: 0.5 },
+        [LAYOUT]: { x: 0.5, y: 0.5 },
       },
     };
 

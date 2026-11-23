@@ -30,6 +30,7 @@ import {
   encryptedVariables,
   encryptionFor,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
@@ -49,7 +50,7 @@ vi.mock('../../../hooks/useExternalData', () => ({
       {
         [entityPrimaryKeyProperty]: 'roster-row-1',
         type: NODE_TYPE,
-        [entityAttributesProperty]: { name: 'Alice' },
+        [entityAttributesProperty]: { [NAME_VARIABLE]: 'Alice' },
       },
     ],
     status: { state: 'ready' },
@@ -87,7 +88,7 @@ const quickAddStages: Stages = [
     addNamePlaceholder: { en: 'Type a name, then press Enter' },
     label: { en: 'Quick add' },
     subject: { entity: 'node', type: NODE_TYPE },
-    quickAdd: asEntityAttributeReference('name'),
+    quickAdd: asEntityAttributeReference(NAME_VARIABLE),
     prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
   },
 ];
@@ -160,7 +161,7 @@ async function renderNameGenerator({
 /** The plaintext of a node's stored name, which must be bound to its id. */
 async function storedName(node: NcNode | undefined) {
   const stored = node
-    ? readEncryptedAttribute(node, 'name', encryptedVariables)
+    ? readEncryptedAttribute(node, NAME_VARIABLE, encryptedVariables)
     : undefined;
   if (stored?.status !== 'encrypted') {
     throw new Error('Expected the name to be stored encrypted');

@@ -6,14 +6,15 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { isNodeSelected } from '../ComposerCanvas';
 
-const GROUP_VAR = 'affiliation';
+const GROUP_VAR = testVariableId('affiliation');
 
 const node = (attributes: Record<string, unknown> = {}): NcNode =>
   ({
     [entityPrimaryKeyProperty]: 'n1',
-    type: 'person',
+    type: testTypeId('person'),
     [entityAttributesProperty]: attributes,
   }) as unknown as NcNode;
 
@@ -32,7 +33,7 @@ describe('isNodeSelected', () => {
   });
 
   it('follows the pending edge source under the edge tool', () => {
-    const tool = { kind: 'edge' as const, edgeType: 'knows' };
+    const tool = { kind: 'edge' as const, edgeType: testTypeId('knows') };
     expect(isNodeSelected(node(), tool, noState)).toBe(false);
     expect(isNodeSelected(node(), tool, { ...noState, linking: true })).toBe(
       true,

@@ -6,6 +6,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testTypeId } from '../../../__tests__/testIds';
 import type { Tracker } from '../../../analytics/tracker';
 import { unlockEncryption } from '../../../interfaces/Anonymisation/unlockEncryption';
 import protocol from '../../modules/protocol';
@@ -22,6 +23,10 @@ import session, {
 } from '../../modules/session';
 import ui from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
+
+const VENUE = testTypeId('venue');
+const PERSON = testTypeId('person');
+const KNOWS = testTypeId('knows');
 
 function makeTracker() {
   const track = vi.fn();
@@ -53,10 +58,10 @@ function buildStore(
         schemaVersion: 9,
         codebook: {
           node: {
-            venue: { name: 'Venue', color: 'green', variables: {} },
-            person: { name: 'Person', color: 'blue', variables: {} },
+            [VENUE]: { name: 'Venue', color: 'green', variables: {} },
+            [PERSON]: { name: 'Person', color: 'blue', variables: {} },
           },
-          edge: { knows: { name: 'Knows', color: 'red', variables: {} } },
+          edge: { [KNOWS]: { name: 'Knows', color: 'red', variables: {} } },
         },
         stages: [
           { id: 's0', type: 'Information' },
@@ -77,7 +82,7 @@ describe('analyticsListener — global entity events', () => {
     const store = buildStore(tracker);
     await store.dispatch(
       addNode({
-        type: 'person',
+        type: PERSON,
         attributeData: {},
         modelData: { stageId: 's1', promptId: 'p1' },
         currentStep: 1,
@@ -99,10 +104,10 @@ describe('analyticsListener — global entity events', () => {
     await store.dispatch(
       addNodesAndEdges({
         nodes: [
-          { type: 'person', modelData: { _uid: 'a' } },
-          { type: 'person', modelData: { _uid: 'b' } },
+          { type: PERSON, modelData: { _uid: 'a' } },
+          { type: PERSON, modelData: { _uid: 'b' } },
         ],
-        edges: [{ from: 'a', to: 'b', type: 'knows' }],
+        edges: [{ from: 'a', to: 'b', type: KNOWS }],
         currentStep: 1,
       }),
     );
@@ -123,7 +128,7 @@ describe('analyticsListener — global entity events', () => {
     store.dispatch(
       restoreNode({
         [entityPrimaryKeyProperty]: 'node-1',
-        type: 'person',
+        type: PERSON,
         [entityAttributesProperty]: {},
       }),
     );
@@ -137,12 +142,12 @@ describe('analyticsListener — global entity events', () => {
     const tracker = makeTracker();
     const person = (id: string) => ({
       [entityPrimaryKeyProperty]: id,
-      type: 'person',
+      type: PERSON,
       [entityAttributesProperty]: {},
     });
     const knows = (id: string, from: string, to: string) => ({
       [entityPrimaryKeyProperty]: id,
-      type: 'knows',
+      type: KNOWS,
       from,
       to,
       [entityAttributesProperty]: {},
@@ -181,14 +186,14 @@ describe('analyticsListener — global entity events', () => {
       nodes: [
         {
           _uid: 'a',
-          type: 'person',
+          type: PERSON,
           [entityAttributesProperty]: {},
           promptIDs: [],
           stageId: 's1',
         },
         {
           _uid: 'b',
-          type: 'person',
+          type: PERSON,
           [entityAttributesProperty]: {},
           promptIDs: [],
           stageId: 's1',
@@ -199,7 +204,7 @@ describe('analyticsListener — global entity events', () => {
       addEdge({
         from: 'a',
         to: 'b',
-        type: 'knows',
+        type: KNOWS,
         currentStep: 1,
       } as never) as never,
     );
@@ -228,7 +233,7 @@ describe('analyticsListener — global entity events', () => {
       nodes: [
         {
           _uid: 'n1',
-          type: 'person',
+          type: PERSON,
           [entityAttributesProperty]: {},
           promptIDs: [],
           stageId: 's1',
@@ -254,7 +259,7 @@ describe('analyticsListener — global entity events', () => {
       nodes: [
         {
           _uid: 'n1',
-          type: 'person',
+          type: PERSON,
           [entityAttributesProperty]: {},
           promptIDs: ['p1'],
           stageId: 's1',

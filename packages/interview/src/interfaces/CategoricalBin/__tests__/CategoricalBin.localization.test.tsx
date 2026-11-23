@@ -14,7 +14,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import protocol from '../../../store/modules/protocol';
@@ -48,8 +48,8 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', NoopObserver);
 });
 
-const NODE_TYPE = 'person';
-const CATEGORY_VARIABLE = 'category';
+const NODE_TYPE = testTypeId('person');
+const CATEGORY_VARIABLE = testVariableId('category');
 
 const LOCALIZATION: LocalizationDeclaration = {
   defaultLocale: 'en',

@@ -24,7 +24,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import BinSelectAnnouncer from '../../../components/BinSelectAnnouncer';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
@@ -118,14 +118,16 @@ beforeEach(() => {
   track.mockClear();
 });
 
-const NODE_TYPE = 'person';
+const NODE_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const CLOSENESS_VAR = testVariableId('closeness');
 const STAGE_ID = testId('ordinal-bin-stage');
 const PROMPT_ID = testId('prompt-1');
 
 const person = (id: string, name: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   type: NODE_TYPE,
-  [entityAttributesProperty]: { name },
+  [entityAttributesProperty]: { [NAME_VAR]: name },
 });
 
 const codebook: Codebook = {
@@ -135,8 +137,8 @@ const codebook: Codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        name: { name: 'name', type: 'text', component: 'Text' },
-        closeness: {
+        [NAME_VAR]: { name: 'name', type: 'text', component: 'Text' },
+        [CLOSENESS_VAR]: {
           name: 'Closeness',
           type: 'ordinal',
           component: 'LikertScale',
@@ -176,13 +178,13 @@ const buildStage = (
     {
       id: PROMPT_ID,
       text: { en: namingFocal ?? 'How close?' },
-      variable: asEntityAttributeReference('closeness'),
+      variable: asEntityAttributeReference(CLOSENESS_VAR),
       color: 'ord-color-seq-1',
       ...(sortByName && {
         bucketSortOrder: [
           {
             id: testId('sort-name'),
-            property: asEntityAttributeReference('name'),
+            property: asEntityAttributeReference(NAME_VAR),
             direction: 'asc',
           },
         ],
@@ -323,7 +325,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
 
-    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(2));
+    await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(2));
     await announcement('Ben');
     expect(screen.getByRole('button', { name: 'Ben' })).toHaveAttribute(
       'aria-pressed',
@@ -366,7 +368,9 @@ describe('OrdinalBin in select mode (#1652)', () => {
     const selected = renderStage('select');
     await announcement('Ann');
     fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
-    await waitFor(() => expect(selected.attributesOf('a')?.closeness).toBe(2));
+    await waitFor(() =>
+      expect(selected.attributesOf('a')?.[CLOSENESS_VAR]).toBe(2),
+    );
     const selectedNodes = selected.store.getState().session.network?.nodes;
     selected.view.unmount();
 
@@ -382,7 +386,9 @@ describe('OrdinalBin in select mode (#1652)', () => {
       dragged.getDndStore().getState().setActiveDropTarget(binListZone(1));
       dragged.getDndStore().getState().endDrag();
     });
-    await waitFor(() => expect(dragged.attributesOf('a')?.closeness).toBe(2));
+    await waitFor(() =>
+      expect(dragged.attributesOf('a')?.[CLOSENESS_VAR]).toBe(2),
+    );
 
     expect(dragged.store.getState().session.network?.nodes).toEqual(
       selectedNodes,
@@ -436,7 +442,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Ann in Distant' }),
     );
-    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(1));
+    await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(1));
     expect(track).toHaveBeenCalledWith('node_rebinned', {
       node_id: 'a',
       node_type_index: 0,
@@ -450,7 +456,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
   it('records moving someone placed before the stage was left as a move', async () => {
     const placedBefore: NcNode = {
       ...person('a', 'Ann'),
-      [entityAttributesProperty]: { name: 'Ann', closeness: 2 },
+      [entityAttributesProperty]: { [NAME_VAR]: 'Ann', [CLOSENESS_VAR]: 2 },
     };
     const { attributesOf } = renderStage('select', [
       placedBefore,
@@ -464,7 +470,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
       screen.getByRole('button', { name: 'Place Ann in Distant' }),
     );
 
-    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(1));
+    await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(1));
     expect(track).toHaveBeenCalledWith('node_rebinned', {
       node_id: 'a',
       node_type_index: 0,

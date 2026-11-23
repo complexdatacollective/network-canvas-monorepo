@@ -17,7 +17,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { StageDynamicValues } from '../../dynamicValues/DynamicValueScope';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
@@ -26,7 +26,14 @@ import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
-const NODE_TYPE = 'person';
+const NODE_TYPE = testTypeId('person');
+const KNOWS = testTypeId('knows');
+const NAME = testVariableId('name');
+const CLOSE = testVariableId('close');
+const NOTE = testVariableId('note');
+const KINDS = testVariableId('kinds');
+const EDGE_NOTE = testVariableId('edge-note');
+const EDGE_CLOSENESS = testVariableId('edge-closeness');
 
 const stage = {
   id: 'stage',
@@ -34,8 +41,8 @@ const stage = {
   label: { en: 'People' },
   subject: { entity: 'node', type: NODE_TYPE },
   dynamicValues: {
-    name: { path: 'node.name' },
-    close: { path: 'node.close', cases: { yes: true } },
+    name: { path: `node.${NAME}` },
+    close: { path: `node.${CLOSE}`, cases: { yes: true } },
     label: { path: 'node.$label' },
   },
   prompts: [{ id: 'prompt', text: { en: 'Who?' } }],
@@ -70,13 +77,13 @@ function renderForm(
         codebook: {
           node: {
             [NODE_TYPE]: {
-              name: NODE_TYPE,
+              name: 'person',
               ...(dynamicLabel === undefined ? {} : { dynamicLabel }),
               variables: {
-                name: { name: 'name', type: 'text', component: 'Text' },
-                close: { name: 'close', type: 'boolean' },
-                note: { name: 'note', type: 'text', component: 'Text' },
-                kinds: {
+                [NAME]: { name: 'name', type: 'text', component: 'Text' },
+                [CLOSE]: { name: 'close', type: 'boolean' },
+                [NOTE]: { name: 'note', type: 'text', component: 'Text' },
+                [KINDS]: {
                   name: 'kinds',
                   type: 'categorical',
                   component: 'CheckboxGroup',
@@ -100,7 +107,7 @@ function renderForm(
   const fields: FormField[] = [
     {
       id: testId('field-L97'),
-      variable: asEntityAttributeReference('note'),
+      variable: asEntityAttributeReference(NOTE),
       prompt: { en: prompt },
     },
   ];
@@ -112,14 +119,14 @@ function renderForm(
         {/* A control the interface asks before the protocol's fields. */}
         <Field
           component={InputField}
-          name="name"
+          name={NAME}
           nameMode="opaque"
           label="Their name"
         />
         {/* A categorical one, stored as an array of the options chosen. */}
         <Field
           component={CheckboxGroupField}
-          name="kinds"
+          name={KINDS}
           nameMode="opaque"
           label="How they are related"
           options={[
@@ -150,7 +157,7 @@ function renderForm(
 describe('useProtocolForm dynamic values', () => {
   it("shows the answer to a control the interface asks before the form's fields", () => {
     renderForm(
-      { precedingVariables: ['name'] },
+      { precedingVariables: [NAME] },
       '{name, select, missing {About them} other {About {name}}}',
     );
     expect(screen.getByText('About them')).toBeInTheDocument();
@@ -163,7 +170,7 @@ describe('useProtocolForm dynamic values', () => {
   });
 
   it('names the node being created by its label as it is typed', () => {
-    renderForm({ precedingVariables: ['name'] }, 'How old is {label}?');
+    renderForm({ precedingVariables: [NAME] }, 'How old is {label}?');
     // With no name yet, the node is unnamed.
     expect(
       screen.getByText('Unnamed', { selector: 'bdi' }).closest('label'),
@@ -180,13 +187,13 @@ describe('useProtocolForm dynamic values', () => {
 
   it('names the node by the interface’s own label in place of the codebook’s rules, from every answer as it is given', () => {
     const labelNode = vi.fn((attributes: Readonly<Record<string, unknown>>) => {
-      const { kinds } = attributes;
+      const kinds = attributes[KINDS];
       return Array.isArray(kinds) && kinds.length > 0
         ? `Their ${kinds.join(' and ')}`
         : 'Their relative';
     });
     renderForm(
-      { precedingVariables: ['name', 'kinds'], labelNode },
+      { precedingVariables: [NAME, KINDS], labelNode },
       'How old is {label}?',
     );
     const shownLabel = () =>
@@ -206,8 +213,8 @@ describe('useProtocolForm dynamic values', () => {
     // With which of the form's questions hold an answer, so that one typed
     // to match a stored value can be told from it.
     expect(labelNode).toHaveBeenLastCalledWith(
-      expect.objectContaining({ name: 'Ada' }),
-      expect.objectContaining({ name: true }),
+      expect.objectContaining({ [NAME]: 'Ada' }),
+      expect.objectContaining({ [NAME]: true }),
     );
 
     // A categorical answer reaches it as it is given, as the array it is
@@ -215,8 +222,8 @@ describe('useProtocolForm dynamic values', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Aunt' }));
     expect(shownLabel()).toBe('Their aunt');
     expect(labelNode).toHaveBeenLastCalledWith(
-      expect.objectContaining({ name: 'Ada', kinds: ['aunt'] }),
-      expect.objectContaining({ name: true, kinds: true }),
+      expect.objectContaining({ [NAME]: 'Ada', [KINDS]: ['aunt'] }),
+      expect.objectContaining({ [NAME]: true, [KINDS]: true }),
     );
   });
 
@@ -224,9 +231,11 @@ describe('useProtocolForm dynamic values', () => {
   // node the form labels has to carry every answer, not only the text and
   // numbers a default label is read from.
   it('labels the node being created by its own label, from an answer that is a list of options', () => {
-    renderForm({ precedingVariables: ['kinds'] }, 'How old is {label}?', {
+    renderForm({ precedingVariables: [KINDS] }, 'How old is {label}?', {
       text: { en: '{kind, select, aunt {An aunt} other {Someone}}' },
-      dynamicValues: { kind: { path: 'node.kinds', cases: { aunt: 'aunt' } } },
+      dynamicValues: {
+        kind: { path: `node.${KINDS}`, cases: { aunt: 'aunt' } },
+      },
     });
     expect(
       screen.getByText('Someone', { selector: 'bdi' }),
@@ -241,7 +250,7 @@ describe('useProtocolForm dynamic values', () => {
 
   it('shows what a new person will be created with', () => {
     renderForm(
-      { newEntityAttributes: { close: true } },
+      { newEntityAttributes: { [CLOSE]: true } },
       '{close, select, missing {Anyone} yes {Someone close} other {Someone}}',
     );
     expect(screen.getByText('Someone close')).toBeInTheDocument();
@@ -253,11 +262,11 @@ describe('useProtocolForm dynamic values on an edge form', () => {
     id: 'edges',
     type: 'AlterEdgeForm',
     label: { en: 'Ties' },
-    subject: { entity: 'edge', type: 'knows' },
+    subject: { entity: 'edge', type: KNOWS },
     dynamicValues: {
       from: { path: 'edge.from.$label' },
       to: { path: 'edge.to.$label' },
-      closeness: { path: 'edge.closeness' },
+      closeness: { path: `edge.${EDGE_CLOSENESS}` },
     },
     form: { fields: [] },
   } as unknown as Stage;
@@ -274,7 +283,7 @@ describe('useProtocolForm dynamic values on an edge form', () => {
               {
                 [entityPrimaryKeyProperty]: 'n1',
                 type: NODE_TYPE,
-                [entityAttributesProperty]: { name: 'Ada' },
+                [entityAttributesProperty]: { [NAME]: 'Ada' },
               },
               {
                 [entityPrimaryKeyProperty]: 'n2',
@@ -285,7 +294,7 @@ describe('useProtocolForm dynamic values on an edge form', () => {
             edges: [
               {
                 [entityPrimaryKeyProperty]: 'e1',
-                type: 'knows',
+                type: KNOWS,
                 from: 'n1',
                 to: 'n2',
                 [entityAttributesProperty]: edgeAttributes,
@@ -302,18 +311,22 @@ describe('useProtocolForm dynamic values on an edge form', () => {
           codebook: {
             node: {
               [NODE_TYPE]: {
-                name: NODE_TYPE,
+                name: 'person',
                 variables: {
-                  name: { name: 'name', type: 'text', component: 'Text' },
+                  [NAME]: { name: 'name', type: 'text', component: 'Text' },
                 },
               },
             },
             edge: {
-              knows: {
+              [KNOWS]: {
                 name: 'knows',
                 variables: {
-                  note: { name: 'note', type: 'text', component: 'Text' },
-                  closeness: {
+                  [EDGE_NOTE]: {
+                    name: 'note',
+                    type: 'text',
+                    component: 'Text',
+                  },
+                  [EDGE_CLOSENESS]: {
                     name: 'closeness',
                     type: 'text',
                     component: 'Text',
@@ -334,11 +347,11 @@ describe('useProtocolForm dynamic values on an edge form', () => {
         fields: [
           {
             id: testId('field-1'),
-            variable: asEntityAttributeReference('note'),
+            variable: asEntityAttributeReference(EDGE_NOTE),
             prompt: { en: prompt },
           },
         ],
-        subject: { entity: 'edge', type: 'knows' },
+        subject: { entity: 'edge', type: KNOWS },
         currentEntityId: 'e1',
       });
       return <>{fieldComponents}</>;
@@ -374,7 +387,7 @@ describe('useProtocolForm dynamic values on an edge form', () => {
   it('shows an attribute of the edge the form is about', () => {
     renderEdgeForm(
       '{closeness, select, missing {How close?} other {Closeness: {closeness}}}',
-      { closeness: 'EDGE_SENTINEL' },
+      { [EDGE_CLOSENESS]: 'EDGE_SENTINEL' },
     );
 
     const value = screen.getByText('EDGE_SENTINEL', { selector: 'bdi' });

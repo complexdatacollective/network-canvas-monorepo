@@ -16,7 +16,9 @@ import { testId } from '../__tests__/testIds';
 import { createInitialNetwork } from '../contract/network';
 import type { InterviewPayload } from '../contract/types';
 import {
+  AGE_VARIABLE,
   encryptedVariables,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from '../interfaces/Anonymisation/__tests__/encryptionFixtures';
@@ -87,7 +89,7 @@ const payload: InterviewPayload = {
           fields: [
             {
               id: testId('field-1'),
-              variable: asEntityAttributeReference('name'),
+              variable: asEntityAttributeReference(NAME_VARIABLE),
               prompt: { en: 'Name' },
             },
           ],
@@ -123,7 +125,7 @@ async function answer(interview: ReturnType<typeof store>) {
     .dispatch(
       addNode({
         type: NODE_TYPE,
-        attributeData: { name: NAME, age: 40 },
+        attributeData: { [NAME_VARIABLE]: NAME, [AGE_VARIABLE]: 40 },
         useEncryption: true,
         currentStep: 0,
       }),
@@ -133,7 +135,7 @@ async function answer(interview: ReturnType<typeof store>) {
     .dispatch(
       updateNode({
         nodeId,
-        attributePatch: { set: { name: NEW_NAME }, unset: [] },
+        attributePatch: { set: { [NAME_VARIABLE]: NEW_NAME }, unset: [] },
         currentStep: 0,
       }),
     )
@@ -142,7 +144,7 @@ async function answer(interview: ReturnType<typeof store>) {
     .dispatch(
       addNode({
         type: NODE_TYPE,
-        attributeData: { name: ROSTER_NAME },
+        attributeData: { [NAME_VARIABLE]: ROSTER_NAME },
         currentStep: 0,
       }),
     )
@@ -153,7 +155,10 @@ async function answer(interview: ReturnType<typeof store>) {
         nodes: [
           {
             type: NODE_TYPE,
-            attributeData: { name: RELATIVE_NAME, age: 70 },
+            attributeData: {
+              [NAME_VARIABLE]: RELATIVE_NAME,
+              [AGE_VARIABLE]: 70,
+            },
             useEncryption: true,
           },
         ],
@@ -194,7 +199,7 @@ describe('the interview store', () => {
     expect(shown).not.toContain(ROSTER_NAME);
     expect(JSON.stringify(actions)).toContain(RELATIVE_NAME);
     expect(shown).not.toContain(RELATIVE_NAME);
-    expect(shown).toContain('"age":40');
+    expect(shown).toContain(`"${AGE_VARIABLE}":40`);
 
     const state = options?.stateSanitizer?.(interview.getState(), 0);
     expect(
@@ -202,9 +207,9 @@ describe('the interview store', () => {
         (node) => node[entityAttributesProperty],
       ),
     ).toEqual([
-      { name: '[encrypted]', age: 40 },
-      { name: '[encrypted]' },
-      { name: '[encrypted]', age: 70 },
+      { [NAME_VARIABLE]: '[encrypted]', [AGE_VARIABLE]: 40 },
+      { [NAME_VARIABLE]: '[encrypted]' },
+      { [NAME_VARIABLE]: '[encrypted]', [AGE_VARIABLE]: 70 },
     ]);
     expect(state?.protocol.codebook.node?.[NODE_TYPE]?.variables).toEqual(
       encryptedVariables,
@@ -223,7 +228,7 @@ describe('the interview store', () => {
     const logged = JSON.stringify(info.mock.calls);
     expect(logged).toContain('NETWORK/UPDATE_NODE');
     expect(logged).toContain('NETWORK/ADD_NODES_AND_EDGES');
-    expect(logged).toContain('"age":40');
+    expect(logged).toContain(`"${AGE_VARIABLE}":40`);
     expect(logged).not.toContain(NAME);
     expect(logged).not.toContain(NEW_NAME);
     expect(logged).not.toContain(ROSTER_NAME);

@@ -17,7 +17,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { createInitialNetwork } from '../../contract/network';
 import type { InterviewPayload } from '../../contract/types';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
@@ -28,16 +28,23 @@ import {
 import { addEdge } from '../../store/modules/session';
 import { store as createStore } from '../../store/store';
 
+const PLACE = testTypeId('place');
+const NEAR = testTypeId('near');
+const FAR = testTypeId('far');
+const NAME_VAR = testVariableId('nameVar');
+const KIND = testVariableId('kind');
+const BEDS = testVariableId('beds');
+
 const place = (
   id: string,
   attributes: NcNode[typeof entityAttributesProperty],
 ): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   [entityAttributesProperty]: attributes,
-  type: 'place',
+  type: PLACE,
 });
 
-const edge = (id: string, from: string, to: string, type = 'near'): NcEdge => ({
+const edge = (id: string, from: string, to: string, type = NEAR): NcEdge => ({
   [entityPrimaryKeyProperty]: id,
   [entityAttributesProperty]: {},
   type,
@@ -60,13 +67,13 @@ function storeWith(
 ) {
   const codebook: Codebook = {
     node: {
-      place: {
+      [PLACE]: {
         name: 'Place',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          nameVar: { name: 'name', type: 'text' },
-          kind: {
+          [NAME_VAR]: { name: 'name', type: 'text' },
+          [KIND]: {
             name: 'kind',
             type: 'ordinal',
             options: [
@@ -74,14 +81,14 @@ function storeWith(
               { label: { en: 'School' }, value: 'school' },
             ],
           },
-          beds: { name: 'beds', type: 'number' },
+          [BEDS]: { name: 'beds', type: 'number' },
         },
         ...(dynamicLabel && { dynamicLabel }),
       },
     },
     edge: {
-      near: { name: 'Near', color: 'edge-color-seq-1' },
-      far: { name: 'Far', color: 'edge-color-seq-2' },
+      [NEAR]: { name: 'Near', color: 'edge-color-seq-1' },
+      [FAR]: { name: 'Far', color: 'edge-color-seq-2' },
     },
   };
   const payload: InterviewPayload = {
@@ -108,13 +115,13 @@ function storeWith(
           id: testId('stage-1'),
           type: 'NameGenerator',
           label: { en: 'Name generator' },
-          subject: { entity: 'node', type: 'place' },
+          subject: { entity: 'node', type: PLACE },
           form: {
             title: { en: 'Add a place' },
             fields: [
               {
                 id: testId('field-L114'),
-                variable: asEntityAttributeReference('nameVar'),
+                variable: asEntityAttributeReference(NAME_VAR),
                 prompt: { en: 'Name' },
               },
             ],
@@ -161,7 +168,7 @@ const SWITCH_LABEL: NodeLabel = {
   },
   dynamicValues: {
     kind: {
-      path: 'node.kind',
+      path: `node.${KIND}`,
       cases: { hospital: 'hospital', school: 'school' },
     },
     nodeLabel: { path: 'node.$label' },
@@ -170,15 +177,18 @@ const SWITCH_LABEL: NodeLabel = {
 
 describe('a node type’s own label', () => {
   it('leaves a node with the label the interview chooses when its type has none', () => {
-    const node = place('a', { nameVar: 'St Mary’s' });
+    const node = place('a', { [NAME_VAR]: 'St Mary’s' });
     const { result } = renderLabel(storeWith(undefined, [node]), node);
     expect(result.current).toBe('St Mary’s');
   });
 
   it('chooses a version by an attribute and shows the default label', () => {
-    const hospital = place('a', { nameVar: 'St Mary’s', kind: 'hospital' });
-    const school = place('b', { nameVar: 'Hill Road', kind: 'school' });
-    const unknown = place('c', { nameVar: 'Somewhere' });
+    const hospital = place('a', {
+      [NAME_VAR]: 'St Mary’s',
+      [KIND]: 'hospital',
+    });
+    const school = place('b', { [NAME_VAR]: 'Hill Road', [KIND]: 'school' });
+    const unknown = place('c', { [NAME_VAR]: 'Somewhere' });
     const store = storeWith(SWITCH_LABEL, [hospital, school, unknown]);
     expect(renderLabel(store, hospital).result.current).toBe('🏥 St Mary’s');
     expect(renderLabel(store, school).result.current).toBe('🏫 Hill Road');
@@ -191,11 +201,13 @@ describe('a node type’s own label', () => {
       ({ node }: { node: NcNode }) => useNodeLabel(node),
       {
         wrapper: wrapperFor(store),
-        initialProps: { node: place('a', { nameVar: 'A', kind: 'school' }) },
+        initialProps: {
+          node: place('a', { [NAME_VAR]: 'A', [KIND]: 'school' }),
+        },
       },
     );
     expect(result.current).toBe('🏫 A');
-    rerender({ node: place('a', { nameVar: 'A', kind: 'hospital' }) });
+    rerender({ node: place('a', { [NAME_VAR]: 'A', [KIND]: 'hospital' }) });
     expect(result.current).toBe('🏥 A');
   });
 
@@ -204,7 +216,7 @@ describe('a node type’s own label', () => {
     const store = storeWith(
       {
         text: { en: '{name, select, missing {} other {{name}}}' },
-        dynamicValues: { name: { path: 'node.nameVar' } },
+        dynamicValues: { name: { path: `node.${NAME_VAR}` } },
       },
       [node],
     );
@@ -217,15 +229,19 @@ describe('a node type’s own label', () => {
         en: '{kind, select, missing {} hospital {{beds, select, missing {🏥} other {{beds, plural, one {🏥 # bed} other {🏥 # beds}}}}} other {}} {nodeLabel}',
       },
       dynamicValues: {
-        kind: { path: 'node.kind', cases: { hospital: 'hospital' } },
-        beds: { path: 'node.beds' },
+        kind: { path: `node.${KIND}`, cases: { hospital: 'hospital' } },
+        beds: { path: `node.${BEDS}` },
         nodeLabel: { path: 'node.$label' },
       },
     };
-    const big = place('a', { nameVar: 'A', kind: 'hospital', beds: 1200 });
-    const one = place('b', { nameVar: 'B', kind: 'hospital', beds: 1 });
-    const none = place('c', { nameVar: 'C', kind: 'hospital' });
-    const school = place('d', { nameVar: 'D', kind: 'school', beds: 5 });
+    const big = place('a', {
+      [NAME_VAR]: 'A',
+      [KIND]: 'hospital',
+      [BEDS]: 1200,
+    });
+    const one = place('b', { [NAME_VAR]: 'B', [KIND]: 'hospital', [BEDS]: 1 });
+    const none = place('c', { [NAME_VAR]: 'C', [KIND]: 'hospital' });
+    const school = place('d', { [NAME_VAR]: 'D', [KIND]: 'school', [BEDS]: 5 });
     const store = storeWith(label, [big, one, none, school]);
     expect(renderLabel(store, big).result.current).toBe('🏥 1,200 beds A');
     expect(renderLabel(store, one).result.current).toBe('🏥 1 bed B');
@@ -252,8 +268,8 @@ describe('a node type’s own label', () => {
               type: 'node',
               id: testId('r1'),
               options: {
-                type: 'place',
-                attribute: 'kind',
+                type: PLACE,
+                attribute: KIND,
                 operator: 'EXACTLY',
                 value: 'hospital',
               },
@@ -262,8 +278,8 @@ describe('a node type’s own label', () => {
               type: 'node',
               id: testId('r2'),
               options: {
-                type: 'place',
-                attribute: 'beds',
+                type: PLACE,
+                attribute: BEDS,
                 operator: 'GREATER_THAN',
                 value: 100,
               },
@@ -272,8 +288,16 @@ describe('a node type’s own label', () => {
         },
       },
     });
-    const large = place('a', { nameVar: 'A', kind: 'hospital', beds: 400 });
-    const small = place('b', { nameVar: 'B', kind: 'hospital', beds: 40 });
+    const large = place('a', {
+      [NAME_VAR]: 'A',
+      [KIND]: 'hospital',
+      [BEDS]: 400,
+    });
+    const small = place('b', {
+      [NAME_VAR]: 'B',
+      [KIND]: 'hospital',
+      [BEDS]: 40,
+    });
     const store = storeWith(label, [large, small]);
     expect(renderLabel(store, large).result.current).toBe('⭐ A');
     expect(renderLabel(store, small).result.current).toBe('· B');
@@ -284,7 +308,7 @@ describe('a node type’s own label', () => {
       defaultLocale: 'en',
       locales: ['en', 'es'],
     };
-    const node = place('a', { nameVar: 'A' });
+    const node = place('a', { [NAME_VAR]: 'A' });
     const store = storeWith(
       {
         text: { en: 'Place {nodeLabel}', es: 'Lugar {nodeLabel}' },
@@ -319,15 +343,15 @@ describe('a label that follows how its node is connected', () => {
     },
     conditions: {
       linked: edgeRule('r1', { count: 'GREATER_THAN', value: 0 }),
-      near: edgeRule('r2', { type: 'near', operator: 'EXISTS' }),
+      near: edgeRule('r2', { type: NEAR, operator: 'EXISTS' }),
       most: edgeRule('r3', { count: 'MOST' }),
       least: edgeRule('r4', { count: 'FEWEST' }),
     },
   });
-  const a = place('a', { nameVar: 'A' });
-  const b = place('b', { nameVar: 'B' });
-  const c = place('c', { nameVar: 'C' });
-  const d = place('d', { nameVar: 'D' });
+  const a = place('a', { [NAME_VAR]: 'A' });
+  const b = place('b', { [NAME_VAR]: 'B' });
+  const c = place('c', { [NAME_VAR]: 'C' });
+  const d = place('d', { [NAME_VAR]: 'D' });
 
   it('marks no node out when none is connected', () => {
     const store = storeWith(label, [a, b, c]);
@@ -338,7 +362,7 @@ describe('a label that follows how its node is connected', () => {
     const store = storeWith(
       label,
       [a, b, c, d],
-      [edge('1', 'a', 'b', 'far'), edge('2', 'a', 'c', 'near')],
+      [edge('1', 'a', 'b', FAR), edge('2', 'a', 'c', NEAR)],
     );
     expect(renderLabel(store, a).result.current).toBe('🔗 📍 👑 A');
     expect(renderLabel(store, b).result.current).toBe('🔗 B');
@@ -347,7 +371,7 @@ describe('a label that follows how its node is connected', () => {
   });
 
   it('follows an edge added to the node, and is not redrawn for one added elsewhere', async () => {
-    const store = storeWith(label, [a, b, c, d], [edge('1', 'a', 'b', 'far')]);
+    const store = storeWith(label, [a, b, c, d], [edge('1', 'a', 'b', FAR)]);
     const labelOfC = renderLabel(store, c);
     const labelOfA = renderLabel(store, a);
     expect(labelOfC.result.current).toBe('🌱 C');
@@ -358,7 +382,7 @@ describe('a label that follows how its node is connected', () => {
     // still among those with the most.
     await act(async () => {
       await store.dispatch(
-        addEdge({ from: 'c', to: 'd', type: 'near', currentStep: 0 }),
+        addEdge({ from: 'c', to: 'd', type: NEAR, currentStep: 0 }),
       );
     });
     expect(labelOfC.result.current).toBe('🔗 📍 C');
@@ -370,7 +394,7 @@ describe('a label that follows how its node is connected', () => {
     expect(afterFirst).toBeGreaterThan(rendersOfA);
     await act(async () => {
       await store.dispatch(
-        addEdge({ from: 'c', to: 'd', type: 'far', currentStep: 0 }),
+        addEdge({ from: 'c', to: 'd', type: FAR, currentStep: 0 }),
       );
     });
     expect(labelOfA.result.current).toBe('🔗 🌱 A');
@@ -392,7 +416,7 @@ describe('a label that follows how its node is connected', () => {
     const before = labelOfA.renders();
     await act(async () => {
       await store.dispatch(
-        addEdge({ from: 'c', to: 'd', type: 'near', currentStep: 0 }),
+        addEdge({ from: 'c', to: 'd', type: NEAR, currentStep: 0 }),
       );
     });
     expect(labelOfA.result.current).toBe('A');
@@ -400,7 +424,7 @@ describe('a label that follows how its node is connected', () => {
 
     await act(async () => {
       await store.dispatch(
-        addEdge({ from: 'a', to: 'd', type: 'near', currentStep: 0 }),
+        addEdge({ from: 'a', to: 'd', type: NEAR, currentStep: 0 }),
       );
     });
     expect(labelOfA.result.current).toBe('🔗 A');
@@ -410,7 +434,7 @@ describe('a label that follows how its node is connected', () => {
     const store = storeWith(
       label,
       [a, b, c, d],
-      [edge('1', 'a', 'b', 'far'), edge('2', 'a', 'c', 'near')],
+      [edge('1', 'a', 'b', FAR), edge('2', 'a', 'c', NEAR)],
     );
     const { result } = renderHook(() => useNodeLabeller(() => undefined), {
       wrapper: wrapperFor(store),

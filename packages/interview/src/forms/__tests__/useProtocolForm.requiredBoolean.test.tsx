@@ -12,7 +12,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
@@ -20,7 +20,10 @@ import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
-const NODE_TYPE = 'person';
+const NODE_TYPE = testTypeId('person');
+const REQUIRED_TOGGLE = testVariableId('requiredToggle');
+const OPTIONAL_TOGGLE = testVariableId('optionalToggle');
+const SINGLETON_OPTIONS = testVariableId('singletonOptions');
 
 /**
  * Issue #1385: a required boolean authored as a `Toggle` rendered a switch
@@ -48,15 +51,15 @@ function makeWrapper() {
         codebook: {
           node: {
             [NODE_TYPE]: {
-              name: NODE_TYPE,
+              name: 'person',
               variables: {
-                requiredToggle: {
+                [REQUIRED_TOGGLE]: {
                   name: 'requiredToggle',
                   type: 'boolean',
                   component: 'Toggle',
                   validation: { required: true },
                 },
-                optionalToggle: {
+                [OPTIONAL_TOGGLE]: {
                   name: 'optionalToggle',
                   type: 'boolean',
                   component: 'Toggle',
@@ -64,7 +67,7 @@ function makeWrapper() {
                 // Componentless, so a NetworkComposer field decides the
                 // control — the only way a boolean carries `options` while
                 // being rendered by a `Toggle`.
-                singletonOptions: {
+                [SINGLETON_OPTIONS]: {
                   name: 'singletonOptions',
                   type: 'boolean',
                   options: [{ label: { en: 'Yes' }, value: true }],
@@ -113,7 +116,7 @@ describe('useProtocolForm required boolean rendering', () => {
         fields={[
           {
             id: testId('field-L113'),
-            variable: asEntityAttributeReference('requiredToggle'),
+            variable: asEntityAttributeReference(REQUIRED_TOGGLE),
             prompt: { en: 'Do you live alone?' },
           },
         ]}
@@ -139,7 +142,7 @@ describe('useProtocolForm required boolean rendering', () => {
         fields={[
           {
             id: testId('field-L138'),
-            variable: asEntityAttributeReference('optionalToggle'),
+            variable: asEntityAttributeReference(OPTIONAL_TOGGLE),
             prompt: { en: 'Do you live alone?' },
           },
         ]}
@@ -157,7 +160,7 @@ describe('useProtocolForm required boolean rendering', () => {
         fields={[
           {
             id: testId('field-L157'),
-            variable: asEntityAttributeReference('singletonOptions'),
+            variable: asEntityAttributeReference(SINGLETON_OPTIONS),
             component: 'Toggle',
             label: { en: 'Are you employed?' },
           } as ComposerFormField,
@@ -181,12 +184,12 @@ describe('useProtocolForm required boolean rendering', () => {
           fields: [
             {
               id: testId('field-1'),
-              variable: asEntityAttributeReference('requiredToggle'),
+              variable: asEntityAttributeReference(REQUIRED_TOGGLE),
               prompt: { en: 'Do you live alone?' },
             },
             {
               id: testId('field-2'),
-              variable: asEntityAttributeReference('optionalToggle'),
+              variable: asEntityAttributeReference(OPTIONAL_TOGGLE),
               prompt: { en: 'Do you have a car?' },
             },
           ],
@@ -196,8 +199,8 @@ describe('useProtocolForm required boolean rendering', () => {
     );
 
     expect(result.current.componentByVariable).toEqual({
-      requiredToggle: 'Boolean',
-      optionalToggle: 'Toggle',
+      [REQUIRED_TOGGLE]: 'Boolean',
+      [OPTIONAL_TOGGLE]: 'Toggle',
     });
   });
 });

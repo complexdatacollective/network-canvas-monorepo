@@ -397,12 +397,6 @@ const propertyWithAttributePath = (rule: {
     return rule.property;
   }
 
-  // 'type' rules are a special case - they exist in the protocol, but do not
-  // refer to an entity attribute (they refer to a model property)
-  if (rule.property === 'type') {
-    return rule.property;
-  }
-
   return [entityAttributesProperty, rule.property];
 };
 
@@ -431,8 +425,10 @@ export const processProtocolSortRule =
       return { ...sortRule, type: sortRule.type };
     }
 
-    // An own-property lookup, not a lodash path: the property is a variable id
-    // or name, and `a.b` or `__proto__` must not be read as a path.
+    // An own-property lookup, not a lodash path: the property is not checked
+    // against the codebook, and may be '*', 'type' or a roster column, so a
+    // name such as `constructor` or `a.b` must not reach the prototype or be
+    // read as a path.
     const variableDefinition: Variable | null =
       codebookVariables !== undefined &&
       typeof sortRule.property === 'string' &&

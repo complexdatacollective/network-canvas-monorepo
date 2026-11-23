@@ -22,9 +22,10 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
@@ -103,7 +104,10 @@ beforeEach(() => {
   track.mockClear();
 });
 
-const NODE_TYPE = 'person';
+const NODE_TYPE = testTypeId('person');
+const NAME_VARIABLE = testVariableId('name');
+const CATEGORY_VARIABLE = testVariableId('category');
+const OTHER_REASON_VARIABLE = testVariableId('otherReason');
 const STAGE_ID = testId('categorical-bin-stage');
 const PROMPT_ID = testId('prompt-1');
 const OTHER_BIN_INDEX = 2;
@@ -111,11 +115,11 @@ const OTHER_BIN_INDEX = 2;
 const person = (
   id: string,
   name: string,
-  attributes: Record<string, unknown> = {},
+  attributes: Record<string, VariableValue> = {},
 ): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   type: NODE_TYPE,
-  [entityAttributesProperty]: { name, ...attributes },
+  [entityAttributesProperty]: { [NAME_VARIABLE]: name, ...attributes },
 });
 
 const codebook: Codebook = {
@@ -125,8 +129,8 @@ const codebook: Codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        name: { name: 'name', type: 'text', component: 'Text' },
-        category: {
+        [NAME_VARIABLE]: { name: 'name', type: 'text', component: 'Text' },
+        [CATEGORY_VARIABLE]: {
           name: 'Category',
           type: 'categorical',
           component: 'CheckboxGroup',
@@ -135,7 +139,7 @@ const codebook: Codebook = {
             { label: { en: 'Friend' }, value: 2 },
           ],
         },
-        otherReason: {
+        [OTHER_REASON_VARIABLE]: {
           name: 'Other reason',
           type: 'text',
           component: 'Text',
@@ -159,8 +163,8 @@ const buildStage = (mode: Mode): StageProps<'CategoricalBin'>['stage'] => ({
     {
       id: PROMPT_ID,
       text: { en: 'Which category?' },
-      variable: asEntityAttributeReference('category'),
-      otherVariable: asEntityAttributeReference('otherReason'),
+      variable: asEntityAttributeReference(CATEGORY_VARIABLE),
+      otherVariable: asEntityAttributeReference(OTHER_REASON_VARIABLE),
       otherVariablePrompt: { en: 'Which other category?' },
       otherOptionLabel: { en: 'Other' },
     },
@@ -293,7 +297,9 @@ describe('CategoricalBin in select mode (#1652)', () => {
       screen.getByRole('button', { name: 'Place Ann in Family' }),
     );
 
-    await waitFor(() => expect(attributesOf('a')?.category).toEqual([1]));
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([1]),
+    );
     await announcement('Ben');
     expect(screen.getByRole('button', { name: 'Ben' })).toHaveAttribute(
       'aria-pressed',
@@ -314,7 +320,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
       screen.getByRole('button', { name: 'Place Ann in Family' }),
     );
     await waitFor(() =>
-      expect(selected.attributesOf('a')?.category).toEqual([1]),
+      expect(selected.attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([1]),
     );
     const selectedNetwork = selected.store.getState().session.network;
     selected.view.unmount();
@@ -333,7 +339,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
       dragged.getDndStore().getState().endDrag();
     });
     await waitFor(() =>
-      expect(dragged.attributesOf('a')?.category).toEqual([1]),
+      expect(dragged.attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([1]),
     );
 
     expect(dragged.store.getState().session.network?.nodes).toEqual(
@@ -391,7 +397,9 @@ describe('CategoricalBin in select mode (#1652)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Ann in Friend' }),
     );
-    await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([2]),
+    );
     expect(track).toHaveBeenCalledWith('node_rebinned', {
       node_id: 'a',
       node_type_index: 0,
@@ -414,7 +422,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
         expect(screen.queryByTestId('dialog-cancel')).not.toBeInTheDocument(),
       { timeout: 10_000 },
     );
-    expect(attributesOf('a')?.otherReason).toBeUndefined();
+    expect(attributesOf('a')?.[OTHER_REASON_VARIABLE]).toBeUndefined();
     expect(
       screen.getByRole('button', { name: 'Place Ann in Other' }),
     ).toBeInTheDocument();
@@ -426,9 +434,9 @@ describe('CategoricalBin in select mode (#1652)', () => {
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
     await waitFor(() =>
-      expect(attributesOf('a')?.otherReason).toBe('Neighbour'),
+      expect(attributesOf('a')?.[OTHER_REASON_VARIABLE]).toBe('Neighbour'),
     );
-    expect(attributesOf('a')?.category).toBeUndefined();
+    expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toBeUndefined();
     await announcement('Ben');
   });
 
@@ -457,13 +465,15 @@ describe('CategoricalBin in select mode (#1652)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Cal in Family' }),
     );
-    await waitFor(() => expect(attributesOf('c')?.category).toEqual([1]));
+    await waitFor(() =>
+      expect(attributesOf('c')?.[CATEGORY_VARIABLE]).toEqual([1]),
+    );
     await announcement('Ann');
   });
 
   it('records moving someone placed before the stage was left as a move', async () => {
     const { attributesOf } = renderStage('select', [
-      person('a', 'Ann', { category: [1] }),
+      person('a', 'Ann', { [CATEGORY_VARIABLE]: [1] }),
       person('b', 'Ben'),
     ]);
 
@@ -477,7 +487,9 @@ describe('CategoricalBin in select mode (#1652)', () => {
       screen.getByRole('button', { name: 'Place Ann in Friend' }),
     );
 
-    await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([2]),
+    );
     expect(track).toHaveBeenCalledWith('node_rebinned', {
       node_id: 'a',
       node_type_index: 0,
@@ -493,7 +505,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
 
   it('narrows a person with several answers to the bin tapped', async () => {
     const { attributesOf } = renderStage('select', [
-      person('a', 'Ann', { category: [1, 2] }),
+      person('a', 'Ann', { [CATEGORY_VARIABLE]: [1, 2] }),
       person('b', 'Ben'),
     ]);
 
@@ -507,12 +519,14 @@ describe('CategoricalBin in select mode (#1652)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Ann in Friend' }),
     );
-    await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([2]),
+    );
   });
 
   it('asks about "other" again when an "other" person taps it, so the answer can be edited', async () => {
     renderStage('select', [
-      person('a', 'Ann', { otherReason: 'Neighbour' }),
+      person('a', 'Ann', { [OTHER_REASON_VARIABLE]: 'Neighbour' }),
       person('b', 'Ben'),
     ]);
 

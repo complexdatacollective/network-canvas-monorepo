@@ -10,7 +10,7 @@ import {
   type NcEdge,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import protocol from '../../../store/modules/protocol';
@@ -25,9 +25,9 @@ import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import OneToManyDyadCensus from '../OneToManyDyadCensus';
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'friendship';
-const NAME_VAR = 'name';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('friendship');
+const NAME_VAR = testVariableId('name');
 
 const stage = {
   id: testId('otm1'),

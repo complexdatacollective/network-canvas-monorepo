@@ -15,8 +15,23 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import NodeForm from './NodeForm';
+
+const PERSON_TYPE = testTypeId('person');
+const V = {
+  name: testVariableId('name'),
+  age: testVariableId('age'),
+  gender: testVariableId('gender'),
+  occupation: testVariableId('occupation'),
+  favoriteColors: testVariableId('favoriteColors'),
+  birthDate: testVariableId('birthDate'),
+  happiness: testVariableId('happiness'),
+  isEmployed: testVariableId('isEmployed'),
+  bio: testVariableId('bio'),
+  skills: testVariableId('skills'),
+  communicationPreference: testVariableId('communicationPreference'),
+};
 
 const customIconOptions = ['add-a-person', 'add-a-place'];
 
@@ -29,12 +44,12 @@ const buildMockProtocol = (icon: string) => ({
   name: 'Test Protocol',
   codebook: {
     node: {
-      person: {
+      [PERSON_TYPE]: {
         name: 'Person',
-        displayVariable: 'name',
+        displayVariable: V.name,
         icon,
         variables: {
-          name: {
+          [V.name]: {
             name: 'Name',
             type: 'text',
             component: 'Text',
@@ -44,7 +59,7 @@ const buildMockProtocol = (icon: string) => ({
               maxLength: 100,
             },
           },
-          age: {
+          [V.age]: {
             name: 'Age',
             type: 'number',
             component: 'Number',
@@ -53,7 +68,7 @@ const buildMockProtocol = (icon: string) => ({
               maxValue: 60,
             },
           },
-          gender: {
+          [V.gender]: {
             name: 'Gender',
             type: 'categorical',
             component: 'RadioGroup',
@@ -67,12 +82,12 @@ const buildMockProtocol = (icon: string) => ({
               required: true,
             },
           },
-          occupation: {
+          [V.occupation]: {
             name: 'Occupation',
             type: 'text',
             component: 'Text',
           },
-          favoriteColors: {
+          [V.favoriteColors]: {
             name: 'Favorite Colors',
             type: 'categorical',
             component: 'CheckboxGroup',
@@ -89,12 +104,12 @@ const buildMockProtocol = (icon: string) => ({
               maxSelected: 3,
             },
           },
-          birthDate: {
+          [V.birthDate]: {
             name: 'Birth Date',
             type: 'datetime',
             component: 'DatePicker',
           },
-          happiness: {
+          [V.happiness]: {
             name: 'Happiness Level',
             type: 'scalar',
             component: 'Slider',
@@ -103,12 +118,12 @@ const buildMockProtocol = (icon: string) => ({
               max: 100,
             },
           },
-          isEmployed: {
+          [V.isEmployed]: {
             name: 'Currently Employed',
             type: 'boolean',
             component: 'Toggle',
           },
-          bio: {
+          [V.bio]: {
             name: 'Biography',
             type: 'text',
             component: 'TextArea',
@@ -116,7 +131,7 @@ const buildMockProtocol = (icon: string) => ({
               maxLength: 500,
             },
           },
-          skills: {
+          [V.skills]: {
             name: 'Skills',
             type: 'categorical',
             component: 'CheckboxGroup',
@@ -134,7 +149,7 @@ const buildMockProtocol = (icon: string) => ({
               maxSelected: 4,
             },
           },
-          communicationPreference: {
+          [V.communicationPreference]: {
             name: 'Communication Preference',
             type: 'categorical',
             component: 'ToggleButtonGroup',
@@ -158,7 +173,7 @@ const buildMockProtocol = (icon: string) => ({
       label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
-        type: 'person',
+        type: PERSON_TYPE,
       },
       prompts: [
         {
@@ -171,47 +186,47 @@ const buildMockProtocol = (icon: string) => ({
         fields: [
           {
             id: 'field-1',
-            variable: asEntityAttributeReference('name'),
+            variable: asEntityAttributeReference(V.name),
             prompt: { en: "What is this person's name?" },
           },
           {
             id: 'field-2',
-            variable: asEntityAttributeReference('age'),
+            variable: asEntityAttributeReference(V.age),
             prompt: { en: 'How old is this person?' },
           },
           {
             id: 'field-3',
-            variable: asEntityAttributeReference('gender'),
+            variable: asEntityAttributeReference(V.gender),
             prompt: { en: 'What is their gender?' },
           },
           {
             id: 'field-4',
-            variable: asEntityAttributeReference('occupation'),
+            variable: asEntityAttributeReference(V.occupation),
             prompt: { en: 'What is their occupation?' },
           },
           {
             id: 'field-5',
-            variable: asEntityAttributeReference('favoriteColors'),
+            variable: asEntityAttributeReference(V.favoriteColors),
             prompt: { en: 'What are their favorite colors?' },
           },
           {
             id: 'field-6',
-            variable: asEntityAttributeReference('birthDate'),
+            variable: asEntityAttributeReference(V.birthDate),
             prompt: { en: 'When were they born?' },
           },
           {
             id: 'field-7',
-            variable: asEntityAttributeReference('happiness'),
+            variable: asEntityAttributeReference(V.happiness),
             prompt: { en: 'How happy are they generally?' },
           },
           {
             id: 'field-8',
-            variable: asEntityAttributeReference('isEmployed'),
+            variable: asEntityAttributeReference(V.isEmployed),
             prompt: { en: 'Are they currently employed?' },
           },
           {
             id: 'field-9',
-            variable: asEntityAttributeReference('bio'),
+            variable: asEntityAttributeReference(V.bio),
             prompt: { en: 'Tell us a bit about them' },
           },
         ],
@@ -232,24 +247,24 @@ const mockSession = {
     nodes: [
       {
         [entityPrimaryKeyProperty]: 'node-1',
-        type: 'person',
+        type: PERSON_TYPE,
         [entityAttributesProperty]: {
-          name: 'Alice Smith',
-          age: 28,
-          gender: 'female',
-          occupation: 'Software Engineer',
-          isEmployed: true,
+          [V.name]: 'Alice Smith',
+          [V.age]: 28,
+          [V.gender]: 'female',
+          [V.occupation]: 'Software Engineer',
+          [V.isEmployed]: true,
         },
       },
       {
         [entityPrimaryKeyProperty]: 'node-2',
-        type: 'person',
+        type: PERSON_TYPE,
         [entityAttributesProperty]: {
-          name: 'Bob Johnson',
-          age: 35,
-          gender: 'male',
-          occupation: 'Product Manager',
-          isEmployed: true,
+          [V.name]: 'Bob Johnson',
+          [V.age]: 35,
+          [V.gender]: 'male',
+          [V.occupation]: 'Product Manager',
+          [V.isEmployed]: true,
         },
       },
     ],
@@ -365,22 +380,22 @@ const basicForm: TForm = {
   fields: [
     {
       id: testId('field-1'),
-      variable: asEntityAttributeReference('name'),
+      variable: asEntityAttributeReference(V.name),
       prompt: { en: 'What is their name?' },
     },
     {
       id: testId('field-2'),
-      variable: asEntityAttributeReference('age'),
+      variable: asEntityAttributeReference(V.age),
       prompt: { en: 'How old are they?' },
     },
     {
       id: testId('field-3'),
-      variable: asEntityAttributeReference('gender'),
+      variable: asEntityAttributeReference(V.gender),
       prompt: { en: 'What is their gender?' },
     },
     {
       id: testId('field-4'),
-      variable: asEntityAttributeReference('occupation'),
+      variable: asEntityAttributeReference(V.occupation),
       prompt: { en: 'What do they do for work?' },
     },
   ],
@@ -392,17 +407,17 @@ const validatedForm: TForm = {
   fields: [
     {
       id: testId('field-1'),
-      variable: asEntityAttributeReference('name'),
+      variable: asEntityAttributeReference(V.name),
       prompt: { en: 'Name (required)' },
     },
     {
       id: testId('field-2'),
-      variable: asEntityAttributeReference('age'),
+      variable: asEntityAttributeReference(V.age),
       prompt: { en: 'Age (18-100)' },
     },
     {
       id: testId('field-3'),
-      variable: asEntityAttributeReference('favoriteColors'),
+      variable: asEntityAttributeReference(V.favoriteColors),
       prompt: { en: 'Select at least 2 favorite colors' },
     },
   ],
@@ -442,12 +457,12 @@ export const EditExistingNode: Story = {
   args: {
     selectedNode: {
       [entityPrimaryKeyProperty]: 'node-1',
-      type: 'person',
+      type: PERSON_TYPE,
       [entityAttributesProperty]: {
-        name: 'Alice Smith',
-        age: 28,
-        gender: 'female',
-        occupation: 'Software Engineer',
+        [V.name]: 'Alice Smith',
+        [V.age]: 28,
+        [V.gender]: 'female',
+        [V.occupation]: 'Software Engineer',
       },
     },
     form: basicForm,
@@ -498,7 +513,7 @@ export const SingleFieldForm: Story = {
       fields: [
         {
           id: testId('field-1'),
-          variable: asEntityAttributeReference('name'),
+          variable: asEntityAttributeReference(V.name),
           prompt: { en: "Enter the person's name" },
         },
       ],
@@ -513,37 +528,37 @@ const comprehensiveForm: TForm = {
   fields: [
     {
       id: testId('field-1'),
-      variable: asEntityAttributeReference('name'),
+      variable: asEntityAttributeReference(V.name),
       prompt: { en: 'What is their name?' },
     },
     {
       id: testId('field-2'),
-      variable: asEntityAttributeReference('age'),
+      variable: asEntityAttributeReference(V.age),
       prompt: { en: 'How old are they?' },
     },
     {
       id: testId('field-3'),
-      variable: asEntityAttributeReference('gender'),
+      variable: asEntityAttributeReference(V.gender),
       prompt: { en: 'What is their gender?' },
     },
     {
       id: testId('field-4'),
-      variable: asEntityAttributeReference('occupation'),
+      variable: asEntityAttributeReference(V.occupation),
       prompt: { en: 'What do they do for work?' },
     },
     {
       id: testId('field-5'),
-      variable: asEntityAttributeReference('favoriteColors'),
+      variable: asEntityAttributeReference(V.favoriteColors),
       prompt: { en: 'What are their favorite colors?' },
     },
     {
       id: testId('field-6'),
-      variable: asEntityAttributeReference('isEmployed'),
+      variable: asEntityAttributeReference(V.isEmployed),
       prompt: { en: 'Are they currently employed?' },
     },
     {
       id: testId('field-7'),
-      variable: asEntityAttributeReference('bio'),
+      variable: asEntityAttributeReference(V.bio),
       prompt: { en: 'Tell us a bit about them' },
     },
   ],
@@ -553,15 +568,16 @@ export const EditWithMultipleFieldTypes: Story = {
   args: {
     selectedNode: {
       [entityPrimaryKeyProperty]: 'node-3',
-      type: 'person',
+      type: PERSON_TYPE,
       [entityAttributesProperty]: {
-        name: 'Jordan Lee',
-        age: 32,
-        gender: 'non_binary',
-        occupation: 'UX Designer',
-        favoriteColors: ['blue', 'purple'],
-        isEmployed: true,
-        bio: 'A creative professional passionate about user experience and accessibility.',
+        [V.name]: 'Jordan Lee',
+        [V.age]: 32,
+        [V.gender]: 'non_binary',
+        [V.occupation]: 'UX Designer',
+        [V.favoriteColors]: ['blue', 'purple'],
+        [V.isEmployed]: true,
+        [V.bio]:
+          'A creative professional passionate about user experience and accessibility.',
       },
     },
     form: comprehensiveForm,
@@ -586,7 +602,7 @@ export const WithUniqueValidation: Story = {
       fields: [
         {
           id: testId('field-1'),
-          variable: asEntityAttributeReference('name'),
+          variable: asEntityAttributeReference(V.name),
           prompt: {
             en: 'Enter a unique name (Alice Smith and Bob Johnson already exist)',
           },
@@ -611,12 +627,12 @@ const checkboxGroupForm: TForm = {
   fields: [
     {
       id: testId('field-1'),
-      variable: asEntityAttributeReference('name'),
+      variable: asEntityAttributeReference(V.name),
       prompt: { en: 'Your name' },
     },
     {
       id: testId('field-2'),
-      variable: asEntityAttributeReference('skills'),
+      variable: asEntityAttributeReference(V.skills),
       prompt: { en: 'Select your programming skills (1-4 required)' },
     },
   ],
@@ -642,10 +658,10 @@ export const CheckboxGroupWithInitialValues: Story = {
   args: {
     selectedNode: {
       [entityPrimaryKeyProperty]: 'node-4',
-      type: 'person',
+      type: PERSON_TYPE,
       [entityAttributesProperty]: {
-        name: 'Sarah Developer',
-        skills: ['javascript', 'python', 'java'],
+        [V.name]: 'Sarah Developer',
+        [V.skills]: ['javascript', 'python', 'java'],
       },
     },
     form: checkboxGroupForm,
@@ -667,12 +683,12 @@ const toggleButtonGroupForm: TForm = {
   fields: [
     {
       id: testId('field-1'),
-      variable: asEntityAttributeReference('name'),
+      variable: asEntityAttributeReference(V.name),
       prompt: { en: 'Your name' },
     },
     {
       id: testId('field-2'),
-      variable: asEntityAttributeReference('communicationPreference'),
+      variable: asEntityAttributeReference(V.communicationPreference),
       prompt: { en: 'How would you prefer to be contacted?' },
     },
   ],
@@ -698,10 +714,10 @@ export const ToggleButtonGroupWithInitialValue: Story = {
   args: {
     selectedNode: {
       [entityPrimaryKeyProperty]: 'node-5',
-      type: 'person',
+      type: PERSON_TYPE,
       [entityAttributesProperty]: {
-        name: 'Mike Contact',
-        communicationPreference: 'email',
+        [V.name]: 'Mike Contact',
+        [V.communicationPreference]: 'email',
       },
     },
     form: toggleButtonGroupForm,

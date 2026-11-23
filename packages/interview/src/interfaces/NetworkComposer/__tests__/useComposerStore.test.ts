@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { testTypeId } from '../../../__tests__/testIds';
 import { createComposerStore } from '../useComposerStore';
+
+const KNOWS = testTypeId('knows');
 
 describe('createComposerStore', () => {
   it('defaults to the select tool with no selection', () => {
@@ -32,12 +35,12 @@ describe('createComposerStore', () => {
     const store = createComposerStore();
     store.getState().selectOnlyNode('n1');
     store.getState().setPendingEdgeSource('n1');
-    store.getState().setActiveTool({ kind: 'edge', edgeType: 'knows' });
+    store.getState().setActiveTool({ kind: 'edge', edgeType: KNOWS });
     expect(store.getState().selectedNodeIds.size).toBe(0);
     expect(store.getState().pendingEdgeSource).toBeNull();
     expect(store.getState().activeTool).toEqual({
       kind: 'edge',
-      edgeType: 'knows',
+      edgeType: KNOWS,
     });
   });
 

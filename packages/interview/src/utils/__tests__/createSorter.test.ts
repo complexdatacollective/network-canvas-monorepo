@@ -7,11 +7,30 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import createSorter, {
   type LegacyOrProtocolSortRule,
   processProtocolSortRule,
 } from '../createSorter';
+
+const PERSON_NODE_TYPE = testTypeId('person_node_type');
+const VENUE_NODE_TYPE = testTypeId('venue_node_type');
+const NAME = testVariableId('name');
+const AGE = testVariableId('age');
+const DATE = testVariableId('date');
+const IS_ALIVE = testVariableId('isAlive');
+const CATEGORY = testVariableId('category');
+const ORDER = testVariableId('order');
+const SCALE = testVariableId('scale');
+const LAYOUT = testVariableId('layout');
+const NAME_VARIABLE = testVariableId('name_variable');
+const VENUE_VISIT_FREQ = testVariableId('venueVisitFreqVariable');
+const LAYOUT_VARIABLE = testVariableId('layout_variable');
+const LAYOUT_VARIABLE_MANUAL = testVariableId('layout_variable_manual');
+const VENUE_LAYOUT_VARIABLE = testVariableId('venue_layout_variable');
+const VENUE_LAYOUT_VARIABLE_MANUAL = testVariableId(
+  'venue_layout_variable_manual',
+);
 
 it('it does not change order when rules are empty', () => {
   const mockItems = [
@@ -1241,7 +1260,7 @@ describe('processProtocolSortRule', () => {
   it('ignores rules that already have a type', () => {
     const rule = {
       id: testId('sort-name'),
-      property: asEntityAttributeReference('name'),
+      property: asEntityAttributeReference(NAME),
       type: 'string',
       direction: 'asc',
     } as SortRule;
@@ -1250,7 +1269,7 @@ describe('processProtocolSortRule', () => {
 
   it('ignores rules where the property is not in the codebook', () => {
     const rule = {
-      property: 'name',
+      property: NAME,
       direction: 'asc',
     } as SortRule;
     expect(processProtocolSortRule({})(rule)).toEqual({
@@ -1261,18 +1280,18 @@ describe('processProtocolSortRule', () => {
 
   it('is idempotent: re-processing an already-processed rule does not clobber its type', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      age: { type: 'number', name: 'age' },
+      [AGE]: { type: 'number', name: 'age' },
     };
     const process = processProtocolSortRule(codebookVariables);
 
     const rule = {
-      property: 'age',
+      property: AGE,
       direction: 'asc',
     } as SortRule;
 
     const once = process(rule);
     expect(once).toEqual({
-      property: [entityAttributesProperty, 'age'],
+      property: [entityAttributesProperty, AGE],
       type: 'number',
       direction: 'asc',
     });
@@ -1286,24 +1305,10 @@ describe('processProtocolSortRule', () => {
 
   describe('looks the property up as a variable key, not as a path', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      'name': { type: 'text', name: 'name' },
-      'a.b': { type: 'number', name: 'a.b' },
+      [NAME]: { type: 'text', name: 'name' },
     };
 
-    it('finds a variable whose key contains a dot', () => {
-      const result = processProtocolSortRule(codebookVariables)({
-        property: 'a.b',
-        direction: 'asc',
-      });
-
-      expect(result).toEqual({
-        property: [entityAttributesProperty, 'a.b'],
-        direction: 'asc',
-        type: 'number',
-      });
-    });
-
-    it.each(['name.type', 'constructor', 'toString', '__proto__'])(
+    it.each([`${NAME}.type`, 'constructor', 'toString', '__proto__'])(
       'does not find a variable for %s',
       (property) => {
         const result = processProtocolSortRule(codebookVariables)({
@@ -1319,15 +1324,15 @@ describe('processProtocolSortRule', () => {
   describe('manages property path', () => {
     it('adds entityAttributes property to the property path', () => {
       const rule = {
-        property: 'name',
+        property: NAME,
         direction: 'asc',
       } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
-        name: { type: 'text', name: 'name' },
+        [NAME]: { type: 'text', name: 'name' },
       };
       const result = processProtocolSortRule(codebookVariables)(rule);
-      expect(result.property).toEqual([entityAttributesProperty, 'name']);
+      expect(result.property).toEqual([entityAttributesProperty, NAME]);
     });
 
     it('does not modify rules where property equals type', () => {
@@ -1337,7 +1342,7 @@ describe('processProtocolSortRule', () => {
       } as SortRule;
 
       const codebookVariables: EntityDefinition['variables'] = {
-        type: { type: 'text', name: 'type' },
+        [NAME]: { type: 'text', name: 'name' },
       };
       const result = processProtocolSortRule(codebookVariables)(rule);
       expect(result.property).toEqual('type');
@@ -1346,11 +1351,11 @@ describe('processProtocolSortRule', () => {
 
   describe('adds a type property to the rule based on the codebook variable type', () => {
     const codebookVariables: EntityDefinition['variables'] = {
-      name: { type: 'text', name: 'name' },
-      age: { type: 'number', name: 'age' },
-      date: { type: 'datetime', name: 'date' },
-      isAlive: { type: 'boolean', name: 'isAlive' },
-      category: {
+      [NAME]: { type: 'text', name: 'name' },
+      [AGE]: { type: 'number', name: 'age' },
+      [DATE]: { type: 'datetime', name: 'date' },
+      [IS_ALIVE]: { type: 'boolean', name: 'isAlive' },
+      [CATEGORY]: {
         type: 'categorical',
         name: 'category',
         options: [
@@ -1364,7 +1369,7 @@ describe('processProtocolSortRule', () => {
           },
         ],
       },
-      order: {
+      [ORDER]: {
         name: 'order',
         type: 'ordinal',
         options: [
@@ -1378,8 +1383,8 @@ describe('processProtocolSortRule', () => {
           },
         ],
       },
-      scale: { type: 'scalar', name: 'scale' },
-      layout: { type: 'layout', name: 'layout' },
+      [SCALE]: { type: 'scalar', name: 'scale' },
+      [LAYOUT]: { type: 'layout', name: 'layout' },
     };
 
     it('ignores fifo (*) rules', () => {
@@ -1395,7 +1400,7 @@ describe('processProtocolSortRule', () => {
 
     it('string', () => {
       const rule = {
-        property: 'name',
+        property: NAME,
         direction: 'asc',
       } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
@@ -1405,7 +1410,7 @@ describe('processProtocolSortRule', () => {
 
     it('number', () => {
       const rule = {
-        property: 'age',
+        property: AGE,
         direction: 'asc',
       } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
@@ -1415,7 +1420,7 @@ describe('processProtocolSortRule', () => {
 
     it('datetime', () => {
       const rule = {
-        property: 'date',
+        property: DATE,
         direction: 'asc',
       } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
@@ -1425,7 +1430,7 @@ describe('processProtocolSortRule', () => {
 
     it('boolean', () => {
       const rule = {
-        property: 'isAlive',
+        property: IS_ALIVE,
         direction: 'asc',
       } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
@@ -1435,7 +1440,7 @@ describe('processProtocolSortRule', () => {
 
     it('categorical', () => {
       const rule = {
-        property: 'category',
+        property: CATEGORY,
         direction: 'asc',
       } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
@@ -1445,7 +1450,7 @@ describe('processProtocolSortRule', () => {
 
     it('ordinal', () => {
       const rule = {
-        property: 'order',
+        property: ORDER,
         direction: 'asc',
       } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
@@ -1455,7 +1460,7 @@ describe('processProtocolSortRule', () => {
 
     it('scalar', () => {
       const rule = {
-        property: 'scale',
+        property: SCALE,
         direction: 'asc',
       } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
@@ -1465,7 +1470,7 @@ describe('processProtocolSortRule', () => {
 
     it('layout', () => {
       const rule = {
-        property: 'layout',
+        property: LAYOUT,
         direction: 'asc',
       } as SortRule;
       expect(processProtocolSortRule(codebookVariables)(rule).type).toEqual(
@@ -1477,12 +1482,12 @@ describe('processProtocolSortRule', () => {
   it('processProtocolSortRule provides compatibility with existing rules', () => {
     const mockItems = [
       {
-        type: 'person_node_type',
+        type: PERSON_NODE_TYPE,
         stageId: 'namegen1a',
         _uid: '0e09311ce13248772645155bd78705e2636f8f15',
         itemType: 'NEW_NODE',
         [entityAttributesProperty]: {
-          'name_variable': 'Albert',
+          [NAME_VARIABLE]: 'Albert',
           '0ff25001-a2b8-46de-82a9-53143aa00d10': null,
           'c5fee926-855d-4419-b5bb-54e89010cea6': 49,
           '0e75ec18-2cb1-4606-9f18-034d28b07c19': 'Albert',
@@ -1497,8 +1502,8 @@ describe('processProtocolSortRule', () => {
           'e343a91f-628d-4175-870c-957beffa0154': null,
           'e343a91f-628d-4175-870c-957beffa0151': null,
           '4ccba4e2-a246-46ee-a3ff-1c70fb4c449c': null,
-          'layout_variable': null,
-          'layout_variable_manual': null,
+          [LAYOUT_VARIABLE]: null,
+          [LAYOUT_VARIABLE_MANUAL]: null,
           'e13ca72d-aefe-4f48-841d-09f020e0e987': null,
           'd2d8091e-8170-42c1-9dc0-c0d54553b3e6': null,
           '04298634-eb5f-450a-84dd-95d2708e10c1': null,
@@ -1511,12 +1516,12 @@ describe('processProtocolSortRule', () => {
         promptIDs: ['2wedwee'],
       },
       {
-        type: 'person_node_type',
+        type: PERSON_NODE_TYPE,
         stageId: 'namegen1a',
         _uid: '5b909d77cee1b8d8bcb44562f4c736aaf9bb3868',
         itemType: 'NEW_NODE',
         [entityAttributesProperty]: {
-          'name_variable': 'Benjamin',
+          [NAME_VARIABLE]: 'Benjamin',
           '0ff25001-a2b8-46de-82a9-53143aa00d10': null,
           'c5fee926-855d-4419-b5bb-54e89010cea6': 67,
           '0e75ec18-2cb1-4606-9f18-034d28b07c19': 'Benjamin',
@@ -1531,8 +1536,8 @@ describe('processProtocolSortRule', () => {
           'e343a91f-628d-4175-870c-957beffa0154': null,
           'e343a91f-628d-4175-870c-957beffa0151': null,
           '4ccba4e2-a246-46ee-a3ff-1c70fb4c449c': null,
-          'layout_variable': null,
-          'layout_variable_manual': null,
+          [LAYOUT_VARIABLE]: null,
+          [LAYOUT_VARIABLE_MANUAL]: null,
           'e13ca72d-aefe-4f48-841d-09f020e0e987': null,
           'd2d8091e-8170-42c1-9dc0-c0d54553b3e6': null,
           '04298634-eb5f-450a-84dd-95d2708e10c1': null,
@@ -1545,12 +1550,12 @@ describe('processProtocolSortRule', () => {
         promptIDs: ['2wedwee'],
       },
       {
-        type: 'person_node_type',
+        type: PERSON_NODE_TYPE,
         stageId: 'namegen1a',
         _uid: '41ecadb17067e2eecc58ce735d9036705db15900',
         itemType: 'NEW_NODE',
         [entityAttributesProperty]: {
-          'name_variable': 'Charlie',
+          [NAME_VARIABLE]: 'Charlie',
           '0ff25001-a2b8-46de-82a9-53143aa00d10': null,
           'c5fee926-855d-4419-b5bb-54e89010cea6': 32,
           '0e75ec18-2cb1-4606-9f18-034d28b07c19': 'Charlie',
@@ -1565,8 +1570,8 @@ describe('processProtocolSortRule', () => {
           'e343a91f-628d-4175-870c-957beffa0154': null,
           'e343a91f-628d-4175-870c-957beffa0151': null,
           '4ccba4e2-a246-46ee-a3ff-1c70fb4c449c': null,
-          'layout_variable': null,
-          'layout_variable_manual': null,
+          [LAYOUT_VARIABLE]: null,
+          [LAYOUT_VARIABLE_MANUAL]: null,
           'e13ca72d-aefe-4f48-841d-09f020e0e987': null,
           'd2d8091e-8170-42c1-9dc0-c0d54553b3e6': null,
           '04298634-eb5f-450a-84dd-95d2708e10c1': null,
@@ -1579,13 +1584,13 @@ describe('processProtocolSortRule', () => {
         promptIDs: ['2wedwee'],
       },
       {
-        type: 'venue_node_type',
+        type: VENUE_NODE_TYPE,
         stageId: 'namegen2',
         _uid: 'ea3bebf8-4c3b-419b-a998-05db3e2a936a',
         [entityAttributesProperty]: {
-          'name_variable': 'One',
+          [NAME_VARIABLE]: 'One',
           '7316d500-6c1e-4188-a531-b2ef587721e0': null,
-          'venueVisitFreqVariable': 1,
+          [VENUE_VISIT_FREQ]: 1,
           '55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f': true,
           '8a35cd77-7bc4-4c7e-b98a-673b6a21321f': null,
           '8ee3a187-d4be-458e-8abb-71efcc071949': null,
@@ -1595,19 +1600,19 @@ describe('processProtocolSortRule', () => {
           'bdc60147-fe7a-4c3c-a164-e5b370f6a281': null,
           '931a7b23-e433-4e7e-8e13-48b72e5f0549': null,
           '0a5f7952-a9a7-4e87-9353-2d17a59284ee': null,
-          'venue_layout_variable': null,
-          'venue_layout_variable_manual': null,
+          [VENUE_LAYOUT_VARIABLE]: null,
+          [VENUE_LAYOUT_VARIABLE_MANUAL]: null,
         },
         promptIDs: ['6cl'],
       },
       {
-        type: 'venue_node_type',
+        type: VENUE_NODE_TYPE,
         stageId: 'namegen2',
         _uid: '3e7ee30a-9b6d-4e35-a721-9d8bec70b6e4',
         [entityAttributesProperty]: {
-          'name_variable': 'Two',
+          [NAME_VARIABLE]: 'Two',
           '7316d500-6c1e-4188-a531-b2ef587721e0': null,
-          'venueVisitFreqVariable': 3,
+          [VENUE_VISIT_FREQ]: 3,
           '55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f': true,
           '8a35cd77-7bc4-4c7e-b98a-673b6a21321f': null,
           '8ee3a187-d4be-458e-8abb-71efcc071949': null,
@@ -1617,19 +1622,19 @@ describe('processProtocolSortRule', () => {
           'bdc60147-fe7a-4c3c-a164-e5b370f6a281': null,
           '931a7b23-e433-4e7e-8e13-48b72e5f0549': null,
           '0a5f7952-a9a7-4e87-9353-2d17a59284ee': null,
-          'venue_layout_variable': null,
-          'venue_layout_variable_manual': null,
+          [VENUE_LAYOUT_VARIABLE]: null,
+          [VENUE_LAYOUT_VARIABLE_MANUAL]: null,
         },
         promptIDs: ['6cl'],
       },
       {
-        type: 'venue_node_type',
+        type: VENUE_NODE_TYPE,
         stageId: 'namegen2',
         _uid: '5fd6cb24-281c-46d0-af18-033c0fe85879',
         [entityAttributesProperty]: {
-          'name_variable': 'Three',
+          [NAME_VARIABLE]: 'Three',
           '7316d500-6c1e-4188-a531-b2ef587721e0': null,
-          'venueVisitFreqVariable': 4,
+          [VENUE_VISIT_FREQ]: 4,
           '55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f': true,
           '8a35cd77-7bc4-4c7e-b98a-673b6a21321f': null,
           '8ee3a187-d4be-458e-8abb-71efcc071949': null,
@@ -1639,8 +1644,8 @@ describe('processProtocolSortRule', () => {
           'bdc60147-fe7a-4c3c-a164-e5b370f6a281': null,
           '931a7b23-e433-4e7e-8e13-48b72e5f0549': null,
           '0a5f7952-a9a7-4e87-9353-2d17a59284ee': null,
-          'venue_layout_variable': null,
-          'venue_layout_variable_manual': null,
+          [VENUE_LAYOUT_VARIABLE]: null,
+          [VENUE_LAYOUT_VARIABLE_MANUAL]: null,
         },
         promptIDs: ['6cl'],
       },
@@ -1652,24 +1657,24 @@ describe('processProtocolSortRule', () => {
       {
         property: 'type',
         type: 'hierarchy',
-        hierarchy: ['venue_node_type', 'person_node_type'],
+        hierarchy: [VENUE_NODE_TYPE, PERSON_NODE_TYPE],
       },
       {
-        property: 'venueVisitFreqVariable',
+        property: VENUE_VISIT_FREQ,
         direction: 'desc',
       },
       {
-        property: 'name_variable',
+        property: NAME_VARIABLE,
         direction: 'asc',
       },
     ];
 
     const codebookVariables: EntityDefinition['variables'] = {
-      name_variable: {
+      [NAME_VARIABLE]: {
         type: 'text',
         name: 'name_variable',
       },
-      venueVisitFreqVariable: {
+      [VENUE_VISIT_FREQ]: {
         name: 'visitfreq',
         type: 'ordinal',
         options: [
@@ -1703,7 +1708,7 @@ describe('processProtocolSortRule', () => {
     const sorter = createSorter<MockItem>(processedRules);
 
     const sorted = sorter(mockItems).map(
-      (item) => item[entityAttributesProperty].name_variable,
+      (item) => item[entityAttributesProperty][NAME_VARIABLE],
     );
     expect(sorted).toEqual([
       'Three',

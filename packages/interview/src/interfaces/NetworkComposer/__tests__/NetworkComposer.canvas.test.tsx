@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 
 vi.mock('../../../hooks/useAssetUrl', () => ({
   useAssetUrl: vi.fn(),
@@ -56,10 +56,10 @@ beforeEach(() => {
   });
 });
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'knows';
-const LAYOUT_VAR = 'xy_position';
-const QUICK_ADD_VAR = 'var-quick-add';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('knows');
+const LAYOUT_VAR = testVariableId('xy_position');
+const QUICK_ADD_VAR = testVariableId('var-quick-add');
 
 // Typed independently of the (currently narrower) protocol-validation schema
 // so tests can exercise background.image ahead of the schema restoring it.

@@ -18,12 +18,13 @@ vi.mock('../../components/ConnectedNode', () => ({
   },
 }));
 
+import { testTypeId } from '../../__tests__/testIds';
 import CanvasNode from '../CanvasNode';
 import { createCanvasStore } from '../useCanvasStore';
 
 const node = {
   [entityPrimaryKeyProperty]: 'n1',
-  type: 'person',
+  type: testTypeId('person'),
   [entityAttributesProperty]: {},
 } as unknown as NcNode;
 

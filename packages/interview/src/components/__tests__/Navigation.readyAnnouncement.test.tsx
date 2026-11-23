@@ -15,12 +15,15 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import type { InterviewPayload } from '../../contract/types';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { createEncryptionStore } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import Shell from '../../Shell';
 import Navigation from '../Navigation';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
 
 // Only the two stage types the Shell test below walks through, so jsdom does
 // not load the WebGL stages.
@@ -153,8 +156,8 @@ const quickAddStage = (id: string, prompts: string[], minNodes?: number) => ({
   id: testId(id),
   type: 'NameGeneratorQuickAdd' as const,
   label: { en: id },
-  subject: { entity: 'node' as const, type: 'person' },
-  quickAdd: asEntityAttributeReference('name'),
+  subject: { entity: 'node' as const, type: PERSON },
+  quickAdd: asEntityAttributeReference(NAME),
   prompts: prompts.map((text) => ({
     id: testId(`${id}-${text}`),
     text: { en: text },
@@ -196,12 +199,12 @@ const walkPayload = (): InterviewPayload => ({
     codebook: {
       ego: { variables: {} },
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           icon: 'add-a-person',
-          variables: { name: { name: 'Name', type: 'text' } },
+          variables: { [NAME]: { name: 'Name', type: 'text' } },
         },
       },
       edge: {},

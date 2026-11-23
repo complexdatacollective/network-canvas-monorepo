@@ -17,7 +17,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { CanvasStoreApi } from '../../../canvas/useCanvasStore';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
@@ -64,10 +64,10 @@ beforeAll(() => {
   }
 });
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'knows';
-const LAYOUT_VAR = 'xy_position';
-const QUICK_ADD_VAR = 'var-quick-add';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('knows');
+const LAYOUT_VAR = testVariableId('xy_position');
+const QUICK_ADD_VAR = testVariableId('var-quick-add');
 
 const makeStage = (defaultEnabled: boolean) => ({
   id: testId('nc1'),

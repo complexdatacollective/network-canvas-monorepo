@@ -11,7 +11,11 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import QuickNodeForm from './QuickNodeForm';
+
+const PERSON_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
 
 // `component` on the "name" variable here is incidental, not required:
 // QuickNodeForm derives validation directly from the codebook variable
@@ -21,13 +25,13 @@ const mockProtocol = {
   id: 'test-protocol',
   codebook: {
     node: {
-      person: {
+      [PERSON_TYPE]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon: 'add-a-person',
         variables: {
-          name: {
+          [NAME_VAR]: {
             name: 'Name',
             type: 'text',
             component: 'Text',
@@ -44,13 +48,15 @@ const mockProtocol = {
       label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
-        type: 'person',
+        type: PERSON_TYPE,
       },
       prompts: [
         {
           id: 'prompt-1',
           text: { en: 'Name the people in your network' },
-          additionalAttributes: [{ variable: 'closeness', value: 5 }],
+          additionalAttributes: [
+            { variable: testVariableId('closeness'), value: 5 },
+          ],
         },
       ],
     },
@@ -204,7 +210,7 @@ function QuickNodeFormWrapper(
 export const Default: Story = {
   args: {
     disabled: false,
-    targetVariable: 'name',
+    targetVariable: NAME_VAR,
   },
   render: (args) => <QuickNodeFormWrapper {...args} />,
   parameters: {
@@ -220,7 +226,7 @@ export const Default: Story = {
 export const Disabled: Story = {
   args: {
     disabled: true,
-    targetVariable: 'name',
+    targetVariable: NAME_VAR,
   },
   render: (args) => <QuickNodeFormWrapper {...args} />,
   parameters: {
@@ -235,7 +241,7 @@ export const Disabled: Story = {
 export const AddNodeFlow: Story = {
   args: {
     disabled: false,
-    targetVariable: 'name',
+    targetVariable: NAME_VAR,
   },
   render: (args) => <QuickNodeFormWrapper {...args} />,
   parameters: {
@@ -251,7 +257,7 @@ export const AddNodeFlow: Story = {
 export const DisabledState: Story = {
   args: {
     disabled: true,
-    targetVariable: 'name',
+    targetVariable: NAME_VAR,
   },
   render: (args) => <QuickNodeFormWrapper {...args} />,
   parameters: {
@@ -266,7 +272,7 @@ export const DisabledState: Story = {
 export const RequiredEntry: Story = {
   args: {
     disabled: false,
-    targetVariable: 'name',
+    targetVariable: NAME_VAR,
   },
   render: (args) => <QuickNodeFormWrapper {...args} />,
   parameters: {

@@ -10,7 +10,11 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../../__tests__/testIds';
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+} from '../../../../__tests__/testIds';
 import type { usePassphrase } from '../../../Anonymisation/usePassphrase';
 
 type Passphrase = ReturnType<typeof usePassphrase>;
@@ -24,7 +28,9 @@ vi.mock('../../../../hooks/useExternalData', () => ({
 // getStageSubject returns the stage subject; getPanelNodes returns a selector.
 // The component calls useStageSelector several times, so dispatch by the
 // selector ref.
-const stageSubject = { entity: 'node', type: 'person' };
+const PERSON_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const stageSubject = { entity: 'node', type: PERSON_TYPE };
 const panelNodesSelector = vi.fn();
 const stageVariables: Record<string, unknown> = {};
 
@@ -104,7 +110,7 @@ const externalPanelConfig: PanelType = {
 const makeNode = (id: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   [entityAttributesProperty]: {},
-  type: 'person',
+  type: PERSON_TYPE,
 });
 
 const renderPanel = (disableDragging = false) =>
@@ -229,13 +235,13 @@ describe('NodePanel external data with encrypted values', () => {
   const rows: NcNode[] = [
     {
       [entityPrimaryKeyProperty]: 'a',
-      [entityAttributesProperty]: { name: 'Alice' },
-      type: 'person',
+      [entityAttributesProperty]: { [NAME_VAR]: 'Alice' },
+      type: PERSON_TYPE,
     },
   ];
 
   beforeEach(() => {
-    stageVariables.name = { name: 'name', type: 'text', encrypted: true };
+    stageVariables[NAME_VAR] = { name: 'name', type: 'text', encrypted: true };
     externalDataMock.mockReturnValue({
       externalData: rows,
       status: { state: 'ready' },
@@ -246,7 +252,7 @@ describe('NodePanel external data with encrypted values', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
-    delete stageVariables.name;
+    delete stageVariables[NAME_VAR];
     passphraseState.unlocked = false;
   });
 
@@ -287,18 +293,20 @@ describe('NodePanel title with a dynamic value', () => {
       reducer: {
         protocol: () => ({
           codebook: {
-            ego: { variables: { name: { name: 'name', type: 'text' } } },
+            ego: { variables: { [NAME_VAR]: { name: 'name', type: 'text' } } },
           },
         }),
         session: () => ({
-          network: { ego: { [entityAttributesProperty]: { name: 'Ada' } } },
+          network: {
+            ego: { [entityAttributesProperty]: { [NAME_VAR]: 'Ada' } },
+          },
         }),
       },
     });
     const stage = {
       id: 'stage',
       type: 'NameGenerator',
-      dynamicValues: { name: { path: 'ego.name' } },
+      dynamicValues: { name: { path: `ego.${NAME_VAR}` } },
     } as unknown as Stage;
 
     render(

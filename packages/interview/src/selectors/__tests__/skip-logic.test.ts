@@ -11,12 +11,18 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import {
   buildStageAvailabilityMap,
   getLastAvailableAuthoredStageIndex,
   resolveRecoveryStep,
 } from '../skip-logic';
+
+const PERSON = testTypeId('person');
+const FRIEND = testTypeId('friend');
+const CLOSE = testVariableId('close');
+const WORK = testVariableId('work');
+const AGE = testVariableId('age');
 
 const network: NcNetwork = {
   ego: {
@@ -198,12 +204,12 @@ describe('buildStageAvailabilityMap', () => {
   });
 
   describe('stages with nothing to ask about', () => {
-    const node = (id: string, type = 'person', attributes = {}) => ({
+    const node = (id: string, type = PERSON, attributes = {}) => ({
       [entityPrimaryKeyProperty]: id,
       type,
       [entityAttributesProperty]: attributes,
     });
-    const edge = (id: string, from: string, to: string, type = 'friend') => ({
+    const edge = (id: string, from: string, to: string, type = FRIEND) => ({
       [entityPrimaryKeyProperty]: id,
       type,
       from,
@@ -217,12 +223,12 @@ describe('buildStageAvailabilityMap', () => {
     const nodeStage = (id: string, type: string) => ({
       id,
       type,
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
     });
     const edgeForm = (id: string) => ({
       id,
       type: 'AlterEdgeForm',
-      subject: { entity: 'edge', type: 'friend' },
+      subject: { entity: 'edge', type: FRIEND },
     });
     const kinds = (
       stages: Parameters<typeof buildStageAvailabilityMap>[0],
@@ -300,7 +306,7 @@ describe('buildStageAvailabilityMap', () => {
       const stages = [
         {
           ...nodeStage('story', 'Narrative'),
-          presets: [{ layoutVariable: 'close' }, { layoutVariable: 'work' }],
+          presets: [{ layoutVariable: CLOSE }, { layoutVariable: WORK }],
         },
         finishStage(),
       ];
@@ -308,13 +314,13 @@ describe('buildStageAvailabilityMap', () => {
       expect(
         kinds(
           stages,
-          withEntities([node('a'), node('b', 'person', { close: null })]),
+          withEntities([node('a'), node('b', PERSON, { [CLOSE]: null })]),
         ),
       ).toEqual(['empty', 'available']);
       expect(
         kinds(
           stages,
-          withEntities([node('a', 'person', { work: { x: 0.5, y: 0.5 } })]),
+          withEntities([node('a', PERSON, { [WORK]: { x: 0.5, y: 0.5 } })]),
         ),
       ).toEqual(['available', 'available']);
     });
@@ -326,8 +332,8 @@ describe('buildStageAvailabilityMap', () => {
             id: testId(`aged-${age}`),
             type: 'node' as const,
             options: {
-              type: 'person',
-              attribute: asEntityAttributeReference('age'),
+              type: PERSON,
+              attribute: asEntityAttributeReference(AGE),
               operator: 'EXACTLY' as const,
               value: age,
             },
@@ -339,8 +345,8 @@ describe('buildStageAvailabilityMap', () => {
         {
           ...nodeStage('story', 'Narrative'),
           presets: [
-            { layoutVariable: 'close', filter: onlyAged(30) },
-            { layoutVariable: 'work', filter: onlyAged(40) },
+            { layoutVariable: CLOSE, filter: onlyAged(30) },
+            { layoutVariable: WORK, filter: onlyAged(40) },
           ],
         },
         finishStage(),
@@ -352,8 +358,8 @@ describe('buildStageAvailabilityMap', () => {
         kinds(
           stages,
           withEntities([
-            node('a', 'person', { age: 40, close: placed }),
-            node('b', 'person', { age: 30, work: placed }),
+            node('a', PERSON, { [AGE]: 40, [CLOSE]: placed }),
+            node('b', PERSON, { [AGE]: 30, [WORK]: placed }),
           ]),
         ),
       ).toEqual(['empty', 'available']);
@@ -362,8 +368,8 @@ describe('buildStageAvailabilityMap', () => {
         kinds(
           stages,
           withEntities([
-            node('a', 'person', { age: 40, close: placed }),
-            node('b', 'person', { age: 40, work: placed }),
+            node('a', PERSON, { [AGE]: 40, [CLOSE]: placed }),
+            node('b', PERSON, { [AGE]: 40, [WORK]: placed }),
           ]),
         ),
       ).toEqual(['available', 'available']);
@@ -406,8 +412,8 @@ describe('buildStageAvailabilityMap', () => {
                 id: testId('close'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: asEntityAttributeReference('close'),
+                  type: PERSON,
+                  attribute: asEntityAttributeReference(CLOSE),
                   operator: 'EXACTLY',
                   value: true,
                 },
@@ -422,13 +428,13 @@ describe('buildStageAvailabilityMap', () => {
         kinds(
           stages,
           withEntities([
-            node('a', 'person', { close: false }),
+            node('a', PERSON, { [CLOSE]: false }),
             node('p', 'pet'),
           ]),
         ),
       ).toEqual(['empty', 'available']);
       expect(
-        kinds(stages, withEntities([node('a', 'person', { close: true })])),
+        kinds(stages, withEntities([node('a', PERSON, { [CLOSE]: true })])),
       ).toEqual(['available', 'available']);
     });
 

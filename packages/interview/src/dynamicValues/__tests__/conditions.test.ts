@@ -13,6 +13,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import { contentFormatFor } from '../../localization/contentFormat';
 import { buildConnectivityIndex } from '../../nodeLabels/connectivity';
 import { conditionHolds, conditionReadsNetwork } from '../conditions';
@@ -22,10 +23,17 @@ import {
   resolveDynamicText,
 } from '../resolveDynamicText';
 
+const PERSON = testTypeId('person');
+const KNOWS = testTypeId('knows');
+const LIKES = testTypeId('likes');
+const AGE = testVariableId('age');
+const CLOSE = testVariableId('close');
+const YEARS = testVariableId('years');
+
 const person = (id: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   [entityAttributesProperty]: {},
-  type: 'person',
+  type: PERSON,
 });
 
 const edge = (
@@ -44,7 +52,7 @@ const edge = (
 
 const connectivity = buildConnectivityIndex(
   [person('a'), person('b'), person('c')],
-  [edge('1', 'a', 'b', 'knows', { years: 12 }), edge('2', 'a', 'c', 'likes')],
+  [edge('1', 'a', 'b', KNOWS, { [YEARS]: 12 }), edge('2', 'a', 'c', LIKES)],
 );
 
 const CONDITIONS: Conditions = ConditionsSchema.parse({
@@ -54,7 +62,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
         type: 'ego',
         id: createProtocolObjectId(),
         options: {
-          attribute: 'age',
+          attribute: AGE,
           operator: 'GREATER_THAN_OR_EQUAL',
           value: 18,
         },
@@ -69,8 +77,8 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
         type: 'node',
         id: createProtocolObjectId(),
         options: {
-          type: 'person',
-          attribute: 'close',
+          type: PERSON,
+          attribute: CLOSE,
           operator: 'EXACTLY',
           value: true,
         },
@@ -78,7 +86,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
       {
         type: 'edge',
         id: createProtocolObjectId(),
-        options: { type: 'knows', operator: 'EXISTS' },
+        options: { type: KNOWS, operator: 'EXISTS' },
       },
     ],
   },
@@ -89,8 +97,8 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
         type: 'edge',
         id: createProtocolObjectId(),
         options: {
-          type: 'knows',
-          attribute: 'years',
+          type: KNOWS,
+          attribute: YEARS,
           operator: 'GREATER_THAN',
           value: 10,
         },
@@ -114,8 +122,8 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
         type: 'edge',
         id: createProtocolObjectId(),
         options: {
-          type: 'knows',
-          attribute: 'years',
+          type: KNOWS,
+          attribute: YEARS,
           operator: 'GREATER_THAN',
           value: 5,
         },
@@ -135,14 +143,14 @@ const holds = (
 
 describe('conditionHolds', () => {
   it('compares the participant’s answer', () => {
-    expect(holds('adult', { attributes: { ego: { age: 30 } } })).toBe(true);
-    expect(holds('adult', { attributes: { ego: { age: 12 } } })).toBe(false);
+    expect(holds('adult', { attributes: { ego: { [AGE]: 30 } } })).toBe(true);
+    expect(holds('adult', { attributes: { ego: { [AGE]: 12 } } })).toBe(false);
     expect(holds('adult', { attributes: { ego: {} } })).toBe(false);
   });
 
   it('asks of the node its condition is about, and of that node’s edges', () => {
     const about = (id: string, close: boolean) => ({
-      attributes: { dyadTarget: { close } },
+      attributes: { dyadTarget: { [CLOSE]: close } },
       entityIds: { dyadTarget: id },
     });
     expect(holds('closeAndKnown', about('b', true))).toBe(true);
@@ -164,7 +172,7 @@ describe('conditionHolds', () => {
     const about = (id: string | undefined) => ({
       attributes: { node: {} },
       entityIds: id === undefined ? {} : { node: id },
-      nodeType: 'person',
+      nodeType: PERSON,
     });
     expect(holds('popular', about('a'))).toBe(true);
     expect(holds('popular', about('b'))).toBe(false);
@@ -173,10 +181,10 @@ describe('conditionHolds', () => {
   });
 
   it('compares the edge itself where the condition is about an edge', () => {
-    expect(holds('strongTie', { attributes: { edge: { years: 12 } } })).toBe(
+    expect(holds('strongTie', { attributes: { edge: { [YEARS]: 12 } } })).toBe(
       true,
     );
-    expect(holds('strongTie', { attributes: { edge: { years: 2 } } })).toBe(
+    expect(holds('strongTie', { attributes: { edge: { [YEARS]: 2 } } })).toBe(
       false,
     );
   });
@@ -229,10 +237,10 @@ describe('stage text that chooses its wording by a condition', () => {
   it('reads the version for a condition that is met, and the one for when it is not', () => {
     const message =
       '{adult, select, yes {your work} other {your school}}{minor, select, no { (with a guardian)} other {}}';
-    expect(read(message, { attributes: { ego: { age: 40 } } })).toBe(
+    expect(read(message, { attributes: { ego: { [AGE]: 40 } } })).toBe(
       'your work',
     );
-    expect(read(message, { attributes: { ego: { age: 9 } } })).toBe(
+    expect(read(message, { attributes: { ego: { [AGE]: 9 } } })).toBe(
       'your school (with a guardian)',
     );
   });
@@ -241,9 +249,9 @@ describe('stage text that chooses its wording by a condition', () => {
     const message =
       '{adult, select, yes {{popular, select, yes {busy adult} other {adult}}} other {child}}';
     const about = (age: number, id: string) => ({
-      attributes: { ego: { age }, node: {} },
+      attributes: { ego: { [AGE]: age }, node: {} },
       entityIds: { node: id },
-      nodeType: 'person',
+      nodeType: PERSON,
     });
     expect(read(message, about(30, 'a'))).toBe('busy adult');
     expect(read(message, about(30, 'b'))).toBe('adult');

@@ -7,14 +7,20 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import { resolveRosterNodeLabel } from '../resolveRosterNodeLabel';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('var-name');
+const AGE = testVariableId('var-age');
+const CODEBOOK_NAME = testVariableId('codebook-name');
 
 const placeholder = (sequentialNumber: number) => `Unnamed ${sequentialNumber}`;
 
 const makeNode = (
   attributes: NcNode[typeof entityAttributesProperty],
 ): NcNode => ({
-  type: 'person',
+  type: PERSON,
   [entityPrimaryKeyProperty]: 'a1b2c3d4-content-hash-uid',
   [entityAttributesProperty]: attributes,
 });
@@ -22,11 +28,11 @@ const makeNode = (
 describe('resolveRosterNodeLabel', () => {
   it('returns the value found by the name heuristic when one matches', () => {
     const codebookVariables: NodeDefinition['variables'] = {
-      'var-name': { name: 'name', type: 'text' },
-      'var-age': { name: 'age', type: 'number' },
+      [NAME]: { name: 'name', type: 'text' },
+      [AGE]: { name: 'age', type: 'number' },
     };
 
-    const node = makeNode({ 'var-name': 'John Doe', 'var-age': 30 });
+    const node = makeNode({ [NAME]: 'John Doe', [AGE]: 30 });
 
     const result = resolveRosterNodeLabel({
       codebookVariables,
@@ -43,7 +49,7 @@ describe('resolveRosterNodeLabel', () => {
     // keyed by UUIDs that are NOT present in the codebook (e.g. a preview-export
     // roster), so the heuristic finds nothing.
     const codebookVariables: NodeDefinition['variables'] = {
-      'codebook-name-uuid': {
+      [CODEBOOK_NAME]: {
         name: 'name',
         type: 'text',
       },
@@ -86,7 +92,7 @@ describe('resolveRosterNodeLabel', () => {
 
     const result = resolveRosterNodeLabel({
       codebookVariables: {
-        'codebook-name-uuid': {
+        [CODEBOOK_NAME]: {
           name: 'name',
           type: 'text',
         },

@@ -19,7 +19,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import { testId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
@@ -40,10 +40,10 @@ vi.mock('../ProtocolFormField', async (importOriginal) => {
   };
 });
 
-const NODE_TYPE = 'person';
-const NAME_VAR = 'name';
-const DISPLAY_NAME_VAR = 'displayName';
-const ALIAS_VAR = 'alias';
+const NODE_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const DISPLAY_NAME_VAR = testVariableId('displayName');
+const ALIAS_VAR = testVariableId('alias');
 const DOTTED_VAR = 'favorite.color';
 const DANGEROUS_VARS = ['__proto__', 'constructor', 'prototype'];
 
@@ -70,21 +70,21 @@ function makeWrapper() {
         codebook: {
           node: {
             [NODE_TYPE]: {
-              name: NODE_TYPE,
+              name: 'person',
               variables: {
                 [NAME_VAR]: {
-                  name: NAME_VAR,
+                  name: 'name',
                   type: 'text',
                   component: 'Text',
                   validation: { unique: true },
                 },
                 [DISPLAY_NAME_VAR]: {
-                  name: DISPLAY_NAME_VAR,
+                  name: 'displayName',
                   type: 'text',
                   component: 'Text',
                 },
                 [ALIAS_VAR]: {
-                  name: ALIAS_VAR,
+                  name: 'alias',
                   type: 'text',
                   component: 'Text',
                   validation: { sameAs: DISPLAY_NAME_VAR },

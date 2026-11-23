@@ -26,7 +26,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testId } from '../../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
@@ -123,11 +123,11 @@ beforeEach(() => {
   track.mockClear();
 });
 
-const NODE_TYPE = 'person';
-const CATEGORY_VARIABLE = 'category';
-const OTHER_VARIABLE = 'otherReason';
-const NOTE_VARIABLE = 'existingNote';
-const COLLIDING_SIBLING_VARIABLE = 'otherVariable';
+const NODE_TYPE = testTypeId('person');
+const CATEGORY_VARIABLE = testVariableId('category');
+const OTHER_VARIABLE = testVariableId('otherReason');
+const NOTE_VARIABLE = testVariableId('existingNote');
+const SIBLING_VARIABLE = testVariableId('otherVariable');
 const STAGE_ID = testId('categorical-bin-stage');
 const PROMPT_ID = testId('prompt-1');
 const OTHER_PROMPT_TEXT = 'Please specify the other category';
@@ -142,7 +142,7 @@ function buildNode(): NcNode {
     type: NODE_TYPE,
     [entityAttributesProperty]: {
       [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
-      [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
+      [SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
     },
   };
 }
@@ -191,7 +191,7 @@ function buildCodebook(
             type: 'text',
             component: 'Text',
           },
-          [COLLIDING_SIBLING_VARIABLE]: {
+          [SIBLING_VARIABLE]: {
             name: 'Collision-prone sibling',
             type: 'text',
             component: 'Text',
@@ -281,7 +281,7 @@ function CaptureDndStore({
 }
 
 // The participant's own answer, which the "other" question shows.
-const EGO_NAME_VARIABLE = 'egoName';
+const EGO_NAME_VARIABLE = testVariableId('egoName');
 
 function renderCategoricalBin(
   otherValidation?: Validation,
@@ -699,9 +699,9 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     expect(getOtherAttribute(store)).toBe('a genuinely new reason');
   });
 
-  it('resolves a reference to a sibling literally named otherVariable instead of comparing the dialog answer with itself', async () => {
+  it('resolves a reference to a second sibling instead of comparing the dialog answer with itself', async () => {
     const { store, getDndStore } = renderCategoricalBin({
-      differentFrom: asEntityAttributeReference(COLLIDING_SIBLING_VARIABLE),
+      differentFrom: asEntityAttributeReference(SIBLING_VARIABLE),
     });
 
     await dropNodeIntoOtherBin(getDndStore);

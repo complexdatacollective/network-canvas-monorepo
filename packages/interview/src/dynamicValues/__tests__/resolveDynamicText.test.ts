@@ -12,6 +12,7 @@ import type {
   Variable,
 } from '@codaco/protocol-validation';
 
+import { testVariableId } from '../../__tests__/testIds';
 import { contentFormatFor } from '../../localization/contentFormat';
 import { DynamicMarkdown } from '../DynamicText';
 import {
@@ -21,11 +22,18 @@ import {
   resolveDynamicText,
 } from '../resolveDynamicText';
 
+const NAME = testVariableId('name');
+const AGE = testVariableId('age');
+const BORN = testVariableId('born');
+const CLOSENESS = testVariableId('closeness');
+const LANGUAGES = testVariableId('languages');
+const SMOKES = testVariableId('smokes');
+
 const VARIABLES: Record<string, Variable> = {
-  name: { name: 'name', type: 'text' },
-  age: { name: 'age', type: 'number' },
-  born: { name: 'born', type: 'datetime' },
-  closeness: {
+  [NAME]: { name: 'name', type: 'text' },
+  [AGE]: { name: 'age', type: 'number' },
+  [BORN]: { name: 'born', type: 'datetime' },
+  [CLOSENESS]: {
     name: 'closeness',
     type: 'ordinal',
     options: [
@@ -33,7 +41,7 @@ const VARIABLES: Record<string, Variable> = {
       { label: { en: 'Very close' }, value: 1 },
     ],
   },
-  languages: {
+  [LANGUAGES]: {
     name: 'languages',
     type: 'categorical',
     options: [
@@ -42,17 +50,17 @@ const VARIABLES: Record<string, Variable> = {
       { label: { en: 'Spanish' }, value: 'es' },
     ],
   },
-  smokes: { name: 'smokes', type: 'boolean' },
+  [SMOKES]: { name: 'smokes', type: 'boolean' },
 } as Record<string, Variable>;
 
 const BINDINGS: DynamicValues = {
-  name: { path: 'ego.name' },
-  age: { path: 'ego.age' },
-  born: { path: 'ego.born' },
-  closeness: { path: 'ego.closeness', cases: { veryClose: 1 } },
-  languages: { path: 'ego.languages', cases: { french: 'fr' } },
-  smokes: { path: 'ego.smokes', cases: { yes: true } },
-  partner: { path: 'dyad.target.name' },
+  name: { path: `ego.${NAME}` },
+  age: { path: `ego.${AGE}` },
+  born: { path: `ego.${BORN}` },
+  closeness: { path: `ego.${CLOSENESS}`, cases: { veryClose: 1 } },
+  languages: { path: `ego.${LANGUAGES}`, cases: { french: 'fr' } },
+  smokes: { path: `ego.${SMOKES}`, cases: { yes: true } },
+  partner: { path: `dyad.target.${NAME}` },
   first: { path: 'dyad.source.$label' },
   second: { path: 'dyad.target.$label' },
   isYou: { path: 'node.$isParticipant', cases: { participant: true } },
@@ -97,7 +105,7 @@ describe('resolveDynamicText', () => {
 
   it('takes the missing version for every kind of missing value', () => {
     for (const missing of [undefined, null, '', '   ', []]) {
-      expect(resolve(GREETING, { name: missing })).toEqual({
+      expect(resolve(GREETING, { [NAME]: missing })).toEqual({
         parts: ['Hello!'],
         text: 'Hello!',
       });
@@ -105,7 +113,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('shows a present value as text, marking where it is', () => {
-    expect(resolve(GREETING, { name: 'Ada' })).toEqual({
+    expect(resolve(GREETING, { [NAME]: 'Ada' })).toEqual({
       parts: ['Hello, ', { name: 'name', text: 'Ada' }, '!'],
       text: 'Hello, Ada!',
     });
@@ -113,11 +121,12 @@ describe('resolveDynamicText', () => {
 
   it('shows 0 and false as values, not as missing', () => {
     expect(
-      resolve('{age, select, missing {?} other {Age {age}}}', { age: 0 })?.text,
+      resolve('{age, select, missing {?} other {Age {age}}}', { [AGE]: 0 })
+        ?.text,
     ).toBe('Age 0');
     expect(
       resolve('{smokes, select, missing {?} other {{smokes}}}', {
-        smokes: false,
+        [SMOKES]: false,
       })?.text,
     ).toBe('No');
   });
@@ -125,24 +134,26 @@ describe('resolveDynamicText', () => {
   it('chooses a case by the stored option, and other for the rest', () => {
     const message =
       '{closeness, select, missing {?} veryClose {Close: {closeness}} other {Not: {closeness}}}';
-    expect(resolve(message, { closeness: 1 })?.text).toBe('Close: Very close');
-    expect(resolve(message, { closeness: 0 })?.text).toBe('Not: Not close');
+    expect(resolve(message, { [CLOSENESS]: 1 })?.text).toBe(
+      'Close: Very close',
+    );
+    expect(resolve(message, { [CLOSENESS]: 0 })?.text).toBe('Not: Not close');
   });
 
   it('matches a case among a list of answers, and lists them', () => {
     const message =
       '{languages, select, missing {?} french {Bonjour ({languages})} other {{languages}}}';
-    expect(resolve(message, { languages: ['en', 'fr'] })?.text).toBe(
+    expect(resolve(message, { [LANGUAGES]: ['en', 'fr'] })?.text).toBe(
       'Bonjour (English and French)',
     );
-    expect(resolve(message, { languages: ['en', 'es'] })?.text).toBe(
+    expect(resolve(message, { [LANGUAGES]: ['en', 'es'] })?.text).toBe(
       'English and Spanish',
     );
   });
 
   describe('in a language other than English', () => {
     const LOCALIZED: Record<string, Variable> = {
-      languages: {
+      [LANGUAGES]: {
         name: 'languages',
         type: 'categorical',
         options: [
@@ -168,7 +179,7 @@ describe('resolveDynamicText', () => {
       resolveDynamicText(
         '{languages, select, missing {?} other {{languages}}}',
         locale,
-        sources({ languages }, { variablesFor: () => LOCALIZED }),
+        sources({ [LANGUAGES]: languages }, { variablesFor: () => LOCALIZED }),
         {
           ...formatters(locale),
           resolveLabel: (label: LocalizedString) =>
@@ -194,53 +205,55 @@ describe('resolveDynamicText', () => {
   it('chooses a plural by the language, and writes # as the number', () => {
     const message =
       '{age, select, missing {?} other {{age, plural, one {# year} other {# years}}}}';
-    expect(resolve(message, { age: 1 })?.text).toBe('1 year');
-    expect(resolve(message, { age: 1200 })?.text).toBe('1,200 years');
-    expect(resolve(message, { age: 1200 }, 'de')?.text).toBe('1.200 years');
+    expect(resolve(message, { [AGE]: 1 })?.text).toBe('1 year');
+    expect(resolve(message, { [AGE]: 1200 })?.text).toBe('1,200 years');
+    expect(resolve(message, { [AGE]: 1200 }, 'de')?.text).toBe('1.200 years');
     // The version agrees with the number as it is shown, every digit of it.
-    expect(resolve(message, { age: 1.0001 })?.text).toBe('1.0001 years');
+    expect(resolve(message, { [AGE]: 1.0001 })?.text).toBe('1.0001 years');
   });
 
   it('writes a stored date in the language, without a time zone shift', () => {
     const message = '{born, select, missing {?} other {{born}}}';
-    expect(resolve(message, { born: '2024-03-05' })?.text).toBe(
+    expect(resolve(message, { [BORN]: '2024-03-05' })?.text).toBe(
       'March 5, 2024',
     );
-    expect(resolve(message, { born: '2024-03' })?.text).toBe('March 2024');
-    expect(resolve(message, { born: '2024' })?.text).toBe('2024');
-    expect(resolve(message, { born: '2024-03-05' }, 'fr')?.text).toBe(
+    expect(resolve(message, { [BORN]: '2024-03' })?.text).toBe('March 2024');
+    expect(resolve(message, { [BORN]: '2024' })?.text).toBe('2024');
+    expect(resolve(message, { [BORN]: '2024-03-05' }, 'fr')?.text).toBe(
       '5 mars 2024',
     );
   });
 
   it('shows a stored date that is not on the calendar as it was stored', () => {
     const message = '{born, select, missing {?} other {{born}}}';
-    expect(resolve(message, { born: '2024-02-31' })?.text).toBe('2024-02-31');
-    expect(resolve(message, { born: '2024-13' })?.text).toBe('2024-13');
-    expect(resolve(message, { born: '2024-00-10' })?.text).toBe('2024-00-10');
-    expect(resolve(message, { born: '0000-01-01' })?.text).toBe('0000-01-01');
-    expect(resolve(message, { born: '2024-1' })?.text).toBe('2024-1');
-    expect(resolve(message, { born: '2024-01-01junk' })?.text).toBe(
+    expect(resolve(message, { [BORN]: '2024-02-31' })?.text).toBe('2024-02-31');
+    expect(resolve(message, { [BORN]: '2024-13' })?.text).toBe('2024-13');
+    expect(resolve(message, { [BORN]: '2024-00-10' })?.text).toBe('2024-00-10');
+    expect(resolve(message, { [BORN]: '0000-01-01' })?.text).toBe('0000-01-01');
+    expect(resolve(message, { [BORN]: '2024-1' })?.text).toBe('2024-1');
+    expect(resolve(message, { [BORN]: '2024-01-01junk' })?.text).toBe(
       '2024-01-01junk',
     );
-    expect(resolve(message, { born: '2024-02-31T00:00Z' })?.text).toBe(
+    expect(resolve(message, { [BORN]: '2024-02-31T00:00Z' })?.text).toBe(
       '2024-02-31T00:00Z',
     );
-    expect(resolve(message, { born: '0000-01-01T00:00Z' })?.text).toBe(
+    expect(resolve(message, { [BORN]: '0000-01-01T00:00Z' })?.text).toBe(
       '0000-01-01T00:00Z',
     );
-    expect(resolve(message, { born: '2024-03-05T12:00:00Z' })?.text).toBe(
+    expect(resolve(message, { [BORN]: '2024-03-05T12:00:00Z' })?.text).toBe(
       'March 5, 2024',
     );
-    expect(resolve(message, { born: '2024-02-29' })?.text).toBe(
+    expect(resolve(message, { [BORN]: '2024-02-29' })?.text).toBe(
       'February 29, 2024',
     );
   });
 
   it('keeps a year before 100 as written', () => {
     const message = '{born, select, missing {?} other {{born}}}';
-    expect(resolve(message, { born: '0050-03-05' })?.text).toBe('March 5, 50');
-    expect(resolve(message, { born: '0050' })?.text).toBe('50');
+    expect(resolve(message, { [BORN]: '0050-03-05' })?.text).toBe(
+      'March 5, 50',
+    );
+    expect(resolve(message, { [BORN]: '0050' })?.text).toBe('50');
   });
 
   it('reads a role that is not on screen as missing', () => {
@@ -298,7 +311,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('never parses a value as message syntax', () => {
-    expect(resolve(GREETING, { name: "{name} '{x}' #" })?.text).toBe(
+    expect(resolve(GREETING, { [NAME]: "{name} '{x}' #" })?.text).toBe(
       "Hello, {name} '{x}' #!",
     );
   });

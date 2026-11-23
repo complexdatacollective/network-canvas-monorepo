@@ -15,7 +15,13 @@ import {
 
 import type { InterviewPayload } from '../contract/types';
 import Shell from '../Shell';
-import { testId } from './testIds';
+import { testId, testVariableId } from './testIds';
+
+const NAME = testVariableId('name');
+const NICKNAME = testVariableId('nickname');
+const AGE = testVariableId('age');
+const GUESS = testVariableId('guess');
+const COLOUR = testVariableId('colour');
 
 vi.mock('../interfaces', async () => {
   const { default: Information } =
@@ -88,8 +94,8 @@ const information = {
   type: 'Information' as const,
   label: { en: 'Welcome' },
   dynamicValues: {
-    name: { path: 'ego.name' },
-    nickname: { path: 'ego.nickname' },
+    name: { path: `ego.${NAME}` },
+    nickname: { path: `ego.${NICKNAME}` },
   },
   content: { en: `# ${GREETING.en}\n\n${BODY}` },
 };
@@ -126,8 +132,8 @@ function makePayload({
         ego: {
           [entityPrimaryKeyProperty]: 'ego',
           [entityAttributesProperty]: {
-            ...(name !== undefined && { name }),
-            ...(nickname !== undefined && { nickname }),
+            ...(name !== undefined && { [NAME]: name }),
+            ...(nickname !== undefined && { [NICKNAME]: nickname }),
           },
         },
         nodes: [],
@@ -144,8 +150,8 @@ function makePayload({
       codebook: {
         ego: {
           variables: {
-            name: { name: 'name', type: 'text' },
-            nickname: { name: 'nickname', type: 'text' },
+            [NAME]: { name: 'name', type: 'text' },
+            [NICKNAME]: { name: 'nickname', type: 'text' },
           },
         },
         node: {},
@@ -292,7 +298,7 @@ describe('dynamic values in a stage’s text', () => {
           fields: [
             {
               id: 'field-1',
-              variable: 'name',
+              variable: NAME,
               prompt: { en: 'What is your name?' },
             },
           ],
@@ -303,8 +309,8 @@ describe('dynamic values in a stage’s text', () => {
     ] as InterviewPayload['protocol']['stages'];
     payload.protocol.codebook.ego = {
       variables: {
-        name: { name: 'name', type: 'text', component: 'Text' },
-        nickname: { name: 'nickname', type: 'text', component: 'Text' },
+        [NAME]: { name: 'name', type: 'text', component: 'Text' },
+        [NICKNAME]: { name: 'nickname', type: 'text', component: 'Text' },
       },
     } as InterviewPayload['protocol']['codebook']['ego'];
     renderShell(payload);
@@ -430,18 +436,18 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        dynamicValues: { name: { path: 'ego.name' } },
+        dynamicValues: { name: { path: `ego.${NAME}` } },
         introductionPanel: { title: { en: 'About you' } },
         form: {
           fields: [
             {
               id: testId('field-1'),
-              variable: 'name',
+              variable: NAME,
               prompt: { en: 'What is your name?' },
             },
             {
               id: testId('field-2'),
-              variable: 'age',
+              variable: AGE,
               prompt: {
                 en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
               },
@@ -453,8 +459,8 @@ describe('dynamic values in a stage’s text', () => {
     ] as InterviewPayload['protocol']['stages'];
     payload.protocol.codebook.ego = {
       variables: {
-        name: { name: 'name', type: 'text', component: 'Text' },
-        age: { name: 'age', type: 'number', component: 'Number' },
+        [NAME]: { name: 'name', type: 'text', component: 'Text' },
+        [AGE]: { name: 'age', type: 'number', component: 'Number' },
       },
     } as InterviewPayload['protocol']['codebook']['ego'];
     renderShell(payload);
@@ -487,13 +493,13 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        dynamicValues: { name: { path: 'ego.name' } },
+        dynamicValues: { name: { path: `ego.${NAME}` } },
         introductionPanel: { title: { en: 'About you' } },
         form: {
           fields: [
             {
               id: testId('field-1'),
-              variable: 'age',
+              variable: AGE,
               prompt: {
                 en: '**How old are you**{name, select, missing {?} other {, {name}?}}',
               },
@@ -505,8 +511,8 @@ describe('dynamic values in a stage’s text', () => {
     ] as InterviewPayload['protocol']['stages'];
     payload.protocol.codebook.ego = {
       variables: {
-        name: { name: 'name', type: 'text', component: 'Text' },
-        age: { name: 'age', type: 'number', component: 'Number' },
+        [NAME]: { name: 'name', type: 'text', component: 'Text' },
+        [AGE]: { name: 'age', type: 'number', component: 'Number' },
       },
     } as InterviewPayload['protocol']['codebook']['ego'];
     renderShell(payload);
@@ -526,25 +532,25 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        dynamicValues: { name: { path: 'ego.name' } },
+        dynamicValues: { name: { path: `ego.${NAME}` } },
         introductionPanel: { title: { en: 'About you' } },
         form: {
           fields: [
             {
               id: testId('field-1'),
-              variable: 'name',
+              variable: NAME,
               prompt: { en: 'What is your name?' },
             },
             {
               id: testId('field-2'),
-              variable: 'age',
+              variable: AGE,
               prompt: {
                 en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
               },
             },
             {
               id: testId('field-3'),
-              variable: 'guess',
+              variable: GUESS,
               prompt: { en: 'Guess an age' },
             },
           ],
@@ -554,13 +560,13 @@ describe('dynamic values in a stage’s text', () => {
     ] as InterviewPayload['protocol']['stages'];
     payload.protocol.codebook.ego = {
       variables: {
-        name: { name: 'name', type: 'text', component: 'Text' },
-        age: { name: 'age', type: 'number', component: 'Number' },
-        guess: {
+        [NAME]: { name: 'name', type: 'text', component: 'Text' },
+        [AGE]: { name: 'age', type: 'number', component: 'Number' },
+        [GUESS]: {
           name: 'guess',
           type: 'number',
           component: 'Number',
-          validation: { differentFrom: asEntityAttributeReference('age') },
+          validation: { differentFrom: asEntityAttributeReference(AGE) },
         },
       },
     } as InterviewPayload['protocol']['codebook']['ego'];
@@ -625,7 +631,7 @@ describe('dynamic values in a stage’s text', () => {
         ...information,
         dynamicValues: {
           ...information.dynamicValues,
-          colour: { path: 'ego.colour' },
+          colour: { path: `ego.${COLOUR}` },
         },
         content: {
           en: `# {colour, select, missing {No colour} other {Favourite: {colour}}}\n\n${BODY}`,
@@ -636,7 +642,7 @@ describe('dynamic values in a stage’s text', () => {
     payload.protocol.codebook.ego = {
       variables: {
         ...payload.protocol.codebook.ego?.variables,
-        colour: {
+        [COLOUR]: {
           name: 'colour',
           type: 'categorical',
           options: [{ label: { en: '**Deep** _red_' }, value: 'red' }],
@@ -644,7 +650,7 @@ describe('dynamic values in a stage’s text', () => {
       },
     } as InterviewPayload['protocol']['codebook']['ego'];
     payload.session.network.ego[entityAttributesProperty] = {
-      colour: ['red'],
+      [COLOUR]: ['red'],
     };
     renderShell(payload);
 
