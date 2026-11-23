@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 import { assetBlocksInMessage } from '../localization/assetBlock.ts';
-import { getAssetReferenceDescriptor } from '../schemas/9/asset-reference.ts';
+import {
+  type AssetReferenceDescriptor,
+  getAssetReferenceDescriptor,
+} from '../schemas/9/asset-reference.ts';
 import type { StageSubject } from '../schemas/9/common/index.ts';
 import {
   type DynamicValueRole,
@@ -11,13 +14,17 @@ import {
 import {
   getEntityAttributeReferenceDescriptor,
   type AttributeExistence,
+  type EntityAttributeReferenceDescriptor,
   type AttributeWriterUsage,
   type ExclusiveSlotDescriptor,
   type InterfaceOwnedOptionSetKey,
   type StageManagedOptionsDescriptor,
   type SubjectResolution,
 } from '../schemas/9/entity-attribute-reference.ts';
-import { getEntityTypeReferenceDescriptor } from '../schemas/9/entity-type-reference.ts';
+import {
+  type EntityTypeReferenceDescriptor,
+  getEntityTypeReferenceDescriptor,
+} from '../schemas/9/entity-type-reference.ts';
 import { getLocalizedStringDescriptor } from '../schemas/9/localized-string.ts';
 import {
   getProtocolObjectKind,
@@ -27,6 +34,7 @@ import { getStageReferenceSite } from '../schemas/9/stage-reference.ts';
 import {
   getStageSubjectResolution,
   resolveDeclaredStageSubject,
+  type StageSubjectResolution,
 } from '../schemas/9/stage-subject-resolution.ts';
 import type { VariableType } from '../schemas/9/variables/types.ts';
 
@@ -246,11 +254,10 @@ const getVirtualDiscriminator = (
  * walk with the right subject or with none.
  */
 const stageSubjectOf = (
-  node: z.ZodType,
+  declared: StageSubjectResolution | undefined,
   value: Record<string, unknown>,
   ctx: WalkContext,
 ): StageSubject | undefined => {
-  const declared = getStageSubjectResolution(node);
   if (declared) {
     return resolveDeclaredStageSubject(declared, value, ctx.stages);
   }
@@ -314,6 +321,270 @@ const dynamicValueSubject = (
   return stageSubject?.entity === entity ? stageSubject : undefined;
 };
 
+type StringPlan = {
+  kind: 'string';
+  node: z.ZodString;
+  attribute: EntityAttributeReferenceDescriptor | undefined;
+  dynamicValuePath: boolean;
+  type: EntityTypeReferenceDescriptor | undefined;
+  asset: AssetReferenceDescriptor | undefined;
+  stageSite: string | undefined;
+};
+
+type ObjectPlan = {
+  kind: 'object';
+  // Only the fields whose subtree can hold a reference, in shape order.
+  fields: (readonly [string, z.ZodType])[];
+  objectKind: ProtocolObjectKind | undefined;
+  subjectResolution: StageSubjectResolution | undefined;
+};
+
+type UnionPlan = {
+  kind: 'union';
+  // A discriminated union's branch for each discriminator value: the first
+  // object branch whose discriminator accepts it.
+  discriminated:
+    | { discriminator: string; branches: Map<unknown, z.ZodType> }
+    | undefined;
+  // A plain union's reference-bearing branches for each value of its virtual
+  // discriminator (see `getVirtualDiscriminator`).
+  virtual: { field: string; branches: Map<unknown, z.ZodType[]> } | undefined;
+  refOptions: z.ZodType[];
+  refFreeOptions: z.ZodType[];
+};
+
+// What the walk does at a schema node, worked out once per node from its
+// wrappers, class and metadata. Reading zod metadata and running zod's
+// `instanceof` checks at every node of every walk was most of a walk's cost.
+type WalkPlan =
+  | { kind: 'none' }
+  | { kind: 'assetBlocks' }
+  | StringPlan
+  | ObjectPlan
+  | { kind: 'array'; element: z.ZodType }
+  | { kind: 'record'; valueType: z.ZodType }
+  | UnionPlan;
+
+const NO_PLAN: WalkPlan = { kind: 'none' };
+
+const unionPlan = (node: z.ZodUnion): UnionPlan => {
+  const options = node.options.filter(isZodType);
+  let discriminated: UnionPlan['discriminated'];
+  if (node instanceof z.ZodDiscriminatedUnion) {
+    const discriminator = node.def.discriminator;
+    const branches = new Map<unknown, z.ZodType>();
+    for (const option of options) {
+      if (!(option instanceof z.ZodObject)) continue;
+      const discField: unknown = option.shape[discriminator];
+      if (!isZodType(discField)) continue;
+      for (const value of literalValuesOf(discField) ?? []) {
+        if (!branches.has(value)) branches.set(value, option);
+      }
+    }
+    discriminated = { discriminator, branches };
+  }
+  const virtualDiscriminator = getVirtualDiscriminator(node, options);
+  return {
+    kind: 'union',
+    discriminated,
+    virtual: virtualDiscriminator
+      ? {
+          field: virtualDiscriminator.field,
+          branches: new Map(
+            [...virtualDiscriminator.map].map(([value, branches]) => [
+              value,
+              branches.filter((option) => hasReference(option)),
+            ]),
+          ),
+        }
+      : undefined,
+    refOptions: options.filter((option) => hasReference(option)),
+    refFreeOptions: options.filter((option) => !hasReference(option)),
+  };
+};
+
+const buildPlan = (schema: z.ZodType): WalkPlan => {
+  const node = unwrap(schema);
+  // Prune reference-free subtrees: nothing below can produce a hit.
+  if (!hasReference(node)) return NO_PLAN;
+  if (node instanceof z.ZodString) {
+    return {
+      kind: 'string',
+      node,
+      attribute: getEntityAttributeReferenceDescriptor(node),
+      dynamicValuePath: isDynamicValuePathSchema(node),
+      type: getEntityTypeReferenceDescriptor(node),
+      asset: getAssetReferenceDescriptor(node),
+      stageSite: getStageReferenceSite(node),
+    };
+  }
+  if (holdsAssetBlocks(node)) return { kind: 'assetBlocks' };
+  if (node instanceof z.ZodObject) {
+    const shape = node.shape;
+    const fields = Object.keys(shape).flatMap((key) => {
+      const child: unknown = shape[key];
+      return isZodType(child) && hasReference(child)
+        ? [[key, child] as const]
+        : [];
+    });
+    const idSchema: unknown = shape.id;
+    return {
+      kind: 'object',
+      fields,
+      objectKind: isZodType(idSchema)
+        ? getProtocolObjectKind(unwrap(idSchema))
+        : undefined,
+      subjectResolution: getStageSubjectResolution(node),
+    };
+  }
+  if (node instanceof z.ZodArray) {
+    const element = node.element;
+    return isZodType(element) ? { kind: 'array', element } : NO_PLAN;
+  }
+  if (node instanceof z.ZodRecord) {
+    const valueType = node.valueType;
+    return isZodType(valueType) ? { kind: 'record', valueType } : NO_PLAN;
+  }
+  if (node instanceof z.ZodUnion) return unionPlan(node);
+  return NO_PLAN;
+};
+
+const walkPlans = new WeakMap<z.ZodType, WalkPlan>();
+const planFor = (schema: z.ZodType): WalkPlan => {
+  const cached = walkPlans.get(schema);
+  if (cached !== undefined) return cached;
+  const plan = buildPlan(schema);
+  walkPlans.set(schema, plan);
+  return plan;
+};
+
+const walkString = (
+  plan: StringPlan,
+  value: unknown,
+  path: (string | number)[],
+  ctx: WalkContext,
+): ReferenceHit[] => {
+  if (typeof value !== 'string') return [];
+  const attributeDescriptor = plan.attribute;
+  if (attributeDescriptor) {
+    // A magic key (the `'*'` nomination-order sort property) occupies a
+    // reference site without being one. Emitting a hit would put it in every
+    // usage index as a variable id that no codebook can ever contain.
+    if (attributeDescriptor.ignoreValues?.includes(value)) return [];
+    // A conditional writer (see `usageRequiresSibling`) is a write only in
+    // the configuration that turns the write on; in every other it is a
+    // read, and the hit must not carry a `usage` that would make the
+    // exclusive-slot and variable-role rules treat it as a second writer.
+    const gate = attributeDescriptor.usageRequiresSibling;
+    const writes = gate === undefined || ctx.parent?.[gate] === true;
+    return [
+      {
+        kind: 'attribute',
+        path,
+        variableId: value,
+        subject: resolveSubject(attributeDescriptor.subject, path, ctx),
+        requireType: attributeDescriptor.requireType,
+        existence: attributeDescriptor.existence,
+        usage: writes ? attributeDescriptor.usage : undefined,
+        exclusive: attributeDescriptor.exclusive,
+        ownedOptions: attributeDescriptor.ownedOptions,
+        stageManagedOptions: attributeDescriptor.stageManagedOptions,
+        dataSourceColumn: attributeDescriptor.dataSourceColumn,
+      },
+    ];
+  }
+  // A stage's dynamic value names an attribute inside its path, so that the
+  // attribute's uses include the text that shows it, and deleting it is
+  // blocked like deleting any other attribute in use.
+  if (plan.dynamicValuePath) {
+    const parsed = parseDynamicValuePath(value);
+    if (parsed?.kind !== 'attribute') return [];
+    return [
+      {
+        kind: 'attribute',
+        path,
+        variableId: parsed.variableId,
+        inDynamicValuePath: true,
+        // A binding of a node type's own label is about a node of that
+        // type, which the codebook path names; any other is a stage's.
+        subject:
+          resolveSubject('owningVariable', path, ctx) ??
+          dynamicValueSubject(parsed.role, ctx.stageSubject),
+      },
+    ];
+  }
+  const typeDescriptor = plan.type;
+  if (typeDescriptor) {
+    const entity =
+      typeDescriptor.entity === 'filterRule'
+        ? ctx.filterRuleEntity
+        : typeDescriptor.entity;
+    // Unresolvable (e.g. an ego filter rule) references no codebook type.
+    if (entity === undefined) return [];
+    return [{ kind: 'type', path, typeId: value, entity }];
+  }
+  const assetDescriptor = plan.asset;
+  if (assetDescriptor) {
+    // The walker tolerates invalid partial documents, but only a value that
+    // satisfies its tagged field schema can name a manifest dependency.
+    if (!plan.node.safeParse(value).success) return [];
+    // A sentinel occupying an asset site without being one (a panel's
+    // `'existing'`). Emitting a hit would put it in every usage index as an
+    // asset id no manifest can ever contain.
+    if (assetDescriptor.ignoreValues?.includes(value)) return [];
+    return [{ kind: 'asset', path, assetId: value }];
+  }
+  if (plan.stageSite !== undefined) {
+    return [{ kind: 'stage', path, stageId: value, site: plan.stageSite }];
+  }
+  return [];
+};
+
+const walkUnion = (
+  plan: UnionPlan,
+  value: unknown,
+  path: (string | number)[],
+  ctx: WalkContext,
+): ReferenceHit[] => {
+  if (plan.discriminated && isRecord(value)) {
+    const match = plan.discriminated.branches.get(
+      value[plan.discriminated.discriminator],
+    );
+    return match ? walk(match, value, path, ctx) : [];
+  }
+  // plain union: only reference-bearing branches can yield hits, so restrict
+  // both the branch search and safeParse cost to them (the top-level guard
+  // guarantees at least one such branch exists). Prefer the branch that
+  // fully parses — unchanged behaviour for valid data. The virtual
+  // discriminator restricts the safeParse probes to the branches whose
+  // discriminator matches the value (usually one).
+  const discriminated =
+    plan.virtual && isRecord(value)
+      ? plan.virtual.branches.get(value[plan.virtual.field])
+      : undefined;
+  const searchOptions = discriminated ?? plan.refOptions;
+  const match = searchOptions.find((option) => option.safeParse(value).success);
+  if (match) return walk(match, value, path, ctx);
+  // No reference-bearing branch matched. If the value validly belongs to a
+  // reference-free branch there is nothing to collect; only when it matches
+  // no branch at all (structurally-invalid, in-progress edit) do we merge
+  // references across the reference-bearing branches so they still surface.
+  const matchesRefFreeBranch = plan.refFreeOptions.some(
+    (option) => option.safeParse(value).success,
+  );
+  if (matchesRefFreeBranch) return [];
+  // De-dupe on the full hit (path AND resolved subject/requireType): two
+  // branches can expose the same path with different validation metadata,
+  // and those are distinct references that must both survive.
+  const merged = new Map<string, ReferenceHit>();
+  for (const option of plan.refOptions) {
+    for (const hit of walk(option, value, path, ctx)) {
+      merged.set(JSON.stringify(hit), hit);
+    }
+  }
+  return [...merged.values()];
+};
+
 const walk = (
   schema: z.ZodType,
   value: unknown,
@@ -321,89 +592,10 @@ const walk = (
   ctx: WalkContext,
 ): ReferenceHit[] => {
   if (value === undefined || value === null) return [];
-  const node = unwrap(schema);
-  // Prune reference-free subtrees: nothing below can produce a hit.
-  if (!hasReference(node)) return [];
-
-  if (node instanceof z.ZodString) {
-    if (typeof value !== 'string') return [];
-    const attributeDescriptor = getEntityAttributeReferenceDescriptor(node);
-    if (attributeDescriptor) {
-      // A magic key (the `'*'` nomination-order sort property) occupies a
-      // reference site without being one. Emitting a hit would put it in every
-      // usage index as a variable id that no codebook can ever contain.
-      if (attributeDescriptor.ignoreValues?.includes(value)) return [];
-      // A conditional writer (see `usageRequiresSibling`) is a write only in
-      // the configuration that turns the write on; in every other it is a
-      // read, and the hit must not carry a `usage` that would make the
-      // exclusive-slot and variable-role rules treat it as a second writer.
-      const gate = attributeDescriptor.usageRequiresSibling;
-      const writes = gate === undefined || ctx.parent?.[gate] === true;
-      return [
-        {
-          kind: 'attribute',
-          path,
-          variableId: value,
-          subject: resolveSubject(attributeDescriptor.subject, path, ctx),
-          requireType: attributeDescriptor.requireType,
-          existence: attributeDescriptor.existence,
-          usage: writes ? attributeDescriptor.usage : undefined,
-          exclusive: attributeDescriptor.exclusive,
-          ownedOptions: attributeDescriptor.ownedOptions,
-          stageManagedOptions: attributeDescriptor.stageManagedOptions,
-          dataSourceColumn: attributeDescriptor.dataSourceColumn,
-        },
-      ];
-    }
-    // A stage's dynamic value names an attribute inside its path, so that the
-    // attribute's uses include the text that shows it, and deleting it is
-    // blocked like deleting any other attribute in use.
-    if (isDynamicValuePathSchema(node)) {
-      const parsed = parseDynamicValuePath(value);
-      if (parsed?.kind !== 'attribute') return [];
-      return [
-        {
-          kind: 'attribute',
-          path,
-          variableId: parsed.variableId,
-          inDynamicValuePath: true,
-          // A binding of a node type's own label is about a node of that
-          // type, which the codebook path names; any other is a stage's.
-          subject:
-            resolveSubject('owningVariable', path, ctx) ??
-            dynamicValueSubject(parsed.role, ctx.stageSubject),
-        },
-      ];
-    }
-    const typeDescriptor = getEntityTypeReferenceDescriptor(node);
-    if (typeDescriptor) {
-      const entity =
-        typeDescriptor.entity === 'filterRule'
-          ? ctx.filterRuleEntity
-          : typeDescriptor.entity;
-      // Unresolvable (e.g. an ego filter rule) references no codebook type.
-      if (entity === undefined) return [];
-      return [{ kind: 'type', path, typeId: value, entity }];
-    }
-    const assetDescriptor = getAssetReferenceDescriptor(node);
-    if (assetDescriptor) {
-      // The walker tolerates invalid partial documents, but only a value that
-      // satisfies its tagged field schema can name a manifest dependency.
-      if (!node.safeParse(value).success) return [];
-      // A sentinel occupying an asset site without being one (a panel's
-      // `'existing'`). Emitting a hit would put it in every usage index as an
-      // asset id no manifest can ever contain.
-      if (assetDescriptor.ignoreValues?.includes(value)) return [];
-      return [{ kind: 'asset', path, assetId: value }];
-    }
-    const stageSite = getStageReferenceSite(node);
-    if (stageSite !== undefined) {
-      return [{ kind: 'stage', path, stageId: value, site: stageSite }];
-    }
-    return [];
-  }
-
-  if (holdsAssetBlocks(node)) {
+  const plan = planFor(schema);
+  if (plan.kind === 'none') return [];
+  if (plan.kind === 'string') return walkString(plan, value, path, ctx);
+  if (plan.kind === 'assetBlocks') {
     if (!ctx.readAssetBlocks || !isRecord(value)) return [];
     // Every translation is read: each is a text some participant is shown,
     // and a file only one language shows is still in use.
@@ -423,109 +615,48 @@ const walk = (
         : [],
     );
   }
-
-  if (node instanceof z.ZodObject) {
+  if (plan.kind === 'object') {
     if (!isRecord(value)) return [];
-    const shape = node.shape;
     const childCtx: WalkContext = {
-      stageSubject: stageSubjectOf(node, value, ctx) ?? ctx.stageSubject,
+      stageSubject:
+        stageSubjectOf(plan.subjectResolution, value, ctx) ?? ctx.stageSubject,
       parent: value,
       filterRuleEntity: filterRuleEntityOf(value) ?? ctx.filterRuleEntity,
       stages: ctx.stages,
       readAssetBlocks: ctx.readAssetBlocks,
     };
-    const children = Object.keys(shape).flatMap((key) => {
-      const child: unknown = shape[key];
-      if (!isZodType(child) || !hasReference(child)) return [];
-      return walk(child, value[key], [...path, key], childCtx);
-    });
+    const children = plan.fields.flatMap(([key, child]) =>
+      walk(child, value[key], [...path, key], childCtx),
+    );
     // The object's own hit precedes its children's, so hits come in
     // document order and the first occurrence of an id is the outermost.
-    const idSchema: unknown = shape.id;
-    const objectKind = isZodType(idSchema)
-      ? getProtocolObjectKind(unwrap(idSchema))
-      : undefined;
-    if (objectKind === undefined) return children;
+    if (plan.objectKind === undefined) return children;
     const id = typeof value.id === 'string' ? value.id : undefined;
     return [
-      { kind: 'objectId', path: [...path, 'id'], id, objectKind },
+      {
+        kind: 'objectId',
+        path: [...path, 'id'],
+        id,
+        objectKind: plan.objectKind,
+      },
       ...children,
     ];
   }
-
-  if (node instanceof z.ZodArray) {
+  if (plan.kind === 'array') {
     if (!Array.isArray(value)) return [];
-    const element = node.element;
-    if (!isZodType(element)) return [];
+    const { element } = plan;
     return value.flatMap((item, index) =>
       walk(element, item, [...path, index], ctx),
     );
   }
-
-  if (node instanceof z.ZodRecord) {
+  if (plan.kind === 'record') {
     if (!isRecord(value)) return [];
-    const valueType = node.valueType;
-    if (!isZodType(valueType)) return [];
+    const { valueType } = plan;
     return Object.keys(value).flatMap((key) =>
       walk(valueType, value[key], [...path, key], ctx),
     );
   }
-
-  if (node instanceof z.ZodUnion) {
-    const options = node.options.filter(isZodType);
-    if (node instanceof z.ZodDiscriminatedUnion && isRecord(value)) {
-      const discriminator = node.def.discriminator;
-      const discValue = value[discriminator];
-      const match = options.find((option) => {
-        if (!(option instanceof z.ZodObject)) return false;
-        const discField: unknown = option.shape[discriminator];
-        if (!isZodType(discField)) return false;
-        return literalValuesOf(discField)?.includes(discValue) ?? false;
-      });
-      return match ? walk(match, value, path, ctx) : [];
-    }
-    // plain union: only reference-bearing branches can yield hits, so restrict
-    // both the branch search and safeParse cost to them (the top-level guard
-    // guarantees at least one such branch exists). Prefer the branch that
-    // fully parses — unchanged behaviour for valid data.
-    const refOptions = options.filter((option) => hasReference(option));
-    // Narrow the branch search with a virtual discriminator — a literal/enum
-    // field every option shares (e.g. a variable's `type`). This restricts the
-    // safeParse probes to the branches whose discriminator matches the value
-    // (usually one) instead of every reference-bearing branch.
-    const virtualDiscriminator = getVirtualDiscriminator(node, options);
-    const discriminated =
-      virtualDiscriminator && isRecord(value)
-        ? virtualDiscriminator.map.get(value[virtualDiscriminator.field])
-        : undefined;
-    const searchOptions = discriminated
-      ? discriminated.filter((option) => hasReference(option))
-      : refOptions;
-    const match = searchOptions.find(
-      (option) => option.safeParse(value).success,
-    );
-    if (match) return walk(match, value, path, ctx);
-    // No reference-bearing branch matched. If the value validly belongs to a
-    // reference-free branch there is nothing to collect; only when it matches
-    // no branch at all (structurally-invalid, in-progress edit) do we merge
-    // references across the reference-bearing branches so they still surface.
-    const matchesRefFreeBranch = options.some(
-      (option) => !hasReference(option) && option.safeParse(value).success,
-    );
-    if (matchesRefFreeBranch) return [];
-    // De-dupe on the full hit (path AND resolved subject/requireType): two
-    // branches can expose the same path with different validation metadata,
-    // and those are distinct references that must both survive.
-    const merged = new Map<string, ReferenceHit>();
-    for (const option of refOptions) {
-      for (const hit of walk(option, value, path, ctx)) {
-        merged.set(JSON.stringify(hit), hit);
-      }
-    }
-    return [...merged.values()];
-  }
-
-  return [];
+  return walkUnion(plan, value, path, ctx);
 };
 
 export const isAttributeHit = (
