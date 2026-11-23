@@ -384,6 +384,390 @@ See [^1].",
 }
 `;
 
+exports[`legacyMarkdownAsStandard > repairs a line break beside ***, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside ***, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside ***, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside **, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside **, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside **, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside *, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside *, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside *, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside _, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside _, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside _, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside __, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside __, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside __, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a code span, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a code span, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a code span, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a link, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a link, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a link, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a shortcode, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a shortcode, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a shortcode, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a www. address, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a www. address, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a www. address, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a closing bracket, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a closing bracket, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a closing bracket, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a comma, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a comma, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a comma, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a full stop, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a full stop, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a full stop, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a question mark, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a question mark, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a question mark, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address in angle brackets, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address in angle brackets, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address in angle brackets, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an email address, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an email address, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an email address, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
 exports[`legacyMarkdownAsStandard > repairs a run after an opener of a link's label, in a heading only where it needs one 1`] = `
 {
   "delimiter": [],

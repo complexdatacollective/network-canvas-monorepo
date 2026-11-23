@@ -31,28 +31,112 @@ import { ProtocolSchemaV9 } from '../schema.ts';
 
 type Lines = 'single' | 'multiple';
 
+type MicromarkExtension = NonNullable<
+  NonNullable<Parameters<typeof fromMarkdown>[1]>['extensions']
+>[number];
+type Construct = Exclude<
+  NonNullable<MicromarkExtension['text']>[string],
+  readonly unknown[] | undefined
+>;
+type Effects = Parameters<Construct['tokenize']>[0];
+type State = Parameters<Construct['tokenize']>[1];
+type Code = Parameters<State>[0];
+
+const codeOf = (char: string) => char.charCodeAt(0);
+// micromark's codes for a space, a tab and the columns a tab fills.
+const isSpace = (code: Code) => code === 32 || code === -2 || code === -1;
+// micromark's codes for a carriage return, a line feed, and both.
+const isLineEnding = (code: Code) => code === -5 || code === -4 || code === -3;
+
+/**
+ * `<br>`, `<br/>` and `<br />`, in any case, read as raw HTML, as the
+ * interview read them: the tag is one piece the parser never reads as words,
+ * as CommonMark reads an HTML tag, with white space (a line ending among it)
+ * before its end. Every other `<` stays a typed character.
+ */
+const BREAK_TAG_AS_HTML: MicromarkExtension = {
+  text: {
+    [codeOf('<')]: {
+      name: 'breakTagAsHtml',
+      tokenize(effects: Effects, ok: State, nok: State): State {
+        const letter =
+          (upper: string, next: State): State =>
+          (code) => {
+            if (
+              code !== codeOf(upper) &&
+              code !== codeOf(upper.toLowerCase())
+            ) {
+              return nok(code);
+            }
+            effects.consume(code);
+            return next;
+          };
+        const end: State = (code) => {
+          if (code !== codeOf('>')) return nok(code);
+          effects.consume(code);
+          effects.exit('htmlTextData');
+          effects.exit('htmlText');
+          return ok;
+        };
+        const linePrefix: State = (code) => {
+          if (isSpace(code)) {
+            effects.enter('linePrefix');
+            const spaces: State = (next) => {
+              if (!isSpace(next)) {
+                effects.exit('linePrefix');
+                effects.enter('htmlTextData');
+                return beforeEnd(next);
+              }
+              effects.consume(next);
+              return spaces;
+            };
+            return spaces(code);
+          }
+          effects.enter('htmlTextData');
+          return beforeEnd(code);
+        };
+        const beforeEnd: State = (code) => {
+          if (isSpace(code)) {
+            effects.consume(code);
+            return beforeEnd;
+          }
+          if (isLineEnding(code)) {
+            effects.exit('htmlTextData');
+            effects.enter('lineEnding');
+            effects.consume(code);
+            effects.exit('lineEnding');
+            return linePrefix;
+          }
+          if (code === codeOf('/')) {
+            effects.consume(code);
+            return end;
+          }
+          return end(code);
+        };
+        return (code) => {
+          effects.enter('htmlText');
+          effects.enter('htmlTextData');
+          effects.consume(code);
+          return letter('B', letter('R', beforeEnd));
+        };
+      },
+    },
+  },
+};
+
 /**
  * The legacy reading, built here from the plugins the interview drew schema 8
  * text with rather than from the code under test: CommonMark with `>` and `<`
- * read as typed characters, GitHub's bare addresses read as links (the
- * parser's and the transform's, as `remark-gfm` runs them), `remark-gemoji`'s
- * shortcodes, and `<br>` as a line break.
+ * read as typed characters, but for a `<br>` tag, read as raw HTML (see
+ * `BREAK_TAG_AS_HTML`); GitHub's bare addresses read as links (the parser's
+ * and the transform's, as `remark-gfm` runs them, beside the tags as they
+ * were); `remark-gemoji`'s shortcodes; and each tag as a line break.
  */
-// Stands for a `<br>` typed as it is, which a backslash before it does not
-// make one: the tag was raw HTML, which the parser never saw as words. It is
-// a punctuation character, as the tag's `<` and `>` are, so emphasis beside
-// it is read as it was beside the tag: `**a<br>**b` held no strong emphasis.
-const TYPED_BREAK = '\u2E2E';
-
 const legacyReading = (markdown: string, lines: Lines): Root => {
-  const marked = markdown.replace(
-    /(\\*)<br\s*\/?>/gi,
-    (tag, backslashes: string) =>
-      backslashes.length % 2 === 0 ? `${backslashes}${TYPED_BREAK}` : tag,
-  );
-  const tree = fromMarkdown(marked, {
+  const tree = fromMarkdown(markdown, {
     extensions: [
       { disable: { null: ['blockQuote', 'htmlFlow', 'htmlText'] } },
+      BREAK_TAG_AS_HTML,
       gfmAutolinkLiteral(),
     ],
     mdastExtensions: [gfmAutolinkLiteralFromMarkdown()],
@@ -66,7 +150,7 @@ const legacyReading = (markdown: string, lines: Lines): Root => {
   const bare = (node: Nodes): boolean =>
     node.type === 'link' &&
     (node.position === undefined ||
-      !['<', '['].includes(marked.charAt(node.position.start.offset ?? 0)));
+      !['<', '['].includes(markdown.charAt(node.position.start.offset ?? 0)));
   findAndReplace(tree, [
     /:(\+1|[-\w]+):/g,
     (_: string, name: string) =>
@@ -81,24 +165,16 @@ const legacyReading = (markdown: string, lines: Lines): Root => {
         children.push(...child.children);
         continue;
       }
-      if (child.type === 'code' || child.type === 'inlineCode') {
-        child.value = child.value.replaceAll(TYPED_BREAK, '<br>');
-      }
-      if (child.type !== 'text') {
-        breaks(child, heading);
-        children.push(child);
+      if (child.type === 'html') {
+        children.push(
+          lines === 'multiple' && !heading
+            ? { type: 'break' }
+            : { type: 'text', value: ' ' },
+        );
         continue;
       }
-      child.value.split(TYPED_BREAK).forEach((words, index) => {
-        if (index > 0) {
-          children.push(
-            lines === 'multiple' && !heading
-              ? { type: 'break' }
-              : { type: 'text', value: ' ' },
-          );
-        }
-        children.push({ type: 'text', value: words });
-      });
+      breaks(child, heading);
+      children.push(child);
     }
     Reflect.set(node, 'children', children);
   };
@@ -541,7 +617,71 @@ const INLINE_CASES: readonly (readonly [string, Generated])[] = SHAPES.flatMap(
   ],
 );
 
-const GENERATED_CASES = [...EDGE_CASES, ...LINE_START_CASES, ...INLINE_CASES];
+/**
+ * A line break typed in each spelling, one typed twice, and one escaped,
+ * which stayed words.
+ */
+const TAGS: readonly string[] = [
+  '<br>',
+  '<br/>',
+  '<br />',
+  '<br><br>',
+  '\\<br>',
+];
+
+/**
+ * What the legacy reading reads by the characters beside it: bare addresses
+ * of each kind, an address whose last character the bare-address rule
+ * leaves out, a shortcode, a link, an address in angle brackets, a code span
+ * and emphasis of each delimiter.
+ */
+const READ_BY_NEIGHBOURS: readonly (readonly [string, string])[] = [
+  ['an address', 'https://example.org'],
+  ['a www. address', 'www.example.org'],
+  ['an email address', 'help@example.org'],
+  ['an address and a full stop', 'https://example.org.'],
+  ['an address and a comma', 'https://example.org,'],
+  ['an address and a closing bracket', 'https://example.org)'],
+  ['an address and a question mark', 'https://example.org?'],
+  ['a shortcode', ':smile:'],
+  ['a link', '[label](https://example.org)'],
+  ['an address in angle brackets', '<https://example.org>'],
+  ['a code span', '`code`'],
+  ['*', '*a*'],
+  ['_', '_a_'],
+  ['**', '**a**'],
+  ['__', '__a__'],
+  ['***', '***a***'],
+];
+
+/**
+ * Each tag directly after and directly before something read by its
+ * neighbours, with words beyond, and at the edges of the text.
+ */
+const TAG_CASES: readonly (readonly [string, Generated])[] = SHAPES.flatMap(
+  ([shape, lines, lead]) =>
+    READ_BY_NEIGHBOURS.map(
+      ([name, words]) =>
+        [
+          `a line break beside ${name}, in ${shape}`,
+          TAGS.flatMap((tag) =>
+            [
+              `Visit ${words}${tag}Next`,
+              `Visit${tag}${words} next`,
+              `${words}${tag}`,
+              `${tag}${words}`,
+            ].map((text) => [`${lead}${text}`, lines] as const),
+          ),
+        ] as const,
+    ),
+);
+
+const GENERATED_CASES = [
+  ...EDGE_CASES,
+  ...LINE_START_CASES,
+  ...INLINE_CASES,
+  ...TAG_CASES,
+];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -655,6 +795,27 @@ const CASES: readonly (readonly [string, string, string])[] = [
   // A code span that would open a code block is written as its words.
   ['<br>```a\nb``` c', 'a b c', 'a b c'],
   ['#<br>a', '#\\\na', '&#35; a'],
+  // A tag ends a bare address, of each kind, before it.
+  [
+    'Visit https://example.org<br>Next',
+    'Visit [https://example.org](https://example.org)\\\nNext',
+    'Visit https://example.org Next',
+  ],
+  [
+    'www.example.org<br>',
+    '[www.example.org](http://www.example.org)',
+    'www.example.org',
+  ],
+  [
+    'a@example.org<br>b',
+    '[a@example.org](mailto:a@example.org)\\\nb',
+    'a@example.org b',
+  ],
+  [
+    'https://example.org.<br>Next',
+    '[https://example.org](https://example.org).\\\nNext',
+    'https://example.org. Next',
+  ],
   ['# a<br>#', '# a &#35;', '# a &#35;'],
   ['** <br> **', '** \\\n **', '**  &#42;&#42;'],
   [
@@ -904,8 +1065,15 @@ describe('legacyMarkdownAsStandard', () => {
     (_kind, cases) => {
       expect(
         cases.filter(([input, lines]) => {
-          // An address in one line is escaped each time (see below).
-          if (lines === 'single' && input.includes('www.')) return false;
+          // An address in one line whose characters are escaped is escaped
+          // again each time: GitHub's reading takes a backslash in an
+          // address as part of it, the one in `\<br>` after an address too.
+          if (
+            lines === 'single' &&
+            (input.includes('www.') || /https?:\/\/\S*\\/.test(input))
+          ) {
+            return false;
+          }
           const once = writtenOnce(input, lines).written;
           return legacyMarkdownAsStandard(once, { lines }) !== once;
         }),
@@ -969,6 +1137,21 @@ describe('legacyMarkdownAsStandard', () => {
       }
     },
   );
+
+  // Each of these took time that grows with the square of its length:
+  // about a second at this length. Read in time that grows with the length,
+  // each takes about a tenth of that.
+  it.each([
+    ['50,000 backslashes', '\\'.repeat(50_000)],
+    ['50,000 backslashes and `<br`', `${'\\'.repeat(50_000)}<br`],
+    ['50,000 spaces before a line break', `a${' '.repeat(50_000)}x<br>y`],
+  ])('migrates %s in well under a second', (_name, input) => {
+    for (const lines of ['multiple', 'single'] as const) {
+      const start = performance.now();
+      legacyMarkdownWritten(input, { lines });
+      expect(performance.now() - start).toBeLessThan(500);
+    }
+  });
 
   it('decodes each of two character references side by side', () => {
     expect(

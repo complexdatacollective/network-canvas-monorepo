@@ -31,8 +31,9 @@ const TYPED_CHARACTERS = {
 
 // The web addresses the parser itself finds, each as a link that keeps its
 // place in the text. The addresses GitHub's reading finds afterwards in the
-// words are found by `bareAddressesIn`, which keeps their places too.
-const { transforms: _wordsSearchedAfterwards, ...ADDRESSES_FOUND_BY_PARSER } =
+// words are found by `bareAddressesIn`, which keeps their places too, and,
+// for the old reading, by GitHub's own search of the words.
+const { transforms: WORDS_SEARCHED_AFTERWARDS, ...ADDRESSES_FOUND_BY_PARSER } =
   gfmAutolinkLiteralFromMarkdown();
 
 /**
@@ -146,6 +147,41 @@ const sourceSpansOf = (
 const writtenAsTyped = (spans: readonly Span[], from: number, to: number) =>
   spans.slice(from, to).every(([start, end]) => end - start === 1);
 
+/**
+ * Whether words under `ancestors` are in an address written as it is: in
+ * angle brackets, or found bare by the parser. Such words are not decoded.
+ */
+const inAddressAsWritten = (source: string, ancestors: readonly Parents[]) =>
+  ancestors.some(
+    (ancestor) =>
+      ancestor.type === 'link' &&
+      source.charAt(ancestor.position?.start.offset ?? -1) !== '[',
+  );
+
+/**
+ * Where each character of a text node's words was written (see
+ * `sourceSpansOf`), and each `<br>` tag in them typed as it is: one with an
+ * escaped `<` (`\<br>`) or a character written as a reference (`&lt;br>`)
+ * stayed words. Undefined where the words do not follow from their source.
+ */
+const typedTagsOf = (
+  source: string,
+  node: Text,
+  ancestors: readonly Parents[],
+): Readonly<{ spans: Span[]; tags: Stretch[] }> | undefined => {
+  const spans = sourceSpansOf(
+    source,
+    node,
+    inAddressAsWritten(source, ancestors),
+  );
+  if (spans === undefined) return undefined;
+  const tags = Array.from(node.value.matchAll(BREAK_TAG), (match) => ({
+    from: match.index,
+    to: match.index + match[0].length,
+  })).filter(({ from, to }) => writtenAsTyped(spans, from, to));
+  return { spans, tags };
+};
+
 type Edit = Readonly<{ start: number; end: number; text: string }>;
 
 /** A stretch of a text node's words, from `from` up to `to`. */
@@ -181,13 +217,19 @@ const isDomain = (domain: string) => {
   );
 };
 
+/** The punctuation that can end a sentence after an address. */
+const TRAIL = new Set('!"&\'),.:;<>?]}');
+
 // The address without the punctuation that ends a sentence after it, but
 // with the closing brackets the address opened.
 const withoutTrail = (url: string): string => {
-  const trail = /[!"&'),.:;<>?\]}]+$/.exec(url);
-  if (trail === null) return url;
-  let kept = url.slice(0, trail.index);
-  let rest = trail[0];
+  let trailStart = url.length;
+  while (trailStart > 0 && TRAIL.has(url.charAt(trailStart - 1))) {
+    trailStart -= 1;
+  }
+  if (trailStart === url.length) return url;
+  let kept = url.slice(0, trailStart);
+  let rest = url.slice(trailStart);
   let close = rest.indexOf(')');
   const opening = kept.split('(').length - 1;
   let closing = kept.split(')').length - 1;
@@ -201,8 +243,20 @@ const withoutTrail = (url: string): string => {
 };
 
 const URL_IN_WORDS = /(https?:\/\/|www(?=\.))([-.\w]+)([^ \t\r\n]*)/gi;
-const EMAIL_IN_WORDS =
-  /(?<=^|\s|\p{P}|\p{S})([-.\w+]+)@([-\w]+(?:\.[-\w]+)+)/gu;
+
+/** A character of an email address's name. */
+const EMAIL_NAME = /[-.\w+]/;
+
+/** An email address's domain, starting exactly where `lastIndex` is set. */
+const EMAIL_DOMAIN_HERE = /[-\w]+(?:\.[-\w]+)+/y;
+
+/**
+ * The start of the words, or white space, punctuation or a symbol before
+ * `at`: the last character of the two code units before it, which may be
+ * one character outside the Basic Multilingual Plane.
+ */
+const startsWord = (words: string, at: number) =>
+  at === 0 || /(?:\s|\p{P}|\p{S})$/u.test(words.slice(Math.max(0, at - 2), at));
 
 const urlsIn = (words: string, offset: number): BareAddress[] => {
   const found: BareAddress[] = [];
@@ -224,17 +278,42 @@ const urlsIn = (words: string, offset: number): BareAddress[] => {
   return found;
 };
 
+/**
+ * The email addresses in `words`, found as the expression
+ * `(?<=^|\s|\p{P}|\p{S})([-.\w+]+)@([-\w]+(?:\.[-\w]+)+)` finds them, but
+ * from each `@` outwards, so that the time taken grows with the length of
+ * the words rather than with its square.
+ */
 const emailsIn = (words: string, offset: number): BareAddress[] => {
   const found: BareAddress[] = [];
-  for (const match of words.matchAll(EMAIL_IN_WORDS)) {
-    const [address, , label = ''] = match;
-    if (!opensAddress(words, match.index, true) || /[-\d_]$/.test(label)) {
+  // Where the last address found ends: the next starts no earlier.
+  let searched = 0;
+  for (
+    let at = words.indexOf('@');
+    at !== -1;
+    at = words.indexOf('@', at + 1)
+  ) {
+    let nameStart = at;
+    while (
+      nameStart > searched &&
+      EMAIL_NAME.test(words.charAt(nameStart - 1))
+    ) {
+      nameStart -= 1;
+    }
+    while (nameStart < at && !startsWord(words, nameStart)) nameStart += 1;
+    if (nameStart === at) continue;
+    EMAIL_DOMAIN_HERE.lastIndex = at + 1;
+    const domain = EMAIL_DOMAIN_HERE.exec(words)?.[0];
+    if (domain === undefined) continue;
+    const to = at + 1 + domain.length;
+    searched = to;
+    if (!opensAddress(words, nameStart, true) || /[-\d_]$/.test(domain)) {
       continue;
     }
     found.push({
-      from: offset + match.index,
-      to: offset + match.index + address.length,
-      href: `mailto:${address}`,
+      from: offset + nameStart,
+      to: offset + to,
+      href: `mailto:${words.slice(nameStart, to)}`,
     });
   }
   return found;
@@ -433,15 +512,9 @@ const editWords = (
   }: Context,
 ) => {
   const { value } = node;
-  // Words in an address written as it is (in angle brackets, or found bare
-  // by the parser) are not decoded.
-  const raw = ancestors.some(
-    (ancestor) =>
-      ancestor.type === 'link' &&
-      source.charAt(ancestor.position?.start.offset ?? -1) !== '[',
-  );
-  const spans = sourceSpansOf(source, node, raw);
-  if (spans === undefined) {
+  const raw = inAddressAsWritten(source, ancestors);
+  const followed = typedTagsOf(source, node, ancestors);
+  if (followed === undefined) {
     // Words whose source cannot be followed character by character are
     // written again as words, every character escaped to show as typed, so
     // that nothing in them can become HTML, a quotation or a block. A line
@@ -453,6 +526,7 @@ const editWords = (
     }
     return;
   }
+  const { spans, tags } = followed;
   const sourceOf = ({ from, to }: Stretch) => ({
     start: spans[from]?.[0] ?? 0,
     end: spans[to - 1]?.[1] ?? 0,
@@ -503,10 +577,8 @@ const editWords = (
   // start or end of a paragraph, where it showed nothing, a run is dropped.
   const breaksApart = multiline && !inHeading;
   const runs: { from: number; to: number; breaks: Stretch[] }[] = [];
-  for (const match of value.matchAll(BREAK_TAG)) {
-    const stretch = { from: match.index, to: match.index + match[0].length };
+  for (const stretch of tags) {
     if (overlaps(stretch, addresses)) continue;
-    if (!writtenAsTyped(spans, stretch.from, stretch.to)) continue;
     const last = runs.at(-1);
     if (
       last !== undefined &&
@@ -534,7 +606,7 @@ const editWords = (
     const atEnd = after.trim() === '';
     // The run with the spaces beside it, up to the edge of the words it
     // touches.
-    const spacesBefore = /\s*$/.exec(before)?.[0].length ?? 0;
+    const spacesBefore = before.length - before.trimEnd().length;
     const spacesAfter = /^\s*/.exec(after)?.[0].length ?? 0;
     const whole = {
       from: run.from - spacesBefore,
@@ -752,65 +824,76 @@ const applyEdits = (source: string, edits: readonly Edit[]): string => {
   return written + source.slice(at);
 };
 
-/** Stands for a `<br>` typed as it is, in the old reading (see `oldReading`). */
-const TYPED_BREAK = '⸮';
-
 /**
- * What the legacy interview showed for `markdown`: CommonMark with `>` and
- * `<` read as typed characters, GitHub's bare addresses read as links (as
- * words in one line, which held no links), `remark-gemoji`'s shortcodes as
- * their emoji, and each `<br>` as a line break (a space in one line or a
- * heading). A typed `<br>` is read as a punctuation character, as its own
- * `<` and `>` were, so that emphasis beside it is read as it was beside the
- * tag; a backslash before it kept it words.
+ * What the legacy interview showed for `source`, from `tree`, its legacy
+ * reading (`legacyTree`), which this changes: CommonMark with `>` and `<`
+ * read as typed characters, GitHub's bare addresses read as links (as words
+ * in one line, which held no links), `remark-gemoji`'s shortcodes as their
+ * emoji, and each `<br>` typed as it is as a line break (a space in one line
+ * or a heading).
+ *
+ * The source is read exactly as it was typed. The tag was raw HTML, which
+ * the parser never read as words; read as typed characters instead, its
+ * `<` and `>` stand beside emphasis, and end an address the parser finds,
+ * as the tag did. Each tag found in the words (see `typedTagsOf`) then
+ * divides them, before GitHub's search of the words for addresses runs, as
+ * the tag divided them.
  */
-const oldReading = (markdown: string, multiline: boolean): Root => {
-  const marked = markdown.replace(
-    /(\\*)<br\s*\/?>/gi,
-    (tag, backslashes: string) =>
-      backslashes.length % 2 === 0 ? `${backslashes}${TYPED_BREAK}` : tag,
-  );
-  const tree = fromMarkdown(marked, {
-    extensions: [TYPED_CHARACTERS, gfmAutolinkLiteral()],
-    mdastExtensions: [gfmAutolinkLiteralFromMarkdown()],
-  });
-  const bare = (node: Nodes) =>
-    node.type === 'link' &&
-    !['<', '['].includes(marked.charAt(node.position?.start.offset ?? 0));
-  const read = (node: Nodes, inHeading: boolean): void => {
+const oldReading = (source: string, tree: Root, multiline: boolean): Root => {
+  const atTags = (node: Nodes, ancestors: readonly Parents[]): void => {
     if (!('children' in node)) return;
-    const heading = inHeading || node.type === 'heading';
+    const heading =
+      node.type === 'heading' ||
+      ancestors.some((ancestor) => ancestor.type === 'heading');
     const children: Nodes[] = [];
     for (const child of node.children) {
-      if (!multiline && bare(child) && 'children' in child) {
-        for (const grandchild of child.children) read(grandchild, heading);
-        children.push(...child.children);
-        continue;
-      }
-      if (child.type === 'inlineCode' || child.type === 'code') {
-        child.value = child.value.replaceAll(TYPED_BREAK, '<br>');
-      }
       if (child.type !== 'text') {
-        read(child, heading);
+        atTags(child, [...ancestors, node]);
         children.push(child);
         continue;
       }
-      withEmoji(child.value)
-        .split(TYPED_BREAK)
-        .forEach((words, index) => {
-          if (index > 0) {
-            children.push(
-              multiline && !heading
-                ? { type: 'break' }
-                : { type: 'text', value: ' ' },
-            );
-          }
-          children.push({ type: 'text', value: words });
-        });
+      const tags = typedTagsOf(source, child, [...ancestors, node])?.tags ?? [];
+      let from = 0;
+      for (const tag of tags) {
+        children.push(
+          { type: 'text', value: child.value.slice(from, tag.from) },
+          multiline && !heading
+            ? { type: 'break' }
+            : { type: 'text', value: ' ' },
+        );
+        from = tag.to;
+      }
+      children.push(
+        from === 0 ? child : { type: 'text', value: child.value.slice(from) },
+      );
     }
     Reflect.set(node, 'children', children);
   };
-  read(tree, false);
+  atTags(tree, []);
+  for (const transform of WORDS_SEARCHED_AFTERWARDS ?? []) transform(tree);
+
+  // The parser's addresses begin where they were written; those GitHub's
+  // search finds in the words were not written as links, and have no place.
+  const bare = (node: Nodes) =>
+    node.type === 'link' &&
+    (node.position?.start.offset === undefined ||
+      !['<', '['].includes(source.charAt(node.position.start.offset)));
+  const read = (node: Nodes): void => {
+    if (!('children' in node)) return;
+    const children: Nodes[] = [];
+    for (const child of node.children) {
+      if (!multiline && bare(child) && 'children' in child) {
+        for (const grandchild of child.children) read(grandchild);
+        children.push(...child.children);
+        continue;
+      }
+      if (child.type === 'text') child.value = withEmoji(child.value);
+      read(child);
+      children.push(child);
+    }
+    Reflect.set(node, 'children', children);
+  };
+  read(tree);
   return tree;
 };
 
@@ -1063,7 +1146,9 @@ export const legacyMarkdownWritten = (
       ...repairs.filter((repair) => !replaced(repair, true)),
     ]);
   };
-  const expected = shownBy(oldReading(markdown, multiline));
+  const expected = shownBy(
+    oldReading(markdown, structuredClone(tree), multiline),
+  );
   const reads = (repairs: readonly Edit[]) =>
     shownBy(markdownTree(writtenWith(repairs)));
 
@@ -1117,10 +1202,8 @@ export const legacyMarkdownWritten = (
       const first = block.children[0]?.position?.start.offset;
       const last = block.children.at(-1)?.position?.end.offset;
       if (first === undefined || last === undefined) return [];
-      const [shown] = oldReading(
-        markdown.slice(first, last),
-        multiline,
-      ).children;
+      const words = markdown.slice(first, last);
+      const [shown] = oldReading(words, legacyTree(words), multiline).children;
       return shown === undefined
         ? []
         : [
