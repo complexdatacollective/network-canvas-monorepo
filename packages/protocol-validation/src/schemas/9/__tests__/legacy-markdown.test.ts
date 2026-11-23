@@ -1138,18 +1138,37 @@ describe('legacyMarkdownAsStandard', () => {
     },
   );
 
-  // Each of these took time that grows with the square of its length:
-  // about a second at this length. Read in time that grows with the length,
-  // each takes about a tenth of that.
-  it.each([
-    ['50,000 backslashes', '\\'.repeat(50_000)],
-    ['50,000 backslashes and `<br`', `${'\\'.repeat(50_000)}<br`],
-    ['50,000 spaces before a line break', `a${' '.repeat(50_000)}x<br>y`],
-  ])('migrates %s in well under a second', (_name, input) => {
+  // Each of these took time that grows with the square of its length, so
+  // four times the length took about twelve times as long here. Read in time
+  // that grows with the length, it takes about four times as long. The test
+  // compares the two times with each other, not with a clock, so a slow
+  // machine does not fail it.
+  it.each<[string, (length: number) => string]>([
+    ['a run of backslashes', (length) => '\\'.repeat(length)],
+    ['a run of backslashes and `<br`', (length) => `${'\\'.repeat(length)}<br`],
+    [
+      'a run of spaces before a line break',
+      (length) => `a${' '.repeat(length)}x<br>y`,
+    ],
+  ])('migrates %s in time that grows with its length', (_name, written) => {
+    const timeOf = (
+      length: number,
+      lines: 'multiple' | 'single',
+      runs: number,
+    ): number =>
+      Math.min(
+        ...Array.from({ length: runs }, () => {
+          const start = performance.now();
+          legacyMarkdownWritten(written(length), { lines });
+          return performance.now() - start;
+        }),
+      );
     for (const lines of ['multiple', 'single'] as const) {
-      const start = performance.now();
-      legacyMarkdownWritten(input, { lines });
-      expect(performance.now() - start).toBeLessThan(500);
+      // Warm up, so that the first timed run is not also the first run.
+      timeOf(1_000, lines, 1);
+      const short = timeOf(10_000, lines, 1);
+      const long = timeOf(40_000, lines, 2);
+      expect(long / short).toBeLessThan(6);
     }
   });
 
