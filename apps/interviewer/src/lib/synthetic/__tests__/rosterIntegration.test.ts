@@ -48,6 +48,16 @@ const labelled =
   (stage: DevelopmentStage): boolean =>
     stage.type === type && stage.label.en === label;
 
+const nodeTypeNamed = (name: string) => {
+  const found = Object.entries(developmentProtocol.codebook.node ?? {}).find(
+    ([, type]) => type.name === name,
+  );
+  if (found === undefined) {
+    throw new Error(`the development protocol has no node type named ${name}`);
+  }
+  return found;
+};
+
 const externalDataNameGenerator = stageIdWhere(
   'name generator with external data',
   labelled('NameGenerator', 'NG with external data'),
@@ -160,12 +170,13 @@ describe('synthetic generation over the real Development Protocol', () => {
   it('maps roster columns onto real codebook variable ids', async () => {
     const externalData = await loadRosterNodesForStages(storedProtocol());
 
+    const [personTypeId, personType] = nodeTypeNamed('person');
     const person = externalData[searchableClassmatesRoster]![0]!;
-    expect(person.type).toBe('person_node_type');
+    expect(person.type).toBe(personTypeId);
 
-    const nameVariable = Object.entries(
-      developmentProtocol.codebook.node!.person_node_type!.variables!,
-    ).find(([, v]) => v.name === 'nickname')![0];
+    const nameVariable = Object.entries(personType.variables!).find(
+      ([, v]) => v.name === 'nickname',
+    )![0];
 
     const attributes = person[entityAttributesProperty];
     expect(Object.keys(attributes)).toContain(nameVariable);
@@ -189,7 +200,8 @@ describe('synthetic generation over the real Development Protocol', () => {
     );
 
     const venueNodes = network.nodes.filter(
-      (n) => n.type === 'venue_node_type' && n.stageId === hivServicesRoster,
+      (n) =>
+        n.type === nodeTypeNamed('venue')[0] && n.stageId === hivServicesRoster,
     );
     expect(venueNodes.length).toBeGreaterThan(0);
     for (const node of venueNodes) {

@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  createEntityTypeId,
+  createVariableId,
+} from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { StoredAsset, StoredCurrentProtocol } from '../../db/types';
@@ -13,6 +17,9 @@ vi.mock('../../db/api', () => ({
 const { loadRosterNodesForStages } = await import('../loadRosterData');
 
 const HASH = 'protocol-hash';
+const PERSON = createEntityTypeId();
+const NAME = createVariableId();
+const AGE = createVariableId();
 
 const createObjectURL = vi.fn((_blob: unknown) => 'blob:roster');
 const revokeObjectURL = vi.fn();
@@ -46,10 +53,10 @@ function storedProtocol(
     importedAt: new Date().toISOString(),
     codebook: {
       node: {
-        person: {
+        [PERSON]: {
           variables: {
-            'var-name': { name: 'Name', type: 'text' },
-            'var-age': { name: 'Age', type: 'number' },
+            [NAME]: { name: 'Name', type: 'text' },
+            [AGE]: { name: 'Age', type: 'number' },
           },
         },
       },
@@ -65,7 +72,7 @@ function rosterStage(overrides?: Record<string, unknown>) {
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     unnamedLabel: { en: 'Unnamed {count}' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     dataSource: 'roster',
     prompts: [{ id: 'p1', text: 'Pick people' }],
     ...overrides,
@@ -109,8 +116,8 @@ describe('loadRosterNodesForStages', () => {
 
     expect(result['stage-ngr']).toHaveLength(3);
     const [first] = result['stage-ngr']!;
-    expect(first!.type).toBe('person');
-    expect(first![entityAttributesProperty]['var-name']).toBe('Ada');
+    expect(first!.type).toBe(PERSON);
+    expect(first![entityAttributesProperty][NAME]).toBe('Ada');
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:roster');
   });
