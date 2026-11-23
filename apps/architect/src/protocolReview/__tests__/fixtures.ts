@@ -110,3 +110,10 @@ export const makeFinding = (
   fix: { summary: 'Reword it.', changes: ['Reword the prompt'], operations },
   ...overrides,
 });
+
+/** One event of an OpenAI-style chat stream, as an endpoint of the researcher's own sends it. */
+export const chatChunk = (delta: {
+  content?: string;
+  reasoning_content?: string;
+  reasoning?: string;
+}) => `data: ${JSON.stringify({ choices: [{ delta }] })}\n\n`;

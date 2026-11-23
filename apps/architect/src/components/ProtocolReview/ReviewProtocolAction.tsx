@@ -25,7 +25,7 @@ import {
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewSummary,
-  getProtocolReviewWriter,
+  getProtocolReviewTarget,
   refreshReviewProviders,
   startReview,
 } from '~/ducks/modules/protocolReview';
@@ -155,7 +155,10 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
       // Offline, the dialog saved the study details and nothing can be sent;
       // but for the researcher's own model, which may be on this computer.
       // Who writes the review was chosen in the dialog, so it is read now.
-      if (online || getProtocolReviewWriter(store.getState()) === OWN_MODEL) {
+      if (
+        online ||
+        getProtocolReviewTarget(store.getState()).provider === OWN_MODEL
+      ) {
         await start();
       }
     },

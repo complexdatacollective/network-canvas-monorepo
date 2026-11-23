@@ -9,7 +9,7 @@ import {
   requestOwnModelReview,
   testOwnModel,
 } from '../ownModelClient';
-import { makeFinding, op, STUDY_CONTEXT } from './fixtures';
+import { chatChunk, makeFinding, op, STUDY_CONTEXT } from './fixtures';
 
 const SETTINGS: OwnModelSettings = {
   address: 'http://localhost:11434/v1',
@@ -46,11 +46,7 @@ const chatStream = (
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
       for (const delta of pieces) {
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({ choices: [{ delta }] })}\n\n`,
-          ),
-        );
+        controller.enqueue(encoder.encode(chatChunk(delta)));
       }
       controller.enqueue(encoder.encode('data: [DONE]\n\n'));
       controller.close();
@@ -106,6 +102,22 @@ const review = (
     signal: new AbortController().signal,
     fetchImpl,
     ...options,
+  });
+
+/** An endpoint that answers at once and never finishes its body, which fails as fetch's does when aborted. */
+const stalling = (contentType: string) =>
+  vi.fn<typeof fetch>(async (_url, init) => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        init?.signal?.addEventListener('abort', () =>
+          controller.error(new DOMException('Aborted', 'AbortError')),
+        );
+      },
+    });
+    return new Response(body, {
+      status: 200,
+      headers: { 'Content-Type': contentType },
+    });
   });
 
 describe('a review from the researcher’s own model', () => {
@@ -285,7 +297,7 @@ describe('a review from the researcher’s own model', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ choices: [{ delta: { content: '{' } }] })}\n\ndata: ${JSON.stringify({ error: { message: 'out of memory' } })}\n\n`,
+            `${chatChunk({ content: '{' })}data: ${JSON.stringify({ error: { message: 'out of memory' } })}\n\n`,
           ),
         );
         controller.close();
@@ -329,6 +341,16 @@ describe('a review from the researcher’s own model', () => {
       code: 'endpoint_error',
     });
   });
+
+  it.each(['application/json', 'text/event-stream'])(
+    'gives up on a %s answer that starts and never finishes',
+    async (contentType) => {
+      expect(await review(stalling(contentType), { timeoutMs: 5 })).toEqual({
+        kind: 'error',
+        code: 'endpoint_error',
+      });
+    },
+  );
 });
 
 describe('testing the connection', () => {
@@ -375,5 +397,16 @@ describe('testing the connection', () => {
   ] as const)('says why it failed (%#)', async (answer, code) => {
     const { fetchImpl } = endpoint(answer);
     expect(await test(fetchImpl)).toEqual({ ok: false, code });
+  });
+
+  it('gives up on an answer that starts and never finishes', async () => {
+    expect(
+      await testOwnModel({
+        settings: SETTINGS,
+        signal: new AbortController().signal,
+        fetchImpl: stalling('application/json'),
+        timeoutMs: 5,
+      }),
+    ).toEqual({ ok: false, code: 'endpoint_error' });
   });
 });

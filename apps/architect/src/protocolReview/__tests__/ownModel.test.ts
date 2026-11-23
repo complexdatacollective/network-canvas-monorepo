@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { REVIEW_ERROR_CODES } from '@codaco/protocol-review-worker/contract';
 import { PROTOCOL_REVIEW_OWN_MODEL_KEY } from '~/utils/storageNames';
 
 import {
@@ -13,9 +12,7 @@ import {
   chatCompletionsUrl,
   completeOwnModelSettings,
   isOwnModelAddress,
-  isOwnModelErrorCode,
   OWN_MODEL,
-  OWN_MODEL_ERROR_CODES,
 } from '../ownModel';
 
 describe('the address of the researcher’s own model', () => {
@@ -82,23 +79,19 @@ describe('the settings a review can be sent with', () => {
     [{ address: 'http://example.com/v1', model: 'llama', apiKey: '' }],
     [{ address: 'http://localhost:11434/v1', model: '  ', apiKey: '' }],
     [{ model: 'llama' }],
+    // A key that cannot be sent as typed is not sent as no key.
+    [
+      {
+        address: 'http://localhost:11434/v1',
+        model: 'llama',
+        apiKey: 'k'.repeat(501),
+      },
+    ],
+    [{ address: 'http://localhost:11434/v1', model: 'llama', apiKey: 7 }],
     [null],
     ['http://localhost:11434/v1'],
   ])('is not %j', (value) => {
     expect(completeOwnModelSettings(value)).toBeNull();
-  });
-});
-
-describe('failure codes', () => {
-  // A code is told apart by which list it is in, so no code may be in both.
-  it('shares no code with the review service', () => {
-    for (const code of OWN_MODEL_ERROR_CODES) {
-      expect(REVIEW_ERROR_CODES).not.toContain(code);
-      expect(isOwnModelErrorCode(code)).toBe(true);
-    }
-    for (const code of REVIEW_ERROR_CODES) {
-      expect(isOwnModelErrorCode(code)).toBe(false);
-    }
   });
 });
 

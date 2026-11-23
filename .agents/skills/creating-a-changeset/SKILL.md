@@ -122,6 +122,13 @@ or with another gated lane because `changeset version` hard-errors on ignored
 and non-ignored packages in one file. If one feature affects multiple lanes,
 run `pnpm changeset` once per lane.
 
+One such case is easy to miss: Architect bundles the protocol review Worker's
+prompt and answer reader (`workers/protocol-review/src/prompt/**` and
+`src/findings.ts`) for reviews written by a researcher's own model. A change
+there needs a Worker changeset and a second, separate changeset for
+`@codaco/architect`, or own-model reviews change without an Architect release
+note.
+
 The Studio lane spans all four Studio workspace packages —
 `@codaco/studio-web`, `@codaco/studio-api`, `@codaco/studio-contract`, and
 `@codaco/studio-sync` — so one Studio changeset may name any combination of

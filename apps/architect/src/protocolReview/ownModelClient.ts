@@ -1,12 +1,12 @@
 import type { Finding } from '@codaco/protocol-review-worker/contract';
 import type { ReviewMaterial } from '@codaco/protocol-review-worker/prompt';
 
+import { readEventStream } from './eventStream';
 import {
   chatCompletionsUrl,
   type OwnModelErrorCode,
   type OwnModelSettings,
 } from './ownModel';
-import { createEventStreamParser } from './reviewClient';
 
 /**
  * Asks the researcher's own model for a review, from the browser, through
@@ -34,7 +34,9 @@ export type OwnModelOutcome =
   | { kind: 'error'; code: OwnModelErrorCode }
   | { kind: 'aborted' };
 
-const failed = (code: OwnModelErrorCode): OwnModelOutcome => ({
+type OwnModelFailure = Exclude<OwnModelOutcome, { kind: 'result' }>;
+
+const failed = (code: OwnModelErrorCode): OwnModelFailure => ({
   kind: 'error',
   code,
 });
@@ -94,6 +96,8 @@ const headersFor = (settings: OwnModelSettings): Record<string, string> => ({
     : { Authorization: `Bearer ${settings.apiKey}` }),
 });
 
+type Interruption = 'aborted' | 'timed_out';
+
 /**
  * A signal that aborts when `outer` does or when `timeoutMs` passes, and
  * which of the two it was.
@@ -110,13 +114,18 @@ const withTimeout = (outer: AbortSignal, timeoutMs: number) => {
   }, timeoutMs);
   return {
     signal: controller.signal,
-    timedOut: () => timedOut,
+    interruption: (): Interruption | null => {
+      if (outer.aborted) return 'aborted';
+      return timedOut ? 'timed_out' : null;
+    },
     release: () => {
       clearTimeout(timer);
       outer.removeEventListener('abort', abort);
     },
   };
 };
+
+type Timeout = ReturnType<typeof withTimeout>;
 
 const post = (
   fetchImpl: typeof fetch,
@@ -152,6 +161,130 @@ export const extractAnswerJson = (answer: string): string => {
 /** How the answer may be asked for, most exact first. */
 const ANSWER_FORMATS = ['json_schema', 'json_object', 'none'] as const;
 
+type AnswerFormat = (typeof ANSWER_FORMATS)[number];
+
+const responseFormatFor = (
+  format: AnswerFormat,
+  schema: unknown,
+): { response_format?: Record<string, unknown> } => {
+  if (format === 'none') return {};
+  if (format === 'json_object') {
+    return { response_format: { type: 'json_object' } };
+  }
+  return {
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'protocol_review', strict: true, schema },
+    },
+  };
+};
+
+const interrupted = (interruption: Interruption): OwnModelFailure =>
+  interruption === 'aborted' ? { kind: 'aborted' } : failed('endpoint_error');
+
+/**
+ * Posts the request in each answer format in turn until the endpoint accepts
+ * one. A request refused as invalid may be refused for the answer format,
+ * which not every endpoint supports, so only that refusal is asked again
+ * more plainly.
+ */
+const postWithFormatFallback = async (
+  send: (format: AnswerFormat, signal: AbortSignal) => Promise<Response>,
+  timeout: Timeout,
+): Promise<Response | OwnModelFailure> => {
+  for (const format of ANSWER_FORMATS) {
+    let response: Response;
+    try {
+      // oxlint-disable-next-line no-await-in-loop -- each way of asking is tried only after the one before was refused
+      response = await send(format, timeout.signal);
+    } catch {
+      const interruption = timeout.interruption();
+      return interruption === null
+        ? failed('unreachable')
+        : interrupted(interruption);
+    }
+    if (response.ok) return response;
+    // oxlint-disable-next-line no-await-in-loop -- as above
+    const body = await readJson(response);
+    const interruption = timeout.interruption();
+    if (interruption !== null) return interrupted(interruption);
+    const code = classifyStatus(response.status, body);
+    const refusedAsInvalid =
+      code === 'endpoint_error' &&
+      (response.status === 400 || response.status === 422);
+    if (!refusedAsInvalid || format === 'none') return failed(code);
+  }
+  return failed('endpoint_error');
+};
+
+type Progress = { received: number; thinking: number };
+
+const firstChoice = (body: unknown): unknown =>
+  isRecord(body) && Array.isArray(body.choices)
+    ? (body.choices[0] as unknown)
+    : undefined;
+
+/** The answer of an endpoint that does not stream, which comes all at once. */
+const readWholeAnswer = async (response: Response): Promise<string> => {
+  const choice = firstChoice(await readJson(response));
+  const message = isRecord(choice) ? choice.message : undefined;
+  return isRecord(message) && typeof message.content === 'string'
+    ? message.content
+    : '';
+};
+
+/**
+ * The text of a streamed answer, or null when the endpoint sends an error in
+ * the middle of it. Rejects when the read fails.
+ */
+const readStreamedAnswer = async (
+  body: ReadableStream<Uint8Array>,
+  signal: AbortSignal,
+  onProgress?: (progress: Progress) => void,
+): Promise<string | null> => {
+  let text = '';
+  let thinking = 0;
+  let streamError = false;
+  const onData = (data: string) => {
+    if (data === '[DONE]') return;
+    let chunk: unknown;
+    try {
+      chunk = JSON.parse(data) as unknown;
+    } catch {
+      return;
+    }
+    if (!isRecord(chunk)) return;
+    if (chunk.error !== undefined && chunk.error !== null) {
+      streamError = true;
+      return;
+    }
+    const choice = firstChoice(chunk);
+    const delta = isRecord(choice) ? choice.delta : undefined;
+    if (!isRecord(delta)) return;
+    // Endpoints name a reasoning model's thinking in one of two ways.
+    const reasoning = delta.reasoning_content ?? delta.reasoning;
+    if (typeof reasoning === 'string') thinking += reasoning.length;
+    if (typeof delta.content === 'string') text += delta.content;
+    onProgress?.({ received: text.length, thinking });
+  };
+  await readEventStream(body, signal, onData, () => streamError);
+  return streamError ? null : text;
+};
+
+const readAnswer = (
+  response: Response,
+  signal: AbortSignal,
+  onProgress?: (progress: Progress) => void,
+): Promise<string | null> => {
+  const contentType = response.headers.get('Content-Type') ?? '';
+  if (contentType.includes('application/json')) {
+    return readWholeAnswer(response);
+  }
+  return response.body
+    ? readStreamedAnswer(response.body, signal, onProgress)
+    : Promise.resolve('');
+};
+
 type RequestOwnModelReviewOptions = {
   settings: OwnModelSettings;
   request: ReviewMaterial;
@@ -160,7 +293,7 @@ type RequestOwnModelReviewOptions = {
    * Characters received so far of the model's answer (`received`) and of its
    * reasoning, when the endpoint reports it (`thinking`); both only grow.
    */
-  onProgress?: (progress: { received: number; thinking: number }) => void;
+  onProgress?: (progress: Progress) => void;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 };
@@ -194,129 +327,47 @@ export const requestOwnModelReview = async ({
   // The service's providers are held to the schema by the provider. An
   // endpoint may not support that, or may ignore it, so the shape is also
   // written out for the model to read.
-  const user = `${buildReviewMessage(request)}
+  const messages = [
+    { role: 'system', content: REVIEW_SYSTEM_PROMPT },
+    {
+      role: 'user',
+      content: `${buildReviewMessage(request)}
 
 Answer with one JSON object and nothing else: no text before or after it, and no code fence. It must match this JSON Schema:
-${JSON.stringify(REVIEW_OUTPUT_SCHEMA)}`;
-
-  const bodyFor = (format: (typeof ANSWER_FORMATS)[number]) => ({
-    model: settings.model,
-    stream: true,
-    messages: [
-      { role: 'system', content: REVIEW_SYSTEM_PROMPT },
-      { role: 'user', content: user },
-    ],
-    ...(format === 'json_schema'
-      ? {
-          response_format: {
-            type: 'json_schema',
-            json_schema: {
-              name: 'protocol_review',
-              strict: true,
-              schema: REVIEW_OUTPUT_SCHEMA,
-            },
-          },
-        }
-      : format === 'json_object'
-        ? { response_format: { type: 'json_object' } }
-        : {}),
-  });
+${JSON.stringify(REVIEW_OUTPUT_SCHEMA)}`,
+    },
+  ];
+  const send = (format: AnswerFormat, requestSignal: AbortSignal) =>
+    post(
+      fetchImpl,
+      url,
+      settings,
+      {
+        model: settings.model,
+        stream: true,
+        messages,
+        ...responseFormatFor(format, REVIEW_OUTPUT_SCHEMA),
+      },
+      requestSignal,
+    );
 
   const timeout = withTimeout(signal, timeoutMs);
-  const stopped = (): OwnModelOutcome =>
-    signal.aborted ? { kind: 'aborted' } : failed('endpoint_error');
-
   try {
-    let response: Response | null = null;
-    for (const format of ANSWER_FORMATS) {
-      try {
-        // oxlint-disable-next-line no-await-in-loop -- each way of asking is tried only after the one before was refused
-        response = await post(
-          fetchImpl,
-          url,
-          settings,
-          bodyFor(format),
-          timeout.signal,
-        );
-      } catch {
-        if (signal.aborted || timeout.timedOut()) return stopped();
-        return failed('unreachable');
-      }
-      if (response.ok) break;
-      // oxlint-disable-next-line no-await-in-loop -- as above
-      const code = classifyStatus(response.status, await readJson(response));
-      // A request refused as invalid may be refused for the answer format,
-      // which not every endpoint supports: it is asked again more plainly.
-      const refusedAsInvalid =
-        code === 'endpoint_error' &&
-        (response.status === 400 || response.status === 422);
-      if (!refusedAsInvalid || format === 'none') return failed(code);
+    const response = await postWithFormatFallback(send, timeout);
+    if (!(response instanceof Response)) return response;
+
+    let text: string | null;
+    try {
+      text = await readAnswer(response, timeout.signal, onProgress);
+    } catch {
+      return timeout.interruption() === 'aborted'
+        ? { kind: 'aborted' }
+        : failed('endpoint_error');
     }
-    if (response === null || !response.ok) return failed('endpoint_error');
+    const interruption = timeout.interruption();
+    if (interruption !== null) return interrupted(interruption);
+    if (text === null) return failed('endpoint_error');
 
-    let text = '';
-    let thinking = 0;
-    let streamError = false;
-
-    const contentType = response.headers.get('Content-Type') ?? '';
-    if (contentType.includes('application/json')) {
-      // An endpoint that does not stream answers all at once.
-      const body = await readJson(response);
-      const choice =
-        isRecord(body) && Array.isArray(body.choices)
-          ? (body.choices[0] as unknown)
-          : undefined;
-      const message = isRecord(choice) ? choice.message : undefined;
-      if (isRecord(message) && typeof message.content === 'string') {
-        text = message.content;
-      }
-    } else if (response.body) {
-      const handle = (data: string) => {
-        if (data === '[DONE]') return;
-        let chunk: unknown;
-        try {
-          chunk = JSON.parse(data) as unknown;
-        } catch {
-          return;
-        }
-        if (!isRecord(chunk)) return;
-        if (chunk.error !== undefined && chunk.error !== null) {
-          streamError = true;
-          return;
-        }
-        const choice = Array.isArray(chunk.choices)
-          ? (chunk.choices[0] as unknown)
-          : undefined;
-        const delta = isRecord(choice) ? choice.delta : undefined;
-        if (!isRecord(delta)) return;
-        // Endpoints name a reasoning model's thinking in one of two ways.
-        const reasoning = delta.reasoning_content ?? delta.reasoning;
-        if (typeof reasoning === 'string') thinking += reasoning.length;
-        if (typeof delta.content === 'string') text += delta.content;
-        onProgress?.({ received: text.length, thinking });
-      };
-      const parser = createEventStreamParser(handle);
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      try {
-        for (;;) {
-          // oxlint-disable-next-line no-await-in-loop -- a stream is read one chunk after another
-          const { done, value } = await reader.read();
-          if (done) break;
-          parser.push(decoder.decode(value, { stream: true }));
-          if (streamError) break;
-        }
-        parser.push(decoder.decode());
-        parser.end();
-      } catch {
-        return stopped();
-      } finally {
-        reader.cancel().catch(() => undefined);
-      }
-    }
-
-    if (signal.aborted) return { kind: 'aborted' };
-    if (streamError) return failed('endpoint_error');
     const normalised = normaliseFindings(extractAnswerJson(text));
     return normalised.ok
       ? { kind: 'result', findings: normalised.findings }
@@ -328,8 +379,14 @@ ${JSON.stringify(REVIEW_OUTPUT_SCHEMA)}`;
 
 export type OwnModelTestResult =
   | { ok: true }
-  | { ok: false; code: OwnModelErrorCode }
-  | { ok: false; code: 'aborted' };
+  | { ok: false; code: OwnModelErrorCode | 'aborted' };
+
+const testFailure = (
+  interruption: Interruption | null,
+): OwnModelErrorCode | 'aborted' => {
+  if (interruption === null) return 'unreachable';
+  return interruption === 'aborted' ? 'aborted' : 'endpoint_error';
+};
 
 type TestOwnModelOptions = {
   settings: OwnModelSettings;
@@ -367,14 +424,13 @@ export const testOwnModel = async ({
         timeout.signal,
       );
     } catch {
-      if (signal.aborted) return { ok: false, code: 'aborted' };
-      return {
-        ok: false,
-        code: timeout.timedOut() ? 'endpoint_error' : 'unreachable',
-      };
+      return { ok: false, code: testFailure(timeout.interruption()) };
     }
     const body = await readJson(response);
-    if (signal.aborted) return { ok: false, code: 'aborted' };
+    const interruption = timeout.interruption();
+    if (interruption !== null) {
+      return { ok: false, code: testFailure(interruption) };
+    }
     if (!response.ok) {
       return { ok: false, code: classifyStatus(response.status, body) };
     }

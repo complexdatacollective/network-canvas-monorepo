@@ -11,7 +11,7 @@ import {
   getProtocolReviewStartBlock,
   type ReviewProviderChoice,
   reviewProviderChoices,
-  reviewProviderFor,
+  reviewTargetFor,
 } from '~/ducks/modules/protocolReview';
 import {
   OWN_MODEL,
@@ -81,7 +81,9 @@ export const useReviewAvailability = (): ReviewAvailability => {
   const chosen = useAppSelector((state) => state.protocolReview.provider);
   const ownModel = useAppSelector((state) => state.protocolReview.ownModel);
   const retryAt =
-    run.status === 'failed' && run.retryAt !== null
+    run.status === 'failed' &&
+    run.provider !== OWN_MODEL &&
+    run.retryAt !== null
       ? Date.parse(run.retryAt)
       : null;
   const now = useNowUntil([
@@ -125,7 +127,7 @@ export const useReviewAvailability = (): ReviewAvailability => {
         )
       : null;
 
-  const provider = reviewProviderFor(chosen, providers, ownModel);
+  const { provider } = reviewTargetFor(chosen, providers, ownModel);
   // The researcher's own model is not the service's to limit, and may be on
   // this computer: neither a limit nor being offline stands in its way.
   const own = provider === OWN_MODEL;

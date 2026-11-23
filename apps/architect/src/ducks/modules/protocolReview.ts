@@ -53,7 +53,7 @@ import {
 import {
   OWN_MODEL,
   type OwnModelSettings,
-  type ReviewFailureCode,
+  type ReviewFailure,
   type ReviewWriter,
 } from '~/protocolReview/ownModel';
 import { requestOwnModelReview } from '~/protocolReview/ownModelClient';
@@ -132,13 +132,7 @@ export type ReviewRun =
       /** Who is writing it. */
       provider: ReviewWriter;
     }
-  | {
-      status: 'failed';
-      code: ReviewFailureCode;
-      retryAt: string | null;
-      /** Who was asked to write the review that failed. */
-      provider: ReviewWriter;
-    };
+  | ({ status: 'failed' } & ReviewFailure);
 
 /**
  * A provider whose budget the service said is spent, and when it starts
@@ -256,16 +250,11 @@ const protocolReviewSlice = createSlice({
     },
     runFailed: (
       state,
-      action: PayloadAction<{
-        runId: number;
-        code: ReviewFailureCode;
-        retryAt: string | null;
-        provider: ReviewWriter;
-      }>,
+      action: PayloadAction<{ runId: number } & ReviewFailure>,
     ) => {
-      const { runId, code, retryAt, provider } = action.payload;
+      const { runId, ...failure } = action.payload;
       if (!isRun(state.run, runId)) return;
-      state.run = { status: 'failed', code, retryAt, provider };
+      state.run = { status: 'failed', ...failure };
     },
     failureDismissed: (state) => {
       if (state.run.status === 'failed') state.run = { status: 'idle' };
@@ -403,7 +392,7 @@ export type ReviewProviderChoice = {
   retryAt: number | null;
 };
 
-const isBudgetCode = (code: ReviewFailureCode) =>
+const isBudgetCode = (code: ReviewFailure['code']) =>
   code === 'daily_limit' || code === 'monthly_limit';
 
 /**
@@ -445,55 +434,59 @@ export const reviewProviderChoices = (
   });
 
 /**
- * Who a review started now would be asked of: the researcher's choice, or
- * the first provider with budget left while the chosen one has none. The
+ * The provider of the service's a review would be asked of: the preferred
+ * one, or the first with budget left while that one has none.
+ */
+export const serviceProviderFor = (
+  preferred: ReviewProvider,
+  choices: readonly ReviewProviderChoice[],
+): ReviewProvider => {
+  const available = choices.filter((choice) => choice.available);
+  return (
+    available.find((choice) => choice.provider === preferred)?.provider ??
+    available[0]?.provider ??
+    preferred
+  );
+};
+
+/** Where a review is sent: the service, for a provider, or the researcher's endpoint. */
+type ReviewTarget =
+  | { provider: ReviewProvider }
+  | { provider: typeof OWN_MODEL; settings: OwnModelSettings };
+
+/**
+ * Where a review started now would be sent: to the researcher's choice, or
+ * to the first provider with budget left while the chosen one has none. The
  * choice itself is kept, and is used again once its budget starts again.
  *
  * The researcher's own model is asked only while it is the choice and this
  * browser keeps its settings (`ownModel`). It is never fallen back to: a
  * review goes to the researcher's endpoint only when they chose that.
  */
-export const reviewProviderFor = (
+export const reviewTargetFor = (
   chosen: ReviewWriter,
   choices: readonly ReviewProviderChoice[],
-  ownModel: OwnModelSettings | null = null,
-): ReviewWriter => {
-  if (chosen === OWN_MODEL && ownModel !== null) return OWN_MODEL;
-  const available = choices.filter((choice) => choice.available);
-  return (
-    available.find((choice) => choice.provider === chosen)?.provider ??
-    available[0]?.provider ??
-    (chosen === OWN_MODEL ? DEFAULT_REVIEW_PROVIDER : chosen)
-  );
+  ownModel: OwnModelSettings | null,
+): ReviewTarget => {
+  if (chosen !== OWN_MODEL) {
+    return { provider: serviceProviderFor(chosen, choices) };
+  }
+  return ownModel === null
+    ? { provider: serviceProviderFor(DEFAULT_REVIEW_PROVIDER, choices) }
+    : { provider: OWN_MODEL, settings: ownModel };
 };
 
-/** Who a review started at `now` would be asked of. */
-export const getProtocolReviewWriter = (
+/** Where a review started at `now` would be sent. */
+export const getProtocolReviewTarget = (
   state: RootState,
   now: number = Date.now(),
-): ReviewWriter => {
+): ReviewTarget => {
   const review = selectReview(state);
-  return reviewProviderFor(
+  return reviewTargetFor(
     review.provider,
     reviewProviderChoices(review, now),
     review.ownModel,
   );
-};
-
-/** Where a review is sent: the service, for a provider, or the researcher's endpoint. */
-type ReviewTarget =
-  | { writer: ReviewProvider }
-  | { writer: typeof OWN_MODEL; settings: OwnModelSettings };
-
-const getProtocolReviewTarget = (state: RootState): ReviewTarget => {
-  const writer = getProtocolReviewWriter(state);
-  const { ownModel } = selectReview(state);
-  if (writer !== OWN_MODEL) return { writer };
-  // `reviewProviderFor` answers the researcher's own model only while its
-  // settings are kept; this narrows the types.
-  return ownModel === null
-    ? { writer: DEFAULT_REVIEW_PROVIDER }
-    : { writer, settings: ownModel };
 };
 
 export type ReviewStartBlock =
@@ -522,7 +515,7 @@ export const getProtocolReviewStartBlock = (
   if (review.run.status === 'running') return { code: 'running' };
   // The budgets and the hourly limit are the service's. A review written by
   // the researcher's own model never reaches the service, so neither applies.
-  if (getProtocolReviewWriter(state, now) !== OWN_MODEL) {
+  if (getProtocolReviewTarget(state, now).provider !== OWN_MODEL) {
     const choices = reviewProviderChoices(review, now);
     if (!choices.some((choice) => choice.available)) {
       return { code: 'budget_spent' };
@@ -756,7 +749,7 @@ type InflightRun = {
   controller: AbortController;
   protocolId: string;
   runId: number;
-  writer: ReviewWriter;
+  provider: ReviewWriter;
 };
 
 /** The service counts reviews against an hourly limit. */
@@ -784,7 +777,7 @@ const abortInflight = (): InflightRun | null => {
  * so stopping it counts for nothing.
  */
 const countStoppedRun = (dispatch: AppDispatch, stopped: InflightRun) => {
-  if (stopped.writer === OWN_MODEL) return;
+  if (stopped.provider === OWN_MODEL) return;
   const now = Date.now();
   // With nothing saved yet (no review has been answered in this browser),
   // the window is a full one at the service's limit. A window that has run
@@ -901,13 +894,13 @@ export type StartReviewRefusal =
 export type StartReviewResult =
   | { status: 'refused'; reason: StartReviewRefusal }
   | { status: 'completed'; findingCount: number }
-  | { status: 'failed'; code: ReviewFailureCode; retryAt: string | null }
+  | ({ status: 'failed' } & ReviewFailure)
   | { status: 'cancelled' };
 
 /** How a review ended, whoever was asked to write it. */
 type RunOutcome =
   | { kind: 'aborted' }
-  | { kind: 'error'; code: ReviewFailureCode; retryAt: string | null }
+  | { kind: 'error'; failure: ReviewFailure }
   | {
       kind: 'result';
       reviewId: string;
@@ -974,7 +967,7 @@ export const startReview =
     if (
       typeof navigator !== 'undefined' &&
       !navigator.onLine &&
-      getProtocolReviewWriter(getState()) !== OWN_MODEL
+      getProtocolReviewTarget(getState()).provider !== OWN_MODEL
     ) {
       return refuse('offline');
     }
@@ -1010,12 +1003,12 @@ export const startReview =
     const controller = new AbortController();
     lastRunId += 1;
     const target = getProtocolReviewTarget(state);
-    const provider = target.writer;
+    const { provider } = target;
     const run: InflightRun = {
       controller,
       protocolId,
       runId: lastRunId,
-      writer: provider,
+      provider,
     };
     const { runId } = run;
     inflight = run;
@@ -1027,7 +1020,7 @@ export const startReview =
     const locale = getArchitectIntl().locale;
     // Shared only on a choice the researcher made, and only a review the
     // service wrote: one from the researcher's own model never reaches it.
-    const share = target.writer !== OWN_MODEL && record.shareReviews === true;
+    const share = provider !== OWN_MODEL && record.shareReviews === true;
     dispatch(actions.runStarted({ runId, startedAt, provider }));
     captureReviewStarted({ share, provider });
 
@@ -1040,7 +1033,7 @@ export const startReview =
       dispatch(actions.runProgress({ runId, ...progress }));
     };
     let outcome: RunOutcome;
-    if (target.writer === OWN_MODEL) {
+    if (target.provider === OWN_MODEL) {
       const answer = await requestOwnModelReview({
         settings: target.settings,
         request: material,
@@ -1056,13 +1049,16 @@ export const startReview =
               quota: null,
             }
           : answer.kind === 'error'
-            ? { kind: 'error', code: answer.code, retryAt: null }
+            ? {
+                kind: 'error',
+                failure: { provider: OWN_MODEL, code: answer.code },
+              }
             : answer;
     } else {
       const answer = await requestReview({
         request: {
           installationId: getReviewInstallationId(),
-          provider: target.writer,
+          provider: target.provider,
           share,
           ...material,
         },
@@ -1072,7 +1068,16 @@ export const startReview =
       outcome =
         answer.kind === 'result'
           ? { kind: 'result', ...answer.result }
-          : answer;
+          : answer.kind === 'error'
+            ? {
+                kind: 'error',
+                failure: {
+                  provider: target.provider,
+                  code: answer.code,
+                  retryAt: answer.retryAt,
+                },
+              }
+            : answer;
     }
 
     // Cancelled, or the protocol closed or changed: whoever aborted has reset
@@ -1092,31 +1097,25 @@ export const startReview =
     inflight = null;
 
     if (outcome.kind === 'error') {
-      if (outcome.code === 'hourly_limit') {
+      const { failure } = outcome;
+      if (failure.code === 'hourly_limit') {
         const quota: ReviewQuota = {
           limit:
             selectReview(getState()).quota?.limit ??
             REVIEW_LIMITS.perInstallationPerHour,
           remaining: 0,
           resetsAt:
-            outcome.retryAt ?? new Date(Date.now() + HOUR_MS).toISOString(),
+            failure.retryAt ?? new Date(Date.now() + HOUR_MS).toISOString(),
         };
         writeStoredQuota(quota);
         dispatch(actions.quotaUpdated(quota));
       }
-      dispatch(
-        actions.runFailed({
-          runId,
-          code: outcome.code,
-          retryAt: outcome.retryAt,
-          provider,
-        }),
-      );
-      captureReviewFailed(outcome.code, provider);
+      dispatch(actions.runFailed({ runId, ...failure }));
+      captureReviewFailed(failure);
       // One provider's budget is spent: ask about the others, so the
       // researcher sees which they can choose instead.
-      if (isBudgetCode(outcome.code)) void dispatch(refreshReviewProviders());
-      return { status: 'failed', code: outcome.code, retryAt: outcome.retryAt };
+      if (isBudgetCode(failure.code)) void dispatch(refreshReviewProviders());
+      return { status: 'failed', ...failure };
     }
 
     const result = outcome;

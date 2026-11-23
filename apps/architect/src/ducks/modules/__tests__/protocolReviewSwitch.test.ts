@@ -1,19 +1,14 @@
 // fake-indexeddb must be installed before Dexie opens a database.
 import 'fake-indexeddb/auto';
-import {
-  configureStore,
-  type Middleware,
-  type UnknownAction,
-} from '@reduxjs/toolkit';
+import { type Middleware, type UnknownAction } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   Finding,
   ReviewResult,
 } from '@codaco/protocol-review-worker/contract';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
+import { setProtocolLockState } from '~/ducks/modules/app';
 import {
   cancelReview,
   checkFixAvailability,
@@ -22,14 +17,12 @@ import {
   startReview,
   undoFix,
 } from '~/ducks/modules/protocolReview';
-import { rootReducer } from '~/ducks/modules/root';
 import {
   makeFinding,
   makeProtocol,
   op,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
-import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import {
   readReviewRecord,
   writeReviewRecord,
@@ -40,6 +33,12 @@ import {
  * active one, and never mixes two protocols' data. Each test holds one of the
  * thunk's awaits open, switches protocols, then lets it finish.
  */
+import {
+  makeReviewStore,
+  openProtocol,
+  type ReviewStore,
+  switchToProtocol,
+} from './protocolReviewStore';
 
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
 
@@ -112,17 +111,10 @@ const makeStore = () => {
     own.push(action as UnknownAction);
     return next(action);
   };
-  const created = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }).concat(logger),
-  });
-  keepProtocolReviewOnActiveProtocol(created);
+  const created = makeReviewStore([logger]);
   log = own;
   return created;
 };
-
-type Store = ReturnType<typeof makeStore>;
 
 const TITLE: Finding = makeFinding('title', [
   op('set', '/stages/welcome/label/en', 'Welcome to our study'),
@@ -134,28 +126,8 @@ const RESULT: ReviewResult = {
   quota: { limit: 5, remaining: 4, resetsAt: '2099-01-01T00:00:00.000Z' },
 };
 
-let counter = 0;
-
-/** Switches the tab to `protocol` under a fresh id, without waiting for its review. */
-const switchTo = (target: Store, protocol: CurrentProtocol) => {
-  counter += 1;
-  const id = `switch-${counter}`;
-  target.dispatch(setProtocolLockState('owned'));
-  target.dispatch(setActiveProtocolId(id));
-  target.dispatch(setActiveProtocol(protocol));
-  return id;
-};
-
-const open = async (target: Store, protocol = makeProtocol()) => {
-  const id = switchTo(target, protocol);
-  await vi.waitFor(() =>
-    expect(target.getState().protocolReview.record?.protocolId).toBe(id),
-  );
-  return id;
-};
-
-const reviewed = async (target: Store) => {
-  const id = await open(target);
+const reviewed = async (target: ReviewStore) => {
+  const id = await openProtocol(target);
   client.requestReview.mockResolvedValueOnce({
     kind: 'result',
     result: RESULT,
@@ -168,9 +140,10 @@ const reviewed = async (target: Store) => {
 /** Protocol B: another protocol with its own study details. */
 const otherProtocol = () => makeProtocol({ name: 'Another study' });
 
-const protocolOf = (target: Store) => target.getState().activeProtocol.present;
+const protocolOf = (target: ReviewStore) =>
+  target.getState().activeProtocol.present;
 
-let store: Store;
+let store: ReviewStore;
 
 beforeEach(() => {
   store = makeStore();
@@ -189,7 +162,7 @@ afterEach(() => {
 
 describe('rule G', () => {
   it('a review still saving cannot end the run of the protocol opened after it', async () => {
-    await open(store);
+    await openProtocol(store);
     client.requestReview.mockResolvedValueOnce({
       kind: 'result',
       result: RESULT,
@@ -203,7 +176,7 @@ describe('rule G', () => {
     const savingA = gates.writes.waiting.splice(0);
     gates.writes.hold = false;
 
-    await open(store, otherProtocol());
+    await openProtocol(store, otherProtocol());
     const { promise: answerB, resolve: answerBWith } =
       Promise.withResolvers<ReviewOutcome>();
     client.requestReview.mockReturnValueOnce(answerB);
@@ -222,14 +195,14 @@ describe('rule G', () => {
   });
 
   it('startReview sends nothing when the protocol changes while its record is read', async () => {
-    const a = switchTo(store, makeProtocol());
+    const a = switchToProtocol(store, makeProtocol());
     gates.reads.hold = true;
     // The record of A is not in the slice yet, so the thunk reads it.
     const run = store.dispatch(startReview());
     await vi.waitFor(() =>
       expect(gates.reads.waiting.length).toBeGreaterThan(0),
     );
-    const b = switchTo(store, otherProtocol());
+    const b = switchToProtocol(store, otherProtocol());
     release(gates.reads);
 
     expect(await run).toEqual({ status: 'cancelled' });
@@ -239,13 +212,13 @@ describe('rule G', () => {
   });
 
   it('setShareReviews saves nothing when the protocol changes while its record is read', async () => {
-    const a = switchTo(store, makeProtocol());
+    const a = switchToProtocol(store, makeProtocol());
     gates.reads.hold = true;
     const choice = store.dispatch(setShareReviews(true));
     await vi.waitFor(() =>
       expect(gates.reads.waiting.length).toBeGreaterThan(0),
     );
-    const b = switchTo(store, otherProtocol());
+    const b = switchToProtocol(store, otherProtocol());
     release(gates.reads);
     await choice;
 
@@ -261,7 +234,7 @@ describe('rule G', () => {
     await vi.waitFor(() =>
       expect(gates.edits.waiting.length).toBeGreaterThan(0),
     );
-    switchTo(store, otherProtocol());
+    switchToProtocol(store, otherProtocol());
     // What the store holds for the other protocol: opening one drops the
     // wording Network Canvas supplies, so it is not the object passed in.
     const other = protocolOf(store);
@@ -295,7 +268,7 @@ describe('rule G', () => {
     await vi.waitFor(() =>
       expect(gates.edits.waiting.length).toBeGreaterThan(0),
     );
-    switchTo(store, otherProtocol());
+    switchToProtocol(store, otherProtocol());
     // What the store holds for the other protocol: opening one drops the
     // wording Network Canvas supplies, so it is not the object passed in.
     const other = protocolOf(store);
@@ -330,7 +303,7 @@ describe('rule G', () => {
       expect(gates.edits.waiting.length).toBeGreaterThan(0),
     );
     const stale = protocolOf(store);
-    switchTo(store, otherProtocol());
+    switchToProtocol(store, otherProtocol());
     const afterSwitch = log.length;
     release(gates.edits);
     await store.dispatch(checkFixAvailability());
@@ -347,12 +320,12 @@ describe('rule G', () => {
 
   it('syncProtocolReview installs no record for a protocol no longer open', async () => {
     gates.reads.hold = true;
-    switchTo(store, makeProtocol());
+    switchToProtocol(store, makeProtocol());
     await vi.waitFor(() =>
       expect(gates.reads.waiting.length).toBeGreaterThan(0),
     );
     gates.reads.hold = false;
-    const b = switchTo(store, otherProtocol());
+    const b = switchToProtocol(store, otherProtocol());
     release(gates.reads);
     await vi.waitFor(() =>
       expect(store.getState().protocolReview.record?.protocolId).toBe(b),
@@ -375,7 +348,7 @@ describe('rule G', () => {
  */
 describe('tab ownership', () => {
   it('a tab that becomes the owner reads the sharing choice the other tab saved', async () => {
-    const a = await open(store);
+    const a = await openProtocol(store);
     await store.dispatch(setShareReviews(true));
     expect(store.getState().protocolReview.record?.shareReviews).toBe(true);
 
@@ -393,7 +366,7 @@ describe('tab ownership', () => {
   });
 
   it('a tab that does not own the protocol starts no review and saves no choice', async () => {
-    const a = await open(store);
+    const a = await openProtocol(store);
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     expect(await store.dispatch(startReview())).toEqual({
@@ -416,7 +389,7 @@ describe('tab ownership', () => {
   });
 
   it('a review whose answer arrives after another tab took the protocol is not reported as completed', async () => {
-    const a = await open(store);
+    const a = await openProtocol(store);
     const { promise: answer, resolve: answerWith } =
       Promise.withResolvers<ReviewOutcome>();
     client.requestReview.mockReturnValueOnce(answer);
@@ -436,8 +409,8 @@ describe('tab ownership', () => {
   });
 
   it('a review asked for one protocol does not start for the one opened since', async () => {
-    const a = await open(store);
-    const b = await open(store, otherProtocol());
+    const a = await openProtocol(store);
+    const b = await openProtocol(store, otherProtocol());
 
     expect(await store.dispatch(startReview(a))).toEqual({
       status: 'cancelled',

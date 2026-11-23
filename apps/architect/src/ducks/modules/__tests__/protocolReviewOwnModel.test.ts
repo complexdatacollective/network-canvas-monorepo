@@ -1,31 +1,26 @@
 // fake-indexeddb must be installed before Dexie opens a database.
 import 'fake-indexeddb/auto';
-import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { posthog } from '~/analytics';
-import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { setActiveProtocolId } from '~/ducks/modules/app';
 import {
   cancelReview,
   chooseReviewProvider,
   getProtocolReviewFindings,
   getProtocolReviewRun,
   getProtocolReviewStartBlock,
-  getProtocolReviewWriter,
-  reviewProviderFor,
+  getProtocolReviewTarget,
+  reviewTargetFor,
   saveOwnModelSettings,
   setShareReviews,
   startReview,
 } from '~/ducks/modules/protocolReview';
-import { rootReducer } from '~/ducks/modules/root';
 import {
+  chatChunk,
   makeFinding,
-  makeProtocol,
   op,
 } from '~/protocolReview/__tests__/fixtures';
 import { OWN_MODEL, type OwnModelSettings } from '~/protocolReview/ownModel';
-import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import { readReviewRecord } from '~/protocolReview/reviewStore';
 import {
   PROTOCOL_REVIEW_OWN_MODEL_KEY,
@@ -33,19 +28,13 @@ import {
   PROTOCOL_REVIEW_QUOTA_KEY,
 } from '~/utils/storageNames';
 
+import {
+  makeReviewStore,
+  openProtocol,
+  type ReviewStore,
+} from './protocolReviewStore';
+
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
-
-const makeStore = () => {
-  const created = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  keepProtocolReviewOnActiveProtocol(created);
-  return created;
-};
-
-type Store = ReturnType<typeof makeStore>;
 
 const SETTINGS: OwnModelSettings = {
   address: 'http://localhost:11434/v1',
@@ -93,31 +82,16 @@ const ownEndpoint = () => {
     urls,
     answer: (content: string = ANSWER) => {
       stream?.enqueue(
-        encoder.encode(
-          `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\ndata: [DONE]\n\n`,
-        ),
+        encoder.encode(`${chatChunk({ content })}data: [DONE]\n\n`),
       );
       stream?.close();
     },
   };
 };
 
-let protocolCounter = 0;
-
-const open = async (store: Store) => {
-  protocolCounter += 1;
-  const id = `own-model-${protocolCounter}`;
-  store.dispatch(setActiveProtocolId(id));
-  store.dispatch(setActiveProtocol(makeProtocol()));
-  await vi.waitFor(() => {
-    expect(store.getState().protocolReview.record?.protocolId).toBe(id);
-  });
-  return id;
-};
-
 /** Opens a protocol in a browser that has chosen its own model. */
-const openWithOwnModel = async (store: Store) => {
-  const id = await open(store);
+const openWithOwnModel = async (store: ReviewStore) => {
+  const id = await openProtocol(store);
   store.dispatch(saveOwnModelSettings(SETTINGS));
   store.dispatch(chooseReviewProvider(OWN_MODEL));
   return id;
@@ -130,7 +104,7 @@ const spentQuota = () =>
     resetsAt: new Date(Date.now() + 60_000).toISOString(),
   });
 
-let store: Store;
+let store: ReviewStore;
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -139,7 +113,7 @@ beforeEach(() => {
       throw new Error('This test must not send a request');
     }),
   );
-  store = makeStore();
+  store = makeReviewStore();
   localStorage.clear();
   vi.mocked(posthog.capture).mockClear();
 });
@@ -152,19 +126,23 @@ afterEach(() => {
 
 describe('who writes the review', () => {
   it('is the researcher’s own model only while it is the choice and its settings are kept', async () => {
-    await open(store);
-    expect(getProtocolReviewWriter(store.getState())).toBe('anthropic');
+    await openProtocol(store);
+    expect(getProtocolReviewTarget(store.getState()).provider).toBe(
+      'anthropic',
+    );
 
     // Chosen with nothing kept: there is nowhere to send a review.
     store.dispatch(chooseReviewProvider(OWN_MODEL));
-    expect(getProtocolReviewWriter(store.getState())).toBe('anthropic');
+    expect(getProtocolReviewTarget(store.getState()).provider).toBe(
+      'anthropic',
+    );
 
     store.dispatch(saveOwnModelSettings(SETTINGS));
-    expect(getProtocolReviewWriter(store.getState())).toBe(OWN_MODEL);
+    expect(getProtocolReviewTarget(store.getState()).provider).toBe(OWN_MODEL);
 
     // Kept, but another model chosen.
     store.dispatch(chooseReviewProvider('openai'));
-    expect(getProtocolReviewWriter(store.getState())).toBe('openai');
+    expect(getProtocolReviewTarget(store.getState()).provider).toBe('openai');
   });
 
   it('is never moved to the researcher’s own model because a provider’s budget is spent', () => {
@@ -172,7 +150,9 @@ describe('who writes the review', () => {
       { provider: 'anthropic', available: false, retryAt: null },
       { provider: 'openai', available: false, retryAt: null },
     ] as const;
-    expect(reviewProviderFor('openai', spent, SETTINGS)).toBe('openai');
+    expect(reviewTargetFor('openai', spent, SETTINGS)).toEqual({
+      provider: 'openai',
+    });
   });
 
   it('is read from this browser when a protocol opens', async () => {
@@ -181,9 +161,9 @@ describe('who writes the review', () => {
       JSON.stringify(SETTINGS),
     );
     localStorage.setItem(PROTOCOL_REVIEW_PROVIDER_KEY, OWN_MODEL);
-    await open(store);
+    await openProtocol(store);
     expect(store.getState().protocolReview.ownModel).toEqual(SETTINGS);
-    expect(getProtocolReviewWriter(store.getState())).toBe(OWN_MODEL);
+    expect(getProtocolReviewTarget(store.getState()).provider).toBe(OWN_MODEL);
   });
 
   it('keeps the endpoint in this browser when it is saved', async () => {
@@ -252,7 +232,7 @@ describe('a review the researcher’s own model writes', () => {
 
   it('is not held by the service’s hourly limit, and does not count against it', async () => {
     localStorage.setItem(PROTOCOL_REVIEW_QUOTA_KEY, spentQuota());
-    await open(store);
+    await openProtocol(store);
     expect(getProtocolReviewStartBlock(store.getState())).toMatchObject({
       code: 'hourly_limit',
     });
@@ -291,12 +271,11 @@ describe('a review the researcher’s own model writes', () => {
     expect(await store.dispatch(startReview())).toEqual({
       status: 'failed',
       code: 'refused',
-      retryAt: null,
+      provider: OWN_MODEL,
     });
     expect(getProtocolReviewRun(store.getState())).toEqual({
       status: 'failed',
       code: 'refused',
-      retryAt: null,
       provider: OWN_MODEL,
     });
     expect((await readReviewRecord(id)).review).toBeNull();

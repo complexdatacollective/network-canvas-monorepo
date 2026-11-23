@@ -78,7 +78,12 @@ const OwnModelSettingsSchema = z.object({
     .max(OWN_MODEL_LIMITS.address)
     .refine((address) => isOwnModelAddress(address)),
   model: z.string().trim().min(1).max(OWN_MODEL_LIMITS.model),
-  apiKey: z.string().trim().max(OWN_MODEL_LIMITS.apiKey).catch(''),
+  apiKey: z
+    .string()
+    .trim()
+    .max(OWN_MODEL_LIMITS.apiKey)
+    .nullish()
+    .transform((key) => key ?? ''),
 });
 
 /** Settings a review can be sent with, trimmed; null when they are not. */
@@ -105,21 +110,18 @@ export const completeOwnModelSettings = (
  * - `endpoint_error`: any other error from the endpoint, or no answer within
  *   the time allowed.
  */
-export const OWN_MODEL_ERROR_CODES = [
-  'unreachable',
-  'refused',
-  'not_found',
-  'too_long',
-  'unreadable_answer',
-  'endpoint_error',
-] as const;
+export type OwnModelErrorCode =
+  | 'unreachable'
+  | 'refused'
+  | 'not_found'
+  | 'too_long'
+  | 'unreadable_answer'
+  | 'endpoint_error';
 
-export type OwnModelErrorCode = (typeof OWN_MODEL_ERROR_CODES)[number];
-
-/** Why a review failed, whoever was asked to write it. */
-export type ReviewFailureCode = ReviewErrorCode | OwnModelErrorCode;
-
-export const isOwnModelErrorCode = (
-  code: ReviewFailureCode,
-): code is OwnModelErrorCode =>
-  OWN_MODEL_ERROR_CODES.some((candidate) => candidate === code);
+/**
+ * Why a review failed, by who was asked to write it: each writer has its own
+ * reasons, and only the service says when to ask again.
+ */
+export type ReviewFailure =
+  | { provider: typeof OWN_MODEL; code: OwnModelErrorCode }
+  | { provider: ReviewProvider; code: ReviewErrorCode; retryAt: string | null };

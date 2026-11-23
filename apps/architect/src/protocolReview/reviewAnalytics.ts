@@ -6,7 +6,7 @@ import {
 } from '@codaco/protocol-review-worker/contract';
 import { posthog } from '~/analytics';
 
-import type { ReviewFailureCode, ReviewWriter } from './ownModel';
+import type { ReviewFailure, ReviewWriter } from './ownModel';
 import type { FindingDecision } from './reviewStore';
 
 /**
@@ -70,10 +70,7 @@ export const captureReviewCompleted = (
   posthog.capture('protocol_review_completed', { ...payload, provider });
 };
 
-export const captureReviewFailed = (
-  code: ReviewFailureCode,
-  provider: ReviewWriter,
-) => {
+export const captureReviewFailed = ({ code, provider }: ReviewFailure) => {
   posthog.capture('protocol_review_failed', { error_code: code, provider });
 };
 

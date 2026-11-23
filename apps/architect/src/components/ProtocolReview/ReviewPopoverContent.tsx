@@ -20,6 +20,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   REVIEW_PROVIDER_NAMES,
   type ReviewErrorCode,
+  type ReviewProvider,
 } from '@codaco/protocol-review-worker/contract';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
@@ -40,11 +41,7 @@ import {
   type ReviewRun,
   undoFix,
 } from '~/ducks/modules/protocolReview';
-import {
-  isOwnModelErrorCode,
-  OWN_MODEL,
-  type OwnModelErrorCode,
-} from '~/protocolReview/ownModel';
+import { OWN_MODEL, type OwnModelErrorCode } from '~/protocolReview/ownModel';
 import { isFixedAt, type ReviewPlace } from '~/protocolReview/reviewPlace';
 import { getProtocol } from '~/selectors/protocol';
 
@@ -362,14 +359,30 @@ const failureNotices: Record<ReviewErrorCode, NoticeKind> = {
   invalid_request: 'unavailable',
 };
 
-/** A notice, or why the researcher's own model did not answer. */
-type Notice = NoticeKind | { ownModel: OwnModelErrorCode };
+type Notice =
+  | { kind: Exclude<NoticeKind, 'budget'> }
+  | { kind: 'budget'; provider: ReviewProvider }
+  /** Why the researcher's own model did not answer. */
+  | { kind: 'own_model'; code: OwnModelErrorCode };
 
 const languagesLink = (onFollow: () => void) => (chunks: ReactNode[]) => (
   <ProtocolPlaceLink href="/protocol/localization" onFollow={onFollow}>
     {chunks}
   </ProtocolPlaceLink>
 );
+
+const plainNotices = {
+  offline: {
+    title: messages.offlineTitle,
+    body: messages.offlineBodyNoReview,
+  },
+  all_spent: { title: messages.allSpentTitle, body: messages.allSpentBody },
+  unavailable: {
+    title: messages.unavailableTitle,
+    body: messages.unavailableBody,
+  },
+  too_large: { title: messages.tooLargeTitle, body: messages.tooLargeBody },
+};
 
 const noticeOf = (
   online: boolean,
@@ -379,21 +392,24 @@ const noticeOf = (
   /** Whether a review started now would be asked of the researcher's own model. */
   ownModel: boolean,
 ): Notice | null => {
-  const failure = run.status === 'failed' ? run.code : null;
+  const failure = run.status === 'failed' ? run : null;
   // Their own model's failure is its endpoint's to explain, online or not.
-  if (failure !== null && isOwnModelErrorCode(failure)) {
-    return { ownModel: failure };
+  if (failure?.provider === OWN_MODEL) {
+    return { kind: 'own_model', code: failure.code };
   }
   // Nothing of the service's stands in the way of their own model: it has
   // no limit or budget, and may be on this computer.
   if (ownModel) return null;
-  if (!online) return 'offline';
-  if (failure !== null) {
-    const notice = failureNotices[failure];
-    return notice === 'budget' && !anyProviderAvailable ? 'all_spent' : notice;
+  if (!online) return { kind: 'offline' };
+  if (failure) {
+    const kind = failureNotices[failure.code];
+    if (kind !== 'budget') return { kind };
+    return anyProviderAvailable
+      ? { kind, provider: failure.provider }
+      : { kind: 'all_spent' };
   }
-  if (!anyProviderAvailable) return 'all_spent';
-  if (hourlyLimitReached) return 'hourly';
+  if (!anyProviderAvailable) return { kind: 'all_spent' };
+  if (hourlyLimitReached) return { kind: 'hourly' };
   return null;
 };
 
@@ -551,6 +567,35 @@ const ReviewPopoverContent = ({
       : intl.formatMessage(messages.resultsIntro);
   })();
 
+  const noticeContent = (
+    shown: Notice,
+  ): { title: string; body: string | null } => {
+    if (shown.kind === 'own_model') {
+      return formatOwnModelFailure(intl, shown.code);
+    }
+    if (shown.kind === 'hourly') {
+      return {
+        title: intl.formatMessage(messages.hourlyTitle, { limit }),
+        body:
+          hourlyResetsAt === null
+            ? null
+            : intl.formatMessage(messages.hourlyBody, {
+                when: formatWhen(intl, hourlyResetsAt, now),
+              }),
+      };
+    }
+    if (shown.kind === 'budget') {
+      return {
+        title: intl.formatMessage(messages.budgetTitle, {
+          company: REVIEW_PROVIDER_NAMES[shown.provider].company,
+        }),
+        body: intl.formatMessage(messages.budgetBody),
+      };
+    }
+    const { title, body } = plainNotices[shown.kind];
+    return { title: intl.formatMessage(title), body: intl.formatMessage(body) };
+  };
+
   const renderNotice = () => {
     if (notice === null) return null;
     const dismiss =
@@ -563,49 +608,7 @@ const ReviewPopoverContent = ({
           {intl.formatMessage(messages.dismissNotice)}
         </Button>
       ) : null;
-    const budgetProvider = run.status === 'failed' ? run.provider : provider;
-    const contents: Record<NoticeKind, { title: string; body: string | null }> =
-      {
-        offline: {
-          title: intl.formatMessage(messages.offlineTitle),
-          body: intl.formatMessage(messages.offlineBodyNoReview),
-        },
-        hourly: {
-          title: intl.formatMessage(messages.hourlyTitle, { limit }),
-          body:
-            hourlyResetsAt === null
-              ? null
-              : intl.formatMessage(messages.hourlyBody, {
-                  when: formatWhen(intl, hourlyResetsAt, now),
-                }),
-        },
-        budget: {
-          title: intl.formatMessage(messages.budgetTitle, {
-            // Only a provider of the service's has a budget to spend.
-            company:
-              budgetProvider === OWN_MODEL
-                ? ''
-                : REVIEW_PROVIDER_NAMES[budgetProvider].company,
-          }),
-          body: intl.formatMessage(messages.budgetBody),
-        },
-        all_spent: {
-          title: intl.formatMessage(messages.allSpentTitle),
-          body: intl.formatMessage(messages.allSpentBody),
-        },
-        unavailable: {
-          title: intl.formatMessage(messages.unavailableTitle),
-          body: intl.formatMessage(messages.unavailableBody),
-        },
-        too_large: {
-          title: intl.formatMessage(messages.tooLargeTitle),
-          body: intl.formatMessage(messages.tooLargeBody),
-        },
-      };
-    const content =
-      typeof notice === 'string'
-        ? contents[notice]
-        : formatOwnModelFailure(intl, notice.ownModel);
+    const content = noticeContent(notice);
     return (
       <div className="px-6 pb-4">
         <Alert variant="warning" density="compact" className="my-0">
@@ -719,7 +722,7 @@ const ReviewPopoverContent = ({
   // for. Every other start goes through the dialog.
   const retry =
     run.status === 'failed' &&
-    !isOwnModelErrorCode(run.code) &&
+    run.provider !== OWN_MODEL &&
     failureNotices[run.code] === 'unavailable';
 
   const shownIndex =
