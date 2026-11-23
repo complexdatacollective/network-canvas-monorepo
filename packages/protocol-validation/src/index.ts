@@ -450,6 +450,25 @@ export {
   ProtocolObjectIdSchema,
   type ProtocolObjectKind,
 } from './schemas/9/protocol-object-id.ts';
+// The ids node types, edge types and variables are stored under in the
+// codebook (see `schemas/9/codebook-ids.ts`): their schemas, how a new one is
+// made, and how a document's codebook is given new ones with every reference
+// following.
+export {
+  createEntityTypeId,
+  createVariableId,
+  deterministicEntityTypeId,
+  deterministicVariableId,
+  EntityTypeIdSchema,
+  isEntityTypeId,
+  isVariableId,
+  VariableIdSchema,
+} from './schemas/9/codebook-ids.ts';
+export type {
+  CodebookIdRenames,
+  VariableOwner,
+} from './utils/codebookIdRewrite.ts';
+export { renameCodebookIds } from './schemas/9/migration-codebook-ids.ts';
 export {
   collectProtocolObjectIdsFromSchema,
   DUPLICATE_OBJECT_ID,

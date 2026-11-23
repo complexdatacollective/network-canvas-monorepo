@@ -11,7 +11,7 @@ import {
   nameGeneratorPromptSchema,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import { SortOrderSchema } from '../filters/index.ts';
+import { DataSourceSortOrderSchema } from '../filters/index.ts';
 import {
   localizedMessage,
   localizedString,
@@ -46,6 +46,7 @@ const rosterColumnReference = () =>
   entityAttributeReference({
     subject: 'stageSubject',
     existence: 'unchecked',
+    dataSourceColumn: true,
   });
 
 /**
@@ -111,7 +112,7 @@ export const nameGeneratorRosterStage = withUniqueObjectIds(
       .optional(),
     sortOptions: z
       .strictObject({
-        sortOrder: SortOrderSchema.optional(),
+        sortOrder: DataSourceSortOrderSchema.optional(),
         sortableProperties: z
           .array(
             z.strictObject({

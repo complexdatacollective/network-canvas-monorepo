@@ -30,6 +30,7 @@ import {
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { combineInformationContent } from './information-content-migration.ts';
+import { assignCodebookIds } from './migration-codebook-ids.ts';
 import { assignProtocolObjectIds } from './migration-object-ids.ts';
 import { createProtocolObjectId } from './protocol-object-id.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
@@ -1141,6 +1142,11 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   // Last, so that every object the steps above add or move is given its id
   // where it ends up, and every stage reference they wrote is rewritten.
   assignProtocolObjectIds(assembled);
+  // Last for the same reason: the steps above add variables (a Family
+  // Pedigree's relativesNotRecorded) and read and write references by the
+  // keys schema 8 gave, so one pass at the end renames every type and
+  // variable, and every reference any step wrote.
+  assignCodebookIds(assembled);
 
   // None of the wording Network Canvas supplies is written in: the
   // interview shows it for a protocol that does not hold it.

@@ -6,7 +6,7 @@ import { isStageHit, walkSchemaReferences } from './schemaReferenceWalk.ts';
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const valueAt = (
+export const valueAt = (
   root: unknown,
   path: readonly (string | number)[],
 ): unknown => {
@@ -81,7 +81,7 @@ export const setObjectIdAt = (
   for (const [key, value] of rest) object[key] = value;
 };
 
-const setValueAt = (
+export const setValueAt = (
   root: unknown,
   path: readonly (string | number)[],
   value: string,

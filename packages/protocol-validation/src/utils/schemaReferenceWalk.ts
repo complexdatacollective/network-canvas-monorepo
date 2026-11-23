@@ -41,6 +41,13 @@ export type EntityAttributeReferenceHit = {
   exclusive?: ExclusiveSlotDescriptor;
   ownedOptions?: InterfaceOwnedOptionSetKey;
   stageManagedOptions?: StageManagedOptionsDescriptor;
+  /** See `dataSourceColumn` on the reference descriptor. */
+  dataSourceColumn?: true;
+  /**
+   * Set when the id is part of a dynamic value's `path` (`ego.<id>`) rather
+   * than the whole of the field at `path`.
+   */
+  inDynamicValuePath?: true;
 };
 
 export type EntityTypeReferenceHit = {
@@ -343,6 +350,7 @@ const walk = (
           exclusive: attributeDescriptor.exclusive,
           ownedOptions: attributeDescriptor.ownedOptions,
           stageManagedOptions: attributeDescriptor.stageManagedOptions,
+          dataSourceColumn: attributeDescriptor.dataSourceColumn,
         },
       ];
     }
@@ -357,6 +365,7 @@ const walk = (
           kind: 'attribute',
           path,
           variableId: parsed.variableId,
+          inDynamicValuePath: true,
           // A binding of a node type's own label is about a node of that
           // type, which the codebook path names; any other is a stage's.
           subject:

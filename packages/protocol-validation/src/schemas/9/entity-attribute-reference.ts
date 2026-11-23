@@ -105,6 +105,14 @@ export type EntityAttributeReferenceDescriptor = {
    */
   ignoreValues?: readonly string[];
   /**
+   * The value names a column of the stage's external data source (a Name
+   * Generator Roster's), which may or may not spell a variable id. The data
+   * file is not part of the protocol, so renaming a variable cannot rename
+   * the column: a migration that gives variables new ids leaves this value
+   * as it is.
+   */
+  dataSourceColumn?: true;
+  /**
    * How the interview writes through this reference: via the form system
    * (codebook validation applies) or via a direct dispatch (it does not).
    * Absent on read-only references. Static schema metadata — never stored in
