@@ -362,6 +362,22 @@ const containerOfOnly = (
 };
 
 /**
+ * Where the line that `at` in the source is on ends, when only spaces and
+ * tabs stand before its line ending: past them, and whether two or more
+ * spaces there made that line ending a line break of its own. Undefined
+ * where the line goes on.
+ */
+const lineEndAfter = (
+  source: string,
+  at: number,
+): Readonly<{ end: number; breaks: boolean }> | undefined => {
+  const spaces = /^[ \t]*/.exec(source.slice(at))?.[0] ?? '';
+  const next = source.charAt(at + spaces.length);
+  if (next !== '\n' && next !== '\r') return undefined;
+  return { end: at + spaces.length, breaks: / {2}$/.test(spaces) };
+};
+
+/**
  * `count` line breaks as markdown: each a backslash ending a line, but for
  * the last where the line already ends there.
  */
@@ -390,6 +406,12 @@ type Context = Readonly<{
   lineStarts: number[];
   /** Each code span, with the paragraph or heading it is in. */
   codeSpans: CodeSpan[];
+  /** The edits that write a shortcode as its emoji. */
+  emoji: Edit[];
+  /** The edits that write an emoji or a link in place of words. */
+  rewritten: Edit[];
+  /** Each paragraph or heading that holds words the edits change. */
+  blocks: Set<Parents>;
 }>;
 
 /**
@@ -399,7 +421,16 @@ type Context = Readonly<{
 const editWords = (
   node: Text,
   ancestors: readonly Parents[],
-  { source, multiline, edits, typed, linked, lineStarts }: Context,
+  {
+    source,
+    multiline,
+    edits,
+    typed,
+    linked,
+    lineStarts,
+    emoji,
+    rewritten,
+  }: Context,
 ) => {
   const { value } = node;
   // Words in an address written as it is (in angle brackets, or found bare
@@ -456,12 +487,14 @@ const editWords = (
   );
   for (const address of addresses) {
     const words = value.slice(address.from, address.to);
-    edits.push({
+    const edit = {
       ...sourceOf(address),
       text: multiline
         ? linkMarkdown(words, address.href)
         : (addressAsTyped(words) ?? words),
-    });
+    };
+    edits.push(edit);
+    rewritten.push(edit);
   }
 
   // Line breaks, in runs: the tags side by side, with any spaces among and
@@ -555,13 +588,17 @@ const editWords = (
         : undefined;
     const at = closing?.position?.end.offset ?? opening?.position?.start.offset;
     if (at !== undefined) {
-      const lineEndsAfter =
-        closing !== undefined && /^[^\S\n]*\n/.test(source.slice(at));
+      const lineEnd =
+        closing === undefined ? undefined : lineEndAfter(source, at);
       edits.push({ ...removed, text: '' });
       edits.push({
         start: at,
-        end: at,
-        text: breaksApart ? lineBreaks(run.breaks.length, lineEndsAfter) : ' ',
+        end: lineEnd?.end ?? at,
+        text: breaksApart
+          ? `${lineBreaks(run.breaks.length, lineEnd !== undefined)}${lineEnd?.breaks === true ? '\n\\' : ''}`
+          : lineEnd?.breaks === true
+            ? '  '
+            : ' ',
       });
       blank(whole, false);
       lineStarts.push(at);
@@ -569,18 +606,36 @@ const editWords = (
     }
 
     if (!breaksApart) {
+      const lineEnd = lineEndAfter(source, sourceOf(run).end);
+      if (lineEnd !== undefined) {
+        // The line ends after the run: it goes, with the spaces beside it,
+        // which would otherwise end the line with a line break. Two spaces
+        // after it were a line break of their own, and stay one.
+        edits.push({
+          start: sourceOf(whole).start,
+          end: lineEnd.end,
+          text: lineEnd.breaks ? '  ' : '',
+        });
+        blank(run, false);
+        continue;
+      }
       const spaced = /\s$/.test(before) || /^\s/.test(after);
       edits.push({ ...sourceOf(run), text: spaced ? '' : ' ' });
       blank(run, false);
       continue;
     }
     for (const stretch of run.breaks) {
-      const spaces = /^[^\S\n]*/.exec(value.slice(stretch.to))?.[0].length ?? 0;
-      if (value.charAt(stretch.to + spaces) === '\n') {
-        // The line already ends here: the break ends it.
-        const replaced = { from: stretch.from, to: stretch.to + spaces };
-        edits.push({ ...sourceOf(replaced), text: '\\' });
-        blank(replaced, false);
+      const lineEnd = lineEndAfter(source, sourceOf(stretch).end);
+      if (lineEnd !== undefined) {
+        // The line already ends here: the break ends it, written over the
+        // spaces before the line ending, which would otherwise follow the
+        // backslash and keep it from being a break.
+        edits.push({
+          start: sourceOf(stretch).start,
+          end: lineEnd.end,
+          text: lineEnd.breaks ? '\\\n\\' : '\\',
+        });
+        blank(stretch, false);
         continue;
       }
       edits.push({ ...sourceOf(stretch), text: '\\\n' });
@@ -596,7 +651,10 @@ const editWords = (
 
   for (const shortcode of shortcodesIn(value)) {
     if (overlaps(shortcode, taken)) continue;
-    edits.push({ ...sourceOf(shortcode), text: shortcode.emoji });
+    const edit = { ...sourceOf(shortcode), text: shortcode.emoji };
+    edits.push(edit);
+    emoji.push(edit);
+    rewritten.push(edit);
   }
 
   for (let index = 0; index < value.length; index += 1) {
@@ -664,12 +722,20 @@ const collectEdits = (
         : undefined;
     if (start !== undefined && end !== undefined && text !== undefined) {
       context.edits.push({ start, end, text });
+      context.rewritten.push({ start, end, text });
       return;
     }
   }
   if (!('children' in node)) return;
+  const before = context.edits.length;
   for (const child of node.children) {
     collectEdits(child, [...ancestors, node], context);
+  }
+  if (
+    (node.type === 'paragraph' || node.type === 'heading') &&
+    context.edits.length > before
+  ) {
+    context.blocks.add(node);
   }
 };
 
@@ -686,34 +752,184 @@ const applyEdits = (source: string, edits: readonly Edit[]): string => {
   return written + source.slice(at);
 };
 
-/** The containers whose children are blocks. */
-const HOLDS_BLOCKS = new Set(['root', 'list', 'listItem', 'blockquote']);
+/** Stands for a `<br>` typed as it is, in the old reading (see `oldReading`). */
+const TYPED_BREAK = '⸮';
 
 /**
- * The blocks a reading of `source` holds, in order and nesting, without
- * their words: each block's kind, a heading's level and whether a closing
- * run of `#` ends it, whether a list is numbered, and each definition's
- * label.
+ * What the legacy interview showed for `markdown`: CommonMark with `>` and
+ * `<` read as typed characters, GitHub's bare addresses read as links (as
+ * words in one line, which held no links), `remark-gemoji`'s shortcodes as
+ * their emoji, and each `<br>` as a line break (a space in one line or a
+ * heading). A typed `<br>` is read as a punctuation character, as its own
+ * `<` and `>` were, so that emphasis beside it is read as it was beside the
+ * tag; a backslash before it kept it words.
  */
-const blocksOf = (tree: Root, source: string): string => {
-  const shape = (node: Nodes): unknown => {
-    let kind: string = node.type;
-    if (node.type === 'heading') {
-      const end = node.position?.end.offset ?? 0;
-      const wordsEnd =
-        node.children.at(-1)?.position?.end.offset ??
-        (node.position?.start.offset ?? 0) + node.depth;
-      kind = `heading ${node.depth}${source.slice(wordsEnd, end).includes('#') ? ' closed' : ''}`;
-    } else if (node.type === 'list') {
-      kind = node.ordered === true ? 'numbered list' : 'list';
-    } else if (node.type === 'definition') {
-      kind = `definition ${node.identifier}`;
+const oldReading = (markdown: string, multiline: boolean): Root => {
+  const marked = markdown.replace(
+    /(\\*)<br\s*\/?>/gi,
+    (tag, backslashes: string) =>
+      backslashes.length % 2 === 0 ? `${backslashes}${TYPED_BREAK}` : tag,
+  );
+  const tree = fromMarkdown(marked, {
+    extensions: [TYPED_CHARACTERS, gfmAutolinkLiteral()],
+    mdastExtensions: [gfmAutolinkLiteralFromMarkdown()],
+  });
+  const bare = (node: Nodes) =>
+    node.type === 'link' &&
+    !['<', '['].includes(marked.charAt(node.position?.start.offset ?? 0));
+  const read = (node: Nodes, inHeading: boolean): void => {
+    if (!('children' in node)) return;
+    const heading = inHeading || node.type === 'heading';
+    const children: Nodes[] = [];
+    for (const child of node.children) {
+      if (!multiline && bare(child) && 'children' in child) {
+        for (const grandchild of child.children) read(grandchild, heading);
+        children.push(...child.children);
+        continue;
+      }
+      if (child.type === 'inlineCode' || child.type === 'code') {
+        child.value = child.value.replaceAll(TYPED_BREAK, '<br>');
+      }
+      if (child.type !== 'text') {
+        read(child, heading);
+        children.push(child);
+        continue;
+      }
+      withEmoji(child.value)
+        .split(TYPED_BREAK)
+        .forEach((words, index) => {
+          if (index > 0) {
+            children.push(
+              multiline && !heading
+                ? { type: 'break' }
+                : { type: 'text', value: ' ' },
+            );
+          }
+          children.push({ type: 'text', value: words });
+        });
     }
-    return HOLDS_BLOCKS.has(node.type) && 'children' in node
-      ? [kind, ...node.children.map(shape)]
-      : kind;
+    Reflect.set(node, 'children', children);
   };
-  return JSON.stringify(shape(tree));
+  read(tree, false);
+  return tree;
+};
+
+/**
+ * A line break or white space just inside emphasis or a link's text, moved
+ * to just outside it, and the container left out where nothing is left in
+ * it: a participant sees no difference.
+ */
+const outOfContainer = (node: Nodes): Nodes[] => {
+  if (!INLINE_CONTAINERS.has(node.type) || !('children' in node)) {
+    return [node];
+  }
+  const inside: Nodes[] = [...node.children];
+  const before: Nodes[] = [];
+  const after: Nodes[] = [];
+  const edge = (at: 'start' | 'end'): boolean => {
+    const child = at === 'start' ? inside[0] : inside.at(-1);
+    const out = at === 'start' ? before : after;
+    if (child?.type === 'break') {
+      if (at === 'start') out.push(child);
+      else out.unshift(child);
+    } else if (
+      child?.type === 'text' &&
+      (at === 'start' ? /^\s/ : /\s$/).test(child.value)
+    ) {
+      const space: Nodes = { type: 'text', value: ' ' };
+      if (at === 'start') out.push(space);
+      else out.unshift(space);
+      const words =
+        at === 'start' ? child.value.trimStart() : child.value.trimEnd();
+      if (words !== '') {
+        inside.splice(at === 'start' ? 0 : -1, 1, { ...child, value: words });
+        return true;
+      }
+    } else return false;
+    inside.splice(at === 'start' ? 0 : -1, 1);
+    return true;
+  };
+  while (edge('start'));
+  while (edge('end'));
+  const copy = { ...node };
+  Reflect.set(copy, 'children', inside);
+  return [...before, ...(inside.length === 0 ? [] : [copy]), ...after];
+};
+
+/**
+ * What a reading shows a participant, as a string to compare: every node and
+ * its properties but where it was read from, with what drawing it ignores
+ * left out. A code span is its words, as the interview draws it; runs of
+ * white space are one space; white space beside a line break, and a line
+ * break or white space at either end of a paragraph or heading, show
+ * nothing; and a line break or white space just inside emphasis or a link's
+ * text shows as it would just outside it, where the migration writes it.
+ */
+const shownBy = (tree: Root): string => {
+  const tidy = (node: Nodes): Nodes => {
+    if (node.type === 'inlineCode') return { type: 'text', value: node.value };
+    if (!('children' in node)) return node;
+    const merged: Nodes[] = [];
+    for (const child of node.children.map(tidy).flatMap(outOfContainer)) {
+      const last = merged.at(-1);
+      if (child.type === 'text' && last?.type === 'text') {
+        last.value += child.value;
+      } else merged.push(child.type === 'text' ? { ...child } : child);
+    }
+    for (const [index, child] of merged.entries()) {
+      if (child.type !== 'text') continue;
+      child.value = child.value.replace(/\s+/g, ' ');
+      if (merged[index - 1]?.type === 'break') {
+        child.value = child.value.trimStart();
+      }
+      if (merged[index + 1]?.type === 'break') {
+        child.value = child.value.trimEnd();
+      }
+    }
+    let kept = merged.filter(
+      (child) => child.type !== 'text' || child.value !== '',
+    );
+    if (node.type === 'paragraph' || node.type === 'heading') {
+      while (kept[0]?.type === 'break') kept = kept.slice(1);
+      while (kept.at(-1)?.type === 'break') kept = kept.slice(0, -1);
+      const first = kept[0];
+      if (first?.type === 'text') first.value = first.value.trimStart();
+      const last = kept.at(-1);
+      if (last?.type === 'text') last.value = last.value.trimEnd();
+      kept = kept.filter(
+        (child) => child.type !== 'text' || child.value !== '',
+      );
+    }
+    kept = kept.filter(
+      (child) =>
+        !(
+          child.type === 'paragraph' &&
+          'children' in child &&
+          child.children.length === 0
+        ),
+    );
+    const copy = { ...node };
+    Reflect.set(copy, 'children', kept);
+    return copy;
+  };
+  return JSON.stringify(tidy(structuredClone(tree)), (key, value: unknown) =>
+    key === 'position' || key === 'data' ? undefined : value,
+  );
+};
+
+/**
+ * The words a participant saw in a block of the old reading, as markdown
+ * that shows them as typed, with no formatting: each line break written as
+ * one where the block can hold it, and as a space where it cannot.
+ */
+const wordsOf = (node: Nodes, breaksApart: boolean): string => {
+  if (node.type === 'text' || node.type === 'inlineCode') {
+    return escapeMarkdownText(node.value);
+  }
+  if (node.type === 'break') return breaksApart ? '\\\n' : ' ';
+  if (node.type === 'image') return escapeMarkdownText(node.alt ?? '');
+  if (!('children' in node)) return '';
+  return node.children.map((child) => wordsOf(child, breaksApart)).join('');
 };
 
 /**
@@ -768,82 +984,174 @@ const lineStartGuard = (
 };
 
 /**
- * What `legacyMarkdownAsStandard` writes, and whether any code span had to be
- * written as its words to keep the old reading's blocks.
+ * What the migration does where what it wrote would not read as the old
+ * reading did, in the order it tries them, each at a cost:
+ *
+ * - `line start`: the first character of a line that a break opened,
+ *   uncovered or rewrote is written as a numeric character reference (see
+ *   `lineStartGuard`), which shows the same character but is less readable
+ *   in the stored text;
+ * - `emoji`: an emoji written for a shortcode is written as numeric character
+ *   references, which begin and end with punctuation as the shortcode's
+ *   colons did, so emphasis beside it is read as it was; the stored text
+ *   then shows the codes rather than the emoji;
+ * - `delimiter`: a `*` or `_` that the old reading showed as typed, right
+ *   beside a link written for a bare address or an emoji, is escaped with a
+ *   backslash, since the link's brackets or the emoji could otherwise make
+ *   it open or close emphasis; the stored text shows the backslash;
+ * - `code span`: each code span in a paragraph whose lines the breaks
+ *   changed is written as its words, losing its code formatting, which the
+ *   interview never drew (`code` is not among the elements
+ *   `RenderMarkdown` draws for protocol text);
+ * - `words`: as a last resort, a paragraph or heading the edits changed is
+ *   written as the words the old reading showed in it, escaped to show as
+ *   typed: every character a participant saw is kept, and its formatting
+ *   (emphasis, links) is lost.
+ */
+type Repair = 'line start' | 'emoji' | 'delimiter' | 'code span' | 'words';
+
+const REPAIRS: readonly Repair[] = [
+  'line start',
+  'emoji',
+  'delimiter',
+  'code span',
+  'words',
+];
+
+/**
+ * What `legacyMarkdownAsStandard` writes, and the repairs it needed (see
+ * `Repair`).
  */
 export const legacyMarkdownWritten = (
   markdown: string,
   { lines }: Readonly<{ lines: LocalizedTextLines }>,
-): Readonly<{ written: string; codeSpansAsWords: boolean }> => {
+): Readonly<{ written: string; repairs: readonly Repair[] }> => {
+  const multiline = lines === 'multiple';
   const tree = legacyTree(markdown);
   const context: Context = {
     source: markdown,
-    multiline: lines === 'multiple',
+    multiline,
     edits: [],
     typed: new Set(),
     linked: new Set(),
     lineStarts: [],
     codeSpans: [],
+    emoji: [],
+    rewritten: [],
+    blocks: new Set(),
   };
   collectEdits(tree, [], context);
-  const writtenWith = (extra: readonly Edit[]) =>
-    applyEdits(markdown, [...context.edits, ...extra]);
-  const blocksIn = (written: string) =>
-    blocksOf(markdownTree(written), written);
-  const expected = blocksOf(tree, markdown);
+  // A repair takes the place of every edit it covers, and of every smaller
+  // repair.
+  const writtenWith = (repairs: readonly Edit[]) => {
+    const covers = (repair: Edit, edit: Edit) =>
+      repair !== edit &&
+      repair.start < repair.end &&
+      repair.start <= edit.start &&
+      edit.end <= repair.end &&
+      // What is inserted where a repair starts or ends stays beside it.
+      (edit.start < edit.end ||
+        (repair.start < edit.start && edit.start < repair.end));
+    const replaced = (edit: Edit, isRepair: boolean) =>
+      repairs.some(
+        (repair) =>
+          covers(repair, edit) &&
+          (!isRepair || repair.end - repair.start > edit.end - edit.start),
+      );
+    return applyEdits(markdown, [
+      ...context.edits.filter((edit) => !replaced(edit, false)),
+      ...repairs.filter((repair) => !replaced(repair, true)),
+    ]);
+  };
+  const expected = shownBy(oldReading(markdown, multiline));
+  const reads = (repairs: readonly Edit[]) =>
+    shownBy(markdownTree(writtenWith(repairs)));
 
-  // Removing or rewriting a line break can leave characters at the start of
-  // a line, or of a paragraph, where standard markdown reads a block the old
-  // reading did not: a list item, a heading, a definition, a rule. Rather
-  // than list that syntax, the result is read back: where its blocks differ
-  // from the old reading's, the start of each line the breaks opened,
-  // uncovered or rewrote is guarded (see `lineStartGuard`).
   const written = writtenWith([]);
-  if (blocksIn(written) === expected) {
-    return { written, codeSpansAsWords: false };
+  if (reads([]) === expected) return { written, repairs: [] };
+
+  const editedBlocks = [...context.blocks];
+  // A `*` or `_` the old reading showed as typed, and its escape.
+  const typedDelimiter = (at: number) =>
+    context.typed.has(at) && /[*_]/.test(markdown.charAt(at));
+  const escape = (at: number) => ({
+    start: at,
+    end: at + 1,
+    text: `\\${markdown.charAt(at)}`,
+  });
+  const candidates: Record<Repair, Edit[]> = {
+    'line start': [
+      ...new Map(
+        context.lineStarts
+          .map((at) => lineStartGuard(markdown, at, context))
+          .filter((guard) => guard !== undefined)
+          .map((guard) => [guard.start, guard]),
+      ).values(),
+    ],
+    'emoji': context.emoji.map(({ start, end, text }) => ({
+      start,
+      end,
+      text: Array.from(text, (char) => `&#${char.codePointAt(0)};`).join(''),
+    })),
+    'delimiter': context.rewritten.flatMap(({ start, end }) => {
+      const escapes: Edit[] = [];
+      for (let at = start - 1; typedDelimiter(at); at -= 1) {
+        escapes.push(escape(at));
+      }
+      for (let at = end; typedDelimiter(at); at += 1) {
+        escapes.push(escape(at));
+      }
+      return escapes;
+    }),
+    'code span': context.codeSpans
+      .filter(({ block }) =>
+        context.lineStarts.some((at) => block.start <= at && at <= block.end),
+      )
+      .map(({ start, end, words }) => ({
+        start,
+        end,
+        // A line ending in a code span is shown as a space.
+        text: escapeMarkdownText(words.replace(/\r\n|\r|\n/g, ' ')),
+      })),
+    'words': editedBlocks.flatMap((block) => {
+      const first = block.children[0]?.position?.start.offset;
+      const last = block.children.at(-1)?.position?.end.offset;
+      if (first === undefined || last === undefined) return [];
+      const [shown] = oldReading(
+        markdown.slice(first, last),
+        multiline,
+      ).children;
+      return shown === undefined
+        ? []
+        : [
+            {
+              start: first,
+              end: last,
+              text: wordsOf(shown, multiline && block.type !== 'heading'),
+            },
+          ];
+    }),
+  };
+
+  // Each repair is tried in turn, cheapest first, until the result reads as
+  // the old reading did; then each repair that changes nothing is left out
+  // again, so that only what needs one keeps it.
+  let tried: Edit[] = [];
+  for (const repair of REPAIRS) {
+    tried = [...tried, ...candidates[repair]];
+    if (reads(tried) === expected) break;
   }
-  const guards = [
-    ...new Map(
-      context.lineStarts
-        .map((at) => lineStartGuard(markdown, at, context))
-        .filter((guard) => guard !== undefined)
-        .map((guard) => [guard.start, guard]),
-    ).values(),
-  ];
-  // A line that opens with a code span has no typed character to guard: a
-  // span of three or more backticks that runs onto the next line would open
-  // a code block there. Where the guards are not enough, each code span in
-  // a paragraph or heading whose lines the breaks changed is written as its
-  // words, which loses its code formatting; the interview never drew code
-  // formatting (`code` is not among `ALLOWED_MARKDOWN_SECTION_TAGS` or
-  // `ALLOWED_MARKDOWN_LABEL_TAGS`), so participants see the same words.
-  const codeAsWords =
-    blocksIn(writtenWith(guards)) === expected
-      ? []
-      : context.codeSpans
-          .filter(({ block }) =>
-            context.lineStarts.some(
-              (at) => block.start <= at && at <= block.end,
-            ),
-          )
-          .map(({ start, end, words }) => ({
-            start,
-            end,
-            // A line ending in a code span is shown as a space.
-            text: escapeMarkdownText(words.replace(/\r\n|\r|\n/g, ' ')),
-          }));
-  // Then each edit that changes nothing is left out again, so that only the
-  // lines and spans that need one keep it.
-  const all = [...guards, ...codeAsWords];
-  const target = blocksIn(writtenWith(all));
-  let kept = all;
-  for (const edit of all) {
+  const target = reads(tried);
+  let kept = tried;
+  for (const edit of tried) {
     const without = kept.filter((other) => other !== edit);
-    if (blocksIn(writtenWith(without)) === target) kept = without;
+    if (reads(without) === target) kept = without;
   }
   return {
     written: writtenWith(kept),
-    codeSpansAsWords: kept.some((edit) => codeAsWords.includes(edit)),
+    repairs: REPAIRS.filter((repair) =>
+      candidates[repair].some((edit) => kept.includes(edit)),
+    ),
   };
 };
 
@@ -867,12 +1175,10 @@ export const legacyMarkdownWritten = (
  *   typed, and is no longer a link, with any character markdown would read
  *   otherwise escaped;
  * - a shortcode `remark-gemoji` drew as an emoji is written as the emoji;
- * - where a line a break opened, uncovered or rewrote would otherwise open a
- *   block the legacy reading did not have, its first character is written
- *   as a numeric character reference (see `lineStartGuard`), and where a
- *   code span opens such a line, which has no character that can be written
- *   so, each code span in that paragraph is written as its words instead,
- *   losing its code formatting (see `legacyMarkdownWritten`).
+ * - what is written is read back with the standard parser and compared
+ *   with the legacy reading, blocks and inline content alike (emphasis,
+ *   links and their addresses, line breaks, words); where they differ, it is
+ *   repaired, at the least cost that makes them the same (see `Repair`).
  *
  * Markdown's own syntax (code, but as above, links and their addresses, addresses in angle
  * brackets) is left as written, as is everything GitHub's reading added that

@@ -211,9 +211,24 @@ const expectSameReading = (input: string, lines: Lines) => {
 };
 
 /** Whether the standard reading of the output shows what the input showed. */
+const WRITTEN = new Map<string, ReturnType<typeof legacyMarkdownWritten>>();
+
+/**
+ * What the migration writes for an input, worked out once and shared by
+ * every test that reads it, so that no test's time depends on another's.
+ */
+const writtenOnce = (input: string, lines: Lines) => {
+  const key = `${lines}\0${input}`;
+  const known = WRITTEN.get(key);
+  if (known !== undefined) return known;
+  const written = legacyMarkdownWritten(input, { lines });
+  WRITTEN.set(key, written);
+  return written;
+};
+
 const readsTheSame = (input: string, lines: Lines): boolean =>
   isDeepStrictEqual(
-    shown(markdownTree(legacyMarkdownAsStandard(input, { lines }))),
+    shown(markdownTree(writtenOnce(input, lines).written)),
     shown(legacyReading(input, lines)),
   );
 
@@ -438,7 +453,95 @@ const LINE_START_CASES: readonly (readonly [string, Generated])[] =
     ] as const,
   ]);
 
-const GENERATED_CASES = [...EDGE_CASES, ...LINE_START_CASES];
+/**
+ * What the migration rewrites inside a line: an emoji for a shortcode, a
+ * link for a bare address, and an escaped `<` or `>`.
+ */
+const REWRITTEN_WORDS: readonly (readonly [string, string])[] = [
+  ['a shortcode', ':smile:'],
+  ['a bare address', 'www.example.org'],
+  ['a `<`', '<'],
+  ['a `>`', '>'],
+];
+
+/** What can stand on the other side of something rewritten. */
+const NEIGHBOURS: readonly string[] = ['x', '1', ' ', '.', ''];
+
+/**
+ * Something rewritten immediately beside each delimiter of a container:
+ * before its opener, after its opener, before its closer and after its
+ * closer, with each neighbour on its other side.
+ */
+const besideDelimiters = (
+  words: string,
+  [, lines, lead]: readonly [string, Lines, string],
+): Generated =>
+  CONTAINERS.filter(([open]) => !['**_', '_**', '[*'].includes(open)).flatMap(
+    ([open, close]) =>
+      NEIGHBOURS.flatMap((other) =>
+        [
+          `${other}${words}${open}a${close}`,
+          `${open}${words}${other}a${close}`,
+          `${open}a${other}${words}${close}`,
+          `${open}a${close}${words}${other}`,
+        ].map((text) => [`${lead}${text}`, lines] as const),
+      ),
+  );
+
+/** The white space that can stand beside a run and a line ending. */
+const LINE_END_SPACES: readonly string[] = ['', ' ', '  ', '   ', '\t'];
+
+/**
+ * A `<br>` beside a line ending, with each white space before the run,
+ * between it and the line ending, and after the line ending; in no
+ * container, in each container, and closing each container.
+ */
+const besideLineEnds = (
+  [open, close]: readonly [string, string],
+  closesAfterRun: boolean,
+  [, lines, lead]: readonly [string, Lines, string],
+): Generated =>
+  LINE_END_SPACES.flatMap((before) =>
+    LINE_END_SPACES.flatMap((between) =>
+      LINE_END_SPACES.map((after) => {
+        const text = closesAfterRun
+          ? `${open}a${before}<br>${close}${between}\n${after}b`
+          : `${open}a${before}<br>${between}\n${after}b${close}`;
+        return [`${lead}${text}`, lines] as const;
+      }),
+    ),
+  );
+
+const INLINE_CASES: readonly (readonly [string, Generated])[] = SHAPES.flatMap(
+  (shape) => [
+    ...REWRITTEN_WORDS.map(
+      ([name, words]) =>
+        [
+          `${name} beside a delimiter, in ${shape[0]}`,
+          besideDelimiters(words, shape),
+        ] as const,
+    ),
+    [
+      `a run beside a line ending, in ${shape[0]}`,
+      besideLineEnds(['', ''], false, shape),
+    ] as const,
+    ...CONTAINERS.flatMap(
+      (container) =>
+        [
+          [
+            `a run beside a line ending in ${container[0]}…${container[1]}, in ${shape[0]}`,
+            besideLineEnds(container, false, shape),
+          ],
+          [
+            `a run beside a line ending that closes ${container[0]}…${container[1]}, in ${shape[0]}`,
+            besideLineEnds(container, true, shape),
+          ],
+        ] as const,
+    ),
+  ],
+);
+
+const GENERATED_CASES = [...EDGE_CASES, ...LINE_START_CASES, ...INLINE_CASES];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -534,6 +637,21 @@ const CASES: readonly (readonly [string, string, string])[] = [
     '[Contact]: https://example.net\n\n[Contact]&#58; https://example.org',
   ],
   ['<br>**bold**', '**bold**', '**bold**'],
+  // An emoji beside emphasis is written as character references, which,
+  // like the shortcode's colons, begin and end with punctuation.
+  ['__hello__:smile:', '__hello__&#128516;', '__hello__&#128516;'],
+  [':smile:_hello_', '&#128516;_hello_', '&#128516;_hello_'],
+  // A typed `_` beside a link written for an address is escaped.
+  [
+    '_a_www.example.org',
+    '_a\\_[www.example.org](http://www.example.org)',
+    '_a_www.example.org',
+  ],
+  // A run before a line ending is written over the spaces before it; two
+  // spaces there were a line break of their own.
+  ['a<br> \nb', 'a\\\nb', 'a\nb'],
+  ['a<br>  \nb', 'a\\\n\\\nb', 'a  \nb'],
+  ['*a<br>*  \nb', '*a*\\\n\\\nb', '*a*  \nb'],
   // A code span that would open a code block is written as its words.
   ['<br>```a\nb``` c', 'a b c', 'a b c'],
   ['#<br>a', '#\\\na', '&#35; a'],
@@ -669,6 +787,79 @@ const ESCAPED_ADDRESSES = new Set([
   'https://example.org/wiki/Foo_(bar) ok',
 ]);
 
+const fixture = (relative: string): Record<string, unknown> => {
+  const parsed: unknown = JSON.parse(
+    readFileSync(new URL(relative, import.meta.url), 'utf8'),
+  );
+  if (!isRecord(parsed)) throw new Error(`${relative} is not an object`);
+  return parsed;
+};
+
+const REPO_ROOT = path.resolve(import.meta.dirname, '../../../../../..');
+
+/**
+ * Every committed protocol of schema 8 or older, each with how to load it
+ * at schema 8 (undefined for one already of schema 9): the fixtures as they are, the sample Information pages in an
+ * Information stage, and each `.netcanvas` file brought to schema 8 the way
+ * an import does.
+ */
+const SCHEMA_8_SOURCES: readonly (readonly [
+  string,
+  () => Promise<Record<string, unknown> | undefined>,
+])[] = [
+  ...[
+    './fixtures/eco-genetic-relationship-maps.schema-8.json',
+    '../../../../../protocols/e2e/release-smoke-schema8/protocol.json',
+    '../../../../../protocols/e2e/fresco-release-test/protocol.json',
+    '../../../../../protocols/e2e/fresco-release-test-migration/protocol.json',
+  ].map(
+    (relative) =>
+      [
+        path.basename(path.dirname(relative)) + '/' + path.basename(relative),
+        () => Promise.resolve(fixture(relative)),
+      ] as const,
+  ),
+  [
+    'the sample Information pages',
+    () =>
+      Promise.resolve({
+        ...fixture('./fixtures/eco-genetic-relationship-maps.schema-8.json'),
+        assetManifest: INFORMATION_PAGE_ASSETS,
+        stages: [
+          {
+            id: 'information',
+            type: 'Information',
+            label: 'Information',
+            title: 'Pieces',
+            items: TEXT_PIECES.map((text, index) =>
+              textItem(`item-${index}`, text),
+            ),
+          },
+        ],
+      }),
+  ],
+  ...['packages/protocols', 'apps/networkcanvas.com/public/protocols'].flatMap(
+    (root) =>
+      readdirSync(path.join(REPO_ROOT, root), { recursive: true })
+        .filter((entry): entry is string => typeof entry === 'string')
+        .filter((entry) => entry.endsWith('.netcanvas'))
+        .map(
+          (file) =>
+            [
+              file,
+              async () => {
+                const { protocol } = await extractProtocol(
+                  readFileSync(path.join(REPO_ROOT, root, file)),
+                );
+                return detectSchemaVersion(protocol) > 8
+                  ? undefined
+                  : migrateProtocol(protocol, 8, { name: file });
+              },
+            ] as const,
+        ),
+  ),
+];
+
 describe('legacyMarkdownAsStandard', () => {
   describe.each([
     ['several lines', 'multiple', 1],
@@ -715,7 +906,7 @@ describe('legacyMarkdownAsStandard', () => {
         cases.filter(([input, lines]) => {
           // An address in one line is escaped each time (see below).
           if (lines === 'single' && input.includes('www.')) return false;
-          const once = legacyMarkdownAsStandard(input, { lines });
+          const once = writtenOnce(input, lines).written;
           return legacyMarkdownAsStandard(once, { lines }) !== once;
         }),
       ).toEqual([]);
@@ -727,21 +918,36 @@ describe('legacyMarkdownAsStandard', () => {
   // span running onto a second line, uncovered at the start of a paragraph,
   // which would open a code block. Anything else taking it would be a gap in
   // the guards.
-  it('writes code spans as words only where a code span would open a code block', () => {
-    const fellBack = GENERATED_CASES.flatMap(([, cases]) => cases).filter(
-      ([input, lines]) =>
-        legacyMarkdownWritten(input, { lines }).codeSpansAsWords,
-    );
-    const expected = SHAPES.filter(([, , lead]) => lead === '').flatMap(
-      ([, lines]) =>
-        CODE_SPANS_AFTER_RUNS.filter((text) => text.includes('\n')).map(
-          (text) => [text, lines] as const,
-        ),
-    );
-    const order = (a: readonly string[], b: readonly string[]) =>
-      a.join('\0').localeCompare(b.join('\0'));
-    expect(fellBack.toSorted(order)).toEqual(expected.toSorted(order));
-  });
+  // Each repair is taken only where the migration's own read-back finds
+  // that it needs one. Writing a block as its words, the last resort, is
+  // reached by no generated text, and writing code spans as words only by a
+  // code span running onto a second line, uncovered at the start of a
+  // paragraph, where it would open a code block. Which texts take the other
+  // repairs is recorded, so that a change to it is seen.
+  it.each(GENERATED_CASES)(
+    'repairs %s only where it needs one',
+    (kind, cases) => {
+      const reaching = (repair: string) =>
+        cases
+          .filter(([input, lines]) =>
+            writtenOnce(input, lines).repairs.includes(repair),
+          )
+          .map(([input, lines]) => `${lines}: ${input}`);
+      expect(reaching('words')).toEqual([]);
+      expect(reaching('code span')).toEqual(
+        kind.startsWith('a code span after a run') && !kind.endsWith('heading')
+          ? cases
+              .filter(([input]) => input.includes('\n'))
+              .map(([input, lines]) => `${lines}: ${input}`)
+          : [],
+      );
+      expect({
+        'line start': reaching('line start'),
+        'emoji': reaching('emoji'),
+        'delimiter': reaching('delimiter'),
+      }).toMatchSnapshot();
+    },
+  );
 
   it.each(SOURCE_FOLLOWING)(
     'follows the source of %j character by character',
@@ -854,66 +1060,16 @@ describe('legacyMarkdownAsStandard', () => {
     }
   });
 
-  it(
-    'shows every markdown text the migration rewrites in the schema 8 fixtures as the legacy reading did',
-    { timeout: 120_000 },
-    async () => {
-      const fixture = (relative: string): Record<string, unknown> => {
-        const parsed: unknown = JSON.parse(
-          readFileSync(new URL(relative, import.meta.url), 'utf8'),
-        );
-        if (!isRecord(parsed)) throw new Error(`${relative} is not an object`);
-        return parsed;
-      };
-      const protocols: Record<string, unknown>[] = [
-        fixture('./fixtures/eco-genetic-relationship-maps.schema-8.json'),
-        fixture(
-          '../../../../../protocols/e2e/release-smoke-schema8/protocol.json',
-        ),
-        fixture(
-          '../../../../../protocols/e2e/fresco-release-test/protocol.json',
-        ),
-        fixture(
-          '../../../../../protocols/e2e/fresco-release-test-migration/protocol.json',
-        ),
-        {
-          ...fixture('./fixtures/eco-genetic-relationship-maps.schema-8.json'),
-          assetManifest: INFORMATION_PAGE_ASSETS,
-          stages: [
-            {
-              id: 'information',
-              type: 'Information',
-              label: 'Information',
-              title: 'Pieces',
-              items: TEXT_PIECES.map((text, index) =>
-                textItem(`item-${index}`, text),
-              ),
-            },
-          ],
-        },
-      ];
-      // Every committed protocol of schema 8 or older, brought to schema 8 the
-      // way an import does.
-      const repoRoot = path.resolve(import.meta.dirname, '../../../../../..');
-      for (const root of [
-        'packages/protocols',
-        'apps/networkcanvas.com/public/protocols',
-      ]) {
-        const files = readdirSync(path.join(repoRoot, root), {
-          recursive: true,
-        })
-          .filter((entry): entry is string => typeof entry === 'string')
-          .filter((entry) => entry.endsWith('.netcanvas'));
-        for (const file of files) {
-          const { protocol } = await extractProtocol(
-            readFileSync(path.join(repoRoot, root, file)),
-          );
-          if (detectSchemaVersion(protocol) > 8) continue;
-          protocols.push(migrateProtocol(protocol, 8, { name: file }));
-        }
-      }
-      const texts = protocols.flatMap(legacyMarkdownTexts);
-      expect(texts.length).toBeGreaterThan(500);
+  // Each protocol is its own test, so that none takes long on a slow
+  // machine.
+  it.each(SCHEMA_8_SOURCES)(
+    'shows every markdown text the migration rewrites in %s as the legacy reading did',
+    async (_name, load) => {
+      const protocol = await load();
+      // A protocol of schema 9 is not migrated.
+      if (protocol === undefined) return;
+      const texts = legacyMarkdownTexts(protocol);
+      expect(texts.length).toBeGreaterThan(0);
       for (const [input, lines] of texts) expectSameReading(input, lines);
     },
   );
