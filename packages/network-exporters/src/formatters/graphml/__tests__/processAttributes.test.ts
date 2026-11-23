@@ -10,6 +10,7 @@ import {
   nodeExportIDProperty,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { NodeWithResequencedID } from '../../../input';
 import type { ExportOptions } from '../../../options';
 import getKeyElementGenerator from '../generateKeyElements';
@@ -51,11 +52,11 @@ describe('processAttributes', () => {
       // This test verifies that "male" is NOT matched when only "female" is selected
       const codebook = {
         node: {
-          person: {
+          [testTypeId('person')]: {
             name: 'person',
             color: 'color',
             variables: {
-              'gender-uuid': {
+              [testVariableId('gender-uuid')]: {
                 name: 'gender',
                 type: 'categorical',
                 options: [
@@ -70,9 +71,9 @@ describe('processAttributes', () => {
 
       const node = {
         [entityPrimaryKeyProperty]: '1',
-        type: 'person',
+        type: testTypeId('person'),
         [entityAttributesProperty]: {
-          'gender-uuid': ['female'], // Only female is selected
+          [testVariableId('gender-uuid')]: ['female'], // Only female is selected
         },
       } as unknown as NodeWithResequencedID;
 
@@ -99,11 +100,11 @@ describe('processAttributes', () => {
       // '10' option, not '1' or '100' via substring matching.
       const codebook = {
         node: {
-          person: {
+          [testTypeId('person')]: {
             name: 'person',
             color: 'color',
             variables: {
-              'rating-uuid': {
+              [testVariableId('rating-uuid')]: {
                 name: 'rating',
                 type: 'categorical',
                 options: [
@@ -119,9 +120,9 @@ describe('processAttributes', () => {
 
       const node = {
         [entityPrimaryKeyProperty]: '1',
-        type: 'person',
+        type: testTypeId('person'),
         [entityAttributesProperty]: {
-          'rating-uuid': ['10'],
+          [testVariableId('rating-uuid')]: ['10'],
         },
       } as unknown as NodeWithResequencedID;
 
@@ -145,17 +146,17 @@ describe('processAttributes', () => {
   describe('encrypted variables', () => {
     const codebook: Codebook = {
       node: {
-        person: {
+        [testTypeId('person')]: {
           name: 'person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            'name-uuid': {
+            [testVariableId('name-uuid')]: {
               name: 'name',
               type: 'text',
               encrypted: true,
             },
-            'city-uuid': { name: 'city', type: 'text' },
+            [testVariableId('city-uuid')]: { name: 'city', type: 'text' },
           },
         },
       },
@@ -178,12 +179,14 @@ describe('processAttributes', () => {
           [entityPrimaryKeyProperty]: '1',
           [egoProperty]: 'ego-1',
           [nodeExportIDProperty]: 1,
-          type: 'person',
+          type: testTypeId('person'),
           [entityAttributesProperty]: {
-            'name-uuid': ciphertext,
-            'city-uuid': 'Lisbon',
+            [testVariableId('name-uuid')]: ciphertext,
+            [testVariableId('city-uuid')]: 'Lisbon',
           },
-          [entitySecureAttributesMeta]: { 'name-uuid': metadata },
+          [entitySecureAttributesMeta]: {
+            [testVariableId('name-uuid')]: metadata,
+          },
         };
 
         const result = processAttributes(
