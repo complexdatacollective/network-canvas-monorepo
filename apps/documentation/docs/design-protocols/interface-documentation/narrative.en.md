@@ -44,7 +44,7 @@ A Narrative needs at least one preset. For each preset you set:
 - **Layout attribute** — the variable used to position the nodes for this preset.
 - **Grouping attribute** (optional) — a categorical variable used to draw convex hulls around the nodes that share each value.
 - **Displayed edges** (optional) — one or more edge types to draw. Each edge type you choose also needs a label, which participants see in the preset switcher. It starts as the edge type's name, and you can translate it like any other text.
-- **Node highlighting** (optional) — one or more boolean variables; nodes whose value is true are highlighted while the preset is active. Each variable you choose also needs a label, which participants see in the preset switcher. The label starts as the variable's name, and you can translate it like any other text (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol#labels-in-a-narrative-stages-legend)).
+- **Node highlighting** (optional) — one or more boolean variables; nodes whose value is true are highlighted while the preset is active. Each variable you choose also needs a label, which participants see in the preset switcher. The label starts as the variable's name, and you can translate it like any other text (see [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol#labels-in-a-narrative-stages-legend)).
 
 The group, edge, and highlight options each pick from the variables already in your codebook, so define the variables a preset needs before you build it.
 
@@ -70,7 +70,7 @@ In Architect Classic a filter belongs to the whole Narrative stage, and applies 
 
 ### Background
 
-Like the Sociogram, a Narrative stage can sit on either a series of concentric circles or a custom background image. A responsive SVG works best as an image background, because it keeps regions and labels readable as the canvas changes shape. See [Responsive SVG Backgrounds](/en/design-protocols/responsive-svg-backgrounds) for how to prepare one.
+Like the Sociogram, a Narrative stage can sit on either a series of concentric circles or a custom background image. A responsive SVG works best as an image background, because it keeps regions and labels readable as the canvas changes shape. See [Creating responsive background images](/en/design-protocols/tutorials/responsive-svg-backgrounds) for how to prepare one.
 
 ### Behaviors
 
@@ -84,11 +84,11 @@ Three stage-level behaviors change how participants can interact with the canvas
 
 ### Customize built-in wording
 
-The **Customize built-in wording** section of the stage editor holds the headings of the panels, under **Specific to this stage**. Each starts as Network Canvas words it, in every language it has wording for, and you can change and translate it like any other text. Your protocol keeps only the wording you change (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)). A heading is in the section only while a preset highlights attributes, shows links or groups nodes, and it is removed when no preset does.
+The **Customize built-in wording** section of the stage editor holds the headings of the panels, under **Specific to this stage**. Each starts as Network Canvas words it, in every language it has wording for, and you can change and translate it like any other text. Your protocol keeps only the wording you change (see [Words Network Canvas supplies](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). A heading is in the section only while a preset highlights attributes, shows links or groups nodes, and it is removed when no preset does.
 
 The tooltips of the drawing tools are the same on every Narrative stage, so they are under **Shared by every stage of this kind**, in the same section, while **Free-draw** is on. A change to them applies to every such stage, and is saved as soon as you leave the field. There are three: **Toggle drawing tooltip** names the button that switches drawing on and off, **Toggle freezing annotations tooltip** the button that freezes and unfreezes annotations, and **Reset annotations tooltip** the button that clears them.
 
-The tooltips for pausing and resuming the automatic layout are [interview text](/en/design-protocols/translating-your-protocol#interview-text), shared with the Sociogram, and are reworded and translated in the translation table under **Buttons**.
+The tooltips for pausing and resuming the automatic layout are [interview text](/en/design-protocols/tutorials/translating-your-protocol#interview-text), shared with the Sociogram, and are reworded and translated in the translation table under **Buttons**.
 
 </AppOnly>
 

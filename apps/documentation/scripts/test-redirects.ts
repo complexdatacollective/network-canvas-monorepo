@@ -35,6 +35,47 @@ const redirectTests: RedirectTest[] = [
     expectedDestination: '/en/design-protocols/installing-architect-classic',
     description: 'Installing Architect page renamed to Architect Classic',
   },
+
+  // Design Protocols reorganisation: each moved page, in every language.
+  {
+    from: '/en/design-protocols/piped-text',
+    expectedDestination: '/en/design-protocols/key-concepts/piped-text',
+    description: 'Piped Text moved into Key concepts',
+  },
+  {
+    from: '/en/design-protocols/dynamic-values',
+    expectedDestination: '/en/design-protocols/key-concepts/piped-text',
+    description: 'Dynamic values goes straight to Piped Text in Key concepts',
+  },
+  {
+    from: '/es/design-protocols/translating-your-protocol',
+    expectedDestination:
+      '/es/design-protocols/tutorials/translating-your-protocol',
+    description: 'Translating Your Protocol moved into Tutorials (Spanish)',
+  },
+  {
+    from: '/fr/design-protocols/custom-node-shapes',
+    expectedDestination: '/fr/design-protocols/tutorials/custom-node-shapes',
+    description: 'Custom node shapes moved into Tutorials (French)',
+  },
+  {
+    from: '/en/design-protocols/key-concepts/responsive-svg-backgrounds',
+    expectedDestination:
+      '/en/design-protocols/tutorials/responsive-svg-backgrounds',
+    description:
+      'Old responsive SVG backgrounds address goes straight to Tutorials',
+  },
+  {
+    from: '/en/design-protocols/protocol-gallery',
+    expectedDestination: 'https://protocolgallery.networkcanvas.com/',
+    description: 'Removed Protocol Gallery page sends readers to the gallery',
+  },
+  {
+    from: '/fr/design-protocols/protocol-gallery',
+    expectedDestination: 'https://protocolgallery.networkcanvas.com/fr/',
+    description:
+      'Removed Protocol Gallery page sends readers to the French gallery',
+  },
   {
     from: '/citing-the-software',
     expectedDestination:
@@ -179,11 +220,14 @@ async function testRedirect(
     const actualStatus = response.status;
     const actualLocation = response.headers.get('location') || '';
 
-    // Normalize locations for comparison (handle both absolute and relative URLs)
+    // Normalize locations for comparison (handle both absolute and relative
+    // URLs). An expected destination on another site is compared whole.
     const normalizedExpected = test.expectedDestination;
-    const normalizedActual = actualLocation.startsWith('http')
-      ? new URL(actualLocation).pathname
-      : actualLocation;
+    const expectsOtherSite = normalizedExpected.startsWith('http');
+    const normalizedActual =
+      actualLocation.startsWith('http') && !expectsOtherSite
+        ? new URL(actualLocation).pathname
+        : actualLocation;
 
     // Any redirect status is acceptable: netlify.toml answers 301, and the
     // locale edge function answers 307 because its answer depends on the reader

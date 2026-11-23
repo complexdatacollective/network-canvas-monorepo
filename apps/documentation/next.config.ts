@@ -25,6 +25,9 @@ const buildYear = String(new Date().getFullYear());
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Next.js otherwise writes an AGENTS.md beside this file when `next dev`
+  // detects a coding agent. The repository's own agent guidance is CLAUDE.md.
+  agentRules: false,
   ...(process.env.NODE_ENV === 'development'
     ? {}
     : { output: 'export' as const }),

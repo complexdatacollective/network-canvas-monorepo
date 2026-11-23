@@ -10,4 +10,4 @@
 
 Use this section to customize the wording that Network Canvas uses for built-in elements like validation messages, tooltips, and labels.
 
-Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/translating-your-protocol#words-network-canvas-supplies).
+Read more about [words Network Canvas supplies](https://documentation.networkcanvas.com/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies).

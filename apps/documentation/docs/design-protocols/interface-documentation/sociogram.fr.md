@@ -1,7 +1,7 @@
 ---
 title: Sociogramme
 navOrder: 9
-translatedFrom: 7d27d8de5bb6cbb8e8e7d3af7ce752394bb09036
+translatedFrom: b8d1cf8eca3c5c236b0e15b8c4567c8303fc1fdb
 ---
 
 <InterfaceSummary type="Sociogram">
@@ -24,7 +24,7 @@ Une étape « Sociogramme » se construit à partir d’une ou de plusieurs [c
 
 Chaque consigne a un **attribut de disposition**, qui stocke la position de chaque nœud sur le canevas sous forme d’une paire de coordonnées. C’est là que sont enregistrées les données spatiales que vous recueillez dans l’étape « Sociogramme ».
 
-Si vous utilisez le même attribut de disposition pour toutes les consignes d’une étape, la position d’un nœud est conservée lorsque la personne participante passe d’une tâche à l’autre : elle affine ainsi une seule disposition commune. Si vous voulez des mesures spatiales distinctes, donnez à chaque consigne un attribut de disposition différent ; réutiliser un attribut remplace les coordonnées précédentes. Les positions sont stockées sous forme de coordonnées normalisées qu’un [arrière-plan SVG adaptatif](/fr/design-protocols/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) permet de transformer en zones porteuses de sens lors de l’analyse.
+Si vous utilisez le même attribut de disposition pour toutes les consignes d’une étape, la position d’un nœud est conservée lorsque la personne participante passe d’une tâche à l’autre : elle affine ainsi une seule disposition commune. Si vous voulez des mesures spatiales distinctes, donnez à chaque consigne un attribut de disposition différent ; réutiliser un attribut remplace les coordonnées précédentes. Les positions sont stockées sous forme de coordonnées normalisées qu’un [arrière-plan SVG adaptatif](/fr/design-protocols/tutorials/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) permet de transformer en zones porteuses de sens lors de l’analyse.
 
 ### Positionnement automatique ou manuel {#automatic-or-manual-positioning}
 
@@ -35,7 +35,7 @@ Un réglage de l’étape, **Mode de disposition**, détermine la façon dont le
 
 ### Arrière-plan {#background}
 
-Une étape « Sociogramme » peut s’afficher sur une série de cercles concentriques ou sur une image d’arrière-plan personnalisée. Pour l’arrière-plan à cercles concentriques, vous choisissez le nombre de cercles à dessiner, et pouvez, si vous le souhaitez, activer l’option « Agrandir les cercles intérieurs » pour que les anneaux centraux soient proportionnellement plus grands. Pour une image d’arrière-plan, un SVG adaptatif est le meilleur choix, car il garde les zones et les libellés lisibles lorsque le canevas change de forme entre les orientations portrait et paysage ; voir [Arrière-plans SVG adaptatifs](/fr/design-protocols/responsive-svg-backgrounds).
+Une étape « Sociogramme » peut s’afficher sur une série de cercles concentriques ou sur une image d’arrière-plan personnalisée. Pour l’arrière-plan à cercles concentriques, vous choisissez le nombre de cercles à dessiner, et pouvez, si vous le souhaitez, activer l’option « Agrandir les cercles intérieurs » pour que les anneaux centraux soient proportionnellement plus grands. Pour une image d’arrière-plan, un SVG adaptatif est le meilleur choix, car il garde les zones et les libellés lisibles lorsque le canevas change de forme entre les orientations portrait et paysage ; voir [Créer des images d’arrière-plan adaptatives](/fr/design-protocols/tutorials/responsive-svg-backgrounds).
 
 <GoodPractice>
 
@@ -63,7 +63,7 @@ La création de liens et le basculement d’attribut sont les deux comportements
 
 ### Info-bulles de suspension et de reprise {#pause-and-resume-tooltips}
 
-Les info-bulles des boutons qui suspendent et reprennent la simulation de la disposition automatique font partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text), communs avec l’étape « Narration » : l’éditeur d’étape n’a donc pas de section pour elles. Elles se reformulent et se traduisent dans le tableau des traductions, sous **Boutons**, et un protocole ne les contient que tant qu’une étape utilise la disposition automatique.
+Les info-bulles des boutons qui suspendent et reprennent la simulation de la disposition automatique font partie des [textes de l’entretien](/fr/design-protocols/tutorials/translating-your-protocol#interview-text), communs avec l’étape « Narration » : l’éditeur d’étape n’a donc pas de section pour elles. Elles se reformulent et se traduisent dans le tableau des traductions, sous **Boutons**, et un protocole ne les contient que tant qu’une étape utilise la disposition automatique.
 
 </AppOnly>
 
