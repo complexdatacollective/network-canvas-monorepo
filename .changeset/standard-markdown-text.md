@@ -41,8 +41,12 @@ The editor's link box asks you to correct any other address. Telephone links
 are now kept when you save, and saving without making a change no longer
 changes where any link leads.
 
-Italic words written directly beside a letter, a digit or an emoji, such as
-part of a word, now stay italic when participants see them.
+Bold and italic words written directly beside a letter, a digit or an emoji,
+such as part of a word, now stay bold or italic when participants see them.
+This includes words that begin or end with punctuation, such as a bracket. In
+a few of these places, Architect stores the letter beside the bold or italic
+words as a character reference, such as `&#97;` for `a`. Participants and the
+editor still show the letter.
 
 For developers:
 

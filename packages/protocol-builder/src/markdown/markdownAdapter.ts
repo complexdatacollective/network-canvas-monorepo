@@ -7,7 +7,6 @@ import { showHtmlAsTyped } from '@codaco/fresco-ui/markdownTypedHtml';
 import {
   assetBlockMarkdown,
   assetBlockSettings,
-  ASCII_PUNCTUATION,
   escapeMarkdownText,
   isAssetBlockAlignment,
   isAssetBlockSize,
@@ -447,45 +446,82 @@ const isSameLinkTarget = (
   target.href === other.href &&
   target.title === other.title;
 
-const serializeTextNode = (node: RichTextContent): string => {
-  const text = escapeMarkdownText(node.text ?? '');
-  const isBold = Boolean(getMark(node, 'bold'));
-  const isItalic = Boolean(getMark(node, 'italic'));
+/**
+ * A piece of a line as it is written. Text is the researcher's words,
+ * escaped; a letter, digit or other word character at either end of it may
+ * be written as a character reference instead, which shows the same
+ * character (see `writeSegments`). Syntax is markdown the editor writes
+ * around words (a link's brackets and address, a line break) and is written
+ * as it is. Marked words are bold, italic or both, and are written between
+ * the delimiters that `writeSegments` chooses for them.
+ */
+type Segment =
+  | Readonly<{ kind: 'text' | 'syntax'; markdown: string }>
+  | Readonly<{ kind: 'marked'; emphasis: Emphasis; markdown: string }>;
 
-  if (isBold && isItalic) {
-    return `***${text}***`;
-  }
+type Emphasis = 'italic' | 'bold' | 'bold and italic';
 
-  if (isBold) {
-    return `**${text}**`;
-  }
-
-  if (isItalic) {
-    return `_${text}_`;
-  }
-
-  return text;
+/**
+ * The delimiters each emphasis may be written with, the plainest first: `_`
+ * for italics, `**` for bold and `***` for both are what the editor has
+ * always written, and are kept wherever they are read.
+ */
+const DELIMITERS: Readonly<Record<Emphasis, readonly string[]>> = {
+  'italic': ['_', '*'],
+  'bold': ['**', '__'],
+  'bold and italic': ['***', '___'],
 };
 
-const serializeLink = (content: string, target: LinkTarget): string => {
+const emphasisOf = (node: RichTextContent): Emphasis | undefined => {
+  const bold = getMark(node, 'bold') !== undefined;
+  const italic = getMark(node, 'italic') !== undefined;
+  if (bold && italic) return 'bold and italic';
+  if (bold) return 'bold';
+  return italic ? 'italic' : undefined;
+};
+
+/**
+ * A piece of text as segments. White space at either edge of marked words is
+ * written outside the delimiters, where it shows the same: markdown never
+ * reads a delimiter beside white space on the inside as opening or closing.
+ */
+const textSegments = (node: RichTextContent): Segment[] => {
+  const value = node.text ?? '';
+  const emphasis = emphasisOf(node);
+  const [, opening = '', words = '', closing = ''] =
+    /^(\s*)([\s\S]*?)(\s*)$/u.exec(value) ?? [];
+  if (emphasis === undefined || words === '') {
+    return [{ kind: 'text', markdown: escapeMarkdownText(value) }];
+  }
+  const segments: Segment[] = [
+    { kind: 'text', markdown: opening },
+    { kind: 'marked', emphasis, markdown: escapeMarkdownText(words) },
+    { kind: 'text', markdown: closing },
+  ];
+  return segments.filter(({ markdown }) => markdown !== '');
+};
+
+/** A link's markdown after its label. */
+const linkEndMarkdown = (target: LinkTarget): string => {
   const titleText = target.title ? ` ${linkTitleMarkdown(target.title)}` : '';
 
-  return `[${content}](${linkDestinationMarkdown(target.href)}${titleText})`;
+  return `](${linkDestinationMarkdown(target.href)}${titleText})`;
 };
 
-const serializeInlineNode = (
+const inlineNodeSegments = (
   node: RichTextContent,
   options: SerializeInlineOptions,
-): string => {
+): Segment[] => {
   if (node.type === 'text') {
-    return serializeTextNode(node);
+    return textSegments(node);
   }
 
   if (node.type === 'hardBreak') {
-    return '  \n';
+    return [{ kind: 'syntax', markdown: '  \n' }];
   }
 
-  return serializeInline(node.content, options);
+  const markdown = serializeInline(node.content, options);
+  return markdown === '' ? [] : [{ kind: 'syntax', markdown }];
 };
 
 /**
@@ -543,48 +579,160 @@ const joinedTextRuns = (nodes: RichTextContent[]): RichTextContent[] =>
   }, []);
 
 /**
- * Whether markdown reads `char` as neither white space nor punctuation.
- * Beside such a character `_` can neither open nor close emphasis, since an
- * underscore inside a word (`snake_case`) is read as typed; `*` can.
+ * What CommonMark counts a character beside a run of `*` or `_` as: white
+ * space (the start or end of a line counts as white space), punctuation (a
+ * Unicode punctuation or symbol character), or anything else, such as a
+ * letter or digit. Characters are judged one UTF-16 code unit at a time, as
+ * the markdown parser that reads stored text judges them, so an emoji
+ * outside the Basic Multilingual Plane counts as a letter.
  */
-const isWordCharacter = (char: string | undefined): boolean =>
-  char !== undefined &&
-  !/\s/u.test(char) &&
-  !ASCII_PUNCTUATION.test(char) &&
-  !/\p{P}/u.test(char);
+type Flank = 'whitespace' | 'punctuation' | 'other';
 
-type InlinePiece = Readonly<{ node?: RichTextContent; markdown: string }>;
+const flankOf = (unit: string | undefined): Flank => {
+  if (unit === undefined || /\s/u.test(unit)) return 'whitespace';
+  return /[\p{P}\p{S}]/u.test(unit) ? 'punctuation' : 'other';
+};
 
 /**
- * Inline pieces as markdown, each italic one written with `*` in place of
- * `_` where what is written beside it is a letter, a digit, an emoji or
- * another word character, so that the emphasis is still read there.
+ * Whether a run of `marker` written between the characters `before` and
+ * `after` can open and can close emphasis, as CommonMark defines it
+ * (section 6.2, "Emphasis and strong emphasis"). A run is left-flanking when
+ * it is not followed by white space, and is followed by punctuation only if
+ * it is preceded by white space or punctuation; right-flanking is the mirror
+ * of this. A `*` run opens when it is left-flanking and closes when it is
+ * right-flanking. A `_` run must also not stand inside a word: it opens only
+ * if it is not right-flanking as well, or is preceded by punctuation, and
+ * closes only if it is not left-flanking as well, or is followed by
+ * punctuation.
  */
-const joinWithItalicDelimiters = (pieces: readonly InlinePiece[]): string =>
-  pieces
-    .map(({ node, markdown }, index) => {
-      if (
-        node?.type !== 'text' ||
-        !getMark(node, 'italic') ||
-        getMark(node, 'bold') ||
-        !markdown.startsWith('_')
-      ) {
-        return markdown;
-      }
-      const before = Array.from(pieces[index - 1]?.markdown ?? '').at(-1);
-      const after = Array.from(pieces[index + 1]?.markdown ?? '')[0];
-      return isWordCharacter(before) || isWordCharacter(after)
-        ? `*${markdown.slice(1, -1)}*`
-        : markdown;
-    })
-    .join('');
+const delimiterRun = (
+  marker: string,
+  before: string | undefined,
+  after: string | undefined,
+): Readonly<{ open: boolean; close: boolean }> => {
+  const previous = flankOf(before);
+  const next = flankOf(after);
+  const leftFlanking =
+    next !== 'whitespace' && (next !== 'punctuation' || previous !== 'other');
+  const rightFlanking =
+    previous !== 'whitespace' &&
+    (previous !== 'punctuation' || next !== 'other');
+  if (marker !== '_') return { open: leftFlanking, close: rightFlanking };
+  return {
+    open: leftFlanking && (!rightFlanking || previous === 'punctuation'),
+    close: rightFlanking && (!leftFlanking || next === 'punctuation'),
+  };
+};
 
-const serializeInline = (
+/** A character as a numeric character reference, which shows the same. */
+const characterReference = (character: string): string =>
+  `&#${character.codePointAt(0) ?? 0};`;
+
+type Placed = {
+  /** For marked words, the delimiter chosen. */
+  delimiter?: string;
+  /** For text, whether its first or last character is written as a reference. */
+  referenceFirst?: boolean;
+  referenceLast?: boolean;
+};
+
+const writtenSegment = (segment: Segment, placed: Placed): string => {
+  if (segment.kind === 'marked') {
+    // Until its delimiter is chosen, a `*` stands for it: either delimiter
+    // is punctuation to what stands beside it.
+    const delimiter = placed.delimiter ?? '*';
+    return `${delimiter}${segment.markdown}${delimiter}`;
+  }
+  if (segment.kind === 'syntax') return segment.markdown;
+  const characters = Array.from(segment.markdown);
+  const last = characters.length - 1;
+  return characters
+    .map((character, index) =>
+      (placed.referenceFirst === true && index === 0) ||
+      (placed.referenceLast === true && index === last)
+        ? characterReference(character)
+        : character,
+    )
+    .join('');
+};
+
+/**
+ * Segments of a line as markdown, with delimiters for each run of marked
+ * words that markdown reads as opening and closing that emphasis, given the
+ * characters written on each side of it. The plainest delimiter that is read
+ * is used. Where none is read (marked words that begin with punctuation
+ * directly after a letter, say), the letter beside them is written as a
+ * character reference, which markdown counts as punctuation, and the
+ * delimiters are chosen again. Two runs side by side are never written with
+ * the same character, which would join them into one run.
+ */
+const writeSegments = (segments: readonly Segment[]): string => {
+  const placed: Placed[] = segments.map(() => ({}));
+  const written = (index: number): string | undefined => {
+    const segment = segments[index];
+    const place = placed[index];
+    return segment === undefined || place === undefined
+      ? undefined
+      : writtenSegment(segment, place);
+  };
+  /** Whether the text at `index` can have the character at its edge referenced. */
+  const referable = (index: number, edge: 'first' | 'last'): boolean => {
+    const markdown = written(index);
+    const unit = edge === 'first' ? markdown?.[0] : markdown?.at(-1);
+    return segments[index]?.kind === 'text' && flankOf(unit) === 'other';
+  };
+
+  segments.forEach((segment, index) => {
+    const place = placed[index];
+    if (segment.kind !== 'marked' || place === undefined) return;
+    const previous = placed[index - 1];
+    const next = placed[index + 1];
+    const first = segment.markdown[0];
+    const last = segment.markdown.at(-1);
+    const options = [
+      [false, false],
+      [true, false],
+      [false, true],
+      [true, true],
+    ].filter(
+      ([before, after]) =>
+        (!before || referable(index - 1, 'last')) &&
+        (!after || referable(index + 1, 'first')),
+    );
+    for (const [referenceBefore, referenceAfter] of options) {
+      if (previous !== undefined) previous.referenceLast = referenceBefore;
+      if (next !== undefined) next.referenceFirst = referenceAfter;
+      const before = written(index - 1)?.at(-1);
+      const after = written(index + 1)?.[0];
+      const delimiter = DELIMITERS[segment.emphasis].find((candidate) => {
+        const marker = candidate.charAt(0);
+        const joinsRun =
+          segments[index - 1]?.kind === 'marked' && before === marker;
+        return (
+          !joinsRun &&
+          delimiterRun(marker, before, first).open &&
+          delimiterRun(marker, last, after).close
+        );
+      });
+      if (delimiter !== undefined) {
+        place.delimiter = delimiter;
+        return;
+      }
+    }
+    // Not reached: with a reference on each side, or punctuation there,
+    // the first delimiter that does not join the run before it is read.
+    place.delimiter = DELIMITERS[segment.emphasis][0];
+  });
+
+  return segments.map((_segment, index) => written(index) ?? '').join('');
+};
+
+const inlineSegments = (
   content: RichTextContent[] | undefined,
-  options: SerializeInlineOptions = {},
-): string => {
+  options: SerializeInlineOptions,
+): Segment[] => {
   const nodes = joinedTextRuns(content ?? []);
-  const parts: InlinePiece[] = [];
+  const segments: Segment[] = [];
   let index = 0;
 
   while (index < nodes.length) {
@@ -598,25 +746,27 @@ const serializeInline = (
     const target = options.links === false ? undefined : getLinkTarget(node);
 
     if (!target || node.type !== 'text') {
-      parts.push({ node, markdown: serializeInlineNode(node, options) });
+      segments.push(...inlineNodeSegments(node, options));
       index += 1;
       continue;
     }
 
     const end = findLinkRunEnd(nodes, index, target);
-    const inner = joinWithItalicDelimiters(
-      nodes.slice(index, end).map((runNode) => ({
-        node: runNode,
-        markdown: serializeInlineNode(runNode, options),
-      })),
-    );
-
-    parts.push({ markdown: serializeLink(inner, target) });
+    segments.push({ kind: 'syntax', markdown: '[' });
+    for (const runNode of nodes.slice(index, end)) {
+      segments.push(...inlineNodeSegments(runNode, options));
+    }
+    segments.push({ kind: 'syntax', markdown: linkEndMarkdown(target) });
     index = end;
   }
 
-  return joinWithItalicDelimiters(parts);
+  return segments;
 };
+
+const serializeInline = (
+  content: RichTextContent[] | undefined,
+  options: SerializeInlineOptions = {},
+): string => writeSegments(inlineSegments(content, options));
 
 const getInlineContent = (node: RichTextContent): RichTextContent[] => {
   switch (node.type) {
@@ -804,6 +954,33 @@ const withoutOpeningSpace = (
     : [{ ...first, text }, ...rest];
 };
 
+// White space that closes a paragraph is never drawn either, and markdown
+// does not keep it: written out, it came back gone, so the text changed the
+// second time it was saved.
+const withoutClosingSpace = (content: RichTextContent[]): RichTextContent[] => {
+  const last = content.at(-1);
+  if (last?.type !== 'text') return content;
+  const text = (last.text ?? '').trimEnd();
+  const rest = content.slice(0, -1);
+  return text === '' ? withoutClosingSpace(rest) : [...rest, { ...last, text }];
+};
+
+// The same holds at each end of a line that a line break ends or begins.
+const withoutSpaceAtLineEdges = (
+  content: RichTextContent[] | undefined,
+): RichTextContent[] | undefined => {
+  if (content === undefined) return content;
+  const lines: RichTextContent[][] = [[]];
+  for (const node of content) {
+    if (node.type === 'hardBreak') lines.push([]);
+    else lines.at(-1)?.push(node);
+  }
+  return lines.flatMap((line, index) => [
+    ...(index === 0 ? [] : [{ type: 'hardBreak' }]),
+    ...withoutClosingSpace(withoutOpeningSpace(line) ?? []),
+  ]);
+};
+
 const serializeBlock = (
   node: RichTextContent,
   marker: ListMarker = FIRST_MARKER,
@@ -814,7 +991,7 @@ const serializeBlock = (
 
     case 'paragraph':
       return serializeInline(
-        withoutOpeningSpace(withoutClosingBreaks(node.content)),
+        withoutSpaceAtLineEdges(withoutClosingBreaks(node.content)),
       );
 
     case 'heading': {
@@ -893,7 +1070,10 @@ export const richTextContentToMarkdown = (
   }
 
   if (inline) {
-    return serializeInline(flattenInlineContent(content.content), { links });
+    return serializeInline(
+      withoutSpaceAtLineEdges(flattenInlineContent(content.content)),
+      { links },
+    );
   }
 
   return serializeBlock(content);

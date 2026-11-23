@@ -17,6 +17,7 @@ import { holdsLineBreak } from '@codaco/shared-consts';
 
 import {
   type RichTextContent,
+  type RichTextMark,
   markdownToRichTextContent,
   richTextContentToMarkdown,
 } from '../markdownAdapter.ts';
@@ -612,52 +613,210 @@ describe('text typed in the editor', () => {
     }
   });
 
-  const marked = (value: string, mark: 'bold' | 'italic'): RichTextContent => ({
-    type: 'text',
-    text: value,
-    marks: [{ type: mark }],
+  type Mark = 'bold' | 'italic';
+  const LINK: RichTextMark = {
+    type: 'link',
+    attrs: { href: 'https://example.org', title: null },
+  };
+  const withMarks = (value: string, marks: readonly Mark[]): RichTextContent =>
+    marks.length === 0
+      ? text(value)
+      : { type: 'text', text: value, marks: marks.map((type) => ({ type })) };
+  const linked = (node: RichTextContent): RichTextContent => ({
+    ...node,
+    marks: [...(node.marks ?? []), LINK],
   });
 
-  // Bold or italic words right beside a letter, a digit or an emoji: the
-  // delimiter written for them must be one that markdown reads there.
-  const BESIDE_WORDS: readonly (readonly [string, RichTextContent[]])[] = (
-    ['bold', 'italic'] as const
-  ).flatMap((mark) =>
-    ['a', '1', '😄'].flatMap(
-      (neighbour) =>
-        [
-          [
-            `${mark} words before ${neighbour}`,
-            [marked('hello', mark), text(neighbour)],
-          ],
-          [
-            `${mark} words after ${neighbour}`,
-            [text(neighbour), marked('hello', mark)],
-          ],
-          [
-            `${mark} words between ${neighbour}s`,
-            [text(neighbour), marked('hello', mark), text(neighbour)],
-          ],
-        ] as const,
+  /*
+   * Every bold or italic mark the editor writes must be read back as that
+   * mark, whatever characters stand inside it and beside it. Whether markdown
+   * reads a `*` or `_` as a mark depends only on the character written on
+   * each side of it, so each kind of character is put at the inner edge of
+   * the marked words and beside them, on the left, on the right and on both
+   * sides.
+   */
+  const MARKS: readonly (readonly Mark[])[] = [
+    ['italic'],
+    ['bold'],
+    ['bold', 'italic'],
+  ];
+
+  /** Marked words whose first and last characters are of one kind. */
+  const INNER: readonly (readonly [string, string])[] = [
+    ['a letter', 'hello'],
+    ['a digit', '42'],
+    ['an emoji', '😄hi😄'],
+    ['ASCII punctuation', '(hi)'],
+    ['punctuation that is escaped', '*hi*'],
+    ['Unicode punctuation', '“hi”'],
+    ['a space', ' hi '],
+  ];
+
+  /** What stands beside the marked words, as the editor holds it. */
+  type Neighbour = Readonly<{
+    name: string;
+    /** Whether a one-line field can hold it. */
+    oneLine: boolean;
+    /** What stands before the marked words when it is on their left. */
+    before: readonly RichTextContent[];
+    /** What stands after the marked words when it is on their right. */
+    after: readonly RichTextContent[];
+    /** The marked words as they stand beside it. */
+    piece?: (piece: RichTextContent) => RichTextContent;
+  }>;
+
+  const besideText = (name: string, value: string): Neighbour => ({
+    name,
+    oneLine: true,
+    before: [text(value)],
+    after: [text(value)],
+  });
+  const besideMarked = (marks: readonly Mark[], value: string): Neighbour => ({
+    name: `${marks.join(' and ')} ${JSON.stringify(value)}`,
+    oneLine: true,
+    before: [withMarks(value, marks)],
+    after: [withMarks(value, marks)],
+  });
+
+  const NEIGHBOURS = (marks: readonly Mark[]): readonly Neighbour[] => [
+    besideText('a letter', 'a'),
+    besideText('a digit', '2'),
+    besideText('an emoji', '🙂'),
+    besideText('ASCII punctuation', '!'),
+    besideText('punctuation that is escaped', '_'),
+    besideText('a dynamic value', '{name}'),
+    besideText('Unicode punctuation', '—'),
+    besideText('a space', ' '),
+    { name: 'the edge of the line', oneLine: true, before: [], after: [] },
+    {
+      name: 'a line break',
+      oneLine: false,
+      before: [text('z'), { type: 'hardBreak' }],
+      after: [{ type: 'hardBreak' }, text('z')],
+    },
+    {
+      name: 'a link',
+      oneLine: false,
+      before: [linked(text('y'))],
+      after: [linked(text('y'))],
+    },
+    {
+      // The marked words open or close a link's label, beside a letter
+      // outside the link.
+      name: 'the edge of a link label',
+      oneLine: false,
+      before: [text('a')],
+      after: [text('a')],
+      piece: linked,
+    },
+    ...MARKS.filter((other) => other.join() !== marks.join()).flatMap(
+      (other) => [besideMarked(other, 'y'), besideMarked(other, '(y)')],
+    ),
+  ];
+
+  const SIDES = ['on the left', 'on the right', 'on both sides'] as const;
+
+  const nextTo = (
+    { before, after, piece: place = (piece) => piece }: Neighbour,
+    side: (typeof SIDES)[number],
+    piece: RichTextContent,
+  ): RichTextContent[] => [
+    ...(side === 'on the right' ? [] : before),
+    place(piece),
+    ...(side === 'on the left' ? [] : after),
+  ];
+
+  const BESIDE = MARKS.flatMap((marks) =>
+    INNER.flatMap(([innerName, inner]) =>
+      NEIGHBOURS(marks).flatMap((neighbour) =>
+        SIDES.map((side) => ({
+          name: `${marks.join(' and ')} words with ${innerName} at their edges, ${neighbour.name} ${side}`,
+          oneLine: neighbour.oneLine,
+          content: nextTo(neighbour, side, withMarks(inner, marks)),
+        })),
+      ),
     ),
   );
 
   it.each(
     SHAPES.flatMap((shape) =>
-      BESIDE_WORDS.map(
-        ([name, content]) => [shape.name, name, content, shape] as const,
+      BESIDE.filter(({ oneLine }) => oneLine || shape.lines === 'multiple').map(
+        ({ name, content }) => [shape.name, name, content, shape] as const,
       ),
     ),
   )(
     'in %s, %s is drawn as the editor shows it',
     (_name, _words, content, shape) => {
       const document = paragraph(...content);
+      const shown = read(editorElements(document));
       const saved = richTextContentToMarkdown(
         document,
         shape.lines === 'single',
       );
-      expect(drawn(saved, shape)).toEqual(read(editorElements(document)));
+      expect(drawn(saved, shape)).toEqual(shown);
+      expect(shownByEditor(saved, shape)).toEqual(shown);
       expect(roundTrip(saved, shape)).toBe(saved);
+    },
+  );
+
+  /*
+   * The plainest form that is read: `_` for italics and `**` for bold where
+   * they are read, `*` for italics beside a letter, and a character reference
+   * for the letter beside the mark only where no delimiter is read.
+   */
+  it.each([
+    [
+      'bold (x) after a',
+      [text('a'), withMarks('(x)', ['bold'])],
+      '&#97;**(x)**',
+    ],
+    [
+      'italic .x after a',
+      [text('a'), withMarks('.x', ['italic'])],
+      '&#97;_.x_',
+    ],
+    [
+      'italic x. before b',
+      [withMarks('x.', ['italic']), text('b')],
+      '_x._&#98;',
+    ],
+    [
+      'bold and italic (x) between a and b',
+      [text('a'), withMarks('(x)', ['bold', 'italic']), text('b')],
+      '&#97;***(x)***&#98;',
+    ],
+    [
+      'italic x between a and b',
+      [text('a'), withMarks('x', ['italic']), text('b')],
+      'a*x*b',
+    ],
+    [
+      'italic this between spaces',
+      [text('see '), withMarks('this', ['italic']), text(' now')],
+      'see _this_ now',
+    ],
+    [
+      'bold this between spaces',
+      [text('see '), withMarks('this', ['bold']), text(' now')],
+      'see **this** now',
+    ],
+    [
+      'bold and italic this between spaces',
+      [text('see '), withMarks('this', ['bold', 'italic']), text(' now')],
+      'see ***this*** now',
+    ],
+    [
+      'bold words ending in a space',
+      [withMarks('this ', ['bold']), text('now')],
+      '**this** now',
+    ],
+  ] as const)(
+    'writes %s as the form that is read',
+    (_name, content, stored) => {
+      expect(richTextContentToMarkdown(paragraph(...content))).toBe(stored);
+      expect(richTextContentToMarkdown(paragraph(...content), true)).toBe(
+        stored,
+      );
     },
   );
 });
