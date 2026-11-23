@@ -3,7 +3,7 @@ title: Informations sur le schéma de protocole
 wip: false
 navOrder: 3
 date: 22nd October 2026
-translatedFrom: 28205e16d7b0aa32c022113fb2f290cc753a31dd
+translatedFrom: f8324436a314c62906e13214c645fec30a3782b2
 ---
 
 ## Résumé {#summary}
@@ -154,10 +154,10 @@ La migration d’un protocole du schéma 8 vers le schéma 9 conserve l’intég
 - déplace le titre de chaque étape d’anonymisation au début de son explication, sous forme de titre de section, afin que l’étape n’ait qu’un seul texte à modifier et à traduire. Les personnes participantes voient le même écran qu’auparavant, hormis les changements du texte mis en forme décrits dans le dernier élément de cette liste.
 - réécrit le texte mis en forme du protocole afin qu’il garde son sens, car le schéma 9 lit le texte mis en forme uniquement comme du Markdown standard :
   - Un `<` ou un `>` que vous avez saisi reste affiché comme ce caractère.
-  - `<br>` devient un saut de ligne. Dans un texte d’une seule ligne, comme une consigne, une question de formulaire ou le libellé d’une option de réponse, il devient une espace.
-  - Une adresse web ou une adresse e-mail saisie sans mise en forme de lien devient un lien dans un texte de plusieurs lignes, comme le texte d’une page « Information », le panneau d’introduction d’une étape « Formulaire ego », l’explication d’une étape d’anonymisation ou le texte d’une étape « Écran de fin ». Dans un texte d’une seule ligne, elle reste du texte et n’est plus un lien.
+  - `<br>` devient un saut de ligne. Dans les champs d’une seule ligne, comme une consigne, une question de formulaire ou le libellé d’une option de réponse, il devient une espace.
+  - Une adresse web ou une adresse e-mail saisie sans mise en forme de lien devient un lien dans les champs plus longs, comme le texte d’une page « Information », le panneau d’introduction d’une étape « Formulaire ego », l’explication d’une étape d’anonymisation ou le texte d’une étape « Écran de fin ». Dans les champs d’une seule ligne, elle reste du texte brut et n’est plus un lien.
   - Un emoji écrit sous forme de code, comme `:smile:`, devient l’emoji lui-même. Les emojis ajoutés avec le menu des emojis de l’éditeur ont toujours été enregistrés comme emojis et ne changent pas.
-  - Certaines mises en forme ne sont pas réécrites et ne s’appliquent plus. Les mises en forme que seule la version de Markdown de GitHub proposait (barré, listes de tâches, tableaux et notes de bas de page) s’affichent sous forme de caractères bruts, tels que vous les avez saisis. Il en va de même pour les balises HTML. Un texte d’une seule ligne n’affiche que le gras et l’italique. Un lien ou une liste saisis en Markdown dans un tel texte n’affichent que leurs mots : un lien s’affiche sans son adresse, et un élément de liste sans sa puce ni son numéro.
+  - Certaines mises en forme ne sont pas réécrites et ne s’appliquent plus. Les mises en forme que seule la version de Markdown de GitHub proposait (barré, listes de tâches, tableaux et notes de bas de page) s’affichent sous forme de caractères bruts, tels que vous les avez saisis. Il en va de même pour les balises HTML. Les champs d’une seule ligne n’affichent que le gras et l’italique. Un lien ou une liste saisis en Markdown dans l’un de ces champs n’affichent que leurs mots : un lien s’affiche sans son adresse, et un élément de liste sans sa puce ni son numéro.
 
 La migration retire l’expérimentation **Encrypted Attributes** (attributs chiffrés) du paramètre `experiments` du protocole, car les attributs chiffrés n’en ont plus besoin. Ce qu’il advient des attributs marqués comme chiffrés dépend de l’activation ou non de cette expérimentation :
 

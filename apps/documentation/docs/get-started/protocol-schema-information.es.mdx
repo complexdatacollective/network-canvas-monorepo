@@ -3,7 +3,7 @@ title: Información sobre el esquema de protocolo
 wip: false
 navOrder: 3
 date: 22nd October 2026
-translatedFrom: 28205e16d7b0aa32c022113fb2f290cc753a31dd
+translatedFrom: f8324436a314c62906e13214c645fec30a3782b2
 ---
 
 ## Resumen {#summary}
@@ -154,10 +154,10 @@ Migrar un protocolo del esquema 8 al esquema 9 conserva todo su contenido, y los
 - traslada el título de cada etapa de anonimización al principio de su explicación, como encabezado, para que la etapa tenga un solo texto que editar y traducir. Quienes participan ven la misma pantalla que antes, salvo por los cambios en el texto con formato que se describen en el último punto de esta lista.
 - reescribe el texto con formato del protocolo para que conserve su significado, porque el esquema 9 lee el texto con formato solo como Markdown estándar:
   - Un `<` o un `>` que escribiste se sigue mostrando como ese carácter.
-  - `<br>` pasa a ser un salto de línea. En un texto de una sola línea, como una pregunta, la pregunta de un formulario o la etiqueta de una opción de respuesta, pasa a ser un espacio.
-  - Una dirección web o una dirección de correo electrónico escrita sin formato de enlace pasa a ser un enlace en un texto de varias líneas, como el texto de una página «Información», el panel de introducción de una etapa «Formulario del ego», la explicación de una etapa de anonimización o el texto de una etapa «Pantalla de finalización». En un texto de una sola línea, se mantiene como texto y deja de ser un enlace.
+  - `<br>` pasa a ser un salto de línea. En los campos de una sola línea, como una pregunta, la pregunta de un formulario o la etiqueta de una opción de respuesta, pasa a ser un espacio.
+  - Una dirección web o una dirección de correo electrónico escrita sin formato de enlace pasa a ser un enlace en los campos más largos, como el texto de una página «Información», el panel de introducción de una etapa «Formulario del ego», la explicación de una etapa de anonimización o el texto de una etapa «Pantalla de finalización». En los campos de una sola línea, se mantiene como texto sin formato y deja de ser un enlace.
   - Un emoji escrito como código, como `:smile:`, pasa a ser el propio emoji. Los emojis añadidos con el menú de emojis del editor siempre se han guardado como emojis y no cambian.
-  - Algunos formatos no se reescriben y dejan de aplicarse. Los formatos que solo ofrecía la versión de Markdown de GitHub (tachado, listas de tareas, tablas y notas al pie) se muestran como los caracteres que escribiste, sin formato. Lo mismo ocurre con las etiquetas HTML. En los textos de una sola línea solo se aplican la negrita y la cursiva. Si en un texto de una sola línea escribiste un enlace o una lista con sintaxis de Markdown, solo se muestran sus palabras: un enlace se muestra sin su dirección, y un elemento de lista, sin su viñeta ni su número.
+  - Algunos formatos no se reescriben y dejan de aplicarse. Los formatos que solo ofrecía la versión de Markdown de GitHub (tachado, listas de tareas, tablas y notas al pie) se muestran como los caracteres que escribiste, sin formato. Lo mismo ocurre con las etiquetas HTML. En los campos de una sola línea solo se aplican la negrita y la cursiva. Si en uno de estos campos escribiste un enlace o una lista con sintaxis de Markdown, solo se muestran sus palabras: un enlace se muestra sin su dirección, y un elemento de lista, sin su viñeta ni su número.
 
 La migración elimina el experimento **Encrypted Attributes** del ajuste `experiments` del protocolo, porque los atributos cifrados ya no lo necesitan. Lo que ocurre con los atributos marcados como cifrados depende de si estaba activado:
 
