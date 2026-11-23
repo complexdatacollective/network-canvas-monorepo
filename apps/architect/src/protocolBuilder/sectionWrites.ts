@@ -1,11 +1,11 @@
 import { Redacted } from 'effect';
-import { v4 as uuid } from 'uuid';
 import type { z } from 'zod';
 
 import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
 import type { StageCodebookSection } from '@codaco/protocol-builder-core/contract/schemas';
 import { STAGE_ORDER_SECTION } from '@codaco/protocol-builder/host/protocolSections';
 import {
+  createEntityTypeId,
   createProtocolObjectId,
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
@@ -505,7 +505,7 @@ export async function createSection(
 
   // The codebook thunks mint the type id themselves, so a refusal is named
   // with one this call would have taken — as the in-memory host's is.
-  const target = sectionId({ kind, typeId: uuid() });
+  const target = sectionId({ kind, typeId: createEntityTypeId() });
   if (kind === 'codebookNode') {
     const parsed = NodeDefinitionSchema.safeParse(document);
     if (!parsed.success)

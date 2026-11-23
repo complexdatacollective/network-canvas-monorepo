@@ -11,6 +11,10 @@ import CreateCodebookVariableDialog, {
   type CreateCodebookVariableSession,
 } from '@codaco/protocol-builder/codebook/components/CreateCodebookVariableDialog';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
+import {
+  createEntityTypeId,
+  createVariableId,
+} from '@codaco/protocol-validation';
 import { registerNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import { useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
@@ -83,7 +87,7 @@ export function useCodebookEditors(
       openEntity({
         key: uuid(),
         entity,
-        typeId: type ?? uuid(),
+        typeId: type ?? createEntityTypeId(),
         mode: type === undefined ? 'create' : 'edit',
         fromLink: false,
       });
@@ -100,7 +104,7 @@ export function useCodebookEditors(
           entity === 'ego' || type === undefined
             ? { entity: 'ego' }
             : { entity, type },
-        variableId: uuid(),
+        variableId: createVariableId(),
       });
     },
     [openVariable],

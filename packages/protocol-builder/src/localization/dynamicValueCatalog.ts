@@ -328,7 +328,7 @@ const nameFor = (
     return unique(
       isIntrinsicName(choice.variableId)
         ? INTRINSIC_NAMES[choice.variableId]
-        : identifierFrom(choice.variableId) || 'value',
+        : identifierFrom(choice.variableName ?? '') || 'value',
       taken,
     );
   }
@@ -343,10 +343,7 @@ const nameFor = (
       taken,
     );
   }
-  const own =
-    identifierFrom(choice.variableName ?? '') ||
-    identifierFrom(choice.variableId) ||
-    'value';
+  const own = identifierFrom(choice.variableName ?? '') || 'value';
   const base =
     prefix === '' ? own : prefix + own.charAt(0).toUpperCase() + own.slice(1);
   return unique(base, taken);
