@@ -751,6 +751,19 @@ const withoutClosingBreaks = (
   return end === 0 || end === content.length ? content : content.slice(0, end);
 };
 
+// White space that opens a paragraph is never drawn, and four columns of it
+// would make the paragraph a code block, so it is not written.
+const withoutOpeningSpace = (
+  content: RichTextContent[] | undefined,
+): RichTextContent[] | undefined => {
+  const [first, ...rest] = content ?? [];
+  if (first?.type !== 'text') return content;
+  const text = (first.text ?? '').trimStart();
+  return text === ''
+    ? withoutOpeningSpace(rest)
+    : [{ ...first, text }, ...rest];
+};
+
 const serializeBlock = (
   node: RichTextContent,
   marker: ListMarker = FIRST_MARKER,
@@ -760,7 +773,9 @@ const serializeBlock = (
       return serializeBlocks(node.content);
 
     case 'paragraph':
-      return serializeInline(withoutClosingBreaks(node.content));
+      return serializeInline(
+        withoutOpeningSpace(withoutClosingBreaks(node.content)),
+      );
 
     case 'heading': {
       const rawLevel = node.attrs?.level;

@@ -252,6 +252,11 @@ const CASES: readonly (readonly [string, string, string])[] = [
   ['a<br>1. b', 'a\\\n1\\. b', 'a 1. b'],
   ['a<br>## b', 'a\\\n\\## b', 'a ## b'],
   ['- a<br>> b', '- a\\\n&gt; b', '- a > b'],
+  ['a<br>~~~example~~~', 'a\\\n\\~~~example~~~', 'a ~~~example~~~'],
+  ['a<br>+ b', 'a\\\n\\+ b', 'a + b'],
+  ['a<br>1) b', 'a\\\n1\\) b', 'a 1) b'],
+  ['a<br>===', 'a\\\n\\===', 'a ==='],
+  ['a<br>#', 'a\\\n\\#', 'a #'],
   [
     'Visit www.example.org today',
     'Visit [www.example.org](http://www.example.org) today',

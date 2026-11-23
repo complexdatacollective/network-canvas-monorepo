@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { assetBlockMessage, assetBlocksInMarkdown } from '../assetBlock.ts';
 import { dynamicMessageParts } from '../dynamicValueMessages.ts';
 import {
+  escapeMarkdownText,
   headingMarkdown,
   linkDestinationMarkdown,
   linkTitleMarkdown,
@@ -47,6 +48,70 @@ const headingShown = (markdown: string): string | undefined => {
     ? wordsIn(only)
     : undefined;
 };
+
+// What a participant reads of text written as one paragraph: its words, or
+// undefined where the markdown is anything but one paragraph.
+const paragraphShown = (markdown: string): string | undefined => {
+  const { children } = markdownTree(markdown);
+  const [only] = children;
+  return children.length === 1 && only?.type === 'paragraph'
+    ? wordsIn(only)
+    : undefined;
+};
+
+describe('escapeMarkdownText', () => {
+  // Each opens a block where it opens a line in plain CommonMark, on the
+  // first line of a text or on a line of its own after another.
+  it.each([
+    '~~~example~~~',
+    '~~~',
+    '~~~~ with words',
+    '+ an item',
+    '+',
+    '1) one',
+    '1. one',
+    '12)',
+    '#',
+    '##',
+    '# a heading',
+    '===',
+    '---',
+    '- a bullet',
+    '***',
+    '___',
+    '* * *',
+    '> a quotation',
+    '```js',
+    '<div>',
+    '[label]: https://example.org',
+  ])('shows %j as typed wherever it opens a line', (text) => {
+    expect(paragraphShown(escapeMarkdownText(text))).toBe(text);
+    expect(paragraphShown(escapeMarkdownText(`Before\n${text}`))).toBe(
+      `Before\n${text}`,
+    );
+    expect(paragraphShown(escapeMarkdownText(`  ${text}`))).toBe(text);
+  });
+
+  it('shows text indented as code as typed', () => {
+    expect(paragraphShown(escapeMarkdownText('    indented'))).toBe(
+      '    indented',
+    );
+    expect(paragraphShown(escapeMarkdownText('\tindented'))).toBe('\tindented');
+  });
+
+  it('leaves what plain CommonMark reads as words as it is', () => {
+    for (const text of [
+      'About ~5 minutes',
+      'This is ~~not~~ required',
+      'a | b',
+      '1.5 hours',
+      'Item #3',
+      'A + B = C',
+    ]) {
+      expect(escapeMarkdownText(text)).toBe(text);
+    }
+  });
+});
 
 describe('messageHeadingMarkdown', () => {
   const heading = (message: string, values: Values = {}) =>

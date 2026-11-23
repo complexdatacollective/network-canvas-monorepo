@@ -557,3 +557,58 @@ describe('text the editor cannot write', () => {
     expect(roundTrip(saved, BLOCKS)).toBe(saved);
   });
 });
+
+/**
+ * What a researcher types in the editor is saved so that the interview draws
+ * the characters typed, wherever they stand: on a line of their own, after a
+ * line break, or indented. Each of these opens a block in plain CommonMark
+ * where it opens a line.
+ */
+describe('text typed in the editor', () => {
+  const TYPED = [
+    '~~~example~~~',
+    '~~~',
+    '+ an item',
+    '1) one',
+    '1. one',
+    '#',
+    '# a heading',
+    '===',
+    '---',
+    '***',
+    '> a quotation',
+    '    indented',
+    'About ~5 minutes',
+    'This is ~~not~~ required',
+  ];
+
+  const paragraph = (...content: RichTextContent[]): RichTextContent => ({
+    type: 'doc',
+    content: [{ type: 'paragraph', content }],
+  });
+  const text = (value: string): RichTextContent => ({
+    type: 'text',
+    text: value,
+  });
+
+  it.each(
+    SHAPES.flatMap((shape) =>
+      TYPED.map((typed) => [shape.name, typed, shape] as const),
+    ),
+  )('in %s, %j is drawn as typed', (_name, typed, shape) => {
+    const documents = [paragraph(text(typed))];
+    if (shape.lines === 'multiple') {
+      documents.push(
+        paragraph(text('Before'), { type: 'hardBreak' }, text(typed)),
+      );
+    }
+    for (const document of documents) {
+      const saved = richTextContentToMarkdown(
+        document,
+        shape.lines === 'single',
+      );
+      expect(drawn(saved, shape)).toEqual(read(editorElements(document)));
+      expect(roundTrip(saved, shape)).toBe(saved);
+    }
+  });
+});

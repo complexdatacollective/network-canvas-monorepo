@@ -69,14 +69,46 @@ const escapeAngleBrackets = (value: string): string =>
   );
 
 /**
+ * A marker that opens a block where it opens a line, after any indentation,
+ * which escaping the characters it is made of wherever they stand would
+ * leave unescaped: a code fence of three or more tildes, a `+` that opens a
+ * bulleted item, a number that opens a numbered item (`1.` or `1)`), a run of
+ * `#` that opens a heading, and a line of `=` that turns the line before it
+ * into a heading. One or two tildes, which mean nothing in CommonMark, are
+ * left as they are. (`*`, `_` and backticks are escaped wherever they stand,
+ * a `-` and a `>` where they open a line.)
+ */
+const MARKER_OPENING_A_LINE =
+  /^([^\S\n]*)(~{3,}|\+(?=[^\S\n]|$)|\d{1,9}[.)](?=[^\S\n]|$)|#+(?=[^\S\n]|$)|=+(?=[^\S\n]*$))/gm;
+
+/** A marker found by `MARKER_OPENING_A_LINE`, written to show as typed. */
+const escapedMarker = (marker: string): string => {
+  // A digit cannot be escaped, so a number's delimiter is.
+  if (/^\d/.test(marker)) return `${marker.slice(0, -1)}\\${marker.slice(-1)}`;
+  // Each `#` of a run, as `#` is escaped elsewhere.
+  if (marker.startsWith('#')) return marker.replaceAll('#', '\\#');
+  return `\\${marker}`;
+};
+
+/**
+ * Indentation that makes the line it opens a code block: four columns of
+ * spaces, or a tab, at the start of the text or of a paragraph after a blank
+ * line. A backslash cannot escape white space, so its first character is
+ * written as a character reference, which shows the same character and
+ * indents nothing.
+ */
+const CODE_INDENTATION = /(^|\n[^\S\n]*\n)( {4}| {0,3}\t)/g;
+
+/**
  * Plain text as markdown that renders it as written, the way Architect's rich
  * text editor stores what a researcher types: `*star*` stays two asterisks
- * around a word rather than becoming emphasis.
+ * around a word rather than becoming emphasis. Everything that plain
+ * CommonMark reads as markdown is escaped, and nothing that only GitHub's
+ * additions read (a pair of tildes, a table's `|`).
  */
 export const escapeMarkdownText = (value: string): string =>
   escapeAngleBrackets(value.replace(REFERENCE_AMPERSAND, '&amp;'))
     .replace(/\\/g, '\\\\')
-    .replace(/(^\d+)+(\.)/g, '$1\\$2')
     .replace(/\*/g, '\\*')
     .replace(/_/g, '\\_')
     .replace(
@@ -88,7 +120,17 @@ export const escapeMarkdownText = (value: string): string =>
     .replace(/#+(?=\s)/g, (run) => run.replaceAll('#', '\\#'))
     .replace(/`/g, '\\`')
     .replace(/\[/g, '\\[')
-    .replace(/\]/g, '\\]');
+    .replace(/\]/g, '\\]')
+    .replace(
+      MARKER_OPENING_A_LINE,
+      (_all, indent: string, marker: string) =>
+        `${indent}${escapedMarker(marker)}`,
+    )
+    .replace(
+      CODE_INDENTATION,
+      (_all, before: string, indentation: string) =>
+        `${before}&#${indentation.charCodeAt(0)};${indentation.slice(1)}`,
+    );
 
 /**
  * A link's address as markdown that reads back as exactly that address, for
