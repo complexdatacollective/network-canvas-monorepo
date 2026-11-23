@@ -85,6 +85,10 @@ describe('FeedbackPopover', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
     expect(onSubmit).toHaveBeenCalledOnce();
 
+    // Nothing written now would be part of what is already on its way.
+    await userEvent.type(screen.getByRole('textbox'), ' And more.');
+    expect(screen.getByRole('textbox')).toHaveValue('Add a dark theme.');
+
     finish();
     expect(await screen.findByText('Thanks for your feedback.')).toBeVisible();
   });

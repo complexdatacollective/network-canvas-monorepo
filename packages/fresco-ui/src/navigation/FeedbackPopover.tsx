@@ -204,6 +204,8 @@ export default function FeedbackPopover({
             <TextAreaField
               aria-labelledby={questionId}
               maxLength={maxLength}
+              // What is being sent is what was written when Send was pressed.
+              readOnly={status === 'sending'}
               className="[&>textarea]:field-sizing-content [&>textarea]:max-h-60 [&>textarea]:min-h-24"
               value={draft}
               onChange={(next) => setDraft(next ?? '')}
