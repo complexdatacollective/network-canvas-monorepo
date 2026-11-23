@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ChunkOf } from '@codaco/effect-query/types';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
-import { Forbidden, Unauthorized } from '@codaco/studio-contract/schema/errors';
+import {
+  Forbidden,
+  NotFound,
+  Unauthorized,
+} from '@codaco/studio-contract/schema/errors';
 import { TeamId } from '@codaco/studio-contract/schema/ids';
 
 import {
@@ -177,8 +181,9 @@ const _typeProbes = () => {
   // @ts-expect-error — `studies.list` answers study summaries, not a string.
   installRpcHarness({ 'studies.list': () => Effect.succeed('x') });
   installRpcHarness({
-    // @ts-expect-error — `studies.list` may only fail with what it declares.
-    'studies.list': () => Effect.fail(new Unauthorized({})),
+    // @ts-expect-error — `studies.list` may only fail with what it or its
+    // middleware declares (Effect 4.1 admits `Authenticated`'s `Unauthorized`).
+    'studies.list': () => Effect.fail(new NotFound({})),
   });
   // @ts-expect-error — 'nope' is not a tag.
   void rpcCall('nope', {});

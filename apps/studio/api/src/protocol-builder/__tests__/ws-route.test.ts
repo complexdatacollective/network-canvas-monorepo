@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { NodeWS } from '@effect/platform-node/NodeSocket';
+import * as NodeWS from '@effect/platform-node/NodeWS';
 import {
   Cause,
   Effect,
