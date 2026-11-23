@@ -1,70 +1,76 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { Codebook } from '@codaco/protocol-validation';
 
 type Subject = { entity: 'node' | 'edge' | 'ego'; type?: string };
 
 // A codebook holding one duplicate-name pair per scope: renaming `subject_var`
 // to `taken_var` must be rejected inline for ego and node variables alike.
+const PERSON = testTypeId('person');
+
 const codebook = {
   ego: {
     variables: {
-      'ego-subject': { name: 'subject_var', type: 'text' },
-      'ego-taken': { name: 'taken_var', type: 'text' },
+      [testVariableId(testVariableId('ego-subject'))]: { name: 'subject_var', type: 'text' },
+      [testVariableId('ego-taken')]: { name: 'taken_var', type: 'text' },
     },
   },
   node: {
-    person: {
+    [PERSON]: {
       variables: {
-        'node-subject': { name: 'subject_var', type: 'text' },
-        'node-taken': { name: 'taken_var', type: 'text' },
-        'node-colour': {
+        [testVariableId(testVariableId('node-subject'))]: { name: 'subject_var', type: 'text' },
+        [testVariableId('node-taken')]: { name: 'taken_var', type: 'text' },
+        [testVariableId('node-colour')]: {
           name: 'colour',
           type: 'categorical',
           options: [{ label: 'Red', value: 'red' }],
         },
-        'node-pos': { name: 'pos', type: 'layout' },
-        'node-warm-dark': { name: 'warm_dark', type: 'text' },
-        'node-spot-x': { name: 'spot_x', type: 'text' },
-        'node-shade': {
+        [testVariableId('node-pos')]: { name: 'pos', type: 'layout' },
+        [testVariableId('node-warm-dark')]: { name: 'warm_dark', type: 'text' },
+        [testVariableId('node-spot-x')]: { name: 'spot_x', type: 'text' },
+        [testVariableId('node-shade')]: {
           name: 'shade',
           type: 'categorical',
           options: [{ label: 'Dark', value: 'dark' }],
         },
-        'node-canvas': { name: 'canvas', type: 'layout' },
+        [testVariableId('node-canvas')]: { name: 'canvas', type: 'layout' },
       },
     },
   },
 } as unknown as Codebook;
 
 const variableFixtures = {
-  'ego-subject': {
-    uuid: 'ego-subject',
+  [testVariableId(testVariableId('ego-subject'))]: {
+    uuid: testVariableId(testVariableId('ego-subject')),
     name: 'subject_var',
     entity: 'ego' as const,
     entityType: null,
     type: 'text',
   },
-  'node-subject': {
-    uuid: 'node-subject',
+  [testVariableId(testVariableId('node-subject'))]: {
+    uuid: testVariableId(testVariableId('node-subject')),
     name: 'subject_var',
     entity: 'node' as const,
-    entityType: 'person',
+    entityType: PERSON,
     type: 'text',
   },
-  'node-shade': {
-    uuid: 'node-shade',
+  [testVariableId('node-shade')]: {
+    uuid: testVariableId('node-shade'),
     name: 'shade',
     entity: 'node' as const,
-    entityType: 'person',
+    entityType: PERSON,
     type: 'categorical',
   },
-  'node-canvas': {
-    uuid: 'node-canvas',
+  [testVariableId('node-canvas')]: {
+    uuid: testVariableId('node-canvas'),
     name: 'canvas',
     entity: 'node' as const,
-    entityType: 'person',
+    entityType: PERSON,
     type: 'layout',
   },
 };
@@ -118,7 +124,13 @@ describe('ConnectedVariablePill', () => {
   });
 
   it('uses an accessible button to open the variable name editor directly', async () => {
-    render(<ConnectedVariablePill animated editable uuid="node-subject" />);
+    render(
+      <ConnectedVariablePill
+        animated
+        editable
+        uuid={testVariableId(testVariableId('node-subject'))}
+      />,
+    );
     const pill = screen.getByRole('button', {
       name: 'Edit attribute name: subject_var',
     });
@@ -133,14 +145,23 @@ describe('ConnectedVariablePill', () => {
 
   it('forwards Tailwind layout constraints', () => {
     const { container } = render(
-      <ConnectedVariablePill className="max-w-64" uuid="node-subject" />,
+      <ConnectedVariablePill
+        className="max-w-64"
+        uuid={testVariableId(testVariableId('node-subject'))}
+      />,
     );
 
     expect(container.querySelector('data')).toHaveClass('max-w-64');
   });
 
   it('describes the edit action in a tooltip on keyboard focus', async () => {
-    render(<ConnectedVariablePill animated editable uuid="node-subject" />);
+    render(
+      <ConnectedVariablePill
+        animated
+        editable
+        uuid={testVariableId(testVariableId('node-subject'))}
+      />,
+    );
     const pill = screen.getByRole('button', {
       name: 'Edit attribute name: subject_var',
     });
@@ -153,7 +174,7 @@ describe('ConnectedVariablePill', () => {
   });
 
   it('opens an autofocus modal editor with actions outside the pill', async () => {
-    const input = await startEditing('node-subject');
+    const input = await startEditing(testVariableId('node-subject'));
 
     const dialog = screen.getByRole('dialog', { name: 'Edit attribute name' });
 
@@ -179,7 +200,7 @@ describe('ConnectedVariablePill', () => {
   });
 
   it('returns focus to the pill after saving an edit', async () => {
-    const input = await startEditing('node-subject');
+    const input = await startEditing(testVariableId('node-subject'));
     fireEvent.change(input, { target: { value: 'renamed_var' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
@@ -190,7 +211,7 @@ describe('ConnectedVariablePill', () => {
   });
 
   it('returns focus to the pill after cancelling an edit', async () => {
-    await startEditing('node-subject');
+    await startEditing(testVariableId('node-subject'));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     const pill = screen.getByRole('button', {
@@ -200,7 +221,7 @@ describe('ConnectedVariablePill', () => {
   });
 
   it('rejects renaming an ego variable to an existing ego variable name', async () => {
-    const input = await startEditing('ego-subject');
+    const input = await startEditing(testVariableId('ego-subject'));
     fireEvent.change(input, { target: { value: 'taken_var' } });
 
     expect(
@@ -213,17 +234,17 @@ describe('ConnectedVariablePill', () => {
   });
 
   it('rejects renaming a node variable to an existing name in the same type', async () => {
-    const input = await startEditing('node-subject');
+    const input = await startEditing(testVariableId('node-subject'));
     fireEvent.change(input, { target: { value: 'taken_var' } });
 
     expect(
       await screen.findByText('this type already has an attribute called that'),
     ).toBeInTheDocument();
-    expect(subjectsSeen.at(-1)).toEqual({ entity: 'node', type: 'person' });
+    expect(subjectsSeen.at(-1)).toEqual({ entity: 'node', type: PERSON });
   });
 
   it('allows an ego variable to keep its own name', async () => {
-    const input = await startEditing('ego-subject');
+    const input = await startEditing(testVariableId('ego-subject'));
     fireEvent.change(input, { target: { value: 'subject_var' } });
 
     expect(
@@ -239,19 +260,19 @@ describe('ConnectedVariablePill', () => {
       // Padding and a decomposed accent are tidied as the name is saved.
       ['  Colle\u0300gue ', 'Collègue'],
     ])('saves %j as %j', async (typed, saved) => {
-      const input = await startEditing('node-subject');
+      const input = await startEditing(testVariableId('node-subject'));
       fireEvent.change(input, { target: { value: typed } });
 
       expect(screen.queryByTestId('variable-name-field-error')).toBeNull();
       fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
-      expect(updateVariableByUUID).toHaveBeenLastCalledWith('node-subject', {
+      expect(updateVariableByUUID).toHaveBeenLastCalledWith(testVariableId('node-subject'), {
         name: saved,
       });
     });
 
     it('refuses a name with a control character', async () => {
-      const input = await startEditing('node-subject');
+      const input = await startEditing(testVariableId('node-subject'));
       fireEvent.change(input, { target: { value: 'bad\tname' } });
 
       expect(
@@ -265,7 +286,7 @@ describe('ConnectedVariablePill', () => {
     });
 
     it('refuses a name of nothing but spaces', async () => {
-      const input = await startEditing('node-subject');
+      const input = await startEditing(testVariableId('node-subject'));
       fireEvent.change(input, { target: { value: '   ' } });
 
       expect(
@@ -277,7 +298,7 @@ describe('ConnectedVariablePill', () => {
     });
 
     it('treats a name that differs only in case or composition as taken', async () => {
-      const input = await startEditing('node-subject');
+      const input = await startEditing(testVariableId('node-subject'));
       fireEvent.change(input, { target: { value: 'TAKEN_VAR ' } });
 
       expect(
@@ -305,7 +326,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name that is a column of a sibling categorical attribute’s option', async () => {
       await expectRefused(
-        'node-subject',
+        testVariableId(testVariableId('node-subject')),
         'colour_red',
         'The export already has a column called “colour_red” for option “red” of the attribute “colour”. Choose a different name.',
       );
@@ -313,7 +334,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name that is a column of a sibling layout attribute', async () => {
       await expectRefused(
-        'node-subject',
+        testVariableId(testVariableId('node-subject')),
         'pos_x',
         'The export already has a column called “pos_x” for the position of the layout attribute “pos”. Choose a different name.',
       );
@@ -321,7 +342,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name for a categorical attribute whose option column a sibling already has', async () => {
       await expectRefused(
-        'node-shade',
+        testVariableId('node-shade'),
         'warm',
         'Option “dark” of “warm” would be exported to a column called “warm_dark”, but the attribute “warm_dark” already has a column called “warm_dark”. Change the option value or the attribute name.',
       );
@@ -329,7 +350,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name for a layout attribute whose coordinate column a sibling already has', async () => {
       await expectRefused(
-        'node-canvas',
+        testVariableId('node-canvas'),
         'spot',
         'A layout attribute named “spot” would be exported to a column called “spot_x”, but the attribute “spot_x” already has a column called “spot_x”. Choose a different name.',
       );
@@ -337,7 +358,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name that is a built-in column of the exported file', async () => {
       await expectRefused(
-        'node-subject',
+        testVariableId(testVariableId('node-subject')),
         'networkCanvasEgoUUID',
         'The export already has a built-in column called “networkCanvasEgoUUID”, so an attribute cannot be named “networkCanvasEgoUUID”. Choose a different name.',
       );
@@ -345,14 +366,14 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name that an export writes as a sibling’s column', async () => {
       await expectRefused(
-        'node-subject',
+        testVariableId(testVariableId('node-subject')),
         'colour red',
         'In the export, the name “colour red” and the column “colour_red” of the attribute “colour” would become the same column, “colour_red”. Choose a different name.',
       );
     });
 
     it('lets a name through that only resembles a sibling’s column', async () => {
-      const input = await startEditing('node-subject');
+      const input = await startEditing(testVariableId('node-subject'));
       fireEvent.change(input, { target: { value: 'colour-red' } });
 
       expect(screen.queryByTestId('variable-name-field-error')).toBeNull();

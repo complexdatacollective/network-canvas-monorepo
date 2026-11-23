@@ -10,7 +10,7 @@ import { findVariableRoleConflicts } from '@codaco/protocol-validation';
 import { analyse } from '../analyse.ts';
 import { buildProtocol } from '../build.ts';
 import { buildWordingRequest } from '../feedback.ts';
-import { sketchStageId } from '../objectIds.ts';
+import { sketchStageId, sketchTypeId, sketchVariableId } from '../objectIds.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
 type Json = Record<string, unknown>;
@@ -119,7 +119,7 @@ const varNames = (protocol: unknown, type: string) =>
       protocol as {
         codebook: { node: Record<string, { variables: Json }> };
       }
-    ).codebook.node[type]!.variables,
+    ).codebook.node[sketchTypeId(type)]!.variables,
   ).map((v) => (v as { name: string }).name);
 
 describe('compiler review fixes', () => {
@@ -491,7 +491,7 @@ describe('compiler review fixes', () => {
     const types = stageById(r.stages, 'i').skipLogic?.filter.rules.map(
       (x) => x.options.type,
     );
-    expect(types).toEqual(['a']);
+    expect(types).toEqual([sketchTypeId('a')]);
   });
 
   it.each([
@@ -1207,8 +1207,11 @@ describe('instrument attributes', () => {
       edges: { create: string; display: string[] };
     }[];
     expect(prompts.map((p) => p.edges)).toEqual([
-      { create: 'knows', display: ['knows'] },
-      { create: 'conflict', display: ['conflict'] },
+      { create: sketchTypeId('knows'), display: [sketchTypeId('knows')] },
+      {
+        create: sketchTypeId('conflict'),
+        display: [sketchTypeId('conflict')],
+      },
     ]);
   });
 
@@ -1258,11 +1261,15 @@ describe('instrument attributes', () => {
     const canvas = stageById(r.stages, 'canvas');
     expect(canvas).toMatchObject({
       type: 'NetworkComposer',
-      quickAdd: 'person_name',
-      layoutVariable: 'person_layout',
-      convexHullVariable: 'person_circles',
-      nodeForm: { fields: [{ variable: 'person_role', component: 'Text' }] },
-      edges: [{ subject: { entity: 'edge', type: 'knows' } }],
+      quickAdd: sketchVariableId('person_name'),
+      layoutVariable: sketchVariableId('person_layout'),
+      convexHullVariable: sketchVariableId('person_circles'),
+      nodeForm: {
+        fields: [
+          { variable: sketchVariableId('person_role'), component: 'Text' },
+        ],
+      },
+      edges: [{ subject: { entity: 'edge', type: sketchTypeId('knows') } }],
     });
     // it creates the people, so it is never skipped for want of them
     expect(canvas.skipLogic).toBeUndefined();
@@ -1324,7 +1331,7 @@ describe('instrument attributes', () => {
     expect(r.validation.success).toBe(true);
     expect(findVariableRoleConflicts(r.protocol as never)).toEqual([]);
     expect(stageById(r.stages, 'canvas').convexHullVariable).toBe(
-      'person_circles',
+      sketchVariableId('person_circles'),
     );
   });
 
@@ -2636,7 +2643,7 @@ describe('instrument attributes', () => {
       const codebook = r.protocol.codebook as {
         node: Record<string, { name: string }>;
       };
-      expect(codebook.node.person?.name).toBe('Café regular');
+      expect(codebook.node[sketchTypeId('person')]?.name).toBe('Café regular');
     });
   });
 

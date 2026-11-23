@@ -21,7 +21,11 @@ import { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
 import type { GeneratedAsset, ProtocolSummary } from '../../shared/api.ts';
 import type { NormalizedDesign, NStage } from './analyse.ts';
 import { taskIntroductions } from './intros.ts';
-import { assignNestedObjectIds, sketchStageId } from './objectIds.ts';
+import {
+  assignCodebookIds,
+  assignNestedObjectIds,
+  sketchStageId,
+} from './objectIds.ts';
 import {
   type NAttribute,
   type DesignIssue,
@@ -1557,6 +1561,7 @@ export const compile = (
     ...(Object.keys(assetManifest).length ? { assetManifest } : {}),
     stages,
   };
+  const codebookSourceMap = assignCodebookIds(protocol, sourceMap);
   const summary: ProtocolSummary = {
     name: String(protocol.name),
     stageCount: stages.length,
@@ -1589,6 +1594,6 @@ export const compile = (
     assets,
     summary,
     stageMap,
-    sourceMap,
+    sourceMap: codebookSourceMap,
   };
 };

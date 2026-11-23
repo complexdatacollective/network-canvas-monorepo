@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "ego_consent": {
+        "4634d252-92b4-5021-8357-a938e4707844": {
           "name": "consent",
           "type": "boolean",
           "component": "Boolean",
@@ -33,7 +33,7 @@
             "required": true
           }
         },
-        "ego_age": {
+        "06910208-e57b-5e3d-84e9-c7c717e5e864": {
           "name": "age",
           "type": "number",
           "component": "Number",
@@ -42,12 +42,12 @@
             "maxValue": 99
           }
         },
-        "ego_age_2": {
+        "0851a23b-7fdc-5eaa-9546-5423f9fe838a": {
           "name": "age_2",
           "type": "text",
           "component": "Text"
         },
-        "ego_smokes": {
+        "29b46118-fb69-5eba-9922-df3e74d3b09b": {
           "name": "smokes",
           "type": "boolean",
           "component": "Boolean",
@@ -67,12 +67,12 @@
             }
           ]
         },
-        "ego_mood": {
+        "910780cd-55d3-54d5-9950-75b07cf09c11": {
           "name": "mood",
           "type": "text",
           "component": "Text"
         },
-        "ego_scale": {
+        "41b09c96-13ba-5a57-9e96-7ebf0f1edcb2": {
           "name": "scale",
           "type": "ordinal",
           "component": "LikertScale",
@@ -100,7 +100,7 @@
       }
     },
     "node": {
-      "person": {
+      "bf5284c0-cbf4-5fae-92ea-30a42a4bce93": {
         "name": "Person",
         "icon": "add-a-person",
         "color": "node-color-seq-1",
@@ -108,7 +108,7 @@
           "default": "circle"
         },
         "variables": {
-          "person_name": {
+          "55b32df7-dde1-5409-99d3-0dfac466b7ba": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -117,16 +117,16 @@
               "unique": true
             }
           },
-          "person_layout": {
+          "f9fc70bb-bcc4-5094-9477-6a4a9ade1890": {
             "name": "layout",
             "type": "layout"
           },
-          "person_first_name": {
+          "e8a7e81e-1135-5734-9936-9398943783d8": {
             "name": "person_first_name",
             "type": "text",
             "component": "Text"
           },
-          "person_closeness": {
+          "bbbd234d-bae3-579c-a04c-b65254bf336f": {
             "name": "person_closeness",
             "type": "ordinal",
             "component": "RadioGroup",
@@ -145,12 +145,12 @@
               }
             ]
           },
-          "person_close": {
+          "ec8cd860-e64b-5c67-9a4e-e10248b31055": {
             "name": "close",
             "type": "boolean",
             "component": "Toggle"
           },
-          "person_helper": {
+          "bd9c31f6-291c-52cb-90c3-76d05a5dc54c": {
             "name": "helper",
             "type": "boolean",
             "component": "Toggle"
@@ -159,7 +159,7 @@
       }
     },
     "edge": {
-      "person_2": {
+      "4d1d275a-e891-5234-a960-1811ef4dd2c6": {
         "name": "Person (tie)",
         "color": "edge-color-seq-1"
       }
@@ -204,7 +204,7 @@
         "fields": [
           {
             "id": "55495839-aa92-58cc-83e7-8b79017016d4",
-            "variable": "ego_consent",
+            "variable": "4634d252-92b4-5021-8357-a938e4707844",
             "prompt": {
               "en": "Do you agree to take part in this study?"
             }
@@ -230,14 +230,14 @@
         "fields": [
           {
             "id": "67623001-2822-583a-9707-8a133967987a",
-            "variable": "ego_age",
+            "variable": "06910208-e57b-5e3d-84e9-c7c717e5e864",
             "prompt": {
               "en": "Age?"
             }
           },
           {
             "id": "acf41636-d774-5d7d-a73d-e953bf43aefe",
-            "variable": "ego_smokes",
+            "variable": "29b46118-fb69-5eba-9922-df3e74d3b09b",
             "prompt": {
               "en": "Do you smoke?"
             }
@@ -252,7 +252,7 @@
               "id": "b7b6b01b-34d5-5d05-8403-7452e665e5ac",
               "type": "ego",
               "options": {
-                "attribute": "ego_consent",
+                "attribute": "4634d252-92b4-5021-8357-a938e4707844",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -283,7 +283,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "prompts": [
         {
@@ -294,7 +294,7 @@
           "additionalAttributes": [
             {
               "id": "e3bf9688-d92d-52ec-ab3b-e3c9fa82e0c2",
-              "variable": "person_close",
+              "variable": "ec8cd860-e64b-5c67-9a4e-e10248b31055",
               "value": true
             }
           ]
@@ -311,14 +311,14 @@
         "fields": [
           {
             "id": "8cf3d98f-9710-5505-87cd-380962b9a703",
-            "variable": "person_name",
+            "variable": "55b32df7-dde1-5409-99d3-0dfac466b7ba",
             "prompt": {
               "en": "What is the name of this person?"
             }
           },
           {
             "id": "274bf81e-550a-599c-b6dc-9aac9c98219f",
-            "variable": "person_first_name",
+            "variable": "e8a7e81e-1135-5734-9936-9398943783d8",
             "prompt": {
               "en": "Name?"
             }
@@ -344,7 +344,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "prompts": [
         {
@@ -352,7 +352,7 @@
           "text": {
             "en": "Closeness"
           },
-          "variable": "person_closeness",
+          "variable": "bbbd234d-bae3-579c-a04c-b65254bf336f",
           "color": "ord-color-seq-1"
         }
       ]
@@ -375,7 +375,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "background": {
         "concentricCircles": 4,
@@ -391,11 +391,11 @@
             "en": "Mark helpers"
           },
           "layout": {
-            "layoutVariable": "person_layout"
+            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "person_helper"
+            "variable": "bd9c31f6-291c-52cb-90c3-76d05a5dc54c"
           }
         }
       ]
@@ -418,14 +418,14 @@
         "fields": [
           {
             "id": "ea47b2f1-5ef0-50ef-8d8f-8bf387835b0e",
-            "variable": "ego_mood",
+            "variable": "910780cd-55d3-54d5-9950-75b07cf09c11",
             "prompt": {
               "en": "Mood?"
             }
           },
           {
             "id": "c1cefedb-a6ff-56e5-ab29-5df5a9844596",
-            "variable": "ego_scale",
+            "variable": "41b09c96-13ba-5a57-9e96-7ebf0f1edcb2",
             "prompt": {
               "en": "Scale?"
             }

@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "ego_consent": {
+        "4634d252-92b4-5021-8357-a938e4707844": {
           "name": "consent",
           "type": "boolean",
           "component": "Boolean",
@@ -33,7 +33,7 @@
             "required": true
           }
         },
-        "ego_year": {
+        "1b155f5f-b6e1-5fc5-ab3c-33a87039f989": {
           "name": "year",
           "type": "number",
           "component": "Number",
@@ -42,7 +42,7 @@
             "maxValue": 7
           }
         },
-        "ego_commutes": {
+        "1c364d89-7078-5e16-973c-09e3e5413c2a": {
           "name": "commutes",
           "type": "boolean",
           "component": "Boolean",
@@ -62,7 +62,7 @@
             }
           ]
         },
-        "ego_satisfaction": {
+        "7de131ec-723e-57e5-8b47-28e6f5842cfc": {
           "name": "satisfaction",
           "type": "scalar",
           "component": "VisualAnalogScale",
@@ -75,12 +75,12 @@
             }
           }
         },
-        "ego_notes": {
+        "9d87063c-39ef-5db9-be1f-505a308a9ad9": {
           "name": "notes",
           "type": "text",
           "component": "TextArea"
         },
-        "ego_birth_date": {
+        "b6e382a0-0128-53e5-a41a-8954c3cfbc86": {
           "name": "birth_date",
           "type": "datetime",
           "component": "DatePicker",
@@ -88,7 +88,7 @@
             "type": "full"
           }
         },
-        "ego_year_started": {
+        "89e96a37-fd42-5290-b0da-688b19982442": {
           "name": "year_started",
           "type": "datetime",
           "component": "DatePicker",
@@ -99,7 +99,7 @@
       }
     },
     "node": {
-      "classmate": {
+      "92934d85-2611-552e-aec2-b8ef7eb81c99": {
         "name": "Classmate",
         "icon": "add-a-person",
         "color": "node-color-seq-1",
@@ -107,7 +107,7 @@
           "default": "circle"
         },
         "variables": {
-          "classmate_name": {
+          "0f697488-8bce-5aac-9488-bb60d5931752": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -116,11 +116,11 @@
               "unique": true
             }
           },
-          "classmate_layout": {
+          "1739f1b3-c5d3-5800-9848-e6e0b46c1594": {
             "name": "layout",
             "type": "layout"
           },
-          "classmate_year_of_study": {
+          "b8e882ca-7a84-52fb-8a8c-02bfbac1603a": {
             "name": "year_of_study",
             "type": "number",
             "component": "Number",
@@ -129,12 +129,12 @@
               "maxValue": 7
             }
           },
-          "classmate_major": {
+          "47293fa4-410d-5967-a08b-fffe5ff2e29f": {
             "name": "major",
             "type": "text",
             "component": "Text"
           },
-          "classmate_commuter": {
+          "8a5250a1-52eb-5177-9c3f-95457c7abbfe": {
             "name": "commuter",
             "type": "boolean",
             "component": "Boolean",
@@ -154,12 +154,12 @@
               }
             ]
           },
-          "classmate_studies_together": {
+          "dae31e6a-588e-5c27-a271-762d427876bb": {
             "name": "studies_together",
             "type": "boolean",
             "component": "Toggle"
           },
-          "classmate_advisor_type": {
+          "41443821-0840-556e-abc0-c1b43b6d3490": {
             "name": "advisor_type",
             "type": "categorical",
             "component": "CheckboxGroup",
@@ -205,13 +205,13 @@
               "maxSelected": 1
             }
           },
-          "classmate_home_country": {
+          "a4278196-5a8a-5221-ae2d-7e60aae4c3e2": {
             "name": "home_country",
             "type": "location"
           }
         }
       },
-      "place": {
+      "1aa2837e-5f05-55ca-b098-4d22754cbcca": {
         "name": "Place",
         "icon": "add-a-place",
         "color": "node-color-seq-2",
@@ -219,7 +219,7 @@
           "default": "square"
         },
         "variables": {
-          "place_name": {
+          "b7e68f59-d985-5edf-a0f1-d38dc205e77d": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -228,11 +228,11 @@
               "unique": true
             }
           },
-          "place_layout": {
+          "2581e04d-98ef-5367-b445-8c9c3861969a": {
             "name": "layout",
             "type": "layout"
           },
-          "place_visit_freq": {
+          "6dc523b4-cace-57c9-a730-59fa2809d08a": {
             "name": "visit_freq",
             "type": "ordinal",
             "component": "LikertScale",
@@ -263,7 +263,7 @@
               }
             ]
           },
-          "place_type": {
+          "51a087dc-e9b9-575e-aaee-71279df9ea79": {
             "name": "place_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -297,24 +297,24 @@
               "maxSelected": 1
             }
           },
-          "place_type_other": {
+          "89b66097-6069-5a84-a7ef-8cdb19839035": {
             "name": "place_type_other",
             "type": "text",
             "component": "Text"
           },
-          "place_hours": {
+          "45cbf9ae-2446-5e7b-bc0a-826e9b5b8bb9": {
             "name": "hours",
             "type": "number",
             "component": "Number"
           },
-          "place_favourite": {
+          "c11ec10f-0d64-5e41-a7c9-6123ee3985e5": {
             "name": "favourite",
             "type": "boolean",
             "component": "Toggle"
           }
         }
       },
-      "mentor": {
+      "16f7d809-2892-561f-b66c-e7d2de3c3775": {
         "name": "Mentor",
         "icon": "add-a-person",
         "color": "node-color-seq-3",
@@ -322,7 +322,7 @@
           "default": "diamond"
         },
         "variables": {
-          "mentor_name": {
+          "f8b60e21-e002-5daf-84a0-4d4f4b82f9fc": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -331,16 +331,16 @@
               "unique": true
             }
           },
-          "mentor_layout": {
+          "9e9d85e4-5330-54d0-9c39-2075d6376e4c": {
             "name": "layout",
             "type": "layout"
           },
-          "mentor_role": {
+          "76142aa3-ea78-5163-a3f9-8afe583980c4": {
             "name": "mentor_role",
             "type": "text",
             "component": "Text"
           },
-          "mentor_circles": {
+          "8964ff3e-c5ec-5ca8-8169-db4aa422b873": {
             "name": "circles",
             "type": "categorical",
             "component": "CheckboxGroup",
@@ -369,11 +369,11 @@
       }
     },
     "edge": {
-      "friends": {
+      "0019a3dd-a3f9-5329-8011-285e565a09eb": {
         "name": "Friends",
         "color": "edge-color-seq-1",
         "variables": {
-          "friends_strength": {
+          "70925838-5d91-5bbb-af9f-2606d9011ebd": {
             "name": "strength",
             "type": "ordinal",
             "component": "LikertScale",
@@ -398,7 +398,7 @@
               }
             ]
           },
-          "friends_since": {
+          "b4b2b9d7-4955-5dd2-bae7-4738b3cc14ee": {
             "name": "since",
             "type": "datetime",
             "component": "DatePicker",
@@ -408,19 +408,19 @@
           }
         }
       },
-      "studies_with": {
+      "bb033990-963c-5e4b-9630-51db1773684c": {
         "name": "Study together",
         "color": "edge-color-seq-2"
       },
-      "conflict": {
+      "91236723-3c54-5b7f-ba77-ef8601696816": {
         "name": "In conflict",
         "color": "edge-color-seq-3"
       },
-      "mentors_know": {
+      "b8647047-480a-5e41-bd6e-4672f39bb495": {
         "name": "Mentors know each other",
         "color": "edge-color-seq-4",
         "variables": {
-          "mentors_know_met_through": {
+          "1f524a45-3f95-50a6-92e5-e2a4450e8b11": {
             "name": "met_through",
             "type": "text",
             "component": "Text"
@@ -478,7 +478,7 @@
         "fields": [
           {
             "id": "55495839-aa92-58cc-83e7-8b79017016d4",
-            "variable": "ego_consent",
+            "variable": "4634d252-92b4-5021-8357-a938e4707844",
             "prompt": {
               "en": "Do you agree to take part in this study?"
             }
@@ -504,14 +504,14 @@
         "fields": [
           {
             "id": "67623001-2822-583a-9707-8a133967987a",
-            "variable": "ego_year",
+            "variable": "1b155f5f-b6e1-5fc5-ab3c-33a87039f989",
             "prompt": {
               "en": "Which year of study are you in?"
             }
           },
           {
             "id": "acf41636-d774-5d7d-a73d-e953bf43aefe",
-            "variable": "ego_commutes",
+            "variable": "1c364d89-7078-5e16-973c-09e3e5413c2a",
             "prompt": {
               "en": "Do you commute to campus?"
             }
@@ -526,7 +526,7 @@
               "id": "b7b6b01b-34d5-5d05-8403-7452e665e5ac",
               "type": "ego",
               "options": {
-                "attribute": "ego_consent",
+                "attribute": "4634d252-92b4-5021-8357-a938e4707844",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -557,7 +557,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "prompts": [
         {
@@ -568,7 +568,7 @@
           "additionalAttributes": [
             {
               "id": "79b57006-aba5-5da7-9e06-32a50c5b7f39",
-              "variable": "classmate_studies_together",
+              "variable": "dae31e6a-588e-5c27-a271-762d427876bb",
               "value": true
             }
           ]
@@ -644,7 +644,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "place"
+        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
       },
       "prompts": [
         {
@@ -664,14 +664,14 @@
         "fields": [
           {
             "id": "35c6b26f-8738-5683-a666-1241de786ee7",
-            "variable": "place_name",
+            "variable": "b7e68f59-d985-5edf-a0f1-d38dc205e77d",
             "prompt": {
               "en": "What is this place called?"
             }
           },
           {
             "id": "a5a20063-1343-528e-abba-35066a80059f",
-            "variable": "place_hours",
+            "variable": "45cbf9ae-2446-5e7b-bc0a-826e9b5b8bb9",
             "prompt": {
               "en": "How many hours a week do you spend there?"
             }
@@ -697,7 +697,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "prompts": [
         {
@@ -707,7 +707,7 @@
           }
         }
       ],
-      "quickAdd": "classmate_name",
+      "quickAdd": "0f697488-8bce-5aac-9488-bb60d5931752",
       "panels": [
         {
           "id": "93fddc8a-532c-5de2-be05-2a29a30544b7",
@@ -736,7 +736,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "prompts": [
         {
@@ -744,8 +744,8 @@
           "text": {
             "en": "How close are these two?"
           },
-          "createEdge": "friends",
-          "edgeVariable": "friends_strength",
+          "createEdge": "0019a3dd-a3f9-5329-8011-285e565a09eb",
+          "edgeVariable": "70925838-5d91-5bbb-af9f-2606d9011ebd",
           "negativeLabel": {
             "en": "They aren't friends"
           }
@@ -770,7 +770,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "prompts": [
         {
@@ -778,7 +778,7 @@
           "text": {
             "en": "Tap everyone who **studies with** this person."
           },
-          "createEdge": "studies_with"
+          "createEdge": "bb033990-963c-5e4b-9630-51db1773684c"
         }
       ],
       "behaviours": {
@@ -799,7 +799,7 @@
               "id": "9341ba31-acc2-5118-9b5b-264aa571900d",
               "type": "edge",
               "options": {
-                "type": "studies_with",
+                "type": "bb033990-963c-5e4b-9630-51db1773684c",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -824,7 +824,7 @@
               "id": "65834ce8-274b-5a82-a1a8-c2e2315bc6df",
               "type": "edge",
               "options": {
-                "type": "studies_with",
+                "type": "bb033990-963c-5e4b-9630-51db1773684c",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -833,7 +833,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "prompts": [
         {
@@ -841,7 +841,7 @@
           "text": {
             "en": "Do these two **have conflict**?"
           },
-          "createEdge": "conflict"
+          "createEdge": "91236723-3c54-5b7f-ba77-ef8601696816"
         }
       ],
       "filter": {
@@ -850,8 +850,8 @@
             "id": "52c48f83-f7a7-599e-aad0-bba2f054e89a",
             "type": "node",
             "options": {
-              "type": "classmate",
-              "attribute": "classmate_studies_together",
+              "type": "92934d85-2611-552e-aec2-b8ef7eb81c99",
+              "attribute": "dae31e6a-588e-5c27-a271-762d427876bb",
               "operator": "EXACTLY",
               "value": true
             }
@@ -873,7 +873,7 @@
               "id": "271a7f4b-3465-597d-bf81-a0f0b5d26820",
               "type": "edge",
               "options": {
-                "type": "friends",
+                "type": "0019a3dd-a3f9-5329-8011-285e565a09eb",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -898,7 +898,7 @@
               "id": "470fd0d0-a09e-5e6c-aa54-60b3bb1bb698",
               "type": "edge",
               "options": {
-                "type": "friends",
+                "type": "0019a3dd-a3f9-5329-8011-285e565a09eb",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -907,13 +907,13 @@
       },
       "subject": {
         "entity": "edge",
-        "type": "friends"
+        "type": "0019a3dd-a3f9-5329-8011-285e565a09eb"
       },
       "form": {
         "fields": [
           {
             "id": "4bd87f34-caa3-50a5-b29a-76deb5374a14",
-            "variable": "friends_since",
+            "variable": "b4b2b9d7-4955-5dd2-bae7-4738b3cc14ee",
             "prompt": {
               "en": "Since when have they been friends?"
             }
@@ -935,7 +935,7 @@
               "id": "7d061a66-2250-5003-a878-2a46190dcd09",
               "type": "node",
               "options": {
-                "type": "place",
+                "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -960,7 +960,7 @@
               "id": "a7e5e37a-69ec-5c63-b83d-0e5018595fc2",
               "type": "node",
               "options": {
-                "type": "place",
+                "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -969,7 +969,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "place"
+        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
       },
       "prompts": [
         {
@@ -977,7 +977,7 @@
           "text": {
             "en": "How often?"
           },
-          "variable": "place_visit_freq",
+          "variable": "6dc523b4-cace-57c9-a730-59fa2809d08a",
           "color": "ord-color-seq-1"
         }
       ]
@@ -996,7 +996,7 @@
               "id": "b0334d88-a6d4-539e-8e4d-23bc383d3a10",
               "type": "node",
               "options": {
-                "type": "place",
+                "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -1005,7 +1005,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "place"
+        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
       },
       "prompts": [
         {
@@ -1013,8 +1013,8 @@
           "text": {
             "en": "What do you do there?"
           },
-          "variable": "place_type",
-          "otherVariable": "place_type_other",
+          "variable": "51a087dc-e9b9-575e-aaee-71279df9ea79",
+          "otherVariable": "89b66097-6069-5a84-a7ef-8cdb19839035",
           "otherVariablePrompt": {
             "en": "Please describe"
           },
@@ -1042,7 +1042,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "prompts": [
         {
@@ -1050,7 +1050,7 @@
           "text": {
             "en": "Who advises each classmate?"
           },
-          "variable": "classmate_advisor_type"
+          "variable": "41443821-0840-556e-abc0-c1b43b6d3490"
         }
       ]
     },
@@ -1072,7 +1072,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "mapOptions": {
         "tokenAssetId": "mapbox-testing-token",
@@ -1091,7 +1091,7 @@
           "text": {
             "en": "Which **country** is each classmate from?"
           },
-          "variable": "classmate_home_country"
+          "variable": "a4278196-5a8a-5221-ae2d-7e60aae4c3e2"
         }
       ]
     },
@@ -1113,20 +1113,20 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "form": {
         "fields": [
           {
             "id": "56fd8d2b-b26b-5c0e-9e23-dfc901c15a1e",
-            "variable": "classmate_commuter",
+            "variable": "8a5250a1-52eb-5177-9c3f-95457c7abbfe",
             "prompt": {
               "en": "Commutes?"
             }
           },
           {
             "id": "ca70154b-da65-535e-96fa-281a351de92f",
-            "variable": "classmate_year_of_study",
+            "variable": "b8e882ca-7a84-52fb-8a8c-02bfbac1603a",
             "prompt": {
               "en": "Year of study"
             }
@@ -1140,8 +1140,8 @@
             "id": "8a0ff191-99a8-564f-9d10-4ff733a84f13",
             "type": "node",
             "options": {
-              "type": "classmate",
-              "attribute": "classmate_year_of_study",
+              "type": "92934d85-2611-552e-aec2-b8ef7eb81c99",
+              "attribute": "b8e882ca-7a84-52fb-8a8c-02bfbac1603a",
               "operator": "GREATER_THAN_OR_EQUAL",
               "value": 2
             }
@@ -1150,8 +1150,8 @@
             "id": "1dcccf73-5f59-56d3-8463-488d04606f08",
             "type": "node",
             "options": {
-              "type": "classmate",
-              "attribute": "classmate_major",
+              "type": "92934d85-2611-552e-aec2-b8ef7eb81c99",
+              "attribute": "47293fa4-410d-5967-a08b-fffe5ff2e29f",
               "operator": "CONTAINS",
               "value": "bio \\(x\\)"
             }
@@ -1160,8 +1160,8 @@
             "id": "00197652-ddc6-5666-8c3d-e6c3196ff72e",
             "type": "node",
             "options": {
-              "type": "classmate",
-              "attribute": "classmate_advisor_type",
+              "type": "92934d85-2611-552e-aec2-b8ef7eb81c99",
+              "attribute": "41443821-0840-556e-abc0-c1b43b6d3490",
               "operator": "EXCLUDES",
               "value": "nobody"
             }
@@ -1183,7 +1183,7 @@
               "id": "4cc67573-69ba-5527-8dfd-6b17091bbf35",
               "type": "node",
               "options": {
-                "type": "place",
+                "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -1208,7 +1208,7 @@
               "id": "16dc2929-f6b8-57dc-b2c6-a4e8d461a304",
               "type": "node",
               "options": {
-                "type": "place",
+                "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -1217,7 +1217,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "place"
+        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
       },
       "background": {
         "concentricCircles": 4,
@@ -1233,11 +1233,11 @@
             "en": "Tap your **favourite** places."
           },
           "layout": {
-            "layoutVariable": "place_layout"
+            "layoutVariable": "2581e04d-98ef-5367-b445-8c9c3861969a"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "place_favourite"
+            "variable": "c11ec10f-0d64-5e41-a7c9-6123ee3985e5"
           }
         }
       ]
@@ -1256,7 +1256,7 @@
               "id": "04005438-6689-5e20-a279-452b227852cc",
               "type": "node",
               "options": {
-                "type": "place",
+                "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -1265,7 +1265,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "place"
+        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
       },
       "presets": [
         {
@@ -1273,12 +1273,12 @@
           "label": {
             "en": "What you do"
           },
-          "layoutVariable": "place_layout",
-          "groupVariable": "place_type",
+          "layoutVariable": "2581e04d-98ef-5367-b445-8c9c3861969a",
+          "groupVariable": "51a087dc-e9b9-575e-aaee-71279df9ea79",
           "highlight": [
             {
               "id": "5554a839-c274-587c-b63a-181cab118803",
-              "variable": "place_favourite",
+              "variable": "c11ec10f-0d64-5e41-a7c9-6123ee3985e5",
               "label": {
                 "en": "favourite"
               }
@@ -1314,7 +1314,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "classmate"
+        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
       },
       "background": {
         "concentricCircles": 4,
@@ -1330,10 +1330,14 @@
             "en": "Arrange your classmates."
           },
           "layout": {
-            "layoutVariable": "classmate_layout"
+            "layoutVariable": "1739f1b3-c5d3-5800-9848-e6e0b46c1594"
           },
           "edges": {
-            "display": ["friends", "studies_with", "conflict"]
+            "display": [
+              "0019a3dd-a3f9-5329-8011-285e565a09eb",
+              "bb033990-963c-5e4b-9630-51db1773684c",
+              "91236723-3c54-5b7f-ba77-ef8601696816"
+            ]
           }
         }
       ],
@@ -1343,8 +1347,8 @@
             "id": "0f301a45-0a5c-5114-a14d-b014ec95daa7",
             "type": "node",
             "options": {
-              "type": "classmate",
-              "attribute": "classmate_name",
+              "type": "92934d85-2611-552e-aec2-b8ef7eb81c99",
+              "attribute": "0f697488-8bce-5aac-9488-bb60d5931752",
               "operator": "EXISTS"
             }
           }
@@ -1370,15 +1374,15 @@
       "interviewScript": "Ask the participant to add the mentors they have had and talk about each one.",
       "subject": {
         "entity": "node",
-        "type": "mentor"
+        "type": "16f7d809-2892-561f-b66c-e7d2de3c3775"
       },
-      "quickAdd": "mentor_name",
-      "layoutVariable": "mentor_layout",
+      "quickAdd": "f8b60e21-e002-5daf-84a0-4d4f4b82f9fc",
+      "layoutVariable": "9e9d85e4-5330-54d0-9c39-2075d6376e4c",
       "nodeForm": {
         "fields": [
           {
             "id": "e86a948e-2860-5f9f-adc0-8ae0657c9abc",
-            "variable": "mentor_role",
+            "variable": "76142aa3-ea78-5163-a3f9-8afe583980c4",
             "component": "Text",
             "label": {
               "en": "What is their role?"
@@ -1386,7 +1390,7 @@
           }
         ]
       },
-      "convexHullVariable": "mentor_circles",
+      "convexHullVariable": "8964ff3e-c5ec-5ca8-8169-db4aa422b873",
       "background": {
         "concentricCircles": 4,
         "skewedTowardCenter": true
@@ -1399,7 +1403,7 @@
           "id": "a19f8138-c6ca-576d-940e-ea9d7056304e",
           "subject": {
             "entity": "edge",
-            "type": "mentors_know"
+            "type": "b8647047-480a-5e41-bd6e-4672f39bb495"
           },
           "label": {
             "en": "Mentors know each other"
@@ -1408,7 +1412,7 @@
             "fields": [
               {
                 "id": "85548bfb-cff1-5e1d-89b3-9732430a85d5",
-                "variable": "mentors_know_met_through",
+                "variable": "1f524a45-3f95-50a6-92e5-e2a4450e8b11",
                 "component": "Text",
                 "label": {
                   "en": "How did they meet?"
@@ -1434,7 +1438,7 @@
               "id": "0b10f84c-36a5-5029-8a17-505d9dd51e4c",
               "type": "ego",
               "options": {
-                "attribute": "ego_commutes",
+                "attribute": "1c364d89-7078-5e16-973c-09e3e5413c2a",
                 "operator": "EXACTLY",
                 "value": true
               }
@@ -1443,7 +1447,7 @@
               "id": "ecff0b18-03a3-51e9-b0de-324de38081a5",
               "type": "ego",
               "options": {
-                "attribute": "ego_year",
+                "attribute": "1b155f5f-b6e1-5fc5-ab3c-33a87039f989",
                 "operator": "GREATER_THAN",
                 "value": 1
               }
@@ -1452,8 +1456,8 @@
               "id": "5661c0fa-0401-5810-9474-55dc8e4b0a74",
               "type": "node",
               "options": {
-                "type": "place",
-                "attribute": "place_visit_freq",
+                "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca",
+                "attribute": "6dc523b4-cace-57c9-a730-59fa2809d08a",
                 "operator": "INCLUDES",
                 "value": [3, 4]
               }
@@ -1476,28 +1480,28 @@
         "fields": [
           {
             "id": "b5308c11-a5e5-54a9-9ee5-36d998423fa2",
-            "variable": "ego_satisfaction",
+            "variable": "7de131ec-723e-57e5-8b47-28e6f5842cfc",
             "prompt": {
               "en": "How satisfied are you with university life?"
             }
           },
           {
             "id": "a7d4cd09-6bb7-539d-bc08-6d0ec6cfb2e1",
-            "variable": "ego_notes",
+            "variable": "9d87063c-39ef-5db9-be1f-505a308a9ad9",
             "prompt": {
               "en": "Anything else you would like to tell us?"
             }
           },
           {
             "id": "37bf46b0-1144-5bd4-9afb-5c80e20fb7c6",
-            "variable": "ego_birth_date",
+            "variable": "b6e382a0-0128-53e5-a41a-8954c3cfbc86",
             "prompt": {
               "en": "What is your date of birth?"
             }
           },
           {
             "id": "079932b3-4abd-5b6b-ba1a-8bffa7c1063f",
-            "variable": "ego_year_started",
+            "variable": "89e96a37-fd42-5290-b0da-688b19982442",
             "prompt": {
               "en": "In which year did you start university?"
             }

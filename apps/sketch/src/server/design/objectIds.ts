@@ -1,7 +1,10 @@
 import {
   collectProtocolObjectIdsFromSchema,
+  deterministicEntityTypeId,
   deterministicProtocolObjectId,
+  deterministicVariableId,
   type ProtocolObjectId,
+  renameCodebookIds,
   stageSchema,
 } from '@codaco/protocol-validation';
 
@@ -11,6 +14,8 @@ import {
 const SKETCH_ID_NAMESPACE = '4c3f0f7e-5a2b-4d8e-9b61-0f2a7d9c3e15';
 
 const sketchObjectId = deterministicProtocolObjectId(SKETCH_ID_NAMESPACE);
+const typeIdIn = deterministicEntityTypeId(SKETCH_ID_NAMESPACE);
+const variableIdIn = deterministicVariableId(SKETCH_ID_NAMESPACE);
 
 /**
  * The id of the stage the compiler names `name` (a design stage's id, or a
@@ -56,4 +61,50 @@ export const assignNestedObjectIds = (
       }
     }
   }
+};
+
+/** The id of the node or edge type the compiler keys `key`. */
+export const sketchTypeId = (key: string) => typeIdIn(`type:${key}`);
+
+/** The id of the variable the compiler keys `key`. */
+export const sketchVariableId = (key: string) =>
+  variableIdIn(`variable:${key}`);
+
+/**
+ * A source map path (`codebook.<entity>.<type>` or one that goes on to
+ * `.variables.<variable>`) with the ids its keys were given.
+ */
+const renamedSourcePath = (path: string): string => {
+  const segments = path.split('.');
+  if (segments[0] !== 'codebook') return path;
+  const ego = segments[1] === 'ego';
+  const variableAt = ego ? 3 : 4;
+  return segments
+    .map((segment, index) => {
+      if (index === 2 && !ego) return sketchTypeId(segment);
+      if (index === variableAt && segments[variableAt - 1] === 'variables')
+        return sketchVariableId(segment);
+      return segment;
+    })
+    .join('.');
+};
+
+/**
+ * Gives every node type, edge type and variable of `protocol` a UUID named
+ * by the readable key the compiler gave it, so compiling one design twice
+ * gives the same ids, and returns `sourceMap` with its codebook paths
+ * renamed to match. The compiler claims every key once across the whole
+ * codebook, so a key alone names its id. `protocol` is changed in place.
+ */
+export const assignCodebookIds = (
+  protocol: Record<string, unknown>,
+  sourceMap: ReadonlyMap<string, string>,
+): Map<string, string> => {
+  renameCodebookIds(protocol, {
+    typeId: sketchTypeId,
+    variableId: sketchVariableId,
+  });
+  return new Map(
+    [...sourceMap].map(([path, source]) => [renamedSourcePath(path), source]),
+  );
 };
