@@ -4,7 +4,9 @@ import {
   type ComponentType,
   CURRENT_SCHEMA_VERSION,
   defaultFinishSessionFields,
+  deterministicEntityTypeId,
   deterministicProtocolObjectId,
+  deterministicVariableId,
   DEFAULT_FINISH_SESSION_TEXT,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   type PedigreeDefaultGenderIdentityValue,
@@ -22,6 +24,7 @@ import {
   collectLocalizedStrings,
   findBuiltInWordingProblems,
   hasSuppliedWording,
+  isVariableId,
   type MessageArguments,
   messageText,
   type ProtocolObjectId,
@@ -470,6 +473,15 @@ const syntheticObjectId = deterministicProtocolObjectId(
   SYNTHETIC_OBJECT_ID_NAMESPACE,
 );
 
+// The codebook's node type, edge type and variable ids are derived the same
+// way, each kind in a namespace of its own.
+const syntheticTypeId = deterministicEntityTypeId(
+  '05b7a547-4e20-4359-9edd-dbd1712e6b8a',
+);
+const syntheticVariableId = deterministicVariableId(
+  '94703800-9d7e-430f-b8ea-342ff910e40b',
+);
+
 /**
  * The id of a row. Any id a caller gave the row is a label, combined with the
  * row's place (`scope`) in the protocol, so a filter or a row list reused in
@@ -532,10 +544,22 @@ export class SyntheticInterview {
     return syntheticObjectId(this.nextId(prefix));
   }
 
+  /**
+   * The id of a variable `owner` (a type id, or `ego`) is given. A label the
+   * caller gave it is combined with the owner, so one label on two entities
+   * still gives two ids; a UUID the caller gave is kept.
+   */
+  private variableIdFor(owner: string, label: string | undefined): string {
+    if (label === undefined) return syntheticVariableId(this.nextId('var'));
+    return isVariableId(label)
+      ? label
+      : syntheticVariableId(`${owner}/${label}`);
+  }
+
   // --- Manual codebook API ---
 
   addNodeType(opts?: AddNodeTypeInput): NodeTypeHandle {
-    const id = this.nextId('node-type');
+    const id = syntheticTypeId(this.nextId('node-type'));
     const colorIndex = this.nodeTypeCounter % NODE_COLORS.length;
     this.nodeTypeCounter++;
 
@@ -551,7 +575,7 @@ export class SyntheticInterview {
     // Seed a "name" text variable so generated initial nodes receive a
     // realistic full name via ValueGenerator. Without this, nodes render with
     // the type's display name (e.g. "Person") as their fallback label.
-    const nameVarId = this.nextId('var');
+    const nameVarId = this.variableIdFor(id, undefined);
     entry.variables.set(nameVarId, {
       id: nameVarId,
       name: 'name',
@@ -576,7 +600,7 @@ export class SyntheticInterview {
   }
 
   addEdgeType(opts?: AddEdgeTypeInput): EdgeTypeHandle {
-    const id = this.nextId('edge-type');
+    const id = syntheticTypeId(this.nextId('edge-type'));
     const colorIndex = this.edgeTypeCounter % EDGE_COLORS.length;
     this.edgeTypeCounter++;
 
@@ -630,7 +654,7 @@ export class SyntheticInterview {
       return { id: existing.id };
     }
 
-    const varId = opts?.id ?? this.nextId('var');
+    const varId = this.variableIdFor(nodeTypeId, opts?.id);
     const options = this.resolveOptions(type, opts?.options);
 
     const entry: VariableEntry = {
@@ -670,7 +694,7 @@ export class SyntheticInterview {
       return { id: existing.id };
     }
 
-    const varId = opts?.id ?? this.nextId('var');
+    const varId = this.variableIdFor(edgeTypeId, opts?.id);
     const options = this.resolveOptions(type, opts?.options);
 
     const entry: VariableEntry = {
@@ -698,7 +722,7 @@ export class SyntheticInterview {
   }
 
   addEgoVariable(opts?: AddVariableInput): VariableRef {
-    const varId = this.nextId('ego-var');
+    const varId = this.variableIdFor('ego', opts?.id);
     const type = this.resolveVariableType(opts);
     const options = this.resolveOptions(type, opts?.options);
 
@@ -1959,7 +1983,7 @@ export class SyntheticInterview {
       });
       variable = ref.id;
     } else {
-      variable = this.nextId('location-var');
+      variable = this.variableIdFor('ego', undefined);
     }
 
     return {

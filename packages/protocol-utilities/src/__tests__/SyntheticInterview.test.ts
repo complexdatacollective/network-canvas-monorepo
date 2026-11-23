@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   collectProtocolObjectIds,
+  isEntityTypeId,
   isProtocolObjectId,
+  isVariableId,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
@@ -258,6 +260,50 @@ describe('SyntheticInterview', () => {
       >;
       expect(variables[varRef.id]!.type).toBe('categorical');
       expect(variables[varRef.id]!.options).toHaveLength(4);
+    });
+
+    it('keys every type and variable by a UUID, the same for the same seed and calls', () => {
+      const build = (seed: number) => {
+        const si = new SyntheticInterview(seed);
+        const person = si.addNodeType({ name: 'Person' });
+        const place = si.addNodeType({ name: 'Place' });
+        const knows = si.addEdgeType({ name: 'Knows' });
+        return {
+          person: person.id,
+          place: place.id,
+          knows: knows.id,
+          age: person.addVariable({ type: 'number', name: 'Age' }).id,
+          personCode: person.addVariable({ id: 'code', name: 'Code' }).id,
+          placeCode: place.addVariable({ id: 'code', name: 'Code' }).id,
+          since: knows.addVariable({ type: 'datetime', name: 'Since' }).id,
+          mood: si.addEgoVariable({ name: 'Mood' }).id,
+        };
+      };
+
+      const ids = build(7);
+      for (const id of [ids.person, ids.place, ids.knows]) {
+        expect(id).toSatisfy(isEntityTypeId);
+      }
+      for (const id of [
+        ids.age,
+        ids.personCode,
+        ids.placeCode,
+        ids.since,
+        ids.mood,
+      ]) {
+        expect(id).toSatisfy(isVariableId);
+      }
+      // A label the caller gives names the variable within its own type.
+      expect(ids.personCode).not.toBe(ids.placeCode);
+      expect(build(7)).toEqual(ids);
+      expect(build(8).person).not.toBe(ids.person);
+    });
+
+    it('keeps a variable id the caller gives as a UUID', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType();
+      const id = '0e1c9a52-4b7d-4c3e-8f21-6a5d3b9c7e10';
+      expect(nt.addVariable({ id, name: 'Kept' }).id).toBe(id);
     });
   });
 
