@@ -52,7 +52,7 @@ describe('ProtocolValidationDetailsDialog', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'community forum' }),
-    ).toHaveAttribute('href', 'https://community.networkcanvas.com');
+    ).toHaveAttribute('href', 'https://community.networkcanvas.com/');
     expect(
       screen.getByRole('link', { name: 'info@networkcanvas.com' }),
     ).toHaveAttribute('href', 'mailto:info@networkcanvas.com');

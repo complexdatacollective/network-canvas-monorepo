@@ -21,6 +21,7 @@ import type {
   CurrentProtocol,
   ExtractedAsset,
 } from '@codaco/protocol-validation';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import AppUpdatePill from '~/components/AppUpdate/AppUpdatePill';
 import { useBaseLanguageOffer } from '~/components/Localization/useBaseLanguageOffer';
 import NewProtocolDialog from '~/components/NewProtocolDialog';
@@ -139,7 +140,7 @@ const NAV_LINKS = [
     Icon: BookOpen,
   },
   {
-    href: 'https://community.networkcanvas.com',
+    href: COMMUNITY_FORUM_URL,
     label: configMessages.community,
     Icon: Users,
   },

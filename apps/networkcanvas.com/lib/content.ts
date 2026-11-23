@@ -4,6 +4,7 @@
  * destinations as the original Framer site.
  */
 
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import type { Variant } from '~/components/ui/DeviceMockup';
 import { webDestinations } from '~/lib/getStarted';
 import { documentationUrl } from '~/lib/siteUrls';
@@ -11,7 +12,7 @@ import { documentationUrl } from '~/lib/siteUrls';
 export const contactEmail = 'info@networkcanvas.com';
 
 export const externalLinks = {
-  community: 'https://community.networkcanvas.com/',
+  community: COMMUNITY_FORUM_URL,
   documentation: documentationUrl(),
   github: 'https://github.com/complexdatacollective',
   twitter: 'https://twitter.com/networkcanvas?lang=en',
@@ -20,8 +21,7 @@ export const externalLinks = {
   publications: documentationUrl(
     '/en/get-started/project-information/citing-the-software',
   ),
-  shareYourWork:
-    'https://community.networkcanvas.com/t/share-your-work-using-network-canvas/149',
+  shareYourWork: `${COMMUNITY_FORUM_URL}t/share-your-work-using-network-canvas/149`,
   collaboration: documentationUrl(
     '/en/get-started/project-information/requests-for-collaboration',
   ),

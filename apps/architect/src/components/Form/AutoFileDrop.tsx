@@ -11,6 +11,7 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { buttonVariants } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import { warnAboutDuplicateRows } from '~/components/AssetBrowser/duplicateRowsWarning';
 import ExternalLink from '~/components/ExternalLink';
 import { SUPPORTED_EXTENSION_TYPE_MAP } from '~/config';
@@ -33,9 +34,7 @@ const renderResourceTypesLink = (chunks: ReactNode[]) => (
 );
 
 const renderCommunityLink = (chunks: ReactNode[]) => (
-  <ExternalLink href="https://community.networkcanvas.com/">
-    {chunks}
-  </ExternalLink>
+  <ExternalLink href={COMMUNITY_FORUM_URL}>{chunks}</ExternalLink>
 );
 
 const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;

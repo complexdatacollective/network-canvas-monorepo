@@ -15,6 +15,7 @@ import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import InterfacePicture from '@codaco/interface-images/InterfacePicture';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import { Footer } from '~/components/layout/Footer';
 import { Reveal } from '~/components/ui/Reveal';
 import { cn } from '~/lib/cn';
@@ -147,7 +148,7 @@ function renderCommunityLink(chunks: ReactNode) {
   return (
     <NativeLink
       className="[--link:var(--color-sea-serpent)]"
-      href="https://community.networkcanvas.com/"
+      href={COMMUNITY_FORUM_URL}
     >
       {chunks}
     </NativeLink>

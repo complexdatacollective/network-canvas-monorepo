@@ -17,6 +17,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import type { SiteLocale } from '@codaco/shared-consts';
 
 import { buttonVariants, IconButton } from '../Button';
@@ -148,7 +149,7 @@ export type SiteNavigationProps = {
 };
 
 const destinations = {
-  community: 'https://community.networkcanvas.com/',
+  community: COMMUNITY_FORUM_URL,
   documentation: 'https://documentation.networkcanvas.com/',
   protocolGallery: 'https://protocolgallery.networkcanvas.com/',
   architect: 'https://architect.networkcanvas.com/',

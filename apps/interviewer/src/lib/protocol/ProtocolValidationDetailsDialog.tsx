@@ -9,6 +9,7 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ScrollArea as ScrollableArea } from '@codaco/fresco-ui/ScrollArea';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import { ExternalLink } from '~/components/ExternalLink';
 
 const messages = defineMessages({
@@ -114,9 +115,7 @@ export function getProtocolValidationDetailsCopyText({
 // Rich-text chunk formatters for the support message's links, at module scope
 // so they keep one identity across renders.
 const renderForumLink = (chunks: ReactNode[]) => (
-  <ExternalLink href="https://community.networkcanvas.com">
-    {chunks}
-  </ExternalLink>
+  <ExternalLink href={COMMUNITY_FORUM_URL}>{chunks}</ExternalLink>
 );
 
 const renderEmailLink = (chunks: ReactNode[]) => (

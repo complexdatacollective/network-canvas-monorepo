@@ -14,6 +14,7 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { saveAction, type SaveAction } from '@codaco/fresco-ui/utils/saveBlob';
 import { exportStageMessages } from '@codaco/network-exporters/messages';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import { ExternalLink } from '~/components/ExternalLink';
 import { APP_VERSION } from '~/lib/appVersion';
 
@@ -151,9 +152,7 @@ const messages = defineMessages({
 // Rich-text chunk formatters for the failure message's links, at module scope
 // so they keep one identity across renders.
 const renderForumLink = (chunks: ReactNode[]) => (
-  <ExternalLink href="https://community.networkcanvas.com">
-    {chunks}
-  </ExternalLink>
+  <ExternalLink href={COMMUNITY_FORUM_URL}>{chunks}</ExternalLink>
 );
 
 const renderEmailLink = (chunks: ReactNode[]) => (

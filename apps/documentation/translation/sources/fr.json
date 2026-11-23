@@ -227,5 +227,15 @@
     "goHome": "Use the 'return home' link below to navigate to the home page, and then navigate to the page you are looking for using the menus.",
     "contact": "Contact the project team if you believe you are seeing this page in error, including details of the page you were trying to reach. Please email us at <link>info@networkcanvas.com</link>.",
     "returnHome": "Return Home"
+  },
+  "ArticleFeedback": {
+    "question": "Did you get what you needed from this article?",
+    "yes": "Yes",
+    "no": "No",
+    "commentLabel": "How could this article be improved?",
+    "forumNote": "Have a question? Ask it in the <link>community forum</link>.",
+    "send": "Send",
+    "ratingSent": "Thanks, feedback sent.",
+    "thanks": "Thanks for your feedback."
   }
 }

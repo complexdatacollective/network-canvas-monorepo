@@ -9,6 +9,7 @@ import Surface from '@codaco/fresco-ui/layout/Surface';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -392,7 +393,7 @@ export function useSetupWizard({
                         </ExternalLink>
                       ),
                       link1: (chunks) => (
-                        <ExternalLink href="https://community.networkcanvas.com">
+                        <ExternalLink href={COMMUNITY_FORUM_URL}>
                           {chunks}
                         </ExternalLink>
                       ),

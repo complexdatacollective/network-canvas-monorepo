@@ -21,6 +21,7 @@ import type {
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { formatMigrationNotes } from '@codaco/protocol-validation/messages';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import ExternalLink from '~/components/ExternalLink';
 import Markdown from '~/components/Markdown';
 import type { ProtocolOpenResult } from '~/ducks/modules/userActions/userActions';
@@ -404,7 +405,7 @@ export const showProtocolOpenResultDialog = async ({
               message: additionalMessages.ifTheProblemPersistsReachOut,
               values: {
                 ExternalLink: (chunks) => (
-                  <ExternalLink href="https://community.networkcanvas.com/">
+                  <ExternalLink href={COMMUNITY_FORUM_URL}>
                     {chunks}
                   </ExternalLink>
                 ),
@@ -445,9 +446,7 @@ export const showProtocolOpenResultDialog = async ({
             message: additionalMessages.ifTheProblemPersistsReachOut,
             values: {
               ExternalLink: (chunks) => (
-                <ExternalLink href="https://community.networkcanvas.com/">
-                  {chunks}
-                </ExternalLink>
+                <ExternalLink href={COMMUNITY_FORUM_URL}>{chunks}</ExternalLink>
               ),
             },
           })}

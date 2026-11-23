@@ -5,6 +5,7 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Checkbox from '@codaco/fresco-ui/form/fields/Checkbox';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import { setWelcomeDismissed } from '~/state/welcomePreference';
 
 type WelcomeDialogProps = {
@@ -39,7 +40,7 @@ export function WelcomeDialog({
           a node was dropped in based on its screen position. Please post
           thoughts and feedback on our{' '}
           <NativeLink
-            href="https://community.networkcanvas.com/"
+            href={COMMUNITY_FORUM_URL}
             target="_blank"
             rel="noopener noreferrer"
           >

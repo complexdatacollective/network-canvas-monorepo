@@ -227,5 +227,15 @@
     "goHome": "Usa el enlace «Volver al inicio» de abajo para ir a la página de inicio y, desde allí, busca la página que quieres con los menús.",
     "contact": "Si crees que ves esta página por error, ponte en contacto con el equipo del proyecto e indica la página a la que intentabas llegar. Escríbenos a <link>info@networkcanvas.com</link>.",
     "returnHome": "Volver al inicio"
+  },
+  "ArticleFeedback": {
+    "question": "¿Has encontrado en este artículo lo que necesitabas?",
+    "yes": "Sí",
+    "no": "No",
+    "commentLabel": "¿Cómo podríamos mejorar este artículo?",
+    "forumNote": "¿Tienes alguna pregunta? Hazla en el <link>foro de la comunidad</link>.",
+    "send": "Enviar",
+    "ratingSent": "Gracias, respuesta enviada.",
+    "thanks": "Gracias por tus comentarios."
   }
 }
