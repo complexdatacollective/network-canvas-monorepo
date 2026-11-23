@@ -36,8 +36,10 @@ type Lines = 'single' | 'multiple';
  * shortcodes, and `<br>` as a line break.
  */
 // Stands for a `<br>` typed as it is, which a backslash before it does not
-// make one: the tag was raw HTML, which the parser never saw as words.
-const TYPED_BREAK = '\uE00B';
+// make one: the tag was raw HTML, which the parser never saw as words. It is
+// a punctuation character, as the tag's `<` and `>` are, so emphasis beside
+// it is read as it was beside the tag: `**a<br>**b` held no strong emphasis.
+const TYPED_BREAK = '\u2E2E';
 
 const legacyReading = (markdown: string, lines: Lines): Root => {
   const marked = markdown.replace(
@@ -325,6 +327,95 @@ const EDGE_CASES: readonly (readonly [string, Generated])[] = SHAPES.flatMap(
   ],
 );
 
+/**
+ * What can come first on a line that the migration opens or uncovers: every
+ * ASCII punctuation character, a number with each delimiter of a numbered
+ * item, one to five spaces, a tab, and a letter.
+ */
+const LINE_OPENERS: readonly string[] = [
+  ...Array.from('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'),
+  '1.',
+  '1)',
+  ...[1, 2, 3, 4, 5].map((count) => ' '.repeat(count)),
+  '\t',
+  'a',
+];
+
+/** What follows the first thing on the line: a space and a word, a word, or nothing. */
+const AFTER_OPENERS: readonly string[] = [' word', 'word', ''];
+
+/**
+ * Where a run of breaks leaves what follows it at the start of a line or of
+ * a paragraph: after a run at the start, after one in the middle of a
+ * paragraph, and after one moved out of emphasis.
+ */
+const LINE_START_PLACES: readonly (readonly [
+  string,
+  (rest: string) => string,
+])[] = [
+  ['after a leading run', (rest) => `<br>${rest}`],
+  ['after a run in the middle of a paragraph', (rest) => `a<br>${rest}`],
+  ['after a run moved out of emphasis', (rest) => `**a<br>**${rest}`],
+];
+
+/** Link reference definitions, each with the label it defines. */
+const DEFINITIONS: readonly (readonly [string, string])[] = [
+  ['[Contact]: https://example.org', '[Contact]'],
+  ['[Contact]: <https://example.org> "title"', '[Contact]'],
+  ['[^1]: note', '[^1]'],
+];
+
+/**
+ * A definition after a run: at the start of text that goes on, after
+ * emphasis that held only breaks, and as all the text there is; each with
+ * and without the label defined before it, and used after it.
+ */
+const definitionsAfterRuns = (lead: string): readonly string[] =>
+  DEFINITIONS.flatMap(([definition, label]) =>
+    ['', `${label}: https://example.net\n\n`].flatMap((earlier) =>
+      ['', `\n\nSee ${label}.`].flatMap((later) => [
+        `${earlier}${lead}<br>${definition}\nand more${later}`,
+        `${earlier}${lead}**<br>**${definition}${later}`,
+        `${earlier}${lead}<br>${definition}${later}`,
+      ]),
+    ),
+  );
+
+/** Lines that change the line before them, after a run. */
+const LINES_AFTER_RUNS: readonly string[] = [
+  'a<br>===',
+  'a<br>---',
+  'a<br>| a |',
+  '| a |<br>| --- |',
+];
+
+/** The generated texts, grouped by what is first on the line a run opens. */
+const LINE_START_CASES: readonly (readonly [string, Generated])[] =
+  SHAPES.flatMap(([shape, lines, lead]) => [
+    ...LINE_START_PLACES.map(
+      ([place, write]) =>
+        [
+          `each first character ${place}, in ${shape}`,
+          LINE_OPENERS.flatMap((opener) =>
+            AFTER_OPENERS.map(
+              (after) =>
+                [`${lead}${write(`${opener}${after}`)}`, lines] as const,
+            ),
+          ),
+        ] as const,
+    ),
+    [
+      `a definition after a run, in ${shape}`,
+      definitionsAfterRuns(lead).map((text) => [text, lines] as const),
+    ] as const,
+    [
+      `an underline or a table row after a run, in ${shape}`,
+      LINES_AFTER_RUNS.map((text) => [`${lead}${text}`, lines] as const),
+    ] as const,
+  ]);
+
+const GENERATED_CASES = [...EDGE_CASES, ...LINE_START_CASES];
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -380,15 +471,19 @@ const CASES: readonly (readonly [string, string, string])[] = [
   ['a<br>\nb', 'a\\\nb', 'a\nb'],
   ['<br>a<br>', 'a', 'a'],
   ['# Title<br>words', '# Title words', '# Title words'],
-  ['a<br>- b', 'a\\\n\\- b', 'a - b'],
-  ['a<br>1. b', 'a\\\n1\\. b', 'a 1. b'],
-  ['a<br>## b', 'a\\\n\\## b', 'a ## b'],
+  ['a<br>- b', 'a\\\n&#45; b', 'a - b'],
+  ['a<br>1. b', 'a\\\n&#49;. b', 'a 1. b'],
+  ['a<br>## b', 'a\\\n&#35;&#35; b', 'a ## b'],
   ['- a<br>> b', '- a\\\n&gt; b', '- a > b'],
-  ['a<br>~~~example~~~', 'a\\\n\\~~~example~~~', 'a ~~~example~~~'],
-  ['a<br>+ b', 'a\\\n\\+ b', 'a + b'],
-  ['a<br>1) b', 'a\\\n1\\) b', 'a 1) b'],
-  ['a<br>===', 'a\\\n\\===', 'a ==='],
-  ['a<br>#', 'a\\\n\\#', 'a #'],
+  [
+    'a<br>~~~example~~~',
+    'a\\\n&#126;&#126;&#126;example~~~',
+    'a ~~~example~~~',
+  ],
+  ['a<br>+ b', 'a\\\n&#43; b', 'a + b'],
+  ['a<br>1) b', 'a\\\n&#49;) b', 'a 1) b'],
+  ['a<br>===', 'a\\\n&#61;&#61;&#61;', 'a ==='],
+  ['a<br>#', 'a\\\n&#35;', 'a #'],
   // Breaks at the inner edge of emphasis or of a link's text are written
   // just outside it, all of them.
   ['**a<br><br>** b', '**a**\\\n\\\n b', '**a**  b'],
@@ -401,8 +496,23 @@ const CASES: readonly (readonly [string, string, string])[] = [
   ],
   ['x **_a<br>_** y', 'x **_a_**\\\n y', 'x **_a_**  y'],
   ['x _**<br>a**_ y', 'x \\\n_**a**_ y', 'x  _**a**_ y'],
-  // Breaks written as a space must not leave a line that reads as a rule.
-  ['** <br> **', '** \\\n **', '\\*\\*  \\*\\*'],
+  // A line a run opens, uncovers or rewrites keeps the blocks it had: its
+  // first character is written as a character reference where it would
+  // otherwise open one, and left alone where it would not.
+  [
+    '<br>[Contact]: https://example.org',
+    '&#91;Contact]: [https://example.org](https://example.org)',
+    '&#91;Contact]: https://example.org',
+  ],
+  [
+    '[Contact]: https://example.net\n\n<br>[Contact]: https://example.org',
+    '[Contact]: https://example.net\n\n[Contact]&#58; [https://example.org](https://example.org)',
+    '[Contact]: https://example.net\n\n[Contact]&#58; https://example.org',
+  ],
+  ['<br>**bold**', '**bold**', '**bold**'],
+  ['#<br>a', '#\\\na', '&#35; a'],
+  ['# a<br>#', '# a &#35;', '# a &#35;'],
+  ['** <br> **', '** \\\n **', '**  &#42;&#42;'],
   [
     'Visit www.example.org today',
     'Visit [www.example.org](http://www.example.org) today',
@@ -561,7 +671,9 @@ describe('legacyMarkdownAsStandard', () => {
   // A closing delimiter run cannot follow white space, a line ending
   // included, and an opening one cannot be followed by it: whatever is
   // written for a `<br>` must never be the first or last thing in emphasis.
-  it.each(EDGE_CASES)(
+  // And a line a `<br>` opens, uncovers or rewrites must open no block the
+  // legacy reading did not have.
+  it.each(GENERATED_CASES)(
     'writes %s so that it reads as it did',
     (_kind, cases) => {
       expect(
@@ -570,7 +682,7 @@ describe('legacyMarkdownAsStandard', () => {
     },
   );
 
-  it.each(EDGE_CASES)(
+  it.each(GENERATED_CASES)(
     'leaves %s alone once it has been written',
     (_kind, cases) => {
       expect(
@@ -626,7 +738,7 @@ describe('legacyMarkdownAsStandard', () => {
       '*a*\\\n b',
     );
     expect(legacyMarkdownAsStandard('*a<br>*- b', { lines: 'multiple' })).toBe(
-      '*a*\\\n\\- b',
+      '*a*\\\n&#45; b',
     );
   });
 

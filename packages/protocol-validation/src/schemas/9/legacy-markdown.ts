@@ -1,6 +1,6 @@
 import { decodeNamedCharacterReference } from 'decode-named-character-reference';
 import { nameToEmoji } from 'gemoji';
-import type { Nodes, Parents, Text } from 'mdast';
+import type { Nodes, Parents, Root, Text } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmAutolinkLiteralFromMarkdown } from 'mdast-util-gfm-autolink-literal';
 import { gfmAutolinkLiteral } from 'micromark-extension-gfm-autolink-literal';
@@ -13,6 +13,7 @@ import {
   escapeMarkdownText,
   linkDestinationMarkdown,
 } from '../../localization/markdownText.ts';
+import { markdownTree } from '../../localization/markdownTree.ts';
 import type { LocalizedTextLines } from './localized-string.ts';
 
 /**
@@ -299,77 +300,6 @@ const linkMarkdown = (words: string, href: string): string =>
   `[${escapeMarkdownText(withEmoji(words))}](${linkDestinationMarkdown(href)})`;
 
 /**
- * What would open a block of its own at the start of a line: a heading, a
- * list item, a code fence, a heading's underline or a rule. The group that
- * matched holds the marker, whose first character (every character, in a
- * rule) is escaped to keep the line words.
- */
-const OPENS_A_BLOCK =
-  /^[^\S\n]*(?:(#{1,6})(?=[ \t]|$)|([-+*])(?=[ \t]|$)|\d{1,9}([.)])(?=[ \t]|$)|(`{3,}(?=[^`]*$)|~{3,})|(=+)[ \t]*$|(-+)[ \t]*$|([-*_])(?:[ \t]*\7){2,}[ \t]*$)/;
-
-/**
- * The edits that escape every marker of a rule, `line`, at `from` in the
- * source. Escaping the first alone would leave the rest after punctuation,
- * where a run of `*` or `_` can close emphasis the line before opened; with
- * every one escaped none can, as none could while spaces or the line's start
- * stood beside them.
- */
-const ruleMarkerEdits = (line: string, from: number): Edit[] =>
-  [...line.matchAll(/[-*_]/g)].map(({ index }) => ({
-    start: from + index,
-    end: from + index,
-    text: '\\',
-  }));
-
-/**
- * The edits that keep the line holding `removed`, a run of breaks the
- * migration writes as a space or as nothing, from being read as a rule once
- * the tags in it are gone: `** <br> **` written `**  **` would be one.
- */
-const ruleEdits = (
-  source: string,
-  removed: Readonly<{ start: number; end: number }>,
-): Edit[] => {
-  const lineStart = source.lastIndexOf('\n', removed.start - 1) + 1;
-  const newline = source.indexOf('\n', removed.end);
-  const lineEnd = newline === -1 ? source.length : newline;
-  const line = `${source.slice(lineStart, removed.start)} ${source.slice(removed.end, lineEnd)}`;
-  if (OPENS_A_BLOCK.exec(line.replace(BREAK_TAG, ' '))?.[7] === undefined) {
-    return [];
-  }
-  return [
-    ...ruleMarkerEdits(source.slice(lineStart, removed.start), lineStart),
-    ...ruleMarkerEdits(source.slice(removed.end, lineEnd), removed.end),
-  ];
-};
-
-/** A `>` opening a line, which would open a quotation. */
-const OPENS_A_QUOTATION = /^[^\S\n]*>/;
-
-/**
- * The edits that keep a line a break opens, at `from` in the source, the
- * words it was: a `>` opening it is written `&gt;`, and the marker of
- * anything else that would open a block there is escaped. What follows the
- * break is read from the source, whatever node it belongs to, since a line
- * may open with the end of emphasis or the start of a link as well as with
- * the words of the node the break was in.
- */
-const lineOpeningEdits = (source: string, from: number): Edit[] => {
-  const line = source.slice(from).split('\n')[0] ?? '';
-  const quotation = OPENS_A_QUOTATION.exec(line);
-  if (quotation !== null) {
-    const at = from + quotation[0].length - 1;
-    return [{ start: at, end: at + 1, text: '&gt;' }];
-  }
-  const match = OPENS_A_BLOCK.exec(line);
-  const marker = match?.slice(1).find((group) => group !== undefined);
-  if (match === null || marker === undefined) return [];
-  if (match[7] !== undefined) return ruleMarkerEdits(line, from);
-  const at = line.indexOf(marker, line.length - line.trimStart().length);
-  return at === -1 ? [] : [{ start: from + at, end: from + at, text: '\\' }];
-};
-
-/**
  * A bare address in one line, which stays words, written as the editor
  * writes words (`escapeMarkdownText`) where it holds a character markdown
  * may read as something else inside a line: `www.example.org/*a*` would
@@ -442,6 +372,15 @@ type Context = Readonly<{
   source: string;
   multiline: boolean;
   edits: Edit[];
+  /** Where in the source each character the old reading read as typed words was written. */
+  typed: Set<number>;
+  /** Those of `typed` in a link's words. */
+  linked: Set<number>;
+  /**
+   * Where in the source a line or a paragraph may begin, or its words
+   * change, once the edits are made (see `guardedLineStarts`).
+   */
+  lineStarts: number[];
 }>;
 
 /**
@@ -451,7 +390,7 @@ type Context = Readonly<{
 const editWords = (
   node: Text,
   ancestors: readonly Parents[],
-  { source, multiline, edits }: Context,
+  { source, multiline, edits, typed, linked, lineStarts }: Context,
 ) => {
   const { value } = node;
   // Words in an address written as it is (in angle brackets, or found bare
@@ -485,6 +424,14 @@ const editWords = (
   const inLink = ancestors.some(
     (ancestor) => ancestor.type === 'link' || ancestor.type === 'linkReference',
   );
+  if (!raw) {
+    for (const [index, [start, end]] of spans.entries()) {
+      if (end - start === 1 && source.charAt(start) === value.charAt(index)) {
+        typed.add(start);
+        if (inLink) linked.add(start);
+      }
+    }
+  }
   const leaves = block === undefined ? [] : leavesOf(block);
   const firstInBlock = leaves[0] === node;
   const lastInBlock = leaves.at(-1) === node;
@@ -551,6 +498,16 @@ const editWords = (
       from: run.from - spacesBefore,
       to: run.to + spacesAfter,
     };
+    // The line the run is in, and what follows it, read differently once
+    // the tags are gone.
+    const runStart = sourceOf(run).start;
+    lineStarts.push(
+      Math.max(
+        source.lastIndexOf('\n', runStart - 1) + 1,
+        block?.position?.start.offset ?? 0,
+      ),
+      sourceOf(whole).end,
+    );
     const only =
       atStart && atEnd ? containerOfOnly(node, ancestors) : undefined;
     const removed = (() => {
@@ -562,11 +519,9 @@ const editWords = (
     })();
 
     if ((firstInBlock && atStart) || (lastInBlock && atEnd)) {
-      edits.push({ ...removed, text: '' }, ...ruleEdits(source, removed));
+      edits.push({ ...removed, text: '' });
+      lineStarts.push(removed.end);
       blank(whole, false);
-      if (firstInBlock && atStart && !inHeading) {
-        edits.push(...lineOpeningEdits(source, removed.end));
-      }
       continue;
     }
 
@@ -600,18 +555,13 @@ const editWords = (
         text: breaksApart ? lineBreaks(run.breaks.length, lineEndsAfter) : ' ',
       });
       blank(whole, false);
-      if (breaksApart && !lineEndsAfter) {
-        edits.push(...lineOpeningEdits(source, at));
-      }
+      lineStarts.push(at);
       continue;
     }
 
     if (!breaksApart) {
       const spaced = /\s$/.test(before) || /^\s/.test(after);
-      edits.push(
-        { ...sourceOf(run), text: spaced ? '' : ' ' },
-        ...ruleEdits(source, sourceOf(run)),
-      );
+      edits.push({ ...sourceOf(run), text: spaced ? '' : ' ' });
       blank(run, false);
       continue;
     }
@@ -626,7 +576,7 @@ const editWords = (
       }
       edits.push({ ...sourceOf(stretch), text: '\\\n' });
       blank(stretch, true);
-      edits.push(...lineOpeningEdits(source, sourceOf(stretch).end));
+      lineStarts.push(sourceOf(stretch).end);
     }
   }
 
@@ -707,6 +657,87 @@ const applyEdits = (source: string, edits: readonly Edit[]): string => {
   return written + source.slice(at);
 };
 
+/** The containers whose children are blocks. */
+const HOLDS_BLOCKS = new Set(['root', 'list', 'listItem', 'blockquote']);
+
+/**
+ * The blocks a reading of `source` holds, in order and nesting, without
+ * their words: each block's kind, a heading's level and whether a closing
+ * run of `#` ends it, whether a list is numbered, and each definition's
+ * label.
+ */
+const blocksOf = (tree: Root, source: string): string => {
+  const shape = (node: Nodes): unknown => {
+    let kind: string = node.type;
+    if (node.type === 'heading') {
+      const end = node.position?.end.offset ?? 0;
+      const wordsEnd =
+        node.children.at(-1)?.position?.end.offset ??
+        (node.position?.start.offset ?? 0) + node.depth;
+      kind = `heading ${node.depth}${source.slice(wordsEnd, end).includes('#') ? ' closed' : ''}`;
+    } else if (node.type === 'list') {
+      kind = node.ordered === true ? 'numbered list' : 'list';
+    } else if (node.type === 'definition') {
+      kind = `definition ${node.identifier}`;
+    }
+    return HOLDS_BLOCKS.has(node.type) && 'children' in node
+      ? [kind, ...node.children.map(shape)]
+      : kind;
+  };
+  return JSON.stringify(shape(tree));
+};
+
+/**
+ * The edit that keeps a line the migration opens, uncovers or rewrites,
+ * whose first character is at or after `at` in the source, from opening a
+ * block the old reading did not have: that first character, where the old
+ * reading read it as typed words, written as a numeric character reference,
+ * which markdown never reads as syntax of any kind. A line that opens with
+ * markup the old reading did read (emphasis, a link, a code span) keeps it,
+ * and its first typed punctuation is written so instead: in `[x]: y`, where
+ * `[x]` is a link, the colon, which would otherwise make the line a
+ * definition. Undefined where the line holds nothing to write so, or where
+ * the migration already rewrites that character.
+ */
+const lineStartGuard = (
+  source: string,
+  at: number,
+  { typed, linked, edits }: Context,
+): Edit | undefined => {
+  const newline = source.indexOf('\n', at);
+  const lineEnd = newline === -1 ? source.length : newline;
+  let first = at;
+  while (first < lineEnd && /[ \t]/.test(source.charAt(first))) first += 1;
+  const rewritten = (offset: number) =>
+    edits.some(({ start, end }) => start <= offset && offset < end);
+  if (first >= lineEnd || rewritten(first)) return undefined;
+  let offset: number | undefined = typed.has(first) ? first : undefined;
+  for (
+    let next = first + 1;
+    offset === undefined && next < lineEnd;
+    next += 1
+  ) {
+    if (rewritten(next) || linked.has(next)) continue;
+    if (typed.has(next) && ASCII_PUNCTUATION.test(source.charAt(next))) {
+      offset = next;
+    }
+  }
+  if (offset === undefined) return undefined;
+  // The whole run of that character, as markdown reads a run of `*`, `_` or
+  // backticks as one: guarding only the first would leave the rest a
+  // shorter run, read differently.
+  const char = String.fromCodePoint(source.codePointAt(offset) ?? 0);
+  let end = offset + char.length;
+  while (source.startsWith(char, end) && typed.has(end) && !rewritten(end)) {
+    end += char.length;
+  }
+  return {
+    start: offset,
+    end,
+    text: `&#${char.codePointAt(0)};`.repeat((end - offset) / char.length),
+  };
+};
+
 /**
  * Schema 8 markdown as standard CommonMark (see `markdownTree`) that shows a
  * participant what the legacy reading of it showed. The legacy reading is
@@ -726,7 +757,10 @@ const applyEdits = (source: string, edits: readonly Edit[]): string => {
  *   (`[www.example.org](http://www.example.org)`); in one line it stays as
  *   typed, and is no longer a link, with any character markdown would read
  *   otherwise escaped;
- * - a shortcode `remark-gemoji` drew as an emoji is written as the emoji.
+ * - a shortcode `remark-gemoji` drew as an emoji is written as the emoji;
+ * - where a line a break opened, uncovered or rewrote would otherwise open a
+ *   block the legacy reading did not have, its first character is written
+ *   as a numeric character reference (see `lineStartGuard`).
  *
  * Markdown's own syntax (code, links and their addresses, addresses in angle
  * brackets) is left as written, as is everything GitHub's reading added that
@@ -742,13 +776,46 @@ export const legacyMarkdownAsStandard = (
   markdown: string,
   { lines }: Readonly<{ lines: LocalizedTextLines }>,
 ): string => {
-  const edits: Edit[] = [];
-  collectEdits(legacyTree(markdown), [], {
+  const tree = legacyTree(markdown);
+  const context: Context = {
     source: markdown,
     multiline: lines === 'multiple',
-    edits,
-  });
-  return applyEdits(markdown, edits);
+    edits: [],
+    typed: new Set(),
+    linked: new Set(),
+    lineStarts: [],
+  };
+  collectEdits(tree, [], context);
+  const writtenWith = (guards: readonly Edit[]) =>
+    applyEdits(markdown, [...context.edits, ...guards]);
+  const blocksIn = (written: string) =>
+    blocksOf(markdownTree(written), written);
+
+  // Removing or rewriting a line break can leave characters at the start of
+  // a line, or of a paragraph, where standard markdown reads a block the old
+  // reading did not: a list item, a heading, a definition, a rule. Rather
+  // than list that syntax, the result is read back: where its blocks differ
+  // from the old reading's, the start of each line the breaks opened,
+  // uncovered or rewrote is guarded (see `lineStartGuard`), and then each
+  // guard that changes nothing is left out again, so that only the lines
+  // that need one keep it.
+  const written = writtenWith([]);
+  if (blocksIn(written) === blocksOf(tree, markdown)) return written;
+  const guards = [
+    ...new Map(
+      context.lineStarts
+        .map((at) => lineStartGuard(markdown, at, context))
+        .filter((guard) => guard !== undefined)
+        .map((guard) => [guard.start, guard]),
+    ).values(),
+  ];
+  const guarded = blocksIn(writtenWith(guards));
+  let kept = guards;
+  for (const guard of guards) {
+    const without = kept.filter((other) => other !== guard);
+    if (blocksIn(writtenWith(without)) === guarded) kept = without;
+  }
+  return writtenWith(kept);
 };
 
 /**
