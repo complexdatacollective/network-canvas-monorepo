@@ -14,7 +14,7 @@ export const valueAt = (
   for (const segment of path) {
     value = Array.isArray(value)
       ? value[Number(segment)]
-      : isRecord(value)
+      : isRecord(value) && Object.hasOwn(value, String(segment))
         ? value[String(segment)]
         : undefined;
   }
@@ -90,7 +90,11 @@ export const setValueAt = (
   const key = path.at(-1);
   if (Array.isArray(container) && typeof key === 'number') {
     container[key] = value;
-  } else if (isRecord(container) && key !== undefined) {
+  } else if (
+    isRecord(container) &&
+    key !== undefined &&
+    Object.hasOwn(container, String(key))
+  ) {
     container[String(key)] = value;
   }
 };
