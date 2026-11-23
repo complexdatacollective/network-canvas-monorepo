@@ -51,7 +51,7 @@ path_to_protocol <- paste0(getwd(),'/IJE_RADAR_Protocol.netcanvas')
 
 ## Reading data using ideanet
 
-Once you have these paths defined, turn to the [`ideanet`](https://cran.r-project.org/web/packages/ideanet/index.html) package to load your data into R. The `ideanet` package offers a function specifically for reading data collected using Network Canvas, entitled `nc_read`. `nc_read` takes one main argument, `path`, a character value indicating the folder containing the Network Canvas CSV files you want to process. If you also have the Network Canvas protocol file used to collect your data, you can specify its location to `nc_read` using the `protocol` argument. While optional, this argument allows `nc_read` to access information contained in your protocol file that ensures better coding of categorical variables in your data. It is generally best practice to use your protocol file with `nc_read` if it is available to you.
+Once you have these paths defined, turn to the [`ideanet`](https://cran.r-project.org/web/packages/ideanet/index.html) package to load your data into R. The `ideanet` package offers a function specifically for reading data collected using Network Canvas, entitled `nc_read`. `nc_read` takes one main argument, `path`, a character value indicating the folder containing the Network Canvas CSV files that you want to process. If you also have the Network Canvas protocol file used to collect your data, you can specify its location to `nc_read` using the `protocol` argument. While optional, this argument allows `nc_read` to access information contained in your protocol file that ensures better coding of categorical variables in your data. It is generally best practice to use your protocol file with `nc_read` if it is available to you.
 
 Note that you have already specified the locations of the data (`path_to_data`) and the protocol file (`path_to_protocol`), making it easy to proceed with `nc_read`:
 
@@ -168,7 +168,7 @@ names(nc_data$alter_edgelists)
 ## [1] "Close"   "DrugTie" "SexTie"
 ```
 
-In our example here, we see that `alter_edgelists` is a list containing three data frames named `Close`, `DrugTie`, and `SexTie`. This is because the Network Canvas protocol producing our data recorded three different "types" of alter-alter ties. `nc_read` creates a separate alter-alter edgelist for each type of tie, making it easier for users to extract only alter-alter ties they need for a specific purpose. Were our example protocol to have collected multiple node types for alters, the `alters` item in `nc_data` would have a similar organization.
+In our example here, we see that `alter_edgelists` is a list containing three data frames named `Close`, `DrugTie`, and `SexTie`. This is because the Network Canvas protocol producing our data recorded three different "types" of alter-alter ties. `nc_read` creates a separate alter-alter edgelist for each type of tie, making it easier for users to extract only the alter-alter ties that they need for a specific purpose. Were our example protocol to have collected multiple node types for alters, the `alters` item in `nc_data` would have a similar organization.
 
 Now that we know the structure of `alter_edgelists`, let's take a look at what's inside each data frame:
 
@@ -371,7 +371,7 @@ plot(egorNetworkCanvas,
 
 ### Data analysis
 
-The `egor` package has numerous functions that help with basic data analysis of ego networks. For example, the `summary` function provides an overview of all ego networks in the `egor` object while the `ego_density` functions provides the density for each participant’s network.
+The `egor` package has numerous functions that help with basic data analysis of ego networks. For example, the `summary` function provides an overview of all ego networks in the `egor` object while the `ego_density` function provides the density for each participant’s network.
 
 ```r
 summary(egorNetworkCanvas)

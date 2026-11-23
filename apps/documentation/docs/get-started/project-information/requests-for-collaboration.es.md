@@ -3,7 +3,7 @@ layout: page
 title: Solicitudes de colaboración
 wip: false
 toc: true
-translatedFrom: b208f558990beb87a357bb32e0c80c45dca546a8
+translatedFrom: a2c7e90bef71d474a825edcf13f41b2f01779c76
 ---
 
 ## Colaborar con el equipo de Network Canvas {#collaboration-with-the-network-canvas-team}

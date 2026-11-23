@@ -3,7 +3,7 @@ title: Tarifs des services cloud
 date: 8th October 2025
 navOrder: 6
 wip: false
-translatedFrom: d5aea0aa8530dc7f42a20f198982c7bef95238af
+translatedFrom: 912f320bc949c5bddecfa330984461c96d510223
 ---
 
 Il est possible de déployer Fresco entièrement gratuitement en utilisant les offres gratuites de chaque service. Vous pouvez, si vous le souhaitez, passer à une offre supérieure selon vos besoins.

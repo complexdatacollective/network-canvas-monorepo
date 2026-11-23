@@ -28,7 +28,7 @@ The Network Canvas suite is free! It is licensed under the GPLv3 open source lic
 
 Our license means that you are free to use, modify, and extend the software however you wish. It is our intention to foster a community to support the ongoing development of these tools, and we welcome collaboration. If you do extend or improve the software, we welcome contributions back into our main [GitHub repositories](https://github.com/complexdatacollective) in the form of pull requests.
 
-We can also provide development and consultancy services to support ideas you have for developing the software to support specific features or research projects. Please create a post on our [user community](https://community.networkcanvas.com) to discuss your ideas further.
+We can also provide development and consultancy services to support ideas that you have for developing the software to support specific features or research projects. Please create a post on our [user community](https://community.networkcanvas.com) to discuss your ideas further.
 
 ## Who is developing the Network Canvas suite?
 
@@ -46,11 +46,11 @@ Finally, this documentation site is a hub for training material and tutorials, a
 
 ## My participants have special language or literacy requirements. Can I still use Network Canvas?
 
-Network Canvas has technologies built in to allow research with mixed/low written literacy groups, and we welcome feedback about ways we can adapt the software to new research populations and make it more accessible.
+Network Canvas has technologies built in to allow research with mixed/low written literacy groups, and we welcome feedback about ways in which we can adapt the software to new research populations and make it more accessible.
 
 The interfaces of Architect, Interviewer, and Fresco are available in English, British English, Spanish, German, French, Italian, Dutch, Brazilian Portuguese, Simplified Chinese and Traditional Chinese. The interface language covers the apps' own menus, buttons, and messages; the text of your protocol — prompts, form labels, response options, and information screens — appears as the researcher wrote it.
 
-Your protocol can be written in more than one language, in any language you need, and participants take the interview in one of them. See [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol).
+Your protocol can be written in more than one language, in any language that you need, and participants take the interview in one of them. See [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol).
 
 Accessibility support depends on which generation of the apps you use. Interviews run in the current **Interviewer** app and in **Fresco** are built for screen-reader use and full keyboard operation. The Classic apps do not have specific screen-reader support. When an interview in the current apps is shown in a right-to-left language, such as Arabic or Hebrew, its stages are laid out from right to left. The apps' own interfaces aren't available in a right-to-left language.
 
@@ -59,7 +59,7 @@ Accessibility support depends on which generation of the apps you use. Interview
 The Network Canvas suite consists of three applications, with each component running on a variety of platforms:
 
 - Architect runs in your web browser — there is nothing to install. **Architect Classic**, the downloadable desktop app, runs on Windows, macOS, and Linux.
-- Interviewer runs in your web browser and can be installed to a device you control as a Progressive Web App. It works best with a touch screen device, but also functions well with a conventional computer that uses a keyboard and mouse. **Interviewer Classic**, the downloadable app, runs on Windows, macOS, iOS, and Android; specific functionality may vary by operating system.
+- Interviewer runs in your web browser and can be installed to a device that you control as a Progressive Web App. It works best with a touch screen device, but also functions well with a conventional computer that uses a keyboard and mouse. **Interviewer Classic**, the downloadable app, runs on Windows, macOS, iOS, and Android; specific functionality may vary by operating system.
 - Fresco is a web-based application. For information on supported browsers, devices, and platforms, see our [Fresco FAQ](/en/collect-data/fresco/faq#which-browsers-are-supported).
 
 Although Network Canvas has not been tested on all possible hardware configurations, we anticipate that most mid to high-end laptop computers and tablets will be capable of running the software well. Please see our article on [choosing hardware for a study](/en/collect-data/interviewer/choosing-hardware) for more information. If you are planning data collection and have specific questions, please create a post on our [user community](https://community.networkcanvas.com).
@@ -78,7 +78,7 @@ The software has been built to allow it to be extended and improved by anyone wi
 
 Our software was conceived in the context of research of a highly sensitive nature, so we understand that for many researchers security is of the utmost importance.
 
-We never receive, transmit, or store participant data. The data you collect is yours. In Interviewer and Interviewer Classic it is only ever stored on your devices; in Fresco it is stored in a database on infrastructure that you or your institution control. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices), and [IRB and security best practices](/en/get-started/planning-a-study/irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
+We never receive, transmit, or store participant data. The data that you collect is yours. In Interviewer and Interviewer Classic it is only ever stored on your devices; in Fresco it is stored in a database on infrastructure that you or your institution control. This provides a baseline level of security, but also means that a large part of the responsibility for securing devices and data falls on the researcher. Please review our articles on [configuring devices prior to starting data collection](/en/collect-data/interviewer/configuring-devices), and [IRB and security best practices](/en/get-started/planning-a-study/irb-best-practices) to ensure that you are aware of the most common weaknesses. You should also consult with your institutional IT or security experts.
 
 If you are working in a scenario where you have access to a network connection with internet access, you can use an [online workflow](/en/collect-data/interviewer-online-and-offline-workflows#the-online-workflow) or you can implement an entirely [offline workflow](/en/collect-data/interviewer-online-and-offline-workflows#the-offline-workflow) that does not require data to be transmitted. Further details of what data each app stores, and how to keep it secure, can be found in the best practices article linked above.
 
@@ -86,6 +86,6 @@ If you have specific security requirements, please contact us to discuss how we 
 
 ## Is Interviewer GDPR compliant?
 
-Interviewer and Fresco can be used in a GDPR-compliant manner, but compliance depends on how you deploy and configure them. The Network Canvas development team never receives or hosts participant data, and does not act as a Data Controller or Data Processor under GDPR — you, or your institution, are always the Data Controller. The only information Interviewer and Fresco send to us is optional anonymous usage and error analytics, which never include participant data and can be disabled (Interviewer Classic sends none).
+Interviewer and Fresco can be used in a GDPR-compliant manner, but compliance depends on how you deploy and configure them. The Network Canvas development team never receives or hosts participant data, and does not act as a Data Controller or Data Processor under GDPR — you, or your institution, are always the Data Controller. The only information that Interviewer and Fresco send to us is optional anonymous usage and error analytics, which never include participant data and can be disabled (Interviewer Classic sends none).
 
 For detailed guidance — including how each app stores data, analytics and third-party services, and your responsibilities as Data Controller — see our [GDPR Compliance Guide](/en/get-started/planning-a-study/gdpr-compliance).

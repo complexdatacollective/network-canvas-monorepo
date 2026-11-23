@@ -13,7 +13,7 @@ date: 5th October 2026
 
 ## How to read this page
 
-Every variable you define in your protocol is exported under its **variable
+Every variable that you define in your protocol is exported under its **variable
 name** from the codebook. In CSV files, most variable types become a single
 column named after the variable; categorical and layout variables expand into
 several columns, as described below. In GraphML files, each variable is declared
@@ -101,7 +101,7 @@ question, every option column contains `false` in CSV.
 
 In GraphML, the same expansion happens: one `<key>` per option with
 `attr.type="boolean"` and `attr.name` set to `variable_name_optionValue`, with
-any spaces or punctuation that GraphML attribute names can't hold replaced by
+any spaces or punctuation that GraphML attribute names can't contain replaced by
 `_` (see [Column names](#column-names)). The machine-readable `id` of each key
 is the variable's internal identifier followed by a hash of the option value
 (key ids must be XML NMTOKENs, which arbitrary option values are not). If the
@@ -149,7 +149,7 @@ GraphML.
 ### Location
 
 A location variable (collected with the Geospatial interface) stores a text
-identifier for the map area the participant selected, taken from the property
+identifier for the map area that the participant selected, taken from the property
 of the GeoJSON shapefile that the stage is configured to record (or the special
 value `outside-selectable-areas` when a selection was outside the selectable
 regions). It becomes one CSV column containing that string, and GraphML
@@ -175,8 +175,8 @@ the files together:
 
 ### How the interview ended
 
-`networkCanvasFinishOutcome` holds how the interview ended: the outcome chosen
-on the Finish Screen the interview ended at. GraphML files record the same value in the
+`networkCanvasFinishOutcome` records how the interview ended: the outcome chosen
+on the Finish Screen at which the interview ended. GraphML files record the same value in the
 `nc:finishOutcome` attribute of the `<graph>` element.
 
 | Value        | Meaning                                                                                                                                                            |
@@ -212,8 +212,8 @@ your codebook. Replacing characters this way doesn't give a warning.
 
 Architect refuses names that would give two variables the same column,
 including names that only become the same once an export writes them, such as
-`close friend` and `close_friend` in GraphML. In a protocol created before that
-check, two variables can still produce the same
+`close friend` and `close_friend` in GraphML. In a protocol created before Architect
+added that check, two variables can still produce the same
 column name in one file, for example a variable named `support_emotional` and
 a categorical variable `support` with the option `emotional`. A roster column
 that isn't a variable in your codebook can also have the same name as a
@@ -231,7 +231,7 @@ were given new names". See
 [Export warnings](/en/analyze-data/data-export#export-warnings) for where it
 appears, and
 [Names that would clash in exported data](/en/design-protocols/key-concepts/variables#names-that-would-clash-in-exported-data)
-for the clashes Architect prevents.
+for the clashes that Architect prevents.
 
 ## Missing values
 

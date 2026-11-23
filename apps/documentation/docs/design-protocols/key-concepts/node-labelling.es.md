@@ -1,12 +1,12 @@
 ---
 title: Etiquetado de nodos
 navOrder: 13
-translatedFrom: 44a0a050e6dfe7dcd627e657ba22133aae96cae4
+translatedFrom: 08eae4fcaf4a3eacc466cd5cf94b46c4257fa1bf
 ---
 
 ## Cómo se elige la etiqueta de un nodo {#how-a-nodes-label-is-chosen}
 
-Cada nodo se muestra con una etiqueta: en un sociograma, en la lista de un generador de nombres, en un contenedor y en cualquier lugar donde el texto de una etapa [inserte](/es/design-protocols/key-concepts/piped-text) la **Etiqueta del nodo**. La entrevista elige la etiqueta de cada nodo de la siguiente manera:
+Cada nodo se muestra con una etiqueta: en un sociograma, en la lista de un generador de nombres, en un contenedor y en cualquier lugar donde la **Etiqueta del nodo** se [inserte](/es/design-protocols/key-concepts/piped-text) en la redacción de una etapa. La etiqueta de cada nodo se elige de la siguiente manera:
 
 1. Si el tipo del nodo tiene una [etiqueta dinámica](#dynamic-labels), el nodo muestra esa etiqueta.
 2. En caso contrario, el nodo muestra su etiqueta predeterminada, que se obtiene de los propios datos del nodo: un atributo llamado «name»; si no lo hay, uno cuyo nombre contenga «name»; si tampoco, en los datos importados, una columna cuyo nombre contenga «name» aunque el [libro de códigos](/es/design-protocols/key-concepts/codebook) no la incluya; y, si no, el primer atributo de texto que tenga un valor.
@@ -68,13 +68,13 @@ Por ejemplo, para señalar a la persona mejor conectada en un sociograma, escrib
 
 ### Cómo ven las personas participantes una etiqueta dinámica {#how-participants-see-a-dynamic-label}
 
-Las personas participantes solo ven la etiqueta terminada. Se muestra en cualquier lugar donde se dibuje el nodo y en cualquier lugar donde el texto de una etapa inserte la etiqueta del nodo. La etiqueta se vuelve a calcular cada vez que cambian los atributos o los vínculos del nodo, de modo que se mantiene al día a medida que avanza la entrevista.
+Las personas participantes solo ven la etiqueta terminada. Se muestra en cualquier lugar donde se dibuje el nodo y en cualquier lugar donde la etiqueta del nodo se inserte en la redacción de una etapa. La etiqueta se vuelve a calcular cada vez que cambian los atributos o los vínculos del nodo, de modo que se mantiene al día a medida que avanza la entrevista.
 
 Una etiqueta dinámica solo cambia lo que se muestra. No se guarda con el nodo ni se exporta: los atributos del nodo se exportan como de costumbre.
 
 ### Traducir una etiqueta dinámica {#translating-a-dynamic-label}
 
-En un protocolo con más de un idioma, una etiqueta dinámica se traduce como cualquier otro texto que muestra valores, en la [tabla de traducciones](/es/design-protocols/tutorials/translating-your-protocol#the-translation-table). Sus valores y su lógica se conservan en cada traducción, y se traduce el texto de cada caso.
+En un protocolo con más de un idioma, una etiqueta dinámica se traduce como cualquier otra cadena traducible que contiene valores, en la [tabla de traducciones](/es/design-protocols/tutorials/translating-your-protocol#the-translation-table). Sus valores y su lógica se conservan en cada traducción, y se traduce la redacción de cada caso.
 
 ### Protocolos que usaban un script de etiquetado de nodos {#protocols-that-used-a-node-label-worker}
 

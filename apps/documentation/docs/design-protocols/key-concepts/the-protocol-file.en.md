@@ -11,7 +11,7 @@ A file with the extension .netcanvas that represents your interview protocol and
 
 ## Details
 
-A Network Canvas protocol is stored as a `.netcanvas` file — a self-contained copy of your protocol and everything it uses. How that file relates to the copy you are working on depends on which version of Architect you use:
+A Network Canvas protocol is stored as a `.netcanvas` file — a self-contained copy of your protocol and everything that it uses. How that file relates to the copy that you are working on depends on which version of Architect you use:
 
 - In **Architect** (the browser app), your protocol lives in an in-browser **library** while you work. To get a `.netcanvas` file — to back it up, move it, or deploy it — you **Download** it from the protocol overview screen.
 - In **Architect Classic** (the desktop app), your protocol _is_ a `.netcanvas` file on your computer. It behaves just like any other file: you can move it around, rename it, and you can (and should!) back it up.
@@ -20,7 +20,7 @@ Either way, the `.netcanvas` file contains all the data in your protocol. So if 
 
 ## Inside a .netcanvas file
 
-Although you can treat a `.netcanvas` file as a single file, it is really a zipped folder. Inside, the stages, prompts, and logic that make up your interview are stored in a file called `protocol.json`, and any resources you have added — such as images, video, or roster data — live alongside it in an `assets/` folder.
+Although you can treat a `.netcanvas` file as a single file, it is really a zipped folder. Inside, the stages, prompts, and logic that make up your interview are stored in a file called `protocol.json`, and any resources that you have added — such as images, video, or roster data — live alongside it in an `assets/` folder.
 
 To look inside a protocol, rename it so that it ends in `.zip`, and then unzip it. You should rarely need to do this. To use the protocol again, zip the folder back up and rename it so that it ends in `.netcanvas`.
 

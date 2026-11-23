@@ -1,7 +1,7 @@
 ---
 title: Aportar código
 wip: false
-translatedFrom: 022bf1849bf069047a6c81b01e550156edef351f
+translatedFrom: 270f4cf952184e848398d46ddc09bd55dfad5c9b
 ---
 
 ## Aportar código a Network Canvas {#contributing-code-to-network-canvas}

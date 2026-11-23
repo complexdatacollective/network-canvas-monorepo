@@ -12,7 +12,7 @@ date: 7th October 2026
 This tutorial will introduce you to Interviewer by walking through an
 example based on our sample protocol. We will explore the participant-facing
 interview experience, as well as discuss some of the researcher-facing
-functionality of the app. The sample protocol we will be using demonstrates
+functionality of the app. The sample protocol that we will be using demonstrates
 all the main data collection features of the tool, which we hope will
 encourage you to imagine the many types of study that can be created using
 Network Canvas.
@@ -25,7 +25,7 @@ To get the most from this tutorial, you should have first:
 - Read and understood the [project overview](/en/get-started/project-information/project-overview).
 - To follow along using your own computer or device, open [Interviewer](/en/collect-data/interviewer) in your web browser, or [download and install Interviewer Classic](https://networkcanvas.com/get-started).
 
-Please note that a separate tutorial article covers how to create a protocol, called [getting started with Architect](/en/design-protocols/getting-started). You should continue with the current tutorial before learning the more advanced concepts involved in protocol creation, but you can read these articles in any order you wish.
+Please note that a separate tutorial article covers how to create a protocol, called [getting started with Architect](/en/design-protocols/getting-started). You should continue with the current tutorial before learning the more advanced concepts involved in protocol creation, but you can read these articles in any order that you wish.
 
 </PrerequisitesSection>
 </SummaryCard>
@@ -38,7 +38,7 @@ Interviewer runs on both tablet devices using touch screens, and desktop compute
 
 Once you have collected data with Interviewer, you can export network datafiles to your device or computer.
 
-Interviewer comes in two supported versions. Choose the one you are using below — the screenshots and version-specific notes throughout this tutorial update to match.
+Interviewer comes in two supported versions. Choose the one that you are using below — the screenshots and version-specific notes throughout this tutorial update to match.
 
 <AppSwitch axis="interviewer">
   <AppOption label="Interviewer"></AppOption>
@@ -53,7 +53,7 @@ Interviewer comes in two supported versions. Choose the one you are using below 
 
 <AppOnly axis="interviewer" app="current">
 
-**Interviewer** runs in your web browser — with nothing to install — and can be installed to a device you control as a Progressive Web App. It is built on the same web platform as Fresco 4.0. It supports **schemas 8 and 9** (so it can run protocols built in [Architect](/en/design-protocols/getting-started)) and is compatible with your existing protocols, while adding an improved interview experience, data export, and on-device security. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline collection isn't always possible. It's **recommended for new studies**.
+**Interviewer** runs in your web browser — with nothing to install — and can be installed to a device that you control as a Progressive Web App. It is built on the same web platform as Fresco 4.0. It supports **schemas 8 and 9** (so it can run protocols built in [Architect](/en/design-protocols/getting-started)) and is compatible with your existing protocols, while adding an improved interview experience, data export, and on-device security. Because some schema-8 interfaces (such as [Geospatial](/en/design-protocols/interface-documentation/geospatial)) need an internet connection, fully offline collection isn't always possible. It's **recommended for new studies**.
 
 </AppOnly>
 
@@ -63,7 +63,7 @@ The following introduction to the software describes some of its key features an
 
 ## Security and locking
 
-Interviewer keeps everything it stores — protocols, interviews, and settings — on the device, with no cloud sync or server component. When you set up an app lock (a PIN, passphrase, or biometric), that on-device data is **encrypted at rest** with a key derived from your credential, and the same authentication that unlocks the app releases the key used to decrypt it.
+Interviewer keeps everything that it stores — protocols, interviews, and settings — on the device, with no cloud sync or server component. When you set up an app lock (a PIN, passphrase, or biometric), that on-device data is **encrypted at rest** with a key derived from your credential, and the same authentication that unlocks the app releases the key used to decrypt it.
 
 ### Setting up security
 
@@ -92,7 +92,7 @@ Next, you choose how you will unlock the app. Depending on your device, the opti
 
 <TipBox danger={true}>
 
-A forgotten **PIN or passphrase** cannot be recovered — the data it protects is permanently inaccessible on that device. **Biometric** setup also enrolls a mandatory **recovery passphrase**, so losing the authenticator alone falls back to it; losing both means the same permanent loss. Replacing your PIN or passphrase with a new one (after proving your current one) preserves access to your data, but changing to a different unlock method (from a PIN to a passphrase, for example, or to or from biometric) requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. Whichever method you use, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
+A forgotten **PIN or passphrase** cannot be recovered — the data that it protects is permanently inaccessible on that device. **Biometric** setup also enrolls a mandatory **recovery passphrase**, so if you lose only the authenticator, unlocking falls back to that passphrase; losing both means the same permanent loss. Replacing your PIN or passphrase with a new one (after proving your current one) preserves access to your data, but changing to a different unlock method (from a PIN to a passphrase, for example, or to or from biometric) requires **revoking the device lock**, which erases **all protocols, sessions, and stored credentials on this device**. Whichever method you use, **export your interviews regularly** so that losing — or re-securing — a device never means losing your data.
 
 </TipBox>
 
@@ -118,18 +118,18 @@ For extra protection, you can require re-authentication at interview boundaries 
 
 **About** reports basic information about the app and this device: the app version, how much of your storage is in use (shown as a usage bar — on desktop it also shows free disk space), and your installation ID, a unique per-device identifier. The version and installation ID are the details to quote when contacting us for support. This area also lets you re-show the one-click sample protocol card on the home screen if you previously dismissed it.
 
-**Language** holds the **App language** select, which sets the language of Interviewer's own screens on this device. Choose a language, or **Automatic** to follow your browser's language preferences; that entry also names the language it currently resolves to, such as _Automatic (English)_. See [Interface language](#interface-language) below.
+**Language** contains the **App language** select, which sets the language of Interviewer's own screens on this device. Choose a language, or **Automatic** to follow your browser's language preferences; that entry also names the language that it currently resolves to, such as _Automatic (English)_. See [Interface language](#interface-language) below.
 
 **Interview** has a single **Allow stage navigation** toggle, on by default. While it is on, tapping the progress bar during an interview opens a stages menu, from which you can jump directly to any stage. When it is off, the progress bar stops opening that menu; the up and down arrows still move one screen at a time, which on a stage with several prompts means one prompt rather than one whole stage. Jumping between stages is useful when piloting a protocol, but is usually turned off for real interviews.
 
 **Data export** controls what every export contains, so you set it once here rather than choosing each time you export:
 
 - **Export GraphML** and **Export CSV** choose which file formats are included in the export archive. Both are on by default, and you can include or exclude each one independently.
-- **Export node positions as screen-coordinate pixels** is off by default, so sociogram positions export as normalized coordinates. Turn it on to export pixel coordinates instead, sized to the **Screen layout width** and **Screen layout height** you set (default 1920 × 1080 pixels) — useful when you want positions to line up with a specific screen size.
+- **Export node positions as screen-coordinate pixels** is off by default, so sociogram positions export as normalized coordinates. Turn it on to export pixel coordinates instead, sized to the **Screen layout width** and **Screen layout height** that you set (default 1920 × 1080 pixels) — useful when you want positions to line up with a specific screen size.
 
 **Privacy** has a single **Enable analytics** toggle. When it is on (the default), the app sends a small amount of anonymous usage and error information — which interview stages and features are used, when protocols are imported or data is exported, and details of any crashes — to help us improve the app. No participant data ever leaves the device: network data, responses, case IDs, protocol contents, and asset files are never collected, and analytics contain nothing that identifies you. You can change this at any time.
 
-**Security** is always listed. On a device used without a lock it offers **Enable app security**, which runs the **Get started** wizard so you can set a device lock. Adding that first lock keeps whatever is already on the device: the protocols and sessions stored there are re-encrypted with a key derived from your new credential, not erased. So a device that has been collecting data without a lock can be secured at any point. Once a security method is set, it shows your current method and when it was set and, for a PIN or passphrase, lets you replace it with **Change PIN** or **Change passphrase** without losing data. Changing to a different unlock method means resetting the device and running setup again. It also holds the auto-lock timeout and the re-authentication options described under [Locking and unlocking](#locking-and-unlocking) above. Finally, it offers a **Revoke / Reset device** option: because your stored data is tied to your security method, using this **wipes every protocol and session on the device** and returns you to first-run setup.
+**Security** is always listed. On a device used without a lock it offers **Enable app security**, which runs the **Get started** wizard so you can set a device lock. Adding that first lock keeps whatever is already on the device: the protocols and sessions stored there are re-encrypted with a key derived from your new credential, not erased. So a device that has been collecting data without a lock can be secured at any point. Once a security method is set, it shows your current method and when it was set and, for a PIN or passphrase, lets you replace it with **Change PIN** or **Change passphrase** without losing data. Changing to a different unlock method means resetting the device and running setup again. It also includes the auto-lock timeout and the re-authentication options described under [Locking and unlocking](#locking-and-unlocking) above. Finally, it offers a **Revoke / Reset device** option: because your stored data is tied to your security method, using this **wipes every protocol and session on the device** and returns you to first-run setup.
 
 **Synthetic data** generates fake interview sessions so you can rehearse and validate your export pipeline before collecting real data. Choose a **protocol**, set the **number of sessions** to create (1–1000, default 10), and optionally **simulate participant drop-out** (on by default, which leaves some sessions incomplete to mirror real-world data) or **respect skip logic and filtering** (off by default). Generated sessions appear in your **Data** view and export exactly like real ones; **Delete All** removes every synthetic session in one step. For how synthetic data fits into a full rehearsal of your study, see [Piloting Your Study](/en/get-started/planning-a-study/piloting-your-study).
 
@@ -139,11 +139,11 @@ Interviewer's interface — its menus, buttons and messages — is available in 
 
 You can change the language from any of these places:
 
-- The **globe button** in the dashboard's top bar, which opens a list of every language. The **Automatic** entry names the language your browser currently resolves to, and choosing any entry applies it at once.
+- The **globe button** in the dashboard's top bar, which opens a list of every language. The **Automatic** entry names the language that your browser currently resolves to, and choosing any entry applies it at once.
 - The **App language** select on the welcome screen and on each step of the setup wizard.
 - **Settings → Language**.
 
-The choice is stored in the browser on each device, so every interview device keeps its own language. If the browser blocks device storage, the language you chose still applies for the current session but is not remembered: the globe button's list reports that it couldn't save, with a **Try again** button, and **Settings → Language** reports that the preference could not be saved. Every language remains available offline in the installed app.
+The choice is stored in the browser on each device, so every interview device keeps its own language. If the browser blocks device storage, the language that you chose still applies for the current session but is not remembered: the globe button's list reports that it couldn't save, with a **Try again** button, and **Settings → Language** reports that the preference could not be saved. Every language remains available offline in the installed app.
 
 <TipBox>
 
@@ -153,11 +153,11 @@ The interface language never changes your protocol, your interviews or your data
 
 ### Language in interviews
 
-A protocol can be written in more than one language (see [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol)). An interview doesn't use the **App language**. When it opens, it uses the first of the device's or browser's preferred languages that the protocol is written in (a close regional match counts), or the protocol's default language if there is none. A text that isn't translated into that language is shown in the best available other translation: in another of the device's or browser's preferred languages that has it, or else the default language, or else any language of the protocol that has it. See [The default language and which translation participants see](/en/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see).
+A protocol can be written in more than one language (see [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol)). An interview doesn't use the **App language**. When it opens, it uses the first of the device's or browser's preferred languages that the protocol is written in (a close regional match counts), or the protocol's default language if there is none. A translatable string that isn't translated into that language is shown in the best available other translation: in another of the device's or browser's preferred languages that has it, or else the default language, or else any language of the protocol that has it. See [The default language and which translation participants see](/en/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see).
 
-Everything an interview shows, including its buttons and messages such as Back, Continue and validation messages, is shown in the interview's language: in the protocol's wording where its author changed it, and in Network Canvas's own otherwise (see [Words Network Canvas supplies](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). Interviewer's own **App language** setting does not change it.
+Everything that is shown during an interview, including buttons and messages such as Back, Continue and validation messages, appears in the language of the interview. Where the author of the protocol changed the wording, the protocol's wording is shown; elsewhere, the wording supplied by Network Canvas is shown (see [Words supplied by Network Canvas](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). Interviewer's own **App language** setting does not change the language of the interview.
 
-The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in the protocol. Their choice lasts until the browser tab is closed, so it is used again if the page is reloaded or the interview is resumed in the same tab. It isn't saved with the interview or included in exported data: a resumed interview in a new tab starts again from the device's or browser's languages.
+The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in the protocol. Their choice lasts until the browser tab is closed, so it is used again if the page is reloaded or the interview is resumed in the same tab. It isn't saved with the interview or included in exported data: an interview that is resumed in a new tab uses the device's or browser's languages again.
 
 </AppOnly>
 
@@ -173,7 +173,7 @@ The start screen is divided into sections that group related tasks together, suc
 
 When opening Interviewer for the first time, you will see three default sections.
 
-The **welcome section** which contains links to install the sample protocol, visit the documentation website, or watch our overview video.
+The **welcome section** contains links to install the sample protocol, visit the documentation website, or watch our overview video.
 
 ![The welcome section](/assets/img/sample-protocol/welcome-section.png)
 
@@ -186,7 +186,7 @@ the top right hand corner.
 
 </TipBox>
 
-The **protocols section** which allows you to quickly import a [Network Canvas protocol file](/en/design-protocols/key-concepts/the-protocol-file) from a URL, or by choosing a file. Once you have installed one or more protocol files, this section will also allow you to manage your installed protocols.
+The **protocols section** allows you to quickly import a [Network Canvas protocol file](/en/design-protocols/key-concepts/the-protocol-file) from a URL, or by choosing a file. Once you have installed one or more protocol files, this section will also allow you to manage your installed protocols.
 
 ![The protocols section](/assets/img/sample-protocol/protocols-section.png)
 
@@ -196,7 +196,7 @@ The **protocols section** which allows you to quickly import a [Network Canvas p
 
 Interviewer presents this as a dashboard. You switch between two views from the toggle at the top of the screen — **Protocols** and **Data** — with a row of buttons alongside them:
 
-- **Protocols** — your installed protocols, shown as a deck you can flip through, alongside a card for importing a new protocol.
+- **Protocols** — your installed protocols, shown as a deck that you can flip through, alongside a card for importing a new protocol.
 - **Data** — every collected session, ready to resume, review, or export (covered under [Resuming, exporting, and managing interview sessions](#resuming-exporting-and-managing-interview-sessions) below).
 - **Interface language** (the globe icon) — switches the language of Interviewer's own screens (see [Interface language](#interface-language) above).
 - **Lock app** (the padlock icon) — locks Interviewer immediately. It appears only once you have set up an app lock.
@@ -255,7 +255,7 @@ running Interviewer is also the device used to author protocols in Architect.
 
 ### Importing from a URL
 
-This option allows you to download a protocol file directly from any URL that is accessible from the device running Interviewer. It can be useful in circumstances where you have a study website or internet, and need to quickly install a protocol on a device. It can be accessed from the protocols section of the start screen.
+This option allows you to download a protocol file directly from any URL that is accessible from the device running Interviewer. It can be useful in circumstances where you have a study website or internet access, and need to quickly install a protocol on a device. It can be accessed from the protocols section of the start screen.
 
 <TipBox>
 
@@ -274,7 +274,7 @@ For the purposes of this tutorial, we will proceed using the built-in sample pro
 
 To follow along on your own device, **click the "install sample protocol" button in the welcome section of the app** to install the protocol that we will be using. Alternatively, <DownloadLink href="/protocols/Sample Protocol v4.netcanvas">click here</DownloadLink> to download the file, and then import it into Interviewer using the import from file method described above.
 
-Once a protocol has been imported, a new section will appear on the start screen: the **new interview section**. Inside this section will be a protocol card, representing the protocol you imported.
+Once a protocol has been imported, a new section will appear on the start screen: the **new interview section**. Inside this section will be a protocol card, representing the protocol that you imported.
 
 </AppOnly>
 
@@ -282,7 +282,7 @@ Once a protocol has been imported, a new section will appear on the start screen
 
 The sample protocol is built into Interviewer — select it from the protocol deck in the **Protocols** view to follow along. Alternatively, <DownloadLink href="/protocols/Sample Protocol v5.netcanvas">click here</DownloadLink> to download the file, and import it with the **Import a protocol** card at the end of the deck.
 
-Once a protocol is installed it appears as a card in the protocol deck, representing the protocol you imported.
+Once a protocol is installed it appears as a card in the protocol deck, representing the protocol that you imported.
 
 </AppOnly>
 
@@ -295,12 +295,12 @@ The protocol card is a visual device representing a Network Canvas interview pro
 The protocol card can often be clicked, tapped, or dragged in order to perform an action related to the protocol. The card itself has three main visual elements:
 
 - The protocol name, which is defined by the original file name of the protocol file itself
-- The protocol description, which can contain any descriptive information you like, and is set in Architect
+- The protocol description, which can contain any descriptive information that you like, and is set in Architect
 - The protocol metadata, which summarizes when a protocol was installed and modified, along with the number of interviews collected against it
 
 <AppOnly axis="interviewer" app="current">
 
-Above the protocol name, the card shows the schema version the protocol was made for, such as **Schema 9**. A protocol made for an earlier schema version shows **Schema 8 · older version**. Its interviews run in the schema 8 interview built into Interviewer, and you use it in the same way as any other protocol.
+Above the protocol name, the card shows the schema version for which the protocol was made, such as **Schema 9**. A protocol made for an earlier schema version shows **Schema 8 · older version**. Its interviews run in the schema 8 interview built into Interviewer, and you use it in the same way as any other protocol.
 
 </AppOnly>
 
@@ -340,17 +340,17 @@ Every protocol installed on the device has a card in the deck in the **Protocols
 
 <AppOnly axis="interviewer" app="classic">
 
-By default, the start a new interview section shows the last protocol you installed (or started an interview with). It can be tapped or clicked to immediately begin an interview.
+By default, the start a new interview section shows the last protocol that you installed (or started an interview with). It can be tapped or clicked to immediately begin an interview.
 
 <Screenshot axis="interviewer" name="start-new-section" alt="Starting a new interview"></Screenshot>
 
-If you have more than one protocol installed in Interviewer, a card stack will appear to the right side of the start a new interview section. To access all available protocols, tap or click this card stack. An overlay will open with a list of protocols currently stored in the app. Scroll, filter, or sort the protocol card list to locate the protocol you wish to use for your interview, and tap or click it to begin. This protocol will then appear in the start a new interview section for quicker future access.
+If you have more than one protocol installed in Interviewer, a card stack will appear to the right side of the start a new interview section. To access all available protocols, tap or click this card stack. An overlay will open with a list of protocols currently stored in the app. Scroll, filter, or sort the protocol card list to locate the protocol that you wish to use for your interview, and tap or click it to begin. This protocol will then appear in the start a new interview section for quicker future access.
 
 </AppOnly>
 
 <AppOnly axis="interviewer" app="current">
 
-To begin an interview, find the protocol in the deck in the **Protocols** view and click **Start new interview** on its card (shown in the card anatomy above). The deck opens on the card you most recently used, for quick access; if you have several protocols installed, flip through the deck to find the one you want.
+To begin an interview, find the protocol in the deck in the **Protocols** view and click **Start new interview** on its card (shown in the card anatomy above). The deck opens on the card that you most recently used, for quick access; if you have several protocols installed, flip through the deck to find the one that you want.
 
 </AppOnly>
 
@@ -390,7 +390,7 @@ If you are following along on your own device, make sure you have installed the 
 
 The main interview user interface within Interviewer is designed to be simple, unobtrusive, and intuitive for participants. This has two consequences that you should be aware of from the outset:
 
-1. Much of the functionality _researchers_ may wish to access is somewhat less discoverable than you might be used to. You should expect to spend time learning and training interviewers so that they understand how to navigate the various functions of the software.
+1. Much of the functionality that _researchers_ may wish to access is somewhat less discoverable than you might be used to. You should expect to spend time learning and training interviewers so that they understand how to navigate the various functions of the software.
 2. Very little space is devoted to user interface elements that provide explanations about how to complete a task. This is because we assume that the researcher will be present in the interview, and will therefore be able to guide the participant through the interview process.
 
 #### Key navigation elements
@@ -428,7 +428,7 @@ device, which may help with engagement.
 
 <AppOnly axis="interviewer" app="current">
 
-Interviewer keeps the interview chrome deliberately minimal. The navigation adapts to the device — a rail down the side on wider, landscape displays, and a bar along the bottom on tall, portrait ones — and contains only a few controls:
+Interviewer keeps the controls around the interview deliberately minimal. The navigation adapts to the device — a rail down the side on wider, landscape displays, and a bar along the bottom on tall, portrait ones — and contains only a few controls:
 
 - A **settings** control (the gear icon) that opens a small menu containing:
   - **Text size**, letting the participant enlarge or reduce the whole interview — useful on tablets.
@@ -438,7 +438,7 @@ Interviewer keeps the interview chrome deliberately minimal. The navigation adap
 
 Between the up and down arrows, a **progress bar** fills as the participant moves through the interview. While **Allow stage navigation** is on in **Settings → Interview** (the default), the progress bar is also a button (announced to screen readers as **Go to another screen**) that opens a stages menu for jumping directly to any stage. Progress is saved continuously, so you can exit an interview and resume it later from the **Data** view without losing data.
 
-The settings menu holds only these participant-facing options; every other app setting lives in the dashboard **Settings** area, reached after exiting the interview.
+The settings menu contains only these participant-facing options; every other app setting lives in the dashboard **Settings** area, reached after exiting the interview.
 
 ![The interview settings menu, with Text size and Exit interview](/assets/img/interviewer-guide/interview-settings.png)
 
@@ -508,7 +508,7 @@ Clicking forwards through an information stage and into the next name generator 
 
 The side panel functionality is available in both of our non-roster specific name generator Interfaces. It is designed for two specific scenarios:
 
-1. To allow participants to nominate alters they have already mentioned _again_ in response to later prompts. For example, if a first prompt asks "Who are you close to?", and second prompt asks "Who are your family members?", the participant may wish to nominate existing close alters as also being family members. This is especially powerful when used in combination with the [assign additional variables](/en/design-protocols/key-concepts/additional-variables) feature, since it allows you to combine name generation and name interpreting in a single step.
+1. To allow participants to nominate alters that they have already mentioned _again_ in response to later prompts. For example, if a first prompt asks "Who are you close to?", and a second prompt asks "Who are your family members?", the participant may wish to nominate existing close alters as also being family members. This is especially powerful when used in combination with the [assign additional variables](/en/design-protocols/key-concepts/additional-variables) feature, since it allows you to combine name generation and name interpreting in a single step.
 
 2. As a container for displaying small amounts of roster data, where you still need to retain the ability for the participant to add network members not listed in the roster.
 
@@ -524,13 +524,13 @@ Although this stage is also a name generator, it uses a [separate interface](/en
 
 <Screenshot axis="interviewer" name="using-forms" alt="A Name Generator that uses forms to collect additional data"></Screenshot>
 
-The forms you design can collect whichever attributes you wish. This is one of the key ways that a researcher can vary the front-facing response burden of naming alters. Collecting a large number of attributes as the node is created can allow for fewer overall stages in your interview, but can also condition the participant against naming large numbers of alters.
+The forms that you design can collect whichever attributes you wish. This is one of the key ways that a researcher can vary the front-facing response burden of naming alters. Collecting a large number of attributes as the node is created can allow for fewer overall stages in your interview, but can also condition the participant against naming large numbers of alters.
 
-Experiment with adding alters on this stage, and notice that these nodes are a different color from the ones we created previously. This is because Network Canvas interviews can collect data on as many node types as the researcher desires.
+Experiment with adding alters on this stage, and notice that these nodes are a different color from the ones that we created previously. This is because Network Canvas interviews can collect data on as many node types as the researcher desires.
 
 <Screenshot axis="interviewer" name="blue-nodes" alt="Different node types are automatically styled in visually distinctive ways so that participants can always differentiate between them"></Screenshot>
 
-In this case, our name generator will create "clinic" nodes, which are displayed in blue, as opposed to the red "person" nodes we saw previously. This is an element of the ontological flexibility discussed in our [project overview](/en/get-started/project-information/project-overview#ontological-flexibility), and allows for powerful research designs that model networks in sophisticated ways.
+In this case, our name generator will create "clinic" nodes, which are displayed in blue, as opposed to the red "person" nodes that we saw previously. This is an element of the ontological flexibility discussed in our [project overview](/en/get-started/project-information/project-overview#ontological-flexibility), and allows for powerful research designs that model networks in sophisticated ways.
 
 ### Using roster data
 
@@ -548,7 +548,7 @@ Clicking next again will take you to a second roster-based name generator stage 
 
 <Screenshot axis="interviewer" name="large-roster" alt="A Name Generator for Roster Data stage displaying a large roster"></Screenshot>
 
-Since this roster is so large, the interface does not display the roster in its entirety. Instead, it offers a search box, and customizable levels of fuzzy matching, in order to help the participant quickly locate the nodes they wish to nominate. This is an example of how the Name Generator for Roster Data adapts its presentation to the size of the roster.
+Since this roster is so large, the interface does not display the roster in its entirety. Instead, it offers a search box, and customizable levels of fuzzy matching, in order to help the participant quickly locate the nodes that they wish to nominate. This is an example of how the Name Generator for Roster Data adapts its presentation to the size of the roster.
 
 ## General purpose form interfaces
 
@@ -656,7 +656,7 @@ Each interview protocol has a "finish" screen automatically inserted by Intervie
 
 <AppOnly axis="interviewer" app="current">
 
-Every protocol ends with a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen). Usually it shows the closing text written by the protocol's designer, and a **Finish** button. The protocol's designer can instead have the interview finish as soon as it reaches the Finish Screen, with no closing text or button. Finishing the interview sets, or updates, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration. Interviewer also stores which Finish Screen ended the interview, and the outcome the protocol's designer chose for it, with the session. The outcome is included in the exported data (see [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)).
+Every protocol ends with a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen). Usually it shows the closing text written by the protocol's designer, and a **Finish** button. The protocol's designer can instead have the interview finish as soon as it reaches the Finish Screen, with no closing text or button. Finishing the interview sets, or updates, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration. Interviewer also stores which Finish Screen ended the interview, and the outcome that the protocol's designer chose for it, with the session. The outcome is included in the exported data (see [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)).
 
 </AppOnly>
 
@@ -668,7 +668,7 @@ When the Finish Screen has a **Finish** button, Interviewer asks you to confirm 
 
 ![Confirming that you want to finish the interview](/assets/img/interviewer-guide/finish-confirm.png)
 
-Once the interview is finished, it shows the Finish Screen's finished text, written by the protocol's designer. There is no navigation and no way back. The only action is **Exit**, which returns you to the dashboard. Opening a finished interview from the dashboard shows the finished text again.
+Once the interview is finished, the Finish Screen's finished text, written by the protocol's designer, is shown. There is no navigation and no way back. The only action is **Exit**, which returns you to the dashboard. Opening a finished interview from the dashboard shows the finished text again.
 
 ![The interview-complete screen](/assets/img/interviewer-guide/interview-complete.png)
 
@@ -690,13 +690,13 @@ Managing and exporting interview data takes place in a dedicated **export and ma
 
 <Screenshot axis="interviewer" name="export-section" alt="The export and manage data section"></Screenshot>
 
-The data export process consists of selecting one or more sessions from this section, and clicking the "export selected to file". Settings for exported data can be found in the device settings in the welcome section.
+The data export process consists of selecting one or more sessions from this section, and clicking the "export selected to file" button. Settings for exported data can be found in the device settings in the welcome section.
 
 </AppOnly>
 
 <AppOnly axis="interviewer" app="current">
 
-Every session you collect — whether in progress, finished, or already exported — is listed in the **Interviews** table in the **Data** view. Each row shows the case ID, the protocol used, when the interview started, and its status.
+Every session that you collect — whether in progress, finished, or already exported — is listed in the **Interviews** table in the **Data** view. Each row shows the case ID, the protocol used, when the interview started, and its status.
 
 <Screenshot axis="interviewer" name="resume-section" alt="The Interviews list"></Screenshot>
 
@@ -708,13 +708,13 @@ Select a session to resume an in-progress interview or review a finished one. Wh
 
 <AppOnly axis="interviewer" app="classic">
 
-After clicking "export selected to file," you will be prompted to choose a file type for the export (CSV, GraphML, or both) and to configure export options. Files are produced per session and packaged in a single `.zip` saved to a location you choose. Note that the legacy **Merge Sessions** setting, available up to version 6.5, was removed in version 6.6 — exports are always produced per session. Settings for exported data can also be found in the device settings in the welcome section.
+After clicking "export selected to file," you will be prompted to choose a file type for the export (CSV, GraphML, or both) and to configure export options. Files are produced per session and packaged in a single `.zip` saved to a location that you choose. Note that the legacy **Merge Sessions** setting, available up to version 6.5, was removed in version 6.6 — exports are always produced per session. Settings for exported data can also be found in the device settings in the welcome section.
 
 </AppOnly>
 
 <AppOnly axis="interviewer" app="current">
 
-Interviewer packages the sessions you select into a single `.zip` archive, reporting progress as it goes and flagging each session as exported once it completes. Nothing is chosen at export time: the file formats included (CSV, GraphML, or both) and the screen-coordinate options are configured ahead of time in **Settings → Data export** (see [Settings](#settings) above).
+Interviewer packages the sessions that you select into a single `.zip` archive, reporting progress as it goes and flagging each session as exported once it completes. Nothing is chosen at export time: the file formats included (CSV, GraphML, or both) and the screen-coordinate options are configured ahead of time in **Settings → Data export** (see [Settings](#settings) above).
 
 </AppOnly>
 

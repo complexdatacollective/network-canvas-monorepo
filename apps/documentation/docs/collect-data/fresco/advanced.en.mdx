@@ -73,7 +73,7 @@ You do **not** set `PUBLIC_URL` yourself. The compose files derive it automatica
 
 </TipBox>
 
-If you use the **bundled `postgres` service**, it also reads `.env`. At a minimum set `POSTGRES_PASSWORD` — the PostgreSQL image refuses to start without it. `POSTGRES_USER` and `POSTGRES_DB` are optional and both default to `postgres`; keep `POSTGRES_USER` as `postgres` so the service's healthcheck (`pg_isready -U postgres`) succeeds. Make sure your `DATABASE_URL` / `DATABASE_URL_UNPOOLED` reference `postgres:5432` with matching credentials. If you point at an **external** PostgreSQL database (such as Neon) instead, use the connection strings that service provides and you can remove the `postgres` service from the compose file.
+If you use the **bundled `postgres` service**, it also reads `.env`. At a minimum set `POSTGRES_PASSWORD` — the PostgreSQL image refuses to start without it. `POSTGRES_USER` and `POSTGRES_DB` are optional and both default to `postgres`; keep `POSTGRES_USER` as `postgres` so the service's healthcheck (`pg_isready -U postgres`) succeeds. Make sure your `DATABASE_URL` / `DATABASE_URL_UNPOOLED` reference `postgres:5432` with matching credentials. If you point at an **external** PostgreSQL database (such as Neon) instead, use the connection strings provided by that service and you can remove the `postgres` service from the compose file.
 
 A starting `.env` for a deployment using the bundled PostgreSQL looks like this; add your storage variables from the next section:
 
@@ -193,14 +193,14 @@ S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 ```
 
-| **Variable**                                    | **Details**                                                                                                                                                                   |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **STORAGE_PROVIDER**                            | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked.                                                               |
-| **S3_ENDPOINT**                                 | Your service's S3 API endpoint.                                                                                                                                               |
-| **S3_PUBLIC_URL**                               | The URL browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (The bundled Garage setup above sets it to your Fresco domain.) |
-| **S3_BUCKET**                                   | An existing bucket name.                                                                                                                                                      |
-| **S3_REGION**                                   | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2).                                                                                                  |
-| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket.                                                                                                                         |
+| **Variable**                                    | **Details**                                                                                                                                                                        |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **STORAGE_PROVIDER**                            | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked.                                                                    |
+| **S3_ENDPOINT**                                 | Your service's S3 API endpoint.                                                                                                                                                    |
+| **S3_PUBLIC_URL**                               | The URL that browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (The bundled Garage setup above sets it to your Fresco domain.) |
+| **S3_BUCKET**                                   | An existing bucket name.                                                                                                                                                           |
+| **S3_REGION**                                   | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2).                                                                                                       |
+| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket.                                                                                                                              |
 
 Bucket requirements on your S3 service:
 
@@ -230,7 +230,7 @@ If you intend to run your instance on a LAN or private network, at least the `ap
 
 2. Create a `.env` file in the same directory, containing the variables described above.
 
-3. Start the stack (substitute the compose file you downloaded):
+3. Start the stack (substitute the compose file that you downloaded):
 
    ```bash
    docker compose -f docker-compose.external-s3.yml up -d
@@ -254,7 +254,7 @@ For details on this process, refer to the [configuration and setup](./guide#conf
 
 ## Updating Fresco
 
-To update, pull the latest image and recreate the stack (substitute the compose file you deployed):
+To update, pull the latest image and recreate the stack (substitute the compose file that you deployed):
 
 ```bash
 docker compose -f docker-compose.external-s3.yml pull

@@ -1,7 +1,7 @@
 ---
 title: Comités de ética (IRB) y buenas prácticas de seguridad
 navOrder: 2
-translatedFrom: 1bafff6dc52b2e78d4e08e60d4a0e5ec310adc56
+translatedFrom: 10fba392c4cd7fabfa22239b0f2bc383ef3d45c6
 ---
 
 Sabemos que la seguridad de los datos es una de las principales preocupaciones de la mayoría de quienes investigan. Network Canvas nació en el contexto de la investigación en salud pública sobre temas sensibles con poblaciones marginadas, y nos hemos basado en nuestra experiencia realizando estudios en este ámbito para orientar nuestro enfoque de la seguridad.

@@ -2,7 +2,7 @@
 title: Écran de fin
 navOrder: 24
 date: 8th October 2026
-translatedFrom: a249f45345d118373ec78e949bac9fdcbe99c7e0
+translatedFrom: a4cfe056fbf03a42a484603709314cfe2b6be19c
 ---
 
 <InterfaceSummary type="FinishSession">
@@ -25,7 +25,7 @@ Lorsque **les personnes participantes confirment**, elles voient l’écran de c
 
 Lorsque l’entretien **se termine automatiquement**, il se termine dès que la personne participante atteint l’étape « Écran de fin ». Il n’y a ni écran de clôture, ni bouton, ni question, et la personne participante ne peut pas revenir en arrière depuis l’étape « Écran de fin ». Si l’entretien ne peut pas être terminé, elle voit un message qui l’indique et un bouton **Terminer** pour réessayer.
 
-Une fois l’entretien terminé, celui-ci affiche son **écran après la fin de l’entretien** :
+Une fois l’entretien terminé, les personnes participantes voient l’**écran après la fin de l’entretien**. Il comporte :
 
 - le texte après la fin de l’entretien que vous avez rédigé.
 - aucun moyen de se déplacer dans l’entretien. Il n’y a pas de boutons de navigation ni de moyen de revenir à un écran précédent.
@@ -76,13 +76,13 @@ La section **Personnaliser la formulation intégrée** contient les textes que l
 - **Question de confirmation** est la question posée aux personnes participantes après qu’elles ont appuyé sur le bouton, avant la fin de l’entretien. Elle ne leur est posée que lorsque le choix **Les personnes participantes confirment** est sélectionné ; l’éditeur d’étape ne l’affiche donc que dans ce cas.
 - **Si l’entretien ne peut pas être terminé** est le message que voient les personnes participantes lorsque l’entretien n’a pas pu être terminé.
 
-Network Canvas fournit chacun de ces textes dans chaque langue pour laquelle il dispose de formulations : une nouvelle étape « Écran de fin » est donc prête à l’emploi. Comme le reste de votre protocole, ce sont des textes que vous pouvez modifier. Lorsque votre protocole comporte plusieurs langues, traduisez-les avec le texte de clôture et le texte après la fin de l’entretien (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)).
+Network Canvas fournit chacun de ces textes dans chaque langue pour laquelle il dispose de formulations : une nouvelle étape « Écran de fin » est donc prête à l’emploi. Comme le reste de votre protocole, ce sont des chaînes traduisibles que vous pouvez modifier. Lorsque votre protocole comporte plusieurs langues, traduisez-les avec le texte de clôture et le texte après la fin de l’entretien (consultez [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)).
 
 ### Texte de départ {#starting-text}
 
 Un nouveau protocole rédigé en français commence avec une étape « Écran de fin » dont le nom d’étape est « Terminer l’entretien ». Son texte de clôture a pour titre « Terminer l’entretien » et indique : « Vous avez atteint la fin de l’entretien. Si les informations que vous avez saisies vous conviennent, vous pouvez maintenant terminer l’entretien. » Son texte après la fin de l’entretien a pour titre « Entretien terminé » et indique : « Merci de votre participation ! » Dans un protocole rédigé en anglais, ces textes sont en anglais : le nom d’étape et le titre du texte de clôture sont « Finish Interview », et le texte après la fin de l’entretien a pour titre « Interview Finished » et indique « Thank you for participating! ». Une étape « Écran de fin » que vous ajoutez vous-même commence avec le même texte de clôture et le même texte après la fin de l’entretien. Network Canvas fournit ce texte dans chaque langue de votre protocole pour laquelle il en dispose. Vous pouvez tout modifier. Il en va de même pour les textes de **Personnaliser la formulation intégrée**.
 
-Lorsque vous ajoutez une langue à votre protocole, Architect ajoute aussi le texte fourni dans cette langue : le texte de clôture, le texte après la fin de l’entretien, le nom de l’étape et chacun des textes de **Personnaliser la formulation intégrée** reçoivent la formulation de Network Canvas dans la nouvelle langue partout où ils n’ont pas de traduction dans celle-ci, même si vous les avez modifiés dans vos autres langues. Vérifiez donc que la nouvelle langue dit bien ce que dit votre propre texte. Consultez [Ajouter des langues](/fr/design-protocols/tutorials/translating-your-protocol#adding-languages). Lorsque vous [changez la langue dans laquelle votre texte est enregistré](/fr/design-protocols/tutorials/translating-your-protocol#changing-the-language-your-text-is-recorded-as), le texte fourni que vous n’avez pas modifié devient le texte fourni dans la langue choisie, ou est supprimé si Network Canvas n’en dispose pas dans cette langue, et le texte que vous avez modifié conserve votre formulation. Traduisez votre propre texte comme le reste de votre protocole (consultez [Traduire votre protocole](/fr/design-protocols/tutorials/translating-your-protocol)).
+Lorsque vous ajoutez une langue à votre protocole, Architect ajoute aussi le texte fourni dans cette langue : le texte de clôture, le texte après la fin de l’entretien, le nom de l’étape et les formulations de **Personnaliser la formulation intégrée** reçoivent la formulation de Network Canvas dans la nouvelle langue partout où ils n’ont pas de traduction dans celle-ci, même si vous les avez modifiés dans vos autres langues. Vérifiez donc que la formulation dans la nouvelle langue a bien le même sens que la vôtre. Consultez [Ajouter des langues](/fr/design-protocols/tutorials/translating-your-protocol#adding-languages). Lorsque vous [changez la langue dans laquelle votre texte est enregistré](/fr/design-protocols/tutorials/translating-your-protocol#changing-the-language-your-text-is-recorded-as), le texte fourni que vous n’avez pas modifié devient le texte fourni dans la langue choisie, ou est supprimé si Network Canvas n’en dispose pas dans cette langue, et le texte que vous avez modifié conserve votre formulation. Traduisez votre propre texte comme le reste de votre protocole (consultez [Traduire votre protocole](/fr/design-protocols/tutorials/translating-your-protocol)).
 
 ### Texte nécessaire avant le téléchargement {#text-needed-before-downloading}
 
@@ -105,7 +105,7 @@ Les étapes « Écran de fin » restent regroupées à la fin du protocole :
 - Vous pouvez réordonner les étapes « Écran de fin » entre elles, mais la chronologie ne vous permet pas de placer une autre étape après elles, ni de placer une étape « Écran de fin » au-dessus d’une étape d’un autre type.
 - **Ajouter une nouvelle étape** place les autres étapes avant les étapes « Écran de fin ».
 
-Par défaut, l’entretien aboutit à la première étape « Écran de fin ». Les personnes participantes atteignent les suivantes au moyen de la logique de saut (consultez [Logique de saut qui termine l’entretien](#skip-logic-that-ends-the-interview)). Aucune étape « Écran de fin » ne mène à une autre.
+Par défaut, les personnes participantes atteignent la première étape « Écran de fin ». Elles atteignent les suivantes au moyen de la logique de saut (consultez [Logique de saut qui termine l’entretien](#skip-logic-that-ends-the-interview)). Aucune étape « Écran de fin » ne mène à une autre.
 
 ### Prévisualiser {#previewing}
 

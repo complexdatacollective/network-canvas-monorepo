@@ -10,7 +10,7 @@ navOrder: 6
 
 ## Details
 
-Forms are one of the primary ways you will assign values to your [variables](/en/design-protocols/key-concepts/variables) in Interviewer. They work by associating each **variable** with an **[input control](/en/design-protocols/key-concepts/input-controls)**, a **question prompt** and **[validation](/en/design-protocols/key-concepts/field-validation) options**, to form a **field**. Each form can have as many fields as you wish, in any order.
+Forms are one of the primary ways in which you will assign values to your [variables](/en/design-protocols/key-concepts/variables) in Interviewer. They work by associating each **variable** with an **[input control](/en/design-protocols/key-concepts/input-controls)**, a **question prompt** and **[validation](/en/design-protocols/key-concepts/field-validation) options**, to form a **field**. Each form can have as many fields as you wish, in any order.
 
 ![](/assets/img/key-concepts/forms/preview.png)
 
@@ -18,21 +18,21 @@ When using Architect to design your protocol you will encounter several places w
 
 ## Constructing a form
 
-Forms are comprised of one or more fields, which can be reordered to appear in any sequence. The sequence they appear in Architect is the same sequence they will be shown in Interviewer. To begin creating a form, locate the form section within the Interface you are configuring.
+Forms are comprised of one or more fields, which can be reordered to appear in any sequence. The sequence in which they appear in Architect is the same sequence in which they will be shown in Interviewer. To begin creating a form, locate the form section within the Interface that you are configuring.
 
 ![](/assets/img/key-concepts/forms/form.png)
 
 <AppOnly app="current">
 
-Set the **Form title**, and then create fields for each of the attributes you wish to capture on this form by clicking **Create new form field**.
+Set the **Form title**, and then create fields for each of the attributes that you wish to capture on this form by clicking **Create new form field**.
 
-The field dialog has two panes. On the left are the field's settings. On the right is an **Interactive preview** showing the question as the participant will see it, in the interview's own theme. The preview follows what you type and choose, and you can answer it: **Check response** runs the attribute's validation rules against your answer, so you can see what a participant would be told. Those are the rules the attribute already carries in the codebook: while a field is creating a new attribute, the rules you set beside it only start applying once you save the field, so until then **Check response** accepts anything. Answering the preview changes nothing in your protocol. On a narrow screen the two panes stack into a single column.
+The field dialog has two panes. On the left are the field's settings. On the right is an **Interactive preview** showing the question as the participant will see it, in the theme used during the interview. The preview follows what you type and choose, and you can answer it: **Check response** runs the attribute's validation rules against your answer, so you can see what a participant would be told. Those are the rules that the attribute already has in the codebook: while a field is creating a new attribute, the rules that you set beside it only start applying once you save the field, so until then **Check response** accepts anything. Answering the preview changes nothing in your protocol. On a narrow screen the two panes stack into a single column.
 
 The settings are arranged in this order:
 
 1. **Attribute selection** — choose an existing attribute, or create a new one, in the attribute window.
-2. **Field configuration** — the **Question text** (the [prompt](/en/design-protocols/key-concepts/prompts) shown to the participant, which supports markdown formatting), an optional **Hint text**, the **Show validation hints** switch, and finally the **Input control**. For a new attribute, the input control you choose determines the attribute's type.
-3. Below these come the attribute's own answer options, for attribute types that have them, and its **Validation** section. For an attribute you are creating in this field, you can set its validation rules here before saving the field, and they are created along with it.
+2. **Field configuration** — the **Question text** (the [prompt](/en/design-protocols/key-concepts/prompts) shown to the participant, which supports markdown formatting), an optional **Hint text**, the **Show validation hints** switch, and finally the **Input control**. For a new attribute, the input control that you choose determines the attribute's type.
+3. Below these come the attribute's own answer options, for attribute types that have them, and its **Validation** section. For an attribute that you are creating in this field, you can set its validation rules here before saving the field, and they are created along with it.
 
 The hint is markdown-formatted guidance displayed below the question to help participants understand how to answer (for example, "Select all that apply..."). Leave it blank if no extra guidance is needed.
 
@@ -40,7 +40,7 @@ The hint is markdown-formatted guidance displayed below the question to help par
 
 <AppOnly app="classic">
 
-Set the form heading, and then create fields for each of the variables you wish to capture on this form by clicking the **create new** button.
+Set the form heading, and then create fields for each of the variables that you wish to capture on this form by clicking the **create new** button.
 
 When creating a new field, you will first either create a new variable or select an existing one from the variable chooser. Next, you will type the question [prompt](/en/design-protocols/key-concepts/prompts) to be shown next to the input control. The prompt supports markdown formatting.
 
@@ -66,7 +66,7 @@ When designing forms, keep these points in mind:
 
 - Although it may be tempting to create long and elaborate forms, as is typical within other more traditional survey software, consider the burden of overloaded forms on participants and data quality. For example, while you can capture categorical data within a form, you might elect to use the Categorical Bin Interface instead. Network Canvas Interviewer is not intended to replace existing survey methods.
 - Making strategic use of forms allows you to capture attribute data systematically. However, you lose the interactive qualities (e.g. dragging and dropping) of other Interfaces that may improve the interview experience for participants and potentially render higher quality data.
-- If you use the same variable in multiple places in your interview (for example in different forms), any changes you make to the input control or validation options will apply to _all_ uses of the variable.
+- If you use the same variable in multiple places in your interview (for example in different forms), any changes that you make to the input control or validation options will apply to _all_ uses of the variable.
 
 ## Related concepts
 

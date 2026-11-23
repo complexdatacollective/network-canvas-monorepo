@@ -1,7 +1,7 @@
 ---
 title: Sociogramme
 navOrder: 9
-translatedFrom: b8d1cf8eca3c5c236b0e15b8c4567c8303fc1fdb
+translatedFrom: 61f2c2265b3e87bc4317092231b3ad5e3d9eba0c
 ---
 
 <InterfaceSummary type="Sociogram">

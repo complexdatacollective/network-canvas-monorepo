@@ -33,11 +33,11 @@ For current plans and prices, visit UploadThing's [pricing page](https://uploadt
 
 ## S3-compatible storage (alternative to UploadThing)
 
-Instead of UploadThing, you can store protocol assets in any S3-compatible bucket. Costs depend on the provider you choose:
+Instead of UploadThing, you can store protocol assets in any S3-compatible bucket. Costs depend on the provider that you choose:
 
 - **AWS S3** — pay for storage, requests, and data egress. See the [AWS S3 pricing page](https://aws.amazon.com/s3/pricing/).
 - **Cloudflare R2** — S3-compatible with no egress fees; pay for storage and requests. See the [R2 pricing page](https://developers.cloudflare.com/r2/pricing/).
 - **Backblaze B2** — low-cost storage with an S3-compatible API. See the [B2 pricing page](https://www.backblaze.com/cloud-storage/pricing).
-- **Self-hosted MinIO** — no service fees; you pay only for the infrastructure you run it on.
+- **Self-hosted MinIO** — no service fees; you pay only for the infrastructure that you run it on.
 
 For setup steps, see [Configure storage](./guide#configure-storage) in the deployment guide.

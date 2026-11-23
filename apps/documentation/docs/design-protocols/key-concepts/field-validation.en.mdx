@@ -15,18 +15,18 @@ When designing [forms](/en/design-protocols/key-concepts/forms) in Architect, yo
 
 <AppOnly app="current">
 
-Validation rules belong to the attribute in the codebook, and they are enforced wherever a participant types the value in: form fields, and the four places listed below. Interfaces that write an attribute from what the participant does rather than from something they type — a bin they drag a node into, a prompt's fixed attribute assignments, a sociogram's highlighting, a tie-strength rating — record the value without running these rules, so do not rely on a rule to constrain data that only one of those writes. As well as in a form field's **Validation** section, you can set an attribute's rules wherever you choose an attribute that participants type into:
+Validation rules belong to the attribute in the codebook, and they are enforced wherever a participant types the value in: form fields, and the four places listed below. Interfaces that write an attribute from what the participant does rather than from something they type — a bin they drag a node into, a prompt's fixed attribute assignments, a sociogram's highlighting, a tie-strength rating — record the value without running these rules, so do not rely on a rule to constrain data that is recorded only by one of those interfaces. As well as in a form field's **Validation** section, you can set an attribute's rules wherever you choose an attribute that participants type into:
 
 - the quick add attribute of a [Name Generator (using Quick Add)](/en/design-protocols/interface-documentation/name-generator-using-quick-add)
 - the quick add attribute of a [Network Composer](/en/design-protocols/interface-documentation/network-composer)
-- the name attribute of a [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree), for the names participants type. A name can always be left blank there, even when the attribute is required, because the interface saves a label as the name of anyone left unnamed
+- the name attribute of a [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree), for the names that participants type. A name can always be left blank there, even when the attribute is required, because the interface saves a label as the name of anyone left unnamed
 - the follow-up "other" attribute of a [Categorical Bin](/en/design-protocols/interface-documentation/categorical-bin) prompt
 
 Each of these has a **Validation** section below the attribute picker, which opens on the attribute's current rules. Changes made there are written straight to the codebook: cancelling your edits to the stage doesn't undo them. Switching the section off clears the attribute's rules.
 
 When a form field is creating a new attribute, you can set the new attribute's rules in the same dialog before saving the field, and they are saved along with it.
 
-Rules that take a number, such as a minimum or maximum, have buttons to raise and lower the value by one. A number you type is applied when you leave the box or press Enter.
+Rules that take a number, such as a minimum or maximum, have buttons to raise and lower the value by one. A number that you type is applied when you leave the box or press Enter.
 
 </AppOnly>
 
@@ -93,7 +93,7 @@ What happens when you leave one of these dates empty depends on the attribute's 
 - A picker for a year and month, or for a year only, always has a range. An empty **Earliest date** starts it in 1920, and an empty **Latest date** ends it on the date of the interview.
 - A picker for a full date (year, month and day) has no range at all when both dates are empty, so participants can enter any date, including one in the future. Once you set at least one of the two, an empty one takes the default given above for that end.
 
-One exception applies at every resolution: if the date you set already lies past the empty end's default, such as an **Earliest date** later than the date of the interview, the empty end is moved past your date instead, so the picker still offers a range.
+One exception applies at every resolution: if the date that you set already lies past the empty end's default, such as an **Earliest date** later than the date of the interview, the empty end is moved past your date instead, so the picker still offers a range.
 
 To keep a full birth date out of the future, set an **Earliest date**, such as January 1, 1900, and leave the **Latest date** empty, so that the range ends on the date of the interview.
 
@@ -162,7 +162,7 @@ This approach reduces burden by only validating fields that are relevant to each
 
 Network Canvas supplies a message for each validation rule, such as "You must answer this question before continuing." for a required answer, or "Enter at least 3 characters." for a minimum length. The messages are part of your protocol's [interview text](/en/design-protocols/tutorials/translating-your-protocol#interview-text), so each is shown in the language of the interview, and you can reword and translate them in the translation table.
 
-There is one wording for each rule, shared by every question that uses the rule, and a message can show the limit the rule sets, such as the minimum length. Your protocol holds only the messages of the rules it uses, so you only translate the messages that a participant could see. When you add a rule to a question, Architect adds its message, and when no question uses a rule any more, Architect removes it.
+There is one wording for each rule, shared by every question that uses the rule, and a message can show the limit that the rule sets, such as the minimum length. Your protocol contains only the messages for the rules that it uses, so you only translate the messages that a participant could see. When you add a rule to a question, Architect adds its message, and when no question uses a rule any more, Architect removes it.
 
 </AppOnly>
 
@@ -249,7 +249,7 @@ Consider participant experience by testing validation with pilot participants, a
 
 Balance quality and burden by prioritizing validation for critical variables, making optional fields truly optional, and considering the cumulative burden of multiple validated fields. Don't require everything "just in case," don't apply the same strict validation across all fields, and don't ignore participant fatigue in long forms.
 
-Plan for edge cases by considering legitimate outliers (such as very young or old participants), thinking about cultural variations (such as name lengths or date formats), and accounting for "prefer not to answer" scenarios. Don't set ranges so tight they exclude valid responses, don't assume all participants fit typical patterns, and don't force responses where none may apply.
+Plan for edge cases by considering legitimate outliers (such as very young or old participants), thinking about cultural variations (such as name lengths or date formats), and accounting for "prefer not to answer" scenarios. Don't set ranges so tight that they exclude valid responses, don't assume all participants fit typical patterns, and don't force responses where none may apply.
 
 Test thoroughly by testing all validation rules in [Preview Mode](/en/design-protocols/preview-mode), trying to break your validation with edge cases, and getting feedback from colleagues and pilot participants. Don't assume validation works without testing, don't wait until data collection to discover validation issues, and don't ignore participant feedback about validation frustrations.
 

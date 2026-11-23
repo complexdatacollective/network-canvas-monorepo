@@ -10,7 +10,7 @@ navOrder: 10
 
 ## Details
 
-Skip logic is a feature within Interviewer that allows you to conditionally skip or show stages within the interview based on the current information in the interview network. By skipping or showing certain stages, you can direct the path a participant takes through your protocol.
+Skip logic is a feature within Interviewer that allows you to conditionally skip or show stages within the interview based on the current information in the interview network. By skipping or showing certain stages, you can direct the path that a participant takes through your protocol.
 
 For example, if a participant indicates on an Ego Form stage that they have never used drugs, you can configure your protocol using skip logic to skip subsequent name interpreter stages that ask about drug use with alters.
 
@@ -59,7 +59,7 @@ If rules are joined by `AND` statements, and all individual rules evaluate to `t
 
 This means that the choice of join operator can have an extremely significant impact on the way that your rules are collectively evaluated. One way of thinking about the difference is that you should use the "All rules must match" option in situations where there is only _one_ scenario where a stage should be shown. You can then add as many rules as you need to ensure that this scenario is as specific as possible.
 
-Alternatively, use the "Any rule can match" option for situations where there are many reasons a stage should be shown. For example you may show an information screen with an embedded intervention video if a participant has demonstrated any one of a number of risk behaviors.
+Alternatively, use the "Any rule can match" option for situations where there are many reasons why a stage should be shown. For example you may show an information screen with an embedded intervention video if a participant has demonstrated any one of a number of risk behaviors.
 
 ## Skip or show
 
@@ -76,8 +76,8 @@ Think carefully about the logical implications of your join operator when changi
 ## Choosing where to continue
 
 By default, hiding a stage continues the interview at the next stage whose own
-skip logic allows it to be shown. You can instead choose a specific later stage
-or the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) that ends the interview in the **When this stage is skipped** field.
+skip logic allows it to be shown. In the **When this stage is skipped** field, you can instead choose a specific later stage,
+or the [Finish Screen](/en/design-protocols/interface-documentation/finish-screen) that ends the interview.
 
 The destination belongs to the stage that may be hidden. For example, suppose
 an Ego Form records consent and the rest of the interview should be bypassed

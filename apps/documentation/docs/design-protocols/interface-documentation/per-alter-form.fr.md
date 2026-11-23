@@ -1,7 +1,7 @@
 ---
 title: Formulaire par alter
 navOrder: 14
-translatedFrom: 256c212458540e1bafa75a56da05227af8971b5e
+translatedFrom: 04d1eba83c1091d244872e1bb138f2ee7351ff6f
 ---
 
 <InterfaceSummary type="AlterForm">

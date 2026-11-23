@@ -4,7 +4,7 @@ wip: false
 toc: true
 navOrder: 5
 date: 5th October 2026
-translatedFrom: dceba54b0b65933d5632b30148bc87dd3f1a9eb6
+translatedFrom: 26f8d71612e7ddc8123f976b16eb86eedbbab3b4
 ---
 
 ## ¿Qué es Network Canvas? {#what-is-network-canvas}

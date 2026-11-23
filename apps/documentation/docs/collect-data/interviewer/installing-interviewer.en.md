@@ -9,14 +9,14 @@ Interviewer runs your Network Canvas protocols and collects data in the field. Y
 
 Interviewer comes in two supported versions, and you get them in different ways:
 
-- **Interviewer** — runs in your **web browser**, with nothing to download. Open it at [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com), and optionally install it as a **Progressive Web App (PWA)** on a device you control for quick access and offline use. Built on the same platform as Fresco 4.0, it supports schemas 8 and 9, is compatible with your existing protocols, and is recommended for new studies.
-- **Interviewer Classic** — the established **desktop and tablet** app. Download and install it from the [download page](https://networkcanvas.com/get-started). Runs schema 7 protocols and works fully offline.
+- **Interviewer** — runs in your **web browser**, with nothing to download. Open it at [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com), and optionally install it as a **Progressive Web App (PWA)** on a device that you control for quick access and offline use. Built on the same platform as Fresco 4.0, it supports schemas 8 and 9, is compatible with your existing protocols, and is recommended for new studies.
+- **Interviewer Classic** — the established **desktop and tablet** app. Download and install it from the [download page](https://networkcanvas.com/get-started). It runs schema 7 protocols and works fully offline.
 
 ## Using Interviewer in the browser
 
 Open [interviewer.networkcanvas.com](https://interviewer.networkcanvas.com) in a modern web browser — there is no download or installation step, and the app always runs the latest version. To keep it handy on an interview device, use your browser's **Install** option (often shown as an install icon in the address bar, or "Add to Home Screen") to install it as a Progressive Web App. It then opens in its own window, appears alongside your other apps, and remains available offline. Every interface language is stored with the installed app, so you can switch language offline too.
 
-Interview performance depends on the device you run Interviewer on. For advice on picking a device that will give your participants a smooth interview experience, see [choosing a hardware device for Interviewer](/en/collect-data/interviewer/choosing-hardware).
+Interview performance depends on the device on which you run Interviewer. For advice on picking a device that will give your participants a smooth interview experience, see [choosing a hardware device for Interviewer](/en/collect-data/interviewer/choosing-hardware).
 
 ### Supported browsers
 
@@ -24,7 +24,7 @@ Interviewer is supported on the latest versions of Chrome, Safari, and Firefox. 
 
 ## Installing Interviewer Classic
 
-**Interviewer Classic** is the downloadable desktop and tablet app, available from the [download page](https://networkcanvas.com/get-started). Install it on any device you will use to interview participants.
+**Interviewer Classic** is the downloadable desktop and tablet app, available from the [download page](https://networkcanvas.com/get-started). Install it on any device that you will use to interview participants.
 
 ### System Requirements
 

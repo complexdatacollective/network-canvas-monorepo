@@ -11,7 +11,7 @@ navOrder: 11
 
 </InterfaceSummary>
 
-The Narrative Pedigree is a companion to the [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree). It draws the family a participant built in an earlier Family Pedigree stage and shows how one or more conditions recorded in that family may be inherited. The participant chooses a condition, and each person's symbol shows their status for it in standard pedigree notation (Bennett et al., 2008, 2022). The participant can then focus on any person to see the relatives through whom the condition could have reached them.
+The Narrative Pedigree is a companion to the [Family Pedigree](/en/design-protocols/interface-documentation/family-pedigree). It draws the family that a participant built in an earlier Family Pedigree stage and shows how one or more conditions recorded in that family may be inherited. The participant chooses a condition, and each person's symbol shows their status for it in standard pedigree notation (Bennett et al., 2008, 2022). The participant can then focus on any person to see the relatives through whom the condition could have reached them.
 
 The interface is read-only. It never adds, changes or removes people, relationships or attributes, and it records nothing in the interview data. Every status it shows is worked out afresh from the family as the source stage recorded it.
 
@@ -23,15 +23,15 @@ The stage editor in Architect has four sections of its own, followed by the **Sk
 
 ### Pedigree source
 
-Choose the Family Pedigree stage whose family this stage draws in **Source stage**. Only Family Pedigree stages that come before this one are offered, and Architect explains when there are none. If the chosen stage is later deleted, moved after this one, or changed to another interface, Architect reports it and the stage cannot be saved until another source is chosen.
+In **Source stage**, choose the Family Pedigree stage whose family this stage draws. Only Family Pedigree stages that come before this one are offered, and Architect explains when there are none. If the chosen stage is later deleted, moved after this one, or changed to another interface, Architect reports it and the stage cannot be saved until another source is chosen.
 
-Every condition maps an attribute of the source stage's person type, so choosing a different source removes every condition, after a confirmation. While a Narrative Pedigree reads a Family Pedigree, that Family Pedigree's person type cannot be changed. Point the Narrative Pedigree at another source, or remove it, first.
+Every condition is mapped to an attribute of the source stage's person type, so choosing a different source removes every condition, after a confirmation. While a Narrative Pedigree reads a Family Pedigree, that Family Pedigree's person type cannot be changed. Point the Narrative Pedigree at another source, or remove it, first.
 
 The stage draws the participant and everyone connected to them through the source stage's relationships: partners (current or not), parents of every kind, children, and their relatives in turn. Someone of the same person type who is not connected to the participant through those relationships is left out, even if another stage added them or tied them to the participant with a different kind of connection.
 
 ### Disease mappings
 
-Each condition the participant can choose is a row in **Disease mappings**. **Create new disease** opens a dialog with four fields, all required:
+Each condition that the participant can choose is a row in **Disease mappings**. **Create new disease** opens a dialog with four fields, all required:
 
 - **Disease label**: the condition's name, shown in the participant's condition menu. Each condition needs a different name, in every language of the protocol.
 - **Color**: one of the eight node colors. The condition's statuses, and its symbols in the key, are drawn in it.
@@ -48,23 +48,23 @@ The stage needs at least one condition. The order of the rows is the order of th
 
 ### Customize built-in wording
 
-The **Customize built-in wording** section holds the words participants read on the stage. Each starts as Network Canvas words it, in every language it has wording for, and you can change and translate it like any other text. Your protocol keeps only the wording you change (see [Words Network Canvas supplies](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)).
+The **Customize built-in wording** section contains the words that participants read on the stage. Each setting starts with the wording supplied by Network Canvas, in every language for which it has wording, and you can change and translate it like any other translatable string. Your protocol contains only the wording that you change (see [Words supplied by Network Canvas](/en/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)).
 
 Under **Specific to this stage** are:
 
-- the condition menu's text while no condition is chosen, which is also its choice for showing none ("Select a condition");
+- the condition menu's wording while no condition is chosen, which is also its choice for showing none ("Select a condition");
 - the label of the **Save snapshot** button;
-- the titles of saved snapshots, one for a snapshot of a condition and one for a snapshot focused on a person. They show the stage's label and the condition's name, and the second also shows the person's name, where their placeholders are.
+- the titles of saved snapshots, one for a snapshot of a condition and one for a snapshot focused on a person. Each title shows the stage's label and the condition's name where their placeholders are, and the second title also shows the person's name.
 
-Under **Shared by every stage of this kind** is the wording every Narrative Pedigree stage shows alike: the heading of the key, the meaning of each symbol in it ("Has this condition", "Will develop this condition", "Carries this condition", "May develop this condition", "May carry this condition" and "Not known"), and the tooltip of the **Clear focus** button. Each meaning can instead name the condition being shown, inserted as a pill with the field's piped text button. The two possible statuses are there only while a Narrative Pedigree stage has **Show possible (at-risk) statuses** switched on. Beside them are the descriptions of the zoom buttons and the name and description of the **Show the whole family** button, which every Narrative Pedigree and Family Pedigree stage shows alike. A change to any of these applies to all those stages, and is saved as soon as you leave the field.
+Under **Shared by every stage of this kind** is the wording that is the same on every Narrative Pedigree stage: the heading of the key, the meaning of each symbol in it ("Has this condition", "Will develop this condition", "Carries this condition", "May develop this condition", "May carry this condition" and "Not known"), and the tooltip of the **Clear focus** button. Each meaning can instead name the condition being shown, inserted as a pill with the field's piped text button. The two possible statuses are there only while a Narrative Pedigree stage has **Show possible (at-risk) statuses** switched on. Beside them are the descriptions of the zoom buttons and the name and description of the **Show the whole family** button, which are the same on every Narrative Pedigree and Family Pedigree stage. A change to any of these applies to all those stages, and is saved as soon as you leave the field.
 
 ## What the participant sees
 
-The stage opens on the whole family, drawn as the Family Pedigree draws it and fitted to the screen. Each person is labeled as they were on the Family Pedigree. The participant is labeled "You", and everyone else by their name. A relative the participant did not name is labeled by how they are related to the participant, in the words the Family Pedigree used ("Mother" or "Egg parent", for example). If your study encrypts the name attribute, the participant is asked for their passphrase, and relatives are labeled by how they are related until it is entered. A person recorded as adopted is drawn between brackets.
+The stage opens on the whole family, drawn as the Family Pedigree draws it and fitted to the screen. Each person is labeled as they were on the Family Pedigree. The participant is labeled "You", and everyone else by their name. A relative whom the participant did not name is labeled by how they are related to the participant, in the words that the Family Pedigree used ("Mother" or "Egg parent", for example). If your study encrypts the name attribute, the participant is asked for their passphrase, and relatives are labeled by how they are related until it is entered. A person recorded as adopted is drawn between brackets.
 
-Each symbol takes the shape the Family Pedigree's [Symbols choice](/en/design-protocols/interface-documentation/family-pedigree#how-each-persons-symbol-is-drawn) gives it. Mapped to sex assigned at birth, a person recorded female is drawn as a circle, a person recorded male as a square, and everyone else as a diamond. A person whose type gives them a [custom shape](/en/design-protocols/tutorials/custom-node-shapes) is drawn with it until a condition is chosen. Standard notation is drawn only on a circle, a square or a diamond, so once a condition is chosen that person is drawn as a circle.
+Each symbol takes the shape that the Family Pedigree's [Symbols choice](/en/design-protocols/interface-documentation/family-pedigree#how-each-persons-symbol-is-drawn) gives it. When symbols are mapped to sex assigned at birth, a person recorded female is drawn as a circle, a person recorded male as a square, and everyone else as a diamond. A person whose type gives them a [custom shape](/en/design-protocols/tutorials/custom-node-shapes) is drawn with it until a condition is chosen. Standard notation is drawn only on a circle, a square or a diamond, so once a condition is chosen that person is drawn as a circle.
 
-A toolbar below the family holds, in reading order (from right to left in an interview shown in a right-to-left language):
+A toolbar below the family contains, in reading order (from right to left in an interview shown in a right-to-left language):
 
 - the **condition menu**, which lists every condition beside its color, after a first choice that shows none;
 - **Clear focus**, while a person is focused on;
@@ -98,7 +98,7 @@ Only a person recorded as affected is drawn with a solid fill. The fill is never
 
 ### Focusing on one person
 
-Once a condition is chosen, selecting a person focuses on them. An arrow above their symbol marks them, and the pedigree highlights the relatives through whom the condition could have reached them and the lines of descent it passed along. Everyone and every line not on that path are dimmed. **Clear focus**, the Escape key, or a click on an empty part of the canvas clears the focus. Changing to another condition keeps the focus, and returning to **Select a condition** clears it.
+Once a condition is chosen, selecting a person focuses on them. An arrow above their symbol marks them, and the pedigree highlights the relatives through whom the condition could have reached them and the lines of descent that it passed along. Everyone and every line not on that path are dimmed. **Clear focus**, the Escape key, or a click on an empty part of the canvas clears the focus. Changing to another condition keeps the focus, and returning to **Select a condition** clears it.
 
 The path follows the inheritance pattern of the condition:
 
@@ -113,13 +113,13 @@ The path passes only through relatives who have a status for the condition, and 
 
 ### Keyboard and screen readers
 
-The family is a single stop in the tab order. The arrow keys move between people by where they sit in the tree, and Enter or Space focuses on the person who has keyboard focus. People cannot be focused on until a condition is chosen, but they can still be reached with the arrow keys.
+The family is a single stop in the tab order. The arrow keys move between people according to where they sit in the tree, and Enter or Space focuses on the person who has keyboard focus. People cannot be focused on until a condition is chosen, but they can still be reached with the arrow keys.
 
 Screen readers read each person's status for the chosen condition with their name, and announce each change of condition or focus. The symbols themselves are not read out, so a person's status is never announced unless it is drawn.
 
 ### Saving a snapshot
 
-**Save snapshot** saves a PNG image of the whole family on a white background, at its natural size whatever part of it is on screen. The image is drawn as the pedigree is for the chosen condition and focus, with the key once a condition is chosen. It is titled with the stage's label, and, once a condition is chosen, with the condition and the person focused on, using the snapshot titles in [Customize built-in wording](#customize-built-in-wording). The file is saved to the participant's device and is not part of the interview data.
+**Save snapshot** saves a PNG image of the whole family on a white background, at its natural size whatever part of it is on screen. The image shows the pedigree as it is drawn for the chosen condition and focus, with the key once a condition is chosen. It is titled with the stage's label, and, once a condition is chosen, with the condition and the person focused on, using the snapshot titles in [Customize built-in wording](#customize-built-in-wording). The file is saved to the participant's device and is not part of the interview data.
 
 ## How statuses are inferred
 
@@ -127,7 +127,7 @@ The interface works out each person's status from three things: who was recorded
 
 <KeyConcept title="Not known does not mean no risk">
 
-_Not known_ often means that the recorded family holds too little information to say more, for example because a parent was never recorded or a sibling's parents are uncertain. It is not a statement that the person is free of the condition.
+_Not known_ often means that the recorded family contains too little information to say more, for example because a parent was never recorded or a sibling's parents are uncertain. It is not a statement that the person is free of the condition.
 
 </KeyConcept>
 
@@ -139,7 +139,7 @@ Only biological parents and donors pass a condition on. Adoptive, social and ste
 
 ### Sex assigned at birth
 
-X-linked and Y-linked inheritance depend on sex assigned at birth, and gender identity plays no part in them. A person recorded as female or male is treated as recorded. A person recorded as intersex is always treated as of uncertain sex, because neither one X chromosome nor two can be assumed. A person whose sex is not known, who preferred not to say, or who was not asked is placed by the gamete they gave a child, the egg or the sperm, when the Family Pedigree's [gamete rule](/en/design-protocols/interface-documentation/family-pedigree#which-parent-gave-the-egg-or-the-sperm) works it out from the child's other parent, and is otherwise treated as of uncertain sex. X-linked and Y-linked inheritance through a person of uncertain sex is left unresolved rather than guessed. Mitochondrial inheritance follows the egg rather than sex, so it passes through anyone the gamete rule shows gave an egg, including a person recorded as intersex.
+X-linked and Y-linked inheritance depend on sex assigned at birth, and gender identity plays no part in them. A person recorded as female or male is treated as recorded. A person recorded as intersex is always treated as of uncertain sex, because neither one X chromosome nor two can be assumed. A person whose sex is not known, who preferred not to say, or who was not asked is classified by the gamete that they gave a child, the egg or the sperm, when the Family Pedigree's [gamete rule](/en/design-protocols/interface-documentation/family-pedigree#which-parent-gave-the-egg-or-the-sperm) works it out from the child's other parent, and is otherwise treated as of uncertain sex. X-linked and Y-linked inheritance through a person of uncertain sex is left unresolved rather than guessed. Mitochondrial inheritance follows the egg rather than sex, so it passes through anyone who, by the gamete rule, gave an egg, including a person recorded as intersex.
 
 ### Inferences under each pattern
 
@@ -161,7 +161,7 @@ The two possible statuses, _may develop_ and _may carry_, are inferred rather th
 
 <TipBox danger>
 
-Anything the Narrative Pedigree marks as possible is inferred from the participant's own account of their family, and is not a diagnosis. Turn possible statuses on only when a clinician is interpreting the results, and never present them to a participant as a diagnosis.
+Anything that the Narrative Pedigree marks as possible is inferred from the participant's own account of their family, and is not a diagnosis. Turn possible statuses on only when a clinician is interpreting the results, and never present them to a participant as a diagnosis.
 
 </TipBox>
 
@@ -175,13 +175,13 @@ Place the Narrative Pedigree after the Family Pedigree that feeds it, and record
 
 <GoodPractice>
 
-Use the Family Pedigree's [completeness](/en/design-protocols/interface-documentation/family-pedigree#completeness) setting to require the relatives your conditions need. Missing parents and siblings leave statuses _Not known_ that a fuller family would establish.
+Use the Family Pedigree's [completeness](/en/design-protocols/interface-documentation/family-pedigree#completeness) setting to require the relatives that your conditions need. Missing parents and siblings leave statuses _Not known_ that a fuller family would establish.
 
 </GoodPractice>
 
 <GoodPractice>
 
-Name conditions in words participants recognize. The name is all the participant sees of the condition's definition.
+Name conditions in words that participants recognize. The name is the only part of the condition's definition that the participant sees.
 
 </GoodPractice>
 

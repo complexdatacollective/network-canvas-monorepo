@@ -1,7 +1,7 @@
 ---
 title: Interface d’anonymisation
 navOrder: 21
-translatedFrom: 5e6df6d2f14bc62ba56eac9a9e79366207748246
+translatedFrom: cc93e4a157574597b5956ccde41b8573e0ada3a1
 ---
 
 <InterfaceSummary type="Anonymisation">
@@ -54,11 +54,11 @@ Les formulations qui entourent la phrase secrète font partie des [textes de l�
 
 La protection a lieu sur l’appareil même de la personne participante, à l’aide de la [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) (en anglais). Les réponses sont chiffrées avant d’être stockées : les données d’entretien ne les contiennent donc jamais sous une forme lisible.
 
-- **Une clé par entretien.** Lorsqu’une personne participante choisit une phrase secrète, l’entretien en dérive une clé de chiffrement unique. La clé est dérivée avec PBKDF2-SHA256, avec 600 000 itérations et un sel dérivé de l’identifiant de l’entretien lui-même : la même phrase secrète donne donc une clé différente dans chaque entretien. Ce calcul est volontairement lent, ce qui rend coûteuse toute tentative de deviner une phrase secrète.
+- **Une clé par entretien.** Lorsqu’une personne participante choisit une phrase secrète, Network Canvas en dérive une clé de chiffrement unique. La clé est dérivée avec PBKDF2-SHA256, avec 600 000 itérations et un sel dérivé de l’identifiant de l’entretien lui-même : la même phrase secrète donne donc une clé différente dans chaque entretien. Ce calcul est volontairement lent, ce qui rend coûteuse toute tentative de deviner une phrase secrète.
 - **Un chiffrement robuste pour chaque réponse.** Chaque réponse chiffrée est chiffrée avec cette clé au moyen d’AES-256-GCM, avec une nouvelle valeur aléatoire pour chaque réponse.
 - **Les réponses sont liées à leur place.** Chaque réponse est rattachée à la personne et à la question auxquelles elle appartient : une réponse chiffrée copiée vers une autre personne ou une autre question ne peut donc pas être lue.
 - **Les réponses sont complétées jusqu’à une taille fixe (remplissage).** Chaque réponse est complétée jusqu’à une taille de bloc fixe avant d’être chiffrée, de sorte que la longueur d’une réponse chiffrée en révèle moins sur son contenu.
-- **La phrase secrète est vérifiée, pas stockée.** Lorsqu’une personne participante saisit à nouveau sa phrase secrète, l’entretien en dérive la clé et tente de déchiffrer l’une des réponses déjà protégées. Seule la bonne phrase secrète y parvient : une phrase mal saisie est donc refusée. Aucune information sur la phrase secrète ou sur la clé n’est stockée pour effectuer cette vérification. Tant que la première réponse n’a pas été protégée, il n’existe rien sur quoi vérifier une phrase secrète : la phrase saisie à ce moment-là devient donc celle de l’entretien.
+- **La phrase secrète est vérifiée, pas stockée.** Lorsqu’une personne participante saisit à nouveau sa phrase secrète, Network Canvas en dérive la clé et tente de déchiffrer l’une des réponses déjà protégées. Seule la bonne phrase secrète y parvient : une phrase mal saisie est donc refusée. Aucune information sur la phrase secrète ou sur la clé n’est stockée pour effectuer cette vérification. Tant que la première réponse n’a pas été protégée, il n’existe rien sur quoi vérifier une phrase secrète : la phrase saisie à ce moment-là devient donc celle de l’entretien.
 
 La phrase secrète n’est jamais stockée. La clé n’est conservée qu’en mémoire, dans le navigateur ou l’application qui exécute l’entretien, et n’est jamais enregistrée. Ainsi, actualiser la page, fermer l’onglet ou ouvrir l’entretien depuis un autre navigateur ou un autre appareil obligera la personne participante à saisir de nouveau sa phrase secrète. Les réponses chiffrées sont stockées avec le reste de l’entretien et ne peuvent être lues que par une personne qui connaît la phrase secrète.
 
