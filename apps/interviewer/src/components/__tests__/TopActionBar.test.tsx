@@ -68,6 +68,7 @@ describe('TopActionBar feedback', () => {
       [ANSWER]: 'Show the case ID on the resume pill.',
       app: 'interviewer',
       $process_person_profile: false,
+      $geoip_disable: true,
     });
     expect(body.properties).not.toHaveProperty('installation_id');
   });

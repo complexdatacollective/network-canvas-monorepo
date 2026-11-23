@@ -220,7 +220,7 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
             aria-label={'Main navigation'}
             className="tablet-portrait:block hidden shrink-0"
           >
-            <NavigationMenu.List className="tablet-landscape:gap-10 flex items-center gap-7">
+            <NavigationMenu.List className="tablet-landscape:gap-10 flex items-center gap-5">
               {items?.map((item) => (
                 <NavigationMenu.Item
                   key={item.key}

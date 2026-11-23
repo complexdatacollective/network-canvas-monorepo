@@ -12,7 +12,7 @@ const APP_FEEDBACK_SURVEY = {
 
 const APP_FEEDBACK_MAX_LENGTH = 2000;
 
-type Capture = (event: string, properties: Record<string, unknown>) => void;
+type Capture = (event: string, properties: Record<string, unknown>) => unknown;
 
 /**
  * What the Feedback control needs to answer the survey, bound to an app's own
@@ -20,7 +20,9 @@ type Capture = (event: string, properties: Record<string, unknown>) => void;
  *
  * Opening the form is usage, so it goes through `capture`, which an app with
  * analytics off already silences. What someone writes and sends is theirs to
- * send either way: such an app passes `captureResponse` to deliver it.
+ * send either way: such an app passes `captureResponse` to deliver it. A
+ * `captureResponse` that returns a promise is awaited by the control, which
+ * keeps the text for another try if it rejects.
  */
 export function appFeedbackSurvey(
   capture: Capture,
@@ -28,14 +30,16 @@ export function appFeedbackSurvey(
 ) {
   return {
     maxLength: APP_FEEDBACK_MAX_LENGTH,
-    onShown: () =>
-      capture('survey shown', { $survey_id: APP_FEEDBACK_SURVEY.id }),
-    onSubmit: (feedback: string) =>
-      captureResponse('survey sent', {
+    onShown: () => {
+      void capture('survey shown', { $survey_id: APP_FEEDBACK_SURVEY.id });
+    },
+    onSubmit: async (feedback: string) => {
+      await captureResponse('survey sent', {
         $survey_id: APP_FEEDBACK_SURVEY.id,
         $survey_submission_id: crypto.randomUUID(),
         $survey_completed: true,
         [`$survey_response_${APP_FEEDBACK_SURVEY.question}`]: feedback,
-      }),
+      });
+    },
   };
 }

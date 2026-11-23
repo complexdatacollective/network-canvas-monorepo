@@ -43,8 +43,50 @@ describe('FeedbackPopover', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('Add a dark theme.');
+    expect(await screen.findByText('Thanks for your feedback.')).toHaveFocus();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-    expect(screen.getByText('Thanks for your feedback.')).toHaveFocus();
+  });
+
+  it('keeps what was written when sending fails, and sends it on another try', async () => {
+    const onSubmit = vi
+      .fn<(feedback: string) => Promise<void>>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce();
+    render(<FeedbackPopover onSubmit={onSubmit} />);
+
+    const box = await openForm();
+    await userEvent.type(box, 'Add a dark theme.');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'An error occurred while submitting the form.',
+    );
+    expect(box).toHaveValue('Add a dark theme.');
+    expect(
+      screen.queryByText('Thanks for your feedback.'),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByText('Thanks for your feedback.')).toHaveFocus();
+    expect(onSubmit).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not send twice while a send is still under way', async () => {
+    let finish = () => {};
+    const onSubmit = vi.fn(
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    );
+    render(<FeedbackPopover onSubmit={onSubmit} />);
+
+    await userEvent.type(await openForm(), 'Add a dark theme.');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(onSubmit).toHaveBeenCalledOnce();
+
+    finish();
+    expect(await screen.findByText('Thanks for your feedback.')).toBeVisible();
   });
 
   it('starts again with an empty form the next time it opens', async () => {

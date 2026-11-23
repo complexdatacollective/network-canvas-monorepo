@@ -15,9 +15,9 @@ describe('appFeedbackSurvey', () => {
     });
   });
 
-  it('sends the feedback as a complete response to the one question', () => {
+  it('sends the feedback as a complete response to the one question', async () => {
     const capture = vi.fn();
-    appFeedbackSurvey(capture).onSubmit('Add a dark theme.');
+    await appFeedbackSurvey(capture).onSubmit('Add a dark theme.');
 
     expect(capture).toHaveBeenCalledExactlyOnceWith('survey sent', {
       $survey_id: SURVEY_ID,
@@ -27,12 +27,12 @@ describe('appFeedbackSurvey', () => {
     });
   });
 
-  it('sends each feedback as its own response', () => {
+  it('sends each feedback as its own response', async () => {
     const capture =
       vi.fn<(event: string, properties: Record<string, unknown>) => void>();
     const { onSubmit } = appFeedbackSurvey(capture);
-    onSubmit('First.');
-    onSubmit('Second.');
+    await onSubmit('First.');
+    await onSubmit('Second.');
 
     const [first, second] = capture.mock.calls.map(
       ([, properties]) => properties.$survey_submission_id,
@@ -40,12 +40,12 @@ describe('appFeedbackSurvey', () => {
     expect(first).not.toBe(second);
   });
 
-  it('reports the form opening and the response through separate captures', () => {
+  it('reports the form opening and the response through separate captures', async () => {
     const capture = vi.fn();
     const captureResponse = vi.fn();
     const survey = appFeedbackSurvey(capture, captureResponse);
     survey.onShown();
-    survey.onSubmit('Add a dark theme.');
+    await survey.onSubmit('Add a dark theme.');
 
     expect(capture).toHaveBeenCalledExactlyOnceWith(
       'survey shown',

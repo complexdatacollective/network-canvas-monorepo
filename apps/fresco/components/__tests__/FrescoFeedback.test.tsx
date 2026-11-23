@@ -91,6 +91,7 @@ describe('FrescoFeedback', () => {
     expect(body.properties).toMatchObject({
       app: 'Fresco',
       $process_person_profile: false,
+      $geoip_disable: true,
       [ANSWER]: 'Let me duplicate a protocol.',
     });
     expect(body.properties).not.toHaveProperty('installation_id');

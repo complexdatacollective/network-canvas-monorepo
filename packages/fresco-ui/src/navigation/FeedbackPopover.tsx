@@ -8,6 +8,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button, type ButtonProps, IconButton } from '../Button';
 import TextAreaField from '../form/fields/TextArea';
+import { formMessages } from '../form/hooks/useForm';
 import {
   Popover,
   PopoverContent,
@@ -47,8 +48,12 @@ const messages = defineMessages({
 const TRIGGER_NAME = 'Feedback';
 
 export type FeedbackPopoverProps = {
-  /** Called with the trimmed text when the user sends it. */
-  onSubmit: (feedback: string) => void;
+  /**
+   * Called with the trimmed text when the user sends it. A returned promise is
+   * awaited: Send waits for it, and if it rejects the form stays, with what the
+   * user wrote, under a line saying it could not be sent.
+   */
+  onSubmit: (feedback: string) => void | Promise<void>;
   /** Called each time the form opens. */
   onShown?: () => void;
   /** The most text the box accepts. */
@@ -100,18 +105,25 @@ export default function FeedbackPopover({
   const intl = useAppIntl();
   const questionId = useId();
   const [draft, setDraft] = useState('');
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'sending' | 'failed' | 'sent'>(
+    'idle',
+  );
 
   const feedback = draft.trim();
   const iconOnly = display === 'icon';
   const icon = <MessageSquareText aria-hidden />;
   const label = intl.formatMessage(messages.trigger);
 
-  const handleSubmit = (event: SyntheticEvent) => {
+  const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
-    if (feedback === '') return;
-    onSubmit(feedback);
-    setSent(true);
+    if (feedback === '' || status === 'sending') return;
+    setStatus('sending');
+    try {
+      await onSubmit(feedback);
+      setStatus('sent');
+    } catch {
+      setStatus('failed');
+    }
   };
 
   return (
@@ -122,7 +134,7 @@ export default function FeedbackPopover({
         // Reset on opening, so the thanks does not turn back into the form
         // while the popup is still closing.
         setDraft('');
-        setSent(false);
+        setStatus('idle');
         onShown?.();
       }}
     >
@@ -166,7 +178,7 @@ export default function FeedbackPopover({
         </PopoverTrigger>
       )}
       <PopoverContent side={side} align={align} className="w-80">
-        {sent ? (
+        {status === 'sent' ? (
           <PopoverTitle
             // Sending replaces the form, so focus moves to the thanks.
             ref={(thanks: HTMLElement | null) => thanks?.focus()}
@@ -176,7 +188,10 @@ export default function FeedbackPopover({
             {intl.formatMessage(messages.thanks)}
           </PopoverTitle>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <form
+            onSubmit={(event) => void handleSubmit(event)}
+            className="flex flex-col gap-3"
+          >
             <PopoverTitle
               id={questionId}
               render={<Heading level="h4" margin="none" />}
@@ -190,11 +205,21 @@ export default function FeedbackPopover({
               value={draft}
               onChange={(next) => setDraft(next ?? '')}
             />
+            {status === 'failed' && (
+              <Paragraph
+                role="alert"
+                intent="smallText"
+                margin="none"
+                className="text-destructive-ink"
+              >
+                {intl.formatMessage(formMessages.submitFailed)}
+              </Paragraph>
+            )}
             <Button
               type="submit"
               size="sm"
               color="primary"
-              disabled={feedback === ''}
+              disabled={feedback === '' || status === 'sending'}
               className="self-end"
             >
               {intl.formatMessage(messages.send)}

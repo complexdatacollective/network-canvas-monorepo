@@ -18,7 +18,9 @@ import { appFeedbackSurvey } from '@codaco/shared-consts';
 \`\`\`
 
 - **\`onSubmit\`** — called with the trimmed text when the user sends it.
-  Send is disabled while the box is empty.
+  Send is disabled while the box is empty. A returned promise is awaited: if
+  it rejects, the form stays with what the user wrote, under a line saying it
+  could not be sent.
 - **\`onShown\`** — called each time the form opens.
 - **\`maxLength\`** — the most text the box accepts.
 - **\`display\`** — \`label\` (the default) shows "Feedback" beside the icon;

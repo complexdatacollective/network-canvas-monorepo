@@ -111,6 +111,8 @@ const VIEW_CONTROLS: readonly ViewControl[] = [
   { role: 'button', name: /^return to stages$/i },
   { role: 'button', name: /^open menu$/i },
   { role: 'combobox', name: /^interface language:/i },
+  // Feedback about the app goes to the team; it writes nothing here.
+  { role: 'button', name: /^feedback$/i },
   // Its Download and Send to Interviewer items read the saved copy; neither
   // writes anything here.
   { role: 'button', name: /^export$/i },
