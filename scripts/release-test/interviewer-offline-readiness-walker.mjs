@@ -81,6 +81,21 @@ const SCHEMA8_PROTOCOL = 'Interviewer 8 Release Check';
 const ASSET_WIDTH = 160;
 const ROSTER = ['Amara', 'Beto', 'Chidi'];
 const ROSTER_PICK = 'Beto';
+// The roster fills the Person type's "name" variable, which the fixture's
+// codebook stores under a UUID.
+const ROSTER_NAME_VARIABLE = (() => {
+  const { codebook } = JSON.parse(
+    fs.readFileSync(path.join(E2E, 'release-offline', 'protocol.json'), 'utf8'),
+  );
+  const person = Object.values(codebook.node ?? {}).find(
+    (type) => type.name === 'Person',
+  );
+  const found = Object.entries(person?.variables ?? {}).find(
+    ([, variable]) => variable.name === 'name',
+  );
+  if (!found) throw new Error('release-offline has no Person name variable');
+  return found[0];
+})();
 const MAPPED_PERSON = 'Mapped Person';
 const SCHEMA8_PASSPHRASE = 'relcheck1';
 const SCHEMA8_EGO = 'Offline Ego';
@@ -893,7 +908,7 @@ try {
         return (
           s?.currentStep === 1 &&
           (s.network?.nodes ?? []).some(
-            (n) => n.attributes?.name === ROSTER_PICK,
+            (n) => n.attributes?.[ROSTER_NAME_VARIABLE] === ROSTER_PICK,
           )
         );
       },
