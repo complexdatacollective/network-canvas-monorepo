@@ -2,7 +2,7 @@
 title: Utiliser des données de liste
 wip: false
 navOrder: 2
-translatedFrom: ba97419e4a86b3ad769a2582fba5de8f35e2cf57
+translatedFrom: fa44e23fe407f38525cf419e524a5cade0a0371d
 ---
 
 <SummaryCard duration="30 minutes">
@@ -132,7 +132,7 @@ Vous pouvez ajouter la liste depuis la [bibliothèque de ressources](/fr/design-
 
 <AppOnly app="current">
 
-Dans Architect, votre protocole, y compris les ressources de liste que vous ajoutez, est enregistré automatiquement au fil de votre travail dans la [bibliothèque de protocoles (dans le navigateur)](/fr/design-protocols/architect/saving-and-backing-up), et la liste est intégrée au fichier `.netcanvas` lorsque vous téléchargez le protocole.
+Dans Architect, votre protocole, y compris les ressources de liste que vous ajoutez, est enregistré automatiquement au fil de votre travail dans la [bibliothèque de protocoles (dans le navigateur)](/fr/design-protocols/saving-and-backing-up), et la liste est intégrée au fichier `.netcanvas` lorsque vous téléchargez le protocole.
 
 </AppOnly>
 

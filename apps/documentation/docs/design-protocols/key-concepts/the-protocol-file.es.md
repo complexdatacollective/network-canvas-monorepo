@@ -1,7 +1,7 @@
 ---
 title: El archivo de protocolo
 navOrder: 1
-translatedFrom: 07d92d52ae4e992c049f21b5df550a426ce73ad7
+translatedFrom: dcc860974d010f3a1b0539d30b0fa36dc902b62c
 ---
 
 <Definition>
@@ -17,7 +17,7 @@ Un protocolo de Network Canvas se almacena como un archivo `.netcanvas`: una cop
 - En **Architect** (la aplicación para navegador), tu protocolo se guarda en una **biblioteca** dentro del navegador mientras trabajas. Para obtener un archivo `.netcanvas` (para hacer una copia de seguridad, trasladarlo o distribuirlo), usa **Descargar** en la pantalla de vista general del protocolo.
 - En **Architect Classic** (la aplicación de escritorio), tu protocolo _es_ un archivo `.netcanvas` de tu ordenador. Se comporta como cualquier otro archivo: puedes moverlo, cambiarle el nombre y puedes (¡y deberías!) hacer copias de seguridad de él.
 
-En cualquier caso, el archivo `.netcanvas` contiene todos los datos de tu protocolo. Así, si usas [recursos](/es/design-protocols/key-concepts/resources), como datos de listas (listas predefinidas que se importan como archivos de datos), imágenes o vídeo, estos se incorporan al archivo. Consulta [Guardar y hacer copias de seguridad](/es/design-protocols/architect/saving-and-backing-up) para saber cómo guarda tu trabajo cada versión y cómo mantenerlo a salvo.
+En cualquier caso, el archivo `.netcanvas` contiene todos los datos de tu protocolo. Así, si usas [recursos](/es/design-protocols/key-concepts/resources), como datos de listas (listas predefinidas que se importan como archivos de datos), imágenes o vídeo, estos se incorporan al archivo. Consulta [Guardar y hacer copias de seguridad](/es/design-protocols/saving-and-backing-up) para saber cómo guarda tu trabajo cada versión y cómo mantenerlo a salvo.
 
 ## Contenido de un archivo .netcanvas {#inside-a-netcanvas-file}
 

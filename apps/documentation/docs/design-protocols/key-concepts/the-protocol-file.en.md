@@ -16,7 +16,7 @@ A Network Canvas protocol is stored as a `.netcanvas` file — a self-contained 
 - In **Architect** (the browser app), your protocol lives in an in-browser **library** while you work. To get a `.netcanvas` file — to back it up, move it, or deploy it — you **Download** it from the protocol overview screen.
 - In **Architect Classic** (the desktop app), your protocol _is_ a `.netcanvas` file on your computer. It behaves just like any other file: you can move it around, rename it, and you can (and should!) back it up.
 
-Either way, the `.netcanvas` file contains all the data in your protocol. So if you use any [resources](/en/design-protocols/key-concepts/resources), such as roster data, images, or video, these will be embedded within the file. See [Saving and backing up](/en/design-protocols/architect/saving-and-backing-up) for how each version stores your work and how to keep it safe.
+Either way, the `.netcanvas` file contains all the data in your protocol. So if you use any [resources](/en/design-protocols/key-concepts/resources), such as roster data, images, or video, these will be embedded within the file. See [Saving and backing up](/en/design-protocols/saving-and-backing-up) for how each version stores your work and how to keep it safe.
 
 ## Inside a .netcanvas file
 

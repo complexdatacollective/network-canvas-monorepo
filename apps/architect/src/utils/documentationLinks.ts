@@ -16,6 +16,6 @@ export const documentationLinks = {
   variableNaming: protocolAuthoringLinks.attributeNaming,
   geospatialInterface: interfaceDocumentationUrl('geospatial'),
   protocolSchema: `${DOCS_BASE_URL}/get-started/advanced-topics/protocol-schema-information/`,
-  savingAndBackingUp: `${DOCS_BASE_URL}/design-protocols/architect/saving-and-backing-up/`,
+  savingAndBackingUp: `${DOCS_BASE_URL}/design-protocols/saving-and-backing-up/`,
   whichTranslationParticipantsSee: `${DOCS_BASE_URL}/design-protocols/tutorials/translating-your-protocol/#the-default-language-and-which-translation-participants-see`,
 } as const;

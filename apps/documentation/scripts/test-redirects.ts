@@ -32,8 +32,7 @@ const redirectTests: RedirectTest[] = [
   },
   {
     from: '/en/design-protocols/installing-architect-desktop',
-    expectedDestination:
-      '/en/design-protocols/architect/installing-architect-classic',
+    expectedDestination: '/en/design-protocols/installing-architect-classic',
     description: 'Installing Architect page renamed to Architect Classic',
   },
 
@@ -65,28 +64,6 @@ const redirectTests: RedirectTest[] = [
       '/en/design-protocols/tutorials/responsive-svg-backgrounds',
     description:
       'Old responsive SVG backgrounds address goes straight to Tutorials',
-  },
-  {
-    from: '/es/design-protocols/choosing-architect',
-    expectedDestination: '/es/design-protocols/architect/choosing-architect',
-    description: 'Choosing Architect moved into the Architect folder (Spanish)',
-  },
-  {
-    from: '/key-concepts/preview-mode',
-    expectedDestination: '/en/design-protocols/architect/preview-mode',
-    description:
-      'Legacy preview-mode address goes straight to the Architect folder',
-  },
-  {
-    from: '/fr/design-protocols/saving-and-backing-up',
-    expectedDestination: '/fr/design-protocols/architect/saving-and-backing-up',
-    description:
-      'Saving and backing up moved into the Architect folder (French)',
-  },
-  {
-    from: '/en/design-protocols/faq',
-    expectedDestination: '/en/design-protocols/architect/faq',
-    description: 'Architect FAQ moved into the Architect folder',
   },
   {
     from: '/en/design-protocols/protocol-gallery',

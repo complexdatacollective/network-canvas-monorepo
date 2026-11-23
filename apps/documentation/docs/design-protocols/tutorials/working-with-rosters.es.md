@@ -2,7 +2,7 @@
 title: Trabajar con listas predefinidas
 wip: false
 navOrder: 2
-translatedFrom: ba97419e4a86b3ad769a2582fba5de8f35e2cf57
+translatedFrom: fa44e23fe407f38525cf419e524a5cade0a0371d
 ---
 
 <SummaryCard duration="30 minutos">
@@ -134,7 +134,7 @@ Puedes añadir la lista predefinida desde la [biblioteca de recursos](/es/design
 
 <AppOnly app="current">
 
-En Architect, tu protocolo, incluidos los recursos de listas predefinidas que añadas, se guarda automáticamente en la [biblioteca](/es/design-protocols/architect/saving-and-backing-up) de tu navegador mientras trabajas, y la lista se incorpora al archivo `.netcanvas` cuando descargas el protocolo.
+En Architect, tu protocolo, incluidos los recursos de listas predefinidas que añadas, se guarda automáticamente en la [biblioteca](/es/design-protocols/saving-and-backing-up) de tu navegador mientras trabajas, y la lista se incorpora al archivo `.netcanvas` cuando descargas el protocolo.
 
 </AppOnly>
 

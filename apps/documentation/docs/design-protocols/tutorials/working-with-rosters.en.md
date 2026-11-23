@@ -133,7 +133,7 @@ You can add the roster through the [Resource Library](/en/design-protocols/key-c
 
 <AppOnly app="current">
 
-In Architect, your protocol — including any roster resources you add — is saved automatically in your browser's [library](/en/design-protocols/architect/saving-and-backing-up) as you work, and the roster is embedded into the `.netcanvas` file when you download the protocol.
+In Architect, your protocol — including any roster resources you add — is saved automatically in your browser's [library](/en/design-protocols/saving-and-backing-up) as you work, and the roster is embedded into the `.netcanvas` file when you download the protocol.
 
 </AppOnly>
 

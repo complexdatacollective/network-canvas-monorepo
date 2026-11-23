@@ -1,7 +1,7 @@
 ---
 title: Classement ordinal
 navOrder: 12
-translatedFrom: c7f9bfb1211b720862e206ee2e0e11c5feeb7b83
+translatedFrom: 9b3b23d719076789acd18fc9f83eb9c37a014a70
 ---
 
 <InterfaceSummary type="OrdinalBin">
@@ -46,7 +46,7 @@ Utilisez cette interface pour recueillir des données ordinales ou d’échelle 
 
 En raison de la place disponible, évitez d’utiliser dans cette interface des échelles de plus de six cases. Avec des échelles plus grandes, les libellés des cases deviennent difficiles à lire et les autres éléments visuels de l’interface en pâtissent.
 
-Les libellés des cases peuvent être bien plus longs qu’un ou deux mots : une phrase courte convient. Chaque libellé rétrécit, par paliers, pour tenir dans l’espace dont dispose sa case, plutôt que d’être coupé au milieu d’un mot, et un lecteur d’écran lit toujours le libellé en entier. Ce rétrécissement a toutefois une taille minimale : un libellé assez long pour déborder de sa case même à cette taille est tronqué, ce qui est plus probable avec une échelle plus grande ou sur un petit écran. Vérifiez votre libellé le plus long dans l’[aperçu](/fr/design-protocols/architect/preview-mode) à la taille qu’utiliseront les personnes participantes. Les libellés peuvent utiliser du texte en **gras** et en _italique_ pour la mise en valeur. Les libellés courts restent plus grands et se lisent plus facilement d’un coup d’œil.
+Les libellés des cases peuvent être bien plus longs qu’un ou deux mots : une phrase courte convient. Chaque libellé rétrécit, par paliers, pour tenir dans l’espace dont dispose sa case, plutôt que d’être coupé au milieu d’un mot, et un lecteur d’écran lit toujours le libellé en entier. Ce rétrécissement a toutefois une taille minimale : un libellé assez long pour déborder de sa case même à cette taille est tronqué, ce qui est plus probable avec une échelle plus grande ou sur un petit écran. Vérifiez votre libellé le plus long dans l’[aperçu](/fr/design-protocols/preview-mode) à la taille qu’utiliseront les personnes participantes. Les libellés peuvent utiliser du texte en **gras** et en _italique_ pour la mise en valeur. Les libellés courts restent plus grands et se lisent plus facilement d’un coup d’œil.
 
 </BadPractice>
 

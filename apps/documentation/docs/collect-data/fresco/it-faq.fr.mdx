@@ -2,7 +2,7 @@
 title: FAQ pour les services informatiques
 date: 12th October 2026
 navOrder: 9
-translatedFrom: bf59dc05c07a6ccf9479adc999790940238a2bf3
+translatedFrom: 23c92c2028f398ed26932f6958d3c21cc46c0c4c
 ---
 
 Cet article répond aux questions que posent souvent les services informatiques, les équipes d’administration système et de sécurité de l’information lorsqu’ils aident une équipe de recherche à déployer Fresco. Il explique qui développe Fresco et à quelles conditions, de quelle infrastructure il a besoin, comment il traite les données des personnes participantes, ce que l’équipe du projet héberge elle-même et quelle est la posture de sécurité de l’application.
@@ -13,7 +13,7 @@ Pour savoir ce qu’est Fresco et comment les équipes de recherche l’utilisen
 
 Fresco est une application web open source qui permet aux équipes de recherche de mener des entretiens de réseau Network Canvas dans un navigateur. L’équipe de recherche téléverse (envoie vers le serveur) un protocole (un fichier qui définit l’entretien), génère des URL pour les personnes participantes et recueille les réponses aux entretiens dans un tableau de bord web.
 
-Fresco est l’un des trois outils produits par le projet Network Canvas. Les deux autres, [Architect](/fr/design-protocols/architect/choosing-architect) (pour concevoir des protocoles d’entretien) et [Interviewer](/fr/collect-data/interviewer) (pour mener des entretiens en présentiel), s’exécutent dans le navigateur et conservent tout ce qu’ils stockent sur l’appareil sur lequel ils s’exécutent. Fresco est l’outil qui fait intervenir un serveur : c’est donc celui que les services informatiques doivent généralement évaluer.
+Fresco est l’un des trois outils produits par le projet Network Canvas. Les deux autres, [Architect](/fr/design-protocols/choosing-architect) (pour concevoir des protocoles d’entretien) et [Interviewer](/fr/collect-data/interviewer) (pour mener des entretiens en présentiel), s’exécutent dans le navigateur et conservent tout ce qu’ils stockent sur l’appareil sur lequel ils s’exécutent. Fresco est l’outil qui fait intervenir un serveur : c’est donc celui que les services informatiques doivent généralement évaluer.
 
 Fresco n’est pas un produit SaaS (logiciel en tant que service). Il n’existe aucun serveur central exploité par l’équipe de développement, et aucune donnée d’entretien n’est jamais transmise à l’équipe de développement. La seule exception concerne les statistiques d’utilisation facultatives : tant qu’elles sont activées, un terme recherché dans le tableau de bord peut figurer dans les adresses de pages qu’elles envoient (consultez [Fresco envoie-t-il des données à des tiers ?](#does-fresco-send-data-to-third-parties)). Chaque groupe de recherche exploite sa propre instance indépendante.
 
