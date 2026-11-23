@@ -4,9 +4,9 @@ import type { SqlError } from 'effect/sql';
 
 import {
   findTimelineStructureProblems,
+  isEntityTypeId,
   isFinishSessionStage,
 } from '@codaco/protocol-validation';
-import { CodebookIdSchema } from '@codaco/shared-consts';
 import {
   type SectionDoc,
   contentHash,
@@ -568,10 +568,10 @@ const entitySectionId = (
   if (ref.entity === 'ego') {
     return Effect.succeed(sectionId({ kind: 'codebookEgo' }));
   }
-  if (!CodebookIdSchema.safeParse(ref.typeId).success) {
+  if (!isEntityTypeId(ref.typeId)) {
     return Effect.fail(
       new DraftStructureError({
-        reason: `codebook ${ref.entity} type id ${ref.typeId} is not a valid identifier`,
+        reason: `codebook ${ref.entity} type id ${ref.typeId} is not a UUID`,
       }),
     );
   }

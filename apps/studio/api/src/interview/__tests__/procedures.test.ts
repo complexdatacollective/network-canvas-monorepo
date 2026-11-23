@@ -43,8 +43,10 @@ import {
 } from '../../platform/analytics.ts';
 import { BrowserLogs } from '../../platform/browser-logs.ts';
 import {
+  BASE_CODEBOOK_IDS,
   BASE_PROTOCOL_IDS,
   baseProtocol,
+  testVariableId,
 } from '../../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../../protocol/store.ts';
 import type { RateLimiter } from '../../rate-limit/limiter.ts';
@@ -164,17 +166,17 @@ const network = (
 ) => ({
   nodes: nodeIds.map((id) => ({
     _uid: id,
-    type: 'person',
-    attributes: { personName: id },
+    type: BASE_CODEBOOK_IDS.person,
+    attributes: { [BASE_CODEBOOK_IDS.personName]: id },
   })),
   edges: edges.map(([from, to]) => ({
     _uid: `${from}-${to}`,
-    type: 'knows',
+    type: BASE_CODEBOOK_IDS.knows,
     from,
     to,
     attributes: {},
   })),
-  ego: { _uid: 'ego', attributes: { age: 41 } },
+  ego: { _uid: 'ego', attributes: { [testVariableId('age')]: 41 } },
 });
 
 const syncInput = (
@@ -607,7 +609,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       ).toEqual([{ node_count: 3, edge_count: 1 }]);
       expect(await sessionRow(sessionId)).toMatchObject({
         client_revision: '1',
-        ego_attributes: { age: 41 },
+        ego_attributes: { [testVariableId('age')]: 41 },
       });
 
       const resumed = await opened(sessionToken);

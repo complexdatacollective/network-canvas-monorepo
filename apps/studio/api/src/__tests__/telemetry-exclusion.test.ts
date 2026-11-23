@@ -31,8 +31,10 @@ import { ObservabilityLive } from '../platform/tracing.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { Doorbell } from '../protocol-builder/doorbell.ts';
 import {
+  BASE_CODEBOOK_IDS,
   BASE_PROTOCOL_IDS,
   baseProtocol,
+  testVariableId,
 } from '../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../protocol/store.ts';
 import {
@@ -452,14 +454,19 @@ const scenario = (
           nodes: [
             {
               _uid: 'node-1',
-              type: 'person',
+              type: BASE_CODEBOOK_IDS.person,
               stageId: BASE_PROTOCOL_IDS.nameGenerator,
               promptIDs: [BASE_PROTOCOL_IDS.namePrompt],
-              attributes: { personName: SEEDED.participantAnswer },
+              attributes: {
+                [BASE_CODEBOOK_IDS.personName]: SEEDED.participantAnswer,
+              },
             },
           ],
           edges: [],
-          ego: { _uid: 'ego', attributes: { age: SEEDED.egoAnswer } },
+          ego: {
+            _uid: 'ego',
+            attributes: { [testVariableId('age')]: SEEDED.egoAnswer },
+          },
         },
         stageMetadata: {},
       },

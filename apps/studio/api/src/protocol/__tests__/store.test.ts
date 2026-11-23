@@ -39,6 +39,7 @@ import {
 } from '../store.ts';
 import { createProtocolSyncServer } from '../sync.ts';
 import {
+  BASE_CODEBOOK_IDS,
   BASE_PROTOCOL_IDS,
   TEST_TEAM_ID,
   baseProtocol,
@@ -46,6 +47,7 @@ import {
   makeTestSyncServer,
   type StoreSchema,
   storeDb,
+  testTypeId,
   waitForLockWait,
 } from './helpers.ts';
 
@@ -612,7 +614,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     await run(
       addCodebookEntity(TEST_TEAM_ID, {
         draftId,
-        ref: { entity: 'node', typeId: 'place' },
+        ref: { entity: 'node', typeId: testTypeId('place') },
         definition: {
           name: 'Place',
           color: 'node-color-seq-3',
@@ -623,16 +625,15 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     let document = (await run(getDraftDocument(TEST_TEAM_ID, draftId))) as {
       codebook: { node: Record<string, unknown> };
     };
-    expect(Object.keys(document.codebook.node).toSorted()).toEqual([
-      'person',
-      'place',
-    ]);
+    expect(Object.keys(document.codebook.node).toSorted()).toEqual(
+      [BASE_CODEBOOK_IDS.person, testTypeId('place')].toSorted(),
+    );
 
     await expect(
       run(
         addCodebookEntity(TEST_TEAM_ID, {
           draftId,
-          ref: { entity: 'node', typeId: 'place' },
+          ref: { entity: 'node', typeId: testTypeId('place') },
           definition: {
             name: 'Place',
             color: 'node-color-seq-3',
@@ -645,13 +646,15 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     await run(
       removeCodebookEntity(TEST_TEAM_ID, {
         draftId,
-        ref: { entity: 'node', typeId: 'place' },
+        ref: { entity: 'node', typeId: testTypeId('place') },
       }),
     );
     document = (await run(getDraftDocument(TEST_TEAM_ID, draftId))) as {
       codebook: { node: Record<string, unknown> };
     };
-    expect(Object.keys(document.codebook.node)).toEqual(['person']);
+    expect(Object.keys(document.codebook.node)).toEqual([
+      BASE_CODEBOOK_IDS.person,
+    ]);
   });
 
   it('refuses a codebook type id the assembled protocol could never validate', async () => {
@@ -672,7 +675,9 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const document = (await run(getDraftDocument(TEST_TEAM_ID, draftId))) as {
       codebook: { node: Record<string, unknown> };
     };
-    expect(Object.keys(document.codebook.node)).toEqual(['person']);
+    expect(Object.keys(document.codebook.node)).toEqual([
+      BASE_CODEBOOK_IDS.person,
+    ]);
   });
 
   it('a validating sync server rejects a lease commit that would wedge the draft', async () => {
@@ -762,20 +767,24 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const { draftId } = await create(baseProtocol());
     const sync = makeTestSyncServer();
     const lease = await run(
-      sync.acquire(draftId, 'codebook:edge:knows', 'editor-tab'),
+      sync.acquire(
+        draftId,
+        `codebook:edge:${BASE_CODEBOOK_IDS.knows}`,
+        'editor-tab',
+      ),
     );
     expect(lease).not.toBeNull();
 
     await run(
       removeCodebookEntity(TEST_TEAM_ID, {
         draftId,
-        ref: { entity: 'edge', typeId: 'knows' },
+        ref: { entity: 'edge', typeId: BASE_CODEBOOK_IDS.knows },
       }),
     );
     await run(
       addCodebookEntity(TEST_TEAM_ID, {
         draftId,
-        ref: { entity: 'edge', typeId: 'knows' },
+        ref: { entity: 'edge', typeId: BASE_CODEBOOK_IDS.knows },
         definition: {
           name: 'Knows',
           color: 'edge-color-seq-2',
@@ -787,7 +796,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       run(
         sync.commit({
           draftId,
-          sectionId: 'codebook:edge:knows',
+          sectionId: `codebook:edge:${BASE_CODEBOOK_IDS.knows}`,
           owner: 'editor-tab',
           epoch: lease!.epoch,
           clientSeq: 1n,

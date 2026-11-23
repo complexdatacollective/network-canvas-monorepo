@@ -12,7 +12,12 @@ import { validateSection } from '@codaco/studio-sync/section-validation';
 
 import { sectionizeProtocol } from '../sectionize.ts';
 import { versionContentHash } from '../version-hash.ts';
-import { FIXTURES, baseProtocol, readFixtureProtocol } from './helpers.ts';
+import {
+  BASE_CODEBOOK_IDS,
+  FIXTURES,
+  baseProtocol,
+  readFixtureProtocol,
+} from './helpers.ts';
 
 describe('sectionize/assemble round trip', () => {
   for (const fixture of FIXTURES) {
@@ -57,7 +62,10 @@ describe('sectionize/assemble round trip', () => {
 
   it('round-trips a __proto__ entity type id without losing it', () => {
     const protocol = JSON.parse(
-      JSON.stringify(baseProtocol()).replaceAll('"person"', '"__proto__"'),
+      JSON.stringify(baseProtocol()).replaceAll(
+        JSON.stringify(BASE_CODEBOOK_IDS.person),
+        '"__proto__"',
+      ),
     ) as ReturnType<typeof baseProtocol>;
     const assembled = assembleProtocolSections(
       sectionizeProtocol(protocol),
@@ -142,17 +150,17 @@ describe('golden hashes', () => {
     expect(sectionHashes).toMatchInlineSnapshot(`
       {
         "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-        "codebook:edge:knows": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
-        "codebook:node:person": "5b62bc580a031a23de667d9f7c0005e797a1f97b8e375362b9c5cd7c21375372",
+        "codebook:edge:1d966f2b-32fc-51de-8d8d-334de4009e6c": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
+        "codebook:node:62c26eae-2583-582b-9355-1a478554b68c": "3d71952a42cd3a858e8bcb56a81fe8e394502eddc45a765add99e133598ad8af",
         "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
-        "stage:3c07e726-388f-4af2-99ce-bbe2aa1b31eb": "bc94be65a4b2245e7da254102222622c1a1764ca73d8977cc4a2af3de5a1b51b",
-        "stage:7f96f8ac-4f56-4f34-9195-dae7858b93f7": "cb28257e3f32646ec6888f92b1e7d70117e9885fab8bcd86426ce0562195fc70",
+        "stage:3c07e726-388f-4af2-99ce-bbe2aa1b31eb": "5818e8726f9c896a11a5a781d9e79490bf5d27aa07bb34fb34f22ede254fbc88",
+        "stage:7f96f8ac-4f56-4f34-9195-dae7858b93f7": "b549964db19173f76c1720556b9d76e08c8a8d186768ac92667b03b05f4d4004",
         "stage:8f480b11-39d0-4912-ade7-1d5040bf1f71": "954ea2a1e6a8b5428c4178f2b616631a0bdd4551b60174670fadc1ee29f55657",
         "stageOrder": "4c49e64f198d60f8f899dc13a92ef3c31f737dd35a89760449b611a107c4b814",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"60c2de4175efa0019ba52c843a0352539b45c27f8ee103f63da85cc8661333f0"`,
+      `"9e1b79bde5e64b64d9b9e1be1125fe80063cf41f9c323ab5c42422bd2387e9bc"`,
     );
   });
 });

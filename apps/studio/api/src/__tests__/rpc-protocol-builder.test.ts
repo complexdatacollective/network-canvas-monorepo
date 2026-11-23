@@ -12,7 +12,12 @@ import {
 } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  createVariableId,
+  isEntityTypeId,
+} from '@codaco/protocol-validation';
+import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { createStudio, type Studio } from '../app.ts';
 import { resolve as resolveEnv } from '../env/resolve.ts';
@@ -1091,8 +1096,32 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     );
   });
 
+  it('gives a node type it creates a UUID id', async () => {
+    const created = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'codebookNode',
+        document: Redacted.make({
+          name: 'Minted',
+          color: 'node-color-seq-3',
+          icon: 'add-a-person',
+          shape: { default: 'circle' },
+          variables: {},
+        }),
+      }),
+    );
+    const parsed = parseSectionId(created.sectionId);
+    expect(parsed.kind).toBe('codebookNode');
+    expect(
+      parsed.kind === 'codebookNode' && isEntityTypeId(parsed.typeId),
+    ).toBe(true);
+  });
+
   it('creates the ego codebook a protocol does not have yet, once', async () => {
     const EGO = sid('codebook:ego');
+    const egoAge = createVariableId();
     await expectRpcFailure(
       callExit(
         ADA,
@@ -1112,7 +1141,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         kind: 'codebookEgo',
         document: Redacted.make({
           variables: {
-            ego_age: {
+            [egoAge]: {
               name: 'ego_age',
               type: 'number',
               component: 'Number',
@@ -1127,7 +1156,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId: egolessProtocolId, sectionId: EGO }),
     );
     expect(Redacted.value(ego.document).variables).toMatchObject({
-      ego_age: { name: 'ego_age' },
+      [egoAge]: { name: 'ego_age' },
     });
 
     const error = await expectRpcFailure(

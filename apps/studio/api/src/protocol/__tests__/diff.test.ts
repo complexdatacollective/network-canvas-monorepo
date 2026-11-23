@@ -9,7 +9,12 @@ import { type SectionDoc, contentHash } from '@codaco/studio-sync/apply';
 
 import { type SectionSet, diffProtocolSections } from '../diff.ts';
 import { sectionizeProtocol } from '../sectionize.ts';
-import { BASE_PROTOCOL_IDS, baseProtocol } from './helpers.ts';
+import {
+  BASE_CODEBOOK_IDS,
+  BASE_PROTOCOL_IDS,
+  baseProtocol,
+  testVariableId,
+} from './helpers.ts';
 
 type Stage = CurrentProtocol['stages'][number];
 type Variable = NonNullable<
@@ -80,10 +85,10 @@ describe('diffProtocolSections', () => {
     nameGenerator(after).prompts[0]!.text = {
       en: 'Who do you spend time with?',
     };
-    const person = after.codebook.node!.person!;
+    const person = after.codebook.node![BASE_CODEBOOK_IDS.person]!;
     person.variables = {
       ...person.variables,
-      close_friend: {
+      [testVariableId('close_friend')]: {
         name: 'close_friend',
         type: 'boolean',
       },
@@ -111,11 +116,15 @@ describe('diffProtocolSections', () => {
     );
     expect(entityChange).toMatchObject({
       entity: 'node',
-      typeId: 'person',
+      typeId: BASE_CODEBOOK_IDS.person,
       name: 'Person',
       changes: [],
       variables: [
-        { variableId: 'close_friend', name: 'close_friend', change: 'added' },
+        {
+          variableId: testVariableId('close_friend'),
+          name: 'close_friend',
+          change: 'added',
+        },
       ],
     });
   });
@@ -321,7 +330,7 @@ describe('diffProtocolSections', () => {
   it('classifies a variable named after a prototype member', () => {
     const before = baseProtocol();
     const after = baseProtocol();
-    const person = after.codebook.node!.person!;
+    const person = after.codebook.node![BASE_CODEBOOK_IDS.person]!;
     // Annotated apart: a literal key named `constructor` is not contextually
     // typed by the record it is assigned to.
     const variable: Variable = {
@@ -335,7 +344,7 @@ describe('diffProtocolSections', () => {
       {
         kind: 'entity-changed',
         entity: 'node',
-        typeId: 'person',
+        typeId: BASE_CODEBOOK_IDS.person,
         name: 'Person',
         changes: [],
         variables: [

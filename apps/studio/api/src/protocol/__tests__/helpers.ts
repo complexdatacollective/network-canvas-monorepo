@@ -9,6 +9,8 @@ import {
   type CurrentProtocol,
   CurrentProtocolSchema,
   ProtocolObjectIdSchema,
+  deterministicEntityTypeId,
+  deterministicVariableId,
 } from '@codaco/protocol-validation';
 import {
   forceExpire,
@@ -181,6 +183,24 @@ export const BASE_PROTOCOL_IDS = {
   finish: ProtocolObjectIdSchema.parse('8f480b11-39d0-4912-ade7-1d5040bf1f71'),
 };
 
+/** A node or edge type id a test can name: the same UUID for the same label. */
+export const testTypeId = deterministicEntityTypeId(
+  '4f0d2a6b-1c8e-4d3a-9b7f-6e2c5a1d8f30',
+);
+
+/** A variable id a test can name: the same UUID for the same label. */
+export const testVariableId = deterministicVariableId(
+  'a3c9e1f4-7b2d-4e8a-8c5f-0b6d4e2a9c71',
+);
+
+/** The codebook ids in `baseProtocol()`. */
+export const BASE_CODEBOOK_IDS = {
+  person: testTypeId('person'),
+  knows: testTypeId('knows'),
+  personName: testVariableId('personName'),
+  layoutPosition: testVariableId('layoutPosition'),
+};
+
 // A schema parse rather than a cast: the reference fields are branded.
 /**
  * A protocol as Studio stores it: holding the interface text for what it
@@ -194,17 +214,17 @@ export function baseProtocol(): CurrentProtocol {
       localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
         node: {
-          person: {
+          [BASE_CODEBOOK_IDS.person]: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
-              personName: {
+              [BASE_CODEBOOK_IDS.personName]: {
                 name: 'Name',
                 type: 'text',
                 component: 'Text',
               },
-              layoutPosition: {
+              [BASE_CODEBOOK_IDS.layoutPosition]: {
                 name: 'Layout_Position',
                 type: 'layout',
               },
@@ -212,7 +232,7 @@ export function baseProtocol(): CurrentProtocol {
           },
         },
         edge: {
-          knows: {
+          [BASE_CODEBOOK_IDS.knows]: {
             name: 'Knows',
             color: 'edge-color-seq-1',
           },
@@ -223,13 +243,13 @@ export function baseProtocol(): CurrentProtocol {
           id: BASE_PROTOCOL_IDS.nameGenerator,
           type: 'NameGenerator',
           label: { en: 'Generate Names' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: BASE_CODEBOOK_IDS.person },
           form: {
             title: { en: 'Add person' },
             fields: [
               {
                 id: BASE_PROTOCOL_IDS.nameField,
-                variable: 'personName',
+                variable: BASE_CODEBOOK_IDS.personName,
                 prompt: { en: 'Enter name' },
               },
             ],
@@ -245,13 +265,13 @@ export function baseProtocol(): CurrentProtocol {
           id: BASE_PROTOCOL_IDS.sociogram,
           type: 'Sociogram',
           label: { en: 'Sociogram' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: BASE_CODEBOOK_IDS.person },
           background: { concentricCircles: 4 },
           prompts: [
             {
               id: BASE_PROTOCOL_IDS.sociogramPrompt,
               text: { en: 'Position nodes' },
-              layout: { layoutVariable: 'layoutPosition' },
+              layout: { layoutVariable: BASE_CODEBOOK_IDS.layoutPosition },
             },
           ],
         },

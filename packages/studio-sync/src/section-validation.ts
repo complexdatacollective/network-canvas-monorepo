@@ -10,6 +10,7 @@ import {
   ExperimentsSchema,
   NodeDefinitionSchema,
   assetSchema,
+  isEntityTypeId,
   type ProtocolObjectId,
   stageSchema,
   withEnclosingObjectIds,
@@ -140,6 +141,10 @@ export function sectionShapeIssues(
     const identity = validateStageSectionIdentity(ref.stageId, doc);
     if (!identity.success) issues.push(...identity.issues);
   }
+  if (ref.kind === 'codebookNode' || ref.kind === 'codebookEdge') {
+    const identity = validateEntityTypeSectionIdentity(ref.typeId);
+    if (!identity.success) issues.push(...identity.issues);
+  }
   return issues;
 }
 
@@ -192,6 +197,9 @@ export function assertSectionValid(
   if (ref.kind === 'stage') {
     fail(validateStageSectionIdentity(ref.stageId, doc));
   }
+  if (ref.kind === 'codebookNode' || ref.kind === 'codebookEdge') {
+    fail(validateEntityTypeSectionIdentity(ref.typeId));
+  }
   if (ref.kind === 'stageOrder' && sectionIds !== undefined) {
     fail(validateStageOrderMembership(doc, sectionIds));
   }
@@ -213,4 +221,19 @@ export function validateStageSectionIdentity(
     };
   }
   return { success: true };
+}
+
+function validateEntityTypeSectionIdentity(
+  typeId: string,
+): SectionValidationResult {
+  if (isEntityTypeId(typeId)) return { success: true };
+  return {
+    success: false,
+    issues: [
+      {
+        path: [],
+        message: `node or edge type id ${typeId} is not a UUID`,
+      },
+    ],
+  };
 }

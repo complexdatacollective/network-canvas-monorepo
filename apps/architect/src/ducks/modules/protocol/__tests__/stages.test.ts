@@ -2,6 +2,10 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
 import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { LocalizedString, Stage } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
@@ -465,10 +469,10 @@ describe('protocol.stages', () => {
           ],
           codebook: {
             node: {
-              person: {
+              [testTypeId('person')]: {
                 name: 'Person',
                 variables: {
-                  ssn: {
+                  [testVariableId('ssn')]: {
                     name: 'ssn',
                     type: 'text',
                     encrypted: true,
