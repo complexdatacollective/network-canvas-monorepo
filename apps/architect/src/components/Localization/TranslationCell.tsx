@@ -11,9 +11,17 @@ import {
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { hasVersionRowBeside } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import {
+  hasVersionRowBeside,
+  type RichTextAssetBlocks,
+} from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  AssetBlockLine,
+  createAssetBlockImages,
+} from '@codaco/protocol-builder/fields/assetBlocks/assetBlockImages';
+import { createAssetBlockView } from '@codaco/protocol-builder/fields/assetBlocks/AssetBlockView';
 import {
   DynamicMessageEditor,
   type DynamicMessageSite,
@@ -33,6 +41,7 @@ import {
 import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
 import { textFieldPropsFor } from '@codaco/protocol-builder/localization/textShape';
 import {
+  assetBlockFile,
   type DynamicValues,
   type DynamicValueSite,
   dynamicValueContextFor,
@@ -45,7 +54,7 @@ import {
 import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 import { useAppSelector } from '~/ducks/hooks';
 import type { TranslationRow } from '~/selectors/issues';
-import { getProtocol } from '~/selectors/protocol';
+import { getDisplayAssetManifest, getProtocol } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import {
@@ -172,16 +181,45 @@ const cellMarkdownComponents = {
   h6: headingAsParagraph,
 };
 
+/** The file a block names, as the protocol being translated holds it. */
+const useProtocolAsset = (assetId: string) =>
+  assetBlockFile(useAppSelector(getDisplayAssetManifest), assetId);
+
+// A file a text holds as a block is one line in a cell that shows the text
+// (see `createAssetBlockImages`), and the same line in a cell that edits it,
+// with what changes how it shows below it while it is selected. The table
+// has no way to add one: which files a page shows is the page's to decide,
+// in its stage editor, and a translation says the same page in other words.
+const CELL_BLOCK_IMAGES = createAssetBlockImages(useProtocolAsset);
+const CELL_ASSET_BLOCKS: RichTextAssetBlocks = {
+  View: createAssetBlockView({
+    useAsset: useProtocolAsset,
+    Preview: ({ kind, name }) => <AssetBlockLine kind={kind} name={name} />,
+  }),
+};
+
 /** The same rules for text that shows values. */
 const CELL_BLOCK_MARKDOWN: BlockMarkdown = {
   allowedElements: CELL_MARKDOWN_ELEMENTS,
   components: cellMarkdownComponents,
 };
+const CELL_ASSET_BLOCK_MARKDOWN: BlockMarkdown = {
+  ...CELL_BLOCK_MARKDOWN,
+  blockImages: CELL_BLOCK_IMAGES,
+};
 
-const CellMarkdown = ({ children }: { children: string }) => (
+const CellMarkdown = ({
+  children,
+  assetBlocks,
+}: {
+  children: string;
+  /** Whether the text holds files as blocks, which a cell then names. */
+  assetBlocks: boolean;
+}) => (
   <RenderMarkdown
     allowedElements={CELL_MARKDOWN_ELEMENTS}
     components={cellMarkdownComponents}
+    blockImages={assetBlocks ? CELL_BLOCK_IMAGES : undefined}
     unwrapDisallowed
   >
     {children}
@@ -230,16 +268,22 @@ const Fallback = ({
   locale,
   localization,
   messageArguments,
-  dynamicSite,
+  dynamic,
+  assetBlocks = false,
 }: {
   id: string;
   value: LocalizedString | undefined;
   format: LocalizedStringFormat;
+  /** Whether the text holds files as blocks (see `CellMarkdown`). */
+  assetBlocks?: boolean;
   locale: LocaleTag;
   localization: ProtocolLocalization;
   messageArguments?: MessageArguments;
-  /** Where text with values sits, for text that shows them. */
-  dynamicSite?: DynamicMessageSite;
+  /**
+   * For text that shows values: where it sits, and whether its field holds
+   * several lines (see `DynamicMessageSummary`).
+   */
+  dynamic?: Readonly<{ site: DynamicMessageSite; singleLine: boolean }>;
 }) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
@@ -275,13 +319,16 @@ const Fallback = ({
       )}
     >
       <div lang={shown.lang} className="w-full text-current/60">
-        {dynamicSite !== undefined ? (
+        {dynamic !== undefined ? (
           <DynamicMessageSummary
             message={shown.text}
             markdown={format === 'markdown'}
+            multiline={!dynamic.singleLine}
             locale={shown.lang}
-            site={dynamicSite}
-            blockMarkdown={CELL_BLOCK_MARKDOWN}
+            site={dynamic.site}
+            blockMarkdown={
+              assetBlocks ? CELL_ASSET_BLOCK_MARKDOWN : CELL_BLOCK_MARKDOWN
+            }
           />
         ) : messageArguments !== undefined ? (
           <LocalizedMessageVersionsSummary
@@ -290,7 +337,7 @@ const Fallback = ({
             locale={shown.lang}
           />
         ) : format === 'markdown' ? (
-          <CellMarkdown>{shown.text}</CellMarkdown>
+          <CellMarkdown assetBlocks={assetBlocks}>{shown.text}</CellMarkdown>
         ) : (
           shown.text
         )}
@@ -496,8 +543,7 @@ const CELL_EDITOR_CLASSES = cx(
   '[&>:first-child]:min-h-0 [&>:first-child]:px-3 [&>:first-child]:py-2',
   '[&_.tiptap.ProseMirror]:min-h-0 [&>:first-child>.tiptap]:py-0',
   '[&_.tiptap_:is(h1,h2,h3,h4)]:mt-0 [&_.tiptap_:is(h1,h2,h3,h4)]:mb-2 [&_.tiptap_:is(h1,h2,h3,h4)]:font-[inherit] [&_.tiptap_:is(h1,h2,h3,h4)]:text-base [&_.tiptap_:is(h1,h2,h3,h4)]:font-semibold',
-  '[&_[role=toolbar]]:sticky [&_[role=toolbar]]:top-(--translation-table-sticky-top) [&_[role=toolbar]]:z-1 [&_[role=toolbar]]:mx-0.5 [&_[role=toolbar]]:mt-0.5 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:flex-wrap [&_[role=toolbar]]:gap-0.5 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
-  '[&_[role=toolbar]_[role=separator]]:mx-1',
+  '[&_[role=toolbar]]:sticky [&_[role=toolbar]]:top-(--translation-table-sticky-top) [&_[role=toolbar]]:z-1 [&_[role=toolbar]]:mx-0.5 [&_[role=toolbar]]:mt-0.5 [&_[role=toolbar]]:w-auto [&_[role=toolbar]]:min-w-0 [&_[role=toolbar]]:px-1 [&_[role=toolbar]]:py-1',
 );
 
 const EDITABLE_SELECTOR = '[contenteditable="true"]';
@@ -680,7 +726,7 @@ const RichTextCell = ({
   // The editor the text's field declares, as the stage editor offers it: a
   // one-line text gets bold and italics, a text of several lines the whole
   // toolbar, whatever its translations hold now.
-  const { singleLine } = textFieldPropsFor(row);
+  const { singleLine, assetBlocks } = textFieldPropsFor(row);
   const draft = useTranslationDraft({ row, locale });
   const { text, error } = draft;
   const { editing, revision, cellProps } = useEditedCell({
@@ -718,6 +764,7 @@ const RichTextCell = ({
                 id={contentId}
                 value={value}
                 format={row.format}
+                assetBlocks={assetBlocks}
                 locale={locale}
                 localization={localization}
               />
@@ -733,6 +780,7 @@ const RichTextCell = ({
             value={text}
             onChange={(markdown) => draft.change(markdown ?? '')}
             singleLine={singleLine}
+            assetBlocks={assetBlocks ? CELL_ASSET_BLOCKS : undefined}
             // In this column's language, as the plain-text cell's box is.
             dir={localeDirection(locale)}
             className={CELL_EDITOR_CLASSES}
@@ -747,6 +795,7 @@ const RichTextCell = ({
                 id={contentId}
                 value={value}
                 format={row.format}
+                assetBlocks={assetBlocks}
                 locale={locale}
                 localization={localization}
               />
@@ -755,7 +804,7 @@ const RichTextCell = ({
                 id={contentId}
                 className={cx(CELL_TEXT_CLASSES, 'col-start-1 row-start-1')}
               >
-                <CellMarkdown>{text}</CellMarkdown>
+                <CellMarkdown assetBlocks={assetBlocks}>{text}</CellMarkdown>
               </div>
             )}
           </div>
@@ -990,7 +1039,7 @@ const DynamicCell = ({
   const draft = useTranslationDraft({ row, locale });
   const { text: message, error } = draft;
   // As the text's field declares it (see `RichTextCell`).
-  const { markdown, singleLine } = textFieldPropsFor(row);
+  const { markdown, singleLine, assetBlocks } = textFieldPropsFor(row);
   const { editing, revision, cellProps } = useEditedCell({
     draft,
     singleLine,
@@ -1030,9 +1079,10 @@ const DynamicCell = ({
                   id={contentId}
                   value={value}
                   format={row.format}
+                  assetBlocks={assetBlocks}
                   locale={locale}
                   localization={localization}
-                  dynamicSite={site}
+                  dynamic={{ site, singleLine }}
                 />
               </div>
             )}
@@ -1047,6 +1097,7 @@ const DynamicCell = ({
               readOnly={false}
               markdown={markdown}
               singleLine={singleLine}
+              assetBlocks={assetBlocks ? CELL_ASSET_BLOCKS : undefined}
               message={message}
               onMessageChange={(next) => draft.change(next ?? '')}
               locale={locale}
@@ -1063,9 +1114,10 @@ const DynamicCell = ({
                   id={contentId}
                   value={value}
                   format={row.format}
+                  assetBlocks={assetBlocks}
                   locale={locale}
                   localization={localization}
-                  dynamicSite={site}
+                  dynamic={{ site, singleLine }}
                 />
               ) : (
                 <div
@@ -1078,9 +1130,14 @@ const DynamicCell = ({
                   <DynamicMessageSummary
                     message={message}
                     markdown={markdown}
+                    multiline={!singleLine}
                     locale={locale}
                     site={site}
-                    blockMarkdown={CELL_BLOCK_MARKDOWN}
+                    blockMarkdown={
+                      assetBlocks
+                        ? CELL_ASSET_BLOCK_MARKDOWN
+                        : CELL_BLOCK_MARKDOWN
+                    }
                   />
                 </div>
               )}

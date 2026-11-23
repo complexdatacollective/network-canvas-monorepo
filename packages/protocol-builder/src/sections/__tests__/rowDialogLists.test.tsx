@@ -19,15 +19,9 @@ import {
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
-import PageContentSection from '../page-content/PageContentSection.tsx';
 import NodePanelsSection from '../panels/NodePanelsSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import {
-  TestItemEditor,
-  TestItemPreview,
-  TestPromptEditor,
-  TestPromptPreview,
-} from './rowFixtures.tsx';
+import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 const en = (text: string) => ({ 'en-US': text });
 
@@ -186,32 +180,6 @@ const lists: readonly ListCase[] = [
           requiresSubject={false}
         />,
       ),
-  },
-  {
-    list: 'the blocks a page shows',
-    noun: 'item',
-    addLabel: 'Create new content item',
-    read: rowsAt('items'),
-    row: (id, text) => ({ id, type: 'text', content: en(text) }),
-    label: (row) => englishOf(row.content),
-    write: typeInto('Block text'),
-    open: (rows) => ({
-      stage: {
-        id: 'information-with-blocks',
-        type: 'Information',
-        fields: {
-          label: en('Information'),
-          title: en('Welcome'),
-          items: rows,
-        },
-      },
-      sections: (
-        <PageContentSection
-          ItemEditor={TestItemEditor}
-          ItemPreview={TestItemPreview}
-        />
-      ),
-    }),
   },
   {
     list: 'the panels a name generator shows',

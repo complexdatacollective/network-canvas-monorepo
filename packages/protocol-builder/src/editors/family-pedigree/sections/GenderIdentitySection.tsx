@@ -196,6 +196,7 @@ export default function GenderIdentitySection() {
 
   return (
     <BuilderSection
+      sectionKey="gender-identity"
       title={intl.formatMessage(messages.genderIdentityTitle)}
       description={intl.formatMessage(messages.genderIdentityDescription)}
       capability={GENDER_IDENTITY_CAPABILITY}

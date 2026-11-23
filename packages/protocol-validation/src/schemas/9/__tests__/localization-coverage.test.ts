@@ -47,11 +47,18 @@ const MARKDOWN_BLOCKS: LocalizedTextShape = {
   format: 'markdown',
   lines: 'multiple',
 };
+const ASSET_BLOCKS: LocalizedTextShape = {
+  format: 'markdown',
+  lines: 'multiple',
+  assetBlocks: true,
+};
 
 type ExpectedSite = Readonly<{
   path: Path;
   format: LocalizedStringFormat;
   lines: LocalizedTextLines;
+  // Whether the text may hold files of the protocol as blocks.
+  assetBlocks: boolean;
   // Whether the field's own rule allows an empty translation.
   allowsEmpty: boolean;
   // Whether the field may have no translation at all: only the finish
@@ -64,10 +71,17 @@ type ExpectedSite = Readonly<{
 
 const site = (
   path: Path,
-  { format, lines }: LocalizedTextShape,
+  { format, lines, assetBlocks }: LocalizedTextShape,
   allowsEmpty = false,
   allowsNoTranslation = false,
-): ExpectedSite => ({ path, format, lines, allowsEmpty, allowsNoTranslation });
+): ExpectedSite => ({
+  path,
+  format,
+  lines,
+  assetBlocks: assetBlocks === true,
+  allowsEmpty,
+  allowsNoTranslation,
+});
 
 const messageSite = (
   path: Path,
@@ -184,9 +198,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   // The Language Chooser's heading, which Network Canvas supplies.
   site(stage(0, 'title'), PLAIN_LINE),
 
-  site(stage(1, 'title'), PLAIN_LINE),
-  site(stage(1, 'items', 0, 'content'), MARKDOWN_BLOCKS),
-  site(stage(1, 'items', 1, 'description'), PLAIN_LINE),
+  // The whole page: its heading, text and files in one markdown text.
+  site(stage(1, 'content'), ASSET_BLOCKS),
 
   site(stage(2, 'introductionPanel', 'title'), PLAIN_LINE),
   site(stage(2, 'introductionPanel', 'text'), MARKDOWN_BLOCKS),
@@ -385,18 +398,20 @@ describe('localized string coverage', () => {
     // a protocol's own copy is written in.
     const found = collectLocalizedStrings(completeProtocol())
       .filter(({ path }) => path[0] !== 'interfaceText')
-      .map(({ path, format, lines, arguments: declaration }) => ({
+      .map(({ path, format, lines, assetBlocks, arguments: declaration }) => ({
         path: pathKey(path),
         format,
         lines,
+        assetBlocks: assetBlocks === true,
         arguments: declaration,
       }))
       .toSorted((a, b) => a.path.localeCompare(b.path));
     const expected = EXPECTED_SITES.map(
-      ({ path, format, lines, arguments: declaration }) => ({
+      ({ path, format, lines, assetBlocks, arguments: declaration }) => ({
         path: pathKey(path),
         format,
         lines,
+        assetBlocks,
         arguments: declaration,
       }),
     ).toSorted((a, b) => a.path.localeCompare(b.path));

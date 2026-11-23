@@ -22,7 +22,10 @@ export default function PedigreePromptSection() {
   const intl = useAppIntl();
 
   return (
-    <BuilderSection title={intl.formatMessage(messages.promptTitle)}>
+    <BuilderSection
+      sectionKey="pedigree-prompt"
+      title={intl.formatMessage(messages.promptTitle)}
+    >
       <Field<typeof LocalizedRichTextField>
         name="prompt"
         component={LocalizedRichTextField}

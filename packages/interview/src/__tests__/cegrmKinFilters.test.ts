@@ -15,6 +15,7 @@ type Stage = {
   id: string;
   filter?: Filter;
   panels?: { filter: Filter }[];
+  presets?: { id: string; filter?: Filter }[];
   prompts?: { additionalAttributes?: { variable: string; value: boolean }[] }[];
 };
 
@@ -60,12 +61,15 @@ const network: NcNetwork = {
   edges: [],
 };
 
+const idsLeftBy = (applied: Filter): string[] =>
+  filter(applied)(network).nodes.map(
+    (node) => node[entityPrimaryKeyProperty] as string,
+  );
+
 const idsAfter = (stageId: string): string[] => {
   const stageFilter = getStage(stageId).filter;
   if (!stageFilter) throw new Error(`Stage ${stageId} has no filter`);
-  return filter(stageFilter)(network).nodes.map(
-    (node) => node[entityPrimaryKeyProperty] as string,
-  );
+  return idsLeftBy(stageFilter);
 };
 
 describe('the CEGRM template tells family from non-kin by the non_kin mark', () => {
@@ -106,8 +110,23 @@ describe('the CEGRM template tells family from non-kin by the non_kin mark', () 
   });
 
   it('still brings everyone but the participant to the whole-network stages', () => {
-    for (const id of ['bin-closeness', 'socio-exchanges', 'narrative-cegrm']) {
+    for (const id of ['bin-closeness', 'socio-exchanges']) {
       expect(idsAfter(id)).toEqual([
+        'placeholder-parent',
+        'described-relative',
+        'friend',
+      ]);
+    }
+  });
+
+  // A Narrative has no filter of its own: each preset narrows the network for
+  // itself, so every preset has to keep the participant out.
+  it('brings everyone but the participant to every preset of the narrative', () => {
+    const presets = getStage('narrative-cegrm').presets ?? [];
+    expect(presets).toHaveLength(3);
+    for (const preset of presets) {
+      if (!preset.filter) throw new Error(`Preset ${preset.id} has no filter`);
+      expect(idsLeftBy(preset.filter)).toEqual([
         'placeholder-parent',
         'described-relative',
         'friend',

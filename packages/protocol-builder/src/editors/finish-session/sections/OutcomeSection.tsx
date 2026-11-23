@@ -36,6 +36,7 @@ export default function OutcomeSection() {
 
   return (
     <BuilderSection
+      sectionKey="outcome"
       title={intl.formatMessage(finishSessionMessages.outcomeTitle)}
       description={intl.formatMessage(finishSessionMessages.outcomeDescription)}
     >

@@ -53,6 +53,7 @@ export default function RelationshipToParticipantSection() {
 
   return (
     <BuilderSection
+      sectionKey="relationship-to-participant"
       title={intl.formatMessage(messages.relationshipToParticipantTitle)}
       description={intl.formatMessage(
         messages.relationshipToParticipantDescription,

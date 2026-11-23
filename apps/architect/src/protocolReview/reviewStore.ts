@@ -71,6 +71,11 @@ export type StoredReview = {
   /** The language the findings are written in. */
   locale: string;
   /**
+   * The protocol's default language when it was reviewed: the one its fixes
+   * write. Absent from reviews saved before it was kept.
+   */
+  defaultLocale?: string;
+  /**
    * Who wrote it. Absent from reviews saved before there was a choice, all
    * of which Anthropic wrote.
    */

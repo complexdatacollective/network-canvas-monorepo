@@ -403,6 +403,11 @@ const createMarkdownComponents = (docSlug?: string) => ({
   td: (props: ComponentProps<typeof TableCell>) => (
     <TableCell className="w-auto align-top whitespace-normal" {...props} />
   ),
+  // Wrap a markdown table in <EqualColumns> (blank lines around the table) to
+  // give every column the same width instead of sizing columns to their text.
+  equalcolumns: (props: { children: ReactNode }) => (
+    <div className="[&_table]:table-fixed">{props.children}</div>
+  ),
   details: Details,
   summary: Summary,
 });

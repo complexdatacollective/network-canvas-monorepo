@@ -112,6 +112,7 @@ import {
   controlsForType,
   isCollectableType,
 } from '../collectableTypes.ts';
+import type { SectionKey } from '../sectionKeys.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
 import FieldPreviewPane from './FieldPreviewPane.tsx';
@@ -696,6 +697,12 @@ export type FormFieldsSectionProps = Readonly<{
    * `sections/__tests__/namedDescriptorProps.test.tsx`.
    */
   title?: MessageDescriptor;
+  /**
+   * The section's stable name, which travels with its title: a caller that
+   * gives the section other words because it is a different section gives it
+   * its own key.
+   */
+  sectionKey?: SectionKey;
   description?: MessageDescriptor;
   fieldLabel?: MessageDescriptor;
   fieldHint?: MessageDescriptor;
@@ -726,6 +733,7 @@ export default function FormFieldsSection({
   reservedVariables,
   reservedVariableRefusal,
   title = formFieldsMessages.title,
+  sectionKey = 'form-fields',
   description = formFieldsMessages.description,
   fieldLabel = formFieldsMessages.fieldLabel,
   fieldHint = formFieldsMessages.fieldHint,
@@ -852,6 +860,7 @@ export default function FormFieldsSection({
 
   return (
     <BuilderSection
+      sectionKey={sectionKey}
       title={intl.formatMessage(title)}
       description={intl.formatMessage(
         waiting ? formFieldsMessages.waitingDescription : description,
@@ -1595,9 +1604,10 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           (`sections/Form/FieldFields.tsx`): the rules the participant's answer
           has to satisfy, authored where the question is rather than behind a
           button. They belong to the codebook attribute, so a bound attribute's
-          rules commit under the codebook section's own lock; an attribute this
-          row is still inventing has no record to write to, and its rules ride
-          along with the create. */}
+          rules are a codebook change, kept with this row until it is saved and
+          then with the stage (see `StagedCodebookStore`); an attribute this row
+          is still inventing has no record to change, and its rules ride along
+          with the create. */}
       {inventing
         ? isCollectableType(newType) && (
             <DraftVariableValidationSection

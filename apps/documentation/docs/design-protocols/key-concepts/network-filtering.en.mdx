@@ -22,7 +22,7 @@ Network filtering is different from [skip logic](/en/design-protocols/key-concep
 
 ## Configuring network filtering on a stage
 
-To configure network filtering within a stage, open the stage from the timeline view and toggle the switch to enable **Network Filtering**. From here, you can create one or more **rules** (of type alter or edge), as well as set the **join operator** by determining if **all rules** or **any rule** must match.
+To configure network filtering within a stage, open the stage from the timeline view and switch on **Filter network**. From here, you can create one or more **rules** (of type alter or edge), as well as set the **join operator** by determining if **all rules** or **any rule** must match.
 
 ![](/assets/img/key-concepts/network-filtering/filtering-panel.png)
 
@@ -54,7 +54,7 @@ valid.
 
 ### The join operator
 
-Rules are chained together (or 'joined') using either `AND` or `OR` logic, which is set in the network filter configuration section using the **Must match** options **all rules** and **any rules** respectively. These methods behave much as you might expect. In the context of a filter operation:
+Rules are chained together (or 'joined') using either `AND` or `OR` logic, which is set in the **Filter network** section using the **Rule Matching** options **All rules must match** and **Any rule can match** respectively. These methods behave much as you might expect. In the context of a filter operation:
 
 - `OR` signifies that if a node or edge meets _any_ individual rule criteria, it will be returned in the overall network.
 - `AND` signifies that nodes and edges in the returned network should satisfy the criteria from _all_ rules.
@@ -90,6 +90,14 @@ You can also filter the content of Name Generator [side panels](/en/design-proto
 This feature can be particularly useful if you wish to filter elements of a roster. For example, your roster may contain an attribute that represents graduation year that you could use to filter the side panel content for a question about classmates known from a certain year group.
 
 ![](/assets/img/key-concepts/network-filtering/side-panel.png)
+
+<AppOnly app="current">
+
+## Network filtering in a Narrative preset
+
+A [Narrative](/en/design-protocols/interface-documentation/narrative) stage has no filter for the stage as a whole. Each of its presets has a filter of its own instead, so the stage can show a different part of the network in each preset. A preset's filter is built from the same rules and join operator as a stage filter, and applies only while that preset is shown. See [Filtering a preset](/en/design-protocols/interface-documentation/narrative#filtering-a-preset).
+
+</AppOnly>
 
 ## Related concepts
 

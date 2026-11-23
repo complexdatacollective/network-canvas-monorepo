@@ -50,11 +50,11 @@ function renderList(fields: SectionDoc) {
     stage: { type: 'Information', fields },
     sections: (
       <>
-        <BuilderSection title="Page content">
+        <BuilderSection sectionKey="page-content" title="Page content">
           {probe}
           <Field name="title" label="Page heading" component={InputField} />
         </BuilderSection>
-        <BuilderSection title="Answer options">
+        <BuilderSection sectionKey="form-fields" title="Answer options">
           <Field
             name="options"
             label="Answer options"

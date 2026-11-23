@@ -322,9 +322,10 @@ describe('the questions a tie-strength census asks about a pair', () => {
    * were reachable only from the codebook screen.
    *
    * They belong to the codebook attribute rather than to the prompt, so the
-   * change lands in the connection type's own section.
+   * change is made to the connection type's own section — held with the stage
+   * when the prompt is saved, and written to the protocol with the stage.
    */
-  it('shows the scale’s points beside the prompt and writes an edit to them', async () => {
+  it('shows the scale’s points beside the prompt and holds an edit to them with the stage', async () => {
     const harness = renderStageEditor(openSection());
 
     await harness.user.click(
@@ -347,22 +348,32 @@ describe('the questions a tie-strength census asks about a pair', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Finish editing option' }),
     );
-    // The row's own save is what writes it, which is Architect's write model
-    // too: the list belongs to the codebook attribute and commits under that
-    // section's lock, from the prompt the researcher was writing.
+    // The row's own save is what carries it: the list belongs to the codebook
+    // attribute, so saving the prompt writes it to the stage's draft of that
+    // section, from the prompt the researcher was writing.
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
+    const edited = {
+      options: [
+        { label: { 'en-US': 'Inseparable' }, value: 3 },
+        { label: { 'en-US': 'Somewhat close' }, value: 2 },
+        { label: { 'en-US': 'Not close' }, value: 1 },
+      ],
+    };
     await waitFor(() =>
       expect(
-        harness.hostCodebook().edge?.knows?.variables?.closeness,
-      ).toMatchObject({
-        options: [
-          { label: { 'en-US': 'Inseparable' }, value: 3 },
-          { label: { 'en-US': 'Somewhat close' }, value: 2 },
-          { label: { 'en-US': 'Not close' }, value: 1 },
-        ],
-      }),
+        harness.editorCodebook().edge?.knows?.variables?.closeness,
+      ).toMatchObject(edited),
     );
+    // The protocol keeps the old points until the stage is saved.
+    expect(
+      harness.hostCodebook().edge?.knows?.variables?.closeness,
+    ).not.toMatchObject(edited);
+
+    await harness.submit();
+    expect(
+      harness.hostCodebook().edge?.knows?.variables?.closeness,
+    ).toMatchObject(edited);
   });
 
   /**
@@ -494,7 +505,8 @@ describe('the questions a tie-strength census asks about a pair', () => {
 
 /**
  * Both of this prompt's codebook picks can be invented from inside it, and
- * each lands in the codebook on its own before the prompt is pointed at it.
+ * each is held with the prompt before the prompt is pointed at it, reaching the
+ * codebook with the stage's save.
  */
 describe('creating a scale from inside a tie-strength prompt', () => {
   /**
@@ -506,7 +518,7 @@ describe('creating a scale from inside a tie-strength prompt', () => {
    * that is the `stopPropagation` each codebook editor puts on its own submit,
    * and this is one of the cases that says the fix is still in place.
    */
-  it('writes the connection type’s own section, and leaves the prompt open', async () => {
+  it('holds it on the connection type’s own section, and leaves the prompt open', async () => {
     const harness = renderStageEditor(openSection());
 
     await harness.user.click(
@@ -539,17 +551,36 @@ describe('creating a scale from inside a tie-strength prompt', () => {
       within(spotlight).getByRole('option', { name: 'trust' }),
     ).toBeVisible();
 
-    // The connection type is where it landed, not the person and not the stage.
+    // Not in the protocol: nothing is written until the stage is saved.
+    expect(
+      Object.values(harness.hostCodebook().edge?.knows?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('trust');
+
+    // Saving the prompt hands it to the stage, on the connection type — not
+    // the person and not the stage's own document.
+    await harness.user.keyboard('{Escape}');
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(
+      Object.values(harness.editorCodebook().edge?.knows?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).toContain('trust');
+    expect(
+      Object.values(harness.editorCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('trust');
+    await harness.submit();
     expect(
       Object.values(harness.hostCodebook().edge?.knows?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).toContain('trust');
-    expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
-        (variable) => variable.name,
-      ),
-    ).not.toContain('trust');
   });
 });
 
@@ -590,8 +621,14 @@ describe('a scale created on a connection type created in the same prompt', () =
     );
   }
 
-  const newEdgeVariables = (harness: StageEditorHarness) =>
-    Object.values(harness.hostCodebook().edge ?? {})
+  const newEdgeVariables = (
+    harness: StageEditorHarness,
+    codebook: 'host' | 'editor' = 'host',
+  ) =>
+    Object.values(
+      (codebook === 'host' ? harness.hostCodebook() : harness.editorCodebook())
+        .edge ?? {},
+    )
       .filter((definition) => definition.name === 'Edge')
       .flatMap((definition) =>
         Object.values(definition.variables ?? {}).map(
@@ -609,7 +646,14 @@ describe('a scale created on a connection type created in the same prompt', () =
 
     const picker = await findScaleField();
     await waitFor(() => expect(within(picker).getByText('f')).toBeVisible());
-    expect(newEdgeVariables(harness)).toEqual(['f']);
+    // The new connection type and its scale are the stage's once the prompt is
+    // saved, and the protocol's once the stage is.
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(newEdgeVariables(harness, 'editor')).toEqual(['f']);
+    expect(newEdgeVariables(harness)).toEqual([]);
   });
 
   it.each([
@@ -640,6 +684,7 @@ describe('a scale created on a connection type created in the same prompt', () =
         ),
       ).toBeNull();
       expect(newEdgeVariables(harness)).toEqual([]);
+      expect(newEdgeVariables(harness, 'editor')).toEqual([]);
     },
   );
 });

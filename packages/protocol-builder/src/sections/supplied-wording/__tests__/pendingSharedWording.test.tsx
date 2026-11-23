@@ -2,6 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
   interfaceTextWithUpdates,
   suppliedInterfaceText,
@@ -25,6 +27,7 @@ import { categoricalBinStageEditor } from '../../../editors/categorical-bin/Cate
 import { geospatialSections } from '../../../editors/geospatial/__tests__/geospatialFixtures.tsx';
 import type { ProtocolLocalization } from '../../../localization/localizedText.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { beforeCall } from '../../../testing/host/beforeCall.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
@@ -34,12 +37,16 @@ import {
 } from '../../../testing/renderStageEditor.tsx';
 
 /**
- * The shared words a stage brings into use that the protocol does not hold
- * yet. The list follows the open stage: such a word appears as the setting
- * that needs it is turned on, starts with Network Canvas's wording, can be
- * reworded at once, and is saved with the stage. Map search's "Search failed
- * message" is the worked example: a map stage needs it only while its search
- * is on, and the shared protocol's map stage has it off.
+ * The shared words a stage uses, edited in its stage editor. A change to one
+ * is part of the stage's draft like any other change made there: held while
+ * the stage is open, saved with the stage in the same change, and thrown away
+ * with it.
+ *
+ * The list follows the open stage: a word the protocol does not hold yet
+ * appears as the setting that needs it is turned on and starts with Network
+ * Canvas's wording. Map search's "Search failed message" is the worked
+ * example: a map stage needs it only while its search is on, and the shared
+ * protocol's map stage has it off.
  */
 
 const FIXTURE: ProtocolLocalization = {
@@ -89,10 +96,50 @@ const mapStageAllowsSearch = (harness: StageEditorHarness): unknown => {
   return options?.allowSearch;
 };
 
+/**
+ * Whether the stage form holds unsaved work, read from inside it with the
+ * selector a host's discard prompt reads.
+ */
+function DirtyFlag() {
+  const dirty = useFormStore(selectIsFormDirty);
+  return <p data-testid="form-dirty">{dirty ? 'dirty' : 'clean'}</p>;
+}
+
+const formIsDirty = () =>
+  screen.getByTestId('form-dirty').textContent === 'dirty';
+
+/**
+ * The map's shared words as the EDITOR has read them from the protocol: what
+ * tells a test the open stage has seen a collaborator's save.
+ */
+function MapWordsAsRead() {
+  const { interfaceText } = useProtocolContext();
+  const groups: Readonly<
+    Record<string, Readonly<Record<string, unknown>> | undefined>
+  > = interfaceText ?? {};
+  return (
+    <p data-testid="map-words-as-read">
+      {JSON.stringify(groups.geospatial ?? null)}
+    </p>
+  );
+}
+
+/** Waits for the open stage to have read `text` in one of the map's shared words. */
+const editorReads = (text: string) =>
+  waitFor(() =>
+    expect(screen.getByTestId('map-words-as-read')).toHaveTextContent(text),
+  );
+
 const openMapStage = (localization?: ProtocolLocalization) =>
   renderStageEditor({
     stageId: 'geospatial-1',
-    sections: geospatialSections,
+    sections: (
+      <>
+        {geospatialSections}
+        <DirtyFlag />
+        <MapWordsAsRead />
+      </>
+    ),
     ...(localization === undefined ? {} : { localization }),
   });
 
@@ -132,7 +179,6 @@ describe('a shared word the open stage brings into use', () => {
 
     const field = await screen.findByRole('textbox', { name: SEARCH_FAILED });
     expect(field).toHaveValue(supplied(FIXTURE)['en-US']);
-    expect(field).toHaveAccessibleDescription(/saved when you save the stage/);
   });
 
   it('goes as its setting is turned off', async () => {
@@ -293,27 +339,79 @@ it('refuses the save over wording left empty in a part that was then closed, and
 });
 
 describe('a shared word the protocol already holds', () => {
-  it('is still written straight away, as its field is left', async () => {
+  /** The map stage with its shared part open and "Map unavailable" changed. */
+  const changeMapUnavailable = async () => {
     const harness = openMapStage();
     await openSharedWording(harness);
     const field = screen.getByRole('textbox', {
       name: 'Map unavailable message',
     });
     await waitFor(() => expect(field).not.toHaveAttribute('readonly'));
-    expect(field).not.toHaveAccessibleDescription(
-      /saved when you save the stage/,
-    );
+    const opened = heldWord(harness, 'geospatial', 'mapUnavailable');
+    expect(formIsDirty()).toBe(false);
 
     await harness.user.clear(field);
     await harness.user.type(field, 'The map is not available');
     await harness.user.tab();
+    return { harness, field, opened };
+  };
 
-    await waitFor(() =>
-      expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual({
-        'en-US': 'The map is not available',
-      }),
-    );
+  it('is held in the stage’s draft, not written as its field is left', async () => {
+    const { harness, opened } = await changeMapUnavailable();
+
+    expect(formIsDirty()).toBe(true);
+    expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual(opened);
+  });
+
+  it('is written with the stage in one change', async () => {
+    const { harness } = await changeMapUnavailable();
+    const before = harness.host.store.read(SETTINGS).revision.sequence;
+
+    expect(await harness.submit()).not.toBeNull();
+
+    expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual({
+      'en-US': 'The map is not available',
+    });
+    const settings = harness.host.store.read(SETTINGS).revision.sequence;
+    expect(settings).toBeGreaterThan(before);
+    expect(settings).toBe(harness.host.store.read(MAP_STAGE).revision.sequence);
     expect(heldWord(harness, 'geospatial', 'searchFailed')).toBeUndefined();
+    await waitFor(() => expect(formIsDirty()).toBe(false));
+  });
+
+  it('is thrown away with the stage’s other changes when the editor is cancelled', async () => {
+    const { harness, opened } = await changeMapUnavailable();
+
+    await harness.cancel();
+
+    expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual(opened);
+  });
+
+  it('is no change once put back as the protocol has it', async () => {
+    const { harness, field, opened } = await changeMapUnavailable();
+    expect(formIsDirty()).toBe(true);
+
+    await harness.user.clear(field);
+    await harness.user.type(
+      field,
+      supplied(FIXTURE, 'geospatial', 'mapUnavailable')['en-US'] ?? '',
+    );
+    await harness.user.tab();
+
+    expect(formIsDirty()).toBe(false);
+    expect(await harness.submit()).not.toBeNull();
+    expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual(opened);
+  });
+
+  it('refuses the stage save while it has no words in the default language', async () => {
+    const { harness, field, opened } = await changeMapUnavailable();
+    await harness.user.clear(field);
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByRole('textbox', { name: 'Map unavailable message' }),
+    ).toHaveAccessibleDescription(/required/i);
+    expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual(opened);
   });
 });
 
@@ -362,7 +460,6 @@ describe('a new stage of a kind the protocol has none of', () => {
     expect(field).toHaveValue(
       supplied(FIXTURE, 'categoricalBin', 'placeHere')['en-US'],
     );
-    expect(field).toHaveAccessibleDescription(/saved when you save the stage/);
   });
 });
 
@@ -423,9 +520,7 @@ describe('a new stage saved with its shared words, whose answer is lost', () => 
     });
     const before = stageOrder(harness).length;
     await openSharedWording(harness);
-    expect(
-      await screen.findByRole('textbox', { name: SEARCH_FAILED }),
-    ).toHaveAccessibleDescription(/saved when you save the stage/);
+    await screen.findByRole('textbox', { name: SEARCH_FAILED });
 
     // The host made the stage and wrote its words; the editor was told the
     // add failed, and has since read the words as the protocol's.
@@ -433,11 +528,6 @@ describe('a new stage saved with its shared words, whose answer is lost', () => 
     expect(stageOrder(harness)).toHaveLength(before + 1);
     // The stage shows Network Canvas's wording for it, and holds none.
     expect(heldWord(harness, 'geospatial', 'searchFailed')).toBeUndefined();
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: SEARCH_FAILED }),
-      ).not.toHaveAccessibleDescription(/saved when you save the stage/),
-    );
 
     expect(await harness.submit()).not.toBeNull();
 
@@ -525,7 +615,7 @@ const collaboratorSaves = (
 };
 
 describe('a shared word a collaborator saves while this stage still holds it', () => {
-  it('keeps the researcher’s wording, written straight away as the protocol’s', async () => {
+  it('keeps the researcher’s wording in the stage’s draft, and saves it over theirs with the stage', async () => {
     const harness = openMapStage();
     await openSharedWording(harness);
     await toggleSearch(harness);
@@ -536,16 +626,17 @@ describe('a shared word a collaborator saves while this stage still holds it', (
 
     collaboratorSaves(harness, { 'en-US': 'Their wording' });
 
+    // The protocol keeps the collaborator's wording while the stage is open,
+    // and the researcher's stays on screen as their unsaved change.
     await waitFor(() =>
-      expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
-        'en-US': 'No place matched',
-      }),
+      expect(screen.getByRole('textbox', { name: SEARCH_FAILED })).toBe(field),
     );
-    const now = screen.getByRole('textbox', { name: SEARCH_FAILED });
-    expect(now).toHaveValue('No place matched');
-    expect(now).not.toHaveAccessibleDescription(
-      /saved when you save the stage/,
-    );
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'Their wording',
+    });
+    expect(field).toHaveValue('No place matched');
+    expect(formIsDirty()).toBe(true);
+
     expect(await harness.submit()).not.toBeNull();
     expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
       'en-US': 'No place matched',
@@ -574,6 +665,120 @@ describe('a shared word a collaborator saves while this stage still holds it', (
   });
 });
 
+/** A collaborator saving the map's "Map unavailable" wording, which the protocol holds. */
+const collaboratorRewordsMapUnavailable = (
+  harness: StageEditorHarness,
+  value: LocalizedString,
+) => {
+  const settings = harness.host.store.read(SETTINGS).document;
+  harness.host.store.applyAsCollaborator(SETTINGS, {
+    ...settings,
+    interfaceText: interfaceTextWithUpdates(settings.interfaceText, [
+      { group: 'geospatial', key: 'mapUnavailable', value },
+    ]),
+  });
+};
+
+describe('a shared word the protocol holds that a collaborator rewords while the stage is open', () => {
+  /** Every word a save carried, by attempt, with the map stage open. */
+  const openRecordingMapStage = () => {
+    const sent: (readonly InterfaceTextUpdate[])[] = [];
+    const harness = renderStageEditor({
+      stageId: 'geospatial-1',
+      sections: (
+        <>
+          {geospatialSections}
+          <DirtyFlag />
+          <MapWordsAsRead />
+        </>
+      ),
+      adapter: (host) =>
+        host.adapterWith({
+          Submit: (input) => {
+            sent.push(input.interfaceText ?? []);
+            return host.handle.Submit(input);
+          },
+        }),
+    });
+    return { harness, sent };
+  };
+
+  it('shows their wording in a field the researcher had not changed, as no change of the stage’s', async () => {
+    const { harness, sent } = openRecordingMapStage();
+    await openSharedWording(harness);
+    const field = screen.getByRole('textbox', {
+      name: 'Map unavailable message',
+    });
+    await waitFor(() => expect(field).not.toHaveAttribute('readonly'));
+
+    collaboratorRewordsMapUnavailable(harness, { 'en-US': 'Their wording' });
+
+    await waitFor(() => expect(field).toHaveValue('Their wording'));
+    expect(formIsDirty()).toBe(false);
+    expect(await harness.submit()).not.toBeNull();
+    expect(sent).toEqual([[]]);
+    expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual({
+      'en-US': 'Their wording',
+    });
+  });
+
+  it('shows their wording when a part closed over the untouched field opens again, and does not save the old wording over it', async () => {
+    const { harness, sent } = openRecordingMapStage();
+    await openSharedWording(harness);
+    const part = screen.getByRole('button', {
+      name: 'Shared by every stage of this kind',
+    });
+    await harness.user.click(part);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Map unavailable message' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    collaboratorRewordsMapUnavailable(harness, { 'en-US': 'Their wording' });
+    // Read while the field is parked, before the part opens over it again.
+    await editorReads('Their wording');
+    await harness.user.click(part);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Map unavailable message' }),
+      ).toHaveValue('Their wording'),
+    );
+    expect(formIsDirty()).toBe(false);
+    expect(await harness.submit()).not.toBeNull();
+    expect(sent).toEqual([[]]);
+    expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual({
+      'en-US': 'Their wording',
+    });
+  });
+
+  it('does not save the old wording over theirs from a part that stays closed', async () => {
+    const { harness, sent } = openRecordingMapStage();
+    await openSharedWording(harness);
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Shared by every stage of this kind',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Map unavailable message' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    collaboratorRewordsMapUnavailable(harness, { 'en-US': 'Their wording' });
+    await editorReads('Their wording');
+
+    expect(formIsDirty()).toBe(false);
+    expect(await harness.submit()).not.toBeNull();
+    expect(sent).toEqual([[]]);
+    expect(heldWord(harness, 'geospatial', 'mapUnavailable')).toEqual({
+      'en-US': 'Their wording',
+    });
+  });
+});
+
 describe('a shared word a collaborator saves while the researcher is still editing it', () => {
   it('keeps wording that cannot be saved yet on screen, as their draft of the shared word', async () => {
     const harness = openMapStage();
@@ -585,23 +790,12 @@ describe('a shared word a collaborator saves while the researcher is still editi
 
     collaboratorSaves(harness, { 'en-US': 'Their wording' });
 
-    // The protocol holds the entry now, so its field says what a shared
-    // word's does, and the researcher's cleared field is still theirs.
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: SEARCH_FAILED }),
-      ).not.toHaveAccessibleDescription(/saved when you save the stage/),
-    );
+    // The protocol holds the entry now, and the researcher's cleared field
+    // is still theirs.
+    await editorReads('Their wording');
     const now = screen.getByRole('textbox', { name: SEARCH_FAILED });
     expect(now).toHaveValue('');
-    expect(
-      screen.getByText(
-        'These words appear on every stage of this kind. Changes to them are saved straight away.',
-      ),
-    ).toBeInTheDocument();
-    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
-      'en-US': 'Their wording',
-    });
+    expect(formIsDirty()).toBe(true);
 
     // Not dropped by saving the stage: the save is refused over it.
     expect(await harness.submit()).toBeNull();
@@ -612,17 +806,19 @@ describe('a shared word a collaborator saves while the researcher is still editi
       'en-US': 'Their wording',
     });
 
-    // Made good and left, it is written as a shared word's change is.
+    // Made good, it is still the stage's until the stage is saved.
     await harness.user.type(
       screen.getByRole('textbox', { name: SEARCH_FAILED }),
       'No place matched',
     );
     await harness.user.tab();
-    await waitFor(() =>
-      expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
-        'en-US': 'No place matched',
-      }),
-    );
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'Their wording',
+    });
+    expect(await harness.submit()).not.toBeNull();
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'No place matched',
+    });
   });
 
   it('refuses the stage save over it while its part is closed, and opens the part on it', async () => {
@@ -669,28 +865,23 @@ describe('a shared word a collaborator saves while the researcher is still editi
 
     collaboratorSaves(harness, { 'en-US': 'Their wording' });
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: SEARCH_FAILED }),
-      ).not.toHaveAccessibleDescription(/saved when you save the stage/),
-    );
+    await editorReads('Their wording');
     const now = screen.getByRole('textbox', { name: SEARCH_FAILED });
     expect(now).toBe(field);
     expect(now).toHaveFocus();
     expect(now).toHaveValue('No place');
     expect((now as HTMLInputElement).selectionStart).toBe('No place'.length);
-    // Not written while it is still being typed.
-    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
-      'en-US': 'Their wording',
-    });
 
     await harness.user.keyboard(' matched');
     await harness.user.tab();
-    await waitFor(() =>
-      expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
-        'en-US': 'No place matched',
-      }),
-    );
+    // Not written while the stage is open.
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'Their wording',
+    });
+    expect(await harness.submit()).not.toBeNull();
+    expect(heldWord(harness, 'geospatial', 'searchFailed')).toEqual({
+      'en-US': 'No place matched',
+    });
   });
 });
 
@@ -856,11 +1047,7 @@ describe('a shared word held with a stage whose save was refused', () => {
 
     collaboratorSaves(harness, { 'en-US': 'Their wording' });
     await collaborator.rpcCall('ReleaseLock', settingsLock);
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: SEARCH_FAILED }),
-      ).not.toHaveAccessibleDescription(/saved when you save the stage/),
-    );
+    await editorReads('Their wording');
 
     expect(await harness.submit()).not.toBeNull();
     expect(mapStageAllowsSearch(harness)).toBe(true);

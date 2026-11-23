@@ -8,6 +8,7 @@ import {
   createDefaultFinishSessionStage,
   type CurrentProtocolSchema,
   defaultFinishSessionText,
+  headingMarkdown,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
@@ -38,6 +39,21 @@ import { worldCountriesGeojson } from './world-countries.ts';
 type Json = Record<string, unknown>;
 
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null;
+
+// A Narrative has no filter of its own: each view narrows the network
+// for itself, so the design's one filter goes to every view.
+const filterInPresets = (st: Json): Json => {
+  const { filter, ...stage } = st;
+  if (filter === undefined || !Array.isArray(stage.presets)) return st;
+  return {
+    ...stage,
+    presets: stage.presets.map((preset: unknown) =>
+      isObject(preset)
+        ? { ...preset, filter: structuredClone(filter) }
+        : preset,
+    ),
+  };
+};
 
 /**
  * What compile() emits: the INPUT side of the schema 9 protocol schema (before
@@ -185,6 +201,18 @@ const INFO_TITLES = {
 
 const pick = (...xs: (string | undefined)[]) =>
   xs.find((x) => x && x.trim())?.trim() ?? '';
+
+/**
+ * The one text an Information screen shows: its title as the heading that
+ * opens the page, then its words, which are markdown already. Either may be
+ * empty.
+ */
+const pageContent = (title: string, text: string) =>
+  localized(
+    [title.trim() && headingMarkdown(title), text.trim()]
+      .filter(Boolean)
+      .join('\n\n'),
+  );
 
 const qKey = (scope: string, id: string) =>
   scope === 'ego' ? `ego/${id}` : `${scope}/${id}`;
@@ -741,14 +769,10 @@ export const compile = (
           ...(stage.skipLogic
             ? { skipLogic: structuredClone(stage.skipLogic) }
             : {}),
-          title: localized(pick(w?.title, introFor.title)),
-          items: [
-            {
-              id: 'text',
-              type: 'text',
-              content: localized(pick(w?.text, introFor.text)),
-            },
-          ],
+          content: pageContent(
+            pick(w?.title, introFor.title),
+            pick(w?.text, introFor.text),
+          ),
         },
         { added: 'introduction' },
       );
@@ -777,19 +801,10 @@ export const compile = (
           type: 'Information',
           label: localized('Consent given'),
           skipLogic: gate,
-          title: localized(pick(w?.title, 'Thank you')),
-          items: [
-            {
-              id: 'text',
-              type: 'text',
-              content: localized(
-                pick(
-                  w?.text,
-                  "Thank you for agreeing to take part. Let's begin.",
-                ),
-              ),
-            },
-          ],
+          content: pageContent(
+            pick(w?.title, 'Thank you'),
+            pick(w?.text, "Thank you for agreeing to take part. Let's begin."),
+          ),
         });
         stageMap.push({ added: 'consent gate' });
       } else stage.skipLogic = gate;
@@ -865,10 +880,7 @@ export const compile = (
         push(
           {
             ...base(s.id, 'Information', label(s.id, humanise(s.id))),
-            title: localized(pick(w?.title, INFO_TITLES[s.role])),
-            items: content
-              ? [{ id: 'text', type: 'text', content: localized(content) }]
-              : [],
+            content: pageContent(pick(w?.title, INFO_TITLES[s.role]), content),
           },
           src,
         );
@@ -1160,47 +1172,49 @@ export const compile = (
       }
       case 'narrative':
         push(
-          withFilter({
-            ...base(s.id, 'Narrative', label(s.id, humanise(s.id))),
-            subject: nodeSubject(s.nodeTypeId),
-            presets: s.views.map((v, i) => ({
-              id: `view${i + 1}`,
-              label: localized(
-                pick(W.prompt.get(`${s.id}/view${i + 1}`)?.text, v.label),
-              ),
-              layoutVariable: key(scope, 'layout'),
-              ...(v.groupByAttributeId
-                ? { groupVariable: key(scope, v.groupByAttributeId) }
-                : {}),
-              ...(v.relationshipIds.length
-                ? {
-                    edges: {
-                      // the legend names each relationship shown
-                      display: v.relationshipIds.map((r) => ({
-                        type: relKey.get(r),
-                        label: localized(relName(r)),
+          filterInPresets(
+            withFilter({
+              ...base(s.id, 'Narrative', label(s.id, humanise(s.id))),
+              subject: nodeSubject(s.nodeTypeId),
+              presets: s.views.map((v, i) => ({
+                id: `view${i + 1}`,
+                label: localized(
+                  pick(W.prompt.get(`${s.id}/view${i + 1}`)?.text, v.label),
+                ),
+                layoutVariable: key(scope, 'layout'),
+                ...(v.groupByAttributeId
+                  ? { groupVariable: key(scope, v.groupByAttributeId) }
+                  : {}),
+                ...(v.relationshipIds.length
+                  ? {
+                      edges: {
+                        // the legend names each relationship shown
+                        display: v.relationshipIds.map((r) => ({
+                          type: relKey.get(r),
+                          label: localized(relName(r)),
+                        })),
+                      },
+                    }
+                  : {}),
+                ...(v.highlightAttributeIds.length
+                  ? {
+                      // the legend names each highlighted attribute
+                      highlight: v.highlightAttributeIds.map((h) => ({
+                        variable: key(scope, h),
+                        label: localized(attrIn(scope, h)!.label),
                       })),
-                    },
-                  }
-                : {}),
-              ...(v.highlightAttributeIds.length
-                ? {
-                    // the legend names each highlighted attribute
-                    highlight: v.highlightAttributeIds.map((h) => ({
-                      variable: key(scope, h),
-                      label: localized(attrIn(scope, h)!.label),
-                    })),
-                  }
-                : {}),
-            })),
-            background: { concentricCircles: 4, skewedTowardCenter: true },
-            // keep participant-placed positions; re-run the force layout only if the map was automatic
-            behaviours: {
-              automaticLayout: lastSociogramAuto.get(s.nodeTypeId) ?? true,
-              allowRepositioning: true,
-              freeDraw: true,
-            },
-          }),
+                    }
+                  : {}),
+              })),
+              background: { concentricCircles: 4, skewedTowardCenter: true },
+              // keep participant-placed positions; re-run the force layout only if the map was automatic
+              behaviours: {
+                automaticLayout: lastSociogramAuto.get(s.nodeTypeId) ?? true,
+                allowRepositioning: true,
+                freeDraw: true,
+              },
+            }),
+          ),
           src,
         );
         break;
@@ -1464,10 +1478,7 @@ export const compile = (
     id: sid('researcher_notes'),
     type: 'Information',
     label: localized('Researcher notes (delete before fielding)'),
-    title: localized('Notes for the research team'),
-    items: [
-      { id: 'text', type: 'text', content: localized(notes.join('\n\n')) },
-    ],
+    content: pageContent('Notes for the research team', notes.join('\n\n')),
   });
   stageMap.unshift({ added: 'researcher notes' });
 

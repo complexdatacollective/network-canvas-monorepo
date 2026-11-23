@@ -51,7 +51,17 @@ const options: SegmentedOption<'protocols' | 'data'>[] = [
   reads like a normal outline button (2px themed border, no fill); \`glass\` adds
   a translucent, backdrop-blurred, shadowed surface with a thicker border, for
   floating over content.
-- **\`aria-label\`** (\`string\`, required) — labels the group for screen readers.
+- **\`aria-label\`** (\`string\`) or **\`aria-labelledby\`** (\`string\`) —
+  exactly one is required: a name for the group, or the id of an element on
+  the page that names it, such as a field's label.
+- **\`aria-describedby\`** (\`string\`) — the id of an element that describes
+  the group, such as a field's hint.
+- **\`id\`** (\`string\`) — the group's id, for a switcher that is a field's
+  control. To use it as one, render \`SegmentedSwitcherField\`
+  (\`@codaco/fresco-ui/SegmentedSwitcherField\`) as the field's \`component\`,
+  which passes all three from the field.
+- **\`disabled\`** (\`boolean\`) — every segment ignores the pointer and the
+  keyboard.
 - **\`className\`** (\`string\`) — merged onto the track.
 
 Keyboard operation and \`role="group"\`/toggle ARIA come from Base UI.
@@ -61,6 +71,7 @@ type StoryArgs = {
   size: 'sm' | 'md' | 'lg' | 'xl';
   variant: 'outline' | 'glass';
   disabledSecond: boolean;
+  disabled: boolean;
 };
 
 const meta: Meta<StoryArgs> = {
@@ -70,7 +81,12 @@ const meta: Meta<StoryArgs> = {
     layout: 'centered',
     docs: { description: { component: COMPOSITION_DOC } },
   },
-  args: { size: 'lg', variant: 'outline', disabledSecond: false },
+  args: {
+    size: 'lg',
+    variant: 'outline',
+    disabledSecond: false,
+    disabled: false,
+  },
   argTypes: {
     size: {
       control: 'inline-radio',
@@ -87,8 +103,12 @@ const meta: Meta<StoryArgs> = {
       control: 'boolean',
       description: 'Disable the second option to show the disabled state.',
     },
+    disabled: {
+      control: 'boolean',
+      description: 'Disable every segment.',
+    },
   },
-  render: ({ size, variant, disabledSecond }) => {
+  render: ({ size, variant, disabledSecond, disabled }) => {
     const [value, setValue] = useState<Value>('protocols');
     const options = ICON_OPTIONS.map((o, i) =>
       i === 1 && disabledSecond ? { ...o, disabled: true } : o,
@@ -98,6 +118,7 @@ const meta: Meta<StoryArgs> = {
         aria-label="Demo switcher"
         size={size}
         variant={variant}
+        disabled={disabled}
         value={value}
         onValueChange={setValue}
         options={options}
@@ -193,3 +214,6 @@ export const Glass: Story = {
     );
   },
 };
+
+// Every segment off at once, as a disabled field's control is.
+export const Disabled: Story = { args: { disabled: true } };

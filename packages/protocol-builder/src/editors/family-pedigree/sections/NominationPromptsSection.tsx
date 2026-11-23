@@ -217,6 +217,7 @@ export default function NominationPromptsSection() {
       name={NOMINATION_PROMPTS_PATH}
       optional
       title={messages.nominationTitle}
+      sectionKey="nomination-prompts"
       description={messages.nominationDescription}
       waitingDescription={messages.nominationWaiting}
       fieldLabel={messages.nominationFieldLabel}

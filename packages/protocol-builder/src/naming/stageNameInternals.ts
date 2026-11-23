@@ -7,7 +7,7 @@ import {
   FinishModeSchema,
   type FinishOutcome,
   FinishOutcomeSchema,
-  type Item,
+  assetBlocksInMessage,
   type LocaleTag,
   type StageSubject,
 } from '@codaco/protocol-validation';
@@ -251,7 +251,7 @@ export function useProposedStageLabel(): string | undefined {
           id: identity.id,
           type: identity.type,
           subject: draft.subject,
-          items: draft.items,
+          shownAssets: draft.shownAssets,
           panels: draft.panels,
           mode: draft.mode,
           outcome: draft.outcome,
@@ -287,7 +287,7 @@ export function useEditingStageLabel(): string {
 /** Everything about the stage being edited that its proposed name reads. */
 type StageNameSources = Readonly<{
   subject: StageSubject | undefined;
-  items: Item[] | undefined;
+  shownAssets: readonly string[] | undefined;
   panels: StageLabelPanel[] | undefined;
   mode: FinishMode | undefined;
   outcome: FinishOutcome | undefined;
@@ -305,7 +305,7 @@ type StageNameSources = Readonly<{
  */
 function useStageNameSources(): StageNameSources {
   const rawSubject = useStageValue('subject');
-  const rawItems = useStageValue('items');
+  const rawContent = useStageValue('content');
   const rawPanels = useStageValue('panels');
   const rawMode = useStageValue('mode');
   const rawOutcome = useStageValue('outcome');
@@ -313,12 +313,12 @@ function useStageNameSources(): StageNameSources {
   return useMemo(
     () => ({
       subject: readSubject(rawSubject),
-      items: readItems(rawItems),
+      shownAssets: readShownAssets(rawContent),
       panels: readPanels(rawPanels),
       mode: FinishModeSchema.safeParse(rawMode).data,
       outcome: FinishOutcomeSchema.safeParse(rawOutcome).data,
     }),
-    [rawItems, rawMode, rawOutcome, rawPanels, rawSubject],
+    [rawContent, rawMode, rawOutcome, rawPanels, rawSubject],
   );
 }
 
@@ -333,25 +333,17 @@ function readSubject(value: unknown): StageSubject | undefined {
   return { entity, type: value.type };
 }
 
-function readItems(value: unknown): Item[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const items: Item[] = [];
-  for (const entry of value) {
-    if (typeof entry !== 'object' || entry === null) continue;
-    if (!('id' in entry) || typeof entry.id !== 'string') continue;
-    if (!('content' in entry) || !('type' in entry)) continue;
-    // A text item is counted as well as an asset one: only assets qualify a
-    // name, but a dropped text item would be indistinguishable from a
-    // malformed entry if the rules widen.
-    if (entry.type === 'asset' && typeof entry.content === 'string') {
-      items.push({ id: entry.id, type: 'asset', content: entry.content });
-    }
-    const text = entry.type === 'text' && asLocalizedString(entry.content);
-    if (text) {
-      items.push({ id: entry.id, type: 'text', content: text });
-    }
-  }
-  return items;
+/**
+ * The files an Information page shows: each one its text names as a block,
+ * in any of its languages, since a file only one language shows is still a
+ * file the page shows. `undefined` for a stage with no such text.
+ */
+function readShownAssets(value: unknown): readonly string[] | undefined {
+  const content = asLocalizedString(value);
+  if (!content) return undefined;
+  return Object.values(content).flatMap((message) =>
+    assetBlocksInMessage(message).map(({ block }) => block.assetId),
+  );
 }
 
 /**

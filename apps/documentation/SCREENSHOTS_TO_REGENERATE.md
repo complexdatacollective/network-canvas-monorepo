@@ -47,6 +47,21 @@ Language Chooser page (its stage editor) and Preview Mode (the Preview language
 menu). Still outstanding for Translating Your Protocol: the **Change language**
 dialog, and a **Summary** tab stage listing a text in every language.
 
+## Narrative preset filters (schema 9)
+
+Schema 9 gives each Narrative preset a filter of its own and removes the
+stage's filter. These Architect captures of the Building a protocol tutorial
+predate that work (the Architect Classic captures are still right):
+
+| Image              | Page                                                    | What changed                                                                              |
+| ------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `edit-preset.png`  | `design-protocols/tutorials/building-a-protocol.en.mdx` | The preset dialog has a **Preset filter** group between the layout and grouping settings. |
+| `edit-preset2.png` | `design-protocols/tutorials/building-a-protocol.en.mdx` | Same dialog, further down. Recapture with `edit-preset.png` so the two still join up.     |
+| `narrative.png`    | `design-protocols/tutorials/building-a-protocol.en.mdx` | The Narrative stage editor no longer has a stage filter section.                          |
+
+The Narrative interface page (`interface-documentation/narrative.en.md`) has no
+capture of the preset filter yet; one would help.
+
 ## Stage introduction panels removed (schema 9)
 
 Schema 9 removed the introduction panel from the Per Alter Form, Per Alter
@@ -62,6 +77,25 @@ readers; Architect needs a fresh one:
 The Per Alter Form and Per Alter Edge Form interface pages no longer show
 `interface-documentation/per-alter-form/architect-intro.png` and
 `interface-documentation/per-edge-form/architect-intro.png`.
+
+## Information page as one text (schema 9)
+
+An Information stage's page heading and list of items became one text, written
+in a single editor, with images, audio and video placed in it as blocks. These
+images predate that work:
+
+| Image                                                     | Page                                                                                                                   | What changed                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface-documentation/information/architect-items.png` | `design-protocols/interface-documentation/information.en.mdx`                                                          | Shows the removed **Page heading** field and the list of items. Recapture the **Content** section: the **Rich Text** editor holding a heading, a paragraph and an image block, with the image selected so that its resize handle (on the bottom corner of its outline) and its settings (Description, Display size, Alignment, the **Image** file field and **Delete**) show under it. |
+| `architect/localization/editor-missing-translation.png`   | `design-protocols/tutorials/translating-your-protocol.en.mdx`, `design-protocols/tutorials/building-a-protocol.en.mdx` | Shows the removed **Page heading** field. The tutorial now has the reader choose Spanish from the menu beside **Rich Text** in the Welcome stage, so recapture that field with Spanish chosen and no translation, so that the note under it shows, and reword the image's description on both pages (and in their Spanish and French pages) to name that field.                        |
+| `architect-guide/information-interface.png`               | `design-protocols/tutorials/building-a-protocol.en.mdx`                                                                | Shows the removed **Page heading** field and list of items. Recapture the Information stage editor as it opens: the **Content** section with its empty **Rich Text** editor.                                                                                                                                                                                                           |
+| `architect-guide/edit-item.png`                           | `design-protocols/tutorials/building-a-protocol.en.mdx`                                                                | Shows the removed **Create item** dialog, so the tutorial now shows this capture only to Architect Classic readers. Recapture the **Content** section with "Welcome to the Sample Protocol" as a heading and an image block selected so that its settings show, then show it in the `current` block of "Adding images, video and audio".                                               |
+
+Every Architect capture that shows a rich text editor's toolbar also predates
+its regrouping (undo and redo, a list of text styles in place of the heading
+buttons, formatting, lists, then the buttons that insert something, the
+buttons that insert a file, and the ones that insert a placeholder); check
+them when they are next retaken.
 
 ## Interface documentation (Architect and interview captures)
 
@@ -321,3 +355,19 @@ images in `/assets/img/custom-node-shapes/` are new and current.
 | `/assets/img/architect/edit-node-type-web.png` (Codebook)               | ✅ Recaptured |
 | `/assets/img/architect-guide/node-type-shape.png` (Building a protocol) | ✅ Recaptured |
 | `/assets/img/custom-node-shapes/architect-custom-shapes.png`            | ✅ Recaptured |
+
+## Logic in piped text (schema 9)
+
+The piped text editor now has two toolbar buttons: the syringe inserts values
+only, and **Insert logic** inserts If blocks, different wording for each
+answer, wording that fits a number, and wording for the participant or someone
+else. Logic is drawn as a pill of its own colour and icon. These images on
+`design-protocols/key-concepts/piped-text.en.mdx` predate that change:
+
+| Image                                   | What changed                                                                                                                                                                                        | Status           |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `piped-text/insert-menu.png`            | The syringe menu no longer lists a second **Different wording for each answer** entry for `overall_review`; that entry moved to the **Insert logic** menu. The toolbar also shows the logic button. | ✅ Recaptured    |
+| `piped-text/missing-value-versions.png` | The toolbar shows the **Insert logic** button beside the syringe.                                                                                                                                   | ✅ Recaptured    |
+| `piped-text/value-in-question.png`      | Same toolbar change: both toolbars in frame lack the **Insert logic** button.                                                                                                                       | ✅ Recaptured    |
+| `piped-text/pair-prompt.png`            | Same toolbar change: the toolbar lacks the **Insert logic** button.                                                                                                                                 | ✅ Recaptured    |
+| (new) `piped-text/if-block.png`         | Not yet captured: an open If block with an **If:** row, an **Otherwise** row, **Edit rules** and **Add else if**, for the new Logic section.                                                        | Not yet captured |

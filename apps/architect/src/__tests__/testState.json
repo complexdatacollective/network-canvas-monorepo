@@ -253,13 +253,9 @@
               "text": "not a prompt"
             }
           ],
-          "items": [
-            {
-              "id": "itemId",
-              "type": "asset",
-              "content": "1234-asset-4"
-            }
-          ],
+          "content": {
+            "en": "![A picture](asset:1234-asset-4)"
+          },
           "background": {
             "image": "1234-asset-5"
           },

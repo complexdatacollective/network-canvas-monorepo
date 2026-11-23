@@ -21,8 +21,7 @@ const protocol = {
       id: 'authored-stage',
       label: { en: 'Authored stage' },
       type: 'Information',
-      title: { en: 'Authored title' },
-      items: [],
+      content: { en: '# Authored title' },
     },
   ],
 } satisfies CurrentProtocol;

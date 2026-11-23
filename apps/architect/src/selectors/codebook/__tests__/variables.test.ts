@@ -17,12 +17,15 @@ import { getIsUsed } from '../isUsed';
  * variable only the unsaved stage names" says so the way the editor does.
  */
 const openStageDraft = (fields: Record<string, unknown>) => {
-  publishStageDraft(
-    { id: 'stage-1', type: 'Information', ...fields } as unknown as Stage,
-    {},
-    fields,
-    true,
-  );
+  publishStageDraft({
+    stage: {
+      id: 'stage-1',
+      type: 'Information',
+      ...fields,
+    } as unknown as Stage,
+    unsaved: true,
+    editing: true,
+  });
 };
 
 const variable1 = '1234-1234-1234-1';
@@ -166,6 +169,18 @@ describe('getIsUsed', () => {
         [variable8]: false,
       });
     });
+  });
+
+  it('returns true for a variable only the live stage’s piped text shows', () => {
+    openStageDraft({
+      title: { en: 'Welcome, {you}' },
+      dynamicValues: { you: { path: `ego.${variable5}` } },
+    });
+
+    const result = getIsUsed(asState(mockStateWithoutUse));
+
+    expect(result[variable5]).toBe(true);
+    expect(result[variable6]).toBe(false);
   });
 
   it('checks codebook for variable validation use', () => {

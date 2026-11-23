@@ -19,6 +19,7 @@
     "./Accordion": "./src/Accordion.tsx",
     "./Alert": "./src/Alert.tsx",
     "./AnimationProvider": "./src/AnimationProvider.tsx",
+    "./assetBlockLayout": "./src/assetBlockLayout.ts",
     "./Badge": "./src/Badge.tsx",
     "./Button": "./src/Button.tsx",
     "./CloseButton": "./src/CloseButton.tsx",
@@ -62,6 +63,7 @@
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./PresentationalText": "./src/PresentationalText.ts",
     "./ProgressBar": "./src/ProgressBar.tsx",
+    "./ProgressRing": "./src/ProgressRing.tsx",
     "./reducedMotion": "./src/reducedMotion.ts",
     "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
@@ -70,6 +72,7 @@
     "./ScrollArea": "./src/ScrollArea.tsx",
     "./Section": "./src/Section.tsx",
     "./SegmentedSwitcher": "./src/SegmentedSwitcher/SegmentedSwitcher.tsx",
+    "./SegmentedSwitcherField": "./src/SegmentedSwitcher/SegmentedSwitcherField.tsx",
     "./SegmentedToolbar": "./src/SegmentedToolbar/SegmentedToolbar.tsx",
     "./Skeleton": "./src/Skeleton.tsx",
     "./Spinner": "./src/Spinner.tsx",
@@ -204,6 +207,8 @@
     "./storybook-support/colorContrast": "./src/storybook-support/colorContrast.ts",
     "./styles.css": "./src/styles.css",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
+    "./testing/assetBlock": "./src/testing/assetBlock.ts",
+    "./testing/modKey": "./src/testing/modKey.ts",
     "./testing/withSafeTypingIntoRichText": "./src/testing/withSafeTypingIntoRichText.ts",
     "./typography/EnclosingHeadingLevel": "./src/typography/EnclosingHeadingLevel.tsx",
     "./typography/Eyebrow": "./src/typography/Eyebrow.tsx",
@@ -232,6 +237,10 @@
       "./AnimationProvider": {
         "types": "./dist/AnimationProvider.d.ts",
         "default": "./dist/AnimationProvider.js"
+      },
+      "./assetBlockLayout": {
+        "types": "./dist/assetBlockLayout.d.ts",
+        "default": "./dist/assetBlockLayout.js"
       },
       "./Badge": {
         "types": "./dist/Badge.d.ts",
@@ -405,6 +414,10 @@
         "types": "./dist/ProgressBar.d.ts",
         "default": "./dist/ProgressBar.js"
       },
+      "./ProgressRing": {
+        "types": "./dist/ProgressRing.d.ts",
+        "default": "./dist/ProgressRing.js"
+      },
       "./reducedMotion": {
         "types": "./dist/reducedMotion.d.ts",
         "default": "./dist/reducedMotion.js"
@@ -436,6 +449,10 @@
       "./SegmentedSwitcher": {
         "types": "./dist/SegmentedSwitcher/SegmentedSwitcher.d.ts",
         "default": "./dist/SegmentedSwitcher/SegmentedSwitcher.js"
+      },
+      "./SegmentedSwitcherField": {
+        "types": "./dist/SegmentedSwitcher/SegmentedSwitcherField.d.ts",
+        "default": "./dist/SegmentedSwitcher/SegmentedSwitcherField.js"
       },
       "./SegmentedToolbar": {
         "types": "./dist/SegmentedToolbar/SegmentedToolbar.d.ts",
@@ -969,6 +986,14 @@
       "./styles/controlVariants": {
         "types": "./dist/styles/controlVariants.d.ts",
         "default": "./dist/styles/controlVariants.js"
+      },
+      "./testing/assetBlock": {
+        "types": "./dist/testing/assetBlock.d.ts",
+        "default": "./dist/testing/assetBlock.js"
+      },
+      "./testing/modKey": {
+        "types": "./dist/testing/modKey.d.ts",
+        "default": "./dist/testing/modKey.js"
       },
       "./testing/withSafeTypingIntoRichText": {
         "types": "./dist/testing/withSafeTypingIntoRichText.d.ts",

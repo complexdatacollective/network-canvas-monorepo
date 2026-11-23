@@ -106,6 +106,14 @@
     --architect-nav-height: 6.75rem;
 
     /*
+     * How far down the page the bar inside that header reaches (the header
+     * keeps space under it where the page shows through). `NavShell` measures
+     * it and overwrites this before the first paint, as it does the height.
+     * 88px is the bar's foot at a desktop width.
+     */
+    --architect-nav-bar-reach: 5.5rem;
+
+    /*
      * How tall the stage editor's title block is. `StageTitle` measures the
      * real block and overwrites this before the first paint; the value here is
      * what the route resolves to until it does, so the declaration that starts

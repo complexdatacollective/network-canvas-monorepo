@@ -352,3 +352,71 @@ export const ArrowAlignment: Story = {
     });
   },
 };
+
+// Kept clear of the frame's top and bottom by this much.
+const FRAME_PADDING = 16;
+
+export const StaysInsideAFrame: Story = {
+  args: {
+    children: null,
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        story:
+          "A popup over a page that scrolls inside an app's own frame, opened from a button near the frame's foot. `collisionBoundary` makes the frame the box the popup keeps inside, `collisionPadding` keeps it that far from the frame's edges (clear of the bars an app draws along them), and `collisionAvoidance` with `side: 'shift'` keeps it on the side it asked for, moved up over its button rather than flipped above it. The play function measures the popup against the frame.",
+      },
+    },
+  },
+  render: () => {
+    const [frame, setFrame] = useState<HTMLElement | null>(null);
+    return (
+      <div
+        ref={setFrame}
+        data-testid="frame"
+        className="mx-auto mt-8 flex h-72 w-96 flex-col items-center justify-end rounded border-2 border-current/20 pb-4"
+      >
+        <Popover defaultOpen>
+          <PopoverTrigger render={<Button>Image settings</Button>} />
+          <PopoverContent
+            aria-label="Image settings"
+            side="bottom"
+            className="h-40 w-56"
+            collisionAvoidance={{ side: 'shift', fallbackAxisSide: 'none' }}
+            collisionPadding={FRAME_PADDING}
+            collisionBoundary={frame ?? undefined}
+          >
+            Stays inside the frame.
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  },
+  play: async ({ canvas }) => {
+    const frame = canvas.getByTestId('frame');
+    await waitFor(() => {
+      const popup = document.querySelector<HTMLElement>(
+        '[role="dialog"][aria-label="Image settings"]',
+      );
+      expect(popup).not.toBeNull();
+      // The box inside the frame's border, which is what the popup keeps in.
+      const frameRect = frame.getBoundingClientRect();
+      const inside = {
+        top: frameRect.top + frame.clientTop,
+        bottom: frameRect.top + frame.clientTop + frame.clientHeight,
+      };
+      const popupRect = popup!.getBoundingClientRect();
+      // Still on the side it asked for: moved, not flipped above its button.
+      expect(popup!.dataset.side).toBe('bottom');
+      // Its foot as far above the frame's as the padding asks, which is where
+      // a popup too long for the room under its button is moved to.
+      expect(
+        Math.abs(inside.bottom - popupRect.bottom - FRAME_PADDING),
+      ).toBeLessThanOrEqual(0.5);
+      expect(popupRect.top).toBeGreaterThanOrEqual(
+        inside.top + FRAME_PADDING - 0.5,
+      );
+    });
+  },
+};

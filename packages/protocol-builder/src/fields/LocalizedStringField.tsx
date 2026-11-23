@@ -19,6 +19,7 @@ import {
   type MarkdownTextShape,
   textFieldPropsFor,
 } from '../localization/textShape.ts';
+import { StageAssetBlocks } from './assetBlocks/StageAssetBlocks.tsx';
 import DynamicTextField from './DynamicTextField.tsx';
 import OptionLabelField from './OptionLabelField.tsx';
 import RichTextField from './RichTextField.tsx';
@@ -175,7 +176,9 @@ export function LocalizedRichTextField({
 > &
   DynamicValuesOption &
   ShapeOption) {
-  const { singleLine } = textFieldPropsFor(shape);
+  const { singleLine, assetBlocks: holdsAssetBlocks } =
+    textFieldPropsFor(shape);
+  // Text that shows values gets its blocks from `DynamicTextField`.
   if (dynamicValues !== undefined) {
     return (
       <DynamicTextField
@@ -199,25 +202,30 @@ export function LocalizedRichTextField({
     );
   }
   return (
-    <LocalizedStringField
-      value={value}
-      onChange={onChange}
-      hideUntranslatedNote={hideUntranslatedNote}
-    >
-      {(translation) =>
-        showsValues(translation.message) ? (
-          <ValuesNotEditableHere message={translation.message} />
-        ) : (
-          <RichTextField
-            {...props}
-            singleLine={singleLine}
-            readOnly={props.readOnly === true || translation.readOnly}
-            value={translation.value}
-            onChange={translation.onChange}
-          />
-        )
-      }
-    </LocalizedStringField>
+    <StageAssetBlocks enabled={holdsAssetBlocks}>
+      {(assetBlocks) => (
+        <LocalizedStringField
+          value={value}
+          onChange={onChange}
+          hideUntranslatedNote={hideUntranslatedNote}
+        >
+          {(translation) =>
+            showsValues(translation.message) ? (
+              <ValuesNotEditableHere message={translation.message} />
+            ) : (
+              <RichTextField
+                {...props}
+                singleLine={singleLine}
+                {...(assetBlocks !== undefined && { assetBlocks })}
+                readOnly={props.readOnly === true || translation.readOnly}
+                value={translation.value}
+                onChange={translation.onChange}
+              />
+            )
+          }
+        </LocalizedStringField>
+      )}
+    </StageAssetBlocks>
   );
 }
 

@@ -131,7 +131,7 @@ function renderInShell(
     stage: { type: 'Information', fields },
     sections: (
       <MotionConfig transition={transition}>
-        <BuilderSection title="List">
+        <BuilderSection sectionKey="form-fields" title="List">
           {probe}
           {children}
         </BuilderSection>

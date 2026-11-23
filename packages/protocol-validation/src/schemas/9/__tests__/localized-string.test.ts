@@ -314,55 +314,46 @@ describe('line breaks', () => {
   );
 });
 
-describe('Information stage title', () => {
-  const stage = (title: unknown) => ({
+describe('Information stage content', () => {
+  const stage = (content: unknown) => ({
     id: 'welcome',
     type: 'Information',
     label: { en: 'Welcome' },
-    title,
-    items: [],
+    content,
   });
 
   // A translation of only spaces would be chosen over falling back to
-  // another language, and show a stage with no heading.
+  // another language, and show a page with nothing on it.
   it('rejects a translation that shows nothing', () => {
     expect(
       parseIssues(
         informationStageSchema.safeParse(
-          stage({ en: 'Information', fr: '   ' }),
+          stage({ en: '# Information', fr: '   ' }),
         ),
       ),
     ).toEqual([
-      { path: 'title.fr', code: 'custom', message: 'Text cannot be blank.' },
+      { path: 'content.fr', code: 'custom', message: 'Text cannot be blank.' },
     ]);
   });
 
-  it('accepts a title in every language', () => {
+  it('accepts content in every language', () => {
     expect(
       informationStageSchema.safeParse(
-        stage({ en: 'Information', fr: 'Informations' }),
+        stage({ en: '# Information', fr: '# Informations' }),
       ).success,
     ).toBe(true);
   });
 
-  it('refuses a title holding a line break, while its content may hold several lines', () => {
+  it('accepts a heading and paragraphs on several lines in every language', () => {
     expect(
-      issuesOf(informationStageSchema, {
-        ...stage({ en: 'Information', fr: 'Informa-\ntions' }),
-        items: [
-          {
-            id: 'item',
-            type: 'text',
-            content: {
-              en: '## Welcome\n\nHello',
-              fr: '## Bienvenue\n\nBonjour',
-            },
-          },
-        ],
-      }),
-    ).toEqual([
-      { message: 'Text cannot contain a line break.', path: ['title', 'fr'] },
-    ]);
+      issuesOf(
+        informationStageSchema,
+        stage({
+          en: '## Welcome\n\nHello',
+          fr: '## Bienvenue\n\nBonjour',
+        }),
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -371,8 +362,7 @@ describe('schema version boundary', () => {
     id: 'welcome',
     type: 'Information',
     label,
-    title: text,
-    items: [{ id: 'item', type: 'text', content: text }],
+    content: text,
   });
 
   const schema9Protocol = (label: unknown, text: unknown) => ({
@@ -415,9 +405,8 @@ describe('schema version boundary', () => {
         ),
       ),
     ).toEqual([
-      { path: 'stages.0.items.0.content', code: 'invalid_type' },
+      { path: 'stages.0.content', code: 'invalid_type' },
       { path: 'stages.0.label', code: 'invalid_type' },
-      { path: 'stages.0.title', code: 'invalid_type' },
       { path: 'stages.1.content', code: 'invalid_type' },
       { path: 'stages.1.finishConfirmation', code: 'invalid_type' },
       { path: 'stages.1.finishFailed', code: 'invalid_type' },
@@ -435,5 +424,84 @@ describe('schema version boundary', () => {
     expect(
       issuesOf(ProtocolSchemaV9, protocol).map(({ path }) => path),
     ).toContainEqual(['localization']);
+  });
+});
+
+const stageTextOf = (format: 'plain' | 'markdown') =>
+  localizedString(
+    z.string(),
+    { format, lines: 'multiple' },
+    { dynamicValues: 'stageText' },
+  );
+
+describe('a line break inside a version of formatted text', () => {
+  const VERSIONS =
+    'Hello\n\n{name, select, missing {there} other {{name},\nwelcome}}';
+  const REFUSAL = /A version of this text cannot contain a line break\./;
+
+  it('is refused where the text is markdown', () => {
+    expect(issuesOf(stageTextOf('markdown'), { en: VERSIONS })).toEqual([
+      { message: expect.stringMatching(REFUSAL), path: ['en'] },
+    ]);
+  });
+
+  it('is accepted outside the versions, and in plain text', () => {
+    expect(
+      issuesOf(stageTextOf('markdown'), {
+        en: 'Hello\n\n{name, select, missing {there} other {{name}}}',
+      }),
+    ).toEqual([]);
+    expect(issuesOf(stageTextOf('plain'), { en: VERSIONS })).toEqual([]);
+  });
+});
+
+describe('a value inside a link address of formatted text', () => {
+  const REFUSAL = /A link address cannot contain a value\./;
+
+  it.each([
+    ['in the address', '[Your page](https://example.com/{today})'],
+    [
+      'in a version that opens with spaces',
+      '{today, select, missing {hello} other {    [you](https://example.com/{today})}}',
+    ],
+    [
+      'inside what would be a tag',
+      '<span title="[you](https://example.com/{today})">',
+    ],
+    ['in the title', '[Your page](https://example.com "For {name}")'],
+    [
+      'in an address written between angle brackets',
+      '<https://example.com/{today}>',
+    ],
+    [
+      'in a link inside a version',
+      '{name, select, missing {Hello} other {[you](https://example.com/{name})}}',
+    ],
+    [
+      'as a choice of versions',
+      '[Your page](https://example.com/{name, select, missing {a} other {b}})',
+    ],
+  ])('is refused %s', (_where, message) => {
+    expect(issuesOf(stageTextOf('markdown'), { en: message })).toEqual([
+      { message: expect.stringMatching(REFUSAL), path: ['en'] },
+    ]);
+  });
+
+  it('is accepted in the words of a link, beside a link, and in plain text', () => {
+    expect(
+      issuesOf(stageTextOf('markdown'), {
+        en: '[Page for {name}](https://example.com) and {today}',
+      }),
+    ).toEqual([]);
+    expect(
+      issuesOf(stageTextOf('markdown'), {
+        en: 'Written out, not a link: \\[a\\](https://example.com/{today})',
+      }),
+    ).toEqual([]);
+    expect(
+      issuesOf(stageTextOf('plain'), {
+        en: '[Your page](https://example.com/{today})',
+      }),
+    ).toEqual([]);
   });
 });

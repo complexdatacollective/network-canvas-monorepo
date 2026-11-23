@@ -32,6 +32,7 @@ export default function ClosingScreenSection() {
 
   return (
     <BuilderSection
+      sectionKey="closing-screen"
       title={intl.formatMessage(finishSessionMessages.closingTitle)}
       description={intl.formatMessage(
         finishSessionMessages.closingScreenDescription,

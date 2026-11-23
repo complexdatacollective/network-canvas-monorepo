@@ -11,6 +11,7 @@ import type { JSONContent } from '@tiptap/react';
 import { type ComponentProps, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { withMod } from '../../../testing/modKey';
 import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
 import { tokenPillClasses } from '../../../TokenPill';
 import { EnclosingHeadingLevel } from '../../../typography/EnclosingHeadingLevel';
@@ -465,7 +466,12 @@ describe('RichTextEditorField', () => {
 
     const editor = await screen.findByRole('textbox', { name: 'Explanation' });
     await userEvent.click(editor);
-    await userEvent.click(screen.getByRole('button', { name: 'Heading 1' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /^Text style:\s*Paragraph$/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Heading 1' }),
+    );
 
     const heading = {
       type: 'heading',
@@ -542,6 +548,7 @@ describe('RichTextEditorField', () => {
         aria-label="Biography"
         value={documentWithText}
         onChange={() => undefined}
+        emojiMenu={false}
         toolbarOptions={{
           bold: false,
           italic: false,
@@ -556,8 +563,8 @@ describe('RichTextEditorField', () => {
 
     await screen.findByRole('textbox', { name: 'Biography' });
     // The link control renders at toolbar level; with both formatting
-    // toggles disabled there is no toggle set left to group, so an empty
-    // `group` element must not be mounted around nothing.
+    // toggles disabled there is no toggle set left to group, and a group of
+    // one control (the link button alone in "Insert") is not mounted either.
     expect(
       screen.getByRole('button', { name: 'Add link' }),
     ).toBeInTheDocument();
@@ -988,7 +995,7 @@ describe('versions folded to a pill', () => {
     );
     const toolbar = within(screen.getByRole('toolbar'));
     const blockControls = () => [
-      toolbar.getByRole('button', { name: 'Heading 1' }),
+      toolbar.getByRole('button', { name: /^Text style:/ }),
       toolbar.getByRole('button', { name: 'Bullet list' }),
       toolbar.getByRole('button', { name: 'Thematic break' }),
     ];
@@ -1924,13 +1931,13 @@ describe('undo and redo of values and versions', () => {
     // The caret is back in the text the value went into.
     await waitFor(() => expect(editor).toHaveFocus());
 
-    await user.keyboard('{Control>}z{/Control}');
+    await user.keyboard(withMod('z'));
     await waitFor(() =>
       expect(editor.querySelector('[data-token="name"]')).toBeNull(),
     );
     expect(editor).toHaveTextContent(/^Hello$/);
 
-    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await user.keyboard(withMod('{Shift>}z{/Shift}'));
     await waitFor(() =>
       expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
     );
@@ -2012,7 +2019,7 @@ describe('undo and redo of values and versions', () => {
       ).toBeInTheDocument();
 
       await user.click(editor);
-      await user.keyboard('{Control>}z{/Control}');
+      await user.keyboard(withMod('z'));
       await user.click(pill);
       expect(
         await screen.findByRole('textbox', { name: afterUndo }),
@@ -2070,7 +2077,7 @@ describe('undo and redo of values and versions', () => {
     // Undone in the line around it.
     await user.keyboard('{Escape}');
     await waitFor(() => expect(editor).toHaveFocus());
-    await user.keyboard('{Control>}z{/Control}');
+    await user.keyboard(withMod('z'));
     await waitFor(() => expect(version.textContent).toBe(''));
 
     // Redone from inside the version: its edits are the line's.
@@ -2081,11 +2088,11 @@ describe('undo and redo of values and versions', () => {
       name: 'If not known',
     });
     await user.click(reopened);
-    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await user.keyboard(withMod('{Shift>}z{/Shift}'));
     await waitFor(() => expect(reopened.textContent).toBe(' friend'));
 
     // And undone from inside it again.
-    await user.keyboard('{Control>}z{/Control}');
+    await user.keyboard(withMod('z'));
     await waitFor(() => expect(reopened.textContent).toBe(''));
     const reported = onChange.mock.lastCall?.[0] as JSONContent;
     const versions = reported.content?.[0]?.content?.[1]?.attrs?.versions as {
@@ -2877,7 +2884,7 @@ describe('a single-line RichTextEditorField', () => {
     await field.editor();
 
     expect(
-      screen.queryByRole('button', { name: 'Heading 1' }),
+      screen.queryByRole('button', { name: /^Text style:/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Bullet list' }),
@@ -3030,6 +3037,75 @@ describe('a RichTextEditorField with tokens', () => {
     expect(
       await screen.findByRole('option', { name: /Name/ }),
     ).toBeInTheDocument();
+  });
+
+  it('marks a menu item the text requires and lacks, and its menu button', async () => {
+    const places: unknown[] = [];
+    const field = renderWithTokens({
+      value: lineOf({ type: 'text', text: 'Add ' }),
+      insertMenu: {
+        label: 'Insert a value',
+        items: [
+          {
+            id: 'name',
+            label: 'Name',
+            description: 'A person',
+            content: { type: 'token', attrs: { id: 'name' } },
+            required: (place) => {
+              places.push(place);
+              return true;
+            },
+          },
+          {
+            id: 'number',
+            label: 'Number',
+            content: { type: 'token', attrs: { id: '#' } },
+            required: () => false,
+          },
+        ],
+      },
+    });
+    await field.editor();
+
+    const button = screen.getByRole('button', { name: 'Insert a value' });
+    expect(button).toHaveAttribute('data-missing', 'true');
+    expect(button).toHaveAccessibleDescription(
+      'Something this text requires is not in it yet',
+    );
+    // The field's own line is in no version.
+    expect(places.at(-1)).toEqual([]);
+    await field.user.click(button);
+
+    const name = await screen.findByRole('option', {
+      name: 'Name, A person, Required in this text',
+    });
+    expect(name).toHaveAttribute('data-required', 'true');
+    expect(name.querySelector('[data-required-marker]')).toHaveTextContent(
+      'Required in this text',
+    );
+    const number = screen.getByRole('option', { name: 'Number' });
+    expect(number).not.toHaveAttribute('data-required');
+    expect(number.querySelector('[data-required-marker]')).toBeNull();
+  });
+
+  it('leaves the menu button unmarked while nothing required is missing', async () => {
+    renderWithTokens({
+      insertMenu: {
+        label: 'Insert a value',
+        items: [
+          {
+            id: 'name',
+            label: 'Name',
+            content: { type: 'token', attrs: { id: 'name' } },
+            required: () => false,
+          },
+        ],
+      },
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Insert a value' }),
+    ).not.toHaveAttribute('data-missing');
   });
 
   it('says which required tokens the text does not include yet', async () => {

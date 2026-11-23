@@ -33,7 +33,7 @@ describe('a section resetting on a path a command cannot address', () => {
   function RowResetSections() {
     return (
       <>
-        <BuilderSection title="Prompts">
+        <BuilderSection sectionKey="prompts" title="Prompts">
           <Field
             name="prompts[0].text"
             label="Prompt text"
@@ -41,6 +41,7 @@ describe('a section resetting on a path a command cannot address', () => {
           />
         </BuilderSection>
         <BuilderSection
+          sectionKey="roster-sorting"
           title="Roster sorting"
           capability={SORTING}
           resetOn="prompts[0].text"

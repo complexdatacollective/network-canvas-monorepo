@@ -168,13 +168,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({
           title: 'Scoping Complete',
-          items: [
-            {
-              id: 'done-item',
-              type: 'text',
-              content: 'You have finished the census.',
-            },
-          ],
+          text: 'You have finished the census.',
         });
         return synth;
       },
@@ -277,7 +271,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({
           title: 'Census Complete',
-          items: [{ id: 'done-item', type: 'text', content: 'All done.' }],
+          text: 'All done.',
         });
         return synth;
       },
@@ -584,7 +578,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({
           title: 'Census Complete',
-          items: [{ id: 'done-item', type: 'text', content: 'All done.' }],
+          text: 'All done.',
         });
         return synth;
       },

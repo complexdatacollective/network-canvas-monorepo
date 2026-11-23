@@ -143,6 +143,11 @@ export type StageEditorToolbarProps = Readonly<{
   previewOptionsContent?: ReactNode;
   isStageInvalid: boolean;
   isOpeningPreview: boolean;
+  /**
+   * The walkthrough's control, if the stage has one: its own group, between
+   * the editing actions and the preview.
+   */
+  walkthrough?: ReactNode;
 }>;
 
 /**
@@ -163,6 +168,7 @@ export const StageEditorToolbar = ({
   previewOptionsContent,
   isStageInvalid,
   isOpeningPreview,
+  walkthrough,
 }: StageEditorToolbarProps) => {
   const intl = useAppIntl();
   const { control: issuesControl, openIssues } =
@@ -211,6 +217,12 @@ export const StageEditorToolbar = ({
             />
           ) : null}
         </ToolbarGroup>,
+        walkthrough ? <ToolbarSeparator key="walkthrough-separator" /> : null,
+        walkthrough ? (
+          <ToolbarGroup key="walkthrough" aria-label={'Walkthrough'}>
+            {walkthrough}
+          </ToolbarGroup>
+        ) : null,
         <ToolbarSeparator key="stage-preview-separator" />,
         <ToolbarGroup
           key="stage-preview"
@@ -219,6 +231,8 @@ export const StageEditorToolbar = ({
         >
           <ToolbarButton
             className={`${previewButtonClassName} relative rounded-e-none! focus-visible:z-10`}
+            // The walkthrough's Preview step points at this button.
+            data-walkthrough-control="preview"
             disabled={isOpeningPreview || isStageInvalid}
             icon={
               isOpeningPreview ? <Loader2 className="animate-spin" /> : <Eye />
@@ -263,6 +277,7 @@ export const StageEditorToolbar = ({
       reviewControl,
       previewOptionsContent,
       previewOptionsOpen,
+      walkthrough,
       intl,
     ],
   );

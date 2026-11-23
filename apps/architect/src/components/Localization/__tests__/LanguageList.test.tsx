@@ -24,8 +24,7 @@ const trilingual: CurrentProtocol = {
       id: 'welcome',
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
-      title: { fr: 'Bonjour' },
-      items: [],
+      content: { fr: '# Bonjour' },
     },
   ],
 };
@@ -358,7 +357,7 @@ describe('LanguageList', () => {
     ).toHaveAttribute(
       'href',
       expect.stringMatching(
-        /\/design-protocols\/translating-your-protocol\/#the-default-language-and-which-translation-participants-see$/,
+        /\/design-protocols\/tutorials\/translating-your-protocol\/#the-default-language-and-which-translation-participants-see$/,
       ),
     );
   });

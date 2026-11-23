@@ -29,8 +29,8 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 - Write ONLY the protocol's default language (localization.defaultLocale). To change a text, set its default-language key: /stages/<stageId>/prompts/<promptId>/text/en. A new text object holds only that key: { "en": "…" }. Never add, change or remove another language's key: a text needs a version in only one language, and the researcher's translators own the others.
 - Write protocol text in the protocol's default language, whatever language your findings are in.
 - Each value is an ICU MessageFormat message that must be literal text. Write a literal { or } as '{' or '}'. An apostrophe is literal ("Don't", "the participant's") except directly before another apostrophe, {, }, < or >, where it must be doubled (''). Plural, select and placeholders such as {name} are not allowed, with two exceptions: keep a placeholder that is already in a text you edit (it names one of the stage's dynamicValues), and write the minimum notice's plural exactly as shown below.
-- Single-line texts (stage labels, prompts, form questions and hints, option labels, titles) cannot contain a line break. Information text items and FinishSession content may have several lines.
-- Markdown (**bold**, *italic*) is allowed in prompts, form questions and hints, option labels and Information text items; stage labels and titles are plain text. Bold the key phrase of a prompt.
+- Single-line texts (stage labels, prompts, form questions and hints, option labels, titles) cannot contain a line break. Information content and FinishSession content may have several lines.
+- Markdown (**bold**, *italic*) is allowed in prompts, form questions and hints, option labels and Information content; stage labels and titles are plain text. Bold the key phrase of a prompt.
 - A stage label is at most 100 characters.
 
 ## Codebook
@@ -59,7 +59,7 @@ Options: [{ "label": { "en": "…" }, "value": 1 }, …]. A value is a whole num
 
 Every stage: { "id", "type", "label": { "en": "…" }, "skipLogic"?, "interviewScript"? (plain text for the interviewer, never shown to the participant) }. Stages about people carry "subject": { "entity": "node", "type": <nodeTypeId> }; an AlterEdgeForm carries "subject": { "entity": "edge", "type": <edgeTypeId> }. A stage marked filter? below accepts "filter": Filter.
 
-- Information: "title": {…}, "items": [{ "id", "type": "text", "content": {…} } | { "id", "type": "asset", "content": <assetId>, … }]
+- Information: "content": {…}, the whole page as one markdown text. A heading that opens it ("# Welcome") is the page's heading. An image, audio recording or video is a markdown image in a paragraph of its own whose address names an asset by id: ![description](asset:<assetId>?size=small|medium|large&align=start|end&autoplay=false&loop=false), every setting optional. Keep each one exactly as written when you rewrite the text around it.
 - EgoForm: "form": { "fields": [Field, …] }, "introductionPanel": { "title": {…}, "text"?: {…} }. Fields use ego variables.
 - AlterForm (filter?): "form": { "fields": [ … ] }: one form per person shown. Fields use the subject node type's variables.
 - AlterEdgeForm (filter?): "form": { "fields": [ … ] }: one form per tie of the subject edge type. Fields use that edge type's variables.
@@ -107,12 +107,12 @@ A fix is a list of operations, applied in order; a later operation may rely on a
 
 { "op": "set" | "remove" | "insert", "path": "/…", "value": <JSON text> | null }
 
-- path is a JSON Pointer from the protocol root (segments joined by /; inside a segment write ~1 for / and ~0 for ~), except that a segment addressing a member of an array whose members have an "id" (stages, prompts, form fields that have one, filter rules, Information items, panels, presets) is that member's id, not its index. Use an index only for arrays whose members have no id (option lists, form fields without an id, additionalAttributes). Codebook types and variables are object keys, so their id is the segment anyway.
+- path is a JSON Pointer from the protocol root (segments joined by /; inside a segment write ~1 for / and ~0 for ~), except that a segment addressing a member of an array whose members have an "id" (stages, prompts, form fields that have one, filter rules, panels, presets) is that member's id, not its index. Use an index only for arrays whose members have no id (option lists, form fields without an id, additionalAttributes). Codebook types and variables are object keys, so their id is the segment anyway.
 - set writes value at path, replacing what is there or adding the key. Use it for object keys, and to replace a whole array member.
 - remove deletes the key or array member at path; value is null.
 - insert adds value as a new array member. The last segment says where: - appends; an existing member's id (or index) inserts before that member. Never append a stage that is not a FinishSession with -: insert it before the first FinishSession, or before the stage it should precede.
 - value is the new content as JSON text: a string is written with its quotes ("\\"Close friends\\""), a number as "15", an object as "{…}". It must parse as JSON.
-- New ids (stages, prompts, form fields, rules, items, codebook types and variables) are fresh UUID v4s.
+- New ids (stages, prompts, form fields, rules, codebook types and variables) are fresh UUID v4s.
 - Change only the default-language key of a text; never touch another language's.
 - Make the smallest edit that fixes the problem, and leave the protocol valid: every id a fix refers to must exist (or be created by an earlier operation), and every required setting must be present.
 - Removing a stage or a variable: first check that nothing else refers to it (skip destinations, filters, forms, prompts, panels, other stages' settings), and change those too. Prefer removing a form field to deleting its variable.

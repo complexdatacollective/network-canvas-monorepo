@@ -4,7 +4,7 @@ import { existsSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig } from 'vite';
+import { defaultClientConditions, defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 import { appI18n } from '@codaco/app-i18n/vite';
@@ -74,6 +74,17 @@ const addJsExtensionsToDeclarationSpecifiers = (
     );
 
 export default defineConfig({
+  // No `browser` condition: the bundle also runs in the CLI and in workers,
+  // and a dependency's browser build may reach for `document` (the Markdown
+  // parser's character-reference decoder does). This covers the bundle only:
+  // a consumer of the source resolves that dependency with its own
+  // conditions, so a web worker that runs the message checks would need the
+  // same exclusion.
+  resolve: {
+    conditions: defaultClientConditions.filter(
+      (condition) => condition !== 'browser',
+    ),
+  },
   build: {
     // The optional UI subpaths externalize app-i18n; the root has no such imports.
     rollupOptions: { external: [/^@codaco\/app-i18n(?:\/|$)/] },
@@ -95,6 +106,10 @@ export default defineConfig({
         'messages': resolve(__dirname, 'src/messages.ts'),
         'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
         'schema-version': resolve(__dirname, 'src/schemaVersion.ts'),
+        'testing/information-pages': resolve(
+          __dirname,
+          'src/testing/informationPages.ts',
+        ),
       },
       name: 'ProtocolValidation',
       // the proper extensions will be added

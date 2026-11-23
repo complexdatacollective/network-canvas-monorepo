@@ -40,6 +40,7 @@ import {
   setTranslation,
 } from './protocol/localeOperations';
 import stages from './protocol/stages';
+import { definitionAsStored } from './protocol/utils/helpers';
 
 // Types
 type ActiveProtocolState = CurrentProtocol | null;
@@ -204,6 +205,37 @@ const activeProtocolSlice = createSlice({
         action.payload.interfaceText !== undefined
       ) {
         state.interfaceText = action.payload.interfaceText;
+      }
+
+      // The codebook sections a saved stage's editor changed, in its step.
+      if (commitStage.match(action) && action.payload.codebook !== undefined) {
+        for (const section of action.payload.codebook) {
+          // Stored as a direct codebook write stores it: a type the codebook
+          // does not hold yet is created, not just updated.
+          if (section.entity === 'ego') {
+            state.codebook.ego = definitionAsStored('ego', section.definition);
+          } else if (section.entity === 'node') {
+            const types = state.codebook.node ?? {};
+            state.codebook.node = {
+              ...types,
+              [section.type]: definitionAsStored(
+                'node',
+                section.definition,
+                section.type in types ? undefined : Object.keys(types).length,
+              ),
+            };
+          } else {
+            const types = state.codebook.edge ?? {};
+            state.codebook.edge = {
+              ...types,
+              [section.type]: definitionAsStored(
+                'edge',
+                section.definition,
+                section.type in types ? undefined : Object.keys(types).length,
+              ),
+            };
+          }
+        }
       }
 
       // Apply sub-reducers to specific parts of the state.

@@ -56,8 +56,7 @@ vi.mock('~/protocolReview/ownModelClient', () => ownClient);
 
 const NO_DETAILS = makeProtocol({ experiments: { protocolReview: {} } });
 
-const SHARE_LABEL =
-  'Share the results of this review with the Network Canvas team';
+const SHARE_LABEL = 'Share this review with the Network Canvas team';
 
 const question = (number: number) =>
   requestDialog().getByRole('textbox', {
@@ -164,7 +163,7 @@ describe('asking for a first review', () => {
     ).toBeChecked();
     expect(
       requestDialog().getByText(
-        'When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for 90 days. We will use this information only for the purposes of improving this feature.',
+        'When this is checked, the Network Canvas team keeps a copy of your study details, your protocol, and the review’s findings and suggested fixes. The copy also records which model wrote the review, when, and the language you use Architect in. Files in your protocol and the values of saved API keys are not included, only their names, and we add nothing that identifies you or your browser. The copy is deleted automatically 90 days after the review and cannot be removed sooner. We use it only to improve this feature.',
       ),
     ).toBeVisible();
   });

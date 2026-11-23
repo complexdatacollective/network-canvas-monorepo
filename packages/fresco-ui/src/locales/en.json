@@ -579,6 +579,14 @@
     "defaultMessage": "Nothing matches your search.",
     "description": "Shown in the rich text editor’s insert menu when the search matches nothing that can be inserted."
   },
+  "frescoUi.richTextEditor.insertMenuRequired": {
+    "defaultMessage": "Required in this text",
+    "description": "Marker on an entry in the rich text editor’s insert menu, such as a person’s name, that the text being written must include and does not include yet."
+  },
+  "frescoUi.richTextEditor.insertMenuRequiredMissing": {
+    "defaultMessage": "Something this text requires is not in it yet",
+    "description": "Second line of the tooltip, and part of the accessible name, of the toolbar button that opens the rich text editor’s insert menu, while the menu offers something, such as a person’s name, that the text being written must include and does not include yet."
+  },
   "frescoUi.richTextEditor.insertMenuSearch": {
     "defaultMessage": "Search",
     "description": "Accessible name and placeholder of the search box in the rich text editor’s insert menu, which filters the things that can be inserted into the text."
@@ -594,6 +602,14 @@
   "frescoUi.richTextEditor.removeLinkShort": {
     "defaultMessage": "Remove",
     "description": "Visible label of the link popover button removing the link."
+  },
+  "frescoUi.richTextEditor.textStyleHeading": {
+    "defaultMessage": "Heading {level}",
+    "description": "Choice in the rich text editor toolbar’s list of text styles, and what the list shows while the line the caret is in is a heading. {level} is the heading’s level, a number from 1 (the largest) to 4."
+  },
+  "frescoUi.richTextEditor.textStyleParagraph": {
+    "defaultMessage": "Paragraph",
+    "description": "Choice in the rich text editor toolbar’s list of text styles, and what the list shows while the line the caret is in is ordinary text rather than a heading."
   },
   "frescoUi.selectAllHeader.deselectAll": {
     "defaultMessage": "Deselect all",

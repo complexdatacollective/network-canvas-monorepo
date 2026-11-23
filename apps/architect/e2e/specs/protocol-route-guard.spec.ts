@@ -148,6 +148,8 @@ const VIEW_CONTROLS: readonly ViewControl[] = [
   },
   { role: 'button', name: /^cancel$/i },
   { role: 'button', name: /^preview settings$/i },
+  // Opens the stage's walkthrough, which explains the editor and changes nothing.
+  { role: 'button', name: /^walk me through this$/i },
 ];
 
 const ACTION_ROLES: readonly Role[] = [

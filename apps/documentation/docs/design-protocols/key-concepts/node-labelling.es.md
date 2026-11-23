@@ -1,12 +1,12 @@
 ---
 title: Etiquetado de nodos
 navOrder: 13
-translatedFrom: 8fb0f6b196f9ca83b4558e51bdb379fda1fe8bbc
+translatedFrom: 44a0a050e6dfe7dcd627e657ba22133aae96cae4
 ---
 
 ## Cómo se elige la etiqueta de un nodo {#how-a-nodes-label-is-chosen}
 
-Cada nodo se muestra con una etiqueta: en un sociograma, en la lista de un generador de nombres, en un contenedor y en cualquier lugar donde el texto de una etapa [inserte](/es/design-protocols/piped-text) la **Etiqueta del nodo**. La entrevista elige la etiqueta de cada nodo de la siguiente manera:
+Cada nodo se muestra con una etiqueta: en un sociograma, en la lista de un generador de nombres, en un contenedor y en cualquier lugar donde el texto de una etapa [inserte](/es/design-protocols/key-concepts/piped-text) la **Etiqueta del nodo**. La entrevista elige la etiqueta de cada nodo de la siguiente manera:
 
 1. Si el tipo del nodo tiene una [etiqueta dinámica](#dynamic-labels), el nodo muestra esa etiqueta.
 2. En caso contrario, el nodo muestra su etiqueta predeterminada, que se obtiene de los propios datos del nodo: un atributo llamado «name»; si no lo hay, uno cuyo nombre contenga «name»; si tampoco, en los datos importados, una columna cuyo nombre contenga «name» aunque el [libro de códigos](/es/design-protocols/key-concepts/codebook) no la incluya; y, si no, el primer atributo de texto que tenga un valor.
@@ -43,7 +43,7 @@ La etiqueta es una sola línea de texto. Puedes escribir texto normal y emojis, 
 
 **Valores, con el botón de la jeringa.** Un valor es un marcador de posición: en cada nodo, la etiqueta muestra en su lugar el valor que tiene ese nodo. Puedes insertar cualquier atributo del tipo de nodo, o la **Etiqueta predeterminada**, que es la etiqueta que el nodo habría tenido sin una etiqueta dinámica. Por ejemplo, una etiqueta formada por la etiqueta predeterminada seguida de la edad del nodo muestra «Alice 34» en un nodo y «Bo 27» en otro.
 
-Un atributo puede no tener valor en algunos nodos. Cuando insertes uno, selecciónalo en la etiqueta para escribir dos versiones del texto que lo rodea: una para cuando se conoce el valor y otra para cuando no. Consulta [Cuando falta información](/es/design-protocols/piped-text#when-information-is-missing).
+Un atributo puede no tener valor en algunos nodos. Cuando insertes uno, selecciónalo en la etiqueta para escribir dos versiones del texto que lo rodea: una para cuando se conoce el valor y otra para cuando no. Consulta [Cuando falta información](/es/design-protocols/key-concepts/piped-text#when-information-is-missing).
 
 **Lógica, con el botón de lógica.** La lógica inserta un grupo de redacciones alternativas, de las que cada nodo muestra una:
 
@@ -74,7 +74,7 @@ Una etiqueta dinámica solo cambia lo que se muestra. No se guarda con el nodo n
 
 ### Traducir una etiqueta dinámica {#translating-a-dynamic-label}
 
-En un protocolo con más de un idioma, una etiqueta dinámica se traduce como cualquier otro texto que muestra valores, en la [tabla de traducciones](/es/design-protocols/translating-your-protocol#the-translation-table). Sus valores y su lógica se conservan en cada traducción, y se traduce el texto de cada caso.
+En un protocolo con más de un idioma, una etiqueta dinámica se traduce como cualquier otro texto que muestra valores, en la [tabla de traducciones](/es/design-protocols/tutorials/translating-your-protocol#the-translation-table). Sus valores y su lógica se conservan en cada traducción, y se traduce el texto de cada caso.
 
 ### Protocolos que usaban un script de etiquetado de nodos {#protocols-that-used-a-node-label-worker}
 

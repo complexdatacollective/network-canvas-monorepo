@@ -20,8 +20,7 @@ const informationStage = (id: string, label: string): SectionDoc => ({
   id,
   type: 'Information',
   label: text(label),
-  title: text(label),
-  items: [],
+  content: text(label),
 });
 
 const protocolSections = (): Record<string, SectionDoc> => ({

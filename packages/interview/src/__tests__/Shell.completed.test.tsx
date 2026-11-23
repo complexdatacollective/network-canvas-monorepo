@@ -50,8 +50,7 @@ const information = {
   id: 'overview',
   type: 'Information' as const,
   label: { en: 'Overview' },
-  title: { en: 'Study overview' },
-  items: [],
+  content: { en: '# Study overview' },
 };
 
 const finishStage = {

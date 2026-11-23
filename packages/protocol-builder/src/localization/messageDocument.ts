@@ -10,10 +10,13 @@ import type {
   TokenPillVariant,
 } from '@codaco/fresco-ui/TokenPill';
 import {
+  assetBlocksInMarkdown,
   MISSING_CASE,
   type MessageNode,
   type MessageSwitch,
+  messageStructure,
   type MessageVersion,
+  VERSION_LINE_LEAD,
 } from '@codaco/protocol-validation';
 
 import {
@@ -30,6 +33,8 @@ import {
 export type MessageDocumentFormat = Readonly<{
   markdown: boolean;
   singleLine: boolean;
+  /** Whether markdown of several lines may hold files as blocks. */
+  assetBlocks?: boolean;
 }>;
 
 /** What the editor calls a switch and each of its versions. */
@@ -225,7 +230,7 @@ const isRichTextVersion = (value: unknown): value is RichTextVersion =>
   Array.isArray(value.content) &&
   value.content.every((node) => typeof node === 'object' && node !== null);
 
-const isSwitchMeta = (value: unknown): value is SwitchMeta =>
+export const isSwitchMeta = (value: unknown): value is SwitchMeta =>
   typeof value === 'object' &&
   value !== null &&
   'argument' in value &&
@@ -242,30 +247,31 @@ const MARKER = /(\d+)/g;
 const markerFor = (index: number) => `${MARKER_OPEN}${index}${MARKER_CLOSE}`;
 const holdsMarker = (text: string) => text.includes(MARKER_OPEN);
 
-// A version sits inside a line, so text at its start (`# means`, `1. `) is
-// not the start of a heading or list. Reading it behind this stand-in keeps
-// markdown from taking it as one. (Writing needs none: the editor escapes
-// such text wherever it is.)
-const LINE_LEAD = '\uE002';
-
+// A version is read behind `VERSION_LINE_LEAD`, which is then taken off.
+// (Writing needs none: the editor escapes such text wherever it is.)
 const withoutLineLead = (
   line: readonly RichTextContent[],
 ): RichTextContent[] => {
   const [first, ...rest] = line;
-  if (first?.type !== 'text' || !first.text?.startsWith(LINE_LEAD)) {
+  if (first?.type !== 'text' || !first.text?.startsWith(VERSION_LINE_LEAD)) {
     return [...line];
   }
-  const text = first.text.slice(LINE_LEAD.length);
+  const text = first.text.slice(VERSION_LINE_LEAD.length);
   return text === '' ? rest : [{ ...first, text }, ...rest];
 };
 
 /**
  * Why a message cannot be shown in the editor as it is: a value inside a link
- * address, or a version of markdown text that runs over more than one line
+ * address, a version of markdown text that runs over more than one line
  * (paragraphs, a list, a heading), which a version's one-line editor would
- * run together and write back that way.
+ * run together and write back that way, or a file written where the editor
+ * holds no block (see protocol-validation's `AssetBlockPlacementProblem`),
+ * which it would write back as the file's description alone.
  */
-type MessageDocumentProblemKind = 'valueInLinkAddress' | 'linesInVersion';
+type MessageDocumentProblemKind =
+  | 'valueInLinkAddress'
+  | 'linesInVersion'
+  | 'misplacedFile';
 
 export class MessageDocumentProblem extends Error {
   readonly kind: MessageDocumentProblemKind;
@@ -298,6 +304,15 @@ const restoreMarkers = (
     if (JSON.stringify(mark.attrs ?? {}).includes(MARKER_OPEN)) {
       throw new MessageDocumentProblem('valueInLinkAddress');
     }
+  }
+  // A file's block keeps its address and description as attributes, where a
+  // value cannot be shown any more than in a link's address.
+  if (
+    content.type !== 'text' &&
+    content.attrs !== undefined &&
+    JSON.stringify(content.attrs).includes(MARKER_OPEN)
+  ) {
+    throw new MessageDocumentProblem('valueInLinkAddress');
   }
   if (content.type === 'text') return content;
   if (content.content === undefined) return content;
@@ -338,6 +353,20 @@ const edgeSpace = (text: string): [string, string, string] => {
   return [text.slice(0, start), text.slice(start, end), text.slice(end)];
 };
 
+// Asked of what markdown reads, never of how the text is spelled: an address
+// may be written with its colon escaped (`asset\:id`, `asset&#58;id`).
+const namesFile = (markdown: string): boolean =>
+  assetBlocksInMarkdown(markdown).length > 0;
+
+// Whether text declared to hold blocks names a file anywhere but in a
+// paragraph of its own text, which is the one place a block is written.
+const misplacesFile = (markdown: string): boolean =>
+  assetBlocksInMarkdown(markdown).some(({ problems }) =>
+    problems.some(
+      ({ kind }) => kind === 'notInParagraph' || kind === 'byReference',
+    ),
+  );
+
 /**
  * A version's line from its markdown. Markdown drops the spaces at the ends
  * of a line, but a version's spaces are part of the sentence it sits in, so
@@ -356,9 +385,15 @@ const versionLine = (
   if (markdown.includes('\n')) {
     throw new MessageDocumentProblem('linesInVersion');
   }
+  if (format.assetBlocks === true && namesFile(markdown)) {
+    throw new MessageDocumentProblem('misplacedFile');
+  }
   const [before, middle, after] = edgeSpace(markdown);
   const parsed = restoreMarkers(
-    markdownToRichTextContent(LINE_LEAD + middle, true, true),
+    markdownToRichTextContent(VERSION_LINE_LEAD + middle, {
+      inline: true,
+      links: true,
+    }),
     pieces,
   );
   const line = withoutLineLead(parsed.content?.[0]?.content ?? []);
@@ -451,8 +486,15 @@ export const messageToDocument = (
 
   const top = level(nodes, undefined);
   if (!format.markdown) return restoreMarkers(PLAIN_LINE(top.text), top.pieces);
+  if (format.assetBlocks === true && misplacesFile(top.text)) {
+    throw new MessageDocumentProblem('misplacedFile');
+  }
   return restoreMarkers(
-    markdownToRichTextContent(top.text, format.singleLine, true),
+    markdownToRichTextContent(top.text, {
+      inline: format.singleLine,
+      links: true,
+      assetBlocks: format.assetBlocks === true,
+    }),
     top.pieces,
   );
 };
@@ -637,3 +679,25 @@ export const documentToMessageNodes = (
   document: RichTextContent,
   format: MessageDocumentFormat,
 ): MessageNode[] => messageNodesOf(document, format, false, undefined);
+
+/**
+ * The editor's document for the stored text of the field `name`. Validation
+ * refuses a protocol holding text the editor cannot hold, so one that reaches
+ * an editor is a fault, and this throws.
+ */
+export const openMessageDocument = (
+  name: string,
+  message: string,
+  format: MessageDocumentFormat,
+  labels: MessageDocumentLabels,
+): RichTextContent => {
+  const fault = (cause?: unknown) =>
+    new Error(`The text of "${name}" cannot be opened for editing.`, { cause });
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) throw fault();
+  try {
+    return messageToDocument(structure.nodes, format, labels);
+  } catch (error) {
+    throw error instanceof MessageDocumentProblem ? fault(error) : error;
+  }
+};

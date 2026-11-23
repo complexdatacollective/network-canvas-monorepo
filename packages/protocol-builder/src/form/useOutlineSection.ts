@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 
+import type { SectionKey } from '../sections/sectionKeys.ts';
 import type { SectionAvailability } from './outlineStore.ts';
 import { useStageEditorForm } from './stageEditorContext.ts';
 
@@ -12,6 +13,7 @@ import { useStageEditorForm } from './stageEditorContext.ts';
  * than the markup it happens to be drawn in.
  */
 export function useOutlineSection(
+  sectionKey: SectionKey,
   title: string,
   availability: SectionAvailability = 'available',
 ): Readonly<{ sectionId: string }> {
@@ -27,9 +29,10 @@ export function useOutlineSection(
   useEffect(() => {
     return outline.registerSection({
       id: sectionId,
+      sectionKey,
       title: initialTitle.current,
     });
-  }, [outline, sectionId]);
+  }, [outline, sectionId, sectionKey]);
 
   useEffect(() => {
     outline.setSectionTitle(sectionId, title);

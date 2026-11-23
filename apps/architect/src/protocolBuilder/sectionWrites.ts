@@ -1,6 +1,9 @@
+import { Redacted } from 'effect';
 import { v4 as uuid } from 'uuid';
 
 import { interfaceTextWithUpdates } from '@codaco/interview/supplied-wording';
+import type { StageCodebookSection } from '@codaco/protocol-builder-core/contract/schemas';
+import { STAGE_ORDER_SECTION } from '@codaco/protocol-builder/host/protocolSections';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
@@ -22,6 +25,7 @@ import {
   type SectionIssue,
 } from '@codaco/studio-sync/section-validation';
 import {
+  parseSectionId,
   sectionId,
   type ProtocolSectionId,
   type SectionRef,
@@ -33,7 +37,10 @@ import {
   createTypeAsync,
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
-import { commitStage } from '~/ducks/modules/protocol/commitStage';
+import {
+  commitStage,
+  type CommittedCodebookSection,
+} from '~/ducks/modules/protocol/commitStage';
 import {
   isLastFinishStage,
   actionCreators as stageActionCreators,
@@ -41,7 +48,6 @@ import {
 import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
-import { STAGE_ORDER_SECTION } from './protocolSections.ts';
 
 /**
  * `updateType` reads a type id for `node` and `edge` only; the ego definition
@@ -173,11 +179,64 @@ export function stageInterfaceText(
   return { status: 'written', interfaceText: parsed.data ?? {} };
 }
 
+/**
+ * The codebook sections a stage's save carries, parsed as the codebook holds
+ * them, or the first section that cannot be held: what a stage's submit or
+ * create carries as `codebook`. Nothing is written here.
+ */
+export function stageCodebook(sections: readonly StageCodebookSection[]):
+  | Readonly<{ status: 'written'; codebook: CommittedCodebookSection[] }>
+  | Readonly<{
+      status: 'refused';
+      sectionId: ProtocolSectionId;
+      issues: SectionIssue[];
+    }> {
+  const codebook: CommittedCodebookSection[] = [];
+  for (const { sectionId: id, document: redacted } of sections) {
+    const document = Redacted.value(redacted);
+    const ref = parseSectionId(id);
+    if (ref.kind === 'codebookNode') {
+      const parsed = NodeDefinitionSchema.safeParse(document);
+      if (!parsed.success) {
+        return { ...refuseParse(parsed.error), sectionId: id };
+      }
+      codebook.push({
+        entity: 'node',
+        type: ref.typeId,
+        definition: parsed.data,
+      });
+    } else if (ref.kind === 'codebookEdge') {
+      const parsed = EdgeDefinitionSchema.safeParse(document);
+      if (!parsed.success) {
+        return { ...refuseParse(parsed.error), sectionId: id };
+      }
+      codebook.push({
+        entity: 'edge',
+        type: ref.typeId,
+        definition: parsed.data,
+      });
+    } else if (ref.kind === 'codebookEgo') {
+      const parsed = EgoDefinitionSchema.safeParse(document);
+      if (!parsed.success) {
+        return { ...refuseParse(parsed.error), sectionId: id };
+      }
+      codebook.push({ entity: 'ego', definition: parsed.data });
+    } else {
+      return {
+        ...refuse('not a codebook section'),
+        sectionId: id,
+      };
+    }
+  }
+  return { status: 'written', codebook };
+}
+
 function submitStage(
   store: ArchitectStore,
   stageId: string,
   document: SectionDoc,
   interfaceText: StageInterfaceText | undefined,
+  codebook: readonly CommittedCodebookSection[] | undefined,
 ): SectionWrite {
   const parsed = stageSchema.safeParse(document);
   if (!parsed.success) return refuseParse(parsed.error);
@@ -203,6 +262,7 @@ function submitStage(
       stageId,
       stage: parsed.data,
       ...(interfaceText === undefined ? {} : { interfaceText }),
+      ...(codebook === undefined ? {} : { codebook }),
     }),
   );
   return { status: 'written' };
@@ -297,10 +357,11 @@ export function submitSection(
   ref: SectionRef,
   document: SectionDoc,
   interfaceText?: StageInterfaceText,
+  codebook?: readonly CommittedCodebookSection[],
 ): SectionWrite | Promise<SectionWrite> {
   switch (ref.kind) {
     case 'stage':
-      return submitStage(store, ref.stageId, document, interfaceText);
+      return submitStage(store, ref.stageId, document, interfaceText, codebook);
     case 'codebookNode': {
       const parsed = NodeDefinitionSchema.safeParse(document);
       if (!parsed.success) return refuseParse(parsed.error);
@@ -392,6 +453,7 @@ export async function createSection(
   document: SectionDoc,
   position: number | undefined,
   interfaceText?: StageInterfaceText,
+  codebook?: readonly CommittedCodebookSection[],
 ): Promise<SectionCreation> {
   if (kind === 'stage') {
     const stageId = uuid();
@@ -405,6 +467,7 @@ export async function createSection(
         stage: parsed.data,
         ...(position === undefined ? {} : { index: position }),
         ...(interfaceText === undefined ? {} : { interfaceText }),
+        ...(codebook === undefined ? {} : { codebook }),
       }),
     );
     return { status: 'created', sectionId: target };

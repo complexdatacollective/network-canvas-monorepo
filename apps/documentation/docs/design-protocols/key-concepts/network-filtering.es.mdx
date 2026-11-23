@@ -1,7 +1,7 @@
 ---
 title: Filtrado de la red
 navOrder: 11
-translatedFrom: 05a30afc29058810199d8d4358b8240676158417
+translatedFrom: 4ca4dfdfdf36ebfa7dfe480ea752244219e98696
 ---
 
 <Definition>
@@ -23,7 +23,7 @@ Resulta especialmente útil cuando el contenido de la etapa no se aplica a todas
 
 ## Configurar el filtrado de la red en una etapa {#configuring-network-filtering-on-a-stage}
 
-Para configurar el filtrado de la red en una etapa, abre la etapa desde la vista de la línea de tiempo y activa el interruptor **Filtrado de red**. A partir de ahí, puedes crear una o varias **reglas** (de tipo álter o vínculo) y establecer el **operador de unión**, indicando si **deben cumplirse todas las reglas** o si **basta con que se cumpla alguna regla**.
+Para configurar el filtrado de la red en una etapa, abre la etapa desde la vista de la línea de tiempo y activa **Filtrar la red**. A partir de ahí, puedes crear una o varias **reglas** (de tipo álter o vínculo) y establecer el **operador de unión**, indicando si **deben cumplirse todas las reglas** o si **basta con que se cumpla alguna regla**.
 
 ![](/assets/img/key-concepts/network-filtering/filtering-panel.png)
 
@@ -55,7 +55,7 @@ fenomenológicamente válidos.
 
 ### El operador de unión {#the-join-operator}
 
-Las reglas se encadenan (o se «unen») mediante lógica `AND` u `OR`, que se establece en la sección de configuración del filtro de red con las opciones **Deben cumplirse todas las reglas** y **Basta con que se cumpla alguna regla**, respectivamente. Estos métodos funcionan más o menos como cabría esperar. En el contexto de una operación de filtrado:
+Las reglas se encadenan (o se «unen») mediante lógica `AND` u `OR`, que se establece en la sección **Filtrar la red**, en **Cumplimiento de reglas**, con las opciones **Deben cumplirse todas las reglas** y **Basta con que se cumpla alguna regla**, respectivamente. Estos métodos funcionan más o menos como cabría esperar. En el contexto de una operación de filtrado:
 
 - `OR` significa que, si un nodo o un vínculo cumple los criterios de _cualquiera_ de las reglas, se incluirá en la red resultante.
 - `AND` significa que los nodos y vínculos de la red resultante deben cumplir los criterios de _todas_ las reglas.
@@ -91,6 +91,14 @@ También puedes filtrar el contenido de los [paneles laterales](/es/design-proto
 Esta función puede ser especialmente útil si quieres filtrar los elementos de una lista predefinida. Por ejemplo, tu lista puede contener un atributo que represente el año de graduación, que podrías usar para filtrar el contenido del panel lateral en una pregunta sobre las personas de una promoción concreta con las que la persona participante coincidió en clase.
 
 ![](/assets/img/key-concepts/network-filtering/side-panel.png)
+
+<AppOnly app="current">
+
+## Filtrado de la red en una vista predefinida de una etapa «Narrativa» {#network-filtering-in-a-narrative-preset}
+
+Una etapa [«Narrativa»](/es/design-protocols/interface-documentation/narrative) no tiene un filtro para toda la etapa. En su lugar, cada una de sus vistas predefinidas tiene su propio filtro, así que la etapa puede mostrar una parte distinta de la red en cada vista predefinida. El filtro de una vista predefinida se crea con las mismas reglas y el mismo operador de unión que un filtro de etapa, y solo se aplica mientras se muestra esa vista predefinida. Consulta [Filtrar una vista predefinida](/es/design-protocols/interface-documentation/narrative#filtering-a-preset).
+
+</AppOnly>
 
 ## Conceptos relacionados {#related-concepts}
 

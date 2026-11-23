@@ -1,7 +1,7 @@
 ---
 title: Narration
 navOrder: 10
-translatedFrom: a21c6fb487cacde6abc161d81dd344278b8ee53a
+translatedFrom: 8b47e33a2105ed6cee4ac4dd2130b5f65611824b
 ---
 
 <InterfaceSummary type="Narrative">
@@ -29,6 +29,12 @@ Tout ce que vous configurez dans une étape « Narration » se trouve dans un 
 
 Chaque préréglage a un libellé qui l’identifie dans l’interface. Pendant l’entretien, un sélecteur flottant de préréglages permet à l’équipe de recherche ou à la personne participante de passer d’un préréglage à l’autre et d’afficher ou de masquer les groupes, les liens et les attributs mis en évidence. Lorsqu’un préréglage comporte plusieurs attributs de mise en évidence, on choisit celui à afficher à un moment donné dans une liste qui montre le libellé que vous avez donné à chaque attribut. Les types de liens qu’un préréglage trace sont eux aussi listés sous les libellés que vous leur avez donnés. Rien de ce qui est fait ici n’est enregistré dans les données d’entretien : l’interface « Narration » ne fait que lire.
 
+<AppOnly app="current">
+
+Un préréglage peut aussi avoir un **filtre** : des règles qui choisissent la partie du réseau que ce préréglage affiche. Chaque préréglage a son propre filtre : une même étape peut donc afficher tout le réseau dans un préréglage et seulement une partie dans un autre, par exemple tout le monde dans la première vue et seulement les membres de la famille dans la seconde.
+
+</AppOnly>
+
 ![Exemple de préréglage d’une étape « Narration », avec des nœuds mis en évidence, des liens entre eux et des enveloppes de groupe colorées](/assets/img/interface-documentation/narrative/narrative-example.png)
 
 ## Configurer les préréglages dans Architect {#configuring-presets-in-architect}
@@ -39,13 +45,33 @@ Une étape « Narration » doit comporter au moins un préréglage. Pour chaqu
 - **Attribut de disposition** : l’attribut utilisé pour positionner les nœuds dans ce préréglage.
 - **Attribut de regroupement** (facultatif) : un attribut catégoriel utilisé pour dessiner des enveloppes convexes autour des nœuds qui partagent chaque valeur.
 - **Liens affichés** (facultatif) : un ou plusieurs types de liens à tracer. Chaque type de lien choisi doit aussi avoir un libellé, que les personnes participantes voient dans le sélecteur de préréglages. Ce libellé est au départ le nom du type de lien, et vous pouvez le traduire comme n’importe quel autre texte.
-- **Mise en évidence des nœuds** (facultatif) : un ou plusieurs attributs booléens ; les nœuds dont la valeur est vraie sont mis en évidence tant que le préréglage est actif. Chaque attribut choisi doit aussi avoir un libellé, que les personnes participantes voient dans le sélecteur de préréglages. Ce libellé est au départ le nom de l’attribut, et vous pouvez le traduire comme n’importe quel autre texte (voir [Traduire votre protocole](/fr/design-protocols/translating-your-protocol#labels-in-a-narrative-stages-legend)).
+- **Mise en évidence des nœuds** (facultatif) : un ou plusieurs attributs booléens ; les nœuds dont la valeur est vraie sont mis en évidence tant que le préréglage est actif. Chaque attribut choisi doit aussi avoir un libellé, que les personnes participantes voient dans le sélecteur de préréglages. Ce libellé est au départ le nom de l’attribut, et vous pouvez le traduire comme n’importe quel autre texte (voir [Traduire votre protocole](/fr/design-protocols/tutorials/translating-your-protocol#labels-in-a-narrative-stages-legend)).
 
 Les options de groupes, de liens et de mise en évidence se choisissent parmi les attributs déjà présents dans votre livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) : définissez donc les attributs dont un préréglage a besoin avant de le construire.
 
+### Filtrer un préréglage {#filtering-a-preset}
+
+<AppOnly app="current">
+
+Activez **Filtre du préréglage** dans un préréglage pour limiter ce préréglage à une partie du réseau. Vous construisez le filtre à partir de règles, de la même façon qu’un [filtre de réseau](/fr/design-protocols/key-concepts/network-filtering) dans n’importe quelle autre étape : chaque règle teste un attribut d’un nœud, ou la présence d’un lien d’un type donné sur un nœud, et vous choisissez si un nœud doit satisfaire toutes les règles ou au moins l’une d’elles. Un préréglage filtré ne trace que les nœuds qui satisfont les règles, et seulement les liens entre eux.
+
+Un préréglage sans filtre affiche toutes les personnes qui ont une position dans son attribut de disposition. L’étape « Narration » n’a pas de filtre propre : pour afficher la même partie du réseau tout au long de l’étape, donnez le même filtre à chaque préréglage.
+
+Changer de préréglage pendant l’entretien change aussi de filtre. Les nœuds que le nouveau préréglage exclut quittent le canevas, et ceux qu’il laisse passer apparaissent.
+
+Une étape « Narration » est écartée de l’entretien lorsqu’aucun de ses préréglages n’a personne à afficher, sauf si **Dessin libre** est activé.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Dans Architect Classic, un filtre appartient à toute l’étape « Narration » et s’applique à tous les préréglages. Activez **Filtrage du réseau** dans l’éditeur de l’étape pour le définir (voir [Filtrage du réseau](/fr/design-protocols/key-concepts/network-filtering)).
+
+</AppOnly>
+
 ### Arrière-plan {#background}
 
-Comme une étape « Sociogramme », une étape « Narration » peut s’afficher sur une série de cercles concentriques ou sur une image d’arrière-plan personnalisée. Un SVG adaptatif est le meilleur choix pour une image d’arrière-plan, car il garde les zones et les libellés lisibles lorsque le canevas change de forme. Consultez [Arrière-plans SVG adaptatifs](/fr/design-protocols/responsive-svg-backgrounds) pour savoir comment en préparer un.
+Comme une étape « Sociogramme », une étape « Narration » peut s’afficher sur une série de cercles concentriques ou sur une image d’arrière-plan personnalisée. Un SVG adaptatif est le meilleur choix pour une image d’arrière-plan, car il garde les zones et les libellés lisibles lorsque le canevas change de forme. Consultez [Créer des images d’arrière-plan adaptatives](/fr/design-protocols/tutorials/responsive-svg-backgrounds) pour savoir comment en préparer un.
 
 ### Comportements {#behaviors}
 
@@ -59,11 +85,11 @@ Trois comportements, définis pour l’étape, modifient la façon dont les pers
 
 ### Personnaliser la formulation intégrée {#customize-built-in-wording}
 
-La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les titres des panneaux, sous **Propre à cette étape**. Chacun commence par la formulation de Network Canvas, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (voir [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un titre ne figure dans la section que tant qu’un préréglage met en évidence des attributs, affiche des liens ou regroupe des nœuds, et il est supprimé lorsque plus aucun préréglage ne le fait.
+La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les titres des panneaux, sous **Propre à cette étape**. Chacun commence par la formulation de Network Canvas, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (voir [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). Un titre ne figure dans la section que tant qu’un préréglage met en évidence des attributs, affiche des liens ou regroupe des nœuds, et il est supprimé lorsque plus aucun préréglage ne le fait.
 
 Les info-bulles des outils de dessin sont les mêmes dans toutes les étapes « Narration » : elles se trouvent donc sous **Commun à toutes les étapes de ce type**, dans la même section, tant que **Dessin libre** est activé. Une modification de ces info-bulles s’applique à toutes ces étapes, et elle est enregistrée dès que vous quittez le champ. Il y en a trois : **Info-bulle pour activer ou désactiver le dessin** nomme le bouton qui active et désactive le dessin, **Info-bulle pour figer ou laisser s’estomper les annotations** le bouton qui fige les annotations ou les laisse de nouveau s’estomper, et **Info-bulle de réinitialisation des annotations** le bouton qui les efface.
 
-Les info-bulles des boutons qui suspendent et reprennent la disposition automatique font partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text), communs avec l’interface « Sociogramme », et se reformulent et se traduisent dans le tableau des traductions, sous **Boutons**.
+Les info-bulles des boutons qui suspendent et reprennent la disposition automatique font partie des [textes de l’entretien](/fr/design-protocols/tutorials/translating-your-protocol#interview-text), communs avec l’interface « Sociogramme », et se reformulent et se traduisent dans le tableau des traductions, sous **Boutons**.
 
 </AppOnly>
 
@@ -82,6 +108,16 @@ Donnez à chaque préréglage un seul sujet, qui correspond à une question, et 
 Comme l’interface « Narration » ne montre que les alters qui ont une valeur pour l’attribut de disposition du préréglage, réutilisez l’attribut de disposition que vos personnes participantes ont rempli dans une étape [« Sociogramme »](/fr/design-protocols/interface-documentation/sociogram) précédente. Cela reproduit la disposition qu’elles ont elles-mêmes donnée à leur réseau, au lieu de partir d’un canevas vide.
 
 </GoodPractice>
+
+<AppOnly app="current">
+
+<GoodPractice>
+
+Utilisez les filtres des préréglages pour passer du réseau entier à la partie sur laquelle porte une question. Un premier préréglage sans filtre affiche tout le monde ; les suivants peuvent se limiter à la famille, aux personnes qui apportent du soutien ou aux personnes reliées par un type de lien, le tout sans quitter l’étape ni perdre la disposition faite par la personne participante.
+
+</GoodPractice>
+
+</AppOnly>
 
 ## Garder une trace de la conversation {#capturing-the-conversation}
 

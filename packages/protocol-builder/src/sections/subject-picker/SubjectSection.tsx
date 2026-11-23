@@ -14,6 +14,7 @@ import { REQUIRED } from '../../form/requiredField.ts';
 import { useAskStageHasAnyValue } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
+import type { SectionKey } from '../sectionKeys.ts';
 import {
   useResetStageOnSubjectChange,
   useSubjectChangeDiscards,
@@ -158,6 +159,7 @@ const messages = defineMessages({
  * the locale sweep sees.
  */
 type SubjectWords = Readonly<{
+  sectionKey: SectionKey;
   title: MessageDescriptor;
   description: MessageDescriptor;
   fieldLabel: MessageDescriptor;
@@ -181,6 +183,7 @@ type SubjectWords = Readonly<{
 
 const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
   node: Object.freeze({
+    sectionKey: 'node-type',
     title: messages.nodeTitle,
     description: messages.nodeDescription,
     fieldLabel: messages.nodeFieldLabel,
@@ -193,6 +196,7 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     firstChoiceConfirm: messages.nodeFirstChoiceConfirm,
   }),
   edge: Object.freeze({
+    sectionKey: 'edge-type',
     title: messages.edgeTitle,
     description: messages.edgeDescription,
     fieldLabel: messages.edgeFieldLabel,
@@ -302,6 +306,7 @@ export default function SubjectSection({
   return (
     <>
       <BuilderSection
+        sectionKey={words.sectionKey}
         title={intl.formatMessage(words.title)}
         description={intl.formatMessage(words.description)}
       >

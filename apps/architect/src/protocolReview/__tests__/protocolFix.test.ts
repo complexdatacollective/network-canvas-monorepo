@@ -15,9 +15,11 @@ import {
 import { applyOperations } from '../fixEngine';
 import {
   editProtocol,
+  fixStaysInBounds,
   normalizeOperations,
   protocolReplacement,
   recordFix,
+  writesPlaceholder,
 } from '../protocolFix';
 import { makeFinding, makeProtocol, op } from './fixtures';
 
@@ -65,6 +67,370 @@ describe('translations, as Architect’s editors treat them', () => {
       op('set', '/codebook/node/person/name', 'Friend'),
     ];
     expect(normalizeOperations(protocol, operations)).toEqual(operations);
+  });
+});
+
+describe('a fix that replaces more than one text', () => {
+  const variable = (protocol: unknown) =>
+    (protocol as CurrentProtocol).codebook.node?.person?.variables?.freq;
+
+  it('keeps the other translations of a prompt it replaces whole', () => {
+    const protocol = makeProtocol();
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/stages/names/prompts/p1', {
+        id: 'p1',
+        text: { en: 'In the past 6 months, who?' },
+      }),
+    ]);
+    const applied = applyOperations(protocol, normalized);
+    expect(applied.ok && promptText(applied.result)).toEqual({
+      en: 'In the past 6 months, who?',
+      fr: 'Nommez',
+    });
+  });
+
+  it('keeps each option’s translations when the list is rewritten, matching options by value', () => {
+    const protocol = makeProtocol();
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/codebook/node/person/variables/freq/options', [
+        { label: { en: 'Seldom' }, value: 2 },
+        { label: { en: 'Sometimes' }, value: 3 },
+        { label: { en: 'Frequently' }, value: 1 },
+      ]),
+    ]);
+    const applied = applyOperations(protocol, normalized);
+    expect(applied.ok && variable(applied.result)).toMatchObject({
+      options: [
+        { label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
+        { label: { en: 'Sometimes' }, value: 3 },
+        { label: { en: 'Frequently', fr: 'Souvent' }, value: 1 },
+      ],
+    });
+  });
+
+  it('keeps the translations of every text in a stage it replaces whole', () => {
+    const protocol = makeProtocol();
+    const stage = protocol.stages[0];
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/stages/welcome', {
+        ...stage,
+        label: { en: 'Start' },
+        content: { en: '# Hi' },
+      }),
+    ]);
+    const applied = applyOperations(protocol, normalized);
+    expect(
+      applied.ok && (applied.result as CurrentProtocol).stages[0],
+    ).toMatchObject({
+      label: { en: 'Start', fr: 'Bienvenue' },
+      content: { en: '# Hi', fr: '# Bonjour\n\nSalut' },
+    });
+  });
+
+  const withOptions = (options: unknown[]): CurrentProtocol => {
+    const protocol = makeProtocol();
+    const freq = variable(protocol);
+    if (freq) Object.assign(freq, { options });
+    return protocol;
+  };
+  const rewritten = (protocol: CurrentProtocol, options: unknown[]) => {
+    const applied = applyOperations(
+      protocol,
+      normalizeOperations(protocol, [
+        op('set', '/codebook/node/person/variables/freq/options', options),
+      ]),
+    );
+    return applied.ok && variable(applied.result);
+  };
+
+  it('keeps Yes and No with their own answers when the list is reversed', () => {
+    const protocol = withOptions([
+      { label: { en: 'Yes', fr: 'Oui' }, value: true },
+      { label: { en: 'No', fr: 'Non' }, value: false },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'No, never' }, value: false },
+        { label: { en: 'Yes, sometimes' }, value: true },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'No, never', fr: 'Non' }, value: false },
+        { label: { en: 'Yes, sometimes', fr: 'Oui' }, value: true },
+      ],
+    });
+  });
+
+  it('keeps a Yes/No answer’s translations when a fix rewords it and marks it negative', () => {
+    const protocol = withOptions([
+      { label: { en: 'Yes', fr: 'Oui' }, value: true },
+      { label: { en: 'No', fr: 'Non' }, value: false },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Yes, sometimes' }, value: true },
+        { label: { en: 'No, never' }, value: false, negative: true },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Yes, sometimes', fr: 'Oui' }, value: true },
+        { label: { en: 'No, never', fr: 'Non' }, value: false, negative: true },
+      ],
+    });
+  });
+
+  it('keeps an option’s translations when a fix rewords it and writes its value as text', () => {
+    const protocol = withOptions([
+      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
+      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Frequently' }, value: '1' },
+        { label: { en: 'Rarely' }, value: 2 },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Frequently', fr: 'Souvent' }, value: '1' },
+        { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+      ],
+    });
+  });
+
+  it('keeps each translation with its label when a fix swaps the values', () => {
+    const protocol = withOptions([
+      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
+      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Often' }, value: 2 },
+        { label: { en: 'Rarely' }, value: 1 },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Often', fr: 'Souvent' }, value: 2 },
+        { label: { en: 'Rarely', fr: 'Rarement' }, value: 1 },
+      ],
+    });
+  });
+
+  it('gives a new option nothing when it takes the value of one that keeps its label', () => {
+    const protocol = withOptions([
+      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
+      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+    ]);
+    const options = rewritten(protocol, [
+      { label: { en: 'Often' }, value: 3 },
+      { label: { en: 'Every day' }, value: 1 },
+      { label: { en: 'Seldom' }, value: 2 },
+    ]);
+    expect(options).toMatchObject({
+      options: [
+        { label: { en: 'Often', fr: 'Souvent' }, value: 3 },
+        { label: { en: 'Every day' }, value: 1 },
+        { label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
+      ],
+    });
+    expect(JSON.stringify(options)).toContain('{"en":"Every day"}');
+  });
+
+  it('keeps each translation with what its entry refers to when entries are reordered and reworded', () => {
+    const protocol = withOptions([
+      { label: { en: 'Friends', fr: 'Amis' }, type: 'friend' },
+      { label: { en: 'Family', fr: 'Famille' }, type: 'family' },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Relatives' }, type: 'family' },
+        { label: { en: 'Close friends' }, type: 'friend' },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Relatives', fr: 'Famille' }, type: 'family' },
+        { label: { en: 'Close friends', fr: 'Amis' }, type: 'friend' },
+      ],
+    });
+  });
+
+  it('carries nothing over to an entry reworded and pointed at something else', () => {
+    const protocol = withOptions([
+      { label: { en: 'Friends', fr: 'Amis' }, type: 'friend' },
+      { label: { en: 'Family', fr: 'Famille' }, type: 'family' },
+    ]);
+    expect(
+      JSON.stringify(
+        rewritten(protocol, [
+          { label: { en: 'Colleagues' }, type: 'colleague' },
+          { label: { en: 'Family' }, type: 'family' },
+        ]),
+      ),
+    ).toContain('{"en":"Colleagues"}');
+  });
+
+  it('carries nothing over to options that share a value', () => {
+    const protocol = withOptions([
+      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
+      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+    ]);
+    expect(
+      rewritten(protocol, [
+        { label: { en: 'Daily' }, value: 1 },
+        { label: { en: 'Weekly' }, value: 1 },
+      ]),
+    ).toMatchObject({
+      options: [
+        { label: { en: 'Daily' }, value: 1 },
+        { label: { en: 'Weekly' }, value: 1 },
+      ],
+    });
+  });
+
+  it('writes only the default language of a value that names other translations', () => {
+    const protocol = makeProtocol();
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/stages/names/prompts/p1', {
+        id: 'p1',
+        text: { en: 'Who?', fr: 'Qui ?' },
+      }),
+    ]);
+    const applied = applyOperations(protocol, normalized);
+    expect(applied.ok && promptText(applied.result)).toEqual({
+      en: 'Who?',
+      fr: 'Nommez',
+    });
+  });
+
+  it('writes nothing new in another language of a text it adds', () => {
+    const protocol = makeProtocol();
+    const normalized = normalizeOperations(protocol, [
+      op('set', '/stages/welcome/introductionPanel', {
+        en: 'Before you start',
+        fr: 'Avant de commencer',
+      }),
+    ]);
+    expect(normalized).toEqual([
+      op('set', '/stages/welcome/introductionPanel', {
+        en: 'Before you start',
+      }),
+    ]);
+  });
+});
+
+describe('a fix that changes another language', () => {
+  it.each([
+    ['sets a translation', op('set', '/stages/welcome/content/fr', '# Salut')],
+    ['removes a translation', op('remove', '/stages/welcome/content/fr')],
+    [
+      'adds something translated',
+      op('insert', '/stages/-', {
+        id: 'support',
+        type: 'Information',
+        content: { en: '# Support', fr: '# Aide' },
+      }),
+    ],
+  ])('is not offered when it %s', (_, operation) => {
+    expect(recordFix(makeProtocol(), [operation]).targets).toBeNull();
+  });
+
+  it('is not offered when it writes a translation of a text an earlier edit adds', () => {
+    expect(
+      recordFix(makeProtocol(), [
+        op('set', '/stages/welcome/introductionPanel', { en: 'Before' }),
+        op('set', '/stages/welcome/introductionPanel/fr', 'Avant'),
+      ]).targets,
+    ).toBeNull();
+  });
+
+  it('keeps the translations of a stage it removes and adds again with only the default language', () => {
+    const protocol = makeProtocol();
+    const [welcome] = protocol.stages;
+    const { operations, targets } = recordFix(protocol, [
+      op('remove', '/stages/welcome'),
+      op('insert', '/stages/names', {
+        ...welcome,
+        label: { en: 'Welcome' },
+        content: { en: '# Hi there' },
+      }),
+    ]);
+    expect(targets).not.toBeNull();
+    const applied = applyOperations(protocol, operations);
+    expect(
+      applied.ok && (applied.result as CurrentProtocol).stages[0],
+    ).toMatchObject({
+      id: 'welcome',
+      label: { fr: 'Bienvenue' },
+      content: { en: '# Hi there', fr: '# Bonjour\n\nSalut' },
+    });
+  });
+
+  it('is offered when it moves a stage that has translations', () => {
+    const protocol = makeProtocol();
+    const [welcome] = protocol.stages;
+    expect(
+      recordFix(protocol, [
+        op('remove', '/stages/welcome'),
+        op('insert', '/stages/-', welcome),
+      ]).targets,
+    ).not.toBeNull();
+  });
+});
+
+describe('a fix that reaches outside the interview and its data model', () => {
+  it.each([
+    ['an asset', op('set', '/assetManifest/map', { id: 'map', value: 'x' })],
+    ['the study details', op('remove', '/experiments')],
+    ['the default language', op('set', '/localization/defaultLocale', 'fr')],
+    ['the protocol’s name', op('set', '/name', 'Renamed')],
+    ['Network Canvas’s wording', op('remove', '/interfaceText')],
+  ])('is not offered when it edits %s', (_, operation) => {
+    expect(fixStaysInBounds([operation])).toBe(false);
+    expect(recordFix(makeProtocol(), [operation]).targets).toBeNull();
+  });
+
+  it('is offered for edits to stages and the codebook', () => {
+    const operations = [
+      op('set', '/stages/names/prompts/p1/text', 'Name people you know'),
+      op('set', '/codebook/node/person/name', 'Friend'),
+    ];
+    expect(fixStaysInBounds(operations)).toBe(true);
+    expect(recordFix(makeProtocol(), operations).targets).not.toBeNull();
+  });
+});
+
+describe('what counts as a placeholder', () => {
+  const writes = (text: string) =>
+    writesPlaceholder(op('set', '/stages/names/prompts/p1/text/en', text));
+
+  it.each([
+    '[PHONE NUMBER]',
+    '[CORREO ELECTRÓNICO]',
+    '[NUMÉRO DE TÉLÉPHONE]',
+    '[ÖFFNUNGSZEITEN]',
+    '[热线名称]',
+    '[رقم الهاتف]',
+    '[UNIVERSITY’S ETHICS OFFICE]',
+    '[HELPLINE NAME, E.G. SAMARITANS]',
+    '[PHONE NUMBER: 24H]',
+    '[NAME (OPTIONAL)]',
+    '[ORGANISATION & PHONE]',
+    '[姓]',
+    '[名]',
+  ])('reads %s as one', (placeholder) => {
+    expect(writes(`Call ${placeholder} now`)).toBe(true);
+  });
+
+  it.each([
+    'Call [NHS 111](https://111.nhs.uk) now',
+    'See note [1]',
+    'Tick the box [ ]',
+    'Choose one [optional]',
+    'Tick [X] to agree',
+    'Option [A]',
+    'Montant en [€]',
+    'No brackets at all',
+  ])('does not read "%s" as one', (text) => {
+    expect(writes(text)).toBe(false);
   });
 });
 
@@ -154,18 +520,53 @@ describe('a fix that writes a placeholder', () => {
   });
 });
 
+describe('a fix that keeps a translation holding bracketed text', () => {
+  const withFrenchPrompt = (fr: string) => {
+    const protocol = makeProtocol();
+    const stage = protocol.stages[1];
+    const prompt = stage && 'prompts' in stage ? stage.prompts[0] : undefined;
+    if (prompt) Object.assign(prompt, { text: { en: 'Name people', fr } });
+    return protocol;
+  };
+
+  it('is offered and made, since the fix does not write that text', () => {
+    const protocol = withFrenchPrompt('Appuyez sur [OK]');
+    const operations = normalizeOperations(protocol, [
+      op('set', '/stages/names/prompts/p1', {
+        id: 'p1',
+        text: { en: 'In the past 6 months, who?' },
+      }),
+    ]);
+    expect(JSON.stringify(operations)).toContain('[OK]');
+    expect(placeholdersReplaceable(protocol, operations)).toBe(true);
+    expect(applyFixEdits(protocol, operations, {})).not.toBeNull();
+  });
+
+  it('is still refused when the fix writes a new placeholder beside it', () => {
+    const protocol = withFrenchPrompt('Appuyez sur [OK]');
+    const operations = normalizeOperations(protocol, [
+      op('set', '/stages/names/prompts/p1', {
+        id: 'p1',
+        text: { en: 'Call [PHONE NUMBER]' },
+      }),
+    ]);
+    expect(placeholdersReplaceable(protocol, operations)).toBe(false);
+    expect(applyFixEdits(protocol, operations, {})).toBeNull();
+  });
+});
+
 describe('editProtocol', () => {
   it('returns the edited protocol when the result is valid', async () => {
     const protocol = makeProtocol();
     const edit = await editProtocol(protocol, [
-      op('set', '/stages/welcome/title/en', 'Welcome to the study'),
+      op('set', '/stages/welcome/label/en', 'Welcome to the study'),
     ]);
     expect(edit.ok).toBe(true);
     if (!edit.ok) return;
     expect(edit.protocol.stages[0]).toMatchObject({
-      title: { en: 'Welcome to the study', fr: 'Bonjour' },
+      label: { en: 'Welcome to the study', fr: 'Bienvenue' },
     });
-    expect(protocol.stages[0]).toMatchObject({ title: { en: 'Hello' } });
+    expect(protocol.stages[0]).toMatchObject({ label: { en: 'Welcome' } });
   });
 
   it('refuses edits that leave the protocol invalid', async () => {
@@ -313,7 +714,7 @@ describe('describeFixTextEdits', () => {
   it('shows message syntax as the plain text a participant reads', () => {
     const protocol = makeProtocol();
     const [edit] = describeFixTextEdits(protocol, [
-      op('set', '/stages/welcome/title/en', "It''s '{'here'}'"),
+      op('set', '/stages/welcome/label/en', "It''s '{'here'}'"),
     ]);
     expect(edit?.after).toBe("It's {here}");
   });
@@ -322,13 +723,13 @@ describe('describeFixTextEdits', () => {
     const protocol = makeProtocol();
     const edits = describeFixTextEdits(protocol, [
       op('set', '/stages/names/prompts/p1/text', { en: '**Name** people' }),
-      op('set', '/stages/welcome/title/en', 'Hi there'),
-      op('set', '/stages/welcome/items/intro/content/en', '*Hi*'),
+      op('set', '/stages/welcome/label/en', 'Hi there'),
+      op('set', '/stages/welcome/content/en', '*Hi*'),
     ]);
     expect(edits.map(({ path, markdown }) => [path, markdown])).toEqual([
       ['/stages/names/prompts/p1/text/en', true],
-      ['/stages/welcome/title/en', false],
-      ['/stages/welcome/items/intro/content/en', true],
+      ['/stages/welcome/label/en', false],
+      ['/stages/welcome/content/en', true],
     ]);
   });
 });
@@ -381,7 +782,7 @@ describe('resolveFixPlace', () => {
   it('sends a fix that edits several stages to the Stages screen', () => {
     expect(
       placeOf(
-        op('set', '/stages/welcome/title/en', 'Hi'),
+        op('set', '/stages/welcome/label/en', 'Hi'),
         op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
       ),
     ).toMatchObject({ kind: 'stages' });

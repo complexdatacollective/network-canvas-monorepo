@@ -65,6 +65,10 @@ import {
 } from '../stageDocument.ts';
 import { NOT_READY_MESSAGE, useStageEdit } from '../stageEdit.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
+import {
+  NOTHING_STAGED,
+  useStagedCodebookStore,
+} from '../state/stagedCodebook.ts';
 import { useLatest } from '../state/useLatest.ts';
 import {
   dormantFieldsOf,
@@ -83,8 +87,10 @@ import {
   sharedWordingAsk,
   sharedWordingFieldName,
   sharedWordingInForm,
+  sharedWordingInUse,
   sharedWordingIssues,
 } from './sharedWordingDraft.ts';
+import { StagedCodebookProvider } from './StagedCodebookProvider.tsx';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
@@ -227,7 +233,9 @@ function StageDocument({
 
   return (
     <FormStoreProvider initialValues={document}>
-      {children(document, setDocument, saved, setSaved)}
+      <StagedCodebookProvider>
+        {children(document, setDocument, saved, setSaved)}
+      </StagedCodebookProvider>
     </FormStoreProvider>
   );
 }
@@ -298,6 +306,7 @@ function StageEditorFormBody({
   // the callback was made.
   const latestProtocol = useLatest(protocol);
   const storeApi = useContext(FormStoreContext);
+  const stagedCodebook = useStagedCodebookStore();
   // The document as the controls last left it, and what a structural write
   // reads and writes. Held in the body that does both, and seeded from the
   // document it mounts with; the caller's key remounts the two together.
@@ -373,7 +382,8 @@ function StageEditorFormBody({
 
   /**
    * The shared words a save would write with the stage as the form holds it
-   * now (see `pendingSharedWording`): read, like `liveDraft`, rather than
+   * now (see `pendingSharedWording`): the researcher's changes to them, and
+   * those the stage is the first to use. Read, like `liveDraft`, rather than
    * subscribed.
    */
   const sharedWordingToSave = useCallback(
@@ -500,9 +510,10 @@ function StageEditorFormBody({
         localization,
         codebook,
       );
-      // The shared words the stage brings in are saved with it, so a word
-      // that cannot be saved refuses the stage, as a setting of its own
-      // would, and is answered for by the field that holds it.
+      // The shared words changed in the stage editor, and those the stage is
+      // the first to use, are saved with it, so a word that cannot be saved
+      // refuses the stage, as a setting of its own would, and is answered for
+      // by the field that holds it.
       //
       // Worked out from the protocol as well as the draft, and a save that
       // lands changes what the protocol holds: a save whose answer was lost
@@ -548,7 +559,10 @@ function StageEditorFormBody({
       // Forgotten before the save, so that one which throws — a refusal there
       // is no outcome for — is an answer like any other.
       unresolvedWording.current = undefined;
-      const outcome = await save(fields, wording);
+      // The codebook changes made while the stage was open are saved with it,
+      // in the same revision (see `StagedCodebookStore`).
+      const codebookChanges = stagedCodebook?.read() ?? NOTHING_STAGED;
+      const outcome = await save(fields, wording, codebookChanges);
       if (outcome.status === 'unanswered') {
         unresolvedWording.current = { ask, wording };
       }
@@ -565,14 +579,25 @@ function StageEditorFormBody({
         // is the other question a section can ask about the stage: what the
         // researcher agreed to, as against what the form is holding now.
         setSaved(fields);
-        // The shared words it wrote are the protocol's now, and those it left
-        // out (an entry the stage stopped using) are gone with the draft.
+        // The codebook changes it wrote are the protocol's now. Cleared only
+        // where they are the ones that were saved: a change made while the
+        // save was in flight is a change the protocol does not hold yet.
+        if (
+          stagedCodebook !== undefined &&
+          stagedCodebook.read() === codebookChanges
+        ) {
+          stagedCodebook.restore(NOTHING_STAGED);
+        }
+        // The shared words it wrote are the protocol's now, those it left out
+        // of an entry the stage uses are what the protocol shows, and those of
+        // an entry the stage stopped using are gone with the draft.
         storeApi.getState().rebaseToDocument({
           ...fields,
           [SHARED_WORDING_PATH]: settleSharedWording(
             storeApi,
             wording,
-            localization,
+            latestProtocol(),
+            sharedWordingInUse(latestProtocol(), identity, fields),
           ),
         });
         clearRefusedWrite();
@@ -594,6 +619,7 @@ function StageEditorFormBody({
       discardDraft,
       identity,
       intl,
+      latestProtocol,
       localization,
       outline,
       readOnly,
@@ -603,6 +629,7 @@ function StageEditorFormBody({
       setDocument,
       setSaved,
       sharedWordingToSave,
+      stagedCodebook,
       storeApi,
       working,
       writeRefusal,
@@ -626,7 +653,17 @@ function StageEditorFormBody({
       // Both halves: the element, because an item dialog over the editor
       // renders the same field names; the store's identity, because the
       // stage's NAME is drawn outside this element and is still ours.
-      focusFirstError(errors, formRef.current, fieldScope);
+      //
+      // A refusal the schema anchored at a path has no field error of its
+      // own, so the first field that answers for one takes focus instead.
+      const fieldName = outline
+        .getSnapshot()
+        .flatMap((section) => section.issues)[0]?.fieldName;
+      const answering =
+        Object.keys(errors.fieldErrors).length === 0 && fieldName !== undefined
+          ? { formErrors: [], fieldErrors: { [fieldName]: [] } }
+          : errors;
+      focusFirstError(answering, formRef.current, fieldScope);
     },
   });
 

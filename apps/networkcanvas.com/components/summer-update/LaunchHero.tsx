@@ -3,6 +3,7 @@
 import {
   motion,
   useAnimationControls,
+  useInView,
   useScroll,
   useSpring,
   useTransform,
@@ -41,11 +42,25 @@ function renderHeroApps(chunks: ReactNode) {
   );
 }
 
+// How many times a second the glow's colours turn. They take 13.5 seconds to
+// go round once, so each step is under two degrees; redrawing the text for
+// every screen refresh instead costs a repaint each time for no visible gain.
+const TEXT_GLOW_STEPS = Math.round(13.5 * 15);
+
 function HeroBrand({ children }: { children: ReactNode }) {
   const shouldReduceMotion = usePrefersReducedMotion();
+  // The glow is a repainting animation, which a browser keeps running for an
+  // element scrolled out of view; so it is paused there, for the rest of the
+  // page's length.
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref);
 
   return (
-    <span data-homepage-weave-target className="inline-block overflow-visible">
+    <span
+      ref={ref}
+      data-homepage-weave-target
+      className="inline-block overflow-visible"
+    >
       <HeroEntrance
         as="span"
         phase="brand"
@@ -62,6 +77,8 @@ function HeroBrand({ children }: { children: ReactNode }) {
           animation: shouldReduceMotion
             ? undefined
             : 'var(--animate-text-glow)',
+          animationTimingFunction: `steps(${TEXT_GLOW_STEPS})`,
+          animationPlayState: inView ? 'running' : 'paused',
         }}
       >
         {children}

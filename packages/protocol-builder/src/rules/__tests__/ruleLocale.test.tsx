@@ -174,7 +174,7 @@ function LocaleSwitchingRuleList({ locale }: { locale: 'en' | 'es' }) {
       messages={locale === 'es' ? spanishMessages : undefined}
     >
       <RuleEditorHost sections={ruleSections()}>
-        <BuilderSection title="Skip logic">
+        <BuilderSection sectionKey="skip-logic" title="Skip logic">
           <Field
             name="skipLogic.filter"
             label="Rules"

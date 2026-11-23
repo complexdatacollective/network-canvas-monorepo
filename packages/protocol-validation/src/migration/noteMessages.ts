@@ -443,19 +443,19 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: tieStrengthDeclineLabel. Tie-Strength Census is the name of an interface (stage type) where participants rate the strength of the relationship between pairs of people; one option lets them decline to rate it. "No relationship" is a literal English default written into protocol data: keep it in English.',
   },
-  schema9InformationTitle: {
-    id: 'protocolValidation.migrationNotes.schema9.informationTitle',
+  schema9InformationContent: {
+    id: 'protocolValidation.migrationNotes.schema9.informationContent',
     defaultMessage:
-      'The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.',
+      "The page heading, text and media of an Information stage are now one piece of text, which you edit as a single document. The page heading is now a heading at the top of the text, and each image, audio recording or video is a block within the text, in the place it was shown before. A page heading that contained only spaces is left out, as is a file that is no longer among the protocol's resources; if the page then has nothing to show, it shows the name of the stage as its heading. A description you had written for a text item, which participants never saw, is not kept.",
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance: informationTitle. Information is the name of an interface (stage type) that shows text and media to participants.',
+      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: informationContent. Information is the name of an interface (stage type) that shows a page of text and media to participants. The page heading was a separate title field; the media are files the researcher added to the page. A block is an item that sits on its own line between paragraphs. The name of the stage is the name shown for the stage in the list of stages. A text item is one of the separate pieces of text the page was made of before this change; it is not one of the new blocks.',
   },
   schema9ParticipantTextNotBlank: {
     id: 'protocolValidation.migrationNotes.schema9.participantTextNotBlank',
     defaultMessage:
-      'Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator\'s form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.',
+      'Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator\'s form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone. A text item on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.',
     description:
-      'One nested Markdown bullet in schema 9 migration approval guidance: participantTextNotBlank. Narrative, Name Generator and Information are names of interfaces (stage types). A Narrative preset is a saved view of the network that participants can switch between. A node is a person or thing participants name; its node type is the kind of node, such as person. A hint is extra guidance under a question; a scale is a slider participants answer on. "Preset", "Preset 1", "Add" and "Add Person" are literal English defaults written into protocol data: keep them in English.',
+      'One nested Markdown bullet in schema 9 migration approval guidance: participantTextNotBlank. Narrative, Name Generator and Information are names of interfaces (stage types). A Narrative preset is a saved view of the network that participants can switch between. A node is a person or thing participants name; its node type is the kind of node, such as person. A text item on an Information stage is one of the separate pieces of text its page was made of before schema 9; it is not one of the new blocks that hold an image, audio recording or video. A hint is extra guidance under a question; a scale is a slider participants answer on. "Preset", "Preset 1", "Add" and "Add Person" are literal English defaults written into protocol data: keep them in English.',
   },
   schema9StageNames: {
     id: 'protocolValidation.migrationNotes.schema9.stageNames',
@@ -540,6 +540,13 @@ export const migrationNoteMessages = defineMessages({
       'The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol.',
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Finish Screen" is the name Architect gives the stage type that ends an interview, where the participant reads closing text and presses Finish; use the same name Architect uses for it.',
+  },
+  schema9NarrativePresetFilters: {
+    id: 'protocolValidation.migrationNotes.schema9.narrativePresetFilters',
+    defaultMessage:
+      "A Narrative stage's filter now belongs to each of its presets, so each preset can show a different part of the network. A filter on an existing Narrative stage is copied to every preset of that stage, so the stage shows the same people as before.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. "Narrative" is the name Architect gives the interface; use the same name Architect uses for it. A preset is one saved way of looking at the network that the stage can switch between. A filter is a set of rules that decides which people and relationships are shown.',
   },
   schema9RosterPanelTitle: {
     id: 'protocolValidation.migrationNotes.schema9.rosterPanelTitle',
@@ -657,6 +664,7 @@ const migrationNoteSets: Record<
     suffix: '',
     messages: [
       migrationNoteMessages.schema9IntroductionPanels,
+      migrationNoteMessages.schema9InformationContent,
       migrationNoteMessages.schema9DefaultLanguage,
       migrationNoteMessages.schema9FinishStage,
       migrationNoteMessages.schema9EncryptedAttributes,
@@ -670,7 +678,6 @@ const migrationNoteSets: Record<
         children: [
           migrationNoteMessages.schema9OtherBinText,
           migrationNoteMessages.schema9TieStrengthDeclineLabel,
-          migrationNoteMessages.schema9InformationTitle,
           migrationNoteMessages.schema9ParticipantTextNotBlank,
           migrationNoteMessages.schema9StageNames,
           migrationNoteMessages.schema9OptionLabels,
@@ -690,6 +697,7 @@ const migrationNoteSets: Record<
           migrationNoteMessages.schema9PedigreeWording,
         ],
       },
+      migrationNoteMessages.schema9NarrativePresetFilters,
       migrationNoteMessages.schema9RosterPanelTitle,
       migrationNoteMessages.schema9SingleLineText,
     ],

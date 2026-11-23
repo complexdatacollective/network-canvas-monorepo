@@ -1,5 +1,5 @@
 import { Redacted } from 'effect';
-import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
+import { useContext, useEffect, useMemo, useRef } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -41,11 +41,14 @@ import type {
   ResourceKind,
 } from '../../resources/types.ts';
 import {
+  type RowFilterClearWords,
+  useRowFilterCapability,
+  useRowFilterValidation,
+} from '../../rules/rowFilter.ts';
+import {
   isRuleSetValue,
-  ruleSetAllowsEncryptedAttributes,
   ruleSetRules,
   ruleSetTargets,
-  ruleSetValidationMessage,
   type RuleSetVariant,
 } from '../../rules/ruleSet.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -502,6 +505,7 @@ export default function NodePanelsSection() {
 
   return (
     <BuilderSection
+      sectionKey="side-panels"
       title={intl.formatMessage(nodePanelsMessages.title)}
       description={intl.formatMessage(
         waiting
@@ -600,9 +604,10 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
   // may offer and hold. Read from the LIVE source: switching to an imported
   // file changes what the rules can ask about the moment it is switched.
   const panelVariant = panelRuleSetVariant(dataSource);
-  const filterValidation = usePanelFilterValidation(panelVariant);
-  const { hasRules, requestFilterOpenChange } = usePanelFilterCapability(
+  const filterValidation = useRowFilterValidation(panelVariant);
+  const { hasRules, requestFilterOpenChange } = useRowFilterCapability(
     item.filter,
+    PANEL_FILTER_CLEAR_WORDS,
   );
   useUnanswerableRulesClearedWithSource(dataSource);
 
@@ -683,60 +688,14 @@ const PANEL_SOURCE_REQUIRED = createMessageError(
 );
 
 /**
- * What switching a panel's filter off destroys, in its own words.
- *
- * The stage-level counterpart is `NetworkFilterSection`'s, and reads the same:
- * a researcher who has narrowed a stage meets the same question when they
- * narrow a panel.
+ * What switching a panel's filter off destroys, in its own words. Asked by
+ * the switch every row's filter shares (`useRowFilterCapability`).
  */
-const filterConfirm = (intl: IntlShape) => ({
-  title: intl.formatMessage(nodePanelsMessages.filterClearTitle),
-  description: intl.formatMessage(nodePanelsMessages.filterClearDescription),
-  confirmLabel: intl.formatMessage(nodePanelsMessages.filterClearConfirm),
-  cancelLabel: intl.formatMessage(commonMessages.cancel),
-  intent: 'warning' as const,
-  onConfirm: () => undefined,
-});
-
-/**
- * The panel filter's own switch: on when there is something to switch off, and
- * asking before it throws anything away.
- *
- * Cleared here rather than left to the collapsed panel's unmount, for the
- * reason `BuilderSection` states: a field parked behind a closed group is not
- * unmounted again, so its value would survive and be written back with the
- * row.
- */
-function usePanelFilterCapability(committed: unknown) {
-  const intl = useAppIntl();
-  const storeApi = useContext(FormStoreContext);
-  const { confirm } = useDialog();
-  // The panel as it was opened, not as it stands: this decides whether the
-  // switch STARTS on, and a live read would reopen the group under the
-  // researcher the moment they cleared it.
-  const hasRules = ruleSetRules(committed).length > 0;
-
-  const requestFilterOpenChange = useCallback(
-    async (open: boolean) => {
-      if (open) return true;
-      const state = storeApi?.getState();
-      const filter = state?.hasValue('filter')
-        ? state.getValue('filter')
-        : undefined;
-      if (ruleSetRules(filter).length > 0) {
-        const confirmed = await confirm(filterConfirm(intl));
-        if (confirmed !== true) return false;
-      }
-      // Absent rather than an empty rule set: the schema has no way to say
-      // "filtered by nothing", and an empty one is refused.
-      state?.setFieldValue('filter', undefined);
-      return true;
-    },
-    [confirm, intl, storeApi],
-  );
-
-  return { hasRules, requestFilterOpenChange };
-}
+const PANEL_FILTER_CLEAR_WORDS: RowFilterClearWords = {
+  title: nodePanelsMessages.filterClearTitle,
+  description: nodePanelsMessages.filterClearDescription,
+  confirmLabel: nodePanelsMessages.filterClearConfirm,
+};
 
 /**
  * Asks about the rules an imported network cannot answer, the moment the panel
@@ -823,55 +782,6 @@ function withoutUnanswerableRules(filter: FieldValue): FieldValue {
   // An empty rule set is not a filter the schema accepts, so a panel left with
   // no rules has no filter at all.
   return kept.length === 0 ? undefined : { ...filter, rules: kept };
-}
-
-/**
- * The rule set's own verdict, as this field's validation.
- *
- * The stage-level counterpart (`useRuleSetValidation`) reads the value at a
- * stage path, which a panel's filter does not have: it lives inside a row of a
- * list that is itself one field value. The verdict is the same one, so a
- * researcher reads the same words whether the rules narrow a stage or a panel.
- *
- * The rule closure is built once and reads the codebook through a getter of the latest one, because
- * a field's validation is memoised for the field's lifetime — a rule rebuilt
- * each render would be pinned to whichever codebook the first one closed over,
- * and a type a collaborator deleted would go on being legal.
- *
- * The targets are the ones the panel's own SOURCE names, and the variant is
- * read the same way for the same reason the codebook is: the researcher can
- * switch the source while the dialog is open, and a rule that was fine over
- * the interview's own network is not fine over an imported file. The
- * reader's formatter is read the same way, so the verdict is stated in the
- * language they are reading now.
- */
-function usePanelFilterValidation(variant: PanelRuleSetVariant) {
-  const protocolContext = useProtocolContext();
-  const intl = useAppIntl();
-  const codebook = useLatest(protocolContext.codebook);
-  const currentVariant = useLatest(variant);
-  const currentIntl = useLatest(intl);
-
-  return useMemo(
-    () => ({
-      custom: messageRuleValidation([
-        (value: unknown) =>
-          value === undefined
-            ? undefined
-            : ruleSetValidationMessage(
-                value,
-                codebook(),
-                ruleSetTargets(currentVariant()),
-                {
-                  intl: currentIntl(),
-                  allowEncryptedAttributes:
-                    ruleSetAllowsEncryptedAttributes(currentVariant()),
-                },
-              ),
-      ]),
-    }),
-    [codebook, currentIntl, currentVariant],
-  );
 }
 
 /** How one panel reads in the list when its dialog is closed. */

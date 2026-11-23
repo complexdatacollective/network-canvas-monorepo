@@ -78,7 +78,7 @@ export default function ShapeMappingField<V>({
           name={name}
           label={label}
           hint={intl.formatMessage(messages.hint, {
-            url: `${DOCS_BASE_URL}/design-protocols/custom-node-shapes`,
+            url: `${DOCS_BASE_URL}/design-protocols/tutorials/custom-node-shapes`,
           })}
           component={OptionMappingField<ShapeTileOption>}
           rows={answers.map((answer, index) => ({

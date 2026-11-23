@@ -12,6 +12,8 @@ import type {
   StageSectionStatus,
 } from '@codaco/protocol-builder/stage-editor-contract';
 
+import { useWalkthroughState } from './walkthrough/walkthroughStore';
+
 /**
  * What each state of a section is CALLED, read out after the section's own
  * name and never shown on screen (the same state is drawn as a color and an
@@ -141,6 +143,10 @@ function StageSectionOutlineItem({
 }: Readonly<{ section: StageSection }>) {
   const intl = useAppIntl();
   const presentation = STATUS_PRESENTATION[section.status];
+  // The section the walkthrough's current step is about.
+  const current = useWalkthroughState(
+    (state) => state.section === section.sectionKey,
+  );
   const StatusIcon = presentation.icon;
   // The control's own words come first, one problem at a time. A control
   // showing a message beside itself has already said what is wrong in the
@@ -174,7 +180,11 @@ function StageSectionOutlineItem({
       // whatever the page happens to have positioned — reaching, in a host
       // whose editor sits in a scrolling panel, past the right of the page and
       // giving it a horizontal scrollbar.
-      className="focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-start text-sm hover:bg-current/5"
+      aria-current={current ? 'step' : undefined}
+      className={cx(
+        'focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-start text-sm hover:bg-current/5',
+        current && 'bg-warning/15 hover:bg-warning/20',
+      )}
     >
       <StatusIcon
         aria-hidden

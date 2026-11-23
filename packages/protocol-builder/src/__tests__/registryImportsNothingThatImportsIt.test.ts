@@ -113,6 +113,6 @@ describe('the module graph under the registry', () => {
           ),
         ),
       ].toSorted(),
-    ).toEqual(['stage-types.ts']);
+    ).toEqual(['sections/sectionKeys.ts', 'stage-types.ts']);
   });
 });

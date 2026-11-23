@@ -11,8 +11,10 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { READ_ONLY_MESSAGE } from '../form/readOnlyRefusal.ts';
 import { attempt, type Refusal } from '../state/attempt.ts';
 import { readCreatedSection } from '../state/channel.ts';
+import type { CodebookRefusal } from '../state/codebookRefusal.ts';
 import {
   useProtocolBuilderContext,
   type ProtocolBuilderAdapter,
@@ -20,9 +22,10 @@ import {
 import type { ResourcePromotion } from '../state/hooks.ts';
 import { useKeptRequestId, type KeptRequestId } from '../state/requestKey.ts';
 import {
-  codebookRefusalMessage,
-  type CodebookRefusal,
-} from './compoundFailureCopy.ts';
+  useStagedCodebookStore,
+  type StagedCodebookStore,
+} from '../state/stagedCodebook.ts';
+import { codebookRefusalMessage } from './compoundFailureCopy.ts';
 import {
   draftRefusalMessage,
   DuplicateVariableNameError,
@@ -92,15 +95,6 @@ const refused = (refusal: CodebookRefusal): CodebookWriteOutcome => ({
   refusal,
 });
 
-/** Every procedure can answer these two; anything else never reached a host. */
-const protocolRefusal = (
-  refusal: Refusal<ProtocolBuilderTag> | undefined,
-): CodebookRefusal => {
-  if (refusal?._tag === 'ProtocolNotFound') return { kind: 'protocolGone' };
-  if (refusal?._tag === 'SectionNotFound') return { kind: 'sectionGone' };
-  return { kind: 'unreachable' };
-};
-
 const promotionRefusal = (resourceId: string | undefined): CodebookRefusal =>
   resourceId === undefined
     ? { kind: 'promotionFailed' }
@@ -140,30 +134,48 @@ const blockedRefusal = (
   return holders.length === 0 ? { kind: 'held' } : { kind: 'held', holders };
 };
 
+/** Every procedure a codebook write calls. */
+type CodebookWriteTag = Extract<
+  ProtocolBuilderTag,
+  'AcquireLock' | 'Submit' | 'Create' | 'RefactorDeleteVariable'
+>;
+
 /**
- * Every way a compound refactor is refused, in the researcher's terms.
+ * Every way a host refuses a codebook write, in the researcher's terms.
  *
- * Both of the contract's refactor errors are answered here rather than falling
- * through to "could not be sent": a change refused because somebody is editing
- * and one refused because the protocol still names what would go are both
- * things the researcher can act on, and both were reported as a connection
- * problem while nothing offered a delete to reach them with.
+ * One switch for every procedure a write calls, so a refusal the contract
+ * gains does not type-check until it is placed here rather than falling
+ * through to "could not be sent" — which is how a change somebody else was
+ * holding up, and one the protocol still had references to, were once both
+ * reported. A procedure is only ever answered with the refusals its
+ * own contract declares (see `attempt`), so placing a refusal here for one
+ * procedure changes nothing for the others. `undefined` is a failure no
+ * contract declares: the call never reached a host that would answer it.
  */
-const refactorRefusal = (
-  refusal:
-    | Refusal<'RefactorDeleteVariable' | 'RefactorDeleteEntityType'>
-    | undefined,
+const writeRefusal = (
+  refusal: Refusal<CodebookWriteTag> | undefined,
 ): CodebookRefusal => {
-  if (refusal?._tag === 'SectionsLocked') {
-    return blockedRefusal(refusal.blocked);
+  if (refusal === undefined) return { kind: 'unreachable' };
+  switch (refusal._tag) {
+    case 'ProtocolNotFound':
+      return { kind: 'protocolGone' };
+    case 'SectionNotFound':
+      return { kind: 'sectionGone' };
+    case 'NotLockHolder':
+      return heldRefusal(refusal.holder);
+    case 'SectionsLocked':
+      return blockedRefusal(refusal.blocked);
+    case 'ReferencesRemain':
+      return { kind: 'referencesRemain', references: refusal.remaining.length };
+    case 'InvalidShape':
+      return { kind: 'invalidShape' };
+    case 'PromotionFailed':
+      return promotionRefusal(refusal.failure.resourceId);
+    case 'SectionExists':
+      return { kind: 'sectionCreatedElsewhere' };
   }
-  if (refusal?._tag === 'ReferencesRemain') {
-    return {
-      kind: 'referencesRemain',
-      references: refusal.remaining.length,
-    };
-  }
-  return protocolRefusal(refusal);
+  // Every refusal is placed above: a new one does not type-check here.
+  return refusal satisfies never;
 };
 
 /**
@@ -232,7 +244,7 @@ async function rewriteSection(
       // release: a host that will not take it leaves nothing to act on.
       await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
     }
-    return refused(protocolRefusal(acquired.refusal));
+    return refused(writeRefusal(acquired.refusal));
   }
   if (acquired.data.lock === 'readOnly') {
     return refused(heldRefusal(acquired.data.holder));
@@ -255,26 +267,53 @@ async function rewriteSection(
       ...(promote === undefined ? {} : { promote }),
     });
     if (submitted.isSuccess) return { status: 'applied', sectionId: id };
-    const { refusal } = submitted;
-    if (refusal?._tag === 'NotLockHolder') {
-      return refused(heldRefusal(refusal.holder));
-    }
-    if (refusal?._tag === 'SectionsLocked') {
-      return refused(blockedRefusal(refusal.blocked));
-    }
-    if (refusal?._tag === 'InvalidShape') {
-      return refused({ kind: 'invalidShape' });
-    }
-    if (refusal?._tag === 'PromotionFailed') {
-      return refused(promotionRefusal(refusal.failure.resourceId));
-    }
-    return refused(protocolRefusal(refusal));
+    return refused(writeRefusal(submitted.refusal));
   } finally {
     await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
   }
 }
 
-/** Rewrites one existing codebook section under its own lock (see `rewriteSection`). */
+/**
+ * Lays a codebook change over the open stage editor's draft rather than
+ * writing it (see `StagedCodebookStore`).
+ *
+ * Answered as a write is, so a caller cannot tell the two apart and need not:
+ * a change the builder refuses is refused in the same words, and one that is
+ * kept is `applied` — to the codebook the stage editor shows, which is the one
+ * its save will write.
+ */
+function stageCodebookChange(
+  store: StagedCodebookStore,
+  id: ProtocolSectionId,
+  next: SectionUpdate,
+  missing?: SectionDoc,
+): CodebookWriteOutcome {
+  let refusal: ReturnType<StagedCodebookStore['stage']>;
+  try {
+    refusal = store.stage(id, next, missing);
+  } catch (error: unknown) {
+    return builderRefusal(error);
+  }
+  if (refusal === 'readOnly') {
+    return {
+      status: 'refused',
+      message: READ_ONLY_MESSAGE,
+      refusal: { kind: 'held' },
+    };
+  }
+  if (refusal === 'gone') return refused({ kind: 'sectionGone' });
+  return { status: 'applied', sectionId: id };
+}
+
+/**
+ * Rewrites one existing codebook section under its own lock (see
+ * `rewriteSection`).
+ *
+ * Inside a stage editor the change is the stage's instead: it is kept with
+ * the stage's draft, saved with the stage and discarded with it (see
+ * `StagedCodebookStore`). Files imported for it are the stage edit's own, and
+ * are committed by the stage's save, so `promote` is not used there.
+ */
 export function useCodebookSectionWrite(): (
   subject: CodebookSubject,
   next: SectionUpdate,
@@ -283,52 +322,46 @@ export function useCodebookSectionWrite(): (
 ) => Promise<CodebookWriteOutcome> {
   const { adapter, protocolId } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
+  const stagedCodebook = useStagedCodebookStore();
   // The participant's own section is CREATED by the first attribute, and a
   // create is the one write here a retry can be recognised as.
   const egoKey = useKeptRequestId();
 
   return useCallback(
     (subject, next, promote) =>
-      rewriteSection(
-        { adapter, protocolId },
-        sectionIdForCodebookSubject(subject),
-        next,
-        // The participant's own attributes are the one part of the codebook a
-        // protocol need not have yet: a researcher who has asked the
-        // participant nothing has no section to lock, and the first attribute
-        // is what brings it into being. `create` mints it and serialises the
-        // call, so the write that adds the attribute is also the write that
-        // creates the section — there is no empty section to write first.
-        subject.entity === 'ego'
-          ? () =>
-              createEgoCodebook(
-                { adapter, queryClient, protocolId },
-                egoKey,
-                next,
-                promote,
-              )
-          : undefined,
-        promote,
-      ),
-    [adapter, egoKey, protocolId, queryClient],
-  );
-}
-
-const SETTINGS = sectionId({ kind: 'settings' });
-
-/**
- * Rewrites the protocol's settings under their own lock, from a stage editor
- * changing something every stage shares, such as the interview's shared
- * words (see `SharedStageWording`). Made at once rather than with the stage's
- * save, like a codebook change made from a stage.
- */
-export function useSettingsSectionWrite(): (
-  next: SectionUpdate,
-) => Promise<CodebookWriteOutcome> {
-  const { adapter, protocolId } = useProtocolBuilderContext();
-  return useCallback(
-    (next) => rewriteSection({ adapter, protocolId }, SETTINGS, next),
-    [adapter, protocolId],
+      stagedCodebook !== undefined
+        ? Promise.resolve(
+            stageCodebookChange(
+              stagedCodebook,
+              sectionIdForCodebookSubject(subject),
+              next,
+              // The participant's section is the one a change may bring into
+              // being, as the write below does.
+              subject.entity === 'ego' ? {} : undefined,
+            ),
+          )
+        : rewriteSection(
+            { adapter, protocolId },
+            sectionIdForCodebookSubject(subject),
+            next,
+            // The participant's own attributes are the one part of the codebook a
+            // protocol need not have yet: a researcher who has asked the
+            // participant nothing has no section to lock, and the first attribute
+            // is what brings it into being. `create` mints it and serialises the
+            // call, so the write that adds the attribute is also the write that
+            // creates the section — there is no empty section to write first.
+            subject.entity === 'ego'
+              ? () =>
+                  createEgoCodebook(
+                    { adapter, queryClient, protocolId },
+                    egoKey,
+                    next,
+                    promote,
+                  )
+              : undefined,
+            promote,
+          ),
+    [adapter, egoKey, protocolId, queryClient, stagedCodebook],
   );
 }
 
@@ -368,20 +401,7 @@ async function createEgoCodebook(
     await readCreatedSection(deps, created.data.sectionId);
     return { status: 'applied', sectionId: created.data.sectionId };
   }
-  const { refusal } = created;
-  if (refusal?._tag === 'InvalidShape') {
-    return refused({ kind: 'invalidShape' });
-  }
-  if (refusal?._tag === 'SectionsLocked') {
-    return refused(blockedRefusal(refusal.blocked));
-  }
-  if (refusal?._tag === 'SectionExists') {
-    return refused({ kind: 'sectionCreatedElsewhere' });
-  }
-  if (refusal?._tag === 'PromotionFailed') {
-    return refused(promotionRefusal(refusal.failure.resourceId));
-  }
-  return refused(protocolRefusal(refusal));
+  return refused(writeRefusal(created.refusal));
 }
 
 /**
@@ -389,6 +409,10 @@ async function createEgoCodebook(
  *
  * The host mints the section and the type id inside it and serialises the
  * call, so there is no lock to take and nothing for the caller to reserve.
+ *
+ * Inside a stage editor the type is the stage's instead, as every codebook
+ * change made there is (see `StagedCodebookStore`): its id is minted here, it
+ * is kept with the stage's draft, and the stage's save creates it.
  */
 export function useCreateCodebookEntity(): (
   entity: 'node' | 'edge',
@@ -399,10 +423,19 @@ export function useCreateCodebookEntity(): (
   const { adapter, protocolId } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
   const createKey = useKeptRequestId();
+  const stagedCodebook = useStagedCodebookStore();
 
   return useCallback(
     async (entity, document, promote) => {
       const kind = entity === 'node' ? 'codebookNode' : 'codebookEdge';
+      if (stagedCodebook !== undefined) {
+        return stageCodebookChange(
+          stagedCodebook,
+          sectionId({ kind, typeId: uuid() }),
+          () => document,
+          {},
+        );
+      }
       // Kept while the answer is uncertain, so the researcher pressing Save
       // again on a dialog that reported "could not be sent" asks the host
       // about the write it may already have made rather than making a second
@@ -429,18 +462,16 @@ export function useCreateCodebookEntity(): (
         return { status: 'applied', sectionId: created.data.sectionId };
       }
       const { refusal } = created;
-      if (refusal?._tag === 'InvalidShape') {
-        return refused({ kind: 'invalidShape' });
-      }
-      if (refusal?._tag === 'SectionsLocked') {
-        return refused(blockedRefusal(refusal.blocked));
-      }
-      if (refusal?._tag === 'PromotionFailed') {
-        return refused(promotionRefusal(refusal.failure.resourceId));
-      }
-      return refused(protocolRefusal(refusal));
+      // A node or edge type's section is minted by the host, so no
+      // collaborator can have made it first, and the sentence for one that
+      // did is about the participant's own section.
+      return refused(
+        refusal?._tag === 'SectionExists'
+          ? { kind: 'unreachable' }
+          : writeRefusal(refusal),
+      );
     },
-    [adapter, createKey, protocolId, queryClient],
+    [adapter, createKey, protocolId, queryClient, stagedCodebook],
   );
 }
 
@@ -470,36 +501,7 @@ export function useDeleteCodebookVariable(): (
           sectionId: sectionIdForCodebookSubject(subject),
         };
       }
-      return refused(refactorRefusal(removed.refusal));
-    },
-    [adapter, protocolId],
-  );
-}
-
-/** Removes an entity type, its section, and every reference to it. */
-export function useDeleteCodebookEntity(): (
-  entity: 'node' | 'edge',
-  typeId: string,
-) => Promise<CodebookWriteOutcome> {
-  const { adapter, protocolId } = useProtocolBuilderContext();
-
-  return useCallback(
-    async (entity, typeId) => {
-      const removed = await attempt(adapter, 'RefactorDeleteEntityType', {
-        protocolId,
-        entity,
-        typeId,
-      });
-      if (removed.isSuccess) {
-        return {
-          status: 'applied',
-          sectionId: sectionId({
-            kind: entity === 'node' ? 'codebookNode' : 'codebookEdge',
-            typeId,
-          }),
-        };
-      }
-      return refused(refactorRefusal(removed.refusal));
+      return refused(writeRefusal(removed.refusal));
     },
     [adapter, protocolId],
   );

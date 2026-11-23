@@ -84,6 +84,7 @@ export {
   composeMessage,
   findMessageArgumentProblem,
   findMissingPlacement,
+  missingPlacementsOf,
   type MessageArgument,
   type MessageArguments,
   type MessagePart,
@@ -92,7 +93,6 @@ export {
   type MissingPlacement,
   pluralCategoriesOf,
   pluralCountExamples,
-  requiredArgumentsOf,
 } from './localization/messageArguments.ts';
 // Values from the interview that a stage's text shows (see
 // `schemas/9/dynamic-values.ts`): the one message checker and the versions a
@@ -109,7 +109,38 @@ export {
   MISSING_CASE,
   pluralValueExamples,
 } from './localization/dynamicValueMessages.ts';
-export { escapeMarkdownText } from './localization/markdownText.ts';
+export {
+  ASSET_BLOCK_ALIGNMENTS,
+  ASSET_BLOCK_DEFAULTS,
+  ASSET_BLOCK_KINDS,
+  ASSET_BLOCK_SIZES,
+  type AssetBlock,
+  type AssetBlockAlignment,
+  type AssetBlockAttributes,
+  type AssetBlockKind,
+  type AssetBlockSize,
+  assetBlockMarkdown,
+  assetBlocksInMarkdown,
+  assetBlocksInMessage,
+  assetBlockUrl,
+  isAssetBlockAlignment,
+  isAssetBlockKind,
+  isAssetBlockSize,
+  isAssetBlockUrl,
+  readAssetBlockUrl,
+} from './localization/assetBlock.ts';
+export {
+  assetBlockAlignmentShows,
+  assetBlockFile,
+  assetBlockSettings,
+  assetInManifest,
+} from './localization/assetBlockDisplay.ts';
+export {
+  escapeMarkdownText,
+  headingMarkdown,
+  VERSION_LINE_LEAD,
+} from './localization/markdownText.ts';
+export { markdownAsEdited } from './localization/markdownTree.ts';
 export {
   escapeMessageText,
   messageText,
@@ -193,6 +224,12 @@ export {
   type LocalizedTextLines,
   type LocalizedTextShape,
 } from './schemas/9/localized-string.ts';
+// An Information page drawn as parts, joined into its one text: what the
+// 8 to 9 migration writes, and what a synthetic interview builds.
+export {
+  type InformationPagePart,
+  informationPageContent,
+} from './schemas/9/information-content-migration.ts';
 // A stage's dynamic values: the bindings, the path vocabulary, and the one
 // table of what each site can show, which validation and Architect share.
 export {

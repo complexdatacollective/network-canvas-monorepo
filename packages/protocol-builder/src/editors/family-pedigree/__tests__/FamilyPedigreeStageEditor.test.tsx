@@ -102,13 +102,23 @@ const bindSlot = async (
   await chooseAttributeById(harness.user, attributeField(label), variableId);
 };
 
+/**
+ * The person attributes as the EDITOR shows them: the protocol's, plus the
+ * ones this stage has created and not yet saved. An attribute created from a
+ * picker belongs to the stage's draft, so the protocol holds it only after
+ * `harness.submit()`.
+ */
+const editorPersonVariables = (
+  harness: StageEditorHarness,
+): Readonly<Record<string, unknown>> | undefined =>
+  harness.editorCodebook().node?.family_member?.variables;
+
 /** The id the codebook files a person attribute of this name under. */
 function variableIdByName(
   harness: StageEditorHarness,
   name: string,
 ): string | undefined {
-  const definition = harness.protocolSections()[FAMILY_MEMBER_SECTION];
-  const variables = isRecord(definition) ? definition.variables : undefined;
+  const variables = editorPersonVariables(harness);
   if (!isRecord(variables)) return undefined;
   return Object.entries(variables).find(
     ([, variable]) => isRecord(variable) && variable.name === name,
@@ -407,8 +417,11 @@ describe('the attribute slots', () => {
 
     const created = variableIdByName(harness, 'gender_new');
     expect(created).toEqual(expect.any(String));
-    const variable =
-      harness.protocolSections()[FAMILY_MEMBER_SECTION]?.variables;
+    const variable = editorPersonVariables(harness);
+    // The attribute is the stage's draft until the stage is saved.
+    expect(
+      harness.hostCodebook().node?.family_member?.variables?.[created ?? ''],
+    ).toBeUndefined();
     expect(
       isRecord(variable) ? variable[created ?? ''] : undefined,
     ).toMatchObject({
@@ -482,8 +495,7 @@ describe('the attribute slots', () => {
     );
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    const definition = harness.protocolSections()[FAMILY_MEMBER_SECTION];
-    const variables = isRecord(definition) ? definition.variables : undefined;
+    const variables = editorPersonVariables(harness);
     const created = isRecord(variables)
       ? variables[variableIdByName(harness, 'sex_new') ?? '']
       : undefined;
@@ -519,6 +531,9 @@ describe('the attribute slots', () => {
     expect(nodeConfigurationOf(request?.stageDocument).nameAttribute).toBe(
       created,
     );
+    expect(
+      harness.hostCodebook().node?.family_member?.variables?.[created ?? ''],
+    ).toMatchObject({ name: 'nickname', type: 'text' });
   });
 
   it('offers only attributes of the slot’s type', async () => {
@@ -1944,10 +1959,14 @@ describe('the nomination prompts', () => {
 
     const created = variableIdByName(harness, 'has_diabetes');
     expect(created).toEqual(expect.any(String));
-    expect(
-      harness.protocolSections()[FAMILY_MEMBER_SECTION]?.variables,
-    ).toMatchObject({ [created ?? '']: { type: 'boolean' } });
+    expect(editorPersonVariables(harness)).toMatchObject({
+      [created ?? '']: { type: 'boolean' },
+    });
     const request = await harness.submit();
+    // Saved with the stage that names it.
+    expect(
+      harness.hostCodebook().node?.family_member?.variables?.[created ?? ''],
+    ).toMatchObject({ type: 'boolean' });
     expect(nominationPromptsOf(request?.stageDocument)).toEqual([
       {
         id: expect.any(String),

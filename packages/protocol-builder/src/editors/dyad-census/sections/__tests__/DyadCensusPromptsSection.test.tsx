@@ -129,8 +129,9 @@ describe('the questions a dyad census asks about a pair', () => {
 
 /**
  * The connection type lives in the codebook rather than in the stage, so
- * creating one writes that section on its own — landing whole or not at all —
- * after which the prompt points at it as an unsaved change.
+ * creating one is held in the prompt's dialog and joins the stage's draft with
+ * the prompt — landing in the protocol with the stage's save, whole or not at
+ * all — and the prompt points at it as an unsaved change.
  */
 describe('creating a connection type from inside a prompt', () => {
   /**
@@ -138,7 +139,7 @@ describe('creating a connection type from inside a prompt', () => {
    * That the prompt naming the new connection type then reaches the STAGE save
    * is `DyadCensusStageEditor.test.tsx`'s, over the whole editor.
    */
-  it('writes the codebook once, and points the prompt at what it created', async () => {
+  it('holds the type for the stage’s save, and points the prompt at what it created', async () => {
     const harness = renderStageEditor(openSection());
     const submit = vi.spyOn(harness.host.store, 'submit');
 
@@ -161,13 +162,14 @@ describe('creating a connection type from inside a prompt', () => {
     expect(
       await screen.findByRole('radio', { name: 'worksWith' }),
     ).toBeChecked();
-    // The codebook is where it landed, and the stage is untouched: creating a
-    // type is not an edit of the stage that named it.
+    // Held, not written: the protocol is untouched until the stage is saved,
+    // and nothing was asked of the host to create it. (The prompt's dialog
+    // still holds it, so it is the stage's only once the prompt is saved.)
     expect(
       Object.values(harness.hostCodebook().edge ?? {}).map(
         (definition) => definition.name,
       ),
-    ).toContain('worksWith');
+    ).not.toContain('worksWith');
     expect(submit).not.toHaveBeenCalled();
     expect(screen.getByRole('radio', { name: 'knows' })).not.toBeChecked();
   });

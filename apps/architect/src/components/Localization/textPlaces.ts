@@ -1,10 +1,10 @@
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
+import { resolveDeclaredTranslation } from '@codaco/protocol-builder/localization/localizedText';
 import { nameLocalizedText } from '@codaco/protocol-builder/localization/localizedTextNames';
 import type { CurrentProtocol, LocaleTag } from '@codaco/protocol-validation';
 import { codebookHref } from '~/components/Codebook/codebookLinks';
 import type { TranslationPlace, TranslationRow } from '~/selectors/issues';
-import { resolveLocalizedText } from '~/utils/localizedText';
 
 const messages = defineMessages({
   stagePosition: {
@@ -78,11 +78,14 @@ export const describePlace = (
     case 'stage': {
       const index = protocol.stages.findIndex(({ id }) => id === place.stageId);
       const stage = protocol.stages[index];
-      const label = resolveLocalizedText(stage?.label, protocol.localization);
+      const label = resolveDeclaredTranslation(
+        stage?.label,
+        protocol.localization,
+      );
       const name =
-        label === null || label.text === ''
+        label === undefined || label.text === ''
           ? { text: unnamed, lang: null }
-          : { text: label.text, lang: label.locale };
+          : { text: label.text, lang: label.lang };
       return {
         kind: intl.formatMessage(messages.stagePosition, {
           position: index + 1,

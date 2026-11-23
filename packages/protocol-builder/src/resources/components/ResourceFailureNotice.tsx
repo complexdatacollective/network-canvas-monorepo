@@ -3,6 +3,7 @@ import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
+import { useTokenPillLanguage } from '@codaco/fresco-ui/TokenPill';
 
 import type { ResourceGatewayFailure } from '../types.ts';
 
@@ -40,11 +41,19 @@ export default function ResourceFailureNotice({
   busy = false,
 }: ResourceFailureNoticeProps) {
   const intl = useAppIntl();
+  // The interface's words, wherever the notice is drawn: a file that cannot
+  // be shown says so in the text of a page being written in another language.
+  const interfaceLanguage = useTokenPillLanguage();
   const canRetry = failure.retryable && onRetry !== undefined;
   const message = formatMessageError(failure.message, intl) ?? failure.message;
 
   return (
-    <Alert variant="destructive" density="compact" className="my-2">
+    <Alert
+      {...interfaceLanguage}
+      variant="destructive"
+      density="compact"
+      className="my-2"
+    >
       <div className="flex flex-wrap items-center gap-3">
         <AlertDescription>{message}</AlertDescription>
         {canRetry && (

@@ -494,3 +494,93 @@ describe('a codebook change made while a preset dialog is open', () => {
     await closeAttributePicker(harness.user);
   });
 });
+
+/** A preset narrowed to the people a rule about the network keeps. */
+const presetFilter = {
+  join: 'AND',
+  rules: [
+    {
+      id: 'rule-1',
+      type: 'edge',
+      options: { type: 'knows', operator: 'EXISTS' },
+    },
+  ],
+};
+
+const presetHolding = (settings: Record<string, unknown> = {}) => ({
+  id: 'narrative-preset-1',
+  label: { 'en-US': 'Default layout' },
+  layoutVariable: 'layout',
+  ...settings,
+});
+
+/**
+ * A narrative stage has no filter of its own: each preset narrows the network
+ * for itself, in its own dialog, with the same switch a side panel's filter
+ * has.
+ */
+describe('the filter of one narrative preset', () => {
+  it('keeps the filter out of the way until the researcher asks for one', async () => {
+    const harness = renderStageEditor(narrativeHolding(presetHolding()));
+
+    const preset = await openPreset(harness);
+    const filterSwitch = preset.getByRole('switch', { name: 'Preset filter' });
+    expect(filterSwitch).not.toBeChecked();
+    expect(
+      preset.queryByRole('button', { name: 'Add new filter rule' }),
+    ).not.toBeInTheDocument();
+
+    await harness.user.click(filterSwitch);
+
+    expect(
+      await preset.findByRole('button', { name: 'Add new filter rule' }),
+    ).toBeInTheDocument();
+  });
+
+  it('saves a preset’s filter with the preset, and nowhere else', async () => {
+    const harness = renderStageEditor(
+      narrativeHolding(presetHolding({ filter: presetFilter })),
+    );
+
+    const preset = await openPreset(harness);
+    expect(preset.getByRole('switch', { name: 'Preset filter' })).toBeChecked();
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const saved = await harness.submit();
+    expect(presetsOf(saved?.stageDocument ?? {})).toEqual([
+      presetHolding({ filter: presetFilter }),
+    ]);
+    expect(saved?.stageDocument).not.toHaveProperty('filter');
+  });
+
+  it('asks before clearing a preset’s filter, and leaves the preset none', async () => {
+    const harness = renderStageEditor(
+      narrativeHolding(presetHolding({ filter: presetFilter })),
+    );
+
+    const preset = await openPreset(harness);
+    const filterSwitch = preset.getByRole('switch', { name: 'Preset filter' });
+
+    // Refused: the rules stay, and so does the switch.
+    await harness.user.click(filterSwitch);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+    await waitFor(() => expect(filterSwitch).toBeChecked());
+
+    await harness.user.click(filterSwitch);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Clear filter' }),
+    );
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const saved = await harness.submit();
+    expect(presetsOf(saved?.stageDocument ?? {})).toEqual([presetHolding()]);
+  });
+});

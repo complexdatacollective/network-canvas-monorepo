@@ -53,6 +53,9 @@ const commitHash = readCommitHash();
 const config: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  // Next.js otherwise writes an AGENTS.md beside this file when `next dev`
+  // detects a coding agent. The repository's own agent guidance is CLAUDE.md.
+  agentRules: false,
   reactCompiler: true,
   cacheComponents: true,
   typedRoutes: true,

@@ -1,6 +1,7 @@
 import {
   render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { useMemo } from 'react';
@@ -11,6 +12,7 @@ import {
   ToolbarGroup,
   ToolbarIconButton,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+import { ACTION_TOOLBAR_REACH_VARIABLE } from '~/utils/actionToolbarReach';
 
 import {
   ActionToolbarProvider,
@@ -75,6 +77,23 @@ const HistoryToolbarController = ({ visible }: { visible: boolean }) => {
 };
 
 describe('ActionToolbarProvider', () => {
+  it('publishes how far up the page its toolbar reaches, while one is drawn', async () => {
+    const reach = () =>
+      document.documentElement.style.getPropertyValue(
+        ACTION_TOOLBAR_REACH_VARIABLE,
+      );
+    const { unmount } = render(
+      <ActionToolbarProvider>
+        <TimelineToolbarController />
+      </ActionToolbarProvider>,
+    );
+    // 600px is what the test environment's `ResizeObserver` reports for
+    // every element: the published value is the observed one.
+    await waitFor(() => expect(reach()).toBe('600px'));
+    unmount();
+    expect(reach()).toBe('');
+  });
+
   it('keeps the same toolbar mounted while route controllers change', () => {
     const { rerender } = render(
       <ActionToolbarProvider>

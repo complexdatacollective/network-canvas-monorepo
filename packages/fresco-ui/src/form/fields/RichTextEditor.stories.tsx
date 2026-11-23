@@ -1,14 +1,22 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/react';
-import { useState } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { action } from 'storybook/actions';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { z } from 'zod/mini';
 
+import { withMod } from '../../testing/modKey';
 import { TokenizedText } from '../../TokenPill';
 import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
+import {
+  ASSET_BLOCK_OUTLINE_OFFSET,
+  ASSET_BLOCK_OUTLINE_WIDTH,
+  assetBlockControlsProps,
+  type RichTextAssetBlockViewProps,
+  type RichTextAssetBlocks,
+} from './richText/assetBlockNode';
 import type { RichTextInsertMenu } from './richText/InsertMenu';
 import RichTextEditorField, {
   type RichTextEditorToken,
@@ -777,6 +785,292 @@ export const WithTokensInTheText: Story = {
   },
 };
 
+const plainLine: JSONContent = {
+  type: 'doc',
+  content: [
+    { type: 'paragraph', content: [{ type: 'text', text: 'Ask about ' }] },
+  ],
+};
+
+const oneTokenLine: JSONContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Add ' },
+        { type: 'token', attrs: { id: 'name' } },
+        { type: 'text', text: ' parents' },
+      ],
+    },
+  ],
+};
+
+function TokenEditor({
+  label,
+  tokens,
+  initial,
+}: {
+  label: string;
+  tokens: RichTextEditorToken[];
+  initial: JSONContent;
+}) {
+  const [value, setValue] = useState<JSONContent | undefined>(initial);
+  return (
+    <div className="flex w-[480px] flex-col gap-2">
+      <RichTextEditorField
+        id={label}
+        name={label}
+        aria-label={label}
+        singleLine
+        toolbarOptions={{ bold: false, italic: false }}
+        tokens={tokens}
+        changeMode="input"
+        value={value}
+        onChange={setValue}
+      />
+      <pre data-testid={`${label} value`} className="text-xs">
+        {JSON.stringify(value)}
+      </pre>
+    </div>
+  );
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const childrenOf = (node: unknown): readonly unknown[] =>
+  isRecord(node) && Array.isArray(node.content) ? node.content : [];
+
+/** The paragraph's parts in order: a run of words, or `{id}` for a token. */
+const namePill = (editor: Element): HTMLElement => {
+  const found = editor.querySelector('[data-token="name"]');
+  if (!(found instanceof HTMLElement)) throw new Error('No pill');
+  return found;
+};
+
+const partsOf = (canvasElement: HTMLElement, label: string): string[] => {
+  const value: unknown = JSON.parse(
+    within(canvasElement).getByTestId(`${label} value`).textContent || 'null',
+  );
+  const paragraph = childrenOf(value)[0];
+  return childrenOf(paragraph).map((node) => {
+    if (!isRecord(node)) return '';
+    if (node.type !== 'token') {
+      return typeof node.text === 'string' ? node.text : '';
+    }
+    return `{${isRecord(node.attrs) ? String(node.attrs.id) : ''}}`;
+  });
+};
+
+/**
+ * A pill is one thing to the keyboard. The arrow keys go past it in one
+ * step once it is selected, Backspace takes all of it, and undo puts it
+ * back.
+ */
+export const TokensFromTheKeyboard: Story = {
+  render: () => (
+    <TokenEditor
+      label="Question"
+      tokens={[{ id: 'name', label: 'Name' }]}
+      initial={oneTokenLine}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    const doc = canvasElement.ownerDocument;
+    const pill = () => namePill(editor);
+    await userEvent.click(editor);
+
+    // user-event cannot move a caret through a contenteditable, so the
+    // caret is placed directly and each key reaches ProseMirror's own
+    // keydown handling, which is what keeps a pill whole.
+    const press = (key: string, keyCode: number) => {
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, 'keyCode', { value: keyCode });
+      editor.dispatchEvent(event);
+    };
+    const caret = () => {
+      const selection = doc.getSelection();
+      if (selection === null || selection.rangeCount === 0) {
+        throw new Error('No caret');
+      }
+      return selection.getRangeAt(0);
+    };
+    /** -1 before the pill, 1 after it, with no text between; 0 otherwise. */
+    const besidePill = () => {
+      const at = caret();
+      if (!at.collapsed) return 0;
+      const before = doc.createRange();
+      before.setStartBefore(pill());
+      before.collapse(true);
+      const after = doc.createRange();
+      after.setStartAfter(pill());
+      after.collapse(true);
+      const between = doc.createRange();
+      if (before.comparePoint(at.startContainer, at.startOffset) <= 0) {
+        between.setStart(at.startContainer, at.startOffset);
+        between.setEndBefore(pill());
+        return between.toString() === '' ? -1 : 0;
+      }
+      if (after.comparePoint(at.startContainer, at.startOffset) >= 0) {
+        between.setStartAfter(pill());
+        between.setEnd(at.startContainer, at.startOffset);
+        return between.toString() === '' ? 1 : 0;
+      }
+      return 0;
+    };
+
+    const after = doc.createRange();
+    after.setStartAfter(pill());
+    after.collapse(true);
+    doc.getSelection()?.removeAllRanges();
+    doc.getSelection()?.addRange(after);
+    await waitFor(() => expect(besidePill()).toBe(1));
+
+    // One step selects the pill whole; the next leaves it, before it.
+    press('ArrowLeft', 37);
+    await waitFor(() => expect(pill()).toHaveClass('ProseMirror-selectednode'));
+    press('ArrowLeft', 37);
+    await waitFor(() => expect(besidePill()).toBe(-1));
+    await expect(pill()).not.toHaveClass('ProseMirror-selectednode');
+
+    // And the same forward, to just after it.
+    press('ArrowRight', 39);
+    await waitFor(() => expect(pill()).toHaveClass('ProseMirror-selectednode'));
+    press('ArrowRight', 39);
+    await waitFor(() => expect(besidePill()).toBe(1));
+
+    // One Backspace takes the whole pill, and nothing else.
+    press('Backspace', 8);
+    await waitFor(() =>
+      expect(partsOf(canvasElement, 'Question')).toEqual(['Add  parents']),
+    );
+
+    await userEvent.keyboard(withMod('z'));
+    await waitFor(() =>
+      expect(partsOf(canvasElement, 'Question')).toEqual([
+        'Add ',
+        '{name}',
+        ' parents',
+      ]),
+    );
+  },
+};
+
+/** A point just past the last character of `element`'s text. */
+const endOf = (element: HTMLElement) => {
+  const walker = element.ownerDocument.createTreeWalker(
+    element,
+    NodeFilter.SHOW_TEXT,
+  );
+  let last: Text | null = null;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node instanceof Text && node.data !== '') last = node;
+  }
+  if (last === null) throw new Error('No text to drop after');
+  const range = element.ownerDocument.createRange();
+  range.setStart(last, last.data.length);
+  const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
+  return { clientX: rect.right - 1, clientY: rect.top + rect.height / 2 };
+};
+
+const dragPill = (pill: HTMLElement, onto: HTMLElement) => {
+  const dataTransfer = new DataTransfer();
+  pill.dispatchEvent(
+    new DragEvent('dragstart', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer,
+    }),
+  );
+  onto.dispatchEvent(
+    new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer,
+      ...endOf(onto),
+    }),
+  );
+  pill.dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+  return dataTransfer;
+};
+
+/**
+ * A pill can be dragged to another place in the text, and it arrives whole.
+ * Dropped into a field that does not offer it, it becomes what pasting it
+ * there makes: its words, with no placeholder.
+ */
+export const DraggingATokenPill: Story = {
+  render: () => (
+    <div className="flex flex-col gap-6">
+      <TokenEditor
+        label="Question"
+        tokens={[{ id: 'name', label: 'Name' }]}
+        initial={oneTokenLine}
+      />
+      <TokenEditor
+        label="Dropped into"
+        tokens={[{ id: 'age', label: 'Age' }]}
+        initial={plainLine}
+      />
+      <TokenEditor
+        label="Pasted into"
+        tokens={[{ id: 'age', label: 'Age' }]}
+        initial={plainLine}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+
+    const pill = () => namePill(editor);
+    await waitFor(() => expect(pill().draggable).toBe(true));
+
+    dragPill(pill(), editor);
+    await waitFor(() =>
+      expect(partsOf(canvasElement, 'Question')).toEqual([
+        'Add  parents',
+        '{name}',
+      ]),
+    );
+
+    const dropTarget = canvas.getByRole('textbox', { name: 'Dropped into' });
+    const pasteTarget = canvas.getByRole('textbox', { name: 'Pasted into' });
+    const dragged = dragPill(pill(), dropTarget);
+
+    const clipboardData = new DataTransfer();
+    clipboardData.setData('text/html', dragged.getData('text/html'));
+    clipboardData.setData('text/plain', dragged.getData('text/plain'));
+    await userEvent.click(pasteTarget);
+    const end = pasteTarget.ownerDocument.createRange();
+    end.selectNodeContents(pasteTarget);
+    end.collapse(false);
+    pasteTarget.ownerDocument.getSelection()?.removeAllRanges();
+    pasteTarget.ownerDocument.getSelection()?.addRange(end);
+    pasteTarget.dispatchEvent(
+      new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      }),
+    );
+
+    await waitFor(() => {
+      const dropped = partsOf(canvasElement, 'Dropped into');
+      expect(dropped.some((part) => part.startsWith('{'))).toBe(false);
+      expect(dropped.join('')).toContain('Name');
+      expect(dropped).toEqual(partsOf(canvasElement, 'Pasted into'));
+    });
+  },
+};
+
 /**
  * Text that is only read shows its placeholders as the same pills the editor
  * shows. `TokenizedText` takes the text as parts, each a run of words or a
@@ -868,9 +1162,11 @@ const insertMenu: RichTextInsertMenu = {
 function EditorWithValue({
   initial,
   openWholeMessageVersions = false,
+  menuFor = () => insertMenu,
 }: {
   initial: JSONContent | undefined;
   openWholeMessageVersions?: boolean;
+  menuFor?: (value: JSONContent | undefined) => RichTextInsertMenu;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -884,7 +1180,7 @@ function EditorWithValue({
         tokens={offeredTokens}
         versions
         openWholeMessageVersions={openWholeMessageVersions}
-        insertMenu={insertMenu}
+        insertMenu={menuFor(value)}
         changeMode="input"
         value={value}
         onChange={setValue}
@@ -966,13 +1262,13 @@ export const WithVersionsAndInsertMenu: Story = {
     await expect(missing.textContent).toBe('');
 
     // Undo takes the insertion back, and redo brings it again.
-    await userEvent.keyboard('{Control>}z{/Control}');
+    await userEvent.keyboard(withMod('z'));
     await waitFor(() =>
       expect(
         canvas.queryByRole('group', { name: 'Whether Name is known' }),
       ).toBeNull(),
     );
-    await userEvent.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await userEvent.keyboard(withMod('{Shift>}z{/Shift}'));
     const restored = await canvas.findByRole('group', {
       name: 'Whether Name is known',
     });
@@ -1021,7 +1317,7 @@ export const WithVersionsAndInsertMenu: Story = {
         canvas.queryByRole('group', { name: 'Whether Name is known' }),
       ).toBeNull(),
     );
-    await userEvent.keyboard('{Control>}z{/Control}');
+    await userEvent.keyboard(withMod('z'));
     await expect(
       await canvas.findByRole('group', { name: 'Whether Name is known' }),
     ).toBeInTheDocument();
@@ -1282,6 +1578,60 @@ export const InsertMenuWithAnUnavailableItem: Story = {
   },
 };
 
+const containsToken = (content: JSONContent | undefined, id: string): boolean =>
+  content !== undefined &&
+  ((content.type === 'token' && content.attrs?.id === id) ||
+    (content.content ?? []).some((child) => containsToken(child, id)));
+
+/**
+ * An item can be `required`: the consumer says, for the version being
+ * edited, whether the text must include it and does not yet. The item is
+ * marked "Required in this text" in the menu, and the menu's button carries a
+ * dot and says that something the text requires is not in it yet. Both marks
+ * go once the item is in the text.
+ */
+export const InsertMenuWithARequiredItem: Story = {
+  render: () => (
+    <EditorWithValue
+      initial={undefined}
+      menuFor={(value) => ({
+        ...insertMenu,
+        items: insertMenu.items.map((item) =>
+          item.id === 'age'
+            ? { ...item, required: () => !containsToken(value, 'age') }
+            : item,
+        ),
+      })}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    await userEvent.click(editor);
+
+    const button = canvas.getByRole('button', { name: INSERT_LABEL });
+    await expect(button).toHaveAccessibleDescription(
+      'Something this text requires is not in it yet',
+    );
+    await userEvent.click(button);
+    const age = await body.findByRole('option', {
+      name: 'Age, Number, Required in this text',
+    });
+    await expect(age).toHaveAttribute('data-required', 'true');
+    await expect(
+      body.getByRole('option', { name: /^Name/ }),
+    ).not.toHaveAttribute('data-required');
+
+    await userEvent.click(age);
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
+    );
+    await waitFor(() => expect(button).not.toHaveAttribute('data-missing'));
+    await expect(button).not.toHaveAccessibleDescription();
+  },
+};
+
 /**
  * Every editor offers emoji. Typing a colon and the start of an emoji's name
  * (`:ro`) suggests emoji beside the caret while the keyboard stays in the
@@ -1322,5 +1672,279 @@ export const Emoji: Story = {
     await userEvent.type(search, 'hospital');
     await userEvent.click(await body.findByRole('option', { name: /🏥/ }));
     await waitFor(() => expect(editor).toHaveTextContent('🚀🏥'));
+  },
+};
+
+// A stand-in for what a consumer draws for a file: it says which file and how
+// it is shown, and offers the controls a block's view is given.
+function StoryAssetBlockView({
+  attributes,
+  selected,
+  editable,
+  update,
+  remove,
+}: RichTextAssetBlockViewProps) {
+  return (
+    <div className="bg-surface-1 rounded-sm border p-3">
+      <p data-testid="asset-block-summary">
+        {attributes.assetId}, size {attributes.size ?? 'full'}, aligned{' '}
+        {attributes.align}
+      </p>
+      {selected && editable && (
+        <div {...assetBlockControlsProps} className="mt-2 flex gap-2">
+          <button type="button" onClick={() => update({ size: 'small' })}>
+            Small
+          </button>
+          <button type="button" onClick={() => remove()}>
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const storyAssetBlocks: RichTextAssetBlocks = {
+  pick: (kind) => Promise.resolve(`${kind}-1`),
+  View: StoryAssetBlockView,
+};
+
+/** The field as wide as a page's content, holding its text as it changes. */
+function PageContentField({
+  initial,
+  ...props
+}: Omit<ComponentProps<typeof RichTextEditorField>, 'value' | 'onChange'> & {
+  initial: JSONContent;
+}) {
+  const [value, setValue] = useState<JSONContent | undefined>(initial);
+  return (
+    <div className="w-[48rem]">
+      <RichTextEditorField
+        {...props}
+        aria-label="Page content"
+        changeMode="input"
+        value={value}
+        onChange={setValue}
+      />
+    </div>
+  );
+}
+
+/**
+ * A field whose text can hold files as blocks among its paragraphs. The
+ * consumer chooses a file (`pick`) and draws a block (`View`); the toolbar
+ * offers one button for each kind of file. A block is one whole thing: arrow
+ * to it, press Enter to reach its controls, Escape to come back out.
+ */
+export const WithAssetBlocks: Story = {
+  render: (args) => (
+    <PageContentField
+      {...args}
+      assetBlocks={storyAssetBlocks}
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Before the picture' }],
+          },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    await userEvent.click(editor);
+    await userEvent.click(canvas.getByRole('button', { name: 'Insert image' }));
+    const summary = await canvas.findByTestId('asset-block-summary');
+    await expect(summary).toHaveTextContent(
+      'image-1, size full, aligned center',
+    );
+    // The block just placed is selected, and outlined as its consumer is told
+    // it is: a consumer places things on that outline by these numbers.
+    const block = summary.closest('[data-asset-block]');
+    if (block === null) throw new Error('No block around the view');
+    await waitFor(() => expect(block).toHaveAttribute('data-selected'));
+    const outline = getComputedStyle(block);
+    await expect(outline.outlineWidth).toBe(`${ASSET_BLOCK_OUTLINE_WIDTH}px`);
+    await expect(outline.outlineOffset).toBe(`${ASSET_BLOCK_OUTLINE_OFFSET}px`);
+  },
+};
+
+/**
+ * The list of text styles, open: each style's name is set the way a line of
+ * that style is, so the list shows how large each is before it is chosen.
+ * The control that opens it keeps to the toolbar's size.
+ */
+export const TextStyleMenu: Story = {
+  render: (args) => (
+    <PageContentField
+      {...args}
+      initial={{
+        type: 'doc',
+        content: [1, 2, 3, 4].map((level) => ({
+          type: 'heading',
+          attrs: { level },
+          content: [{ type: 'text', text: `Heading ${level}` }],
+        })),
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    await userEvent.click(within(editor).getByText('Heading 2'));
+    const trigger = await canvas.findByRole('button', {
+      name: 'Text style: Heading 2',
+    });
+    const triggerHeight = trigger.getBoundingClientRect().height;
+
+    await userEvent.click(trigger);
+    await body.findByRole('menu');
+    const font = (element: Element) => {
+      const style = getComputedStyle(element);
+      return `${style.fontFamily} ${style.fontWeight} ${style.fontSize}`;
+    };
+    // The name is the item's last child, after the tick every item has.
+    const nameIn = (name: string) => {
+      const label = body.getByRole('menuitemradio', { name }).lastElementChild;
+      if (label === null) throw new Error(`No name in the ${name} item`);
+      return label;
+    };
+    // Each heading's name in the list is set as that heading is in the text.
+    for (const level of [1, 2, 3, 4]) {
+      const line = editor.querySelector(`h${level}`);
+      if (line === null) throw new Error(`No heading ${level} in the text`);
+      await expect(font(nameIn(`Heading ${level}`))).toBe(font(line));
+      // And the item is tall enough to hold it.
+      const item = body.getByRole('menuitemradio', {
+        name: `Heading ${level}`,
+      });
+      await expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
+    }
+    // Largest first, down to the paragraph.
+    const sizes = [
+      'Heading 1',
+      'Heading 2',
+      'Heading 3',
+      'Heading 4',
+      'Paragraph',
+    ].map((name) => Number.parseFloat(getComputedStyle(nameIn(name)).fontSize));
+    await expect(sizes.toSorted((a, b) => b - a)).toEqual(sizes);
+    await expect(new Set(sizes).size).toBe(sizes.length);
+    // The control keeps the toolbar's size whatever the line's style is.
+    await expect(trigger.getBoundingClientRect().height).toBe(triggerHeight);
+  },
+};
+
+/**
+ * Text in English, written in an Arabic interface: the field sits in a region
+ * that says the text's language, as a host marks the translation it edits.
+ * The words the field writes itself, the text style's name and the
+ * placeholder, say the interface's language, and so take its typeface.
+ */
+export const InterfaceWordsInTextOfAnotherLanguage: Story = {
+  globals: { appLocale: 'ar' },
+  render: (args) => (
+    <div lang="en-US" dir="ltr" data-testid="text-region">
+      <PageContentField
+        {...args}
+        placeholder="Type your page content..."
+        initial={{ type: 'doc', content: [{ type: 'paragraph' }] }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    const trigger = canvas.getByRole('button', { name: /^Text style: / });
+    const label = trigger.querySelector(':scope > span:not(.sr-only)');
+    if (label === null) throw new Error('The text style shows no name');
+    const languageOf = (element: Element) => ({
+      lang: element.closest('[lang]')?.getAttribute('lang'),
+      dir: element.closest('[dir]')?.getAttribute('dir'),
+    });
+    await expect(languageOf(label)).toEqual({ lang: 'ar', dir: 'rtl' });
+    // Set in the Arabic typeface, which `:lang(ar)` gives (arabic-text.css),
+    // where the text's own paragraphs are not.
+    const face = (element: Element) => getComputedStyle(element).fontFamily;
+    await expect(face(label)).toMatch(/Readex Pro/);
+    // The empty text's placeholder: its paragraph says the interface's
+    // language until something is typed, and the placeholder reads in its
+    // own direction while the caret stays where the text starts.
+    const empty = editor.querySelector('p');
+    if (empty === null) throw new Error('The text holds no paragraph');
+    await expect(empty).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(empty, '::before').unicodeBidi).toBe(
+      'plaintext',
+    );
+    await userEvent.click(editor);
+    await userEvent.keyboard('Hello');
+    await waitFor(() => expect(editor).toHaveTextContent('Hello'));
+    const typed = editor.querySelector('p');
+    if (typed === null) throw new Error('The text holds no paragraph');
+    await expect(typed).not.toHaveAttribute('lang');
+    await expect(languageOf(typed).lang).toBe('en-US');
+    await expect(face(typed)).not.toMatch(/Readex Pro/);
+  },
+};
+
+/**
+ * Text selected across a block: the block is covered in the colour of the
+ * selected text around it, as it is copied, cut or typed over with it. A
+ * block selected by itself is outlined instead (`WithAssetBlocks`).
+ */
+export const SelectionAcrossAnAssetBlock: Story = {
+  render: (args) => (
+    <PageContentField
+      {...args}
+      assetBlocks={storyAssetBlocks}
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Before the picture' }],
+          },
+          { type: 'assetBlock', attrs: { assetId: 'image-1' } },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'After the picture' }],
+          },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox', { name: 'Page content' });
+    const summary = await canvas.findByTestId('asset-block-summary');
+    const block = summary.closest('[data-asset-block]');
+    if (block === null) throw new Error('No block around the view');
+
+    // A caret is no selection.
+    await userEvent.click(within(editor).getByText('After the picture'));
+    await expect(block).not.toHaveAttribute('data-in-selected-text');
+
+    // Everything, with the platform's select-all: the block goes with the
+    // text, and is covered as the text is.
+    await userEvent.keyboard(withMod('a'));
+    await waitFor(() => expect(block).toHaveAttribute('data-in-selected-text'));
+    // Part of the selection, not the selection itself: no outline.
+    await expect(block).not.toHaveAttribute('data-selected');
+    await expect(getComputedStyle(block, '::after').content).not.toBe('none');
+
+    // Collapsed again, to the end of the text, it is not.
+    await userEvent.keyboard('{ArrowRight}');
+    await waitFor(() =>
+      expect(block).not.toHaveAttribute('data-in-selected-text'),
+    );
+    await expect(getComputedStyle(block, '::after').content).toBe('none');
+
+    // And left selected, to be seen.
+    await userEvent.keyboard(withMod('a'));
+    await waitFor(() => expect(block).toHaveAttribute('data-in-selected-text'));
   },
 };

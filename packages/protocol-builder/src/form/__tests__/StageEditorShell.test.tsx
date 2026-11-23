@@ -20,8 +20,7 @@ const en = (text: string) => ({ 'en-US': text });
 
 const initialFields: SectionDoc = {
   label: en('Welcome'),
-  title: en('Welcome to the study'),
-  items: [],
+  content: en('Welcome to the study'),
 };
 
 /** A host's own save control, which is how a host reaches the stage form. */
@@ -64,15 +63,19 @@ const settingsCapability = {
 
 const threeSections = (pageContentTitle = 'Page content') => (
   <>
-    <BuilderSection title={pageContentTitle}>
+    <BuilderSection sectionKey="form-fields" title={pageContentTitle}>
       <Field
-        name="title"
+        name="content"
         label="Page heading"
         component={LocalizedInputField}
         required={REQUIRED}
       />
     </BuilderSection>
-    <BuilderSection title="Interviewer guidance" capability={scriptCapability}>
+    <BuilderSection
+      sectionKey="interviewer-guidance"
+      title="Interviewer guidance"
+      capability={scriptCapability}
+    >
       <Field
         name="interviewScript"
         label="Interviewer script text"
@@ -174,7 +177,7 @@ describe('StageEditorShell', () => {
 
   it('reports a section whose required field is empty as unfinished', async () => {
     const harness = renderEditor({
-      fields: { label: en('Welcome'), items: [] },
+      fields: { label: en('Welcome') },
     });
 
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
@@ -214,8 +217,7 @@ describe('StageEditorShell', () => {
       id: harness.seeded.id,
       type: 'Information',
       label: en('Welcome'),
-      title: en('A new heading'),
-      items: [],
+      content: en('A new heading'),
     });
   });
 
@@ -274,7 +276,7 @@ describe('StageEditorShell', () => {
     // must render — so seeding a control cannot be the one place that throws
     // on it. A throw here is not cosmetic: the render never commits, and the
     // editor goes down over content the researcher did not write.
-    renderEditor({ fields: { ...initialFields, title: null } });
+    renderEditor({ fields: { ...initialFields, content: null } });
 
     // Nothing is there, which this package spells `undefined` and shows as an
     // empty control — never as the word "null".
@@ -291,9 +293,9 @@ describe('StageEditorShell', () => {
           <button type="button" onClick={() => setTitle('Screen content')}>
             Rename the section
           </button>
-          <BuilderSection title={title}>
+          <BuilderSection sectionKey="form-fields" title={title}>
             <Field
-              name="title"
+              name="content"
               label="Page heading"
               component={LocalizedInputField}
               required
@@ -303,7 +305,7 @@ describe('StageEditorShell', () => {
       );
     }
     const harness = renderEditor({
-      fields: { label: en('Welcome'), items: [] },
+      fields: { label: en('Welcome') },
       sections: <RenameableSection />,
     });
     await waitFor(() =>
@@ -336,7 +338,7 @@ describe('StageEditorShell', () => {
 
   it('reports exactly one problem for a field that owns it', async () => {
     const harness = renderEditor({
-      fields: { label: en('Welcome'), items: [] },
+      fields: { label: en('Welcome') },
     });
 
     expect(await harness.submit()).toBeNull();
@@ -355,6 +357,7 @@ describe('StageEditorShell', () => {
       },
       sections: (
         <BuilderSection
+          sectionKey="interviewer-guidance"
           title="Interviewer guidance"
           capability={{
             ...scriptCapability,
@@ -408,7 +411,10 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       fields: { ...initialFields, interviewScript: '  ' },
       sections: (
-        <BuilderSection title="Interviewer guidance">
+        <BuilderSection
+          sectionKey="interviewer-guidance"
+          title="Interviewer guidance"
+        >
           <Field
             name="interviewScript"
             label="Interviewer script text"
@@ -433,7 +439,11 @@ describe('StageEditorShell', () => {
     // parts inside it — the shape skip logic has.
     const harness = renderEditor({
       sections: (
-        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+        <BuilderSection
+          sectionKey="skip-logic"
+          title="Skip logic"
+          capability={skipLogicCapability}
+        >
           <Field
             name="skipLogic.action"
             label="What this stage does"
@@ -479,7 +489,11 @@ describe('StageEditorShell', () => {
       sections: (
         <WithHiddenPart label="Toggle advanced options">
           {({ shown, toggle }) => (
-            <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+            <BuilderSection
+              sectionKey="skip-logic"
+              title="Skip logic"
+              capability={skipLogicCapability}
+            >
               <Field
                 name="skipLogic.action"
                 label="What this stage does"
@@ -533,7 +547,11 @@ describe('StageEditorShell', () => {
   it('sees content a capability is holding out of sight', async () => {
     const harness = renderEditor({
       sections: (
-        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+        <BuilderSection
+          sectionKey="skip-logic"
+          title="Skip logic"
+          capability={skipLogicCapability}
+        >
           <Toggleable label="Toggle advanced options">
             <Field
               name="skipLogic.destination"
@@ -591,9 +609,9 @@ describe('StageEditorShell', () => {
             Reverse the sections
           </button>
           {shown.map((title) => (
-            <BuilderSection key={title} title={title}>
+            <BuilderSection sectionKey="form-fields" key={title} title={title}>
               <Field
-                name={title === 'Introduction' ? 'title' : 'label'}
+                name={title === 'Introduction' ? 'content' : 'label'}
                 label={`${title} text`}
                 component={LocalizedInputField}
               />
@@ -627,7 +645,11 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       fields: { ...initialFields, skipLogic: { action: 'SKIP' } },
       sections: (
-        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+        <BuilderSection
+          sectionKey="skip-logic"
+          title="Skip logic"
+          capability={skipLogicCapability}
+        >
           <Field
             name="skipLogic.action"
             label="What this stage does"
@@ -672,6 +694,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection
+          sectionKey="form-fields"
           title="Advanced settings"
           capability={settingsCapability}
         >
@@ -708,6 +731,7 @@ describe('StageEditorShell', () => {
         <WithHiddenPart label="Toggle the control">
           {({ shown, toggle }) => (
             <BuilderSection
+              sectionKey="form-fields"
               title="Advanced settings"
               capability={settingsCapability}
             >
@@ -766,6 +790,7 @@ describe('StageEditorShell', () => {
         <WithHiddenPart label="Toggle the control">
           {({ shown, toggle }) => (
             <BuilderSection
+              sectionKey="form-fields"
               title="Prompt override"
               capability={{
                 // A protocol-authored key, canonically formatted. It is one
@@ -829,6 +854,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection
+          sectionKey="form-fields"
           title="Advanced settings"
           capability={settingsCapability}
         >
@@ -902,6 +928,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection
+          sectionKey="form-fields"
           title="Row setting"
           capability={{
             fields: ['items[0].optionalSetting'],
@@ -957,7 +984,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <>
-          <BuilderSection title="Details">
+          <BuilderSection sectionKey="form-fields" title="Details">
             <Field<typeof CompoundControl>
               name="settings"
               label="Settings"
@@ -965,6 +992,7 @@ describe('StageEditorShell', () => {
             />
           </BuilderSection>
           <BuilderSection
+            sectionKey="form-fields"
             title="Advanced settings"
             capability={settingsCapability}
           >
@@ -1013,6 +1041,7 @@ describe('StageEditorShell', () => {
       fields: { ...initialFields, interviewScript: '   ' },
       sections: (
         <BuilderSection
+          sectionKey="interviewer-guidance"
           title="Interviewer guidance"
           capability={scriptCapability}
         >
@@ -1061,10 +1090,10 @@ describe('StageEditorShell', () => {
     }
     const harness = renderEditor({
       sections: (
-        <BuilderSection title="Page content">
+        <BuilderSection sectionKey="page-content" title="Page content">
           <MountCounter />
           <Field
-            name="title"
+            name="content"
             label="Page heading"
             component={LocalizedInputField}
             required
@@ -1092,6 +1121,7 @@ describe('StageEditorShell', () => {
     const harness = renderEditor({
       sections: (
         <BuilderSection
+          sectionKey="interviewer-guidance"
           title="Interviewer guidance"
           disabled
           capability={scriptCapability}

@@ -81,6 +81,7 @@ Useful exemplars include `packages/fresco-ui/src/dnd/useAccessibilityAnnouncemen
 
 ## Internationalisation and participant-facing copy
 
+- Write every piece of copy as standard, complete English. The grammar and wording rules are in the `writing-user-facing-text` skill (Claude Code: invoke `writing-user-facing-text`); follow them for participant-facing and researcher-facing text alike.
 - Keep whole, externalisable strings. Do not concatenate sentence fragments or rely on English grammar interpolation.
 - Leave room for text expansion and right-to-left layouts.
 - Write participant copy in a plain, calm, respectful voice. Use second-person imperatives for actions and explain consequences without threats.

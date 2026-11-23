@@ -1,23 +1,9 @@
-import {
-  Cause,
-  Context,
-  Effect,
-  Layer,
-  ManagedRuntime,
-  Queue,
-  Redacted,
-  Scheduler,
-  Stream,
-} from 'effect';
+import { Cause, Effect, Queue, Redacted, Scheduler, Stream } from 'effect';
 import type * as Rpc from 'effect/rpc/Rpc';
-import * as RpcClient from 'effect/rpc/RpcClient';
-import * as RpcServer from 'effect/rpc/RpcServer';
 import { v4 as uuid } from 'uuid';
 
-import { makeRpcAdapter } from '@codaco/effect-query/adapter';
 import {
   ProtocolBuilderGroup,
-  type ProtocolBuilderClient,
   type ProtocolBuilderRpcs,
 } from '@codaco/protocol-builder-core/contract';
 import {
@@ -34,10 +20,7 @@ import type {
   ProtocolEvent,
   ResourceDescriptor,
 } from '@codaco/protocol-builder-core/contract/schemas';
-import {
-  HostCaller,
-  HostSession,
-} from '@codaco/protocol-builder-core/contract/session';
+import { HostCaller } from '@codaco/protocol-builder-core/contract/session';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -45,8 +28,13 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import {
+  fixedHostSession,
+  makeInProcessHost,
+  type InProcessHandlers,
+} from '../../host/inProcess.ts';
+import { WriteLedger } from '../../host/writeLedger.ts';
 import type { ProtocolBuilderAdapter } from '../../state/context.ts';
-import { OperationLedger } from './operationLedger.ts';
 import {
   InMemoryProtocolStore,
   type HostPrincipal,
@@ -72,12 +60,7 @@ const DEFAULT_PRINCIPAL: HostPrincipal = {
   displayName: 'Ada',
 };
 
-export class InMemoryHostClient extends Context.Service<
-  InMemoryHostClient,
-  ProtocolBuilderClient
->()('@codaco/protocol-builder/testing/InMemoryHostClient') {}
-
-export type HandlersLayer = Layer.Layer<Rpc.ToHandler<ProtocolBuilderRpcs>>;
+export type HandlersLayer = InProcessHandlers;
 
 export type HandlerOverrides = {
   readonly [
@@ -101,16 +84,13 @@ export type InMemoryHost = Readonly<{
 export type InMemoryHandlers = ReturnType<typeof buildHandlers>;
 
 export function hostSessionFor(principal: HostPrincipal) {
-  const caller = HostCaller.of({
-    connectionId: principal.sessionId,
-    clientSessionId: principal.sessionId,
-    userId: principal.userId,
-    displayName: Redacted.make(principal.displayName),
-  });
-  return Layer.succeed(HostSession)(
-    HostSession.of((effect) =>
-      Effect.provideService(effect, HostCaller, caller),
-    ),
+  return fixedHostSession(
+    HostCaller.of({
+      connectionId: principal.sessionId,
+      clientSessionId: principal.sessionId,
+      userId: principal.userId,
+      displayName: Redacted.make(principal.displayName),
+    }),
   );
 }
 
@@ -118,45 +98,15 @@ export function hostSessionFor(principal: HostPrincipal) {
  * Runs the host's fibers in microtasks, so a test that changes the protocol
  * inside `act` sees the channel deliver it there.
  */
-const inMicrotasks = Layer.succeed(Scheduler.Scheduler)(
-  new Scheduler.MixedScheduler('sync'),
-);
-
-const makeInProcessClient = Effect.fnUntraced(function* () {
-  // oxlint-disable-next-line prefer-const
-  let client!: Effect.Success<
-    ReturnType<
-      typeof RpcClient.makeNoSerialization<ProtocolBuilderRpcs, never, true>
-    >
-  >;
-  const server = yield* RpcServer.makeNoSerialization(ProtocolBuilderGroup, {
-    onFromServer: (response) => client.write(response),
-    disableFatalDefects: true,
-  });
-  client = yield* RpcClient.makeNoSerialization(ProtocolBuilderGroup, {
-    supportsAck: true,
-    flatten: true,
-    onFromClient: ({ message }) => server.write(0, message),
-  });
-  return client.client;
-});
+const inMicrotasks = new Scheduler.MixedScheduler('sync');
 
 export function inProcessAdapter(
   handlers: HandlersLayer,
   principal: HostPrincipal,
 ): ProtocolBuilderAdapter {
-  const client = Layer.effect(InMemoryHostClient)(makeInProcessClient()).pipe(
-    Layer.provide([handlers, hostSessionFor(principal)]),
-    Layer.provideMerge(inMicrotasks),
-  );
-  return makeRpcAdapter<
-    ProtocolBuilderRpcs,
-    InMemoryHostClient,
-    InMemoryHostClient
-  >({
-    runtime: ManagedRuntime.make(client),
-    client: InMemoryHostClient,
-  });
+  return makeInProcessHost(handlers, hostSessionFor(principal), {
+    scheduler: inMicrotasks,
+  }).adapter;
 }
 
 /**
@@ -172,12 +122,7 @@ export function createInMemoryHost(seed: InMemoryHostSeed): InMemoryHost {
   const store = new InMemoryProtocolStore(seed.sections, nextId);
   const resources = new InMemoryResourceStore(nextId, seed.assetContent ?? {});
   const principal = seed.principal ?? DEFAULT_PRINCIPAL;
-  const handle = buildHandlers(
-    protocolId,
-    store,
-    resources,
-    new OperationLedger(),
-  );
+  const handle = buildHandlers(protocolId, store, resources, new WriteLedger());
   const handlers = ProtocolBuilderGroup.toLayer(handle);
   return {
     protocolId,
@@ -234,7 +179,7 @@ function buildHandlers(
   protocolId: string,
   store: InMemoryProtocolStore,
   resources: InMemoryResourceStore,
-  ledger: OperationLedger,
+  ledger: WriteLedger,
 ) {
   const assets = (): SectionDoc => store.read(ASSETS).document;
   // Resources are scoped by protocol like everything else here: this host's
@@ -350,6 +295,7 @@ function buildHandlers(
         principal,
         entries,
         input.interfaceText,
+        input.codebook,
       );
       if (outcome.status === 'notLockHolder') {
         return yield* new NotLockHolder({
@@ -425,6 +371,8 @@ function buildHandlers(
         input.position,
         entries,
         input.interfaceText,
+        input.codebook,
+        principal,
       );
       if (outcome.status === 'exists') {
         return yield* new SectionExists({ sectionId: outcome.sectionId });

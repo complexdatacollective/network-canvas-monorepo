@@ -20,8 +20,7 @@ const STAGE: SectionDoc = {
   id: STAGE_ID,
   type: 'Information',
   label: { en: 'Welcome to the study' },
-  title: { en: 'Welcome' },
-  items: [],
+  content: { en: '# Welcome' },
 };
 
 /**
@@ -159,7 +158,7 @@ export const Editing: Story = {
     if (!(title instanceof HTMLElement)) {
       throw new Error('the title is not on the page');
     }
-    const firstSection = canvas.getByRole('region', { name: 'Page content' });
+    const firstSection = canvas.getByRole('region', { name: 'Content' });
     const titlePaintsTo =
       title.getBoundingClientRect().bottom -
       Number.parseFloat(getComputedStyle(title).paddingBottom);

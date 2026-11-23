@@ -38,7 +38,16 @@ import {
   type ProtocolEvent,
 } from '@codaco/protocol-builder-core/contract/schemas';
 import {
+  InProcessHostClient,
+  makeInProcessClient,
+} from '@codaco/protocol-builder/host/inProcess';
+import {
+  ASSETS_SECTION,
+  STAGE_ORDER_SECTION,
+} from '@codaco/protocol-builder/host/protocolSections';
+import {
   CurrentProtocolSchema,
+  EdgeColorSequence,
   type Experiments,
   type ExtractedAsset,
 } from '@codaco/protocol-validation';
@@ -47,18 +56,15 @@ import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
+import { createEdgeAsync } from '~/ducks/modules/protocol/codebook';
 import { rootReducer } from '~/ducks/modules/root';
 import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from '../architectStore.ts';
-import { createArchitectClient } from '../client.ts';
+import { ArchitectHostSession, createArchitectClient } from '../client.ts';
 import { ArchitectHandlers } from '../handlers.ts';
-import { makeInProcessClient } from '../inProcessClient.ts';
 import { ProtocolRevisions } from '../protocolRevisions.ts';
-import { ASSETS_SECTION, STAGE_ORDER_SECTION } from '../protocolSections.ts';
 import { ResourceBridge } from '../resourceBridge.ts';
-import { ArchitectHostClient } from '../runtime.ts';
-import { ArchitectHostSession } from '../session.ts';
 
 /**
  * The bytes an import wrote, standing in for Architect's IndexedDB asset
@@ -104,7 +110,7 @@ const FIXTURE_LANGUAGE = 'en-US';
 
 type TestClient = Readonly<{
   call: RpcAdapter<ProtocolBuilderRpcs>['rpcCall'];
-  runtime: ManagedRuntime.ManagedRuntime<ArchitectHostClient, never>;
+  runtime: ManagedRuntime.ManagedRuntime<InProcessHostClient, never>;
 }>;
 
 type OpenProtocol = Readonly<{
@@ -214,7 +220,7 @@ async function open(
 ): Promise<Readonly<{ seen: Seen[]; close: () => Promise<void> }>> {
   const seen: Seen[] = [];
   const fiber = client.runtime.runFork(
-    Effect.flatMap(ArchitectHostClient, (host) =>
+    Effect.flatMap(InProcessHostClient, (host) =>
       Stream.runForEach(
         host('WatchProtocol', {
           protocolId: PROTOCOL_ID,
@@ -968,8 +974,7 @@ describe("Architect's in-process protocol-builder host", () => {
       document: Redacted.make({
         type: 'Information',
         label: { [FIXTURE_LANGUAGE]: 'Made without a promotion' },
-        title: { [FIXTURE_LANGUAGE]: 'Made without a promotion' },
-        items: [],
+        content: { [FIXTURE_LANGUAGE]: '# Made without a promotion' },
       }),
     };
     const created = await client.call('Create', creating);
@@ -1125,8 +1130,7 @@ describe("Architect's in-process protocol-builder host", () => {
         document: Redacted.make({
           type: 'Information',
           label: { [FIXTURE_LANGUAGE]: 'Refused' },
-          title: { [FIXTURE_LANGUAGE]: 'Refused' },
-          items: [],
+          content: { [FIXTURE_LANGUAGE]: '# Refused' },
         }),
       }),
     );
@@ -1230,8 +1234,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const document = Redacted.make({
       type: 'Information',
       label: { [FIXTURE_LANGUAGE]: 'Made once' },
-      title: { [FIXTURE_LANGUAGE]: 'Made once' },
-      items: [],
+      content: { [FIXTURE_LANGUAGE]: '# Made once' },
     });
     const requestId = nextRequestId();
     const created = await client.call('Create', {
@@ -1270,8 +1273,7 @@ describe("Architect's in-process protocol-builder host", () => {
         document: Redacted.make({
           type: 'Information',
           label: { [FIXTURE_LANGUAGE]: 'Never made' },
-          title: { [FIXTURE_LANGUAGE]: 'Never made' },
-          items: [],
+          content: { [FIXTURE_LANGUAGE]: '# Never made' },
         }),
         promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
@@ -1469,8 +1471,7 @@ describe("Architect's in-process protocol-builder host", () => {
         id: document.id,
         type: 'Information',
         label: { [FIXTURE_LANGUAGE]: 'No longer the end' },
-        title: { [FIXTURE_LANGUAGE]: 'No longer the end' },
-        items: [],
+        content: { [FIXTURE_LANGUAGE]: '# No longer the end' },
       }),
     },
     {
@@ -1481,7 +1482,7 @@ describe("Architect's in-process protocol-builder host", () => {
         type: 'FinishSession',
         label: { [FIXTURE_LANGUAGE]: 'A second end' },
         mode: 'confirmation',
-        content: { [FIXTURE_LANGUAGE]: '# A second end\n\nThank you.' },
+        content: { [FIXTURE_LANGUAGE]: '# # A second end\n\nThank you.' },
         finishedContent: {
           [FIXTURE_LANGUAGE]: 'This interview is finished.',
         },
@@ -2092,7 +2093,7 @@ describe("Architect's in-process protocol-builder host", () => {
       client: TestClient,
       call: (host: ProtocolBuilderClient) => Effect.Effect<A, E>,
     ) =>
-      client.runtime.runPromiseExit(Effect.flatMap(ArchitectHostClient, call));
+      client.runtime.runPromiseExit(Effect.flatMap(InProcessHostClient, call));
 
     it('hands a refusal back as the instance the handler raised, and streams the protocol', async () => {
       const { client } = openProtocol();
@@ -2110,8 +2111,7 @@ describe("Architect's in-process protocol-builder host", () => {
           document: Redacted.make({
             type: 'Information',
             label: { [FIXTURE_LANGUAGE]: 'Refused' },
-            title: { [FIXTURE_LANGUAGE]: 'Refused' },
-            items: [],
+            content: { [FIXTURE_LANGUAGE]: '# Refused' },
           }),
         }),
       );
@@ -2389,5 +2389,409 @@ describe('shared words saved with a stage', () => {
     expect(error).toMatchObject({ blocked: [{ sectionId: SETTINGS }] });
     expect(allowsSearch(store, 'geospatial-1')).not.toBe(true);
     expect(searchFailed(store)).toBeUndefined();
+  });
+});
+
+describe('codebook sections saved with a stage', () => {
+  const NEW_TYPE = sectionId({ kind: 'codebookNode', typeId: 'invented-type' });
+  const INVENTED = {
+    name: 'Invented',
+    color: 'node-color-seq-2',
+    icon: 'add-a-person',
+    shape: { default: 'circle' },
+    variables: {},
+  };
+
+  const personColor = (store: ArchitectStore): unknown =>
+    getProtocol(store.getState())?.codebook.node?.person?.color;
+
+  /** The person type with its colour changed, as a stage editor leaves it. */
+  const recoloured = async (client: TestClient) => {
+    const held = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: PERSON,
+    });
+    return { ...Redacted.value(held.document), color: 'node-color-seq-5' };
+  };
+
+  it('writes the stage and a changed codebook section in one revision, undone as one step', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: PERSON,
+    });
+    const document = await recoloured(client);
+
+    const { revision } = await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: { [FIXTURE_LANGUAGE]: 'Relabelled' },
+      }),
+      revision: held.revision,
+      codebook: [{ sectionId: PERSON, document: Redacted.make(document) }],
+    });
+
+    expect(personColor(store)).toBe('node-color-seq-5');
+    const person = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: PERSON,
+    });
+    expect(person.revision.sequence).toBe(revision.sequence);
+    expect(undoDepth(store)).toBe(1);
+
+    store.dispatch(timelineActions.undo());
+    expect(personColor(store)).not.toBe('node-color-seq-5');
+  });
+
+  it('creates a node type the protocol does not hold', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      codebook: [{ sectionId: NEW_TYPE, document: Redacted.make(INVENTED) }],
+    });
+
+    expect(
+      getProtocol(store.getState())?.codebook.node?.['invented-type']?.name,
+    ).toBe('Invented');
+    const created = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: NEW_TYPE,
+    });
+    expect(created.revision.sequence).toBeGreaterThan(0n);
+  });
+
+  it('writes a created stage with its codebook', async () => {
+    const { store, client } = openProtocol();
+    const template = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
+
+    const created = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: Redacted.make(withoutId),
+      position: 0,
+      codebook: [{ sectionId: NEW_TYPE, document: Redacted.make(INVENTED) }],
+    });
+
+    expect(
+      getProtocol(store.getState())?.codebook.node?.['invented-type'],
+    ).toBeDefined();
+    const type = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: NEW_TYPE,
+    });
+    expect(type.revision.sequence).toBe(created.revision.sequence);
+    expect(undoDepth(store)).toBe(1);
+  });
+
+  it('writes nothing when a codebook section is malformed', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const document = {
+      ...Redacted.value(held.document),
+      label: { [FIXTURE_LANGUAGE]: 'Relabelled' },
+    };
+
+    const { error } = await safe(
+      client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: Redacted.make(document),
+        revision: held.revision,
+        codebook: [
+          {
+            sectionId: NEW_TYPE,
+            document: Redacted.make({ name: 7 }),
+          },
+        ],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error instanceof InvalidShape && error.sectionId).toBe(NEW_TYPE);
+    expect(stageLabel(store, 'information-1')).not.toBe('Relabelled');
+    expect(
+      getProtocol(store.getState())?.codebook.node?.['invented-type'],
+    ).toBeUndefined();
+    expect(undoDepth(store)).toBe(0);
+  });
+
+  it('refuses a codebook on a section that is not a stage', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: PERSON,
+    });
+
+    const { error } = await safe(
+      client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: PERSON,
+        document: held.document,
+        revision: held.revision,
+        codebook: [{ sectionId: NEW_TYPE, document: Redacted.make(INVENTED) }],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(
+      getProtocol(store.getState())?.codebook.node?.['invented-type'],
+    ).toBeUndefined();
+  });
+
+  it('refuses the write while the protocol is held in another tab', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    store.dispatch(setProtocolLockState('open-elsewhere'));
+
+    const { error } = await safe(
+      client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: held.document,
+        revision: held.revision,
+        codebook: [{ sectionId: NEW_TYPE, document: Redacted.make(INVENTED) }],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(NotLockHolder);
+    expect(
+      getProtocol(store.getState())?.codebook.node?.['invented-type'],
+    ).toBeUndefined();
+  });
+
+  it('does not skip a submit whose stage is unchanged but carries a codebook', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: PERSON,
+    });
+
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      codebook: [
+        {
+          sectionId: PERSON,
+          document: Redacted.make(await recoloured(client)),
+        },
+      ],
+    });
+
+    expect(personColor(store)).toBe('node-color-seq-5');
+  });
+
+  const REFUSAL = /changed since you read it/;
+
+  it('refuses an existing codebook section the writer does not hold, writing nothing', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const document = await recoloured(client);
+
+    const { error } = await safe(
+      client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: { [FIXTURE_LANGUAGE]: 'Relabelled' },
+        }),
+        revision: held.revision,
+        codebook: [{ sectionId: PERSON, document: Redacted.make(document) }],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error instanceof InvalidShape && error.sectionId).toBe(PERSON);
+    expect(error instanceof InvalidShape && error.issues[0]?.message).toMatch(
+      REFUSAL,
+    );
+    expect(personColor(store)).not.toBe('node-color-seq-5');
+    expect(stageLabel(store, 'information-1')).not.toBe('Relabelled');
+    expect(undoDepth(store)).toBe(0);
+  });
+
+  it('refuses a section someone else created after the writer found it missing', async () => {
+    const { store, client } = openProtocol();
+    const held = await client.call('AcquireLock', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    // The first save creates the section; the writer of the second read the
+    // protocol before it and sends its own copy as a creation too.
+    await client.call('Submit', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: held.document,
+      revision: held.revision,
+      codebook: [{ sectionId: NEW_TYPE, document: Redacted.make(INVENTED) }],
+    });
+
+    const { error } = await safe(
+      client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: Redacted.make({
+          ...Redacted.value(held.document),
+          label: { [FIXTURE_LANGUAGE]: 'Relabelled' },
+        }),
+        revision: held.revision,
+        codebook: [
+          {
+            sectionId: NEW_TYPE,
+            document: Redacted.make({ ...INVENTED, name: 'Second' }),
+          },
+        ],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error instanceof InvalidShape && error.sectionId).toBe(NEW_TYPE);
+    expect(
+      getProtocol(store.getState())?.codebook.node?.['invented-type']?.name,
+    ).toBe('Invented');
+    expect(stageLabel(store, 'information-1')).not.toBe('Relabelled');
+  });
+
+  it('refuses the same on a create', async () => {
+    const { store, client } = openProtocol();
+    const template = await client.call('GetSection', {
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
+    const stagesBefore = stageIds(store);
+
+    const { error } = await safe(
+      client.call('Create', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        kind: 'stage',
+        document: Redacted.make(withoutId),
+        position: 0,
+        codebook: [{ sectionId: PERSON, document: Redacted.make(INVENTED) }],
+      }),
+    );
+
+    expect(error).toBeInstanceOf(InvalidShape);
+    expect(error instanceof InvalidShape && error.sectionId).toBe(PERSON);
+    expect(stageIds(store)).toEqual(stagesBefore);
+  });
+
+  describe('stored as a direct codebook write stores it', () => {
+    type Carried = Readonly<{
+      sectionId: ReturnType<typeof sectionId>;
+      document: Readonly<Record<string, unknown>>;
+    }>;
+    const carry = async (
+      client: TestClient,
+      [first, ...rest]: readonly [Carried, ...Carried[]],
+    ) => {
+      const sent = ({ sectionId: id, document }: Carried) => ({
+        sectionId: id,
+        document: Redacted.make(document),
+      });
+      const held = await client.call('AcquireLock', {
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+      });
+      await client.call('Submit', {
+        protocolId: PROTOCOL_ID,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: held.document,
+        revision: held.revision,
+        codebook: [sent(first), ...rest.map(sent)],
+      });
+    };
+
+    it('gives a carried new connection type the next category colour, as a direct create does', async () => {
+      const { store, client } = openProtocol();
+      const edges = () => getProtocol(store.getState())?.codebook.edge ?? {};
+      const before = Object.keys(edges()).length;
+      const direct = await store
+        .dispatch(createEdgeAsync({ name: 'Direct edge' }))
+        .unwrap();
+      const carriedId = sectionId({
+        kind: 'codebookEdge',
+        typeId: 'carried-edge',
+      });
+
+      await carry(client, [
+        {
+          sectionId: carriedId,
+          document: { name: 'Direct edge', variables: {} },
+        },
+      ]);
+
+      const stored = edges()['carried-edge'];
+      expect(stored?.name).toBe(edges()[direct.type]?.name);
+      expect(stored?.color).toBe(
+        EdgeColorSequence[(before + 1) % EdgeColorSequence.length],
+      );
+      expect(edges()[direct.type]?.color).toBe(
+        EdgeColorSequence[before % EdgeColorSequence.length],
+      );
+    });
+
+    it('keeps the colour a carried connection type names', async () => {
+      const { store, client } = openProtocol();
+      await carry(client, [
+        {
+          sectionId: sectionId({ kind: 'codebookEdge', typeId: 'named-color' }),
+          document: {
+            name: 'Coloured',
+            color: 'edge-color-seq-1',
+            variables: {},
+          },
+        },
+      ]);
+
+      expect(
+        getProtocol(store.getState())?.codebook.edge?.['named-color']?.color,
+      ).toBe('edge-color-seq-1');
+    });
   });
 });

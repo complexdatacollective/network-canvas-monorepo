@@ -191,6 +191,46 @@
     "defaultMessage": "Required",
     "description": "Shown under one cell of a row in an editable list when the researcher has left it empty. Terse because it sits inside a row of a table-like list rather than under a full-width field."
   },
+  "protocolBuilder.assetBlock.alignLabel": {
+    "defaultMessage": "Alignment",
+    "description": "Label of the control, in the settings of an image, audio recording or video placed in the text of a page, that chooses where it sits across the page: where a line of text starts, in the middle, or where a line ends."
+  },
+  "protocolBuilder.assetBlock.audioFileLabel": {
+    "defaultMessage": "Audio",
+    "description": "Label of the control, in the settings of an audio recording placed in the text of a page, that shows which audio file it is and lets another be chosen in its place."
+  },
+  "protocolBuilder.assetBlock.autoplay": {
+    "defaultMessage": "Start playing automatically",
+    "description": "Label of a checkbox in the settings of an audio recording or video placed in the text of a page participants read. When ticked, the recording starts by itself as the participant reaches the page; when clear, the participant starts it."
+  },
+  "protocolBuilder.assetBlock.fileHint": {
+    "defaultMessage": "The file shown here. Choosing another keeps the description and other settings.",
+    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text. \"The description and other settings\" are this image, recording or video's own settings in the same panel (its description, display size, alignment and playback); they stay as they are when a different file is chosen."
+  },
+  "protocolBuilder.assetBlock.imageFileLabel": {
+    "defaultMessage": "Image",
+    "description": "Label of the control, in the settings of an image placed in the text of a page, that shows which image file it is and lets another be chosen in its place."
+  },
+  "protocolBuilder.assetBlock.loop": {
+    "defaultMessage": "Repeat when it ends",
+    "description": "Label of a checkbox in the settings of an audio recording or video placed in the text of a page participants read. When ticked, the recording starts again from the beginning each time it finishes."
+  },
+  "protocolBuilder.assetBlock.remove": {
+    "defaultMessage": "Delete",
+    "description": "Button in the settings of an image, audio recording or video placed in the text of a page. It takes the image, recording or video out of the text; the file itself stays in the protocol."
+  },
+  "protocolBuilder.assetBlock.sizeHint": {
+    "defaultMessage": "How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.",
+    "description": "Guidance under the Display size control of an image or video placed in the text of a page. \"This\" is the image or video. The handle is a small round dot at a bottom corner of the selected image or video."
+  },
+  "protocolBuilder.assetBlock.sizeLabel": {
+    "defaultMessage": "Display size",
+    "description": "Label of the control, in the settings of an image or video placed in the text of a page, that chooses how tall it is drawn: Full size, Small, Medium or Large."
+  },
+  "protocolBuilder.assetBlock.videoFileLabel": {
+    "defaultMessage": "Video",
+    "description": "Label of the control, in the settings of a video placed in the text of a page, that shows which video file it is and lets another be chosen in its place."
+  },
   "protocolBuilder.assignAttributes.addButton": {
     "defaultMessage": "Add new attribute to assign",
     "description": "Visible text and accessible name of the button that adds another row to the list of attributes a prompt stamps onto every node it creates. Named in full rather than “Add new”, because a prompt editor mounts several lists side by side and a researcher navigating by buttons reads only these words."
@@ -1340,88 +1380,24 @@
     "description": "Button that saves the rules of an “If” in a piece of text and closes the dialog."
   },
   "protocolBuilder.contentBlock.audioDescriptionHint": {
-    "defaultMessage": "What this recording is, read aloud in place of the file’s name to a participant using a screen reader.",
-    "description": "Guidance under the description control of a block that plays an audio recording."
-  },
-  "protocolBuilder.contentBlock.audioRequired": {
-    "defaultMessage": "Choose the audio file this block plays.",
-    "description": "Refusal shown under the file picker of an audio block when nothing has been chosen."
-  },
-  "protocolBuilder.contentBlock.contentHint": {
-    "defaultMessage": "Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.",
-    "description": "Guidance under the control holding what one piece of a page shows, whichever kind it is. slotType is the kind of content, chosen in the control above."
-  },
-  "protocolBuilder.contentBlock.contentLabel": {
-    "defaultMessage": "Content",
-    "description": "Label of the control holding what one piece of a page actually shows, whichever kind it is."
+    "defaultMessage": "This is read aloud, in place of the file’s name, to participants who use screen reader technology.",
+    "description": "Guidance under the description control of an audio recording placed in the text of a page."
   },
   "protocolBuilder.contentBlock.descriptionLabel": {
     "defaultMessage": "Description",
-    "description": "Label of the control holding the words that stand in for a picture, an audio recording or a video for a participant who cannot see or hear it."
+    "description": "Label of the control, in the settings of an image, audio recording or video placed in the text of a page, holding the words that stand in for the file for a participant who cannot see or hear it."
   },
   "protocolBuilder.contentBlock.imageDescriptionHint": {
-    "defaultMessage": "What this image shows, read aloud to a participant who cannot see it. Leave it empty if the image is decorative.",
-    "description": "Guidance under the description control of a block that shows a picture. Decorative means the picture adds nothing a participant would miss."
-  },
-  "protocolBuilder.contentBlock.imageRequired": {
-    "defaultMessage": "Choose the image this block shows.",
-    "description": "Refusal shown under the file picker of a picture block when nothing has been chosen."
-  },
-  "protocolBuilder.contentBlock.kindAudio": {
-    "defaultMessage": "Audio",
-    "description": "Choice offered for what one piece of a page holds: an audio recording."
-  },
-  "protocolBuilder.contentBlock.kindHint": {
-    "defaultMessage": "Choose the type of content this item will show.",
-    "description": "Guidance under the content-type control."
-  },
-  "protocolBuilder.contentBlock.kindImage": {
-    "defaultMessage": "Image",
-    "description": "Choice offered for what one piece of a page holds: a picture."
-  },
-  "protocolBuilder.contentBlock.kindLabel": {
-    "defaultMessage": "Content type",
-    "description": "Label of the control choosing what kind of thing one piece of a page holds — a picture, a video, an audio recording, prose."
-  },
-  "protocolBuilder.contentBlock.kindRequired": {
-    "defaultMessage": "Choose what kind of content this block holds.",
-    "description": "Refusal shown under the content-type control when the researcher has chosen nothing."
-  },
-  "protocolBuilder.contentBlock.kindText": {
-    "defaultMessage": "Text",
-    "description": "Choice offered for what one piece of a page holds: prose the participant reads."
-  },
-  "protocolBuilder.contentBlock.kindVideo": {
-    "defaultMessage": "Video",
-    "description": "Choice offered for what one piece of a page holds: a video."
-  },
-  "protocolBuilder.contentBlock.missingResource": {
-    "defaultMessage": "This item’s resource is no longer in this protocol. Choose a content type above to replace it.",
-    "description": "Warning body shown when a piece of a page points at a file that has been deleted from the protocol, so it needs replacing."
-  },
-  "protocolBuilder.contentBlock.previewEmpty": {
-    "defaultMessage": "This block has no content yet.",
-    "description": "Shown in the collapsed row of a page’s list of blocks when the researcher has not yet said what that piece of the page holds."
+    "defaultMessage": "This is read aloud to participants who use screen reader technology. Leave it blank if the image is decorative.",
+    "description": "Guidance under the description control of an image placed in the text of a page. Decorative means the picture adds nothing a participant would miss."
   },
   "protocolBuilder.contentBlock.previewUnusable": {
     "defaultMessage": "This block’s resource is not in this protocol, or is not something a page can show.",
-    "description": "Shown in the collapsed row of a page’s list of blocks when that piece points at a file the protocol no longer holds, or at one a page cannot present — a roster of people, a map layer, a key."
-  },
-  "protocolBuilder.contentBlock.sectionDescription": {
-    "defaultMessage": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
-    "description": "Description under the item dialog’s title."
+    "description": "Shown in the text of a page participants read, in place of an image, audio recording or video placed in that text, when it points at a file the protocol no longer holds, or at one a page cannot present — a roster of people, a map layer, a key."
   },
   "protocolBuilder.contentBlock.sizeFull": {
     "defaultMessage": "Full size",
     "description": "Choice offered for how tall a picture or video on a page is drawn: however tall it naturally is, unconstrained."
-  },
-  "protocolBuilder.contentBlock.sizeHint": {
-    "defaultMessage": "Optionally constrain the height of this item. Full size lets it display at its natural height.",
-    "description": "Guidance under the display-size control. \"Full size\" is the wording of the unconstrained choice it offers."
-  },
-  "protocolBuilder.contentBlock.sizeLabel": {
-    "defaultMessage": "Display size",
-    "description": "Label of the control constraining how tall a picture or video is drawn on a page."
   },
   "protocolBuilder.contentBlock.sizeLarge": {
     "defaultMessage": "Large",
@@ -1435,29 +1411,9 @@
     "defaultMessage": "Small",
     "description": "Choice offered for how tall a picture or video on a page is drawn."
   },
-  "protocolBuilder.contentBlock.textPlaceholder": {
-    "defaultMessage": "Enter the text for this block...",
-    "description": "Placeholder shown in the empty prose control of a text block. The trailing dots are an ellipsis written as three full stops."
-  },
-  "protocolBuilder.contentBlock.textRequired": {
-    "defaultMessage": "Write the text this block shows.",
-    "description": "Refusal shown under the prose control of a text block when it has been left empty."
-  },
-  "protocolBuilder.contentBlock.unpresentableResource": {
-    "defaultMessage": "This item’s resource is not an image, audio or video file, so this item cannot show it. Choose a content type above to replace it.",
-    "description": "Warning body shown when a piece of a page points at a file that IS in the protocol but is not something a page can present — a roster of people, a map layer, a key. Distinct from a deleted file, because there is nothing missing to go looking for."
-  },
-  "protocolBuilder.contentBlock.unusableTitle": {
-    "defaultMessage": "This block cannot be shown",
-    "description": "Warning heading shown when a piece of a page points at a file the page cannot present."
-  },
   "protocolBuilder.contentBlock.videoDescriptionHint": {
-    "defaultMessage": "What this video shows, read aloud in place of the file’s name to a participant using a screen reader.",
-    "description": "Guidance under the description control of a block that plays a video."
-  },
-  "protocolBuilder.contentBlock.videoRequired": {
-    "defaultMessage": "Choose the video this block plays.",
-    "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
+    "defaultMessage": "This is read aloud, in place of the file’s name, to participants who use screen reader technology.",
+    "description": "Guidance under the description control of a video placed in the text of a page."
   },
   "protocolBuilder.customShapes.addShape": {
     "defaultMessage": "Add a shape",
@@ -1690,10 +1646,6 @@
   "protocolBuilder.dynamicText.today": {
     "defaultMessage": "Today’s date",
     "description": "A value a researcher can insert into text a participant reads: the date on the day the participant reads it."
-  },
-  "protocolBuilder.dynamicText.unreadable": {
-    "defaultMessage": "This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.",
-    "description": "Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed."
   },
   "protocolBuilder.dynamicText.versionKnown": {
     "defaultMessage": "If known",
@@ -3024,12 +2976,12 @@
     "description": "Name of the placeholder, inserted into a message, that shows a twin’s name."
   },
   "protocolBuilder.localizedMessage.placementMissing": {
-    "defaultMessage": "Include “{placeholder}” in this text.",
-    "description": "Refusal shown under a text that leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”."
+    "defaultMessage": "This text must include the attribute “{placeholder}”.",
+    "description": "Refusal shown to a researcher under a text in a protocol that leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”."
   },
   "protocolBuilder.localizedMessage.placementMissingIn": {
-    "defaultMessage": "Include “{placeholder}” in this version: {version}.",
-    "description": "Refusal shown under a text written in several versions when one version leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”."
+    "defaultMessage": "This text must include the attribute “{placeholder}” in the “{version}” scenario.",
+    "description": "Refusal shown to a researcher under a text in a protocol that is worded differently for different scenarios (for example, one wording about the participant and another about someone else), when the wording for one scenario leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”; version is the label of the scenario, such as “About someone else”."
   },
   "protocolBuilder.localizedMessage.pluralVersion": {
     "defaultMessage": "When “{placeholder}” is {numbers}",
@@ -4191,6 +4143,34 @@
     "defaultMessage": "Enter a label for this edge type.",
     "description": "Shown when the label of a drawn edge type is left empty."
   },
+  "protocolBuilder.networkCanvas.presetFilterClearConfirm": {
+    "defaultMessage": "Clear filter",
+    "description": "Action that confirms switching one narrative preset’s filter off and discarding its rules."
+  },
+  "protocolBuilder.networkCanvas.presetFilterClearDescription": {
+    "defaultMessage": "This will clear the filter, and delete any rules you have created for it. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching one narrative preset’s filter off throws away every rule in it."
+  },
+  "protocolBuilder.networkCanvas.presetFilterClearTitle": {
+    "defaultMessage": "This will clear this preset’s filter",
+    "description": "Title of the dialog asking a researcher to confirm switching off one narrative preset’s filter, which throws away every rule in it."
+  },
+  "protocolBuilder.networkCanvas.presetFilterDescription": {
+    "defaultMessage": "Filter the nodes and edges shown in this preset. A preset with no filter shows the whole network.",
+    "description": "Description of the preset-filter part of the dialog for one narrative preset. A node is one member of the network; an edge is a connection between two members."
+  },
+  "protocolBuilder.networkCanvas.presetFilterRulesHint": {
+    "defaultMessage": "Create one or more rules that must match in order for a node or edge to be shown in this preset.",
+    "description": "Guidance under one narrative preset’s filter rules."
+  },
+  "protocolBuilder.networkCanvas.presetFilterRulesLabel": {
+    "defaultMessage": "Filter rules",
+    "description": "Label of the rule builder narrowing which members of the network one narrative preset shows."
+  },
+  "protocolBuilder.networkCanvas.presetFilterTitle": {
+    "defaultMessage": "Preset filter",
+    "description": "Heading of the part of the dialog for one narrative preset that narrows which members of the network the preset shows. Each preset has a filter of its own, so two presets on one stage can show different parts of the network."
+  },
   "protocolBuilder.networkCanvas.presetGroupEmpty": {
     "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group by.",
     "description": "Shown in place of the preset grouping-attribute picker when the node type this stage is about has no categorical attribute in the codebook. \"This type\" is that node type."
@@ -4552,8 +4532,8 @@
     "description": "Label of the rule builder inside the stage-filter section, where a researcher writes the rules that decide what reaches the stage."
   },
   "protocolBuilder.networkFilter.title": {
-    "defaultMessage": "Stage filter",
-    "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview."
+    "defaultMessage": "Filter network",
+    "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on, written as an instruction (“filter the network”). A stage is one step of an interview."
   },
   "protocolBuilder.nodeLabel.textPlaceholder": {
     "defaultMessage": "Write the label, and insert values and logic from the toolbar…",
@@ -4827,56 +4807,24 @@
     "defaultMessage": "Enter a value...",
     "description": "Placeholder in the empty field holding what this option is stored and exported as."
   },
-  "protocolBuilder.pageContent.atLeastOne": {
-    "defaultMessage": "Add at least one block. A page with no content shows the participant nothing.",
-    "description": "Refusal shown above the list of blocks when a researcher saves a page that shows nothing. A block is one piece of a page — a passage of text, a picture, a video."
+  "protocolBuilder.pageContent.contentDescription": {
+    "defaultMessage": "Create the content that participants will see on this stage.",
+    "description": "Description of the section where a researcher writes a page a participant reads instead of doing a task."
   },
-  "protocolBuilder.pageContent.headingHint": {
-    "defaultMessage": "Use the page heading to show a large title element on your information stage.",
-    "description": "Guidance under the page-heading field."
+  "protocolBuilder.pageContent.contentHint": {
+    "defaultMessage": "Use the toolbar to add headings and format text, as well as to insert images, audio and video.",
+    "description": "Guidance under the label of the text editor where a researcher writes a page a participant reads. The toolbar is the row of buttons above the text; it formats the text and inserts media files between its paragraphs."
   },
-  "protocolBuilder.pageContent.headingLabel": {
-    "defaultMessage": "Page heading",
-    "description": "Label of the field holding the large heading at the top of a page a participant reads."
+  "protocolBuilder.pageContent.contentLabel": {
+    "defaultMessage": "Rich Text",
+    "description": "Label of the text editor where a researcher writes a page a participant reads. Rich text is text that can hold headings, formatting and media files, as opposed to plain text."
   },
-  "protocolBuilder.pageContent.headingPlaceholder": {
-    "defaultMessage": "Enter your title here...",
-    "description": "Placeholder shown in the empty page-heading field. The trailing dots are an ellipsis written as three full stops."
-  },
-  "protocolBuilder.pageContent.pageAddLabel": {
-    "defaultMessage": "Create new content item",
-    "description": "Button that opens the dialog for adding one more piece to a page. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
-  },
-  "protocolBuilder.pageContent.pageAddTitle": {
-    "defaultMessage": "Create item",
-    "description": "Title of the dialog a researcher fills in to add one more piece to a page."
-  },
-  "protocolBuilder.pageContent.pageDescription": {
-    "defaultMessage": "Set the page heading and build the sequence of text and media blocks participants will see.",
-    "description": "Description of the page-content section."
-  },
-  "protocolBuilder.pageContent.pageEditTitle": {
-    "defaultMessage": "Edit item",
-    "description": "Title of the dialog a researcher fills in to change a piece of a page."
-  },
-  "protocolBuilder.pageContent.pageEmptyState": {
-    "defaultMessage": "No items have been created yet. Click \"Create new content item\" to add text or media.",
-    "description": "Shown in place of the list of blocks while a page holds nothing yet."
-  },
-  "protocolBuilder.pageContent.pageItemNoun": {
-    "defaultMessage": "item",
-    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit item\", \"Delete this item?\" — so it is lower case and singular."
-  },
-  "protocolBuilder.pageContent.pageItemsHint": {
-    "defaultMessage": "Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size.",
-    "description": "Guidance under the list of blocks on a page."
-  },
-  "protocolBuilder.pageContent.pageItemsLabel": {
-    "defaultMessage": "Items",
-    "description": "Label of the ordered list of pieces a page is built from — passages of text, pictures, videos."
+  "protocolBuilder.pageContent.contentPlaceholder": {
+    "defaultMessage": "Type your page content...",
+    "description": "Placeholder shown in the empty text editor where a researcher writes a page a participant reads. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.pageContent.pageTitle": {
-    "defaultMessage": "Page content",
+    "defaultMessage": "Content",
     "description": "Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task."
   },
   "protocolBuilder.pedigree.completenessClearConfirm": {
@@ -5001,7 +4949,7 @@
   },
   "protocolBuilder.pedigree.egoHint": {
     "defaultMessage": "The interface sets this boolean attribute to true on the participant’s own person, and leaves it blank on everyone else. Use it in a stage filter to keep the participant out of later stages, such as a name generator or sociogram of their relatives, or to tell them apart in exports and analysis. Because it is blank rather than false for everyone else, filter on “is not” true to leave the participant out.",
-    "description": "Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Stage filter section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there."
+    "description": "Guidance under the participant marker attribute control. A stage filter is the set of rules, in the stage’s Filter network section, that decide which nodes a stage shows. A name generator and a sociogram are kinds of interview stage. “is not” is the name of a rule operator in the stage filter, written exactly as it appears there."
   },
   "protocolBuilder.pedigree.egoLabel": {
     "defaultMessage": "Participant marker",
@@ -5480,8 +5428,8 @@
     "description": "Note under the symbols choice while it draws symbols from gender identity but the gender identity options, or the kinship words chosen for them, have changed since. A small Update symbols action follows it."
   },
   "protocolBuilder.pedigree.symbolsHint": {
-    "defaultMessage": "A person’s symbol comes from the shape of the person type in the codebook. Choosing an option changes that shape straight away, not when you save this stage, and changes how people of this type are drawn throughout the interview.",
-    "description": "Guidance under the symbols choice. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is written to the codebook at once, so it is not undone by cancelling the stage, and it applies on every stage that draws this node type."
+    "defaultMessage": "A person’s symbol comes from the shape of the person type in the codebook. Choosing an option changes that shape when you save this stage, and changes how people of this type are drawn throughout the interview.",
+    "description": "Guidance under the symbols choice. The shape is the Shape setting, with its mapping from an attribute, in the node appearance group of the codebook’s node type editor. The change is saved to the codebook with the stage, so cancelling the stage undoes it, and once saved it applies on every stage that draws this node type."
   },
   "protocolBuilder.pedigree.symbolsLabel": {
     "defaultMessage": "Symbols",
@@ -8011,6 +7959,10 @@
     "defaultMessage": "Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.",
     "description": "Shown above a stage editor’s fields when the save was refused because somebody the host would not name is editing another part of the protocol the save has to write. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
   },
+  "protocolBuilder.stageEdit.codebookClash": {
+    "defaultMessage": "A change you made to the codebook while editing this stage no longer fits the protocol, so nothing was saved. Somebody else may have changed the same type while you were working. Your changes are still here: check the types and attributes you changed, then save again.",
+    "description": "Shown above a stage editor’s fields when the save was refused because a codebook change made in this stage editor (a node, edge or ego type, or one of its attributes) clashes with the protocol as it now stands, for example two attributes of one type with the same name. Nothing was lost. A stage is one step of an interview; the codebook lists the types and attributes an interview collects."
+  },
   "protocolBuilder.stageEdit.invalidShape": {
     "defaultMessage": "This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.",
     "description": "Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview."
@@ -8047,21 +7999,13 @@
     "defaultMessage": "Optionally edit the wording for interface elements used by this stage type. Default wording is provided for built-in languages.",
     "description": "Explains the stage editor section titled “Customize built-in wording”. Interface elements are the buttons, hints and messages the participant sees on the stage. Built-in languages are the languages Network Canvas itself supplies this wording in; for other languages the researcher writes it."
   },
-  "protocolBuilder.stageWording.savedWithStage": {
-    "defaultMessage": "Changes to this are saved when you save the stage.",
-    "description": "Shown under one of the words every stage of the same type shares, in a stage’s wording section, when the protocol does not use that word until the stage being edited is saved, for example the message shown when a map search finds nothing, which a map stage needs only once its search is turned on. Unlike the other shared words, which are saved as soon as the researcher leaves the field, a change to this one is saved together with the stage, and discarded if the stage is not saved. \"this\" is the word above the note."
-  },
   "protocolBuilder.stageWording.sharedHeading": {
     "defaultMessage": "Shared by every stage of this kind",
     "description": "Heading of the part of a stage’s “Customize built-in wording” section holding the words every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage, opened and closed by clicking it. The protocol holds them once, for all those stages."
   },
-  "protocolBuilder.stageWording.sharedNote": {
-    "defaultMessage": "These words appear on every stage of this kind. Changes to them are saved straight away.",
-    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the zoom buttons of every Family Pedigree stage. The protocol holds them once, so changing one changes it on all those stages, and the change is saved as soon as the researcher leaves the field rather than when they save the stage."
-  },
   "protocolBuilder.stageWording.sharedNoteNoneHeld": {
     "defaultMessage": "These words appear on every stage of this kind.",
-    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the drawing tools of every Narrative stage, shown when the protocol uses none of them yet because the stage being edited is the first to need them. The protocol holds them once, so changing one changes it on all those stages. Each of them says beside itself when a change to it is saved."
+    "description": "Note above the words, in a stage’s wording section, that every stage of the same type shows alike, such as the drawing tools of every Narrative stage. The protocol holds them once, so a change to one, saved with the stage being edited, changes it on all those stages."
   },
   "protocolBuilder.stageWording.specificHeading": {
     "defaultMessage": "Specific to this stage",
@@ -8074,10 +8018,6 @@
   "protocolBuilder.stageWording.switchOffDescription": {
     "defaultMessage": "The wording you changed in this section goes back to Network Canvas’s wording, in every language.",
     "description": "Body of the dialog asking a researcher to confirm switching off a stage’s Wording section. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages."
-  },
-  "protocolBuilder.stageWording.switchOffSharedDescription": {
-    "defaultMessage": "The wording you changed in this section goes back to Network Canvas’s wording, in every language. That includes the wording shared by every stage of this kind, which changes on all of those stages straight away.",
-    "description": "Body of the dialog asking a researcher to confirm switching off a stage’s “Customize built-in wording” section when they changed some of the words every stage of the same type shares. Says what they lose: each text they changed returns to the wording Network Canvas supplies, in every one of the protocol’s languages; the shared words change on every such stage, and at once rather than when the stage is saved."
   },
   "protocolBuilder.stageWording.switchOffTitle": {
     "defaultMessage": "Use Network Canvas’s wording?",

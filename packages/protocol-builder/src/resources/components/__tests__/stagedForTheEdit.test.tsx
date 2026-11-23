@@ -193,7 +193,7 @@ function EditProbe() {
 
 const NameAndProbe: StageEditorComponent = ({ actions }) => (
   <StageEditorShell {...(actions === undefined ? {} : { actions })}>
-    <BuilderSection title="Stage name">
+    <BuilderSection sectionKey="form-fields" title="Stage name">
       <Field name="label" label="Stage name" component={LocalizedInputField} />
     </BuilderSection>
     <EditProbe />

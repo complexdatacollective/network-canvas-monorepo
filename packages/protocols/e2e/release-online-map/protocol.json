@@ -49,18 +49,9 @@
       "label": {
         "en-US": "Welcome"
       },
-      "title": {
-        "en-US": "Welcome"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en-US": "# Release online map\n\nThis protocol includes a map, which needs an internet connection."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# Welcome\n\n# Release online map\n\nThis protocol includes a map, which needs an internet connection."
+      }
     },
     {
       "id": "stage-ng",

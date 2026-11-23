@@ -13,9 +13,9 @@ import { getProtocol } from '~/selectors/protocol';
 
 import TranslationTable from '../TranslationTable';
 
-// French is missing the welcome title and text, both thanks texts and the
-// person type's one answer option; Spanish is missing only the thanks texts, which exist
-// only in English.
+// French is missing the welcome name and content, both thanks texts and the
+// person type's one answer option; Spanish is missing only the thanks texts,
+// which exist only in English.
 const trilingual: CurrentProtocol = {
   name: 'Study',
   schemaVersion: 9,
@@ -46,22 +46,14 @@ const trilingual: CurrentProtocol = {
     {
       id: 'welcome',
       type: 'Information',
-      label: { en: 'Welcome', fr: 'Bienvenue', es: 'Bienvenida' },
-      title: { en: 'Hello', es: 'Hola' },
-      items: [
-        {
-          id: 'intro',
-          type: 'text',
-          content: { en: 'Read **this** first', es: 'Lea esto primero' },
-        },
-      ],
+      label: { en: 'Welcome', es: 'Bienvenida' },
+      content: { en: 'Read **this** first', es: 'Lea esto primero' },
     },
     {
       id: 'thanks',
       type: 'Information',
-      label: { en: 'Thanks', fr: 'Merci', es: 'Gracias' },
-      title: { en: 'Thank you' },
-      items: [{ id: 'bye', type: 'text', content: { en: 'See you **soon**' } }],
+      label: { en: 'Thanks' },
+      content: { en: 'See you **soon**' },
     },
   ],
 };
@@ -98,7 +90,9 @@ const cell = (stage: string, row: string, language: string) =>
  * column, as it is before it has focus.
  */
 const formattedCell = (stage: string, language: string) =>
-  screen.getByRole('button', { name: cellName(stage, 'Content', language) });
+  screen.getByRole('button', {
+    name: cellName(stage, 'Content', language),
+  });
 
 /** The same cell's editor, which focus opens in it. */
 const formattedEditor = async (stage: string, language: string) => {
@@ -109,9 +103,9 @@ const formattedEditor = async (stage: string, language: string) => {
   return editor;
 };
 
-const itemContent = (store: Rendered['store'], stageIndex: number): unknown => {
+const pageContent = (store: Rendered['store'], stageIndex: number): unknown => {
   const stage = getProtocol(store.getState())?.stages[stageIndex];
-  return stage && 'items' in stage ? stage.items?.[0]?.content : undefined;
+  return stage && 'content' in stage ? stage.content : undefined;
 };
 
 // Each group's heading is a row header too, of its group of rows.
@@ -120,10 +114,8 @@ const rowHeaders = () =>
     .getAllByRole('rowheader')
     .filter((header) => header.getAttribute('scope') === 'row');
 
-const stageTitle = (store: Rendered['store'], index: number) => {
-  const stage = getProtocol(store.getState())?.stages[index];
-  return stage && 'title' in stage ? stage.title : undefined;
-};
+const stageName = (store: Rendered['store'], index: number) =>
+  getProtocol(store.getState())?.stages[index]?.label;
 
 const shownCount = () => screen.getByText(/^Showing /);
 
@@ -175,14 +167,12 @@ describe('TranslationTable', () => {
     ]);
 
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
-      // Welcome: label, title, the text item's content.
+      // Welcome: label and the page's content.
       'Stage name',
-      'Page content › Page heading',
-      'Page content › Item 1 › Content',
-      // Thanks: label, title, the text item's content.
+      'Content',
+      // Thanks: label and the page's content.
       'Stage name',
-      'Page content › Page heading',
-      'Page content › Item 1 › Content',
+      'Content',
       // The person type's one answer option.
       'closeness › Option 1 label',
       // The words the interview itself shows, which Network Canvas supplies
@@ -227,10 +217,10 @@ describe('TranslationTable', () => {
     );
 
     // An empty cell shows what participants see instead.
-    const frenchTitle = cell('1', 'Page heading', 'French');
+    const frenchTitle = cell('1', 'Stage name', 'French');
     expect(frenchTitle).toHaveValue('');
     expect(frenchTitle).toHaveAccessibleDescription(
-      'Hello Not translated yet. Participants see it in English, unless their browser also lists a language that has a translation.',
+      'Welcome Not translated yet. Participants see it in English, unless their browser also lists a language that has a translation.',
     );
     expect(
       screen.getByText(/^\* Unless the participant’s browser/),
@@ -250,15 +240,15 @@ describe('TranslationTable', () => {
     const { store, onSaved, user } = renderTable();
     const before = getProtocol(store.getState());
 
-    await user.type(cell('1', 'Page heading', 'French'), 'Bonjour');
+    await user.type(cell('1', 'Stage name', 'French'), 'Bonjour');
     await user.tab();
     expect(getProtocol(store.getState())).toBe(before);
-    expect(cell('1', 'Page heading', 'French')).toHaveValue('Bonjour');
+    expect(cell('1', 'Stage name', 'French')).toHaveValue('Bonjour');
 
     await save(user);
-    expect(stageTitle(store, 0)).toEqual({
-      en: 'Hello',
-      es: 'Hola',
+    expect(stageName(store, 0)).toEqual({
+      en: 'Welcome',
+      es: 'Bienvenida',
       fr: 'Bonjour',
     });
     expect(onSaved).toHaveBeenCalledTimes(1);
@@ -268,15 +258,15 @@ describe('TranslationTable', () => {
     const { store, user } = renderTable();
     const before = getProtocol(store.getState());
 
-    await user.type(cell('1', 'Page heading', 'French'), 'Bonjour');
-    await user.type(cell('2', 'Page heading', 'French'), 'Merci');
+    await user.type(cell('1', 'Stage name', 'French'), 'Bonjour');
+    await user.type(cell('2', 'Stage name', 'French'), 'Merci');
     await save(user);
-    expect(stageTitle(store, 0)).toEqual({
-      en: 'Hello',
-      es: 'Hola',
+    expect(stageName(store, 0)).toEqual({
+      en: 'Welcome',
+      es: 'Bienvenida',
       fr: 'Bonjour',
     });
-    expect(stageTitle(store, 1)).toEqual({ en: 'Thank you', fr: 'Merci' });
+    expect(stageName(store, 1)).toEqual({ en: 'Thanks', fr: 'Merci' });
 
     act(() => {
       store.dispatch(timelineActions.undo());
@@ -288,7 +278,7 @@ describe('TranslationTable', () => {
     const { store, onSaved, user } = renderTable();
     const before = getProtocol(store.getState());
 
-    await user.click(cell('1', 'Page heading', 'Spanish'));
+    await user.click(cell('1', 'Stage name', 'Spanish'));
     await user.tab();
     await save(user);
 
@@ -300,12 +290,12 @@ describe('TranslationTable', () => {
     const { store, user } = renderTable();
     const before = getProtocol(store.getState());
 
-    const spanish = cell('1', 'Page heading', 'Spanish');
+    const spanish = cell('1', 'Stage name', 'Spanish');
     await user.type(spanish, ' amigos');
     await user.tab();
     await user.click(spanish);
     await user.keyboard('{Escape}');
-    expect(spanish).toHaveValue('Hola');
+    expect(spanish).toHaveValue('Bienvenida');
 
     await save(user);
     expect(getProtocol(store.getState())).toBe(before);
@@ -314,16 +304,16 @@ describe('TranslationTable', () => {
   it('removes a translation that is cleared, rather than storing it empty', async () => {
     const { store, user } = renderTable();
 
-    await user.clear(cell('1', 'Page heading', 'Spanish'));
+    await user.clear(cell('1', 'Stage name', 'Spanish'));
     await save(user);
 
-    expect(stageTitle(store, 0)).toEqual({ en: 'Hello' });
+    expect(stageName(store, 0)).toEqual({ en: 'Welcome' });
   });
 
   it('says why the only translation a text has cannot be cleared, once its cell is left', async () => {
     const { user } = renderTable();
 
-    const english = cell('2', 'Page heading', 'English');
+    const english = cell('2', 'Stage name', 'English');
     await user.clear(english);
     expect(screen.queryByText(ONLY_ENGLISH)).not.toBeInTheDocument();
 
@@ -338,14 +328,14 @@ describe('TranslationTable', () => {
     const { store, onSaved, user } = renderTable();
     const before = getProtocol(store.getState());
 
-    await user.type(cell('1', 'Page heading', 'French'), 'Bonjour');
-    await user.clear(cell('2', 'Page heading', 'English'));
+    await user.type(cell('1', 'Stage name', 'French'), 'Bonjour');
+    await user.clear(cell('2', 'Stage name', 'English'));
     await save(user);
 
     expect(getProtocol(store.getState())).toBe(before);
     expect(onSaved).not.toHaveBeenCalled();
     await waitFor(() =>
-      expect(cell('2', 'Page heading', 'English')).toHaveFocus(),
+      expect(cell('2', 'Stage name', 'English')).toHaveFocus(),
     );
     expect(screen.getByText(ONLY_ENGLISH)).toBeInTheDocument();
   });
@@ -353,41 +343,41 @@ describe('TranslationTable', () => {
   it('lets the only translation be cleared once another is written', async () => {
     const { store, user } = renderTable();
 
-    await user.clear(cell('2', 'Page heading', 'English'));
+    await user.clear(cell('2', 'Stage name', 'English'));
     await user.tab();
     expect(await screen.findByText(ONLY_ENGLISH)).toBeInTheDocument();
 
-    await user.type(cell('2', 'Page heading', 'French'), 'Merci');
+    await user.type(cell('2', 'Stage name', 'French'), 'Merci');
     await waitFor(() =>
       expect(screen.queryByText(ONLY_ENGLISH)).not.toBeInTheDocument(),
     );
 
     await save(user);
-    expect(stageTitle(store, 1)).toEqual({ fr: 'Merci' });
+    expect(stageName(store, 1)).toEqual({ fr: 'Merci' });
   });
 
   it('treats text participants would not see as no translation', async () => {
     const { store, onSaved, user } = renderTable();
 
     // Saved as no translation, as the protocol would read it.
-    await user.click(cell('1', 'Page heading', 'French'));
+    await user.click(cell('1', 'Stage name', 'French'));
     await user.paste('\u200B');
     await save(user);
     expect(onSaved).toHaveBeenCalledTimes(1);
-    expect(stageTitle(store, 0)).toEqual({ en: 'Hello', es: 'Hola' });
+    expect(stageName(store, 0)).toEqual({ en: 'Welcome', es: 'Bienvenida' });
   });
 
   it('keeps a one-line text on one line, whatever is typed or pasted into it', async () => {
     const { store, user } = renderTable();
 
-    await user.click(cell('2', 'Page heading', 'French'));
+    await user.click(cell('2', 'Stage name', 'French'));
     // The space a break leaves stays while the text is being typed, so the
     // next word typed is a word of its own.
     await user.keyboard('Merci{Shift>}{Enter}{/Shift}beaucoup');
     await user.paste(`${String.fromCodePoint(0x2029)}!`);
     await save(user);
-    expect(stageTitle(store, 1)).toEqual({
-      en: 'Thank you',
+    expect(stageName(store, 1)).toEqual({
+      en: 'Thanks',
       fr: 'Merci beaucoup !',
     });
   });
@@ -395,9 +385,9 @@ describe('TranslationTable', () => {
   it('does not count text participants would not see as another translation', async () => {
     const { user } = renderTable();
 
-    await user.click(cell('2', 'Page heading', 'French'));
+    await user.click(cell('2', 'Stage name', 'French'));
     await user.paste('\u200B');
-    await user.clear(cell('2', 'Page heading', 'English'));
+    await user.clear(cell('2', 'Stage name', 'English'));
     await user.tab();
 
     expect(await screen.findByText(ONLY_ENGLISH)).toBeInTheDocument();
@@ -406,24 +396,24 @@ describe('TranslationTable', () => {
   it('saves a change in a row the search has since hidden', async () => {
     const { store, user } = renderTable();
 
-    await user.type(cell('2', 'Page heading', 'French'), 'Merci');
+    await user.type(cell('2', 'Stage name', 'French'), 'Merci');
     await user.type(
       screen.getByRole('searchbox', { name: 'Search translations' }),
-      'hola',
+      'bienvenida',
     );
     expect(rowHeaders()).toHaveLength(1);
 
     await save(user);
-    expect(stageTitle(store, 1)).toEqual({ en: 'Thank you', fr: 'Merci' });
+    expect(stageName(store, 1)).toEqual({ en: 'Thanks', fr: 'Merci' });
   });
 
   it('shows a refused cell the search and the hidden languages had taken away', async () => {
     const { user } = renderTable();
 
-    await user.clear(cell('2', 'Page heading', 'English'));
+    await user.clear(cell('2', 'Stage name', 'English'));
     await user.type(
       screen.getByRole('searchbox', { name: 'Search translations' }),
-      'hola',
+      'bienvenida',
     );
     await user.click(screen.getByRole('button', { name: /^Languages/ }));
     await user.click(
@@ -432,20 +422,20 @@ describe('TranslationTable', () => {
     await user.keyboard('{Escape}');
     expect(
       screen.queryByRole('textbox', {
-        name: cellName('2', 'Page heading', 'English'),
+        name: cellName('2', 'Stage name', 'English'),
       }),
     ).not.toBeInTheDocument();
 
     await save(user);
     await waitFor(() =>
-      expect(cell('2', 'Page heading', 'English')).toHaveFocus(),
+      expect(cell('2', 'Stage name', 'English')).toHaveFocus(),
     );
   });
 
   it('says above the table when a change can no longer be saved', async () => {
     const { store, onSaved, user } = renderTable();
 
-    await user.type(cell('1', 'Page heading', 'English'), '!');
+    await user.type(cell('1', 'Stage name', 'English'), '!');
     dropEnglish(store);
     const before = getProtocol(store.getState());
     await save(user);
@@ -465,15 +455,15 @@ describe('TranslationTable', () => {
       name: 'Search translations',
     });
 
-    await user.type(search, 'hola');
-    expect(shownCount()).toHaveTextContent('Showing 1 of 29 strings');
+    await user.type(search, 'bienvenida');
+    expect(shownCount()).toHaveTextContent('Showing 1 of 27 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
-      'Page content › Page heading',
+      'Stage name',
     ]);
 
     await user.clear(search);
     await user.type(search, 'thanks');
-    expect(shownCount()).toHaveTextContent('Showing 3 of 29 strings');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 27 strings');
 
     await user.clear(search);
     await user.type(search, 'nothing like this');
@@ -486,16 +476,16 @@ describe('TranslationTable', () => {
     const { user } = renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('All translations');
-    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
+    expect(shownCount()).toHaveTextContent('Showing 27 of 27 strings');
     await user.selectOptions(filterMenu(), 'Missing in any shown language');
 
-    // Both stage labels are translated into every language.
-    expect(shownCount()).toHaveTextContent('Showing 5 of 29 strings');
+    // Neither stage's name or content is translated into every language.
+    expect(shownCount()).toHaveTextContent('Showing 5 of 27 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
-      'Page content › Page heading',
-      'Page content › Item 1 › Content',
-      'Page content › Page heading',
-      'Page content › Item 1 › Content',
+      'Stage name',
+      'Content',
+      'Stage name',
+      'Content',
       'closeness › Option 1 label',
     ]);
     const thanks = screen
@@ -513,7 +503,7 @@ describe('TranslationTable', () => {
     expect(window.location.search).toBe('?missing=any');
 
     await user.selectOptions(filterMenu(), 'All translations');
-    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
+    expect(shownCount()).toHaveTextContent('Showing 27 of 27 strings');
     expect(window.location.search).toBe('');
   });
 
@@ -522,7 +512,7 @@ describe('TranslationTable', () => {
 
     await user.selectOptions(filterMenu(), 'Missing Spanish');
 
-    expect(shownCount()).toHaveTextContent('Showing 2 of 29 strings');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 27 strings');
     expect(screen.getByRole('link', { name: 'Thanks' })).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Welcome' }),
@@ -544,7 +534,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('Missing Spanish');
-    expect(shownCount()).toHaveTextContent('Showing 2 of 29 strings');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 27 strings');
   });
 
   it('opens on one language beside the default language when a link asks for it', () => {
@@ -603,7 +593,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('All translations');
-    expect(shownCount()).toHaveTextContent('Showing 29 of 29 strings');
+    expect(shownCount()).toHaveTextContent('Showing 27 of 27 strings');
   });
 
   it('shows the column of the language whose gaps it lists', async () => {
@@ -663,7 +653,7 @@ describe('TranslationTable', () => {
       ).toBeInTheDocument();
 
       await user.type(editor, 'Lisez');
-      await user.click(cell('1', 'Page heading', 'Spanish'));
+      await user.click(cell('1', 'Stage name', 'Spanish'));
       await waitFor(() =>
         expect(screen.queryByRole('toolbar')).not.toBeInTheDocument(),
       );
@@ -671,7 +661,7 @@ describe('TranslationTable', () => {
       expect(getProtocol(store.getState())).toBe(before);
 
       await save(user);
-      expect(itemContent(store, 0)).toEqual({
+      expect(pageContent(store, 0)).toEqual({
         en: 'Read **this** first',
         es: 'Lea esto primero',
         fr: 'Lisez',
@@ -705,7 +695,7 @@ describe('TranslationTable', () => {
       // The next row is the next stage's name.
       expect(cell('2', 'Stage name', 'French')).toHaveFocus();
       await save(user);
-      expect(itemContent(store, 0)).toEqual({
+      expect(pageContent(store, 0)).toEqual({
         en: 'Read **this** first',
         es: 'Lea esto primero',
         fr: 'Lisez',
@@ -764,28 +754,22 @@ describe('TranslationTable', () => {
       ).toBeInTheDocument();
     });
 
-    it('keeps the heading of a one-line Information text through an edit', async () => {
+    it('keeps the heading of an Information text that is only a heading through an edit', async () => {
       const welcome = structuredClone(trilingual);
       const [first] = welcome.stages;
       if (first?.type !== 'Information')
         throw new Error('No Information stage');
-      first.items = [
-        {
-          id: 'intro',
-          type: 'text',
-          content: { en: '## Welcome', fr: '## Bienvenue' },
-        },
-      ];
+      first.content = { en: '## Welcome', fr: '## Bienvenue' };
       const { store, user } = renderTable(welcome);
 
       await user.click(formattedCell('1', 'English'));
       const editor = await formattedEditor('1', 'English');
       expect(editor.querySelector('h2')).toHaveTextContent('Welcome');
       await user.type(editor, '!');
-      await user.click(cell('1', 'Page heading', 'Spanish'));
+      await user.click(cell('1', 'Stage name', 'Spanish'));
       await save(user);
 
-      expect(itemContent(store, 0)).toEqual({
+      expect(pageContent(store, 0)).toEqual({
         en: '## Welcome!',
         fr: '## Bienvenue',
       });
@@ -842,7 +826,7 @@ describe('TranslationTable', () => {
       await user.click(formattedCell('2', 'English'));
       const editor = await formattedEditor('2', 'English');
       await user.clear(editor);
-      await user.click(cell('2', 'Page heading', 'English'));
+      await user.click(cell('2', 'Stage name', 'English'));
       expect(await screen.findByText(ONLY_ENGLISH)).toBeInTheDocument();
       expect(formattedCell('2', 'English')).toHaveAttribute(
         'aria-invalid',

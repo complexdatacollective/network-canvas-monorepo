@@ -90,8 +90,8 @@ describe('the dyad census editor', () => {
 
   /**
    * The connection an affirmative answer creates lives in the codebook rather
-   * than in the stage, so creating one from inside a prompt writes the
-   * codebook and the prompt is then pointed at it.
+   * than in the stage, so creating one from inside a prompt holds it with the
+   * stage's draft, the prompt is pointed at it, and the one save writes both.
    *
    * Only the second half is asked here — that the pick reaches the STAGE save.
    * What the codebook is asked, and what it refuses, is
@@ -126,10 +126,20 @@ describe('the dyad census editor', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
+    // Saving the prompt made the type the stage's: the editor has it, and the
+    // protocol does not until the stage is saved.
+    const worksWith = () =>
+      Object.entries(harness.hostCodebook().edge ?? {}).find(
+        ([, definition]) => definition.name === 'worksWith',
+      );
+    expect(worksWith()).toBeUndefined();
+
     const request = await harness.submit();
     const saved = prompts(request?.stageDocument ?? {})[0];
     expect(saved?.createEdge).toEqual(expect.any(String));
     expect(saved?.createEdge).not.toBe('knows');
+    // The edge type the prompt names is the one the save created.
+    expect(worksWith()?.[0]).toBe(saved?.createEdge);
   });
 });
 

@@ -78,6 +78,7 @@ export default function CanvasPermissionsSection() {
 
   return (
     <BuilderSection
+      sectionKey="canvas-permissions"
       title={intl.formatMessage(messages.canvasInteractionTitle)}
       description={intl.formatMessage(messages.canvasInteractionDescription)}
     >

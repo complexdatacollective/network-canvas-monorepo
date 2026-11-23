@@ -17,6 +17,8 @@ import {
 
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
+import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
+import { ACTION_TOOLBAR_REACH_VARIABLE } from '~/utils/actionToolbarReach';
 import { cx } from '~/utils/cva';
 
 export type ActionToolbarProps = {
@@ -131,6 +133,13 @@ export const toolbarEnterExitSpring = {
   mass: 0.8,
 } satisfies Transition;
 
+// The toolbar reaches from the bottom of the window to its own top: up past
+// the space it is held off the bottom, by its own height.
+const reachOfToolbar = (toolbar: HTMLElement, height: number): number => {
+  const held = Number.parseFloat(getComputedStyle(toolbar).bottom);
+  return height + (Number.isFinite(held) ? held : 0);
+};
+
 /**
  * The toolbar surface itself. Deliberately module-private: it is `fixed`, and
  * two of them on one screen overlap. Every route publishes its controls through
@@ -149,12 +158,17 @@ const ActionToolbar = ({
   const leadingAriaLabel = providedLeadingAriaLabel ?? 'History actions';
   const hasLeadingActions = leadingActions !== undefined;
   const shouldReduceMotion = usePrefersReducedMotion() ?? false;
+  const reach = usePublishedBlockHeight<HTMLDivElement>(
+    ACTION_TOOLBAR_REACH_VARIABLE,
+    reachOfToolbar,
+  );
   const toolbarTransition = shouldReduceMotion
     ? { duration: 0 }
     : toolbarEnterExitSpring;
 
   return (
     <motion.div
+      ref={reach}
       initial="hidden"
       animate="visible"
       exit="hidden"

@@ -21,6 +21,7 @@ import {
 } from '../form/rowDialog.tsx';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import BuilderSection from './BuilderSection.tsx';
+import type { SectionKey } from './sectionKeys.ts';
 
 /** Every interface that asks questions keeps them here. */
 const PROMPTS_FIELD = 'prompts';
@@ -244,6 +245,12 @@ export type PromptsSectionProps = Readonly<{
    * no need of a second vocabulary.
    */
   title?: MessageDescriptor;
+  /**
+   * The section's stable name, which travels with its title: a caller that
+   * gives the section other words because it is a different section gives it
+   * its own key.
+   */
+  sectionKey?: SectionKey;
   fieldLabel?: MessageDescriptor;
   addLabel?: MessageDescriptor;
   addTitle?: MessageDescriptor;
@@ -280,6 +287,7 @@ export default function PromptsSection({
   name = PROMPTS_FIELD,
   optional = false,
   title = promptsSectionMessages.title,
+  sectionKey = 'prompts',
   fieldLabel = promptsSectionMessages.fieldLabel,
   addLabel = promptsSectionMessages.addLabel,
   addTitle = promptsSectionMessages.addTitle,
@@ -329,6 +337,7 @@ export default function PromptsSection({
 
   return (
     <BuilderSection
+      sectionKey={sectionKey}
       title={intl.formatMessage(title)}
       description={intl.formatMessage(
         waiting ? (waitingDescription ?? description) : description,

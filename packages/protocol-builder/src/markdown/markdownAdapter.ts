@@ -1,7 +1,16 @@
-import markdown from 'remark-parse';
-import { unified } from 'unified';
-
-import { escapeMarkdownText } from '@codaco/protocol-validation';
+import type {
+  RichTextAssetBlockAttributes,
+  RichTextAssetBlockContent,
+} from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import {
+  assetBlockMarkdown,
+  assetBlockSettings,
+  escapeMarkdownText,
+  isAssetBlockAlignment,
+  isAssetBlockSize,
+  markdownAsEdited,
+  readAssetBlockUrl,
+} from '@codaco/protocol-validation';
 
 export type RichTextMark = {
   type: string;
@@ -26,6 +35,7 @@ type MarkdownNode = {
   url?: string;
   title?: string | null;
   alt?: string | null;
+  identifier?: string;
 };
 
 const EMPTY_DOCUMENT: RichTextContent = {
@@ -38,12 +48,33 @@ const cloneEmptyDocument = (): RichTextContent => ({
   content: [{ type: 'paragraph' }],
 });
 
-/**
- * Matches the legacy Slate editor: literal ">" characters should remain text
- * instead of turning existing protocol content into block quotes on first edit.
- */
-const escapeAngleBracket = (value = ''): string =>
-  value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
+// The one tag the legacy editor wrote for a line break, which the interview
+// also reads as one. Read as typed characters, so found in the words.
+const BREAK_TAG = /<br\s*\/?>/gi;
+
+const textWithBreaks = (value: string): RichTextContent[] =>
+  value
+    .split(BREAK_TAG)
+    .flatMap((words, index) => [
+      ...(index === 0 ? [] : [{ type: 'hardBreak' }]),
+      ...(words === '' ? [] : [{ type: 'text', text: words }]),
+    ]);
+
+/** Where each link label a text defines leads (`[label]: address`). */
+type Definitions = ReadonlyMap<string, LinkTargetNode>;
+type LinkTargetNode = Readonly<{ url?: string; title?: string | null }>;
+
+const definitionsIn = (
+  node: MarkdownNode,
+  found = new Map<string, LinkTargetNode>(),
+): Definitions => {
+  if (node.type === 'definition' && node.identifier !== undefined) {
+    // The first definition of a label is the one markdown uses.
+    if (!found.has(node.identifier)) found.set(node.identifier, node);
+  }
+  for (const child of node.children ?? []) definitionsIn(child, found);
+  return found;
+};
 
 const escapeLinkDestination = (value: string): string =>
   value
@@ -62,6 +93,7 @@ const SCHEME_DELIMITER_PATTERN = /[/?#]/;
 
 type InlineParseOptions = {
   links?: boolean;
+  definitions?: Definitions;
 };
 
 type SerializeInlineOptions = {
@@ -148,7 +180,7 @@ const inlineFromMarkdown = (
 ): RichTextContent[] => {
   switch (node.type) {
     case 'text':
-      return node.value ? [{ type: 'text', text: node.value }] : [];
+      return node.value ? textWithBreaks(node.value) : [];
 
     case 'strong':
       return addMark(childrenAsInline(node, options), { type: 'bold' });
@@ -156,8 +188,15 @@ const inlineFromMarkdown = (
     case 'emphasis':
       return addMark(childrenAsInline(node, options), { type: 'italic' });
 
-    case 'link': {
-      const href = sanitizeLinkDestination(node.url);
+    case 'link':
+    case 'linkReference': {
+      const target =
+        node.type === 'link'
+          ? node
+          : node.identifier === undefined
+            ? undefined
+            : options.definitions?.get(node.identifier);
+      const href = sanitizeLinkDestination(target?.url);
       const content = childrenAsInline(node, options);
 
       if (!href || options.links === false) {
@@ -168,7 +207,7 @@ const inlineFromMarkdown = (
         type: 'link',
         attrs: {
           href,
-          title: node.title ?? null,
+          title: target?.title ?? null,
         },
       });
     }
@@ -176,13 +215,10 @@ const inlineFromMarkdown = (
     case 'break':
       return [{ type: 'hardBreak' }];
 
+    // Code is shown as its characters; the editor has no code of its own.
     case 'inlineCode':
+    case 'code':
       return node.value ? [{ type: 'text', text: node.value }] : [];
-
-    case 'html':
-      return node.value?.toLowerCase() === '<br>'
-        ? [{ type: 'hardBreak' }]
-        : [];
 
     case 'image':
       return node.alt ? [{ type: 'text', text: node.alt }] : [];
@@ -201,10 +237,115 @@ const childrenAsInline = (
 const paragraphFromInline = (content: RichTextContent[]): RichTextContent =>
   content.length > 0 ? { type: 'paragraph', content } : { type: 'paragraph' };
 
-const blockFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
+/** The editor's node for a file shown as a block (fresco-ui's). */
+const ASSET_BLOCK = 'assetBlock' satisfies RichTextAssetBlockContent['type'];
+
+type BlockParseOptions = {
+  /** Whether a markdown image naming a file of the protocol is a block. */
+  assetBlocks?: boolean;
+  definitions?: Definitions;
+};
+
+/**
+ * The block a markdown image stands for, when its address names a file of
+ * the protocol (see protocol-validation's `AssetBlock`). The node carries
+ * every setting, with the ones the address leaves out at their defaults, as
+ * the editor's node holds them.
+ */
+const assetBlockFromImage = (
+  node: MarkdownNode,
+): RichTextAssetBlockContent | undefined => {
+  if (node.type !== 'image' || typeof node.url !== 'string') return undefined;
+  const reading = readAssetBlockUrl(node.url);
+  if (reading === undefined) return undefined;
+  const { size, ...settings } = assetBlockSettings(reading.block);
+  return {
+    type: ASSET_BLOCK,
+    attrs: {
+      assetId: reading.block.assetId,
+      description: node.alt ?? '',
+      size: size ?? null,
+      ...settings,
+    },
+  };
+};
+
+// The line break markdown leaves between an image and the text beside it
+// belongs to neither once the image is a block of its own, whether it was a
+// plain one (a space) or a hard one.
+const withoutEdgeSpace = (run: RichTextContent[]): RichTextContent[] => {
+  const trimmed = [...run];
+  for (;;) {
+    const first = trimmed[0];
+    if (first?.type === 'hardBreak') {
+      trimmed.shift();
+      continue;
+    }
+    if (first?.type !== 'text') break;
+    const text = (first.text ?? '').trimStart();
+    if (text !== '') {
+      trimmed[0] = { ...first, text };
+      break;
+    }
+    trimmed.shift();
+  }
+  for (;;) {
+    const last = trimmed.at(-1);
+    if (last?.type === 'hardBreak') {
+      trimmed.pop();
+      continue;
+    }
+    if (last?.type !== 'text') break;
+    const text = (last.text ?? '').trimEnd();
+    if (text !== '') {
+      trimmed[trimmed.length - 1] = { ...last, text };
+      break;
+    }
+    trimmed.pop();
+  }
+  return trimmed;
+};
+
+/**
+ * A paragraph that may name files: each becomes a block of its own, and the
+ * words on either side of it a paragraph of their own. Written by the
+ * editor, a file is always alone in its paragraph; written by hand it may
+ * sit in a sentence, which is split around it, as the interview shows it.
+ */
+const paragraphWithAssetBlocks = (
+  node: MarkdownNode,
+  options: InlineParseOptions,
+): RichTextContent[] => {
+  const blocks: RichTextContent[] = [];
+  let run: RichTextContent[] = [];
+  const endRun = () => {
+    const words = withoutEdgeSpace(run);
+    if (words.length > 0) blocks.push(paragraphFromInline(words));
+    run = [];
+  };
+  for (const child of node.children ?? []) {
+    const block = assetBlockFromImage(child);
+    if (block === undefined) {
+      run.push(...inlineFromMarkdown(child, options));
+      continue;
+    }
+    endRun();
+    blocks.push(block);
+  }
+  endRun();
+  return blocks.length > 0 ? blocks : [paragraphFromInline([])];
+};
+
+const blockFromMarkdown = (
+  node: MarkdownNode,
+  options: BlockParseOptions = {},
+): RichTextContent[] => {
+  const inline = { definitions: options.definitions };
   switch (node.type) {
     case 'paragraph':
-      return [paragraphFromInline(childrenAsInline(node))];
+      return options.assetBlocks === true
+        ? paragraphWithAssetBlocks(node, inline)
+        : [paragraphFromInline(childrenAsInline(node, inline))];
 
     case 'heading': {
       const level = Math.min(Math.max(node.depth ?? 1, 1), 4);
@@ -212,7 +353,7 @@ const blockFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
         {
           type: 'heading',
           attrs: { level },
-          content: childrenAsInline(node),
+          content: childrenAsInline(node, inline),
         },
       ];
     }
@@ -224,7 +365,7 @@ const blockFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
           attrs: node.ordered ? { start: node.start ?? 1 } : undefined,
           content: (node.children ?? []).map((child) => ({
             type: 'listItem',
-            content: blockChildrenFromMarkdown(child),
+            content: blockChildrenFromMarkdown(child, options),
           })),
         },
       ];
@@ -232,40 +373,47 @@ const blockFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
     case 'thematicBreak':
       return [{ type: 'horizontalRule' }];
 
-    case 'html':
-      if (node.value?.toLowerCase() === '<hr>') {
-        return [{ type: 'horizontalRule' }];
-      }
-      if (node.value?.toLowerCase() === '<br>') {
-        return [paragraphFromInline([{ type: 'hardBreak' }])];
-      }
-      return [];
+    // Code is shown as its characters, in a paragraph of its own.
+    case 'code': {
+      const content = inlineFromMarkdown(node, inline);
+      return content.length > 0 ? [paragraphFromInline(content)] : [];
+    }
 
     default: {
-      const content = childrenAsInline(node);
+      const content = childrenAsInline(node, inline);
       return content.length > 0 ? [paragraphFromInline(content)] : [];
     }
   }
 };
 
-const blockChildrenFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
+const blockChildrenFromMarkdown = (
+  node: MarkdownNode,
+  options: BlockParseOptions,
+): RichTextContent[] => {
   if (node.type !== 'listItem') {
-    return blockFromMarkdown(node);
+    return blockFromMarkdown(node, options);
   }
 
-  const children = (node.children ?? []).flatMap(blockFromMarkdown);
-  return children.length > 0 ? children : [{ type: 'paragraph' }];
+  const children = (node.children ?? []).flatMap((child) =>
+    blockFromMarkdown(child, options),
+  );
+  if (children.length === 0) return [{ type: 'paragraph' }];
+  // The editor's list item opens with a paragraph, so an item that opens
+  // with a file is given an empty one to open with.
+  return children[0]?.type === ASSET_BLOCK
+    ? [{ type: 'paragraph' }, ...children]
+    : children;
 };
 
 const inlineDocumentFromMarkdown = (
   root: MarkdownNode,
-  links: boolean,
+  options: InlineParseOptions,
 ): RichTextContent => {
   const inlineContent = (root.children ?? []).flatMap((node, index) => {
     const content =
       node.type === 'paragraph' || node.type === 'heading'
-        ? childrenAsInline(node, { links })
-        : inlineFromMarkdown(node, { links });
+        ? childrenAsInline(node, options)
+        : inlineFromMarkdown(node, options);
 
     if (index === 0 || content.length === 0) {
       return content;
@@ -280,25 +428,41 @@ const inlineDocumentFromMarkdown = (
   };
 };
 
+type MarkdownReadOptions = Readonly<{
+  /** Whether the text is one line, read as a single paragraph. */
+  inline?: boolean;
+  /** Whether a line (`inline`) keeps its links. A document always does. */
+  links?: boolean;
+  /**
+   * Whether a document's images that name a file of the protocol are read as
+   * blocks, for a field declared to hold them. Elsewhere, and in a line, an
+   * image is its description.
+   */
+  assetBlocks?: boolean;
+}>;
+
 export const markdownToRichTextContent = (
   value: string | null | undefined,
-  inline = false,
-  /** Whether a line (`inline`) keeps its links. A document always does. */
-  links = false,
+  {
+    inline = false,
+    links = false,
+    assetBlocks = false,
+  }: MarkdownReadOptions = {},
 ): RichTextContent => {
   if (!value || !/\S/.test(value)) {
     return cloneEmptyDocument();
   }
 
-  const root: MarkdownNode = unified()
-    .use(markdown)
-    .parse(escapeAngleBracket(value));
+  const root: MarkdownNode = markdownAsEdited(value);
+  const definitions = definitionsIn(root);
 
   if (inline) {
-    return inlineDocumentFromMarkdown(root, links);
+    return inlineDocumentFromMarkdown(root, { links, definitions });
   }
 
-  const content = (root.children ?? []).flatMap(blockFromMarkdown);
+  const content = (root.children ?? []).flatMap((node) =>
+    blockFromMarkdown(node, { assetBlocks, definitions }),
+  );
 
   if (content.length === 0) {
     return cloneEmptyDocument();
@@ -503,40 +667,145 @@ const flattenInlineContent = (
     return [...flattened, { type: 'text', text: ' ' }, ...inlineContent];
   }, []);
 
-const indentBlock = (value: string): string =>
+// What a list is written with. Two lists of one kind with nothing between
+// them read back as one list, so the second of a pair is written with the
+// other marker, which starts a new list wherever markdown is read.
+type ListMarker = Readonly<{ bullet: '-' | '*'; delimiter: '.' | ')' }>;
+const FIRST_MARKER: ListMarker = { bullet: '-', delimiter: '.' };
+const OTHER_MARKER: ListMarker = { bullet: '*', delimiter: ')' };
+
+const isList = (node: RichTextContent | undefined): boolean =>
+  node?.type === 'bulletList' || node?.type === 'orderedList';
+
+type WrittenBlock = Readonly<{ node: RichTextContent; text: string }>;
+
+/**
+ * Sibling blocks as each is written, leaving out those written as nothing.
+ * A list that follows a list of its own kind takes the other marker.
+ */
+const writtenBlocks = (
+  content: RichTextContent[] | undefined,
+): WrittenBlock[] => {
+  const written: WrittenBlock[] = [];
+  let previousMarker = FIRST_MARKER;
+  for (const node of content ?? []) {
+    const previous = written.at(-1)?.node;
+    const marker =
+      isList(node) && previous?.type === node.type
+        ? previousMarker === FIRST_MARKER
+          ? OTHER_MARKER
+          : FIRST_MARKER
+        : FIRST_MARKER;
+    const text = serializeBlock(node, marker);
+    if (text === '') continue;
+    written.push({ node, text });
+    previousMarker = marker;
+  }
+  return written;
+};
+
+const indentBlock = (value: string, width: number): string =>
   value
     .split('\n')
-    .map((line) => `  ${line}`)
+    .map((line) => `${' '.repeat(width)}${line}`)
     .join('\n');
 
+// A list straight after the paragraph an item opens with is written on the
+// next line, which keeps the list tight. It can be, because such a list
+// interrupts a paragraph: a bulleted one always, a numbered one when it
+// starts at 1.
+const followsOnNextLine = (
+  previous: WrittenBlock,
+  next: WrittenBlock,
+  previousIsFirst: boolean,
+): boolean => {
+  if (!previousIsFirst || previous.node.type !== 'paragraph') return false;
+  if (next.node.type === 'bulletList') return true;
+  if (next.node.type !== 'orderedList') return false;
+  const start = next.node.attrs?.start;
+  return start === undefined || start === 1;
+};
+
+/**
+ * A list item: its marker, then its blocks, each line after the first set in
+ * by the marker's width, which is what makes it part of the item ("10. " is
+ * four wide where "- " is two). The blocks are parted by a blank line, as
+ * blocks are anywhere, or a paragraph would run on into the one before it.
+ * An item that opens with something written as nothing, such as the empty
+ * paragraph an item opening with a file is given, opens with what follows.
+ */
 const serializeListItem = (
   node: RichTextContent,
   index: number,
   ordered: boolean,
   start: number,
+  { bullet, delimiter }: ListMarker,
 ): string => {
-  const blocks = node.content ?? [];
-  const [firstBlock, ...restBlocks] = blocks;
-  const firstContent = firstBlock ? serializeBlock(firstBlock) : '';
-  const marker = ordered ? `${start + index}. ` : '- ';
-  const restContent = restBlocks.map(serializeBlock).filter(Boolean);
+  const marker = ordered ? `${start + index}${delimiter} ` : `${bullet} `;
+  const [first, ...rest] = writtenBlocks(node.content);
+  if (first === undefined) return marker;
 
-  if (restContent.length === 0) {
-    return `${marker}${firstContent}`;
+  // A paragraph's own later lines carry on wherever they start, and stay as
+  // they were written before; anything else an item opens with is set in.
+  const opening =
+    first.node.type === 'paragraph'
+      ? first.text
+      : indentBlock(first.text, marker.length).slice(marker.length);
+  let item = `${marker}${opening}`;
+  let previous = first;
+  for (const [position, block] of rest.entries()) {
+    const separator = followsOnNextLine(previous, block, position === 0)
+      ? '\n'
+      : '\n\n';
+    item += `${separator}${indentBlock(block.text, marker.length)}`;
+    previous = block;
   }
-
-  return [`${marker}${firstContent}`, ...restContent.map(indentBlock)].join(
-    '\n',
-  );
+  return item;
 };
 
-const serializeBlock = (node: RichTextContent): string => {
+// A block that names no file shows nothing and is written as nothing. The
+// node is read as the editor's (`RichTextAssetBlockAttributes`), each
+// setting checked, since a value saved by hand may hold anything.
+const serializeAssetBlock = (node: RichTextContent): string => {
+  const attributes: Partial<
+    Record<keyof RichTextAssetBlockAttributes, unknown>
+  > = node.attrs ?? {};
+  const { assetId, description, size, align, autoplay, loop } = attributes;
+  if (typeof assetId !== 'string' || assetId === '') return '';
+  return assetBlockMarkdown({
+    assetId,
+    ...(typeof description === 'string' &&
+      description.trim() !== '' && { description }),
+    ...(isAssetBlockSize(size) && { size }),
+    ...(isAssetBlockAlignment(align) && { align }),
+    ...(autoplay === false && { autoplay }),
+    ...(loop === false && { loop }),
+  });
+};
+
+// A line break that ends a paragraph shows nothing, and markdown does not
+// keep one: written out, it came back gone, so the text changed the second
+// time it was saved. A paragraph that is only a break is a blank line the
+// researcher asked for, and is left alone.
+const withoutClosingBreaks = (
+  content: RichTextContent[] | undefined,
+): RichTextContent[] | undefined => {
+  if (content === undefined) return content;
+  let end = content.length;
+  while (end > 0 && content[end - 1]?.type === 'hardBreak') end -= 1;
+  return end === 0 || end === content.length ? content : content.slice(0, end);
+};
+
+const serializeBlock = (
+  node: RichTextContent,
+  marker: ListMarker = FIRST_MARKER,
+): string => {
   switch (node.type) {
     case 'doc':
       return serializeBlocks(node.content);
 
     case 'paragraph':
-      return serializeInline(node.content);
+      return serializeInline(withoutClosingBreaks(node.content));
 
     case 'heading': {
       const rawLevel = node.attrs?.level;
@@ -547,14 +816,18 @@ const serializeBlock = (node: RichTextContent): string => {
 
     case 'bulletList':
       return (node.content ?? [])
-        .map((child, index) => serializeListItem(child, index, false, 1))
+        .map((child, index) =>
+          serializeListItem(child, index, false, 1, marker),
+        )
         .join('\n');
 
     case 'orderedList': {
       const rawStart = node.attrs?.start;
       const start = typeof rawStart === 'number' ? rawStart : 1;
       return (node.content ?? [])
-        .map((child, index) => serializeListItem(child, index, true, start))
+        .map((child, index) =>
+          serializeListItem(child, index, true, start, marker),
+        )
         .join('\n');
     }
 
@@ -563,6 +836,9 @@ const serializeBlock = (node: RichTextContent): string => {
 
     case 'horizontalRule':
       return '---';
+
+    case ASSET_BLOCK:
+      return serializeAssetBlock(node);
 
     case 'hardBreak':
       return '  \n';
@@ -576,11 +852,17 @@ const serializeBlock = (node: RichTextContent): string => {
 };
 
 const serializeBlocks = (content: RichTextContent[] | undefined): string =>
-  (content ?? []).map(serializeBlock).filter(Boolean).join('\n\n');
+  writtenBlocks(content)
+    .map(({ text }) => text)
+    .join('\n\n');
 
 const containsContent = (node: RichTextContent): boolean => {
   if (node.type === 'horizontalRule') {
     return true;
+  }
+
+  if (node.type === ASSET_BLOCK) {
+    return typeof node.attrs?.assetId === 'string' && node.attrs.assetId !== '';
   }
 
   if (node.type === 'text') {

@@ -24,6 +24,7 @@ import {
   type MissingPlacement,
   pluralCountExamples,
   printMessageStructure,
+  missingPlacementsOf,
 } from '@codaco/protocol-validation';
 
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
@@ -31,10 +32,10 @@ import { asLocalizedString } from '../localization/localizedText.ts';
 import {
   countTokenId,
   documentToMessageNodes,
+  isSwitchMeta,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
-  MessageDocumentProblem,
-  messageToDocument,
+  openMessageDocument,
 } from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
@@ -44,7 +45,6 @@ import {
   MessageNodesSummary,
   numberSwitchLabels,
   pluralCategories,
-  UnreadableMessage,
 } from './DynamicTextField.tsx';
 import {
   type MessageArgumentLabels,
@@ -79,15 +79,16 @@ const messages = defineMessages({
   },
   placementMissing: {
     id: 'protocolBuilder.localizedMessage.placementMissing',
-    defaultMessage: 'Include “{placeholder}” in this text.',
+    defaultMessage: 'This text must include the attribute “{placeholder}”.',
     description:
-      'Refusal shown under a text that leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”.',
+      'Refusal shown to a researcher under a text in a protocol that leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”.',
   },
   placementMissingIn: {
     id: 'protocolBuilder.localizedMessage.placementMissingIn',
-    defaultMessage: 'Include “{placeholder}” in this version: {version}.',
+    defaultMessage:
+      'This text must include the attribute “{placeholder}” in the “{version}” scenario.',
     description:
-      'Refusal shown under a text written in several versions when one version leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”.',
+      'Refusal shown to a researcher under a text in a protocol that is worded differently for different scenarios (for example, one wording about the participant and another about someone else), when the wording for one scenario leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”; version is the label of the scenario, such as “About someone else”.',
   },
   unreadable: {
     id: 'protocolBuilder.localizedMessage.unreadable',
@@ -474,6 +475,21 @@ export function LocalizedMessageVersions({
     argumentLabels,
   );
 
+  const missing = missingPlacementsOf(message, declaration, locale);
+  // Whether the version being edited requires `argument` and does not show
+  // it: some version of the message for the cases the caret is in.
+  const missingIn =
+    (argument: string): RichTextInsertMenuItem['required'] =>
+    (place) =>
+      missing.some(
+        (each) =>
+          each.argument === argument &&
+          place.every(
+            ({ meta, key }) =>
+              !isSwitchMeta(meta) || each.when[meta.argument] === key,
+          ),
+      );
+
   const items: RichTextInsertMenuItem[] = Object.entries(declaration).map(
     ([argument, declared]): RichTextInsertMenuItem => {
       const label = valueLabel(argument);
@@ -481,6 +497,7 @@ export function LocalizedMessageVersions({
         return {
           id: `value:${argument}`,
           label,
+          required: missingIn(argument),
           content: inlineContent(
             [{ kind: 'argument', name: argument }],
             FORMAT,
@@ -492,6 +509,7 @@ export function LocalizedMessageVersions({
         return {
           id: `number:${argument}`,
           label,
+          required: missingIn(argument),
           description: numbers.menuDescription(),
           content: inlineContent(
             [
@@ -559,20 +577,13 @@ export function LocalizedMessageVersions({
   // interface language relabels a document already open.
   const labelsKey = `${intl.locale}:${locale}`;
 
-  // The stored message as the editor's document, or why it cannot be one.
-  const parsed = useMemo(() => {
-    const structure = messageStructure(message);
-    if (!('nodes' in structure)) return undefined;
-    try {
-      return messageToDocument(structure.nodes, FORMAT, labels);
-    } catch (error) {
-      if (error instanceof MessageDocumentProblem) return undefined;
-      throw error;
-    }
+  const parsed = useMemo(
+    () => openMessageDocument(name, message, FORMAT, labels),
     // The labels follow the languages (`labelsKey`) and the declaration; the
     // message decides the document.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [message, declaration, labelsKey]);
+    [name, message, declaration, labelsKey],
+  );
 
   // As `DynamicMessageEditor` does: the editor gets its own last document
   // back while that document still writes the stored message, so a round
@@ -608,17 +619,6 @@ export function LocalizedMessageVersions({
     if ((nextMessage ?? '') === message) return;
     onMessageChange(nextMessage);
   };
-
-  if (parsed === undefined && message !== '') {
-    return (
-      <UnreadableMessage
-        id={id}
-        name={name}
-        message={message}
-        className={className}
-      />
-    );
-  }
 
   return (
     <RichTextEditorField

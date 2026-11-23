@@ -10,9 +10,9 @@ import {
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert } from '@codaco/fresco-ui/Alert';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
+  type RichTextAssetBlocks,
   type RichTextEditorToken,
   type RichTextInsertMenu,
   type RichTextInsertMenuItem,
@@ -85,8 +85,8 @@ import {
   ifRowOf,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
-  MessageDocumentProblem,
   messageToDocument,
+  openMessageDocument,
 } from '../localization/messageDocument.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import {
@@ -100,6 +100,7 @@ import {
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
 import ConditionDialog from '../rules/ConditionDialog.tsx';
+import { StageAssetBlocks } from './assetBlocks/StageAssetBlocks.tsx';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
 
 const PLAIN_LINE: LocalizedTextShape = { format: 'plain', lines: 'single' };
@@ -354,13 +355,6 @@ const messages = defineMessages({
     defaultMessage: 'No',
     description:
       'Label of the version of a piece of text shown when a yes-or-no attribute is no.',
-  },
-  unreadable: {
-    id: 'protocolBuilder.dynamicText.unreadable',
-    defaultMessage:
-      'This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.',
-    description:
-      'Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed.',
   },
 });
 
@@ -649,6 +643,12 @@ export type DynamicMessageEditorProps = Readonly<{
   readOnly: boolean;
   markdown: boolean;
   singleLine: boolean;
+  /**
+   * How the files the text holds as blocks are drawn and chosen, for text
+   * declared to hold them (`textFieldPropsFor`). Absent for any other text,
+   * where an image written into it is read as its description.
+   */
+  assetBlocks?: RichTextAssetBlocks;
   message: string;
   onMessageChange: (message: string | undefined) => void;
   locale: LocaleTag;
@@ -682,6 +682,7 @@ export function DynamicMessageEditor({
   readOnly,
   markdown,
   singleLine,
+  assetBlocks,
   message,
   onMessageChange,
   locale,
@@ -691,9 +692,14 @@ export function DynamicMessageEditor({
 }: DynamicMessageEditorProps) {
   const intl = useAppIntl();
   const { localization } = useEditingLanguage();
+  const holdsAssetBlocks = assetBlocks !== undefined;
   const format = useMemo(
-    (): MessageDocumentFormat => ({ markdown, singleLine }),
-    [markdown, singleLine],
+    (): MessageDocumentFormat => ({
+      markdown,
+      singleLine,
+      assetBlocks: holdsAssetBlocks,
+    }),
+    [markdown, singleLine, holdsAssetBlocks],
   );
   const { context, bindings, setBindings, namesInUse } = site;
   const conditionValues = site.conditions?.values ?? NO_CONDITIONS;
@@ -1051,20 +1057,13 @@ export function DynamicMessageEditor({
     ]),
   ).concat(JSON.stringify([conditionValues, writesConditions]));
 
-  // The stored message as the editor's document, or why it cannot be one.
-  const parsed = useMemo(() => {
-    const structure = messageStructure(message);
-    if (!('nodes' in structure)) return undefined;
-    try {
-      return messageToDocument(structure.nodes, format, labels);
-    } catch (error) {
-      if (error instanceof MessageDocumentProblem) return undefined;
-      throw error;
-    }
+  const parsed = useMemo(
+    () => openMessageDocument(name, message, format, labels),
     // The labels follow the bindings, the language and the codebook's names
     // (`labelsKey`); the message decides the document.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [message, format, locale, bindings, intl, labelsKey]);
+    [name, message, format, locale, bindings, intl, labelsKey],
+  );
 
   // As `RichTextField` does: the editor gets its own last document back
   // while that document still writes the stored message, so a round trip
@@ -1302,24 +1301,11 @@ export function DynamicMessageEditor({
       : NEW_CONDITION;
 
   const problem = useMemo(() => {
-    if (!showsProblems || message === '' || parsed === undefined) {
-      return undefined;
-    }
+    if (!showsProblems || message === '') return undefined;
     const values = dynamicValueArgumentsAt(bindings, context);
     return findDynamicValueProblem(message, values, locale);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [showsProblems, message, parsed, bindings, context, locale]);
-
-  if (parsed === undefined && message !== '') {
-    return (
-      <UnreadableMessage
-        id={id}
-        name={name}
-        message={message}
-        className={className}
-      />
-    );
-  }
+  }, [showsProblems, message, bindings, context, locale]);
 
   const toolbarOptions = markdown
     ? richTextToolbarFor(singleLine)
@@ -1353,6 +1339,7 @@ export function DynamicMessageEditor({
         versions
         insertMenu={insertMenu}
         {...(logicItems.length > 0 && { logicMenu })}
+        {...(assetBlocks !== undefined && { assetBlocks })}
         onVersionsAction={handleVersionsAction}
         value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
         onChange={handleChange}
@@ -1380,36 +1367,6 @@ export function DynamicMessageEditor({
           onCancel={() => setEditing(null)}
         />
       )}
-    </div>
-  );
-}
-
-/**
- * In place of an editor, text it cannot hold, kept as it is stored. The
- * frame's classes still place the note where the editor would be.
- */
-export function UnreadableMessage({
-  id,
-  name,
-  message,
-  className,
-}: Readonly<{
-  id: string;
-  name: string;
-  message: string;
-  className?: string;
-}>) {
-  const intl = useAppIntl();
-  return (
-    <div className={className}>
-      <div id={id} data-name={name} className="flex flex-col gap-2">
-        <Alert variant="warning" density="compact">
-          {intl.formatMessage(messages.unreadable)}
-        </Alert>
-        <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
-          {message}
-        </pre>
-      </div>
     </div>
   );
 }
@@ -1476,6 +1433,8 @@ const SUMMARY_REHYPE_PLUGINS = [
 export type BlockMarkdown = Readonly<{
   allowedElements: readonly string[];
   components?: ComponentProps<typeof RenderMarkdown>['components'];
+  /** How a file the text holds as a block is drawn; without it, it is not. */
+  blockImages?: ComponentProps<typeof RenderMarkdown>['blockImages'];
 }>;
 
 const SECTION_MARKDOWN: BlockMarkdown = {
@@ -1547,12 +1506,15 @@ export function MessageNodesSummary({
   nodes: readonly MessageNode[];
   /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
-  /** Whether the words run over several lines, as a field on one line never does. */
+  /**
+   * Whether the text's field holds several lines, as a field on one line
+   * never does: a property of the field, not of the words it holds today.
+   */
   multiline: boolean;
   /**
-   * How markdown with line breaks (an Information screen's text) draws its
-   * paragraphs, headings and rules; text on one line keeps only inline
-   * formatting and lists, as a label does.
+   * How markdown in a field of several lines (an Information screen's text)
+   * draws its paragraphs, headings, rules and files; text on one line keeps
+   * only inline formatting and lists, as a label does.
    */
   blockMarkdown?: BlockMarkdown;
   /** What a value's pill says, by the name the message gives it. */
@@ -1653,6 +1615,7 @@ export function MessageNodesSummary({
             allowedElements={allowedElements}
             rehypePlugins={SUMMARY_REHYPE_PLUGINS}
             components={{ ...elements.components, span: SummaryValueSpan }}
+            blockImages={elements.blockImages}
           >
             {source}
           </RenderMarkdown>
@@ -1677,6 +1640,7 @@ export function MessageNodesSummary({
 export function DynamicMessageSummary({
   message,
   markdown,
+  multiline,
   locale,
   site,
   blockMarkdown,
@@ -1684,7 +1648,14 @@ export function DynamicMessageSummary({
   message: string;
   /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
-  /** How markdown with line breaks is drawn (see `MessageNodesSummary`). */
+  /**
+   * Whether the text's field holds several lines, so that its markdown is
+   * drawn with its blocks (see `MessageNodesSummary`), as its editor draws
+   * them. A property of the field, not of the text it holds today: a page
+   * that is one file and nothing else is still a page.
+   */
+  multiline: boolean;
+  /** How markdown with blocks is drawn (see `MessageNodesSummary`). */
   blockMarkdown?: BlockMarkdown;
   locale: LocaleTag;
   site: Pick<DynamicMessageSite, 'context' | 'bindings'>;
@@ -1726,7 +1697,7 @@ export function DynamicMessageSummary({
     <MessageNodesSummary
       nodes={structure.nodes}
       markdown={markdown}
-      multiline={message.includes('\n')}
+      multiline={multiline}
       blockMarkdown={blockMarkdown}
       valueLabel={valueLabel}
       switchSummary={labels.switchSummary}
@@ -1848,36 +1819,45 @@ export default function DynamicTextField({
   'aria-required': ariaRequired,
 }: DynamicTextFieldProps) {
   const site = useDynamicValueSite(siteKind, fieldPath);
-  const { markdown, singleLine } = textFieldPropsFor(shape);
+  const {
+    markdown,
+    singleLine,
+    assetBlocks: holdsAssetBlocks,
+  } = textFieldPropsFor(shape);
   const { localization, locale } = useEditingLanguage();
   const defaultLocale = localization?.defaultLocale;
 
   return (
-    <LocalizedStringField
-      value={value}
-      onChange={onChange}
-      hideUntranslatedNote={hideUntranslatedNote}
-    >
-      {(translation) => (
-        <DynamicMessageEditor
-          id={id}
-          name={name}
-          ariaDescribedBy={ariaDescribedBy}
-          ariaLabelledBy={ariaLabelledBy}
-          ariaInvalid={ariaInvalid}
-          ariaRequired={ariaRequired === true}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          disabled={disabled}
-          readOnly={readOnly === true || translation.readOnly}
-          markdown={markdown}
-          singleLine={singleLine}
-          message={translation.message}
-          onMessageChange={translation.onMessageChange}
-          locale={locale ?? defaultLocale ?? 'en'}
-          site={site}
-        />
+    <StageAssetBlocks enabled={holdsAssetBlocks}>
+      {(assetBlocks) => (
+        <LocalizedStringField
+          value={value}
+          onChange={onChange}
+          hideUntranslatedNote={hideUntranslatedNote}
+        >
+          {(translation) => (
+            <DynamicMessageEditor
+              id={id}
+              name={name}
+              ariaDescribedBy={ariaDescribedBy}
+              ariaLabelledBy={ariaLabelledBy}
+              ariaInvalid={ariaInvalid}
+              ariaRequired={ariaRequired === true}
+              placeholder={placeholder}
+              autoFocus={autoFocus}
+              disabled={disabled}
+              readOnly={readOnly === true || translation.readOnly}
+              markdown={markdown}
+              singleLine={singleLine}
+              {...(assetBlocks !== undefined && { assetBlocks })}
+              message={translation.message}
+              onMessageChange={translation.onMessageChange}
+              locale={locale ?? defaultLocale ?? 'en'}
+              site={site}
+            />
+          )}
+        </LocalizedStringField>
       )}
-    </LocalizedStringField>
+    </StageAssetBlocks>
   );
 }

@@ -5,7 +5,7 @@ navOrder: 13
 
 ## How a Node's Label Is Chosen
 
-Every node is shown with a label: on a sociogram, in a name generator's list, in a bin, and wherever a stage's text [pipes in](/en/design-protocols/piped-text) the **Node label**. The interview chooses the label for each node as follows:
+Every node is shown with a label: on a sociogram, in a name generator's list, in a bin, and wherever a stage's text [pipes in](/en/design-protocols/key-concepts/piped-text) the **Node label**. The interview chooses the label for each node as follows:
 
 1. If the node's type has a [dynamic label](#dynamic-labels), the node shows that label.
 2. Otherwise the node shows its default label, taken from the node's own data: an attribute named "name"; otherwise one whose name contains "name"; otherwise, for imported data, a column whose name contains "name" even if the [codebook](/en/design-protocols/key-concepts/codebook) does not list it; otherwise the first text attribute that has a value.
@@ -42,7 +42,7 @@ The label is a single line of text. You can type ordinary text and emoji, and in
 
 **Values, with the syringe button.** A value is a placeholder: on each node, the label shows that node's own value in its place. You can insert any attribute of the node type, or the **Default label**, which is the label the node would have had without a dynamic label. For example, a label of the default label followed by the node's age shows "Alice 34" on one node and "Bo 27" on another.
 
-An attribute may have no value for some nodes. When you insert one, select it in the label to write two versions of the text around it: one for when the value is known and one for when it is not. See [When information is missing](/en/design-protocols/piped-text#when-information-is-missing).
+An attribute may have no value for some nodes. When you insert one, select it in the label to write two versions of the text around it: one for when the value is known and one for when it is not. See [When information is missing](/en/design-protocols/key-concepts/piped-text#when-information-is-missing).
 
 **Logic, with the logic button.** Logic inserts a group of alternative wordings, of which each node shows one:
 
@@ -73,7 +73,7 @@ A dynamic label changes only what is displayed. It is not stored with the node a
 
 ### Translating a Dynamic Label
 
-In a protocol with more than one language, a dynamic label is translated like any other text that shows values, in the [translation table](/en/design-protocols/translating-your-protocol#the-translation-table). Its values and logic are kept in each translation, and the text of each case is translated.
+In a protocol with more than one language, a dynamic label is translated like any other text that shows values, in the [translation table](/en/design-protocols/tutorials/translating-your-protocol#the-translation-table). Its values and logic are kept in each translation, and the text of each case is translated.
 
 ### Protocols That Used a Node Label Worker
 

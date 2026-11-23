@@ -78,6 +78,7 @@ const SURFACES: readonly Readonly<{
     // these three sentences on screen.
     sections: (
       <BuilderSection
+        sectionKey="person-form-fields"
         title="Add a person"
         description="A capability with a family’s own confirmation."
         capability={{

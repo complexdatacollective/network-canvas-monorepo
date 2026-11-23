@@ -453,18 +453,9 @@
         "en": "Template notes (delete before fielding)"
       },
       "type": "Information",
-      "title": {
-        "en": "Template notes"
-      },
-      "items": [
-        {
-          "id": "researcher-notes",
-          "type": "text",
-          "content": {
-            "en": "## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThe **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted is encrypted with it before it is saved. To change which attributes are encrypted, open that stage and use its **Encrypted attributes** section. Only text attributes on nodes can be encrypted.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\n### What encryption does and does not protect\n\nEncryption protects **saved and exported data**. CSV and GraphML exports replace every encrypted value with the word `ENCRYPTED` and leave out the encrypted value itself, so these answers cannot be recovered from an export by anyone, including your team. If a participant forgets their passphrase, their encrypted answers cannot be recovered at all.\n\nEncryption does **not** hide anything on screen. While the passphrase is in use, names and notes are shown as the participant types them and on later screens, so anyone who can see the screen, including the interviewer, can read them. The participant-facing text in this template says so; keep it accurate if you edit it.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names in your data; it does not protect a participant who is overheard or whose screen is seen during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
-          }
-        }
-      ]
+      "content": {
+        "en": "# Template notes\n\n## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThe **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted is encrypted with it before it is saved. To change which attributes are encrypted, open that stage and use its **Encrypted attributes** section. Only text attributes on nodes can be encrypted.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\n### What encryption does and does not protect\n\nEncryption protects **saved and exported data**. CSV and GraphML exports replace every encrypted value with the word `ENCRYPTED` and leave out the encrypted value itself, so these answers cannot be recovered from an export by anyone, including your team. If a participant forgets their passphrase, their encrypted answers cannot be recovered at all.\n\nEncryption does **not** hide anything on screen. While the passphrase is in use, names and notes are shown as the participant types them and on later screens, so anyone who can see the screen, including the interviewer, can read them. The participant-facing text in this template says so; keep it accurate if you edit it.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names in your data; it does not protect a participant who is overheard or whose screen is seen during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
+      }
     },
     {
       "id": "information-intro",
@@ -728,18 +719,9 @@
       "label": {
         "en": "Tell us a little about each person"
       },
-      "title": {
-        "en": "Tell us a little about each person"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Tell us a little about each person\n\nFor each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
+      }
     },
     {
       "id": "alter-form-people",
@@ -791,18 +773,9 @@
       "label": {
         "en": "Services you contacted"
       },
-      "title": {
-        "en": "Services you contacted"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en": "For each service you contacted, please tell us how helpful it was."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Services you contacted\n\nFor each service you contacted, please tell us how helpful it was."
+      }
     },
     {
       "id": "alter-form-services",
@@ -971,18 +944,9 @@
         "en": "Thank you and support services"
       },
       "type": "Information",
-      "title": {
-        "en": "Thank you — and where to find support"
-      },
-      "items": [
-        {
-          "id": "support-thanks",
-          "type": "text",
-          "content": {
-            "en": "## Thank you for sharing\n\nTalking about these experiences takes courage, and we are grateful for your time.\n\nThe names and notes you entered are encrypted with your passphrase. If you return to this interview, you will need the same passphrase to see them.\n\n### If you would like support\n\n- **Talk to the interviewer now** if you would like to take a moment or talk about how you are feeling.\n- **If you are in immediate danger, contact your local emergency services.**\n- _The researcher will insert local and national domestic violence helplines for your study site here._\n\nYou do not have to face this alone."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Thank you — and where to find support\n\n## Thank you for sharing\n\nTalking about these experiences takes courage, and we are grateful for your time.\n\nThe names and notes you entered are encrypted with your passphrase. If you return to this interview, you will need the same passphrase to see them.\n\n### If you would like support\n\n- **Talk to the interviewer now** if you would like to take a moment or talk about how you are feeling.\n- **If you are in immediate danger, contact your local emergency services.**\n- _The researcher will insert local and national domestic violence helplines for your study site here._\n\nYou do not have to face this alone."
+      }
     },
     {
       "id": "finish",

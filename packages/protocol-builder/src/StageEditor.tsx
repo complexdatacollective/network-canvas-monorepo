@@ -10,6 +10,7 @@ import type {
   StageEditorRegistry,
 } from './stage-editor-contract.ts';
 import {
+  existingStageSectionId,
   StageEditSession,
   useStageEdit,
   type StageEditTarget,
@@ -41,8 +42,8 @@ export class UnregisteredStageTypeError extends Error {
 
 export type StageEditorProps = Readonly<{
   /**
-   * Which stage to open: the section id of one the protocol holds, or the
-   * interface and position of one it does not hold yet.
+   * Which stage to open: the section id or stage id of one the protocol
+   * holds, or the interface and position of one it does not hold yet.
    */
   target: StageEditTarget;
   /**
@@ -130,7 +131,9 @@ export default function StageEditor({
  * composes it, and moving it is not opening a different edit.
  */
 function editKey(target: StageEditTarget): string {
-  return 'sectionId' in target ? target.sectionId : `new:${target.stageType}`;
+  return 'stageType' in target
+    ? `new:${target.stageType}`
+    : existingStageSectionId(target);
 }
 
 function OpenStageEditor({

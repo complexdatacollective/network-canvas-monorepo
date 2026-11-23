@@ -6,13 +6,10 @@ import { describe, expect, it } from 'vitest';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { HostUnauthorized } from '@codaco/protocol-builder-core/contract/session';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { translationText } from '../../localization/localizedText.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import { useEntityTypes } from '../../state/hooks.ts';
@@ -28,7 +25,6 @@ import { useCreateCodebookEntity } from '../writes.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const STAGE = sectionId({ kind: 'stage', stageId: 'information-1' });
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 const ANA = { sessionId: 'session-2', userId: 'user-2', displayName: 'Ana' };
@@ -40,34 +36,21 @@ const nodeTypeNames = (host: InMemoryHost): string[] =>
     .filter((id) => parseSectionId(id).kind === 'codebookNode')
     .map((id) => String(host.store.read(id).document.name));
 
-/** The stage's name as the protocol stores it, in its one language. */
-const storedStageLabel = (host: InMemoryHost): string =>
-  translationText(host.store.read(STAGE).document.label, 'en-US');
-
 /**
- * A stage editor as far as this rule is concerned: unsaved local state, a
- * codebook dialog opened from inside it, and a way to abandon the stage edit.
+ * A codebook surface that creates node types: the type list and the dialog
+ * that adds one, as the codebook's own pages draw them.
  *
- * The stage is never submitted. Everything that reaches the host here reached
- * it because the codebook dialog put it there.
+ * Outside a stage editor, so each type is written to the protocol when its
+ * dialog is saved. (Inside one, the type is held with the stage's draft and
+ * written with the stage: see `stagedCodebookEditing.test.tsx`.)
  */
-function StageEditorWithACodebookDialog({
-  seededLabel,
-}: Readonly<{ seededLabel: string }>) {
+function NodeTypeCreator() {
   const createEntity = useCreateCodebookEntity();
   const nodeTypes = useEntityTypes('node');
-  const [label, setLabel] = useState(seededLabel);
   const [creating, setCreating] = useState(false);
 
   return (
     <>
-      <UnconnectedField
-        name="stage-label"
-        label="Stage name"
-        component={InputField}
-        value={label}
-        onChange={(value) => setLabel(value ?? '')}
-      />
       <ul aria-label="Node types">
         {nodeTypes.map((type) => (
           <li key={type.id}>{type.name}</li>
@@ -75,9 +58,6 @@ function StageEditorWithACodebookDialog({
       </ul>
       <Button type="button" onClick={() => setCreating(true)}>
         Create a new node type
-      </Button>
-      <Button type="button" onClick={() => setLabel(seededLabel)}>
-        Discard this stage edit
       </Button>
       {creating && (
         <CodebookEntityEditor
@@ -101,71 +81,17 @@ function StageEditorWithACodebookDialog({
   );
 }
 
-describe('a codebook type created from inside a stage editor', () => {
-  it('is in the protocol without the stage being saved, and survives the stage edit being cancelled', async () => {
-    const user = userEvent.setup();
-    const host = createInMemoryHost({
-      sections: sectionsFromProtocol(FIXTURE),
-    });
-    const seededLabel = storedStageLabel(host);
-
-    render(
-      <DialogProvider>
-        <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
-          <StageEditorWithACodebookDialog seededLabel={seededLabel} />
-        </ProtocolBuilder>
-      </DialogProvider>,
-    );
-
-    // The list has actually loaded, and does not already answer the question.
-    const list = screen.getByRole('list', { name: 'Node types' });
-    await waitFor(() => expect(list).not.toBeEmptyDOMElement());
-    expect(list).not.toHaveTextContent('Place');
-    expect(nodeTypeNames(host)).not.toContain('Place');
-
-    // The researcher is halfway through the stage, and never saves it.
-    const stageName = screen.getByRole('textbox', { name: 'Stage name' });
-    await user.clear(stageName);
-    await user.type(stageName, 'Half-written stage name');
-
-    await user.click(
-      screen.getByRole('button', { name: 'Create a new node type' }),
-    );
-    await user.type(
-      await screen.findByRole('textbox', { name: 'Node type name' }),
-      'Place',
-    );
-    await user.click(screen.getByRole('button', { name: 'Save entity' }));
-
-    // It is in the protocol, and every component reading the codebook sees it.
-    await waitFor(() => expect(list).toHaveTextContent('Place'));
-    expect(nodeTypeNames(host)).toContain('Place');
-    // And the stage the researcher was writing has not been saved with it.
-    expect(storedStageLabel(host)).toBe(seededLabel);
-    expect(stageName).toHaveValue('Half-written stage name');
-
-    await user.click(
-      screen.getByRole('button', { name: 'Discard this stage edit' }),
-    );
-
-    expect(stageName).toHaveValue(seededLabel);
-    expect(nodeTypeNames(host)).toContain('Place');
-    expect(list).toHaveTextContent('Place');
-  });
-});
-
 describe('two codebook types added one after the other', () => {
   it('are two types, not the first one answered for twice', async () => {
     const user = userEvent.setup();
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(FIXTURE),
     });
-    const seededLabel = storedStageLabel(host);
 
     render(
       <DialogProvider>
         <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
-          <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+          <NodeTypeCreator />
         </ProtocolBuilder>
       </DialogProvider>,
     );
@@ -226,12 +152,11 @@ describe('a codebook type whose answer is lost on the way back', () => {
       sections: sectionsFromProtocol(FIXTURE),
     });
     const lost = withTheFirstAnswerLost(host);
-    const seededLabel = storedStageLabel(host);
 
     render(
       <DialogProvider>
         <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
-          <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+          <NodeTypeCreator />
         </ProtocolBuilder>
       </DialogProvider>,
     );
@@ -266,12 +191,11 @@ describe('a codebook type whose answer is lost on the way back', () => {
       sections: sectionsFromProtocol(FIXTURE),
     });
     const lost = withTheAnswerSwallowed(host);
-    const seededLabel = storedStageLabel(host);
 
     render(
       <DialogProvider>
         <ProtocolBuilder adapter={lost.adapter} protocolId={host.protocolId}>
-          <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+          <NodeTypeCreator />
         </ProtocolBuilder>
       </DialogProvider>,
     );

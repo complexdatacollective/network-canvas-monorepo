@@ -1,5 +1,22 @@
 # @codaco/documentation
 
+## 0.10.0
+
+### Minor Changes
+
+- The Design Protocols section is reorganized. Piped Text moves to Key concepts. Translating Your Protocol, Using Custom Node Shapes (previously Custom Node Shapes) and Creating responsive background images (previously Responsive SVG Backgrounds) move to Tutorials. The pages about Architect itself (Choosing Architect or Architect Classic, Installing Architect Classic, Previewing Your Protocol, Saving and backing up, and the Architect FAQ) stay at the top level of the section. The Protocol Gallery page is removed, and its address redirects to the Protocol Gallery website. The old address of every moved page redirects to the new one. In the Piped Text article, the table under "Where piped text can be used" no longer has an Ego Attributes column, its two columns have equal width, and the wording of the article is corrected. The new sections about writing an Information page, in the Information interface article, the Building a Protocol tutorial and the schema information page, have the same wording corrections. Updated in English, Spanish and French.
+- The Information interface article describes the new single editor: a page is one text, with its heading at the top and its images, audio and video placed in it as blocks, each with settings for its description, display size, alignment, and whether it starts automatically and repeats. Protocol Schema Information lists the change under schema 9 and says how upgrading a protocol joins a page's heading and items into one text. The Building a protocol tutorial now writes the Welcome stage's heading and adds its files in this editor, and translates that heading in it, and the Translating Your Protocol, Piped Text and Resources pages no longer mention an Information stage's title or items. Every change is in English, Spanish and French.
+- The Piped Text article describes the editor's two toolbar buttons: the syringe, which inserts values only, and Insert logic, which inserts If blocks set with the rule builder, different wording for each answer, wording that fits a number, and wording for the participant or someone else. A new Logic section covers If blocks and their rules, and links to dynamic node labels. Updated in English, Spanish and French.
+- The Narrative page explains how to filter each preset separately, the Network
+  Filtering page says where a Narrative's filters are set, and the schema 9 notes
+  describe how an existing Narrative stage's filter is carried over.
+
+### Patch Changes
+
+- The documentation calls Architect's stage filter section by its new name, **Filter network**, in the text and in the screenshots.
+- The Piped Text article explains every error message that Architect can show for piped values and logic: what each one means, how to fix it, and which ones only appear in a protocol edited outside Architect. Its pictures show the current insert button. The Translating Your Protocol article describes how the placeholder menu marks a placeholder that a version still requires. Updated in English, Spanish and French.
+- The documentation site uses far less of your computer's processor and graphics card while a page is open. Its moving background was being redrawn in full for every frame, for as long as the tab was visible; it is now drawn once, and only its moving parts are updated. The background looks and moves as it did.
+
 ## 0.9.1
 
 ### Patch Changes

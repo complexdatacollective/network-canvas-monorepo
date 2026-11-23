@@ -152,17 +152,16 @@ const messages = defineMessages({
   },
   shareLabel: {
     id: 'architect.protocolReview.wizard.sending.shareLabel',
-    defaultMessage:
-      'Share the results of this review with the Network Canvas team',
+    defaultMessage: 'Share this review with the Network Canvas team',
     description:
       'Label of the checkbox, ticked unless the researcher unticks it, that lets the Network Canvas team keep a copy of this review. "Network Canvas" is a product name and is not translated.',
   },
   shareHint: {
     id: 'architect.protocolReview.wizard.sending.shareHint',
     defaultMessage:
-      'When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. We will use this information only for the purposes of improving this feature.',
+      'When this is checked, the Network Canvas team keeps a copy of your study details, your protocol, and the review’s findings and suggested fixes. The copy also records which model wrote the review, when, and the language you use Architect in. Files in your protocol and the values of saved API keys are not included, only their names, and we add nothing that identifies you or your browser. The copy is deleted automatically {days, plural, one {# day} other {# days}} after the review and cannot be removed sooner. We use it only to improve this feature.',
     description:
-      'Explanation under the share checkbox. {days} is how long a shared review is kept. "Network Canvas" is a product name and is not translated.',
+      'Explanation under the share checkbox, read by a researcher deciding whether to let the Network Canvas team keep a copy of an automated review of their protocol. "Findings" are the problems the review found and "suggested fixes" the changes it proposes. "Files" are the images, video and data files a protocol uses; "saved API keys" are access keys for services such as maps. {days} is how long a shared review is kept, counted from the review. "Network Canvas" and "Architect" are product names and are not translated.',
   },
   synopsisTitle: {
     id: 'architect.protocolReview.wizard.synopsis.title',

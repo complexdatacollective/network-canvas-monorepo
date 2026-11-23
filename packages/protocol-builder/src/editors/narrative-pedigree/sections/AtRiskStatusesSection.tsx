@@ -43,6 +43,7 @@ export default function AtRiskStatusesSection() {
 
   return (
     <BuilderSection
+      sectionKey="at-risk-statuses"
       title={intl.formatMessage(narrativePedigreeMessages.atRiskTitle)}
     >
       <Field<typeof ToggleField>
