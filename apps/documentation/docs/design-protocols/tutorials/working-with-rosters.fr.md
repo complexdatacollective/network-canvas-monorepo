@@ -2,7 +2,7 @@
 title: Utiliser des données de liste
 wip: false
 navOrder: 2
-translatedFrom: 365181d0e0314f85b07e843a5c61c5ab8b071d85
+translatedFrom: ba97419e4a86b3ad769a2582fba5de8f35e2cf57
 ---
 
 <SummaryCard duration="30 minutes">
@@ -132,7 +132,7 @@ Vous pouvez ajouter la liste depuis la [bibliothèque de ressources](/fr/design-
 
 <AppOnly app="current">
 
-Dans Architect, votre protocole, y compris les ressources de liste que vous ajoutez, est enregistré automatiquement au fil de votre travail dans la [bibliothèque de protocoles (dans le navigateur)](/fr/design-protocols/saving-and-backing-up), et la liste est intégrée au fichier `.netcanvas` lorsque vous téléchargez le protocole.
+Dans Architect, votre protocole, y compris les ressources de liste que vous ajoutez, est enregistré automatiquement au fil de votre travail dans la [bibliothèque de protocoles (dans le navigateur)](/fr/design-protocols/architect/saving-and-backing-up), et la liste est intégrée au fichier `.netcanvas` lorsque vous téléchargez le protocole.
 
 </AppOnly>
 
@@ -196,7 +196,7 @@ Enfin, vous pouvez permettre aux personnes participantes de rechercher parmi les
 
 <AppOnly app="current">
 
-Dans un protocole rédigé en plusieurs langues (voir [Traduire votre protocole](/fr/design-protocols/translating-your-protocol)), les libellés donnés aux informations des cartes et aux options de tri sont traduits comme n’importe quel autre texte, mais pas les valeurs de la liste. Une liste est une ressource, et son contenu est le même dans toutes les langues. Lorsque les personnes participantes liront des valeurs de la liste, comme des professions ou des intitulés de cours, vérifiez qu’elles seront comprises par les personnes participantes de chacune des langues du protocole.
+Dans un protocole rédigé en plusieurs langues (voir [Traduire votre protocole](/fr/design-protocols/tutorials/translating-your-protocol)), les libellés donnés aux informations des cartes et aux options de tri sont traduits comme n’importe quel autre texte, mais pas les valeurs de la liste. Une liste est une ressource, et son contenu est le même dans toutes les langues. Lorsque les personnes participantes liront des valeurs de la liste, comme des professions ou des intitulés de cours, vérifiez qu’elles seront comprises par les personnes participantes de chacune des langues du protocole.
 
 </AppOnly>
 

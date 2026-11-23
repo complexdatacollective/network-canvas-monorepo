@@ -2,7 +2,7 @@
 title: Trabajar con listas predefinidas
 wip: false
 navOrder: 2
-translatedFrom: 365181d0e0314f85b07e843a5c61c5ab8b071d85
+translatedFrom: ba97419e4a86b3ad769a2582fba5de8f35e2cf57
 ---
 
 <SummaryCard duration="30 minutos">
@@ -134,7 +134,7 @@ Puedes añadir la lista predefinida desde la [biblioteca de recursos](/es/design
 
 <AppOnly app="current">
 
-En Architect, tu protocolo, incluidos los recursos de listas predefinidas que añadas, se guarda automáticamente en la [biblioteca](/es/design-protocols/saving-and-backing-up) de tu navegador mientras trabajas, y la lista se incorpora al archivo `.netcanvas` cuando descargas el protocolo.
+En Architect, tu protocolo, incluidos los recursos de listas predefinidas que añadas, se guarda automáticamente en la [biblioteca](/es/design-protocols/architect/saving-and-backing-up) de tu navegador mientras trabajas, y la lista se incorpora al archivo `.netcanvas` cuando descargas el protocolo.
 
 </AppOnly>
 
@@ -198,7 +198,7 @@ Por último, puedes permitir que quienes participan busquen entre los elementos 
 
 <AppOnly app="current">
 
-En un protocolo escrito en más de un idioma (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol)), las etiquetas de los datos de las tarjetas y de las opciones de ordenación se traducen como cualquier otro texto, pero los valores de la lista predefinida no. Una lista predefinida es un recurso, y su contenido es el mismo en todos los idiomas. Si quienes participan van a leer valores de la lista, como profesiones o nombres de asignaturas, comprueba que se entiendan en cada uno de los idiomas del protocolo.
+En un protocolo escrito en más de un idioma (consulta [Traducir tu protocolo](/es/design-protocols/tutorials/translating-your-protocol)), las etiquetas de los datos de las tarjetas y de las opciones de ordenación se traducen como cualquier otro texto, pero los valores de la lista predefinida no. Una lista predefinida es un recurso, y su contenido es el mismo en todos los idiomas. Si quienes participan van a leer valores de la lista, como profesiones o nombres de asignaturas, comprueba que se entiendan en cada uno de los idiomas del protocolo.
 
 </AppOnly>
 

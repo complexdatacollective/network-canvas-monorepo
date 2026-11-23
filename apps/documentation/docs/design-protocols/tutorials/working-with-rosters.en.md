@@ -133,7 +133,7 @@ You can add the roster through the [Resource Library](/en/design-protocols/key-c
 
 <AppOnly app="current">
 
-In Architect, your protocol — including any roster resources you add — is saved automatically in your browser's [library](/en/design-protocols/saving-and-backing-up) as you work, and the roster is embedded into the `.netcanvas` file when you download the protocol.
+In Architect, your protocol — including any roster resources you add — is saved automatically in your browser's [library](/en/design-protocols/architect/saving-and-backing-up) as you work, and the roster is embedded into the `.netcanvas` file when you download the protocol.
 
 </AppOnly>
 
@@ -197,7 +197,7 @@ Finally, you can permit participants to search through the roster items using a 
 
 <AppOnly app="current">
 
-In a protocol written in more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)), the labels given to card details and sort options are translated like any other text, but the roster's values are not. A roster is a resource, and its contents are the same in every language. Where participants will read values from the roster, such as occupations or course titles, check that participants using each of the protocol's languages will understand them.
+In a protocol written in more than one language (see [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol)), the labels given to card details and sort options are translated like any other text, but the roster's values are not. A roster is a resource, and its contents are the same in every language. Where participants will read values from the roster, such as occupations or course titles, check that participants using each of the protocol's languages will understand them.
 
 </AppOnly>
 

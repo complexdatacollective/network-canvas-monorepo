@@ -1,7 +1,7 @@
 ---
 title: Clasificación ordinal
 navOrder: 12
-translatedFrom: 4d63fb56c2937ccb0144b4f208adaba2681c5333
+translatedFrom: c7f9bfb1211b720862e206ee2e0e11c5feeb7b83
 ---
 
 <InterfaceSummary type="OrdinalBin">
@@ -28,7 +28,7 @@ Una etapa «Clasificación ordinal» puede incluir varias [preguntas](/es/design
 
 ### Personalizar la redacción predeterminada {#customize-built-in-wording}
 
-Cuando **Exigir que se coloquen todos los nodos** está activado en la sección **Colocación de nodos** de la etapa, quienes participan no pueden continuar hasta que todos los nodos estén en un contenedor. El aviso que ven si lo intentan está en **Nodos sin colocar**, en la sección **Personalizar la redacción predeterminada** del editor de etapas. Network Canvas aporta una redacción inicial, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). El aviso puede mostrar el nombre del tipo de nodo de la etapa, que se inserta como una píldora con el botón de texto dinámico (piped text) del campo.
+Cuando **Exigir que se coloquen todos los nodos** está activado en la sección **Colocación de nodos** de la etapa, quienes participan no pueden continuar hasta que todos los nodos estén en un contenedor. El aviso que ven si lo intentan está en **Nodos sin colocar**, en la sección **Personalizar la redacción predeterminada** del editor de etapas. Network Canvas aporta una redacción inicial, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). El aviso puede mostrar el nombre del tipo de nodo de la etapa, que se inserta como una píldora con el botón de texto dinámico (piped text) del campo.
 
 </AppOnly>
 
@@ -46,7 +46,7 @@ Usa esta interfaz para recoger datos de escala ordinal o de intervalo sobre los 
 
 Como el espacio es limitado, evita usar en esta interfaz escalas de más de seis contenedores. Con escalas más grandes, las etiquetas de los contenedores se vuelven difíciles de leer y los demás elementos visuales de la interfaz se ven comprometidos.
 
-Las etiquetas de los contenedores pueden ser bastante más largas que una o dos palabras: una frase corta no es ningún problema. Cada etiqueta se reduce, paso a paso, hasta caber en el espacio de su contenedor, en lugar de cortarse a mitad de palabra, y un lector de pantalla siempre lee la etiqueta completa. Sin embargo, esa reducción tiene un límite: una etiqueta tan larga que desborda su contenedor incluso con el tamaño mínimo se recorta, algo que es más probable con una escala más grande o en una pantalla pequeña. Comprueba tu etiqueta más larga en la [vista previa](/es/design-protocols/preview-mode) con el tamaño que usarán quienes participan. Las etiquetas pueden usar texto en **negrita** y _cursiva_ para resaltar algo. Las etiquetas cortas se mantienen más grandes y se leen mejor de un vistazo.
+Las etiquetas de los contenedores pueden ser bastante más largas que una o dos palabras: una frase corta no es ningún problema. Cada etiqueta se reduce, paso a paso, hasta caber en el espacio de su contenedor, en lugar de cortarse a mitad de palabra, y un lector de pantalla siempre lee la etiqueta completa. Sin embargo, esa reducción tiene un límite: una etiqueta tan larga que desborda su contenedor incluso con el tamaño mínimo se recorta, algo que es más probable con una escala más grande o en una pantalla pequeña. Comprueba tu etiqueta más larga en la [vista previa](/es/design-protocols/architect/preview-mode) con el tamaño que usarán quienes participan. Las etiquetas pueden usar texto en **negrita** y _cursiva_ para resaltar algo. Las etiquetas cortas se mantienen más grandes y se leen mejor de un vistazo.
 
 </BadPractice>
 

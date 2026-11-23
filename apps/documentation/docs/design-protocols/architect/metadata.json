@@ -1,0 +1,11 @@
+{
+  "type": "folder",
+  "localeLabels": {
+    "en": "Architect",
+    "es": "Architect",
+    "fr": "Architect"
+  },
+  "isExpanded": false,
+  "navOrder": 3,
+  "slug": "architect"
+}

@@ -1,6 +1,6 @@
 ---
 title: Translating Your Protocol
-navOrder: 5
+navOrder: 4
 date: 22nd October 2026
 ---
 
@@ -230,7 +230,7 @@ When a cell is left, Architect checks that its text can be saved and, if it cann
 
 Some texts vary according to the number or the person they refer to, such as the items of a Family Pedigree [completeness checklist](/en/design-protocols/interface-documentation/family-pedigree#customize-built-in-wording), or the message for a validation rule that takes a number. Such a cell lists each version, with placeholders, such as a person's name, shown as labeled pills. When the cell is opened, each version has its own labeled box. The number of versions follows the grammar of the language: a language that distinguishes one, two and five items has a version for each. Each text sets which placeholders a version must include, and the rule is the same in every language. The button that inserts a placeholder is highlighted while a version still requires it, and leaving the cell names any placeholder that is missing. A version used for a single number, such as English "one item", may omit the number.
 
-Researchers' own text can also show values, such as the participant's name. Showing a value is optional in every language, so a translation may leave out a value that the default language's text shows (see [Translating text that shows values](/en/design-protocols/piped-text#translating-text-that-shows-values)).
+Researchers' own text can also show values, such as the participant's name. Showing a value is optional in every language, so a translation may leave out a value that the default language's text shows (see [Translating text that shows values](/en/design-protocols/key-concepts/piped-text#translating-strings-that-show-values)).
 
 Formatted text, such as the content of an Information stage, is displayed as participants will see it until the cell is opened. It then shows the same formatting controls as the stage editor, which remain in view while a long text is scrolled.
 
@@ -285,7 +285,7 @@ Some wording belongs to a particular kind of stage, such as the button that fini
 | [Categorical Bin](/en/design-protocols/interface-documentation/categorical-bin#customize-built-in-wording) and [Ordinal Bin](/en/design-protocols/interface-documentation/ordinal-bin#customize-built-in-wording)                                                                                                                                     | The notice shown when a participant tries to continue before placing every node                                                                        |
 | [Language Chooser](/en/design-protocols/interface-documentation/language-chooser#configuring-the-language-chooser)                                                                                                                                                                                                                                    | The heading above the list of languages                                                                                                                |
 
-Some of this wording can show values the interview fills in. Each such value is a labeled pill in the field, inserted with the field's piped text button: the number of nodes in a minimum or maximum notice, the name of the stage's node type (as the codebook names it) in the name generator and bin notices, and the condition's name in a Narrative Pedigree's key. A Family Pedigree's name for the participant can also show an attribute of the participant, such as a name given on an earlier Ego Form (see [Piped text](/en/design-protocols/piped-text)).
+Some of this wording can show values the interview fills in. Each such value is a labeled pill in the field, inserted with the field's piped text button: the number of nodes in a minimum or maximum notice, the name of the stage's node type (as the codebook names it) in the name generator and bin notices, and the condition's name in a Narrative Pedigree's key. A Family Pedigree's name for the participant can also show an attribute of the participant, such as a name given on an earlier Ego Form (see [Piped text](/en/design-protocols/key-concepts/piped-text)).
 
 The **Customize built-in wording** section can be switched off. While it is off, the stage uses Network Canvas's wording in every language, and switching it off puts that wording back, after asking, if any of it has been changed. The section starts switched on when the protocol has more than one language, so that wording still to be translated is in view, and when the stage's wording has already been changed. A stage with no wording to customize, such as a Name Generator with no minimum or maximum, has no such section.
 
@@ -313,7 +313,7 @@ In the translation table, the interview text forms the final group, **Interview 
 
 ## Previewing a language
 
-[Preview mode](/en/design-protocols/preview-mode) shows a stage as participants will see it, in a language chosen from the **Preview language** menu above the preview (see [Choosing the preview language](/en/design-protocols/preview-mode#choosing-the-preview-language)). A text with no translation in the preview language appears as it would to a participant using that language. Previewing each stage in each language allows the team to check a translation, including the length of translated text, before it is pretested with participants.
+[Preview mode](/en/design-protocols/architect/preview-mode) shows a stage as participants will see it, in a language chosen from the **Preview language** menu above the preview (see [Choosing the preview language](/en/design-protocols/architect/preview-mode#choosing-the-preview-language)). A text with no translation in the preview language appears as it would to a participant using that language. Previewing each stage in each language allows the team to check a translation, including the length of translated text, before it is pretested with participants.
 
 ![A preview of a Language Chooser stage in Spanish. The Preview language menu above it is set to español, and the stage's heading reads "Elige un idioma".](/assets/img/architect/localization/preview-language.png)
 

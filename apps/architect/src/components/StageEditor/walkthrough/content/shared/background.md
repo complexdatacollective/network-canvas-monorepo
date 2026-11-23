@@ -13,4 +13,4 @@ The background sits behind the whole stage. **Concentric Circles** draws a numbe
 
 > Do: Consider customizing the background to orient participants to the activity or to give the layout meaning, for example dividing the canvas into quadrants or social contexts that positions can then be read against.
 
-Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/design-protocols/responsive-svg-backgrounds).
+Read more about [responsive SVG backgrounds](https://documentation.networkcanvas.com/design-protocols/tutorials/responsive-svg-backgrounds).

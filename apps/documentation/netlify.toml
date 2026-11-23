@@ -39,12 +39,169 @@ status = 301
 
 [[redirects]]
 from = "/en/design-protocols/installing-architect-desktop"
-to = "/en/design-protocols/installing-architect-classic"
+to = "/en/design-protocols/architect/installing-architect-classic"
 status = 301
 
 [[redirects]]
 from = "/en/design-protocols/dynamic-values"
-to = "/en/design-protocols/piped-text"
+to = "/en/design-protocols/key-concepts/piped-text"
+status = 301
+
+# Design Protocols reorganisation: pages moved into the Tutorials, Architect
+# and Key concepts folders, in every language. An address without a language
+# gains one from the locale edge function, then meets these rules.
+
+[[redirects]]
+from = "/en/design-protocols/piped-text"
+to = "/en/design-protocols/key-concepts/piped-text"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/translating-your-protocol"
+to = "/en/design-protocols/tutorials/translating-your-protocol"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/custom-node-shapes"
+to = "/en/design-protocols/tutorials/custom-node-shapes"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/responsive-svg-backgrounds"
+to = "/en/design-protocols/tutorials/responsive-svg-backgrounds"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/choosing-architect"
+to = "/en/design-protocols/architect/choosing-architect"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/installing-architect-classic"
+to = "/en/design-protocols/architect/installing-architect-classic"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/preview-mode"
+to = "/en/design-protocols/architect/preview-mode"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/saving-and-backing-up"
+to = "/en/design-protocols/architect/saving-and-backing-up"
+status = 301
+
+[[redirects]]
+from = "/en/design-protocols/faq"
+to = "/en/design-protocols/architect/faq"
+status = 301
+
+# The Protocol Gallery page was removed; send readers to the gallery itself.
+[[redirects]]
+from = "/en/design-protocols/protocol-gallery"
+to = "https://protocolgallery.networkcanvas.com/"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/piped-text"
+to = "/es/design-protocols/key-concepts/piped-text"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/translating-your-protocol"
+to = "/es/design-protocols/tutorials/translating-your-protocol"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/custom-node-shapes"
+to = "/es/design-protocols/tutorials/custom-node-shapes"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/responsive-svg-backgrounds"
+to = "/es/design-protocols/tutorials/responsive-svg-backgrounds"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/choosing-architect"
+to = "/es/design-protocols/architect/choosing-architect"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/installing-architect-classic"
+to = "/es/design-protocols/architect/installing-architect-classic"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/preview-mode"
+to = "/es/design-protocols/architect/preview-mode"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/saving-and-backing-up"
+to = "/es/design-protocols/architect/saving-and-backing-up"
+status = 301
+
+[[redirects]]
+from = "/es/design-protocols/faq"
+to = "/es/design-protocols/architect/faq"
+status = 301
+
+# The Protocol Gallery page was removed; send readers to the gallery itself.
+[[redirects]]
+from = "/es/design-protocols/protocol-gallery"
+to = "https://protocolgallery.networkcanvas.com/es/"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/piped-text"
+to = "/fr/design-protocols/key-concepts/piped-text"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/translating-your-protocol"
+to = "/fr/design-protocols/tutorials/translating-your-protocol"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/custom-node-shapes"
+to = "/fr/design-protocols/tutorials/custom-node-shapes"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/responsive-svg-backgrounds"
+to = "/fr/design-protocols/tutorials/responsive-svg-backgrounds"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/choosing-architect"
+to = "/fr/design-protocols/architect/choosing-architect"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/installing-architect-classic"
+to = "/fr/design-protocols/architect/installing-architect-classic"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/preview-mode"
+to = "/fr/design-protocols/architect/preview-mode"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/saving-and-backing-up"
+to = "/fr/design-protocols/architect/saving-and-backing-up"
+status = 301
+
+[[redirects]]
+from = "/fr/design-protocols/faq"
+to = "/fr/design-protocols/architect/faq"
+status = 301
+
+# The Protocol Gallery page was removed; send readers to the gallery itself.
+[[redirects]]
+from = "/fr/design-protocols/protocol-gallery"
+to = "https://protocolgallery.networkcanvas.com/fr/"
 status = 301
 
 [[redirects]]
@@ -79,12 +236,12 @@ status = 301
 
 [[redirects]]
 from = "/en/design-protocols/key-concepts/preview-mode"
-to = "/en/design-protocols/preview-mode"
+to = "/en/design-protocols/architect/preview-mode"
 status = 301
 
 [[redirects]]
 from = "/en/design-protocols/key-concepts/responsive-svg-backgrounds"
-to = "/en/design-protocols/responsive-svg-backgrounds"
+to = "/en/design-protocols/tutorials/responsive-svg-backgrounds"
 status = 301
 
 [[redirects]]
@@ -199,12 +356,12 @@ status = 301
 
 [[redirects]]
 from = "/key-concepts/preview-mode"
-to = "/en/design-protocols/preview-mode"
+to = "/en/design-protocols/architect/preview-mode"
 status = 301
 
 [[redirects]]
 from = "/key-concepts/responsive-svg-backgrounds"
-to = "/en/design-protocols/responsive-svg-backgrounds"
+to = "/en/design-protocols/tutorials/responsive-svg-backgrounds"
 status = 301
 
 [[redirects]]
@@ -246,12 +403,12 @@ status = 301
 
 [[redirects]]
 from = "/en/desktop/key-concepts/preview-mode"
-to = "/en/design-protocols/preview-mode"
+to = "/en/design-protocols/architect/preview-mode"
 status = 301
 
 [[redirects]]
 from = "/en/desktop/key-concepts/responsive-svg-backgrounds"
-to = "/en/design-protocols/responsive-svg-backgrounds"
+to = "/en/design-protocols/tutorials/responsive-svg-backgrounds"
 status = 301
 
 [[redirects]]

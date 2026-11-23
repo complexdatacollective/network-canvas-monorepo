@@ -1,0 +1,309 @@
+---
+title: Texte dynamique
+navOrder: 14
+toc: true
+translatedFrom: f16ab735a61d439fbfced478ff7ef48a838d6e76
+---
+
+<Definition>
+  Le texte dynamique (piped text : des réponses ou des informations de
+  l’entretien insérées automatiquement dans un texte) est un texte dont la
+  valeur change dynamiquement en fonction des données ou du contexte de
+  l’entretien. Il vous permet d’inclure, lors de la conception de votre
+  entretien, un espace réservé qui est remplacé par la valeur dynamique réelle
+  lorsque la personne participante voit le texte.
+</Definition>
+
+## Objectif {#purpose}
+
+Les questionnaires assistés par ordinateur adaptent depuis longtemps la formulation des questions à la personne qui répond en insérant des réponses antérieures dans les questions suivantes, une technique généralement appelée _piping_ ou _text fill_ (insertion de texte). Les instruments de réseau en ont particulièrement besoin. Un interpréteur de noms (une question posée sur chaque alter, c’est-à-dire sur chaque personne que la personne participante a citée pendant l’entretien) pose les mêmes questions sur chaque alter, tour à tour, et une étape « Recensement des dyades » pose la même question sur chaque paire d’alters. Sans texte dynamique, ces questions doivent désigner l’alter de manière indirecte (« cette personne », « ces deux personnes ») et compter sur la personne participante pour relier la question au nœud affiché à l’écran.
+
+Nommer le nœud dans la question supprime cette étape d’inférence. « Avez-vous visité l’université Northwestern ou y avez-vous étudié ? » identifie son référent sans ambiguïté, tandis que « Avez-vous visité cette université ou y avez-vous étudié ? » ne le fait qu’en combinaison avec la disposition visuelle de l’interface. La différence est la plus marquée lorsque les nœuds se ressemblent, lorsque la personne participante a cité de nombreux alters et lorsque c’est la personne qui mène l’entretien qui lit la question à voix haute.
+
+Le texte dynamique permet aussi à une question ultérieure de s’appuyer sur une question antérieure. Une question peut rappeler la date que la personne participante a donnée pour un événement de sa vie, s’adresser à elle par le nom qu’elle a fourni ou être formulée différemment selon la réponse qu’elle a donnée à une question précédente. Une chaîne traduisible peut aussi contenir de la [logique](#logic), qui choisit entre plusieurs formulations selon des règles portant sur la personne participante, un nœud ou un lien.
+
+Network Canvas remplit le texte dynamique à partir de données déjà enregistrées dans l’entretien. Insérer une valeur dans une question n’enregistre pas cette valeur une seconde fois et ne l’envoie nulle part ailleurs.
+
+<TipBox>
+
+Le texte dynamique nécessite le [schéma 9](/fr/get-started/protocol-schema-information#schema-version-9). Les protocoles qui l’utilisent sont créés dans Architect et s’exécutent dans Fresco 5.0 ou version ultérieure, ou dans Interviewer 9.0 ou version ultérieure.
+
+</TipBox>
+
+## Considérations méthodologiques {#methodological-considerations}
+
+Le texte dynamique modifie le stimulus que reçoit chaque personne participante. Deux personnes participantes qui répondent à la « même » question d’un interpréteur de noms lisent des mots différents, car chaque question nomme un alter différent. Pour la plupart des instruments de réseau, c’est l’effet recherché : le construit mesuré est la relation de la personne participante avec un alter précis, et nommer cet alter rend la question plus précise. Le texte dynamique appelle néanmoins trois précautions.
+
+- **Présentez la question modèle, et non la formulation affichée.** Lorsque vous décrivez un instrument dans une publication ou dans une demande auprès d’un comité d’éthique, donnez la question telle qu’elle est rédigée dans le protocole, en signalant l’élément dynamique, et indiquez quel attribut l’a fourni. Lorsqu’une chaîne traduisible contient de la [logique](#logic), présentez chacune de ses formulations, avec les règles ou la réponse qui la sélectionne.
+- **Précisez la formulation utilisée lorsque l’information manque.** N’importe quel attribut peut être absent au moment où une question s’affiche (voir [Lorsque l’information manque](#when-information-is-missing)). La formulation de remplacement fait partie de l’instrument et doit être relue avec le même soin que la formulation principale.
+- **Menez l’étude pilote avec des données réalistes.** Les noms longs, les noms qui sont aussi des mots courants et les réponses inattendues peuvent produire des questions qui se lisent mal. Les entretiens cognitifs et les sessions d’étude pilote (voir [Mener une étude pilote](/fr/get-started/planning-a-study/piloting-your-study)) doivent couvrir l’éventail des valeurs que les personnes participantes sont susceptibles de fournir.
+
+Recourir au texte dynamique est aussi une décision de conception qui touche à la divulgation d’informations à l’écran. Une question qui reprend la réponse d’une personne participante affiche de nouveau cette réponse à l’écran, ce qui peut compter lorsque les entretiens se déroulent dans des lieux partagés ou publics. Les [attributs chiffrés](/fr/design-protocols/key-concepts/variables#encrypted-variables) ne sont jamais proposés comme texte dynamique.
+
+## Ce qui peut être inséré {#what-can-be-piped}
+
+Chaque information insérée dans une chaîne traduisible est une _valeur dynamique_. Une valeur dynamique est l’une des suivantes :
+
+- **La date du jour.** C’est la seule information sur l’entretien lui-même qu’une chaîne traduisible peut afficher. Il s’agit de la date à laquelle la personne participante lit la chaîne.
+- **Un attribut de la personne participante**, comme un nom ou une réponse donnée dans une étape « Formulaire ego ».
+- **Le libellé d’un nœud que concerne la chaîne**, dans les étapes et les formulaires qui portent sur un nœud ou sur deux nœuds à la fois. Il s’agit du texte que l’entretien affiche sur le nœud : une question d’une étape « Recensement des dyades » peut ainsi demander « Jim et Alice sont-ils amis ? » en utilisant les mêmes noms que ceux que la personne participante voit sur les deux nœuds. Voir [Libellés des nœuds](#node-labels).
+- **Un attribut du nœud ou du lien que concerne la chaîne**, dans ces mêmes étapes et formulaires. Une question d’une étape « Formulaire par alter » (un formulaire pour chaque alter) peut par exemple nommer l’université que la personne participante a indiquée pour ce nœud lors d’une étape précédente.
+
+Les types d’attributs suivants peuvent être insérés : texte, nombre, scalaire, date, booléen (oui ou non), ordinal et catégoriel. Les attributs chiffrés (protégés par une phrase secrète) ne sont jamais proposés, pas plus que les attributs de disposition ou de lieu.
+
+Les valeurs disponibles pour une chaîne traduisible dépendent de l’endroit où cette chaîne apparaît. Voir [Où utiliser le texte dynamique](#where-piped-text-can-be-used).
+
+Grâce à la logique, une chaîne traduisible peut aussi changer de formulation sans afficher de valeur. Voir [Logique](#logic).
+
+## Insérer du texte dynamique dans Architect {#inserting-piped-text-in-architect}
+
+Chaque champ de texte qui accepte le texte dynamique comporte deux boutons à cet effet dans sa barre d’outils. Le bouton seringue, intitulé **Insérer du texte dynamique à partir des métadonnées de l’entretien ou d’un attribut de réseau**, insère des valeurs. Le bouton situé à côté, intitulé **Insérer de la logique**, insère de la [logique](#logic). Le menu du bouton seringue ne contient que des valeurs, tout comme le menu qui s’ouvre lorsque vous saisissez `{`. Pour insérer une valeur :
+
+1. Placez le curseur à l’endroit du texte où la valeur doit apparaître.
+2. Cliquez sur le bouton en forme de seringue, ou saisissez `{`.
+3. Un menu présente les valeurs que cette chaîne peut afficher. Saisissez du texte pour filtrer la liste.
+4. Choisissez une valeur en cliquant dessus, ou appuyez sur Entrée pour choisir la valeur mise en évidence.
+
+![Le menu du texte dynamique ouvert dans la question d’un champ d’une étape « Formulaire par alter ». « Libellé du nœud » figure en premier sous « Attributs contextuels ».](/assets/img/piped-text/insert-menu.png 'Insertion d’une valeur dynamique dans la question d’un champ de formulaire')
+
+Le menu regroupe les valeurs sous trois intitulés, dans cet ordre :
+
+- **Attributs contextuels** : le libellé et les attributs de l’entité à laquelle se rapporte la chaîne traduisible, c’est-à-dire le nœud ou le lien sur lequel porte un formulaire, ou le nœud sur lequel porte une consigne. Le libellé d’un nœud figure en premier, sous la forme **Libellé du nœud**. Lorsque la chaîne concerne deux nœuds, comme une paire dans une étape « Recensement des dyades » ou « Recensement de la force des liens », ou les deux extrémités d’un lien, chaque valeur nomme le nœud auquel elle appartient, par exemple **Premier nœud : libellé**, **Premier nœud : nickname** et **Second nœud : libellé** (voir [Où utiliser le texte dynamique](#where-piped-text-can-be-used)).
+- **Attributs d’ego** : les attributs de la personne participante.
+- **Attributs de l’entretien** : la date du jour.
+
+Sous chaque valeur, le menu indique de quel type d’attribut il s’agit. Un attribut booléen dont les réponses n’ont pas de libellés figure dans la liste mais ne peut pas être choisi, car la chaîne n’aurait rien à afficher pour sa réponse. Son entrée affiche **Ajoutez d’abord des libellés pour ses réponses oui et non** ou, pour un attribut renseigné au moyen d’un Toggle, **Un Toggle n’a pas de libellés pour ses réponses. Utilisez plutôt une formulation différente pour chaque réponse.** Voir [Formulation différente pour chaque réponse](#different-wording-for-each-answer).
+
+Pour saisir une accolade littérale, appuyez sur Échap après avoir saisi `{`. Le menu se ferme et l’accolade reste dans le texte.
+
+Dans l’éditeur, une valeur dynamique apparaît sous la forme d’une pastille qui commence par l’icône de la seringue et porte le nom de son attribut, par exemple **nickname**. Lorsque la chaîne traduisible concerne deux nœuds, la pastille nomme aussi le nœud, par exemple **Premier nœud : nickname**. Le libellé d’un nœud apparaît sous la forme **Libellé du nœud**, ou **Premier nœud : libellé** et **Second nœud : libellé**, et la date du jour sous la forme **Date du jour**. Les mêmes pastilles apparaissent dans le [tableau des traductions](/fr/design-protocols/tutorials/translating-your-protocol#the-translation-table) et dans l’onglet **Résumé** du protocole. L’aperçu interactif affiché à côté d’un champ de formulaire montre la pastille à la place de la valeur.
+
+![Une question d’une étape « Formulaire par alter » qui se lit « Did you visit [Node label] or study there? » (Avez-vous visité [Libellé du nœud] ou y avez-vous étudié ?), avec la même question dans l’aperçu interactif.](/assets/img/piped-text/value-in-question.png 'Le libellé d’un nœud inséré dans une question d’une étape « Formulaire par alter »')
+
+![Une consigne d’une étape « Recensement des dyades » qui se lit « To the best of your knowledge, do [First node: label] and [Second node: label] spend time together outside of class? » (À votre connaissance, [Premier nœud : libellé] et [Second nœud : libellé] passent-ils du temps ensemble en dehors des cours ?)](/assets/img/piped-text/pair-prompt.png 'Les deux nœuds d’une paire nommés dans une consigne d’une étape « Recensement des dyades »')
+
+Architect enregistre les valeurs qu’utilisent les chaînes traduisibles de chaque étape. Un attribut inséré dans n’importe laquelle de ces chaînes est considéré comme utilisé dans le [livre de codes](/fr/design-protocols/key-concepts/codebook) (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) et ne peut pas être supprimé tant qu’il n’a pas été retiré de cette chaîne.
+
+## Lorsque l’information manque {#when-information-is-missing}
+
+N’importe quel attribut peut manquer au moment où la personne participante arrive à une chaîne traduisible qui l’insère. La personne participante a pu refuser de répondre, la [logique de saut](/fr/design-protocols/key-concepts/skip-logic) a pu faire sauter l’étape qui le recueille, ou une liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit) peut ne pas le contenir. Revenir à une étape précédente pour modifier une réponse, ou supprimer un nœud, peut aussi laisser un attribut sans valeur, même lorsque le protocole le recueille normalement en amont.
+
+Pour qu’une personne participante ne tombe jamais sur une phrase incomplète, chaque valeur susceptible de manquer est insérée avec deux versions du texte qui l’entoure :
+
+- **Si connu**, qui affiche la valeur, et que la personne participante voit lorsque la valeur est présente.
+- **Si inconnu**, que la personne participante voit à la place lorsque la valeur manque.
+
+Lorsque vous insérez la valeur, Architect ajoute les deux versions. Rédigez chaque version pour le cas dans lequel elle s’affiche. Une version peut être laissée vide, de sorte que rien ne s’affiche dans ce cas. Dans l’éditeur, une version vide indique **Rien n’est affiché**.
+
+![Le titre d’une étape « Information » qui se lit « Thank you » (Merci), suivi d’une version « Si connu » contenant une virgule et la valeur first_name, d’une version « Si inconnu » qui indique « Rien n’est affiché », et d’un point d’exclamation.](/assets/img/piped-text/missing-value-versions.png 'Versions « Si connu » et « Si inconnu » du titre d’une page')
+
+Dans l’exemple ci-dessus, le titre d’une étape « Information » remercie la personne participante en l’appelant par son nom ; le tableau suivant le transpose en français :
+
+| Version    | Texte rédigé                  | Ce que voit la personne participante |
+| ---------- | ----------------------------- | ------------------------------------ |
+| Si connu   | « , » suivi de **first_name** | Merci, Sam !                         |
+| Si inconnu | (vide)                        | Merci !                              |
+
+« Merci » précède les versions et « ! » les suit, si bien que les deux cas partagent cette formulation.
+
+Dans l’éditeur, une valeur qui a des versions s’affiche sous la forme de sa pastille tant qu’elle n’est pas sélectionnée. Cliquer sur la pastille, ou l’atteindre avec les touches fléchées puis appuyer sur Entrée ou sur Espace, ouvre ses versions ; appuyer sur Échap, ou déplacer le focus hors du texte, les replie dans la pastille. Une valeur que vous venez d’insérer est d’abord ouverte, afin que ses versions puissent être rédigées immédiatement. Ailleurs, comme dans la liste des champs de formulaire, l’aperçu du champ et l’onglet **Résumé** du protocole, la valeur n’apparaît que sous la forme de sa pastille.
+
+Zéro et « non » sont des réponses, et non des valeurs manquantes : un nombre égal à 0, ou une réponse « non » à une question par oui ou non, affiche la version **Si connu**. Un texte vide ou ne contenant que des espaces, ainsi qu’une réponse catégorielle sans aucune option sélectionnée, sont considérés comme manquants.
+
+La date du jour et le libellé d’un nœud ne manquent jamais : ils sont donc insérés seuls, sans versions. La seule exception est la consigne d’une étape « Classement ordinal » ou « Classement par catégories » réglée sur **Toucher pour placer**. Une fois tous les nœuds placés, plus aucun nœud n’est en cours de placement ; le libellé du nœud à placer a donc lui aussi besoin d’une version **Si inconnu**.
+
+## Libellés des nœuds {#node-labels}
+
+Le libellé d’un nœud n’est pas un attribut unique. L’entretien le détermine pour chaque nœud à partir des données propres à ce nœud : un attribut nommé « name » ; à défaut, un attribut dont le nom contient « name » ; à défaut, pour des données importées, une colonne dont le nom contient « name », même si le livre de codes ne la mentionne pas ; à défaut, le premier attribut de type texte qui a une valeur. Un nœud qui n’a rien de tout cela s’affiche avec le libellé « Sans nom » pendant l’entretien. Le libellé inséré suit les mêmes règles : il correspond donc toujours au texte affiché sur le nœud, même lorsque deux nœuds du même type tirent leur libellé d’attributs différents. Lorsque le libellé provient d’un attribut chiffré, la chaîne traduisible l’affiche de la même manière que le nœud l’affiche. Voir la page [Libellés des nœuds](/fr/design-protocols/key-concepts/node-labelling) pour en savoir plus sur le choix des libellés.
+
+Une étape « Arbre généalogique » attribue ses libellés aux nœuds à sa manière, et les questions et les indications de son formulaire affichent le libellé que montre l’arbre généalogique : le nom que la personne participante a saisi, « Vous » pour la personne participante ou, pour un proche laissé sans nom, le terme que l’étape attribue en fonction de la relation de parenté, comme « Mère » ou « Sœur 2 ». Ce terme provient de la formulation de l’étape et des termes de parenté choisis dans le réglage **Termes désignant les membres de la famille** de cette étape. Lorsque la personne participante modifie dans le panneau latéral le nom, l’identité de genre ou le sexe assigné à la naissance d’un proche, le libellé affiche ce qu’affichera l’arbre généalogique une fois les modifications enregistrées. Pour un proche sans nom, il s’agit du libellé que l’étape enregistre comme nom de ce proche lorsque la personne participante quitte l’étape.
+
+Le libellé est la manière habituelle d’identifier un nœud dans une question, comme dans « Jim et Alice sont-ils amis ? ». Il est préférable d’utiliser un attribut spécifique lorsque la chaîne traduisible a besoin de cette réponse précise, comme un surnom, même si le libellé affiche autre chose.
+
+## Logique {#logic}
+
+La logique est un groupe de formulations alternatives, dont la personne participante ne voit qu’une seule. Elle s’insère avec le bouton **Insérer de la logique**, situé à côté du bouton seringue dans la barre d’outils de chaque champ de texte qui accepte le texte dynamique. Le menu de ce bouton propose :
+
+- **Si … sinon** et **Sauf si … sinon**, qui choisissent une formulation selon des règles que vous définissez. Voir [Blocs « Si »](#if-blocks).
+- Chaque attribut catégoriel, ordinal ou booléen que la chaîne peut afficher, avec la mention **Formulation différente pour chaque réponse**. Voir [Formulation différente pour chaque réponse](#different-wording-for-each-answer).
+- Chaque attribut de type nombre ou scalaire que la chaîne peut afficher, avec la mention **Formulation adaptée au nombre**. Voir [Formulation pour les nombres au singulier ou au pluriel](#wording-for-singular-or-plural-numbers).
+- Dans les questions et les indications du formulaire d’une étape « Arbre généalogique », **Personne participante ou autre personne**, avec la mention **Formulation différente pour la personne participante et pour toute autre personne**. Voir [Formulation pour la personne participante ou pour une autre personne](#wording-for-the-participant-or-someone-else).
+
+Les attributs figurent sous les mêmes intitulés que dans le menu du bouton seringue. Vous pouvez filtrer le menu en tapant du texte, mais il ne s’ouvre pas lorsque vous saisissez `{`.
+
+Dans l’éditeur, la logique apparaît sous la forme d’une pastille, tout comme une valeur. Elle a sa propre couleur et sa propre icône à la place de la seringue, afin qu’on puisse la distinguer d’une valeur. Sélectionner la pastille ouvre la logique sur place, avec une ligne pour chacune de ses formulations. Un élément de logique qui vient d’être inséré est ouvert d’emblée. Lorsque la logique est repliée, la pastille montre aussi un aperçu de ce que disent ses formulations.
+
+Une formulation peut être laissée vide, de sorte que rien ne s’affiche dans ce cas, et elle peut contenir des valeurs et d’autres éléments de logique.
+
+La même logique peut être utilisée dans le libellé propre à un type de nœud. Voir [Libellés dynamiques](/fr/design-protocols/key-concepts/node-labelling#dynamic-labels).
+
+### Blocs « Si » {#if-blocks}
+
+Un bloc « Si » affiche une formulation lorsque des règles que vous définissez sont satisfaites, et une autre sinon. Pour en insérer un :
+
+1. Placez le curseur à l’endroit du texte où la formulation doit apparaître.
+2. Cliquez sur **Insérer de la logique**.
+3. Choisissez **Si … sinon**, que le menu décrit ainsi : **Une formulation lorsque les règles que vous définissez sont satisfaites, une autre sinon**. Pour attribuer la première formulation au cas où les règles ne sont pas satisfaites, choisissez plutôt **Sauf si … sinon**.
+4. Une boîte de dialogue intitulée **Quand ce texte doit-il être affiché ?** s’ouvre. Définissez les règles (voir [Règles](#rules)), puis choisissez **Enregistrer les règles**.
+
+Le bloc « Si » est inséré avec deux lignes. La première porte le libellé **Si :** suivi de ses règles, ou **Sauf si :** suivi de ses règles, et contient la formulation de ce cas. La seconde, **Sinon**, contient la formulation affichée lorsqu’aucune autre ligne ne s’applique. Rédigez la formulation de chaque ligne à côté de son libellé.
+
+Un bloc « Si » ouvert comporte les commandes suivantes :
+
+- **Modifier les règles**, sur chaque ligne qui a des règles, rouvre l’éditeur de règles de cette ligne.
+- **Ajouter « Sinon, si »** demande un autre ensemble de règles, puis ajoute une ligne portant le libellé **Sinon, si :** suivi de ces règles. L’entretien examine les lignes de haut en bas et affiche la formulation de la première ligne qui s’applique.
+- **Supprimer ce cas**, sur chaque ligne lorsque le bloc compte plus d’une ligne avec des règles, supprime cette ligne avec ses règles et sa formulation. Lorsqu’il ne reste qu’une ligne avec des règles, elle ne peut être supprimée qu’en retirant de la chaîne le bloc « Si » tout entier.
+
+Par exemple, une question d’une étape « Formulaire par alter » pourrait dépendre de l’âge enregistré pour chaque personne :
+
+| Ligne                         | Texte rédigé                            |
+| ----------------------------- | --------------------------------------- |
+| Si : l’âge est inférieur à 18 | Quelle école fréquente cette personne ? |
+| Sinon                         | Où cette personne travaille-t-elle ?    |
+
+L’entretien réévalue un bloc « Si » chaque fois que changent les réponses ou les liens que testent ses règles : la formulation reste ainsi à jour au fil de l’entretien.
+
+### Règles {#rules}
+
+Les règles se définissent dans le même éditeur de règles que celui des [filtres et de la logique de saut](/fr/design-protocols/key-concepts/skip-logic). Ce qu’une règle peut tester dépend de ce à quoi se rapporte la chaîne traduisible :
+
+- **Un attribut de la personne participante.** C’est possible dans chaque chaîne traduisible qui accepte des valeurs dynamiques.
+- **Un attribut du nœud** que concerne la chaîne, dans une chaîne qui se rapporte à un nœud.
+- **Les liens de ce nœud** : le fait que le nœud ait ou non un lien d’un type donné, un attribut de l’un de ses liens, ou le nombre de liens qu’il possède, d’un type donné ou tous types confondus. Ce nombre peut être comparé à un nombre que vous indiquez, ou à celui des autres nœuds du même type, avec **Est le plus élevé parmi les nœuds de son type** et **Est le plus faible parmi les nœuds de son type**. Tous les nœuds à égalité pour le nombre le plus élevé, ou pour le plus faible, satisfont la règle. Aucun nœud ne la satisfait lorsque tous les nœuds du type ont le même nombre de liens.
+- **Un attribut du lien** sur lequel porte un formulaire, dans les questions et les indications d’une étape « Formulaire par lien entre alters ».
+
+Une chaîne traduisible qui ne se rapporte à aucun nœud ni lien, comme le texte d’une étape « Information » ou la consigne d’une étape « Générateur de noms (avec formulaires) », ne peut utiliser que des règles portant sur la personne participante. Voir [Où utiliser le texte dynamique](#where-piped-text-can-be-used) pour savoir à quoi se rapporte chaque chaîne.
+
+Lorsque la chaîne traduisible se rapporte à deux nœuds, comme c’est le cas pour une paire dans une étape « Recensement des dyades », la boîte de dialogue comporte un réglage **Nœud pour lequel vérifier les règles**, qui propose **Le premier nœud de la paire** et **Le second nœud de la paire**. Les règles sur le nœud et les règles sur ses liens sont vérifiées pour le nœud choisi dans ce réglage.
+
+Lorsqu’un bloc « Si » a plusieurs règles, **Correspondance des règles** détermine si **Toutes les règles doivent être satisfaites** ou si **Au moins une règle doit être satisfaite**.
+
+Les règles d’un bloc « Si » appartiennent à l’étape et ne font pas partie de la chaîne traduisible. Elles sont donc les mêmes dans toutes les langues du protocole.
+
+## Formulation différente pour chaque réponse {#different-wording-for-each-answer}
+
+Chaque attribut catégoriel, ordinal ou booléen figure dans le menu **Insérer de la logique**, avec la mention **Formulation différente pour chaque réponse**. Si vous le choisissez, la chaîne traduisible reçoit une version pour chaque réponse, au lieu d’afficher la réponse elle-même. Une question peut ainsi adapter sa formulation à une réponse antérieure.
+
+Les versions sont les suivantes :
+
+- **Si inconnu**, utilisée lorsqu’il n’y a pas de réponse.
+- Une version pour chacune des options de réponse de l’attribut, nommée d’après le libellé de l’option. Un attribut booléen sans libellés propres a les versions **Oui** et **Non**.
+- **Toute autre réponse**, utilisée pour une réponse qui n’a pas de version propre.
+
+Par exemple, une question d’une étape « Formulaire par alter » pourrait dépendre d’un attribut « Vit avec vous » :
+
+| Version             | Texte rédigé                                                          |
+| ------------------- | --------------------------------------------------------------------- |
+| Si inconnu          | À quelle fréquence voyez-vous cette personne chez vous ?              |
+| Oui                 | Comment vous partagez-vous les tâches ménagères avec cette personne ? |
+| Non                 | À quelle fréquence rendez-vous visite à cette personne chez elle ?    |
+| Toute autre réponse | (vide, car oui et non couvrent tous les cas)                          |
+
+Une réponse catégorielle peut comporter plusieurs options. La chaîne utilise alors la version de la première de ces options qui en a une, ou **Toute autre réponse** si aucune n’en a. Les options conservent l’ordre qu’elles avaient lorsque la valeur a été insérée : les réordonner plus tard dans le livre de codes ne change donc pas la version utilisée.
+
+## Formulation pour les nombres au singulier ou au pluriel {#wording-for-singular-or-plural-numbers}
+
+Chaque attribut de type nombre ou scalaire figure lui aussi dans le menu **Insérer de la logique**, avec la mention **Formulation adaptée au nombre**. Cette entrée est destinée aux chaînes traduisibles dans lesquelles les mots qui entourent le nombre changent avec celui-ci, comme « 1 child » et « 3 children » en anglais.
+
+Elle insère les versions **Si connu** et **Si inconnu**, comme pour toute valeur. Dans **Si connu**, il y a une version pour chaque forme du nombre grammatical que distingue la langue, chacune nommée avec des exemples des nombres qui l’utilisent. L’anglais en a deux :
+
+| Version                         | Texte rédigé            | Ce que voit la personne participante |
+| ------------------------------- | ----------------------- | ------------------------------------ |
+| Quand le nombre vaut 1          | le nombre, « child »    | 1 child                              |
+| Quand le nombre vaut 0, 2, 3, … | le nombre, « children » | 3 children                           |
+
+Chacune de ces versions commence par le nombre, suivi des mots qui l’accompagnent.
+
+D’autres langues distinguent un nombre différent de formes : le chinois en a une, le polonais et le russe en ont plus de deux. Lorsqu’une chaîne localisée est rédigée dans une autre langue, Architect fournit les versions de cette langue.
+
+## Formulation pour la personne participante ou pour une autre personne {#wording-for-the-participant-or-someone-else}
+
+Le formulaire d’une étape « Arbre généalogique » pose les mêmes questions sur la personne participante et sur chacun de ses proches. Dans les questions et les indications de ce formulaire, le menu **Insérer de la logique** propose **Personne participante ou autre personne**, avec la mention **Formulation différente pour la personne participante et pour toute autre personne**. Cet élément insère deux versions :
+
+| Version                              | Texte rédigé            |
+| ------------------------------------ | ----------------------- |
+| À propos de la personne participante | Quel est votre prénom ? |
+| À propos d’une autre personne        | Quel est son prénom ?   |
+
+Cet élément choisit laquelle des deux versions s’affiche. Il ne s’affiche jamais lui-même. On sait toujours si une question porte sur la personne participante : cet élément n’a donc pas de version **Si inconnu**.
+
+## Comment les personnes participantes voient le texte dynamique {#how-participants-see-piped-text}
+
+Pendant l’entretien, chaque valeur s’affiche dans la langue de la personne participante :
+
+- Une date s’écrit selon le format de date de la langue de la personne participante. Une réponse de type date enregistrée uniquement sous forme de mois ou d’année n’affiche que le mois ou l’année.
+- Un nombre s’écrit selon le format de nombre de la langue de la personne participante.
+- Une réponse à une question catégorielle, ordinale ou booléenne s’affiche avec le libellé de l’option, dans la langue de la personne participante. Un libellé sans traduction dans cette langue s’affiche de la même manière que toute autre [chaîne traduisible qui n’a pas de traduction](/fr/design-protocols/tutorials/translating-your-protocol#the-default-language-and-which-translation-participants-see). Une réponse comportant plusieurs options s’affiche sous forme de liste, par exemple « chats, chiens et poissons ». Une réponse par oui ou non ne peut s’afficher par son libellé que si ses deux réponses ont des libellés ; sinon, utilisez **Formulation différente pour chaque réponse**.
+- Une réponse de type texte s’affiche exactement telle qu’elle a été saisie.
+- La logique ne s’affiche jamais elle-même. La personne participante ne voit que la formulation du cas qui s’applique.
+
+Chaque valeur est teintée de la couleur principale de l’entretien. Cette teinte distingue l’information insérée de la formulation fixe de la question. Les lecteurs d’écran lisent la valeur comme une partie de la phrase.
+
+![L’aperçu de l’entretien montrant une étape « Formulaire par alter » pour un nœud représentant une université. La question se lit « Did you visit Universidad Francisco Marroquín or study there? » (Avez-vous visité l’Universidad Francisco Marroquín ou y avez-vous étudié ?), le nom de l’université étant teinté.](/assets/img/piped-text/interview-preview.png 'Le libellé du nœud inséré, tel que le voit la personne participante')
+
+Le [mode aperçu](/fr/design-protocols/architect/preview-mode) est le moyen le plus direct de vérifier le texte dynamique avant le travail de terrain. Lorsque l’option **Lancer l’aperçu avec des données d’exemple** est activée, l’aperçu remplit chaque valeur à partir de données générées, comme dans l’image ci-dessus.
+
+## Où utiliser le texte dynamique {#where-piped-text-can-be-used}
+
+La date du jour et les attributs de la personne participante peuvent être affichés dans toutes les chaînes traduisibles qui acceptent des valeurs dynamiques. Les attributs contextuels disponibles dépendent de l’endroit où la chaîne apparaît :
+
+<EqualColumns>
+
+| Où la chaîne apparaît                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Attributs contextuels                                                                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Texte de l’étape : le titre et le texte d’une étape « Information », l’explication d’une étape d’anonymisation, les champs « Texte de clôture » et « Texte après la fin de l’entretien » d’une étape « Écran de fin », le titre et le texte d’introduction d’une étape « Formulaire ego », le titre du formulaire d’une étape « Générateur de noms (avec formulaires) », les titres des panneaux d’un générateur de noms, le titre du panneau d’une liste, et le nom qu’une étape « Arbre généalogique » donne à la personne participante | Aucun                                                                                                                                                                                                             |
+| Les consignes des étapes « Générateur de noms (avec formulaires) », « Générateur de noms (ajout rapide) », « Générateur de noms à partir d’une liste », « Sociogramme » et « Arbre généalogique », les consignes d’une étape « Classement ordinal » ou « Classement par catégories » réglée sur **Glisser-déposer**, et le libellé de la case « Autre » d’une étape « Classement par catégories » (une case est chacune des zones où l’on dépose les nœuds pour les classer)                                                              | Aucun, car ces étapes affichent de nombreux nœuds à la fois                                                                                                                                                       |
+| Les consignes d’une étape géospatiale                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Le libellé et tous les attributs du nœud en cours de placement                                                                                                                                                    |
+| Les consignes d’une étape « Classement ordinal » ou « Classement par catégories » réglée sur **Toucher pour placer**                                                                                                                                                                                                                                                                                                                                                                                                                      | Le libellé et tous les attributs du nœud en cours de placement. Une fois tous les nœuds placés, ces valeurs affichent leur version **Si inconnu**                                                                 |
+| Les consignes des étapes « Recensement des dyades » et « Recensement de la force des liens », et le libellé de l’option d’une étape « Recensement de la force des liens » qui indique l’absence de lien                                                                                                                                                                                                                                                                                                                                   | Les libellés des deux nœuds sur lesquels porte la question, sous la forme **Premier nœud : libellé** et **Second nœud : libellé**, et tous les attributs de chacun d’eux, par exemple **Premier nœud : nickname** |
+| Les consignes d’une étape « Recensement des dyades (un à plusieurs) »                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Le libellé et tous les attributs du nœud unique auquel la personne participante relie les autres                                                                                                                  |
+| Les questions et les indications d’une étape « Formulaire ego »                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Aucun                                                                                                                                                                                                             |
+| Les questions et les indications des formulaires qui portent sur un nœud : les formulaires des étapes « Formulaire par alter », « Générateur de noms (avec formulaires) » et « Arbre généalogique », et les champs pour les nœuds d’une étape « Compositeur de réseau », y compris le libellé de chaque champ et les libellés de chaque extrémité de son curseur. La question qu’une étape « Classement par catégories » pose sur un nœud placé dans sa case « Autre » en fait partie.                                                    | Le libellé et tous les attributs du nœud sur lequel porte le formulaire                                                                                                                                           |
+| Les questions et les indications d’une étape « Formulaire par lien entre alters » (un formulaire pour chaque lien entre deux alters)                                                                                                                                                                                                                                                                                                                                                                                                      | Tous les attributs du lien sur lequel porte le formulaire, et les libellés des deux nœuds qu’il relie                                                                                                             |
+| Les champs pour les liens d’une étape « Compositeur de réseau »                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Les libellés des deux nœuds que relie le lien                                                                                                                                                                     |
+
+</EqualColumns>
+
+Lorsque les attributs d’un formulaire sont disponibles, un champ peut afficher n’importe quel attribut du nœud ou du lien sur lequel porte le formulaire, y compris les attributs recueillis lors d’étapes précédentes et l’attribut que recueille le champ lui-même. Lorsque l’attribut n’a pas encore de valeur, le champ affiche la version **Si inconnu** de la valeur. Dans un formulaire, le libellé d’un nœud se met à jour à mesure que la personne participante saisit ses réponses, de la même manière que le libellé affiché sur le nœud.
+
+Dans un formulaire de lien, les libellés des deux nœuds que relie le lien sont proposés sous la forme **Premier nœud : libellé** et **Second nœud : libellé**. Leurs autres attributs ne sont pas proposés, car les nœuds situés à chaque extrémité d’un lien peuvent être de n’importe quel type.
+
+Certaines chaînes traduisibles n’acceptent jamais de valeurs dynamiques :
+
+- les noms des étapes
+- les descriptions d’images, car elles remplacent une image
+- les chaînes du livre de codes, comme les libellés des options de réponse
+- la [formulation fournie par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies), à l’exception du nom qu’une étape « Arbre généalogique » donne à la personne participante. Une partie de cette formulation peut afficher des valeurs que l’entretien remplit, comme le nom du type de nœud de l’étape ou un nombre, mais pas des attributs
+
+Dans un protocole mis à niveau depuis le schéma 8, les accolades déjà présentes dans le texte restent des caractères ordinaires. Elles ne deviennent jamais des valeurs dynamiques.
+
+## Traduire des chaînes qui affichent des valeurs {#translating-strings-that-show-values}
+
+Lorsqu’un protocole est proposé dans plusieurs langues (voir [Traduire votre protocole](/fr/design-protocols/tutorials/translating-your-protocol)), chaque langue a ses propres chaînes localisées. Afficher une valeur est facultatif dans chaque langue : une traduction peut donc afficher plus ou moins de valeurs que la chaîne localisée de la langue par défaut, des valeurs différentes de celles de cette chaîne, ou n’en afficher aucune. Rien dans le protocole ne compare les chaînes localisées d’une langue à celles d’une autre. Si, par exemple, la version **Si connu** en anglais affiche la pastille **nickname**, la version **Si connu** d’une traduction peut l’omettre.
+
+Chaque traduction est vérifiée séparément, selon les mêmes règles que la chaîne localisée de la langue par défaut : chaque valeur qu’elle affiche doit être une valeur que l’étape utilise et qui peut être affichée là où la chaîne apparaît, une valeur susceptible de manquer a besoin d’une version pour le cas où elle manque, et la chaîne ne peut pas être vide dans toutes les versions.
+
+Dans le tableau des traductions, une cellule affiche les valeurs, et chaque ensemble de versions, sous forme de pastilles. Lorsque vous modifiez une cellule, sélectionner une pastille ouvre ses versions, comme dans l’éditeur d’étape. Le bouton seringue propose les valeurs que l’étape utilise déjà, et le bouton **Insérer de la logique** propose, pour ces mêmes valeurs, une formulation différente pour chaque réponse ou une formulation adaptée au nombre. Une valeur que l’étape n’utilise pas encore doit d’abord être ajoutée dans l’éditeur d’étape.
+
+Dans le tableau des traductions, il n’est pas possible d’insérer un bloc « Si » ni de modifier ses règles : ses lignes affichent leurs règles, sans **Modifier les règles**, **Ajouter « Sinon, si »** ni **Supprimer ce cas**. Pour ajouter un bloc « Si » à une traduction, ou pour modifier ses règles, ouvrez l’étape et choisissez la langue dans le menu des langues du champ de texte (voir [Traduire dans l’éditeur d’étape](/fr/design-protocols/tutorials/translating-your-protocol#translating-within-the-stage-editor)). Comme les règles appartiennent à l’étape, toute modification de ces règles s’applique à toutes les langues. Seule la formulation de chaque ligne se traduit.
+
+Les valeurs elles-mêmes ne sont pas traduites. Les dates et les nombres suivent la langue de la personne participante, et les réponses s’affichent avec les libellés de leurs options dans cette langue.
+
+## Problèmes signalés par Architect {#problems-reported-by-architect}
+
+La validation du protocole vérifie chaque chaîne traduisible qui contient des valeurs dynamiques. Chacun des problèmes suivants est une erreur, et le protocole n’est pas valide tant qu’elle n’est pas corrigée :
+
+- **Une valeur ne peut pas être affichée ici.** La chaîne affiche une valeur qui n’est pas disponible là où la chaîne apparaît (voir [Où utiliser le texte dynamique](#where-piped-text-can-be-used)). Cela peut se produire lorsque l’attribut n’existe plus ou qu’il est désormais chiffré.
+- **Une valeur peut manquer : la chaîne a donc besoin d’une version pour le cas où elle manque.** La chaîne affiche un attribut en dehors d’une version **Si connu**. Tout attribut peut manquer : la chaîne a donc besoin d’une version **Si inconnu** pour celui-ci (voir [Lorsque l’information manque](#when-information-is-missing)).
+- **Une version correspond à une réponse que l’attribut ne comporte pas.** Cela se produit lorsqu’une des options de l’attribut est supprimée ou modifiée après qu’une chaîne traduisible a reçu une version pour chacune des réponses de l’attribut. Dans les chaînes traduisibles de l’étape, supprimez tous les ensembles de versions insérés pour cet attribut, puis insérez-les de nouveau pour qu’ils correspondent aux options de l’attribut.
+- **Un attribut oui/non a besoin de libellés pour ses deux réponses.** La chaîne affiche la réponse elle-même, mais l’attribut n’a pas de libellés pour « oui » et « non ». Ajoutez les deux libellés à l’attribut, ou utilisez **Formulation différente pour chaque réponse**.
+- **Une chaîne ne peut pas être vide dans toutes les versions.** Au moins une version doit afficher du texte ou une valeur.
+
+## Concepts associés {#related-concepts}
+
+- [Consignes](/fr/design-protocols/key-concepts/prompts) : les questions qui peuvent contenir du texte dynamique
+- [Formulaires](/fr/design-protocols/key-concepts/forms) : les champs de formulaire dont les questions et les indications peuvent faire référence à des réponses antérieures
+- [Libellés des nœuds](/fr/design-protocols/key-concepts/node-labelling) : comment l’entretien choisit le texte affiché sur un nœud, et comment un [libellé dynamique](/fr/design-protocols/key-concepts/node-labelling#dynamic-labels) utilise les mêmes valeurs et la même logique
+- [Logique de saut](/fr/design-protocols/key-concepts/skip-logic) : l’éditeur de règles dans lequel se définissent les règles d’un bloc « Si »
+- [Variables](/fr/design-protocols/key-concepts/variables) : les types d’attributs qui peuvent être insérés comme texte dynamique
+- [Traduire votre protocole](/fr/design-protocols/tutorials/translating-your-protocol) : rédiger un protocole dans plusieurs langues

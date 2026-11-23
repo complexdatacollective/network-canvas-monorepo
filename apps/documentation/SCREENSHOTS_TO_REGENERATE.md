@@ -343,7 +343,7 @@ The piped text editor now has two toolbar buttons: the syringe inserts values
 only, and **Insert logic** inserts If blocks, different wording for each
 answer, wording that fits a number, and wording for the participant or someone
 else. Logic is drawn as a pill of its own colour and icon. These images on
-`design-protocols/piped-text.en.mdx` predate that change:
+`design-protocols/key-concepts/piped-text.en.mdx` predate that change:
 
 | Image                                   | What changed                                                                                                                                                                                        |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -1,7 +1,7 @@
 ---
 title: Le fichier de protocole
 navOrder: 1
-translatedFrom: dcc860974d010f3a1b0539d30b0fa36dc902b62c
+translatedFrom: 07d92d52ae4e992c049f21b5df550a426ce73ad7
 ---
 
 <Definition>
@@ -17,7 +17,7 @@ Un protocole Network Canvas est stocké sous la forme d’un fichier `.netcanvas
 - Dans **Architect** (l’application pour navigateur), votre protocole se trouve, pendant que vous travaillez, dans la **bibliothèque de protocoles** (dans le navigateur). Pour obtenir un fichier `.netcanvas`, afin de le sauvegarder, de le déplacer ou de le déployer, utilisez **Télécharger** depuis l’écran de vue d’ensemble du protocole.
 - Dans **Architect Classic** (l’application de bureau), votre protocole _est_ un fichier `.netcanvas` sur votre ordinateur. Il se comporte comme n’importe quel autre fichier : vous pouvez le déplacer, le renommer, et vous pouvez (et devriez !) le sauvegarder.
 
-Dans les deux cas, le fichier `.netcanvas` contient toutes les données de votre protocole. Si vous utilisez des [ressources](/fr/design-protocols/key-concepts/resources), comme des données de liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit), des images ou des vidéos, celles-ci sont donc intégrées au fichier. Consultez [Enregistrement et sauvegarde](/fr/design-protocols/saving-and-backing-up) pour savoir comment chaque version stocke votre travail et comment le garder en sécurité.
+Dans les deux cas, le fichier `.netcanvas` contient toutes les données de votre protocole. Si vous utilisez des [ressources](/fr/design-protocols/key-concepts/resources), comme des données de liste (une liste prédéfinie, importée comme fichier de données, dans laquelle la personne participante choisit), des images ou des vidéos, celles-ci sont donc intégrées au fichier. Consultez [Enregistrement et sauvegarde](/fr/design-protocols/architect/saving-and-backing-up) pour savoir comment chaque version stocke votre travail et comment le garder en sécurité.
 
 ## Contenu d’un fichier .netcanvas {#inside-a-netcanvas-file}
 

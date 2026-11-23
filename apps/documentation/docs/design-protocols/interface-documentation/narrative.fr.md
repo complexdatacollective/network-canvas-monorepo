@@ -1,7 +1,7 @@
 ---
 title: Narration
 navOrder: 10
-translatedFrom: a46584880230bf4eddb9c3788a8f1ecdbb76364f
+translatedFrom: 8b47e33a2105ed6cee4ac4dd2130b5f65611824b
 ---
 
 <InterfaceSummary type="Narrative">
@@ -45,7 +45,7 @@ Une étape « Narration » doit comporter au moins un préréglage. Pour chaqu
 - **Attribut de disposition** : l’attribut utilisé pour positionner les nœuds dans ce préréglage.
 - **Attribut de regroupement** (facultatif) : un attribut catégoriel utilisé pour dessiner des enveloppes convexes autour des nœuds qui partagent chaque valeur.
 - **Liens affichés** (facultatif) : un ou plusieurs types de liens à tracer. Chaque type de lien choisi doit aussi avoir un libellé, que les personnes participantes voient dans le sélecteur de préréglages. Ce libellé est au départ le nom du type de lien, et vous pouvez le traduire comme n’importe quel autre texte.
-- **Mise en évidence des nœuds** (facultatif) : un ou plusieurs attributs booléens ; les nœuds dont la valeur est vraie sont mis en évidence tant que le préréglage est actif. Chaque attribut choisi doit aussi avoir un libellé, que les personnes participantes voient dans le sélecteur de préréglages. Ce libellé est au départ le nom de l’attribut, et vous pouvez le traduire comme n’importe quel autre texte (voir [Traduire votre protocole](/fr/design-protocols/translating-your-protocol#labels-in-a-narrative-stages-legend)).
+- **Mise en évidence des nœuds** (facultatif) : un ou plusieurs attributs booléens ; les nœuds dont la valeur est vraie sont mis en évidence tant que le préréglage est actif. Chaque attribut choisi doit aussi avoir un libellé, que les personnes participantes voient dans le sélecteur de préréglages. Ce libellé est au départ le nom de l’attribut, et vous pouvez le traduire comme n’importe quel autre texte (voir [Traduire votre protocole](/fr/design-protocols/tutorials/translating-your-protocol#labels-in-a-narrative-stages-legend)).
 
 Les options de groupes, de liens et de mise en évidence se choisissent parmi les attributs déjà présents dans votre livre de codes (la définition des types de nœuds, de liens et de leurs attributs, comme le dictionnaire des codes d’une enquête) : définissez donc les attributs dont un préréglage a besoin avant de le construire.
 
@@ -71,7 +71,7 @@ Dans Architect Classic, un filtre appartient à toute l’étape « Narration 
 
 ### Arrière-plan {#background}
 
-Comme une étape « Sociogramme », une étape « Narration » peut s’afficher sur une série de cercles concentriques ou sur une image d’arrière-plan personnalisée. Un SVG adaptatif est le meilleur choix pour une image d’arrière-plan, car il garde les zones et les libellés lisibles lorsque le canevas change de forme. Consultez [Arrière-plans SVG adaptatifs](/fr/design-protocols/responsive-svg-backgrounds) pour savoir comment en préparer un.
+Comme une étape « Sociogramme », une étape « Narration » peut s’afficher sur une série de cercles concentriques ou sur une image d’arrière-plan personnalisée. Un SVG adaptatif est le meilleur choix pour une image d’arrière-plan, car il garde les zones et les libellés lisibles lorsque le canevas change de forme. Consultez [Créer des images d’arrière-plan adaptatives](/fr/design-protocols/tutorials/responsive-svg-backgrounds) pour savoir comment en préparer un.
 
 ### Comportements {#behaviors}
 
@@ -85,11 +85,11 @@ Trois comportements, définis pour l’étape, modifient la façon dont les pers
 
 ### Personnaliser la formulation intégrée {#customize-built-in-wording}
 
-La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les titres des panneaux, sous **Propre à cette étape**. Chacun commence par la formulation de Network Canvas, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (voir [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un titre ne figure dans la section que tant qu’un préréglage met en évidence des attributs, affiche des liens ou regroupe des nœuds, et il est supprimé lorsque plus aucun préréglage ne le fait.
+La section **Personnaliser la formulation intégrée** de l’éditeur d’étape contient les titres des panneaux, sous **Propre à cette étape**. Chacun commence par la formulation de Network Canvas, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez le modifier et le traduire comme n’importe quel autre texte. Votre protocole ne conserve que les formulations que vous modifiez (voir [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). Un titre ne figure dans la section que tant qu’un préréglage met en évidence des attributs, affiche des liens ou regroupe des nœuds, et il est supprimé lorsque plus aucun préréglage ne le fait.
 
 Les info-bulles des outils de dessin sont les mêmes dans toutes les étapes « Narration » : elles se trouvent donc sous **Commun à toutes les étapes de ce type**, dans la même section, tant que **Dessin libre** est activé. Une modification de ces info-bulles s’applique à toutes ces étapes, et elle est enregistrée dès que vous quittez le champ. Il y en a trois : **Info-bulle pour activer ou désactiver le dessin** nomme le bouton qui active et désactive le dessin, **Info-bulle pour figer ou laisser s’estomper les annotations** le bouton qui fige les annotations ou les laisse de nouveau s’estomper, et **Info-bulle de réinitialisation des annotations** le bouton qui les efface.
 
-Les info-bulles des boutons qui suspendent et reprennent la disposition automatique font partie des [textes de l’entretien](/fr/design-protocols/translating-your-protocol#interview-text), communs avec l’interface « Sociogramme », et se reformulent et se traduisent dans le tableau des traductions, sous **Boutons**.
+Les info-bulles des boutons qui suspendent et reprennent la disposition automatique font partie des [textes de l’entretien](/fr/design-protocols/tutorials/translating-your-protocol#interview-text), communs avec l’interface « Sociogramme », et se reformulent et se traduisent dans le tableau des traductions, sous **Boutons**.
 
 </AppOnly>
 

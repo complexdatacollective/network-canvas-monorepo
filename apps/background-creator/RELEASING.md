@@ -75,7 +75,7 @@ Done:
    URL resolves ahead of the first changeset-driven release; from there the
    Version Packages PR keeps production current. The "Use the
    Background Creator" section of
-   `apps/documentation/docs/design-protocols/responsive-svg-backgrounds.en.mdx`
+   `apps/documentation/docs/design-protocols/tutorials/responsive-svg-backgrounds.en.mdx`
    links to it.
 
 Because the site and secret above are in place, the production deploy resolves

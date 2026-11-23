@@ -1,7 +1,7 @@
 ---
 title: Classement ordinal
 navOrder: 12
-translatedFrom: 4d63fb56c2937ccb0144b4f208adaba2681c5333
+translatedFrom: c7f9bfb1211b720862e206ee2e0e11c5feeb7b83
 ---
 
 <InterfaceSummary type="OrdinalBin">
@@ -28,7 +28,7 @@ Une étape « Classement ordinal » peut comporter plusieurs [consignes](/fr/d
 
 ### Personnaliser la formulation intégrée {#customize-built-in-wording}
 
-Lorsque **Exiger le placement de chaque nœud** est activé dans la section **Placement des nœuds** de l’étape, les personnes participantes ne peuvent pas continuer tant que chaque nœud n’est pas dans une case. L’avis qu’elles voient lorsqu’elles essaient se trouve sous **Nœuds non placés**, dans la section **Personnaliser la formulation intégrée** de l’éditeur d’étape. Network Canvas fournit une formulation de départ, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez la modifier et la traduire comme n’importe quel autre texte (voir [Formulations fournies par Network Canvas](/fr/design-protocols/translating-your-protocol#words-network-canvas-supplies)). L’avis peut afficher le nom du type de nœud de l’étape, inséré sous forme de pastille à l’aide du bouton de texte dynamique (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte) du champ.
+Lorsque **Exiger le placement de chaque nœud** est activé dans la section **Placement des nœuds** de l’étape, les personnes participantes ne peuvent pas continuer tant que chaque nœud n’est pas dans une case. L’avis qu’elles voient lorsqu’elles essaient se trouve sous **Nœuds non placés**, dans la section **Personnaliser la formulation intégrée** de l’éditeur d’étape. Network Canvas fournit une formulation de départ, dans chaque langue pour laquelle il dispose de formulations, et vous pouvez la modifier et la traduire comme n’importe quel autre texte (voir [Formulations fournies par Network Canvas](/fr/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). L’avis peut afficher le nom du type de nœud de l’étape, inséré sous forme de pastille à l’aide du bouton de texte dynamique (piped text : des réponses ou des informations de l’entretien insérées automatiquement dans un texte) du champ.
 
 </AppOnly>
 
@@ -46,7 +46,7 @@ Utilisez cette interface pour recueillir des données ordinales ou d’échelle 
 
 En raison de la place disponible, évitez d’utiliser dans cette interface des échelles de plus de six cases. Avec des échelles plus grandes, les libellés des cases deviennent difficiles à lire et les autres éléments visuels de l’interface en pâtissent.
 
-Les libellés des cases peuvent être bien plus longs qu’un ou deux mots : une phrase courte convient. Chaque libellé rétrécit, par paliers, pour tenir dans l’espace dont dispose sa case, plutôt que d’être coupé au milieu d’un mot, et un lecteur d’écran lit toujours le libellé en entier. Ce rétrécissement a toutefois une taille minimale : un libellé assez long pour déborder de sa case même à cette taille est tronqué, ce qui est plus probable avec une échelle plus grande ou sur un petit écran. Vérifiez votre libellé le plus long dans l’[aperçu](/fr/design-protocols/preview-mode) à la taille qu’utiliseront les personnes participantes. Les libellés peuvent utiliser du texte en **gras** et en _italique_ pour la mise en valeur. Les libellés courts restent plus grands et se lisent plus facilement d’un coup d’œil.
+Les libellés des cases peuvent être bien plus longs qu’un ou deux mots : une phrase courte convient. Chaque libellé rétrécit, par paliers, pour tenir dans l’espace dont dispose sa case, plutôt que d’être coupé au milieu d’un mot, et un lecteur d’écran lit toujours le libellé en entier. Ce rétrécissement a toutefois une taille minimale : un libellé assez long pour déborder de sa case même à cette taille est tronqué, ce qui est plus probable avec une échelle plus grande ou sur un petit écran. Vérifiez votre libellé le plus long dans l’[aperçu](/fr/design-protocols/architect/preview-mode) à la taille qu’utiliseront les personnes participantes. Les libellés peuvent utiliser du texte en **gras** et en _italique_ pour la mise en valeur. Les libellés courts restent plus grands et se lisent plus facilement d’un coup d’œil.
 
 </BadPractice>
 

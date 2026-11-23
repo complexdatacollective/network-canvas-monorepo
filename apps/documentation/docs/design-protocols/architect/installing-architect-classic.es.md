@@ -1,11 +1,11 @@
 ---
 title: Instalar Architect Classic
-navOrder: 11
+navOrder: 2
 toc: true
-translatedFrom: 5024489847fc3506097126a01ad7b13ce5bfc198
+translatedFrom: cfe4ddda8c99e269f7961c2a35ac3485a1244b1b
 ---
 
-¿No sabes si de verdad necesitas Architect Classic? Consulta [Elegir Architect o Architect Classic](/es/design-protocols/choosing-architect).
+¿No sabes si de verdad necesitas Architect Classic? Consulta [Elegir Architect o Architect Classic](/es/design-protocols/architect/choosing-architect).
 
 Para todos los estudios nuevos, te recomendamos usar [Architect](/es/design-protocols/getting-started), que funciona completamente en tu navegador sin necesidad de descargar ni instalar nada (y que se puede instalar como aplicación web progresiva para usarlo sin conexión). Crea protocolos del esquema 9, que se pueden usar en [Fresco](/es/collect-data/fresco/about) y en [Interviewer](/es/collect-data/interviewer/about).
 
