@@ -121,7 +121,7 @@ const sourceSpansOf = (
     if (reference !== undefined) {
       if (!value.startsWith(reference.read, index)) return undefined;
       // One span for each code unit the reference is read as.
-      for (const _unit of reference.read.split('')) {
+      for (let unit = 0; unit < reference.read.length; unit += 1) {
         spans.push([at, at + reference.written.length]);
       }
       at += reference.written.length;
