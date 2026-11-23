@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { suppliedStageText } from '@codaco/interview/supplied-wording';
 import {
+  anonymisationStage,
   messageStructure,
   printMessageStructure,
 } from '@codaco/protocol-validation';
@@ -14,7 +15,6 @@ import {
   ifBlockRowsIn,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
-  MessageDocumentProblem,
   messageToDocument,
 } from '../messageDocument';
 
@@ -118,15 +118,16 @@ describe('messageToDocument', () => {
     expect(roundTrip(message, PLAIN)).toBe(message);
   });
 
-  it('refuses a value inside a link address', () => {
-    const structure = messageStructure(
-      '[Your page](https://example.com/{name})',
-    );
-    if (!('nodes' in structure)) throw new Error('unreadable');
-    expect(() => messageToDocument(structure.nodes, MARKDOWN, labels)).toThrow(
-      MessageDocumentProblem,
-    );
-  });
+  // What validation says of `message` as formatted stage text, read through
+  // a stage's own schema.
+  const refusalsOf = (message: string): string[] => {
+    const result = anonymisationStage.shape.explanationText.safeParse({
+      en: message,
+    });
+    return result.success
+      ? []
+      : result.error.issues.map((issue) => issue.message);
+  };
 
   it.each([
     '{kind, select, a {First paragraph\n\nSecond paragraph} other {none}}',
@@ -140,8 +141,48 @@ describe('messageToDocument', () => {
       expect(() =>
         messageToDocument(structure.nodes, MARKDOWN, labels),
       ).toThrow(expect.objectContaining({ kind: 'linesInVersion' }));
+      expect(refusalsOf(message)).toEqual([
+        expect.stringMatching(/cannot contain a line break/),
+      ]);
     },
   );
+
+  it.each([
+    '[Your page](https://example.com/{name})',
+    '[Your page](https://example.com "For {name}")',
+    '{kind, select, a {[you](https://example.com/{name})} other {none}}',
+    '[Your page](https://example.com/{kind, select, a {one} other {two}})',
+    // Read as the editor reads it: a version without the spaces at its ends,
+    // and a `>` as text, so neither an indent nor a tag hides the link.
+    '{kind, select, a {    [you](https://example.com/{name})} other {none}}',
+    '{kind, select, a {\t[you](https://example.com/{name})} other {none}}',
+    '<span title="[you](https://example.com/{name})">',
+    '<div>\n[you](https://example.com/{name})\n</div>',
+  ])(
+    'refuses a value inside a link address, as validation does: %s',
+    (message) => {
+      const structure = messageStructure(message);
+      if (!('nodes' in structure)) throw new Error('unreadable');
+      expect(() =>
+        messageToDocument(structure.nodes, MARKDOWN, labels),
+      ).toThrow(expect.objectContaining({ kind: 'valueInLinkAddress' }));
+      expect(refusalsOf(message)).toEqual([
+        expect.stringMatching(/link address cannot contain a value/),
+      ]);
+    },
+  );
+
+  it.each([
+    '[Page for {name}](https://example.com) and {name}',
+    'Hello\n\n{kind, select, a {**one**} other {[two](https://example.com)}}',
+  ])('holds a text validation accepts: %s', (message) => {
+    const structure = messageStructure(message);
+    if (!('nodes' in structure)) throw new Error('unreadable');
+    expect(refusalsOf(message)).toEqual([]);
+    expect(() =>
+      messageToDocument(structure.nodes, MARKDOWN, labels),
+    ).not.toThrow();
+  });
 
   it('still reads a markdown document whose versions are one line each', () => {
     const message =

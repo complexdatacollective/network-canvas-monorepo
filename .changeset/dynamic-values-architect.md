@@ -15,7 +15,8 @@ it is not; in the editor it shows as its pill, and while it is selected its
 versions take the pill's place, one to a line, with the known version first.
 A version can be left empty, so that nothing is shown in that case; an empty
 version says "Shows nothing" in the editor. Inserting, removing and editing
-values can be undone and redone like any other edit. A choice or yes/no value
+values can be undone and redone like any other edit, and a value's pill can
+be dragged to another place in the text. A choice or yes/no value
 can give the text one version for each answer, each on its own line; a yes/no value shows as words only once both of
 its answers have labels, so until then the menu lists it greyed out with a
 hint to add them (a Toggle, which has no labels, points to the
@@ -23,15 +24,23 @@ different-wording entry instead). A number can give it a version for each plural
 of the language. Values show as pills in the stage editors, the translation
 table and the protocol summary. Showing a value is optional in every
 language: a translation may leave out a value the default-language text
-shows. Text that shows values a field cannot edit is shown as it is, with a
-note saying why.
+shows. An attribute that a piped value shows cannot be deleted
+from the codebook, including while the stage that shows it is still unsaved.
+A protocol whose text refers to a value that does not exist is refused with
+"This text refers to a value that does not exist" and the name, and one whose
+formatted text has a line break inside a version, or a value inside a link
+address, is refused too. When a stage
+is not saved because of its piped text, the first field with a problem takes
+focus.
 
 - `@codaco/fresco-ui`'s rich text editor opens its insert menu from an icon
   button (a syringe icon, named and tipped by the menu's label), and every
   placeholder pill, in the editor and in `TokenPill`, opens with the same
   icon, held on one line with the label's first word, and names its value in
   bold body type wherever it is shown; in the editor a pill shows a pointer. The editor accepts an insert menu (`RichTextInsertMenu`,
-  whose items can be `disabled` with a description saying why), inline value
+  whose items can be `disabled` with a description saying why, or `required`,
+  which marks an item the text needs and does not yet hold and puts a dot on
+  the menu's button), inline value
   pills, and a versions element for text with one version per case. The
   versions element shows as a pill (its optional `summary`, or its `label`)
   and, while it is selected (clicked, reached with the keyboard, or just

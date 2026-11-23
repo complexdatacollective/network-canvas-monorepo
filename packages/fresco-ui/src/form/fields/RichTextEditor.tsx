@@ -60,6 +60,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -122,9 +123,16 @@ import {
   VERSIONS_NODE,
   VersionsNode,
   versionsIn,
+  versionPlaceOf,
 } from './richText/versionsNode';
 
 const messages = defineMessages({
+  insertMenuRequiredMissing: {
+    id: 'frescoUi.richTextEditor.insertMenuRequiredMissing',
+    defaultMessage: 'Something this text requires is not in it yet',
+    description:
+      'Second line of the tooltip, and part of the accessible name, of the toolbar button that opens the rich text editor’s insert menu, while the menu offers something, such as a person’s name, that the text being written must include and does not include yet.',
+  },
   emojiMenu: {
     id: 'frescoUi.richTextEditor.emojiMenu',
     defaultMessage: 'Insert emoji',
@@ -300,7 +308,7 @@ const createTokenNode = (
     inline: true,
     atom: true,
     selectable: true,
-    draggable: false,
+    draggable: true,
 
     addAttributes() {
       return {
@@ -1343,6 +1351,7 @@ export default function RichTextEditorField({
   ...props
 }: RichTextEditorFieldProps) {
   const intl = useAppIntl();
+  const menuDescriptionId = useId();
   const onChangeRef = useRef(onChange);
   // Where the insert menu was opened by typing its trigger: the editor, and
   // where the character sits. Null while it is closed or opened from the
@@ -2202,82 +2211,115 @@ export default function RichTextEditorField({
     menu: RichTextInsertMenu,
     kind: 'values' | 'logic' | 'emoji',
     Icon: typeof Syringe,
-  ) => (
-    <Popover
-      open={openMenu === kind && !isDisabled}
-      onOpenChange={(open) => {
-        if (open && kind === 'emoji') askForEmoji();
-        setOpenMenu(open ? kind : null);
-        if (open) setCaretReturnsTo(null);
-        if (!open) setTriggered(null);
-      }}
-    >
-      <Tooltip>
-        <PopoverTrigger asChild nativeButton disabled={isDisabled}>
-          <TooltipTrigger
-            render={
-              <ToolbarButton
-                className={toolbarButtonStyles}
-                disabled={isDisabled}
-                aria-label={menu.label}
-                onMouseDown={() => setTriggered(null)}
-              >
-                <Icon aria-hidden />
-              </ToolbarButton>
-            }
-          />
-        </PopoverTrigger>
-        <TooltipContent>{menu.label}</TooltipContent>
-      </Tooltip>
-      <PopoverContent
-        align="start"
-        side="bottom"
-        aria-label={menu.label}
-        // A list of options, padded as menus and comboboxes are.
-        spacing="xs"
-        anchor={triggered === null ? undefined : caretAnchorRef}
-        // Closed by a pick, the menu hands the caret to the text
-        // the item went into; opened by typing, back to the
-        // text it was typed in.
-        finalFocus={() => {
-          // Focus already back in this text stays where it is:
-          // a click into the line that closed the menu, or into
-          // a version of the value just inserted, put the caret
-          // there, and moving it would send what is typed next
-          // somewhere else.
-          const root = editor?.isDestroyed ? null : editor;
-          const active = root?.view.dom.ownerDocument.activeElement;
-          if (
-            root != null &&
-            active instanceof Node &&
-            root.view.dom.contains(active)
-          ) {
-            return false;
-          }
-          const into = caretReturnsTo;
-          if (into === null || into.isDestroyed) return true;
-          // Through the editor, rather than by naming its
-          // element for Base UI to focus: focused that way, the
-          // browser puts the caret at the start of the text, and
-          // ProseMirror moves it back only if it notices within
-          // 200 ms and the text was not clicked just before, so
-          // what was typed next could go in at the start. The
-          // editor puts its own caret back as it takes focus. A
-          // microtask later, as Base UI would have moved focus.
-          queueMicrotask(() => {
-            if (!into.isDestroyed) into.view.focus();
-          });
-          return false;
+  ) => {
+    // Judged where the text goes: the version the menu was opened in by
+    // typing, or the one the toolbar acts on.
+    const place = versionPlaceOf(triggered?.editor ?? actOn);
+    const required = new Set(
+      menu.items.flatMap((item) =>
+        item.required?.(place) === true ? [item.id] : [],
+      ),
+    );
+    const missing = required.size > 0;
+    const missingText = intl.formatMessage(messages.insertMenuRequiredMissing);
+    // The button keeps its name; what is missing is its description.
+    const missingId = `${menuDescriptionId}-${kind}`;
+    return (
+      <Popover
+        open={openMenu === kind && !isDisabled}
+        onOpenChange={(open) => {
+          if (open && kind === 'emoji') askForEmoji();
+          setOpenMenu(open ? kind : null);
+          if (open) setCaretReturnsTo(null);
+          if (!open) setTriggered(null);
         }}
       >
-        <InsertMenuList
-          menu={menu}
-          onPick={insertItem}
-          {...(kind === 'emoji' && { limit: EMOJI_MENU_LIMIT })}
-        />
-      </PopoverContent>
-    </Popover>
-  );
+        <Tooltip>
+          <PopoverTrigger asChild nativeButton disabled={isDisabled}>
+            <TooltipTrigger
+              render={
+                <ToolbarButton
+                  className={cx(toolbarButtonStyles, missing && 'relative')}
+                  disabled={isDisabled}
+                  aria-label={menu.label}
+                  aria-describedby={missing ? missingId : undefined}
+                  data-missing={missing || undefined}
+                  onMouseDown={() => setTriggered(null)}
+                >
+                  <Icon aria-hidden />
+                  {missing && (
+                    <>
+                      <span
+                        aria-hidden
+                        className="bg-warning absolute inset-e-1 top-1 size-2 rounded-full"
+                      />
+                      <span id={missingId} hidden>
+                        {missingText}
+                      </span>
+                    </>
+                  )}
+                </ToolbarButton>
+              }
+            />
+          </PopoverTrigger>
+          <TooltipContent>
+            {menu.label}
+            {missing && (
+              <span className="block font-normal">{missingText}</span>
+            )}
+          </TooltipContent>
+        </Tooltip>
+        <PopoverContent
+          align="start"
+          side="bottom"
+          aria-label={menu.label}
+          // A list of options, padded as menus and comboboxes are.
+          spacing="xs"
+          anchor={triggered === null ? undefined : caretAnchorRef}
+          // Closed by a pick, the menu hands the caret to the text
+          // the item went into; opened by typing, back to the
+          // text it was typed in.
+          finalFocus={() => {
+            // Focus already back in this text stays where it is:
+            // a click into the line that closed the menu, or into
+            // a version of the value just inserted, put the caret
+            // there, and moving it would send what is typed next
+            // somewhere else.
+            const root = editor?.isDestroyed ? null : editor;
+            const active = root?.view.dom.ownerDocument.activeElement;
+            if (
+              root != null &&
+              active instanceof Node &&
+              root.view.dom.contains(active)
+            ) {
+              return false;
+            }
+            const into = caretReturnsTo;
+            if (into === null || into.isDestroyed) return true;
+            // Through the editor, rather than by naming its
+            // element for Base UI to focus: focused that way, the
+            // browser puts the caret at the start of the text, and
+            // ProseMirror moves it back only if it notices within
+            // 200 ms and the text was not clicked just before, so
+            // what was typed next could go in at the start. The
+            // editor puts its own caret back as it takes focus. A
+            // microtask later, as Base UI would have moved focus.
+            queueMicrotask(() => {
+              if (!into.isDestroyed) into.view.focus();
+            });
+            return false;
+          }}
+        >
+          <InsertMenuList
+            menu={menu}
+            onPick={insertItem}
+            required={required}
+            {...(kind === 'emoji' && { limit: EMOJI_MENU_LIMIT })}
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  };
   const showHistory = options.history;
   // Undone or redone in the field's history, with the caret handed back to
   // the editor it was in: a version's, while that version is still there.

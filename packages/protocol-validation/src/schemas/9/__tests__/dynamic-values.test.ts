@@ -119,7 +119,7 @@ describe('dynamic values in stage text', () => {
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
         message: expect.stringContaining(
-          '"someone" is not a value this text can show here',
+          'This text refers to a value that does not exist: "someone".',
         ),
       }),
     ]);

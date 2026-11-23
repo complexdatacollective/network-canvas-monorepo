@@ -49,3 +49,37 @@ describe('DynamicMessageEditor', () => {
     expect(onMessageChange).not.toHaveBeenCalled();
   });
 });
+
+describe('a text the editor cannot hold', () => {
+  it('is a fault, since validation refuses a protocol holding one', () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() =>
+      render(
+        <ProtocolLocalizationProvider localization={ENGLISH}>
+          <DynamicMessageEditor
+            id="text"
+            name="title"
+            ariaLabelledBy={undefined}
+            ariaDescribedBy=""
+            ariaInvalid={false}
+            ariaRequired={false}
+            placeholder={undefined}
+            autoFocus={false}
+            disabled={false}
+            readOnly={false}
+            markdown={false}
+            singleLine
+            message="Welcome, {name"
+            onMessageChange={vi.fn()}
+            locale={LOCALE}
+            site={{
+              context: { roles: new Set(['ego']), variablesFor: () => ({}) },
+              bindings: {},
+            }}
+          />
+        </ProtocolLocalizationProvider>,
+      ),
+    ).toThrow('The text of "title" cannot be opened for editing.');
+    logged.mockRestore();
+  });
+});
