@@ -67,7 +67,7 @@ Each prompt asks about one kind of relationship. The participant goes through ev
 
 Read more about [prompts](https://documentation.networkcanvas.com/design-protocols/key-concepts/prompts).
 
-> Do: Use [piped text](https://documentation.networkcanvas.com/en/design-protocols/piped-text) in your prompt to reference the alters the participant is comparing.
+> Do: Use [piped text](https://documentation.networkcanvas.com/en/design-protocols/key-concepts/piped-text) in your prompt to reference the alters the participant is comparing.
 
 <!-- include: skip-logic -->
 

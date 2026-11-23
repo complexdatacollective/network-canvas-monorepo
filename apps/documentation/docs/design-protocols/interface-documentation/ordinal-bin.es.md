@@ -1,7 +1,7 @@
 ---
 title: Clasificación ordinal
 navOrder: 12
-translatedFrom: 4d63fb56c2937ccb0144b4f208adaba2681c5333
+translatedFrom: 9b3b23d719076789acd18fc9f83eb9c37a014a70
 ---
 
 <InterfaceSummary type="OrdinalBin">
@@ -28,7 +28,7 @@ Una etapa «Clasificación ordinal» puede incluir varias [preguntas](/es/design
 
 ### Personalizar la redacción predeterminada {#customize-built-in-wording}
 
-Cuando **Exigir que se coloquen todos los nodos** está activado en la sección **Colocación de nodos** de la etapa, quienes participan no pueden continuar hasta que todos los nodos estén en un contenedor. El aviso que ven si lo intentan está en **Nodos sin colocar**, en la sección **Personalizar la redacción predeterminada** del editor de etapas. Network Canvas aporta una redacción inicial, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). El aviso puede mostrar el nombre del tipo de nodo de la etapa, que se inserta como una píldora con el botón de texto dinámico (piped text) del campo.
+Cuando **Exigir que se coloquen todos los nodos** está activado en la sección **Colocación de nodos** de la etapa, quienes participan no pueden continuar hasta que todos los nodos estén en un contenedor. El aviso que ven si lo intentan está en **Nodos sin colocar**, en la sección **Personalizar la redacción predeterminada** del editor de etapas. Network Canvas aporta una redacción inicial, en todos los idiomas para los que la tiene, y puedes cambiarla y traducirla como cualquier otro texto (consulta [Palabras que aporta Network Canvas](/es/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). El aviso puede mostrar el nombre del tipo de nodo de la etapa, que se inserta como una píldora con el botón de texto dinámico (piped text) del campo.
 
 </AppOnly>
 
