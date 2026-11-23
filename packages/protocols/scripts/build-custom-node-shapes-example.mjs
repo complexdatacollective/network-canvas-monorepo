@@ -215,16 +215,9 @@ async function buildProtocol() {
         id: objectId('welcome'),
         type: 'Information',
         label: en('Welcome'),
-        title: en('My world'),
-        items: [
-          {
-            id: objectId('welcome/text'),
-            type: 'text',
-            content: en(
-              'We are going to make a picture of **your world**: the people, places, animals and things that matter to you.\n\nThere are no right or wrong answers. You can skip anything you do not want to talk about.',
-            ),
-          },
-        ],
+        content: en(
+          '# My world\n\nWe are going to make a picture of **your world**: the people, places, animals and things that matter to you.\n\nThere are no right or wrong answers. You can skip anything you do not want to talk about.',
+        ),
       },
       nameGenerator({
         name: 'name-illustrated',
@@ -243,16 +236,9 @@ async function buildProtocol() {
         id: objectId('accented-introduction'),
         type: 'Information',
         label: en('Node-coloured shapes'),
-        title: en('The same shapes in the node colour'),
-        items: [
-          {
-            id: objectId('accented-introduction/text'),
-            type: 'text',
-            content: en(
-              "_For researchers._ The next two screens repeat the task with a second node type. The main parts of its shapes are drawn in the node type's own colour (`var(--node-color)` and `var(--node-color-dark)`), and the details keep colours of their own. Change the node type's colour in Architect and every shape follows.",
-            ),
-          },
-        ],
+        content: en(
+          "# The same shapes in the node colour\n\n_For researchers._ The next two screens repeat the task with a second node type. The main parts of its shapes are drawn in the node type's own colour (`var(--node-color)` and `var(--node-color-dark)`), and the details keep colours of their own. Change the node type's colour in Architect and every shape follows.",
+        ),
       },
       nameGenerator({
         name: 'name-accented',

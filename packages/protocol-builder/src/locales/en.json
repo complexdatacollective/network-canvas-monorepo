@@ -191,6 +191,46 @@
     "defaultMessage": "Required",
     "description": "Shown under one cell of a row in an editable list when the researcher has left it empty. Terse because it sits inside a row of a table-like list rather than under a full-width field."
   },
+  "protocolBuilder.assetBlock.alignLabel": {
+    "defaultMessage": "Alignment",
+    "description": "Label of the control, in the settings of an image, audio recording or video placed in the text of a page, that chooses where it sits across the page: where a line of text starts, in the middle, or where a line ends."
+  },
+  "protocolBuilder.assetBlock.audioFileLabel": {
+    "defaultMessage": "Audio",
+    "description": "Label of the control, in the settings of an audio recording placed in the text of a page, that shows which audio file it is and lets another be chosen in its place."
+  },
+  "protocolBuilder.assetBlock.autoplay": {
+    "defaultMessage": "Start playing automatically",
+    "description": "Label of a checkbox in the settings of an audio recording or video placed in the text of a page participants read. When ticked, the recording starts by itself as the participant reaches the page; when clear, the participant starts it."
+  },
+  "protocolBuilder.assetBlock.fileHint": {
+    "defaultMessage": "The file shown here. Choosing another keeps the description and other settings.",
+    "description": "Guidance under the control that shows which file an image, audio recording or video placed in the text of a page is, and lets another be chosen in its place. \"Here\" is this place in the text. \"The description and other settings\" are this image, recording or video's own settings in the same panel (its description, display size, alignment and playback); they stay as they are when a different file is chosen."
+  },
+  "protocolBuilder.assetBlock.imageFileLabel": {
+    "defaultMessage": "Image",
+    "description": "Label of the control, in the settings of an image placed in the text of a page, that shows which image file it is and lets another be chosen in its place."
+  },
+  "protocolBuilder.assetBlock.loop": {
+    "defaultMessage": "Repeat when it ends",
+    "description": "Label of a checkbox in the settings of an audio recording or video placed in the text of a page participants read. When ticked, the recording starts again from the beginning each time it finishes."
+  },
+  "protocolBuilder.assetBlock.remove": {
+    "defaultMessage": "Delete",
+    "description": "Button in the settings of an image, audio recording or video placed in the text of a page. It takes the image, recording or video out of the text; the file itself stays in the protocol."
+  },
+  "protocolBuilder.assetBlock.sizeHint": {
+    "defaultMessage": "How tall this is shown on the page. Full size shows it at its natural height. You can also drag the handle at its corner.",
+    "description": "Guidance under the Display size control of an image or video placed in the text of a page. \"This\" is the image or video. The handle is a small round dot at a bottom corner of the selected image or video."
+  },
+  "protocolBuilder.assetBlock.sizeLabel": {
+    "defaultMessage": "Display size",
+    "description": "Label of the control, in the settings of an image or video placed in the text of a page, that chooses how tall it is drawn: Full size, Small, Medium or Large."
+  },
+  "protocolBuilder.assetBlock.videoFileLabel": {
+    "defaultMessage": "Video",
+    "description": "Label of the control, in the settings of a video placed in the text of a page, that shows which video file it is and lets another be chosen in its place."
+  },
   "protocolBuilder.assignAttributes.addButton": {
     "defaultMessage": "Add new attribute to assign",
     "description": "Visible text and accessible name of the button that adds another row to the list of attributes a prompt stamps onto every node it creates. Named in full rather than “Add new”, because a prompt editor mounts several lists side by side and a researcher navigating by buttons reads only these words."
@@ -1340,88 +1380,24 @@
     "description": "Button that saves the rules of an “If” in a piece of text and closes the dialog."
   },
   "protocolBuilder.contentBlock.audioDescriptionHint": {
-    "defaultMessage": "What this recording is, read aloud in place of the file’s name to a participant using a screen reader.",
-    "description": "Guidance under the description control of a block that plays an audio recording."
-  },
-  "protocolBuilder.contentBlock.audioRequired": {
-    "defaultMessage": "Choose the audio file this block plays.",
-    "description": "Refusal shown under the file picker of an audio block when nothing has been chosen."
-  },
-  "protocolBuilder.contentBlock.contentHint": {
-    "defaultMessage": "Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.",
-    "description": "Guidance under the control holding what one piece of a page shows, whichever kind it is. slotType is the kind of content, chosen in the control above."
-  },
-  "protocolBuilder.contentBlock.contentLabel": {
-    "defaultMessage": "Content",
-    "description": "Label of the control holding what one piece of a page actually shows, whichever kind it is."
+    "defaultMessage": "This is read aloud, in place of the file’s name, to participants who use screen reader technology.",
+    "description": "Guidance under the description control of an audio recording placed in the text of a page."
   },
   "protocolBuilder.contentBlock.descriptionLabel": {
     "defaultMessage": "Description",
-    "description": "Label of the control holding the words that stand in for a picture, an audio recording or a video for a participant who cannot see or hear it."
+    "description": "Label of the control, in the settings of an image, audio recording or video placed in the text of a page, holding the words that stand in for the file for a participant who cannot see or hear it."
   },
   "protocolBuilder.contentBlock.imageDescriptionHint": {
-    "defaultMessage": "What this image shows, read aloud to a participant who cannot see it. Leave it empty if the image is decorative.",
-    "description": "Guidance under the description control of a block that shows a picture. Decorative means the picture adds nothing a participant would miss."
-  },
-  "protocolBuilder.contentBlock.imageRequired": {
-    "defaultMessage": "Choose the image this block shows.",
-    "description": "Refusal shown under the file picker of a picture block when nothing has been chosen."
-  },
-  "protocolBuilder.contentBlock.kindAudio": {
-    "defaultMessage": "Audio",
-    "description": "Choice offered for what one piece of a page holds: an audio recording."
-  },
-  "protocolBuilder.contentBlock.kindHint": {
-    "defaultMessage": "Choose the type of content this item will show.",
-    "description": "Guidance under the content-type control."
-  },
-  "protocolBuilder.contentBlock.kindImage": {
-    "defaultMessage": "Image",
-    "description": "Choice offered for what one piece of a page holds: a picture."
-  },
-  "protocolBuilder.contentBlock.kindLabel": {
-    "defaultMessage": "Content type",
-    "description": "Label of the control choosing what kind of thing one piece of a page holds — a picture, a video, an audio recording, prose."
-  },
-  "protocolBuilder.contentBlock.kindRequired": {
-    "defaultMessage": "Choose what kind of content this block holds.",
-    "description": "Refusal shown under the content-type control when the researcher has chosen nothing."
-  },
-  "protocolBuilder.contentBlock.kindText": {
-    "defaultMessage": "Text",
-    "description": "Choice offered for what one piece of a page holds: prose the participant reads."
-  },
-  "protocolBuilder.contentBlock.kindVideo": {
-    "defaultMessage": "Video",
-    "description": "Choice offered for what one piece of a page holds: a video."
-  },
-  "protocolBuilder.contentBlock.missingResource": {
-    "defaultMessage": "This item’s resource is no longer in this protocol. Choose a content type above to replace it.",
-    "description": "Warning body shown when a piece of a page points at a file that has been deleted from the protocol, so it needs replacing."
-  },
-  "protocolBuilder.contentBlock.previewEmpty": {
-    "defaultMessage": "This block has no content yet.",
-    "description": "Shown in the collapsed row of a page’s list of blocks when the researcher has not yet said what that piece of the page holds."
+    "defaultMessage": "This is read aloud to participants who use screen reader technology. Leave it blank if the image is decorative.",
+    "description": "Guidance under the description control of an image placed in the text of a page. Decorative means the picture adds nothing a participant would miss."
   },
   "protocolBuilder.contentBlock.previewUnusable": {
     "defaultMessage": "This block’s resource is not in this protocol, or is not something a page can show.",
-    "description": "Shown in the collapsed row of a page’s list of blocks when that piece points at a file the protocol no longer holds, or at one a page cannot present — a roster of people, a map layer, a key."
-  },
-  "protocolBuilder.contentBlock.sectionDescription": {
-    "defaultMessage": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
-    "description": "Description under the item dialog’s title."
+    "description": "Shown in the text of a page participants read, in place of an image, audio recording or video placed in that text, when it points at a file the protocol no longer holds, or at one a page cannot present — a roster of people, a map layer, a key."
   },
   "protocolBuilder.contentBlock.sizeFull": {
     "defaultMessage": "Full size",
     "description": "Choice offered for how tall a picture or video on a page is drawn: however tall it naturally is, unconstrained."
-  },
-  "protocolBuilder.contentBlock.sizeHint": {
-    "defaultMessage": "Optionally constrain the height of this item. Full size lets it display at its natural height.",
-    "description": "Guidance under the display-size control. \"Full size\" is the wording of the unconstrained choice it offers."
-  },
-  "protocolBuilder.contentBlock.sizeLabel": {
-    "defaultMessage": "Display size",
-    "description": "Label of the control constraining how tall a picture or video is drawn on a page."
   },
   "protocolBuilder.contentBlock.sizeLarge": {
     "defaultMessage": "Large",
@@ -1435,29 +1411,9 @@
     "defaultMessage": "Small",
     "description": "Choice offered for how tall a picture or video on a page is drawn."
   },
-  "protocolBuilder.contentBlock.textPlaceholder": {
-    "defaultMessage": "Enter the text for this block...",
-    "description": "Placeholder shown in the empty prose control of a text block. The trailing dots are an ellipsis written as three full stops."
-  },
-  "protocolBuilder.contentBlock.textRequired": {
-    "defaultMessage": "Write the text this block shows.",
-    "description": "Refusal shown under the prose control of a text block when it has been left empty."
-  },
-  "protocolBuilder.contentBlock.unpresentableResource": {
-    "defaultMessage": "This item’s resource is not an image, audio or video file, so this item cannot show it. Choose a content type above to replace it.",
-    "description": "Warning body shown when a piece of a page points at a file that IS in the protocol but is not something a page can present — a roster of people, a map layer, a key. Distinct from a deleted file, because there is nothing missing to go looking for."
-  },
-  "protocolBuilder.contentBlock.unusableTitle": {
-    "defaultMessage": "This block cannot be shown",
-    "description": "Warning heading shown when a piece of a page points at a file the page cannot present."
-  },
   "protocolBuilder.contentBlock.videoDescriptionHint": {
-    "defaultMessage": "What this video shows, read aloud in place of the file’s name to a participant using a screen reader.",
-    "description": "Guidance under the description control of a block that plays a video."
-  },
-  "protocolBuilder.contentBlock.videoRequired": {
-    "defaultMessage": "Choose the video this block plays.",
-    "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
+    "defaultMessage": "This is read aloud, in place of the file’s name, to participants who use screen reader technology.",
+    "description": "Guidance under the description control of a video placed in the text of a page."
   },
   "protocolBuilder.customShapes.addShape": {
     "defaultMessage": "Add a shape",
@@ -4851,56 +4807,24 @@
     "defaultMessage": "Enter a value...",
     "description": "Placeholder in the empty field holding what this option is stored and exported as."
   },
-  "protocolBuilder.pageContent.atLeastOne": {
-    "defaultMessage": "Add at least one block. A page with no content shows the participant nothing.",
-    "description": "Refusal shown above the list of blocks when a researcher saves a page that shows nothing. A block is one piece of a page — a passage of text, a picture, a video."
+  "protocolBuilder.pageContent.contentDescription": {
+    "defaultMessage": "Create the content that participants will see on this stage.",
+    "description": "Description of the section where a researcher writes a page a participant reads instead of doing a task."
   },
-  "protocolBuilder.pageContent.headingHint": {
-    "defaultMessage": "Use the page heading to show a large title element on your information stage.",
-    "description": "Guidance under the page-heading field."
+  "protocolBuilder.pageContent.contentHint": {
+    "defaultMessage": "Use the toolbar to add headings and format text, as well as to insert images, audio and video.",
+    "description": "Guidance under the label of the text editor where a researcher writes a page a participant reads. The toolbar is the row of buttons above the text; it formats the text and inserts media files between its paragraphs."
   },
-  "protocolBuilder.pageContent.headingLabel": {
-    "defaultMessage": "Page heading",
-    "description": "Label of the field holding the large heading at the top of a page a participant reads."
+  "protocolBuilder.pageContent.contentLabel": {
+    "defaultMessage": "Rich Text",
+    "description": "Label of the text editor where a researcher writes a page a participant reads. Rich text is text that can hold headings, formatting and media files, as opposed to plain text."
   },
-  "protocolBuilder.pageContent.headingPlaceholder": {
-    "defaultMessage": "Enter your title here...",
-    "description": "Placeholder shown in the empty page-heading field. The trailing dots are an ellipsis written as three full stops."
-  },
-  "protocolBuilder.pageContent.pageAddLabel": {
-    "defaultMessage": "Create new content item",
-    "description": "Button that opens the dialog for adding one more piece to a page. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
-  },
-  "protocolBuilder.pageContent.pageAddTitle": {
-    "defaultMessage": "Create item",
-    "description": "Title of the dialog a researcher fills in to add one more piece to a page."
-  },
-  "protocolBuilder.pageContent.pageDescription": {
-    "defaultMessage": "Set the page heading and build the sequence of text and media blocks participants will see.",
-    "description": "Description of the page-content section."
-  },
-  "protocolBuilder.pageContent.pageEditTitle": {
-    "defaultMessage": "Edit item",
-    "description": "Title of the dialog a researcher fills in to change a piece of a page."
-  },
-  "protocolBuilder.pageContent.pageEmptyState": {
-    "defaultMessage": "No items have been created yet. Click \"Create new content item\" to add text or media.",
-    "description": "Shown in place of the list of blocks while a page holds nothing yet."
-  },
-  "protocolBuilder.pageContent.pageItemNoun": {
-    "defaultMessage": "item",
-    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit item\", \"Delete this item?\" — so it is lower case and singular."
-  },
-  "protocolBuilder.pageContent.pageItemsHint": {
-    "defaultMessage": "Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size.",
-    "description": "Guidance under the list of blocks on a page."
-  },
-  "protocolBuilder.pageContent.pageItemsLabel": {
-    "defaultMessage": "Items",
-    "description": "Label of the ordered list of pieces a page is built from — passages of text, pictures, videos."
+  "protocolBuilder.pageContent.contentPlaceholder": {
+    "defaultMessage": "Type your page content...",
+    "description": "Placeholder shown in the empty text editor where a researcher writes a page a participant reads. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.pageContent.pageTitle": {
-    "defaultMessage": "Page content",
+    "defaultMessage": "Content",
     "description": "Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task."
   },
   "protocolBuilder.pedigree.completenessClearConfirm": {

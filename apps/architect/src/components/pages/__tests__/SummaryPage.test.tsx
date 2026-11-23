@@ -25,14 +25,13 @@ const bilingualProtocol: CurrentProtocol = {
       id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
-      title: { en: 'Hello', fr: 'Bonjour' },
-      items: [
-        {
-          id: createProtocolObjectId(),
-          type: 'text',
-          content: { en: 'Written in English' },
-        },
-      ],
+      content: { en: '# Hello', fr: '# Bonjour' },
+    },
+    {
+      id: createProtocolObjectId(),
+      type: 'Information',
+      label: { en: 'Thanks', fr: 'Merci' },
+      content: { en: 'Written in English' },
     },
   ],
 };
@@ -63,8 +62,14 @@ describe('<SummaryPage /> language', () => {
     renderSummary(bilingualProtocol);
 
     expect(screen.getByRole('heading', { name: 'Welcome' })).toBeVisible();
-    expect(screen.getByText('Hello')).toHaveAttribute('lang', 'en');
-    expect(screen.getByText('Bonjour')).toHaveAttribute('lang', 'fr');
+    expect(screen.getByText('Hello').closest('[lang]')).toHaveAttribute(
+      'lang',
+      'en',
+    );
+    expect(screen.getByText('Bonjour').closest('[lang]')).toHaveAttribute(
+      'lang',
+      'fr',
+    );
     expect(
       screen.getByText('Written in English').closest('[lang]'),
     ).toHaveAttribute('lang', 'en');
@@ -82,13 +87,15 @@ describe('<SummaryPage /> language', () => {
           id: createProtocolObjectId(),
           type: 'Information',
           label: { ar: 'مرحبا' },
-          title: { ar: 'أهلا' },
-          items: [],
+          content: { ar: '# أهلا' },
         },
       ],
     });
 
-    expect(screen.getByText('أهلا')).toHaveAttribute('dir', 'rtl');
+    expect(screen.getByText('أهلا').closest('[dir]')).toHaveAttribute(
+      'dir',
+      'rtl',
+    );
   });
 
   it('lists the languages on the cover alphabetically, whatever order the protocol declares them in', () => {
@@ -120,6 +127,9 @@ describe('<SummaryPage /> language', () => {
       screen.queryByRole('heading', { name: 'Languages' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Default')).not.toBeInTheDocument();
-    expect(screen.getByText('Hello')).toHaveAttribute('lang', 'en');
+    expect(screen.getByText('Hello').closest('[lang]')).toHaveAttribute(
+      'lang',
+      'en',
+    );
   });
 });

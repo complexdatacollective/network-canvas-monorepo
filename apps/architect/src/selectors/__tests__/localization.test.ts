@@ -1,10 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import {
-  createProtocolObjectId,
-  ProtocolObjectIdSchema,
-} from '@codaco/protocol-validation';
+import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -64,8 +61,7 @@ const protocolIn = (
       id: WELCOME_STAGE_ID,
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
-      title: { en: 'Hello', fr: 'Bonjour' },
-      items: [],
+      content: { en: '# Hello', fr: '# Bonjour' },
     },
   ],
 });
@@ -129,11 +125,12 @@ describe('getTranslationGroups()', () => {
             schema: expect.anything(),
           },
           {
-            path: ['stages', 0, 'title'],
-            field: ['title'],
-            format: 'plain',
-            lines: 'single',
-            value: { en: 'Hello', fr: 'Bonjour' },
+            path: ['stages', 0, 'content'],
+            field: ['content'],
+            format: 'markdown',
+            lines: 'multiple',
+            assetBlocks: true,
+            value: { en: '# Hello', fr: '# Bonjour' },
             // The declaration of the field it is in.
             schema: expect.anything(),
           },
@@ -176,28 +173,31 @@ describe('getTranslationGroups()', () => {
           id: INTRO_STAGE_ID,
           type: 'Information',
           label: { en: 'Intro', fr: 'Intro', de: 'Intro' },
-          title: { en: 'About', fr: 'À propos', de: 'Über' },
-          items: [
-            {
-              id: createProtocolObjectId(),
-              type: 'text',
-              content: { en: 'Name **people**', fr: 'Nommez' },
-            },
-          ],
+          content: {
+            en: '# About\n\nName **people**',
+            fr: '# À propos\n\nNommez',
+            de: '# Über',
+          },
         },
       ],
     };
 
     const content = getTranslationGroups(stateWith(withText))
       .find(({ key }) => key === `stage:${INTRO_STAGE_ID}`)
-      ?.rows.find(({ field }) => field.join('.') === 'items.0.content');
+      ?.rows.find(({ field }) => field.join('.') === 'content');
 
     expect(content).toEqual({
-      path: ['stages', 1, 'items', 0, 'content'],
-      field: ['items', 0, 'content'],
+      path: ['stages', 1, 'content'],
+      field: ['content'],
       format: 'markdown',
       lines: 'multiple',
-      value: { en: 'Name **people**', fr: 'Nommez' },
+      // The one text of an Information stage can show files as blocks.
+      assetBlocks: true,
+      value: {
+        en: '# About\n\nName **people**',
+        fr: '# À propos\n\nNommez',
+        de: '# Über',
+      },
       // The declaration of the field it is in.
       schema: expect.anything(),
     });

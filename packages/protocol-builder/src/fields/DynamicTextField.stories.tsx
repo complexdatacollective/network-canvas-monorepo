@@ -10,9 +10,9 @@ import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import { fixtureStageId } from '../testing/protocolFixture.ts';
 import DynamicTextField from './DynamicTextField.tsx';
 
-/** The heading an information page shows above its content. */
-const TITLE_FIELD = 'title';
-const TITLE_LABEL = 'Page heading';
+/** The heading a roster stage shows over the people it offers. */
+const TITLE_FIELD = 'panelTitle';
+const TITLE_LABEL = 'Panel heading';
 const INSERT_LABEL =
   'Inject piped text from interview metadata or a network attribute';
 
@@ -39,7 +39,7 @@ const meta = {
     },
   },
   args: {
-    stageId: fixtureStageId('information-1'),
+    stageId: fixtureStageId('name-generator-roster-1'),
     sectionTitle: 'What the participant is told',
     children: title,
   },

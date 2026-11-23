@@ -1,58 +1,22 @@
 import { z } from 'zod';
 
-import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
-import { assetReference } from '../asset-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
-import { protocolObjectId } from '../protocol-object-id.ts';
 import { baseStageSchema } from './base.ts';
 
-const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
-
-// A text item's `description` is never shown to a participant, so it stays a
-// plain researcher note; an asset item's is the media's alt text.
-const textItemSchema = z.strictObject({
-  id: protocolObjectId('informationItem'),
-  type: z.literal('text'),
+/**
+ * A page the participant reads: one piece of text holding everything the
+ * page shows, in the order it shows it. Its heading is a heading in the text,
+ * and each image, audio recording or video is a block among its paragraphs
+ * that names a file of the protocol (see `AssetBlock`).
+ *
+ * One text rather than a heading and a list of items, so the page is written,
+ * read and translated as the single document a participant sees.
+ */
+export const informationStage = baseStageSchema.extend({
+  type: z.literal('Information'),
   content: localizedString(
     nonBlankText(),
-    { format: 'markdown', lines: 'multiple' },
-    {
-      dynamicValues: 'stageText',
-    },
+    { format: 'markdown', lines: 'multiple', assetBlocks: true },
+    { dynamicValues: 'stageText' },
   ),
-  description: z.string().optional(),
 });
-
-// Size is an image/video sizing treatment, so it only applies to asset items.
-const assetItemSchema = z.strictObject({
-  id: protocolObjectId('informationItem'),
-  type: z.literal('asset'),
-  content: assetReference(),
-  // An image's description stands in for the image, so it stays literal.
-  description: localizedString(nonBlankText(), {
-    format: 'plain',
-    lines: 'single',
-  }).optional(),
-  size: ItemSizeSchema.optional(),
-});
-
-const ItemSchema = z.discriminatedUnion('type', [
-  textItemSchema,
-  assetItemSchema,
-]);
-
-export type Item = z.infer<typeof ItemSchema>;
-
-export const informationStage = withUniqueObjectIds(
-  baseStageSchema.extend({
-    type: z.literal('Information'),
-    title: localizedString(
-      nonBlankText(),
-      { format: 'plain', lines: 'single' },
-      {
-        dynamicValues: 'stageText',
-      },
-    ),
-    items: z.array(ItemSchema),
-  }),
-);

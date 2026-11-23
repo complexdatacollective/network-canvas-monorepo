@@ -56,8 +56,7 @@ const information = (id: string) => ({
   id: testId(id),
   type: 'Information',
   label: { en: id },
-  title: { en: id },
-  items: [{ id: testId(`${id}-text`), type: 'text', content: { en: 'Text' } }],
+  content: { en: `# ${id}\n\nText` },
 });
 
 const protocolWith = (stages: unknown[]) =>
@@ -763,9 +762,9 @@ describe('closing text missing in the default language', () => {
 
   it('allows empty text only on the finish stage', () => {
     expect(
-      issues([{ ...information('intro'), title: {} }, finish()]),
+      issues([{ ...information('intro'), content: {} }, finish()]),
     ).toContainEqual({
-      path: ['stages', 0, 'title'],
+      path: ['stages', 0, 'content'],
       message: 'Text must have at least one translation.',
     });
   });

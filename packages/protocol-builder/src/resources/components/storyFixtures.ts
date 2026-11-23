@@ -133,6 +133,13 @@ export function skylineImageFile(): File {
   });
 }
 
+/** A roster file an import story drops on a data file control. */
+export function communityRosterFile(): File {
+  return new File([COMMUNITY_ROSTER], 'community.json', {
+    type: 'application/json',
+  });
+}
+
 /** A file no picker in these stories will accept. */
 export function fieldNotesFile(): File {
   return new File(['Ada lives by the river.'], 'field-notes.txt', {
@@ -184,7 +191,7 @@ export type StoryHost = Readonly<{
 const DEFAULT_STAGE: StoryStage = {
   stageId: 'welcome-screen',
   type: 'Information',
-  fields: { label: 'Welcome', title: 'Welcome to the study', items: [] },
+  fields: { label: 'Welcome', content: 'Welcome to the study' },
 };
 
 const REFUSAL = {

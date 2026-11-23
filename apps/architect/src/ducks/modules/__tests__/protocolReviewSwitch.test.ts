@@ -126,7 +126,7 @@ const makeStore = () => {
 type Store = ReturnType<typeof makeStore>;
 
 const TITLE: Finding = makeFinding('title', [
-  op('set', `/stages/${WELCOME_STAGE_ID}/title/en`, 'Welcome to our study'),
+  op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Welcome to our study'),
 ]);
 
 const RESULT: ReviewResult = {

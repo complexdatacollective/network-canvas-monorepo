@@ -75,91 +75,6 @@
     "es": "Título",
     "from": "74a07e626 architect.sections.introductionPanel.title"
   },
-  "protocolBuilder.pageContent.pageDescription": {
-    "en": "Set the page heading and build the sequence of text and media blocks participants will see.",
-    "es": "Define el encabezado de la página y construye la secuencia de bloques de texto y medios que verán quienes participan.",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.setThePageHeadingAndBuild",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.pageContent.headingHint": {
-    "en": "Use the page heading to show a large title element on your information stage.",
-    "es": "Usa el encabezado de página para mostrar un título grande en la etapa «Información».",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.useThePageHeadingToShow",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.pageContent.headingPlaceholder": {
-    "en": "Enter your title here...",
-    "es": "Introduce el título aquí...",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.enterYourTitleHere"
-  },
-  "protocolBuilder.pageContent.pageItemsLabel": {
-    "en": "Items",
-    "es": "Elementos",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.items"
-  },
-  "protocolBuilder.pageContent.pageItemsHint": {
-    "en": "Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size.",
-    "es": "Añade bloques de texto, imagen, vídeo y audio abajo, y arrástralos para cambiar su orden. Quienes participan pueden desplazarse por la pantalla, así que añade tantos bloques como necesites. Los bloques de imagen y vídeo pueden tener un tamaño de visualización definido.",
-    "from": "74a07e626 architect.sections.contentGrid.contentGrid.addTextImageVideoAndAudio; es revised in the 2026-09-17 Spanish translation pass",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.pageContent.pageAddLabel": {
-    "en": "Create new content item",
-    "es": "Crear nuevo elemento de contenido",
-    "from": "74a07e626 architect.additional.sections.contentGrid.contentGrid.createNewContentItem"
-  },
-  "protocolBuilder.pageContent.pageItemNoun": {
-    "en": "item",
-    "es": "elemento",
-    "from": "74a07e626 architect.arrayItem.item"
-  },
-  "protocolBuilder.pageContent.pageEmptyState": {
-    "en": "No items have been created yet. Click \"Create new content item\" to add text or media.",
-    "es": "Todavía no se han creado elementos. Pulsa «Crear nuevo elemento de contenido» para añadir texto o medios.",
-    "from": "74a07e626 architect.additional.sections.contentGrid.contentGrid.noItemsHaveBeenCreatedYet"
-  },
-  "protocolBuilder.pageContent.pageAddTitle": {
-    "en": "Create item",
-    "es": "Crear elemento",
-    "from": "exception 2 — 74a07e626 architect.remaining.sections.contentGrid.contentGrid.editItem (\"Edit Item\") is one title for both; kept as a pair in Architect’s word, sentence case"
-  },
-  "protocolBuilder.pageContent.pageEditTitle": {
-    "en": "Edit item",
-    "es": "Editar elemento",
-    "from": "exception 2 — 74a07e626 architect.remaining.sections.contentGrid.contentGrid.editItem, sentence case"
-  },
-  "protocolBuilder.contentBlock.sectionDescription": {
-    "en": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
-    "es": "Elige el tipo de contenido, proporciona lo que verán quienes participan y ajusta su presentación cuando sea posible.",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.chooseTheContentTypeProvideWhat",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.contentBlock.kindHint": {
-    "en": "Choose the type of content this item will show.",
-    "es": "Elige el tipo de contenido que mostrará este elemento.",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.chooseTheTypeOfContentThis"
-  },
-  "protocolBuilder.contentBlock.contentHint": {
-    "en": "Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.",
-    "es": "Proporciona el contenido de {slotType, select, text {texto} image {imagen} audio {audio} other {vídeo}} para este elemento. Esto es lo que verán quienes participan cuando lleguen a este elemento del estudio.",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.provideTheContentForThisItem; es revised in the 2026-09-17 Spanish translation pass",
-    "esFrom": "glossary alignment, PR #2587 (shared Spanish glossary, PR #2576)"
-  },
-  "protocolBuilder.contentBlock.sizeHint": {
-    "en": "Optionally constrain the height of this item. Full size lets it display at its natural height.",
-    "es": "Puedes limitar la altura de este elemento. El tamaño completo permite mostrarlo con su altura natural.",
-    "from": "74a07e626 architect.sections.contentGrid.itemEditor.optionallyConstrainTheHeightOfThis"
-  },
-  "protocolBuilder.contentBlock.missingResource": {
-    "en": "This item’s resource is no longer in this protocol. Choose a content type above to replace it.",
-    "es": "El recurso de este elemento ya no está en el protocolo. Elige un tipo de contenido arriba para sustituirlo.",
-    "from": "74a07e626 architect.notice.missingResourceNotice"
-  },
-  "protocolBuilder.contentBlock.unpresentableResource": {
-    "en": "This item’s resource is not an image, audio or video file, so this item cannot show it. Choose a content type above to replace it.",
-    "es": "El recurso de este elemento no es un archivo de imagen, audio o vídeo, por lo que el elemento no puede mostrarlo. Elige un tipo de contenido arriba para sustituirlo.",
-    "from": "74a07e626 architect.notice.unpresentableResourceNotice"
-  },
   "protocolBuilder.promptsSection.title": {
     "en": "Prompt collection",
     "es": "Conjunto de preguntas",
@@ -629,11 +544,6 @@
     "en": "This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.",
     "es": "Otro campo de este formulario ya recoge este atributo. Elige otro atributo o edita el campo existente.",
     "from": "74a07e626 architect.arrayValidation.duplicateField"
-  },
-  "protocolBuilder.contentBlock.kindVideo": {
-    "en": "Video",
-    "es": "Vídeo",
-    "from": "74a07e626 architect.sections.contentGrid.options.config.video; es revised in the 2026-09-17 Spanish translation pass"
   },
   "protocolBuilder.variablePicker.renameTrigger": {
     "en": "Edit attribute name: {label}",

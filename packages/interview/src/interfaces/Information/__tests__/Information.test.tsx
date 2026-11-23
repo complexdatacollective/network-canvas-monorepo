@@ -2,13 +2,22 @@ import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
-import type {
-  Item,
-  LocaleTag,
-  LocalizationDeclaration,
-  LocalizedString,
+import {
+  type AssetBlock,
+  assetBlockMarkdown,
+  type LocaleTag,
+  type LocalizationDeclaration,
+  type LocalizedString,
 } from '@codaco/protocol-validation';
 
 import { testId } from '../../../__tests__/testIds';
@@ -30,13 +39,32 @@ class StubResizeObserver {
   disconnect() {}
 }
 
+// Each asset's address is its id, so a test can tell which file a block drew.
+const requestAsset = vi.fn((assetId: string) =>
+  Promise.resolve(`blob://${assetId}`),
+);
+
 beforeAll(() => {
+  vi.stubGlobal('ResizeObserver', StubResizeObserver);
+});
+
+beforeEach(() => {
+  requestAsset.mockClear();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
   vi.stubGlobal('ResizeObserver', StubResizeObserver);
 });
 
 const ENGLISH_ONLY: LocalizationDeclaration = {
   defaultLocale: 'en',
   locales: ['en'],
+};
+
+const ENGLISH_AND_ARABIC: LocalizationDeclaration = {
+  defaultLocale: 'en',
+  locales: ['en', 'ar'],
 };
 
 function makeStore(
@@ -56,7 +84,7 @@ function makeStore(
 
 function renderInformation(
   stage: InformationStage,
-  assets: ResolvedAsset[],
+  assets: ResolvedAsset[] = [],
   {
     localization = ENGLISH_ONLY,
     locale = null,
@@ -69,10 +97,7 @@ function renderInformation(
       <Provider store={store}>
         <InterviewQueryClientProvider protocolKey="test-protocol">
           <TestProtocolLocalization localization={localization} locale={locale}>
-            <ContractProvider
-              onFinish={vi.fn()}
-              onRequestAsset={() => Promise.resolve('blob://asset')}
-            >
+            <ContractProvider onFinish={vi.fn()} onRequestAsset={requestAsset}>
               {children}
             </ContractProvider>
           </TestProtocolLocalization>
@@ -93,346 +118,78 @@ function renderInformation(
   );
 }
 
-const makeStage = (
-  items: Item[],
-  title: LocalizedString = { en: 'Information' },
-): InformationStage => ({
+const makeStage = (content: LocalizedString | string): InformationStage => ({
   id: testId('info-1'),
   type: 'Information',
   label: { en: 'Info' },
-  title,
-  items,
+  content: typeof content === 'string' ? { en: content } : content,
 });
 
-describe('Information asset fallbacks', () => {
-  it('renders a visible placeholder for an asset id absent from the manifest', () => {
-    const stage = makeStage([
-      { id: testId('i1'), type: 'asset', content: 'missing-asset' },
-    ]);
+/** A page of just one block, under a heading. */
+const pageWith = (block: AssetBlock) =>
+  makeStage(`# Page\n\n${assetBlockMarkdown(block)}`);
 
-    renderInformation(stage, []);
+const IMAGE: ResolvedAsset = {
+  assetId: 'img-1',
+  name: 'Photo',
+  type: 'image',
+  source: 'photo.png',
+};
+const AUDIO: ResolvedAsset = {
+  assetId: 'aud-1',
+  name: 'Intro Clip',
+  type: 'audio',
+  source: 'clip.mp3',
+};
+const VIDEO: ResolvedAsset = {
+  assetId: 'vid-1',
+  name: 'Intro Clip',
+  type: 'video',
+  source: 'intro.mp4',
+};
 
-    expect(screen.getByTestId('information-item-fallback')).toBeTruthy();
+const query = (selector: string) => document.querySelector(selector);
+
+/** Waits for the one element the page's media block draws. */
+const mediaElement = async (selector: string) => {
+  await waitFor(() => expect(query(selector)).not.toBeNull());
+  const element = query(selector);
+  if (!(element instanceof HTMLElement)) {
+    throw new Error(`${selector} was not drawn`);
+  }
+  return element;
+};
+
+/** `mediaElement` for an audio or video player. */
+const playerElement = async (selector: string) => {
+  const element = await mediaElement(selector);
+  if (!(element instanceof HTMLMediaElement)) {
+    throw new Error(`${selector} is not a media player`);
+  }
+  return element;
+};
+
+describe('the page’s heading and text', () => {
+  it('shows a heading written in the text as the page’s heading', () => {
+    renderInformation(makeStage('# Before you begin\n\nSome words.'));
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Before you begin' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Some words.').tagName).toBe('P');
   });
 
-  it('renders a visible placeholder for a network/geojson/apikey asset', async () => {
-    const stage = makeStage([
-      { id: testId('i1'), type: 'asset', content: 'net-1' },
-    ]);
-    const assets: ResolvedAsset[] = [
-      { assetId: 'net-1', name: 'Classmates', type: 'network' },
-    ];
-
-    renderInformation(stage, assets);
-
-    await waitFor(() =>
-      expect(screen.getByTestId('information-item-fallback')).toBeTruthy(),
-    );
-  });
-
-  it('does NOT render the fallback for a valid image item', async () => {
-    const stage = makeStage([
-      { id: testId('i1'), type: 'asset', content: 'img-1' },
-    ]);
-    const assets: ResolvedAsset[] = [
-      { assetId: 'img-1', name: 'Photo', type: 'image', source: 'photo.png' },
-    ];
-
-    renderInformation(stage, assets);
-
-    await waitFor(() => expect(document.querySelector('img')).toBeTruthy());
-    expect(screen.queryByTestId('information-item-fallback')).toBeNull();
-  });
-});
-
-describe('Information media MIME type derives from source', () => {
-  it('audio <source> type derives from source when name lacks an extension', async () => {
-    const stage = makeStage([
-      { id: testId('i1'), type: 'asset', content: 'aud-1' },
-    ]);
-    const assets: ResolvedAsset[] = [
-      {
-        assetId: 'aud-1',
-        name: 'Intro Clip',
-        type: 'audio',
-        source: 'clip.mp3',
-      },
-    ];
-
-    renderInformation(stage, assets);
-
-    await waitFor(() =>
-      expect(document.querySelector('audio source')).toBeTruthy(),
-    );
-    const source = document.querySelector('audio source');
-    expect(source?.getAttribute('type')).toBe('audio/mpeg');
-  });
-
-  it('video <source> type derives from source (.mov -> video/mp4)', async () => {
-    const stage = makeStage([
-      { id: testId('i1'), type: 'asset', content: 'vid-1' },
-    ]);
-    const assets: ResolvedAsset[] = [
-      {
-        assetId: 'vid-1',
-        name: 'Intro Clip',
-        type: 'video',
-        source: 'intro.mov',
-      },
-    ];
-
-    renderInformation(stage, assets);
-
-    await waitFor(() =>
-      expect(document.querySelector('video source')).toBeTruthy(),
-    );
-    const source = document.querySelector('video source');
-    expect(source?.getAttribute('type')).toBe('video/mp4');
-  });
-});
-
-/**
- * An item's `description` is what the researcher wrote about the file, and it
- * is the only thing a participant who cannot see or hear it is given: an
- * image's alt text, and the accessible name of an audio or video player. The
- * asset's own name is a filing label — "Intro Clip" — in no particular
- * language, so a player nobody described is named only for what it is.
- */
-describe('what a participant who cannot see a media item is told', () => {
-  const named = async (selector: string) => {
-    await waitFor(() => expect(document.querySelector(selector)).toBeTruthy());
-    return document.querySelector(selector)?.getAttribute('aria-label');
-  };
-
-  it('describes an image with the researcher’s words', async () => {
-    const stage = makeStage([
-      {
-        id: testId('i1'),
-        type: 'asset',
-        content: 'img-1',
-        description: { en: 'Two people talking at a kitchen table.' },
-      },
-    ]);
-
-    renderInformation(stage, [
-      { assetId: 'img-1', name: 'Photo', type: 'image', source: 'photo.png' },
-    ]);
-
-    await waitFor(() => expect(document.querySelector('img')).toBeTruthy());
-    expect(document.querySelector('img')?.getAttribute('alt')).toBe(
-      'Two people talking at a kitchen table.',
-    );
-  });
-
-  it('names an audio player with the researcher’s words', async () => {
-    const stage = makeStage([
-      {
-        id: testId('i1'),
-        type: 'asset',
-        content: 'aud-1',
-        description: { en: 'A researcher explaining what happens next.' },
-      },
-    ]);
-
-    renderInformation(stage, [
-      {
-        assetId: 'aud-1',
-        name: 'Intro Clip',
-        type: 'audio',
-        source: 'clip.mp3',
-      },
-    ]);
-
-    expect(await named('audio')).toBe(
-      'A researcher explaining what happens next.',
-    );
-  });
-
-  it('names a video player with the researcher’s words', async () => {
-    const stage = makeStage([
-      {
-        id: testId('i1'),
-        type: 'asset',
-        content: 'vid-1',
-        description: {
-          en: 'A researcher demonstrating how to draw a connection.',
-        },
-      },
-    ]);
-
-    renderInformation(stage, [
-      {
-        assetId: 'vid-1',
-        name: 'Intro Clip',
-        type: 'video',
-        source: 'intro.mp4',
-      },
-    ]);
-
-    expect(await named('video')).toBe(
-      'A researcher demonstrating how to draw a connection.',
-    );
-  });
-
-  it('names an undescribed video player as a video, not after the file', async () => {
-    const stage = makeStage([
-      { id: testId('i1'), type: 'asset', content: 'vid-1' },
-    ]);
-
-    renderInformation(stage, [
-      {
-        assetId: 'vid-1',
-        name: 'Intro Clip',
-        type: 'video',
-        source: 'intro.mp4',
-      },
-    ]);
-
-    expect(await named('video')).toBe('Video');
-  });
-
-  it('names an undescribed audio player as audio, not after the file', async () => {
-    const stage = makeStage([
-      { id: testId('i1'), type: 'asset', content: 'aud-1' },
-    ]);
-
-    renderInformation(stage, [
-      {
-        assetId: 'aud-1',
-        name: 'Intro Clip',
-        type: 'audio',
-        source: 'clip.mp3',
-      },
-    ]);
-
-    expect(await named('audio')).toBe('Audio');
-  });
-});
-
-/**
- * A description that is only whitespace.
- *
- * The schema accepts any optional string, so an imported or hand-authored
- * protocol can carry `""` or `"   "`, and an item nobody has reopened in the
- * builder is never rewritten. Read literally, such a description names the
- * player nothing at all — an empty accessible name — so blank and absent have
- * to be the same answer.
- */
-describe('a media item described with nothing but whitespace', () => {
-  const blank = '   ';
-
-  const named = async (selector: string) => {
-    await waitFor(() => expect(document.querySelector(selector)).toBeTruthy());
-    return document.querySelector(selector)?.getAttribute('aria-label');
-  };
-
-  it('names a video player as a video', async () => {
-    const stage = makeStage([
-      {
-        id: testId('i1'),
-        type: 'asset',
-        content: 'vid-1',
-        description: { en: blank },
-      },
-    ]);
-
-    renderInformation(stage, [
-      {
-        assetId: 'vid-1',
-        name: 'Intro Clip',
-        type: 'video',
-        source: 'intro.mp4',
-      },
-    ]);
-
-    expect(await named('video')).toBe('Video');
-  });
-
-  it('names an audio player as audio', async () => {
-    const stage = makeStage([
-      {
-        id: testId('i1'),
-        type: 'asset',
-        content: 'aud-1',
-        description: { en: blank },
-      },
-    ]);
-
-    renderInformation(stage, [
-      {
-        assetId: 'aud-1',
-        name: 'Intro Clip',
-        type: 'audio',
-        source: 'clip.mp3',
-      },
-    ]);
-
-    expect(await named('audio')).toBe('Audio');
-  });
-
-  /**
-   * A picture is the one case where saying nothing is right: an empty `alt` is
-   * how a decorative image is declared, and a researcher who left the
-   * description blank described nothing. What must not survive is the blank
-   * itself — an `alt` of spaces is announced as a run of whitespace rather
-   * than skipped.
-   */
-  it('leaves a picture decorative rather than alt-texting the blank', async () => {
-    const stage = makeStage([
-      {
-        id: testId('i1'),
-        type: 'asset',
-        content: 'img-1',
-        description: { en: blank },
-      },
-    ]);
-
-    renderInformation(stage, [
-      { assetId: 'img-1', name: 'Photo', type: 'image', source: 'photo.png' },
-    ]);
-
-    await waitFor(() => expect(document.querySelector('img')).toBeTruthy());
-    expect(document.querySelector('img')?.getAttribute('alt')).toBe('');
-  });
-});
-
-describe('protocol text in the interview language', () => {
-  const ENGLISH_AND_ARABIC: LocalizationDeclaration = {
-    defaultLocale: 'en',
-    locales: ['en', 'ar'],
-  };
-
-  it('leaves a title shown in a fallback language to the interview’s boundary', () => {
-    renderInformation(makeStage([], { en: 'Before you begin' }), [], {
-      localization: ENGLISH_AND_ARABIC,
-      locale: 'ar',
-    });
+  it('centres a heading that opens the page', () => {
+    renderInformation(makeStage('# Before you begin\n\nSome words.'));
 
     const heading = screen.getByRole('heading', { name: 'Before you begin' });
-    expect(heading.closest('[lang], [dir]')).toBeNull();
+    expect(heading.parentElement).toHaveClass('[&>h1:first-child]:text-center');
+    expect(heading.matches('h1:first-child')).toBe(true);
   });
 
-  it('shows a translated title with no language of its own', () => {
+  it('formats the text as a message before rendering it as markdown', () => {
     renderInformation(
-      makeStage([], { en: 'Before you begin', ar: 'قبل أن تبدأ' }),
-      [],
-      { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
-    );
-
-    const heading = screen.getByRole('heading', { name: 'قبل أن تبدأ' });
-    expect(heading.closest('[lang], [dir]')).toBeNull();
-  });
-
-  it('formats a text item as a message before rendering it as markdown', () => {
-    renderInformation(
-      makeStage([
-        {
-          id: testId('i1'),
-          type: 'text',
-          content: { en: "Press '{'Next'}' when you are **ready**." },
-        },
-      ]),
-      [],
+      makeStage("# Title\n\nPress '{'Next'}' when you are **ready**."),
     );
 
     expect(screen.getByText('ready').tagName).toBe('STRONG');
@@ -445,23 +202,13 @@ describe('protocol text in the interview language', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps the blocks of a text item beside the title', () => {
+  it('keeps the page’s blocks as siblings of its heading', () => {
     renderInformation(
-      makeStage(
-        [
-          {
-            id: testId('i1'),
-            type: 'text',
-            content: { en: '## Section\n\nSome **context**.' },
-          },
-        ],
-        { en: 'Before you begin' },
-      ),
-      [],
+      makeStage('# Before you begin\n\n## Section\n\nSome **context**.'),
     );
 
     // Siblings: the typography's `not-first:`/`not-last:` spacing reads that
-    // order, so a wrapper around the item would respace it.
+    // order, so a wrapper around the text would respace it.
     const title = screen.getByRole('heading', { name: 'Before you begin' });
     const section = screen.getByRole('heading', { name: 'Section' });
     expect(section.previousElementSibling).toBe(title);
@@ -469,45 +216,652 @@ describe('protocol text in the interview language', () => {
       screen.getByText('context').closest('p'),
     );
   });
+});
 
-  it('leaves a text item’s language to the interview’s boundary', () => {
+describe('Information asset fallbacks', () => {
+  it('renders a visible placeholder for an asset id absent from the manifest', () => {
+    renderInformation(pageWith({ assetId: 'missing-asset' }), []);
+
+    expect(screen.getByTestId('information-item-fallback')).toBeTruthy();
+    expect(query('img')).toBeNull();
+  });
+
+  it.each(['network', 'geojson', 'apikey'] as const)(
+    'renders a visible placeholder for a %s asset',
+    async (type) => {
+      renderInformation(pageWith({ assetId: 'other-1' }), [
+        { assetId: 'other-1', name: 'Classmates', type },
+      ]);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('information-item-fallback')).toBeTruthy(),
+      );
+      expect(query('img, audio, video')).toBeNull();
+    },
+  );
+
+  it.each(['network', 'geojson', 'apikey'] as const)(
+    'says a file of type %s is unavailable at once, and never asks for it',
+    (type) => {
+      renderInformation(pageWith({ assetId: 'other-1' }), [
+        { assetId: 'other-1', name: 'Classmates', type, value: 'key' },
+      ]);
+
+      // Synchronously: a file that is fetched is first drawn as a spinner.
+      expect(screen.getByTestId('information-item-fallback')).toBeTruthy();
+      expect(requestAsset).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does NOT render the fallback for a valid image block', async () => {
+    renderInformation(pageWith({ assetId: 'img-1' }), [IMAGE]);
+
+    await mediaElement('img');
+    expect(screen.queryByTestId('information-item-fallback')).toBeNull();
+  });
+
+  it('draws the file the block names', async () => {
+    renderInformation(pageWith({ assetId: 'img-1' }), [
+      IMAGE,
+      { ...IMAGE, assetId: 'img-2' },
+    ]);
+
+    const image = await mediaElement('img');
+    expect(image.getAttribute('src')).toBe('blob://img-1');
+    expect(requestAsset).not.toHaveBeenCalledWith('img-2');
+  });
+});
+
+describe('Information media MIME type derives from source', () => {
+  it('audio <source> type derives from source when name lacks an extension', async () => {
+    renderInformation(pageWith({ assetId: 'aud-1' }), [AUDIO]);
+
+    const source = await mediaElement('audio source');
+    expect(source.getAttribute('type')).toBe('audio/mpeg');
+  });
+
+  it('video <source> type derives from source (.mov -> video/mp4)', async () => {
+    renderInformation(pageWith({ assetId: 'vid-1' }), [
+      { ...VIDEO, source: 'intro.mov' },
+    ]);
+
+    const source = await mediaElement('video source');
+    expect(source.getAttribute('type')).toBe('video/mp4');
+  });
+});
+
+/**
+ * A block's description is what the researcher wrote about the file, and it
+ * is the only thing a participant who cannot see or hear it is given: an
+ * image's alt text, and the accessible name of an audio or video player. The
+ * asset's own name is a filing label — "Intro Clip" — in no particular
+ * language, so a player nobody described is named only for what it is.
+ */
+describe('what a participant who cannot see a media block is told', () => {
+  it('describes an image with the researcher’s words', async () => {
     renderInformation(
-      makeStage([
-        {
-          id: testId('i1'),
-          type: 'text',
-          content: { en: 'Some **context**.' },
-        },
-      ]),
+      pageWith({
+        assetId: 'img-1',
+        description: 'Two people talking at a kitchen table.',
+      }),
+      [IMAGE],
+    );
+
+    const image = await mediaElement('img');
+    expect(image.getAttribute('alt')).toBe(
+      'Two people talking at a kitchen table.',
+    );
+  });
+
+  it('names an audio player with the researcher’s words', async () => {
+    renderInformation(
+      pageWith({
+        assetId: 'aud-1',
+        description: 'A researcher explaining what happens next.',
+      }),
+      [AUDIO],
+    );
+
+    expect((await mediaElement('audio')).getAttribute('aria-label')).toBe(
+      'A researcher explaining what happens next.',
+    );
+    expect(
+      screen.getByLabelText('A researcher explaining what happens next.'),
+    ).toBe(query('audio'));
+  });
+
+  it('names a video player with the researcher’s words', async () => {
+    renderInformation(
+      pageWith({
+        assetId: 'vid-1',
+        description: 'A researcher demonstrating how to draw a connection.',
+      }),
+      [VIDEO],
+    );
+
+    expect((await mediaElement('video')).getAttribute('aria-label')).toBe(
+      'A researcher demonstrating how to draw a connection.',
+    );
+  });
+
+  it('names an undescribed video player as a video, in English, not after the file', async () => {
+    renderInformation(pageWith({ assetId: 'vid-1' }), [VIDEO]);
+
+    const video = await mediaElement('video');
+    expect(video.getAttribute('aria-label')).toBe('Video');
+    expect(video.getAttribute('lang')).toBe('en');
+  });
+
+  it('names an undescribed audio player as audio, in English, not after the file', async () => {
+    renderInformation(pageWith({ assetId: 'aud-1' }), [AUDIO]);
+
+    const audio = await mediaElement('audio');
+    expect(audio.getAttribute('aria-label')).toBe('Audio');
+    expect(audio.getAttribute('lang')).toBe('en');
+  });
+
+  it('gives a described player no language of its own', async () => {
+    renderInformation(
+      pageWith({ assetId: 'aud-1', description: 'Eine Erklärung.' }),
+      [AUDIO],
+    );
+
+    expect((await mediaElement('audio')).hasAttribute('lang')).toBe(false);
+  });
+
+  it('leaves a picture with no description decorative', async () => {
+    renderInformation(pageWith({ assetId: 'img-1' }), [IMAGE]);
+
+    expect((await mediaElement('img')).getAttribute('alt')).toBe('');
+  });
+});
+
+/**
+ * A description that is only whitespace.
+ *
+ * Text written by hand can hold `![   ](asset:id)`. Read literally, such a
+ * description names the player nothing at all — an empty accessible name — so
+ * blank and absent have to be the same answer.
+ */
+describe('a media block described with nothing but whitespace', () => {
+  const blankly = (assetId: string) =>
+    makeStage(`# Page\n\n![   ](asset:${assetId})`);
+
+  it('names a video player as a video', async () => {
+    renderInformation(blankly('vid-1'), [VIDEO]);
+
+    expect((await mediaElement('video')).getAttribute('aria-label')).toBe(
+      'Video',
+    );
+  });
+
+  it('names an audio player as audio', async () => {
+    renderInformation(blankly('aud-1'), [AUDIO]);
+
+    expect((await mediaElement('audio')).getAttribute('aria-label')).toBe(
+      'Audio',
+    );
+  });
+
+  /**
+   * A picture is the one case where saying nothing is right: an empty `alt` is
+   * how a decorative image is declared, and a researcher who left the
+   * description blank described nothing. What must not survive is the blank
+   * itself — an `alt` of spaces is announced as a run of whitespace rather
+   * than skipped.
+   */
+  it('leaves a picture decorative rather than alt-texting the blank', async () => {
+    renderInformation(blankly('img-1'), [IMAGE]);
+
+    expect((await mediaElement('img')).getAttribute('alt')).toBe('');
+  });
+});
+
+describe('a block’s size', () => {
+  const HEIGHT_CLASSES = ['max-h-48', 'max-h-96', 'max-h-[60vh]'];
+
+  it.each([
+    ['small', 'max-h-48'],
+    ['medium', 'max-h-96'],
+    ['large', 'max-h-[60vh]'],
+  ] as const)('holds a %s image to its band: %s', async (size, expected) => {
+    renderInformation(pageWith({ assetId: 'img-1', size }), [IMAGE]);
+
+    const image = await mediaElement('img');
+    expect(image).toHaveClass(expected);
+    for (const other of HEIGHT_CLASSES.filter((band) => band !== expected)) {
+      expect(image).not.toHaveClass(other);
+    }
+  });
+
+  it('holds a video to its band', async () => {
+    renderInformation(pageWith({ assetId: 'vid-1', size: 'medium' }), [VIDEO]);
+
+    expect(await mediaElement('video')).toHaveClass('max-h-96');
+  });
+
+  it('leaves an image with no size as tall as its width makes it', async () => {
+    renderInformation(pageWith({ assetId: 'img-1' }), [IMAGE]);
+
+    const image = await mediaElement('img');
+    for (const band of HEIGHT_CLASSES) expect(image).not.toHaveClass(band);
+  });
+});
+
+describe('a block’s alignment', () => {
+  it('sits a sized image at the start or the end of its box', async () => {
+    renderInformation(
+      makeStage(
+        [
+          '# Page',
+          assetBlockMarkdown({
+            assetId: 'img-1',
+            size: 'small',
+            align: 'start',
+            description: 'start',
+          }),
+          assetBlockMarkdown({
+            assetId: 'img-1',
+            size: 'small',
+            description: 'centre',
+          }),
+          assetBlockMarkdown({
+            assetId: 'img-1',
+            size: 'small',
+            align: 'end',
+            description: 'end',
+          }),
+        ].join('\n\n'),
+      ),
+      [IMAGE],
+    );
+
+    await waitFor(() =>
+      expect(document.querySelectorAll('img')).toHaveLength(3),
+    );
+    expect(screen.getByAltText('start')).toHaveClass('object-left');
+    expect(screen.getByAltText('start')).not.toHaveClass('object-right');
+    expect(screen.getByAltText('end')).toHaveClass('object-right');
+    expect(screen.getByAltText('end')).not.toHaveClass('object-left');
+    expect(screen.getByAltText('centre')).not.toHaveClass('object-left');
+    expect(screen.getByAltText('centre')).not.toHaveClass('object-right');
+  });
+
+  it('leaves an image with no size nowhere to sit but the full width', async () => {
+    renderInformation(pageWith({ assetId: 'img-1', align: 'end' }), [IMAGE]);
+
+    expect(await mediaElement('img')).not.toHaveClass('object-right');
+  });
+
+  it.each([
+    ['start', 'justify-start'],
+    ['center', 'justify-center'],
+    ['end', 'justify-end'],
+  ] as const)('sits an audio player at the %s', async (align, expected) => {
+    // `center` is written as no setting at all, which is how it is stored.
+    renderInformation(pageWith({ assetId: 'aud-1', align }), [AUDIO]);
+
+    const audio = await mediaElement('audio');
+    const block = audio.closest('[data-asset-block]');
+    expect(block).toHaveClass('flex', expected);
+    for (const other of ['justify-start', 'justify-center', 'justify-end']) {
+      if (other !== expected) expect(block).not.toHaveClass(other);
+    }
+  });
+
+  it('centres an audio player that names no alignment', async () => {
+    renderInformation(pageWith({ assetId: 'aud-1' }), [AUDIO]);
+
+    const audio = await mediaElement('audio');
+    expect(audio.closest('[data-asset-block]')).toHaveClass('justify-center');
+  });
+});
+
+describe('a block’s autoplay and loop settings', () => {
+  it('starts and repeats audio by default', async () => {
+    renderInformation(pageWith({ assetId: 'aud-1' }), [AUDIO]);
+
+    const audio = await playerElement('audio');
+    expect(audio.autoplay).toBe(true);
+    expect(audio.loop).toBe(true);
+  });
+
+  it('keeps audio from starting when autoplay is off, and repeating when loop is off', async () => {
+    renderInformation(
+      pageWith({ assetId: 'aud-1', autoplay: false, loop: false }),
+      [AUDIO],
+    );
+
+    const audio = await playerElement('audio');
+    expect(audio.autoplay).toBe(false);
+    expect(audio.loop).toBe(false);
+  });
+
+  it('switches audio autoplay and loop independently', async () => {
+    renderInformation(pageWith({ assetId: 'aud-1', loop: false }), [AUDIO]);
+
+    const audio = await playerElement('audio');
+    expect(audio.autoplay).toBe(true);
+    expect(audio.loop).toBe(false);
+  });
+
+  it('starts video by itself only without its sound', async () => {
+    renderInformation(pageWith({ assetId: 'vid-1' }), [VIDEO]);
+
+    const video = await playerElement('video');
+    expect(video.autoplay).toBe(true);
+    expect(video.muted).toBe(true);
+    expect(video.loop).toBe(true);
+  });
+
+  it('plays video with its sound, and starts only when the participant does, when autoplay is off', async () => {
+    renderInformation(pageWith({ assetId: 'vid-1', autoplay: false }), [VIDEO]);
+
+    const video = await playerElement('video');
+    expect(video.autoplay).toBe(false);
+    expect(video.muted).toBe(false);
+    expect(video.loop).toBe(true);
+  });
+
+  it('keeps video from repeating when loop is off', async () => {
+    renderInformation(pageWith({ assetId: 'vid-1', loop: false }), [VIDEO]);
+
+    const video = await playerElement('video');
+    expect(video.loop).toBe(false);
+    expect(video.autoplay).toBe(true);
+  });
+});
+
+// A page shown again in another language may name a different file in the
+// same place. A player reads its address when it is made, so one handed a new
+// address would go on playing the old recording.
+describe('a block whose file changes', () => {
+  const OTHER_AUDIO: ResolvedAsset = {
+    assetId: 'aud-2',
+    name: 'Clip, in French',
+    type: 'audio',
+    source: 'clip-fr.mp3',
+  };
+  const OTHER_VIDEO: ResolvedAsset = {
+    assetId: 'vid-2',
+    name: 'Intro, in French',
+    type: 'video',
+    source: 'intro-fr.mp4',
+  };
+
+  const stageElement = (stage: InformationStage) => (
+    <Information
+      stage={stage}
+      getNavigationHelpers={() => ({
+        moveForward: vi.fn(),
+        moveBackward: vi.fn(),
+      })}
+    />
+  );
+
+  const playing = async (player: string, assetId: string) => {
+    await waitFor(() =>
+      expect(query(`${player} source`)?.getAttribute('src')).toBe(
+        `blob://${assetId}`,
+      ),
+    );
+    return playerElement(player);
+  };
+
+  it.each([
+    ['an audio player', 'audio', AUDIO, OTHER_AUDIO],
+    ['a video player', 'video', VIDEO, OTHER_VIDEO],
+  ] as const)(
+    'makes %s again for the new file, even when both files are already loaded',
+    async (_what, player, first, second) => {
+      const { rerender } = renderInformation(
+        pageWith({ assetId: first.assetId }),
+        [first, second],
+      );
+      await playing(player, first.assetId);
+
+      // Once each file's address is known, the page is drawn with it at
+      // once, with no moment of loading in which the old player is removed.
+      rerender(stageElement(pageWith({ assetId: second.assetId })));
+      const other = await playing(player, second.assetId);
+
+      rerender(stageElement(pageWith({ assetId: first.assetId })));
+      const back = await playing(player, first.assetId);
+
+      expect(back).not.toBe(other);
+    },
+  );
+
+  it('keeps a player whose file is the same when its words change', async () => {
+    const { rerender } = renderInformation(
+      pageWith({ assetId: 'aud-1', description: 'In English' }),
+      [AUDIO],
+    );
+    const before = await playing('audio', 'aud-1');
+
+    rerender(
+      stageElement(pageWith({ assetId: 'aud-1', description: 'En français' })),
+    );
+
+    await waitFor(() =>
+      expect(query('audio')?.getAttribute('aria-label')).toBe('En français'),
+    );
+    expect(query('audio')).toBe(before);
+  });
+});
+
+describe('where a block sits among the text', () => {
+  it('shows each block as an element of its own, among the paragraphs', async () => {
+    renderInformation(
+      makeStage(
+        [
+          '# Page',
+          'Before the picture.',
+          assetBlockMarkdown({ assetId: 'img-1', description: 'A map' }),
+          'After the picture.',
+        ].join('\n\n'),
+      ),
+      [IMAGE],
+    );
+
+    const image = await mediaElement('img');
+    const block = image.closest('[data-asset-block]');
+    expect(block).not.toBeNull();
+    expect(block?.tagName).not.toBe('P');
+    expect(block?.previousElementSibling).toBe(
+      screen.getByText('Before the picture.'),
+    );
+    expect(block?.nextElementSibling).toBe(
+      screen.getByText('After the picture.'),
+    );
+  });
+
+  it('splits a paragraph around an image written in the middle of a sentence', async () => {
+    renderInformation(
+      makeStage('# Page\n\nBefore ![A map](asset:img-1) after'),
+      [IMAGE],
+    );
+
+    const image = await mediaElement('img');
+    const block = image.closest('[data-asset-block]');
+    // Text, block, text: the words either side are paragraphs of their own,
+    // and the block is not inside one.
+    expect(block?.closest('p')).toBeNull();
+    expect(block?.previousElementSibling?.tagName).toBe('P');
+    expect(block?.previousElementSibling).toHaveTextContent(/^Before$/);
+    expect(block?.nextElementSibling?.tagName).toBe('P');
+    expect(block?.nextElementSibling).toHaveTextContent(/^after$/);
+  });
+
+  it('shows blocks in the order the text names them', async () => {
+    renderInformation(
+      makeStage(
+        [
+          '# Page',
+          assetBlockMarkdown({ assetId: 'aud-1', description: 'first' }),
+          assetBlockMarkdown({ assetId: 'img-1', description: 'second' }),
+        ].join('\n\n'),
+      ),
+      [IMAGE, AUDIO],
+    );
+
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll(
+          '[data-asset-block] img, [data-asset-block] audio',
+        ),
+      ).toHaveLength(2),
+    );
+    const [first, second] = [
+      ...document.querySelectorAll('[data-asset-block]'),
+    ];
+    expect(first?.querySelector('audio')).not.toBeNull();
+    expect(second?.querySelector('img')).not.toBeNull();
+  });
+});
+
+describe('what is not a block', () => {
+  // Each page ends with a block that is one, and the test waits for its
+  // player: by then the page has asked for every file it was going to.
+  const CONTROL = '![](asset:aud-1)';
+  const afterTheControl = async () => {
+    await playerElement('audio');
+    expect(requestAsset.mock.calls).toEqual([['aud-1']]);
+    expect(document.querySelectorAll('[data-asset-block]')).toHaveLength(1);
+  };
+
+  it('shows an image that is not a file of the protocol as nothing, and asks for nothing', async () => {
+    const fetchSpy = vi.fn(() => Promise.reject(new Error('no network')));
+    vi.stubGlobal('fetch', fetchSpy);
+
+    renderInformation(
+      makeStage(
+        `# Page\n\nBefore\n\n![x](https://example.com/a.png)\n\nAfter\n\n${CONTROL}`,
+      ),
+      [IMAGE, AUDIO],
+    );
+
+    expect(screen.getByText('Before')).toBeInTheDocument();
+    expect(screen.getByText('After')).toBeInTheDocument();
+    await afterTheControl();
+    expect(query('img')).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not make a block of an image written as HTML', async () => {
+    renderInformation(
+      makeStage(
+        `# Page\n\n<img src="asset:img-1" alt="raw">\n\nAfter the raw image.\n\n${CONTROL}`,
+      ),
+      [IMAGE, AUDIO],
+    );
+
+    expect(screen.getByText('After the raw image.')).toBeInTheDocument();
+    await afterTheControl();
+    expect(
+      document.querySelector('img[src^="blob:"], img[src^="asset:"]'),
+    ).toBeNull();
+  });
+
+  it('does not make a block of an element written to look like one', async () => {
+    renderInformation(
+      makeStage(
+        `# Page\n\n<figure data-block-image="%7B%22url%22%3A%22asset%3Aimg-1%22%2C%22alt%22%3A%22forged%22%7D">forged</figure>\n\nAfter the figure.\n\n${CONTROL}`,
+      ),
+      [IMAGE, AUDIO],
+    );
+
+    expect(screen.getByText('After the figure.')).toBeInTheDocument();
+    await afterTheControl();
+    expect(query('img')).toBeNull();
+  });
+});
+
+describe('protocol text in the interview language', () => {
+  it('leaves a heading shown in a fallback language to the interview’s boundary', () => {
+    renderInformation(makeStage({ en: '# Before you begin' }), [], {
+      localization: ENGLISH_AND_ARABIC,
+      locale: 'ar',
+    });
+
+    const heading = screen.getByRole('heading', { name: 'Before you begin' });
+    expect(heading.closest('[lang], [dir]')).toBeNull();
+  });
+
+  it('shows a translated heading with no language of its own', () => {
+    renderInformation(
+      makeStage({ en: '# Before you begin', ar: '# قبل أن تبدأ' }),
       [],
       { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
     );
 
-    // Even shown in a fallback language, the item names none of its own: the
+    const heading = screen.getByRole('heading', { name: 'قبل أن تبدأ' });
+    expect(heading.closest('[lang], [dir]')).toBeNull();
+  });
+
+  it('leaves the text’s language to the interview’s boundary', () => {
+    renderInformation(makeStage({ en: '# Title\n\nSome **context**.' }), [], {
+      localization: ENGLISH_AND_ARABIC,
+      locale: 'ar',
+    });
+
+    // Even shown in a fallback language, the text names none of its own: the
     // interview sets one language for everything it renders.
     expect(screen.getByText('context').closest('[lang], [dir]')).toBeNull();
   });
 
   it('leaves an image description shown in a fallback language to the interview’s boundary', async () => {
     renderInformation(
-      makeStage([
-        {
-          id: testId('i1'),
-          type: 'asset',
-          content: 'img-1',
-          description: { en: 'Two people talking at a kitchen table.' },
-        },
-      ]),
-      [{ assetId: 'img-1', name: 'Photo', type: 'image', source: 'photo.png' }],
+      makeStage({
+        en: `# Page\n\n${assetBlockMarkdown({
+          assetId: 'img-1',
+          description: 'Two people talking at a kitchen table.',
+        })}`,
+      }),
+      [IMAGE],
       { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
     );
 
-    await waitFor(() => expect(document.querySelector('img')).toBeTruthy());
-    const image = document.querySelector('img');
+    const image = await mediaElement('img');
     expect(image).toHaveAttribute(
       'alt',
       'Two people talking at a kitchen table.',
     );
-    expect(image?.closest('[lang], [dir]')).toBeNull();
+    expect(image.closest('[lang], [dir]')).toBeNull();
+  });
+
+  it('shows the file the participant’s language names', async () => {
+    const stage = makeStage({
+      en: `# Page\n\n${assetBlockMarkdown({ assetId: 'img-en', description: 'English picture' })}`,
+      ar: `# صفحة\n\n${assetBlockMarkdown({ assetId: 'img-ar', description: 'صورة عربية' })}`,
+    });
+    const assets: ResolvedAsset[] = [
+      { ...IMAGE, assetId: 'img-en' },
+      { ...IMAGE, assetId: 'img-ar' },
+    ];
+
+    renderInformation(stage, assets, {
+      localization: ENGLISH_AND_ARABIC,
+      locale: 'ar',
+    });
+
+    const arabic = await mediaElement('img');
+    expect(arabic.getAttribute('src')).toBe('blob://img-ar');
+    expect(arabic.getAttribute('alt')).toBe('صورة عربية');
+    expect(document.querySelectorAll('img')).toHaveLength(1);
+    expect(requestAsset).not.toHaveBeenCalledWith('img-en');
+  });
+
+  it('shows the default language’s file where the participant’s language has none', async () => {
+    renderInformation(
+      makeStage({
+        en: `# Page\n\n${assetBlockMarkdown({ assetId: 'img-en', description: 'English picture' })}`,
+      }),
+      [{ ...IMAGE, assetId: 'img-en' }],
+      { localization: ENGLISH_AND_ARABIC, locale: 'ar' },
+    );
+
+    const image = await mediaElement('img');
+    expect(image.getAttribute('src')).toBe('blob://img-en');
   });
 });

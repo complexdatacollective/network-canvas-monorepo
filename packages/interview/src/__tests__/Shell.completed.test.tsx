@@ -51,8 +51,7 @@ const information = {
   id: testId('overview'),
   type: 'Information' as const,
   label: { en: 'Overview' },
-  title: { en: 'Study overview' },
-  items: [],
+  content: { en: '# Study overview' },
 };
 
 const finishStage = {

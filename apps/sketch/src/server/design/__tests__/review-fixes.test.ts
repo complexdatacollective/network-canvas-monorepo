@@ -2697,12 +2697,12 @@ describe('instrument attributes', () => {
         ].map(sketchStageId),
       );
       const intro = stageById(r.stages, 'ng_intro') as Stage & {
-        title: LocalizedText;
-        items: { content: LocalizedText }[];
+        content: LocalizedText;
       };
       expect(intro.type).toBe('Information');
-      expect(intro.title).toEqual({ en: 'Naming people' });
-      expect(intro.items[0]?.content.en).toContain('type the name');
+      // The title is the heading that opens the page, then the words.
+      expect(intro.content.en).toMatch(/^# Naming people\n\n/);
+      expect(intro.content.en).toContain('type the name');
     });
 
     it('shows the screen exactly when its stage shows', async () => {
@@ -2790,9 +2790,9 @@ describe('instrument attributes', () => {
       expect(r.validation.success).toBe(true);
       const text = (
         stageById(r.stages, 'nc_intro') as Stage & {
-          items: { content: LocalizedText }[];
+          content: LocalizedText;
         }
-      ).items[0]!.content.en;
+      ).content.en;
       expect(text).toContain('Add people and move them around.');
       expect(text).not.toContain('groups');
       expect(text).not.toContain('draw lines');
@@ -2884,9 +2884,9 @@ describe('instrument attributes', () => {
       const text = (id: string) =>
         (
           stageById(r.stages, id) as Stage & {
-            items: { content: LocalizedText }[];
+            content: LocalizedText;
           }
-        ).items[0]!.content.en;
+        ).content.en;
       expect(text('map1_intro')).toContain('onto the circles');
       expect(text('map2_intro')).toContain('tap one and then the other');
       expect(text('map2_intro')).not.toContain('onto the circles');
@@ -2921,12 +2921,10 @@ describe('instrument attributes', () => {
       const intro = (r.protocol.stages as unknown as Stage[]).find(
         (x) => x.id === sketchStageId('ng_intro'),
       ) as Stage & {
-        title: LocalizedText;
-        items: { content: LocalizedText }[];
+        content: LocalizedText;
       };
-      expect(intro.title).toEqual({ en: 'Who you know' });
-      expect(intro.items[0]?.content).toEqual({
-        en: 'Add everyone you can think of.',
+      expect(intro.content).toEqual({
+        en: '# Who you know\n\nAdd everyone you can think of.',
       });
     });
   });

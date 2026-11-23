@@ -55,8 +55,7 @@ const stage: Stage = {
   id: STAGE_ID,
   type: 'Information',
   label: { en: 'A' },
-  title: { en: 'A' },
-  items: [],
+  content: { en: '# A' },
 };
 
 // What the form holds after the researcher has typed into it. Genuinely

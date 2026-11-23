@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { assetBlocksInMessage } from '../localization/assetBlock.ts';
 import { getAssetReferenceDescriptor } from '../schemas/9/asset-reference.ts';
 import type { StageSubject } from '../schemas/9/common/index.ts';
 import {
@@ -17,6 +18,7 @@ import {
   type SubjectResolution,
 } from '../schemas/9/entity-attribute-reference.ts';
 import { getEntityTypeReferenceDescriptor } from '../schemas/9/entity-type-reference.ts';
+import { getLocalizedStringDescriptor } from '../schemas/9/localized-string.ts';
 import {
   getProtocolObjectKind,
   type ProtocolObjectKind,
@@ -48,6 +50,11 @@ export type EntityTypeReferenceHit = {
 };
 
 export type AssetReferenceHit = {
+  /**
+   * The field holding the id, or, for a file shown as a block in text, the
+   * translation that names it. Text can name several files, so two hits may
+   * share a path.
+   */
   path: (string | number)[];
   assetId: string;
 };
@@ -125,6 +132,12 @@ const unwrap = (schema: z.ZodType): z.ZodType => {
 // config, text, assets, network data) without descending into them or running
 // safeParse on union branches.
 const subtreeHasReference = new WeakMap<z.ZodType, boolean>();
+
+// Localized text declared to hold files as blocks names each file it shows
+// inside its markdown (see `AssetBlock`), so it is an asset reference site
+// with no field of its own.
+const holdsAssetBlocks = (node: z.ZodType): boolean =>
+  getLocalizedStringDescriptor(node)?.assetBlocks === true;
 const hasReference = (schema: z.ZodType): boolean => {
   const node = unwrap(schema);
   const cached = subtreeHasReference.get(node);
@@ -135,6 +148,7 @@ const hasReference = (schema: z.ZodType): boolean => {
     getEntityAttributeReferenceDescriptor(node) !== undefined ||
     getEntityTypeReferenceDescriptor(node) !== undefined ||
     getAssetReferenceDescriptor(node) !== undefined ||
+    holdsAssetBlocks(node) ||
     getStageReferenceSite(node) !== undefined ||
     getProtocolObjectKind(node) !== undefined ||
     isDynamicValuePathSchema(node);
@@ -377,6 +391,27 @@ const walk = (
       return [{ kind: 'stage', path, stageId: value, site: stageSite }];
     }
     return [];
+  }
+
+  if (holdsAssetBlocks(node)) {
+    if (!isRecord(value)) return [];
+    // Every translation is read: each is a text some participant is shown,
+    // and a file only one language shows is still in use.
+    return Object.entries(value).flatMap(([locale, message]) =>
+      typeof message === 'string'
+        ? assetBlocksInMessage(message).flatMap(({ block }): ReferenceHit[] =>
+            block.assetId === ''
+              ? []
+              : [
+                  {
+                    kind: 'asset',
+                    path: [...path, locale],
+                    assetId: block.assetId,
+                  },
+                ],
+          )
+        : [],
+    );
   }
 
   if (node instanceof z.ZodObject) {

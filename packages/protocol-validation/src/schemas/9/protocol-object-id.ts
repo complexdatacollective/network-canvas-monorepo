@@ -11,7 +11,6 @@ export const PROTOCOL_OBJECT_KINDS = [
   'stage',
   'prompt',
   'panel',
-  'informationItem',
   'formField',
   'rule',
   'sortRule',

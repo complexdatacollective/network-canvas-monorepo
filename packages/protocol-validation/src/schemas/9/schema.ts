@@ -23,6 +23,7 @@ import {
   getVariablesForSubject,
   variableExists,
 } from '../../utils/validation-helpers.ts';
+import { findAssetBlockProblems } from './asset-block-validation.ts';
 import { type Conditions, isEdgeCountRule } from './conditions.ts';
 import { findDynamicValueProblems } from './dynamic-value-validation.ts';
 import {
@@ -787,6 +788,15 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         });
       }
     }
+  }
+
+  // The files text shows as blocks: among the protocol's assets, and of a
+  // kind a page can show. Each language is checked on its own.
+  for (const problem of findAssetBlockProblems(
+    protocol.assetManifest,
+    localizedStrings,
+  )) {
+    ctx.addIssue({ code: 'custom' as const, ...problem });
   }
 
   // The values each stage's text shows: bound, available where shown, and

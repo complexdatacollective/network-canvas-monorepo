@@ -80,24 +80,18 @@ const GREETING = {
   en: '{name, select, missing {Welcome} other {Welcome, {name}}}',
 };
 
+const BODY =
+  'Thanks for **joining**{name, select, missing {.} other {, {name}.}} [Your page]({name, select, missing {https://example.com} other {https://example.com/{name}}}): {nickname, select, missing {none} other {{nickname}}}';
+
 const information = {
   id: testId('welcome'),
   type: 'Information' as const,
   label: { en: 'Welcome' },
-  title: GREETING,
   dynamicValues: {
     name: { path: 'ego.name' },
     nickname: { path: 'ego.nickname' },
   },
-  items: [
-    {
-      id: testId('body'),
-      type: 'text' as const,
-      content: {
-        en: 'Thanks for **joining**{name, select, missing {.} other {, {name}.}} [Your page]({name, select, missing {https://example.com} other {https://example.com/{name}}}): {nickname, select, missing {none} other {{nickname}}}',
-      },
-    },
-  ],
+  content: { en: `# ${GREETING.en}\n\n${BODY}` },
 };
 
 const finishStage = {
@@ -194,7 +188,7 @@ function Host({
       onSync={onSync}
       requestedLocales={['en']}
       onFinish={onFinish}
-      onRequestAsset={() => Promise.resolve('')}
+      onRequestAsset={() => Promise.resolve('blob://asset')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
       disableAnalytics={disableAnalytics}
       posthogClient={posthogClient as never}
@@ -600,6 +594,30 @@ describe('dynamic values in a stage’s text', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('keeps a value out of the description a block gives its file', async () => {
+    const payload = makePayload({ name: HOSTILE_NAME });
+    payload.protocol.assets = [
+      { assetId: 'portrait', name: 'Portrait', type: 'image' },
+    ] as InterviewPayload['protocol']['assets'];
+    payload.protocol.stages = [
+      {
+        ...information,
+        content: {
+          en: '# Welcome\n\n![Portrait of {name}](asset:portrait)\n\nBelow the portrait.',
+        },
+      },
+      finishStage,
+    ] as InterviewPayload['protocol']['stages'];
+    renderShell(payload);
+
+    const image = await screen.findByRole('img');
+    // The researcher's words describe the picture; the participant's answer
+    // is never part of an attribute.
+    expect(image.getAttribute('alt')).toBe('Portrait of');
+    expect(document.body.innerHTML).not.toContain('LEAK_SENTINEL');
+    expect(screen.getByText('Below the portrait.')).toBeInTheDocument();
+  });
+
   it('shows an option’s label as the text its markdown reads', async () => {
     const payload = makePayload({});
     payload.protocol.stages = [
@@ -609,8 +627,8 @@ describe('dynamic values in a stage’s text', () => {
           ...information.dynamicValues,
           colour: { path: 'ego.colour' },
         },
-        title: {
-          en: '{colour, select, missing {No colour} other {Favourite: {colour}}}',
+        content: {
+          en: `# {colour, select, missing {No colour} other {Favourite: {colour}}}\n\n${BODY}`,
         },
       },
       finishStage,

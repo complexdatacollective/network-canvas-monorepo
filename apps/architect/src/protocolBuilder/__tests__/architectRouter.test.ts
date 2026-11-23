@@ -1034,8 +1034,7 @@ describe("Architect's in-process protocol-builder host", () => {
       document: Redacted.make({
         type: 'Information',
         label: { [FIXTURE_LANGUAGE]: 'Made without a promotion' },
-        title: { [FIXTURE_LANGUAGE]: 'Made without a promotion' },
-        items: [],
+        content: { [FIXTURE_LANGUAGE]: '# Made without a promotion' },
       }),
     };
     const created = await client.call('Create', creating);
@@ -1191,8 +1190,7 @@ describe("Architect's in-process protocol-builder host", () => {
         document: Redacted.make({
           type: 'Information',
           label: { [FIXTURE_LANGUAGE]: 'Refused' },
-          title: { [FIXTURE_LANGUAGE]: 'Refused' },
-          items: [],
+          content: { [FIXTURE_LANGUAGE]: '# Refused' },
         }),
       }),
     );
@@ -1296,8 +1294,7 @@ describe("Architect's in-process protocol-builder host", () => {
     const document = Redacted.make({
       type: 'Information',
       label: { [FIXTURE_LANGUAGE]: 'Made once' },
-      title: { [FIXTURE_LANGUAGE]: 'Made once' },
-      items: [],
+      content: { [FIXTURE_LANGUAGE]: '# Made once' },
     });
     const requestId = nextRequestId();
     const created = await client.call('Create', {
@@ -1336,8 +1333,7 @@ describe("Architect's in-process protocol-builder host", () => {
         document: Redacted.make({
           type: 'Information',
           label: { [FIXTURE_LANGUAGE]: 'Never made' },
-          title: { [FIXTURE_LANGUAGE]: 'Never made' },
-          items: [],
+          content: { [FIXTURE_LANGUAGE]: '# Never made' },
         }),
         promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
@@ -1542,8 +1538,7 @@ describe("Architect's in-process protocol-builder host", () => {
         id: document.id,
         type: 'Information',
         label: { [FIXTURE_LANGUAGE]: 'No longer the end' },
-        title: { [FIXTURE_LANGUAGE]: 'No longer the end' },
-        items: [],
+        content: { [FIXTURE_LANGUAGE]: '# No longer the end' },
       }),
     },
     {
@@ -1554,7 +1549,7 @@ describe("Architect's in-process protocol-builder host", () => {
         type: 'FinishSession',
         label: { [FIXTURE_LANGUAGE]: 'A second end' },
         mode: 'confirmation',
-        content: { [FIXTURE_LANGUAGE]: '# A second end\n\nThank you.' },
+        content: { [FIXTURE_LANGUAGE]: '# # A second end\n\nThank you.' },
         finishedContent: {
           [FIXTURE_LANGUAGE]: 'This interview is finished.',
         },
@@ -2183,8 +2178,7 @@ describe("Architect's in-process protocol-builder host", () => {
           document: Redacted.make({
             type: 'Information',
             label: { [FIXTURE_LANGUAGE]: 'Refused' },
-            title: { [FIXTURE_LANGUAGE]: 'Refused' },
-            items: [],
+            content: { [FIXTURE_LANGUAGE]: '# Refused' },
           }),
         }),
       );

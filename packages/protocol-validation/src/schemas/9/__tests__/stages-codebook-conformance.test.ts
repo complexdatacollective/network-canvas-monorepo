@@ -244,123 +244,61 @@ describe('apikey asset value (#674)', () => {
   });
 });
 
-describe('Information size and items (#676)', () => {
+describe('Information content', () => {
   const baseStage = {
     id: testId('info1'),
     label: localized('Information'),
     type: 'Information' as const,
-    title: localized('Information'),
   };
 
-  it('accepts an asset item with an uppercase size enum value', () => {
+  it('accepts a page of one markdown text', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [
-        { id: testId('i1'), type: 'asset', content: 'img-1', size: 'LARGE' },
-      ],
+      content: localized('# Welcome\n\nSome text'),
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects a lowercase size value', () => {
+  it('accepts a page with many paragraphs (no upper bound)', () => {
+    const content = Array.from({ length: 50 }, (_, i) => `Paragraph ${i}`).join(
+      '\n\n',
+    );
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [
-        { id: testId('i1'), type: 'asset', content: 'img-1', size: 'large' },
-      ],
-    });
-    expect(parseIssues(result)).toEqual([
-      { path: 'items.0.size', code: 'invalid_value' },
-    ]);
-  });
-
-  it('rejects an unsupported size value', () => {
-    const result = informationStage.safeParse({
-      ...baseStage,
-      items: [
-        { id: testId('i1'), type: 'asset', content: 'img-1', size: 'XL' },
-      ],
-    });
-    expect(parseIssues(result)).toEqual([
-      { path: 'items.0.size', code: 'invalid_value' },
-    ]);
-  });
-
-  it('rejects size on a text item', () => {
-    const result = informationStage.safeParse({
-      ...baseStage,
-      items: [
-        {
-          id: testId('i1'),
-          type: 'text',
-          content: localized('Some text'),
-          size: 'SMALL',
-        },
-      ],
-    });
-    expect(parseIssues(result)).toEqual([
-      { path: 'items.0', code: 'unrecognized_keys', keys: ['size'] },
-    ]);
-  });
-
-  it('accepts a text item with no size', () => {
-    const result = informationStage.safeParse({
-      ...baseStage,
-      items: [
-        { id: testId('i1'), type: 'text', content: localized('Some text') },
-      ],
+      content: localized(content),
     });
     expect(result.success).toBe(true);
   });
 
-  it('accepts an Information stage with many items (no upper bound)', () => {
-    const items = Array.from({ length: 50 }, (_, i) => ({
-      id: testId(`i${i}`),
-      type: 'text' as const,
-      content: localized(`Paragraph ${i}`),
-    }));
-    const result = informationStage.safeParse({ ...baseStage, items });
-    expect(result.success).toBe(true);
-  });
-});
-
-describe('Information item content non-empty', () => {
-  const baseStage = {
-    id: testId('info1'),
-    label: localized('Information'),
-    type: 'Information' as const,
-    title: localized('Information'),
-  };
-
-  it('rejects a text item with empty content', () => {
-    const result = informationStage.safeParse({
-      ...baseStage,
-      items: [{ id: testId('i1'), type: 'text', content: localized('') }],
-    });
+  it('rejects a page with no content', () => {
+    const result = informationStage.safeParse(baseStage);
     expect(parseIssues(result)).toEqual([
-      { path: 'items.0.content.en', code: 'too_small' },
+      { path: 'content', code: 'invalid_type' },
     ]);
   });
 
-  it('rejects an asset item with empty content', () => {
+  it('rejects empty content', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [{ id: testId('i1'), type: 'asset', content: '' }],
+      content: localized(''),
     });
     expect(parseIssues(result)).toEqual([
-      { path: 'items.0.content', code: 'too_small' },
+      { path: 'content.en', code: 'too_small' },
     ]);
   });
 
-  it('accepts text and asset items with non-empty content', () => {
+  // The heading and the files are part of the text, so the title and items
+  // schema 8 had are refused.
+  it('rejects the separate title and items schema 8 had', () => {
     const result = informationStage.safeParse({
       ...baseStage,
-      items: [
-        { id: testId('i1'), type: 'text', content: localized('Some text') },
-        { id: testId('i2'), type: 'asset', content: 'img-1' },
-      ],
+      content: localized('Some text'),
+      title: localized('Information'),
+      items: [{ id: 'i1', type: 'text', content: localized('Some text') }],
     });
-    expect(result.success).toBe(true);
+    expect(parseIssues(result)).toEqual([
+      { path: '', code: 'unrecognized_keys', keys: ['title', 'items'] },
+    ]);
   });
 });
 

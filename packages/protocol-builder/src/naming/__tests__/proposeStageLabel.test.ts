@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createProtocolObjectId,
-  STAGE_LABEL_MAX_LENGTH,
-} from '@codaco/protocol-validation';
+import { STAGE_LABEL_MAX_LENGTH } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -21,8 +18,7 @@ const informationStage = (
   id,
   type: 'Information',
   label,
-  title: label,
-  items: [],
+  content: label,
 });
 
 /**
@@ -144,23 +140,7 @@ describe('proposeStageLabel', () => {
         {
           id: testId('stage-1'),
           type: 'Information',
-          items: [
-            {
-              id: createProtocolObjectId(),
-              type: 'asset',
-              content: 'asset-video',
-            },
-            {
-              id: createProtocolObjectId(),
-              type: 'asset',
-              content: 'asset-image',
-            },
-            {
-              id: createProtocolObjectId(),
-              type: 'text',
-              content: { en: 'Some prose' },
-            },
-          ],
+          shownAssets: ['asset-video', 'asset-image'],
         },
         contextWith({
           [sectionId({ kind: 'assets' })]: {

@@ -94,8 +94,10 @@ const payload: InterviewPayload = {
         id: createProtocolObjectId(),
         type: 'Information',
         label: { 'en': 'Original stage label', 'fr-CA': 'Étape originale' },
-        title: { 'en': 'Original question', 'fr-CA': 'Question originale' },
-        items: [],
+        content: {
+          'en': '# Original question',
+          'fr-CA': '# Question originale',
+        },
       },
     ],
   },

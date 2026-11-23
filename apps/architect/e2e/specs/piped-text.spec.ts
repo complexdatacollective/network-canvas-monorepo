@@ -28,7 +28,7 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
  * message with the stage's `dynamicValues` bindings, never the editor's own
  * document.
  */
-const PAGE_HEADING = 'Page heading';
+const PAGE_TEXT = 'Rich Text';
 
 type Stage = CurrentProtocol['stages'][number];
 
@@ -36,13 +36,13 @@ type Stage = CurrentProtocol['stages'][number];
 const INFO_INDEX = 1;
 const ANSWERS_INDEX = 2;
 
-function titleIn(stage: Stage | undefined, locale: string): string {
+function contentIn(stage: Stage | undefined, locale: string): string {
   if (stage?.type !== 'Information') {
     throw new Error(`expected an Information stage, got ${stage?.type}`);
   }
-  const text = stage.title[locale];
+  const text = stage.content[locale];
   if (text === undefined) {
-    throw new Error(`no ${locale} title in ${JSON.stringify(stage.title)}`);
+    throw new Error(`no ${locale} content in ${JSON.stringify(stage.content)}`);
   }
   return text;
 }
@@ -50,7 +50,7 @@ function titleIn(stage: Stage | undefined, locale: string): string {
 async function openStage(page: Page, stageId: string): Promise<void> {
   await page.goto(`/protocol/stage/${stageId}`);
   await expect(
-    page.getByRole('textbox', { name: PAGE_HEADING, exact: true }),
+    page.getByRole('textbox', { name: PAGE_TEXT, exact: true }),
   ).toBeVisible();
 }
 
@@ -63,7 +63,7 @@ test.describe('the insert menu', () => {
     await seed(pipedTextProtocol());
     await openStage(page, INFO_STAGE_ID);
 
-    await piped.focusEnd(PAGE_HEADING);
+    await piped.focusEnd(PAGE_TEXT);
     await page.keyboard.type(' on ');
 
     // Typing the trigger opens the menu at the caret; it lists the participant's
@@ -98,14 +98,14 @@ test.describe('the insert menu', () => {
     await page.keyboard.press('Enter');
     await expect(menu).toBeHidden();
     await expect(
-      piped.textbox(PAGE_HEADING).getByText('Today’s date'),
+      piped.textbox(PAGE_TEXT).getByText('Today’s date'),
     ).toBeVisible();
 
     // Chosen by click from the toolbar's syringe.
     await page.keyboard.type(' for ');
-    await piped.insertValue(PAGE_HEADING, 'first_name Text');
+    await piped.insertValue(PAGE_TEXT, 'first_name Text');
     await expect(
-      piped.field(PAGE_HEADING).getByRole('group', {
+      piped.field(PAGE_TEXT).getByRole('group', {
         name: 'Wording depending on whether first_name is known',
       }),
     ).toBeVisible();
@@ -121,13 +121,13 @@ test.describe('the insert menu', () => {
         firstName: { path: `ego.${EGO_FIRST_NAME_ID}` },
       },
     });
-    const title = titleIn(stage, 'en');
-    expect(title).toBe(
+    const content = contentIn(stage, 'en');
+    expect(content).toBe(
       'Welcome to the study on {today} for {firstName, select, missing {} other {{firstName}}}',
     );
     // An ICU message string, not the editor's document.
-    expect(title).not.toMatch(/"type"|paragraph|doc/);
-    expect(switchesIn(title)).toEqual([
+    expect(content).not.toMatch(/"type"|paragraph|doc/);
+    expect(switchesIn(content)).toEqual([
       { argument: 'firstName', type: 'select', keys: ['missing', 'other'] },
     ]);
   });
@@ -140,14 +140,14 @@ test.describe('the insert menu', () => {
     await openStage(page, INFO_STAGE_ID);
 
     // The stage's own name is shown to researchers, not participants, so the
-    // page's one syringe belongs to the heading.
+    // page's one syringe belongs to its text.
     await expect(
       page.getByRole('textbox', { name: 'Stage name', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole('button', { name: /^Inject piped text/ }),
     ).toHaveCount(1);
-    await expect(new PipedText(page).valuesButton(PAGE_HEADING)).toHaveCount(1);
+    await expect(new PipedText(page).valuesButton(PAGE_TEXT)).toHaveCount(1);
   });
 });
 
@@ -162,13 +162,13 @@ test.describe('text that names a value it does not bind', () => {
     await openStage(page, INFO_STAGE_ID);
 
     // The text shows, the unbound name as a pill carrying the recorded name.
-    const heading = piped.textbox(PAGE_HEADING);
-    await expect(heading).toHaveText('ghost welcome');
-    await expect(heading.getByText('ghost', { exact: true })).toBeVisible();
-    await expect(heading).toHaveAttribute('aria-invalid', 'true');
+    const text = piped.textbox(PAGE_TEXT);
+    await expect(text).toHaveText('ghost welcome');
+    await expect(text.getByText('ghost', { exact: true })).toBeVisible();
+    await expect(text).toHaveAttribute('aria-invalid', 'true');
     await expect(
       piped
-        .field(PAGE_HEADING)
+        .field(PAGE_TEXT)
         .getByText(
           /This text refers to a value that does not exist: "ghost"\./,
         ),
@@ -176,16 +176,14 @@ test.describe('text that names a value it does not bind', () => {
     // The stage's outline already says which section has the problem.
     const section = editor
       .outline()
-      .getByRole('button', { name: /^Page content Has a problem/ });
+      .getByRole('button', { name: /^Content Has a problem/ });
     await expect(section).toBeVisible();
 
     // Edited, the stage will not save.
-    await piped.focusEnd(PAGE_HEADING);
+    await piped.focusEnd(PAGE_TEXT);
     await page.keyboard.type('!');
     await page.getByRole('button', { name: 'Finished Editing' }).click();
-    const summary = page
-      .getByRole('alert')
-      .filter({ hasText: 'Page content:' });
+    const summary = page.getByRole('alert').filter({ hasText: 'Content:' });
     await expect(summary).toContainText(
       'This text refers to a value that does not exist: "ghost".',
     );
@@ -198,7 +196,7 @@ test.describe('text that names a value it does not bind', () => {
 
     await allowErroneousWriteToLand(page);
     const stored = await readProtocolJson(page);
-    expect(titleIn(stored.stages[INFO_INDEX], 'en')).toBe(GHOST_TITLE);
+    expect(contentIn(stored.stages[INFO_INDEX], 'en')).toBe(GHOST_TITLE);
   });
 
   test('shows its name in the translation table and is refused when the cell is left', async ({
@@ -214,7 +212,7 @@ test.describe('text that names a value it does not bind', () => {
     const table = dialog.getByRole('table', {
       name: /^Everything participants see/,
     });
-    const cellName = /^Stage 2 .*Page content › Page heading English$/;
+    const cellName = /^Stage 2 .*\bContent English$/;
 
     // Read: the cell shows the name the text recorded.
     const cell = table.getByRole('button', { name: cellName });
@@ -248,7 +246,7 @@ test.describe('text that names a value it does not bind', () => {
     await expect(dialog).toBeVisible();
     await allowErroneousWriteToLand(page);
     const stored = await readProtocolJson(page);
-    expect(titleIn(stored.stages[INFO_INDEX], 'en')).toBe(GHOST_TITLE);
+    expect(contentIn(stored.stages[INFO_INDEX], 'en')).toBe(GHOST_TITLE);
   });
 });
 
@@ -326,7 +324,7 @@ test.describe('wording that depends on a value, in two languages', () => {
     await openStage(page, INFO_STAGE_ID);
 
     const numberGroup = /^Wording that fits the number/;
-    await piped.openLogic(PAGE_HEADING);
+    await piped.openLogic(PAGE_TEXT);
     await expect(
       piped
         .menu()
@@ -340,10 +338,10 @@ test.describe('wording that depends on a value, in two languages', () => {
     ).toHaveCount(0);
     await page.keyboard.press('Escape');
 
-    await piped.focusEnd(PAGE_HEADING);
-    await piped.insertLogic(PAGE_HEADING, /^age /);
-    await piped.pill(PAGE_HEADING, 'age').click();
-    const english = piped.versions(PAGE_HEADING, numberGroup);
+    await piped.focusEnd(PAGE_TEXT);
+    await piped.insertLogic(PAGE_TEXT, /^age /);
+    await piped.pill(PAGE_TEXT, 'age').click();
+    const english = piped.versions(PAGE_TEXT, numberGroup);
     await expect(english).toHaveCount(2);
     await expect(english).toHaveText(['age', 'age']);
     await expectNames(english, [
@@ -351,11 +349,11 @@ test.describe('wording that depends on a value, in two languages', () => {
       'If known, When it is 0, 2, 3, …',
     ]);
 
-    await piped.editIn(PAGE_HEADING, 'Arabic');
-    await piped.textbox(PAGE_HEADING).click();
-    await piped.insertLogic(PAGE_HEADING, /^age /);
-    await piped.pill(PAGE_HEADING, 'age').click();
-    const arabic = piped.versions(PAGE_HEADING, numberGroup);
+    await piped.editIn(PAGE_TEXT, 'Arabic');
+    await piped.textbox(PAGE_TEXT).click();
+    await piped.insertLogic(PAGE_TEXT, /^age /);
+    await piped.pill(PAGE_TEXT, 'age').click();
+    const arabic = piped.versions(PAGE_TEXT, numberGroup);
     await expect(arabic).toHaveCount(6);
     await expectNames(arabic, [
       'If known, When it is 0',
@@ -374,7 +372,7 @@ test.describe('wording that depends on a value, in two languages', () => {
       dynamicValues: { age: { path: `ego.${EGO_AGE_ID}` } },
     });
     const pluralKeys = (locale: string) =>
-      switchesIn(titleIn(stage, locale))
+      switchesIn(contentIn(stage, locale))
         .filter(({ type }) => type === 'plural')
         .map(({ argument, keys }) => ({ argument, keys }));
     expect(pluralKeys('en')).toEqual([
@@ -405,19 +403,19 @@ test.describe('wording that depends on a value, in two languages', () => {
       'If not known',
     ];
 
-    await piped.focusEnd(PAGE_HEADING);
-    await piped.insertLogic(PAGE_HEADING, /^mood /);
-    await expectNames(piped.versions(PAGE_HEADING, answerGroup), expectedNames);
+    await piped.focusEnd(PAGE_TEXT);
+    await piped.insertLogic(PAGE_TEXT, /^mood /);
+    await expectNames(piped.versions(PAGE_TEXT, answerGroup), expectedNames);
     // Worded for one answer, so the stored message can be told from a default.
-    await piped.versions(PAGE_HEADING, answerGroup).first().click();
+    await piped.versions(PAGE_TEXT, answerGroup).first().click();
     await page.keyboard.type('Glad');
 
-    await piped.editIn(PAGE_HEADING, 'Arabic');
-    await piped.textbox(PAGE_HEADING).click();
-    await piped.insertLogic(PAGE_HEADING, /^mood /);
-    await expectNames(piped.versions(PAGE_HEADING, answerGroup), expectedNames);
+    await piped.editIn(PAGE_TEXT, 'Arabic');
+    await piped.textbox(PAGE_TEXT).click();
+    await piped.insertLogic(PAGE_TEXT, /^mood /);
+    await expectNames(piped.versions(PAGE_TEXT, answerGroup), expectedNames);
     // A text cannot be blank in every version.
-    await piped.versions(PAGE_HEADING, answerGroup).first().click();
+    await piped.versions(PAGE_TEXT, answerGroup).first().click();
     await page.keyboard.type('Pleased');
 
     await new StageEditor(page).save();
@@ -433,7 +431,7 @@ test.describe('wording that depends on a value, in two languages', () => {
       },
     });
     const answerSwitch = (locale: string) =>
-      switchesIn(titleIn(stage, locale)).find(
+      switchesIn(contentIn(stage, locale)).find(
         ({ type, keys }) => type === 'select' && keys.includes('happy'),
       );
     for (const locale of ['en', 'ar']) {
@@ -443,8 +441,8 @@ test.describe('wording that depends on a value, in two languages', () => {
         keys: ['missing', 'happy', 'sad', 'calm', 'other'],
       });
     }
-    expect(titleIn(stage, 'en')).toContain('happy {Glad}');
-    expect(titleIn(stage, 'ar')).toContain('happy {Pleased}');
+    expect(contentIn(stage, 'en')).toContain('happy {Glad}');
+    expect(contentIn(stage, 'ar')).toContain('happy {Pleased}');
   });
 });
 

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveLocalizedString } from '../resolveLocalizedString.ts';
+import {
+  resolveLocalizedString,
+  resolveTextsInEachLocale,
+} from '../resolveLocalizedString.ts';
 
 const trilingual = { defaultLocale: 'en', locales: ['en', 'es', 'fr'] };
 
@@ -327,4 +330,31 @@ describe('resolveLocalizedString', () => {
       );
     },
   );
+});
+
+describe('resolveTextsInEachLocale', () => {
+  it('reads each text in each language any of them has, falling back as the interview does', () => {
+    expect(
+      resolveTextsInEachLocale(
+        [
+          'Same everywhere',
+          { en: 'Welcome', fr: 'Bienvenue' },
+          { en: 'Hello' },
+          { 'fr-CA': 'Allo' },
+        ],
+        'en',
+      ),
+    ).toEqual({
+      'en': ['Same everywhere', 'Welcome', 'Hello', 'Allo'],
+      'fr': ['Same everywhere', 'Bienvenue', 'Hello', 'Allo'],
+      'fr-CA': ['Same everywhere', 'Bienvenue', 'Hello', 'Allo'],
+    });
+  });
+
+  it('reads a text with no translation as empty, and names no language for a string', () => {
+    expect(resolveTextsInEachLocale(['Plain', {}], 'en')).toEqual({});
+    expect(resolveTextsInEachLocale([{ de: 'Hallo' }, {}], 'en')).toEqual({
+      de: ['Hallo', ''],
+    });
+  });
 });

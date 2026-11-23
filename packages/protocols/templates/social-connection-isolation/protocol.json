@@ -2,7 +2,10 @@
   "name": "Social Connection & Isolation",
   "description": "An example template that pairs a personal-network map with validated loneliness scales (UCLA-3, De Jong Gierveld, and Lubben LSNS-6), so a study can capture both social isolation (network structure) and subjective loneliness. Designed with older adults in mind.",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en", "locales": ["en"] },
+  "localization": {
+    "defaultLocale": "en",
+    "locales": ["en"]
+  },
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
     "ego": {
@@ -12,225 +15,614 @@
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
-            { "label": { "en": "I live alone" }, "value": "alone" },
             {
-              "label": { "en": "I live with a spouse or partner only" },
+              "label": {
+                "en": "I live alone"
+              },
+              "value": "alone"
+            },
+            {
+              "label": {
+                "en": "I live with a spouse or partner only"
+              },
               "value": "partner"
             },
             {
-              "label": { "en": "I live with family (other than a partner)" },
+              "label": {
+                "en": "I live with family (other than a partner)"
+              },
               "value": "family"
             },
             {
-              "label": { "en": "I live with friends or housemates" },
+              "label": {
+                "en": "I live with friends or housemates"
+              },
               "value": "housemates"
             },
             {
-              "label": { "en": "I live in a care or residential setting" },
+              "label": {
+                "en": "I live in a care or residential setting"
+              },
               "value": "residential"
             },
             {
-              "label": { "en": "Other living arrangement" },
+              "label": {
+                "en": "Other living arrangement"
+              },
               "value": "other"
             }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "self_rated_health": {
           "name": "self_rated_health",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Poor" }, "value": 1 },
-            { "label": { "en": "Fair" }, "value": 2 },
-            { "label": { "en": "Good" }, "value": 3 },
-            { "label": { "en": "Very good" }, "value": 4 },
-            { "label": { "en": "Excellent" }, "value": 5 }
+            {
+              "label": {
+                "en": "Poor"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Fair"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Good"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Very good"
+              },
+              "value": 4
+            },
+            {
+              "label": {
+                "en": "Excellent"
+              },
+              "value": 5
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "ucla_1": {
           "name": "ucla_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Hardly ever" }, "value": 1 },
-            { "label": { "en": "Some of the time" }, "value": 2 },
-            { "label": { "en": "Often" }, "value": 3 }
+            {
+              "label": {
+                "en": "Hardly ever"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Some of the time"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Often"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "ucla_2": {
           "name": "ucla_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Hardly ever" }, "value": 1 },
-            { "label": { "en": "Some of the time" }, "value": 2 },
-            { "label": { "en": "Often" }, "value": 3 }
+            {
+              "label": {
+                "en": "Hardly ever"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Some of the time"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Often"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "ucla_3": {
           "name": "ucla_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Hardly ever" }, "value": 1 },
-            { "label": { "en": "Some of the time" }, "value": 2 },
-            { "label": { "en": "Often" }, "value": 3 }
+            {
+              "label": {
+                "en": "Hardly ever"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Some of the time"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Often"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "djg_1": {
           "name": "djg_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "No" }, "value": 1 },
-            { "label": { "en": "More or less" }, "value": 2 },
-            { "label": { "en": "Yes" }, "value": 3 }
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "More or less"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "djg_2": {
           "name": "djg_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "No" }, "value": 1 },
-            { "label": { "en": "More or less" }, "value": 2 },
-            { "label": { "en": "Yes" }, "value": 3 }
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "More or less"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "djg_3": {
           "name": "djg_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "No" }, "value": 1 },
-            { "label": { "en": "More or less" }, "value": 2 },
-            { "label": { "en": "Yes" }, "value": 3 }
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "More or less"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "djg_4": {
           "name": "djg_4",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "No" }, "value": 1 },
-            { "label": { "en": "More or less" }, "value": 2 },
-            { "label": { "en": "Yes" }, "value": 3 }
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "More or less"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "djg_5": {
           "name": "djg_5",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "No" }, "value": 1 },
-            { "label": { "en": "More or less" }, "value": 2 },
-            { "label": { "en": "Yes" }, "value": 3 }
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "More or less"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "djg_6": {
           "name": "djg_6",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "No" }, "value": 1 },
-            { "label": { "en": "More or less" }, "value": 2 },
-            { "label": { "en": "Yes" }, "value": 3 }
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "More or less"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": 3
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "lsns_1": {
           "name": "lsns_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "None" }, "value": 0 },
-            { "label": { "en": "One" }, "value": 1 },
-            { "label": { "en": "Two" }, "value": 2 },
-            { "label": { "en": "Three or four" }, "value": 3 },
-            { "label": { "en": "Five to eight" }, "value": 4 },
-            { "label": { "en": "Nine or more" }, "value": 5 }
+            {
+              "label": {
+                "en": "None"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "One"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Two"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Three or four"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Five to eight"
+              },
+              "value": 4
+            },
+            {
+              "label": {
+                "en": "Nine or more"
+              },
+              "value": 5
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "lsns_2": {
           "name": "lsns_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "None" }, "value": 0 },
-            { "label": { "en": "One" }, "value": 1 },
-            { "label": { "en": "Two" }, "value": 2 },
-            { "label": { "en": "Three or four" }, "value": 3 },
-            { "label": { "en": "Five to eight" }, "value": 4 },
-            { "label": { "en": "Nine or more" }, "value": 5 }
+            {
+              "label": {
+                "en": "None"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "One"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Two"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Three or four"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Five to eight"
+              },
+              "value": 4
+            },
+            {
+              "label": {
+                "en": "Nine or more"
+              },
+              "value": 5
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "lsns_3": {
           "name": "lsns_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "None" }, "value": 0 },
-            { "label": { "en": "One" }, "value": 1 },
-            { "label": { "en": "Two" }, "value": 2 },
-            { "label": { "en": "Three or four" }, "value": 3 },
-            { "label": { "en": "Five to eight" }, "value": 4 },
-            { "label": { "en": "Nine or more" }, "value": 5 }
+            {
+              "label": {
+                "en": "None"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "One"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Two"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Three or four"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Five to eight"
+              },
+              "value": 4
+            },
+            {
+              "label": {
+                "en": "Nine or more"
+              },
+              "value": 5
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "lsns_4": {
           "name": "lsns_4",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "None" }, "value": 0 },
-            { "label": { "en": "One" }, "value": 1 },
-            { "label": { "en": "Two" }, "value": 2 },
-            { "label": { "en": "Three or four" }, "value": 3 },
-            { "label": { "en": "Five to eight" }, "value": 4 },
-            { "label": { "en": "Nine or more" }, "value": 5 }
+            {
+              "label": {
+                "en": "None"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "One"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Two"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Three or four"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Five to eight"
+              },
+              "value": 4
+            },
+            {
+              "label": {
+                "en": "Nine or more"
+              },
+              "value": 5
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "lsns_5": {
           "name": "lsns_5",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "None" }, "value": 0 },
-            { "label": { "en": "One" }, "value": 1 },
-            { "label": { "en": "Two" }, "value": 2 },
-            { "label": { "en": "Three or four" }, "value": 3 },
-            { "label": { "en": "Five to eight" }, "value": 4 },
-            { "label": { "en": "Nine or more" }, "value": 5 }
+            {
+              "label": {
+                "en": "None"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "One"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Two"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Three or four"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Five to eight"
+              },
+              "value": 4
+            },
+            {
+              "label": {
+                "en": "Nine or more"
+              },
+              "value": 5
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         },
         "lsns_6": {
           "name": "lsns_6",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "None" }, "value": 0 },
-            { "label": { "en": "One" }, "value": 1 },
-            { "label": { "en": "Two" }, "value": 2 },
-            { "label": { "en": "Three or four" }, "value": 3 },
-            { "label": { "en": "Five to eight" }, "value": 4 },
-            { "label": { "en": "Nine or more" }, "value": 5 }
+            {
+              "label": {
+                "en": "None"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "One"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Two"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Three or four"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Five to eight"
+              },
+              "value": 4
+            },
+            {
+              "label": {
+                "en": "Nine or more"
+              },
+              "value": 5
+            }
           ],
-          "validation": { "required": true }
+          "validation": {
+            "required": true
+          }
         }
       }
     },
@@ -239,28 +631,60 @@
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "alter_name": {
             "name": "alter_name",
             "type": "text",
             "component": "Text",
-            "validation": { "required": true, "unique": true }
+            "validation": {
+              "required": true,
+              "unique": true
+            }
           },
           "relationship": {
             "name": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
-              { "label": { "en": "Spouse or partner" }, "value": "partner" },
               {
-                "label": { "en": "Other family member" },
+                "label": {
+                  "en": "Spouse or partner"
+                },
+                "value": "partner"
+              },
+              {
+                "label": {
+                  "en": "Other family member"
+                },
                 "value": "family"
               },
-              { "label": { "en": "Friend" }, "value": "friend" },
-              { "label": { "en": "Neighbour" }, "value": "neighbour" },
-              { "label": { "en": "Co-worker" }, "value": "coworker" },
-              { "label": { "en": "Other" }, "value": "other" }
+              {
+                "label": {
+                  "en": "Friend"
+                },
+                "value": "friend"
+              },
+              {
+                "label": {
+                  "en": "Neighbour"
+                },
+                "value": "neighbour"
+              },
+              {
+                "label": {
+                  "en": "Co-worker"
+                },
+                "value": "coworker"
+              },
+              {
+                "label": {
+                  "en": "Other"
+                },
+                "value": "other"
+              }
             ]
           },
           "contact_frequency": {
@@ -268,11 +692,36 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": { "en": "Less than once a year" }, "value": 1 },
-              { "label": { "en": "A few times a year" }, "value": 2 },
-              { "label": { "en": "Monthly" }, "value": 3 },
-              { "label": { "en": "Weekly" }, "value": 4 },
-              { "label": { "en": "Daily" }, "value": 5 }
+              {
+                "label": {
+                  "en": "Less than once a year"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en": "A few times a year"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en": "Monthly"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en": "Weekly"
+                },
+                "value": 4
+              },
+              {
+                "label": {
+                  "en": "Daily"
+                },
+                "value": 5
+              }
             ]
           },
           "contact_mode": {
@@ -280,11 +729,36 @@
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
-              { "label": { "en": "In person" }, "value": "in_person" },
-              { "label": { "en": "Phone" }, "value": "phone" },
-              { "label": { "en": "Video call" }, "value": "video_call" },
-              { "label": { "en": "Text or messaging" }, "value": "text" },
-              { "label": { "en": "Social media" }, "value": "social_media" }
+              {
+                "label": {
+                  "en": "In person"
+                },
+                "value": "in_person"
+              },
+              {
+                "label": {
+                  "en": "Phone"
+                },
+                "value": "phone"
+              },
+              {
+                "label": {
+                  "en": "Video call"
+                },
+                "value": "video_call"
+              },
+              {
+                "label": {
+                  "en": "Text or messaging"
+                },
+                "value": "text"
+              },
+              {
+                "label": {
+                  "en": "Social media"
+                },
+                "value": "social_media"
+              }
             ]
           },
           "lives_with": {
@@ -292,8 +766,18 @@
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": { "en": "Yes" }, "value": true },
-              { "label": { "en": "No" }, "value": false }
+              {
+                "label": {
+                  "en": "Yes"
+                },
+                "value": true
+              },
+              {
+                "label": {
+                  "en": "No"
+                },
+                "value": false
+              }
             ]
           },
           "support_emotional": {
@@ -301,8 +785,18 @@
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": { "en": "Yes" }, "value": true },
-              { "label": { "en": "No" }, "value": false }
+              {
+                "label": {
+                  "en": "Yes"
+                },
+                "value": true
+              },
+              {
+                "label": {
+                  "en": "No"
+                },
+                "value": false
+              }
             ]
           },
           "support_practical": {
@@ -310,8 +804,18 @@
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": { "en": "Yes" }, "value": true },
-              { "label": { "en": "No" }, "value": false }
+              {
+                "label": {
+                  "en": "Yes"
+                },
+                "value": true
+              },
+              {
+                "label": {
+                  "en": "No"
+                },
+                "value": false
+              }
             ]
           },
           "age_band": {
@@ -319,12 +823,42 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": { "en": "Under 18" }, "value": 1 },
-              { "label": { "en": "18 to 29" }, "value": 2 },
-              { "label": { "en": "30 to 49" }, "value": 3 },
-              { "label": { "en": "50 to 64" }, "value": 4 },
-              { "label": { "en": "65 to 79" }, "value": 5 },
-              { "label": { "en": "80 or older" }, "value": 6 }
+              {
+                "label": {
+                  "en": "Under 18"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en": "18 to 29"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en": "30 to 49"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en": "50 to 64"
+                },
+                "value": 4
+              },
+              {
+                "label": {
+                  "en": "65 to 79"
+                },
+                "value": 5
+              },
+              {
+                "label": {
+                  "en": "80 or older"
+                },
+                "value": 6
+              }
             ]
           },
           "closeness": {
@@ -332,54 +866,73 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": { "en": "Not close" }, "value": 1 },
-              { "label": { "en": "Somewhat close" }, "value": 2 },
-              { "label": { "en": "Close" }, "value": 3 },
-              { "label": { "en": "Very close" }, "value": 4 }
+              {
+                "label": {
+                  "en": "Not close"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en": "Somewhat close"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en": "Close"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en": "Very close"
+                },
+                "value": 4
+              }
             ]
           }
         }
       }
     },
-    "edge": { "knows": { "name": "Knows", "color": "edge-color-seq-1" } }
+    "edge": {
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1"
+      }
+    }
   },
   "stages": [
     {
       "id": "565fc637-65db-51ad-a80c-83a7acad8cba",
       "type": "Information",
-      "label": { "en": "Template notes (delete before fielding)" },
-      "title": { "en": "Template notes" },
-      "items": [
-        {
-          "id": "33e8b7c6-8b44-5e9d-9fff-f49cb4a33cc1",
-          "type": "text",
-          "content": {
-            "en": "## For researchers\n\n_Delete this screen before you field the study. It lists the validated scales and reports this template draws on._\n\n- [Hughes ME, Waite LJ, Hawkley LC, Cacioppo JT (2004). A Short Scale for Measuring Loneliness in Large Surveys (UCLA-3). *Research on Aging*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2394670/)\n- [De Jong Gierveld J, Van Tilburg T (2006). A 6-Item Scale for Overall, Emotional, and Social Loneliness. *Research on Aging*.](https://journals.sagepub.com/doi/10.1177/0164027506289723)\n- [Lubben J et al. (2006). Lubben Social Network Scale (LSNS-6).](https://www.bc.edu/content/dam/bc1/schools/sw/lubben/LSNS6.pdf)\n- [US Surgeon General (2023). Our Epidemic of Loneliness and Isolation.](https://www.hhs.gov/surgeongeneral/priorities/connection/index.html)"
-          }
-        }
-      ]
+      "label": {
+        "en": "Template notes (delete before fielding)"
+      },
+      "content": {
+        "en": "# Template notes\n\n## For researchers\n\n_Delete this screen before you field the study. It lists the validated scales and reports this template draws on._\n\n- [Hughes ME, Waite LJ, Hawkley LC, Cacioppo JT (2004). A Short Scale for Measuring Loneliness in Large Surveys (UCLA-3). *Research on Aging*.](https://pmc.ncbi.nlm.nih.gov/articles/PMC2394670/)\n- [De Jong Gierveld J, Van Tilburg T (2006). A 6-Item Scale for Overall, Emotional, and Social Loneliness. *Research on Aging*.](https://journals.sagepub.com/doi/10.1177/0164027506289723)\n- [Lubben J et al. (2006). Lubben Social Network Scale (LSNS-6).](https://www.bc.edu/content/dam/bc1/schools/sw/lubben/LSNS6.pdf)\n- [US Surgeon General (2023). Our Epidemic of Loneliness and Isolation.](https://www.hhs.gov/surgeongeneral/priorities/connection/index.html)"
+      }
     },
     {
       "id": "c4f60092-2ee6-5079-9569-e5faf5e7ec87",
       "type": "Information",
-      "label": { "en": "Welcome" },
-      "title": { "en": "About this study" },
-      "items": [
-        {
-          "id": "2d783910-959f-54e7-9f0a-49883fdeb142",
-          "type": "text",
-          "content": {
-            "en": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people you are close to and in contact with**, and about how connected you feel. There are no right or wrong answers — we are simply interested in your own experience."
-          }
-        }
-      ]
+      "label": {
+        "en": "Welcome"
+      },
+      "content": {
+        "en": "# About this study\n\n## Welcome\n\nThank you for taking part. In this interview we will talk about the **people you are close to and in contact with**, and about how connected you feel. There are no right or wrong answers — we are simply interested in your own experience."
+      }
     },
     {
       "id": "d079a547-616d-5d45-86d7-d5ecd9baa0f4",
       "type": "EgoForm",
-      "label": { "en": "About You" },
+      "label": {
+        "en": "About You"
+      },
       "introductionPanel": {
-        "title": { "en": "About you and your household" },
+        "title": {
+          "en": "About you and your household"
+        },
         "text": {
           "en": "To begin, we would like to ask a few questions about **you** and your current living situation. Your answers help us understand the context of your social connections."
         }
@@ -396,7 +949,9 @@
           {
             "id": "5a0dfc9c-2a96-5d4d-a200-10b1a550d78c",
             "variable": "self_rated_health",
-            "prompt": { "en": "In general, how would you rate your health?" }
+            "prompt": {
+              "en": "In general, how would you rate your health?"
+            }
           }
         ]
       }
@@ -404,11 +959,18 @@
     {
       "id": "7c48a912-1080-56e4-a7f1-aa5340f19428",
       "type": "NameGenerator",
-      "label": { "en": "People You Discuss Important Matters With" },
+      "label": {
+        "en": "People You Discuss Important Matters With"
+      },
       "interviewScript": "Use the standard General Social Survey 'important matters' confidant generator. Allow the respondent to name as many or as few people as they wish; do not prompt for a target number.",
-      "subject": { "entity": "node", "type": "person" },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
       "form": {
-        "title": { "en": "Add Person" },
+        "title": {
+          "en": "Add Person"
+        },
         "fields": [
           {
             "id": "9770e7b6-ce55-5c6f-84b0-b8064e76d341",
@@ -430,10 +992,17 @@
     },
     {
       "id": "b9467f7f-235e-53d7-8ff8-bdbf5109e98c",
-      "behaviours": { "interactionMode": "select" },
+      "behaviours": {
+        "interactionMode": "select"
+      },
       "type": "OrdinalBin",
-      "label": { "en": "How Close Are They?" },
-      "subject": { "entity": "node", "type": "person" },
+      "label": {
+        "en": "How Close Are They?"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
       "prompts": [
         {
           "id": "6322db56-1879-58c0-9fb8-24e5378c1052",
@@ -448,35 +1017,43 @@
     {
       "id": "de0b2776-f090-5204-bb8a-7ed205bd2062",
       "type": "Information",
-      "label": { "en": "A little more about each person" },
-      "title": { "en": "A little more about each person" },
-      "items": [
-        {
-          "id": "ad5871c1-b5ec-59bf-bb6f-4c149f32e3a1",
-          "type": "text",
-          "content": {
-            "en": "For each person you named, we would like to ask about your **contact** with them and the kinds of **support** they provide."
-          }
-        }
-      ]
+      "label": {
+        "en": "A little more about each person"
+      },
+      "content": {
+        "en": "# A little more about each person\n\nFor each person you named, we would like to ask about your **contact** with them and the kinds of **support** they provide."
+      }
     },
     {
       "id": "70b1bafd-951c-5c2a-bb45-c7b25e4f2de9",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "type": "AlterForm",
-      "label": { "en": "About Each Person" },
-      "subject": { "entity": "node", "type": "person" },
+      "label": {
+        "en": "About Each Person"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
       "form": {
         "fields": [
           {
             "id": "c925e462-eefb-5676-bbf3-d560fff51054",
             "variable": "relationship",
-            "prompt": { "en": "What is {nodeLabel}'s relationship to you?" }
+            "prompt": {
+              "en": "What is {nodeLabel}'s relationship to you?"
+            }
           },
           {
             "id": "74530d6a-8b2d-57e2-9d47-bbe2b80ae362",
             "variable": "age_band",
-            "prompt": { "en": "Roughly how old is {nodeLabel}?" }
+            "prompt": {
+              "en": "Roughly how old is {nodeLabel}?"
+            }
           },
           {
             "id": "b60cfc0e-0172-5c00-8be8-3f96a699d7e2",
@@ -491,12 +1068,16 @@
             "prompt": {
               "en": "How do you usually keep in contact with {nodeLabel}?"
             },
-            "hint": { "en": "Select all that apply." }
+            "hint": {
+              "en": "Select all that apply."
+            }
           },
           {
             "id": "657599fe-a1b0-5657-914f-ecb7a1629b09",
             "variable": "lives_with",
-            "prompt": { "en": "Does {nodeLabel} live with you?" }
+            "prompt": {
+              "en": "Does {nodeLabel} live with you?"
+            }
           },
           {
             "id": "08fe5f14-c7f8-56ea-bdab-0b3b5d50d9b3",
@@ -514,19 +1095,32 @@
             "prompt": {
               "en": "Could you turn to {nodeLabel} for **practical** support?"
             },
-            "hint": { "en": "Such as help with tasks, transport, or money." }
+            "hint": {
+              "en": "Such as help with tasks, transport, or money."
+            }
           }
         ]
       }
     },
     {
       "id": "5fc74b33-bdd9-51c3-9921-7a64ec459d04",
-      "dynamicValues": { "focalLabel": { "path": "one_to_many.focal.$label" } },
+      "dynamicValues": {
+        "focalLabel": {
+          "path": "one_to_many.focal.$label"
+        }
+      },
       "type": "OneToManyDyadCensus",
-      "label": { "en": "Who Knows Whom" },
+      "label": {
+        "en": "Who Knows Whom"
+      },
       "interviewScript": "For each person in turn, the respondent taps everyone else that person knows. This systematically elicits the complete set of alter-alter ties — more reliably than a free-draw sociogram, which tends to under-capture them — giving the density and fragmentation measures that isolation analysis depends on. It is also lower-burden than an all-pairs dyad census.",
-      "subject": { "entity": "node", "type": "person" },
-      "behaviours": { "removeAfterConsideration": true },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "behaviours": {
+        "removeAfterConsideration": true
+      },
       "prompts": [
         {
           "id": "5f545490-7a1e-5d85-b5f2-ad857b1728d0",
@@ -540,9 +1134,13 @@
     {
       "id": "36bb21b9-e6d7-5eca-92ad-a8fe4e093b19",
       "type": "EgoForm",
-      "label": { "en": "Your Feelings About Connection" },
+      "label": {
+        "en": "Your Feelings About Connection"
+      },
       "introductionPanel": {
-        "title": { "en": "Your feelings about social connection" },
+        "title": {
+          "en": "Your feelings about social connection"
+        },
         "text": {
           "en": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers."
         }
@@ -559,27 +1157,37 @@
           {
             "id": "195ebb04-487c-58e4-a6b5-d72d4bca4ec3",
             "variable": "ucla_2",
-            "prompt": { "en": "How often do you feel left out?" }
+            "prompt": {
+              "en": "How often do you feel left out?"
+            }
           },
           {
             "id": "d391946b-f0c6-5b7f-9a39-38917cfcfe35",
             "variable": "ucla_3",
-            "prompt": { "en": "How often do you feel isolated from others?" }
+            "prompt": {
+              "en": "How often do you feel isolated from others?"
+            }
           },
           {
             "id": "48ad402c-46e9-5e55-81f8-d537d419e807",
             "variable": "djg_1",
-            "prompt": { "en": "I experience a general sense of emptiness." }
+            "prompt": {
+              "en": "I experience a general sense of emptiness."
+            }
           },
           {
             "id": "3578e9ab-5f3e-517e-b391-849ed23621fd",
             "variable": "djg_2",
-            "prompt": { "en": "I miss having people around me." }
+            "prompt": {
+              "en": "I miss having people around me."
+            }
           },
           {
             "id": "eda179ea-ad0f-5040-ad26-62b6627bfb76",
             "variable": "djg_3",
-            "prompt": { "en": "I often feel rejected." }
+            "prompt": {
+              "en": "I often feel rejected."
+            }
           },
           {
             "id": "0b3d95ec-4f80-5a4e-ae6e-e84cc199dd15",
@@ -598,7 +1206,9 @@
           {
             "id": "c2c2e7ee-2eac-5def-a608-1a03f7058e42",
             "variable": "djg_6",
-            "prompt": { "en": "There are enough people I feel close to." }
+            "prompt": {
+              "en": "There are enough people I feel close to."
+            }
           },
           {
             "id": "eda49843-928a-559b-b2ec-0dbbca6424f4",
@@ -647,7 +1257,9 @@
     },
     {
       "id": "33da0db7-03d6-53d9-a47d-1519b7db6722",
-      "finishLabel": { "en": "Finish" },
+      "finishLabel": {
+        "en": "Finish"
+      },
       "finishConfirmation": {
         "en": "Are you sure you want to finish the interview?"
       },
@@ -656,7 +1268,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en": "Finish Interview" },
+      "label": {
+        "en": "Finish Interview"
+      },
       "content": {
         "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -668,54 +1282,94 @@
   ],
   "interfaceText": {
     "navigation": {
-      "exitInterview": { "en": "Exit interview" },
+      "exitInterview": {
+        "en": "Exit interview"
+      },
       "exitInterviewDescription": {
         "en": "Your answers so far will be saved and you can continue later."
       },
-      "back": { "en": "Back" },
-      "continue": { "en": "Continue" },
+      "back": {
+        "en": "Back"
+      },
+      "continue": {
+        "en": "Continue"
+      },
       "exitFailed": {
         "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
     "interviewer": {
-      "exitReview": { "en": "Exit review" },
-      "exitReviewTitle": { "en": "Exit this review?" },
+      "exitReview": {
+        "en": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?"
+      },
       "exitReviewDescription": {
         "en": "Changes made during this review will not be saved."
       },
-      "hiddenScreen": { "en": "Hidden by answers" },
-      "outsidePath": { "en": "Outside current path" },
-      "showScreenTitle": { "en": "Show this screen?" },
+      "hiddenScreen": {
+        "en": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?"
+      },
       "hiddenScreenDescription": {
         "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
       },
       "outsidePathDescription": {
         "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
       },
-      "showScreen": { "en": "Show screen" }
+      "showScreen": {
+        "en": "Show screen"
+      }
     },
     "buttons": {
-      "cancel": { "en": "Cancel" },
-      "done": { "en": "Done" },
-      "yes": { "en": "Yes" },
-      "no": { "en": "No" },
-      "copy": { "en": "Copy" },
-      "copied": { "en": "Copied" }
+      "cancel": {
+        "en": "Cancel"
+      },
+      "done": {
+        "en": "Done"
+      },
+      "yes": {
+        "en": "Yes"
+      },
+      "no": {
+        "en": "No"
+      },
+      "copy": {
+        "en": "Copy"
+      },
+      "copied": {
+        "en": "Copied"
+      }
     },
     "messages": {
       "stageError": {
         "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "error": { "en": "An error occurred." },
-      "unnamed": { "en": "Unnamed" }
+      "error": {
+        "en": "An error occurred."
+      },
+      "unnamed": {
+        "en": "Unnamed"
+      }
     },
     "search": {
-      "searchLabel": { "en": "Search" },
-      "searchNoMatch": { "en": "Nothing matched your search term." }
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
+      }
     },
     "forms": {
-      "discardChangesTitle": { "en": "Discard changes?" },
+      "discardChangesTitle": {
+        "en": "Discard changes?"
+      },
       "discardChangesDescription": {
         "en": "Do you want to discard your changes?"
       }
@@ -724,7 +1378,9 @@
       "required": {
         "en": "You must answer this question before continuing."
       },
-      "unique": { "en": "Must be unique." }
+      "unique": {
+        "en": "Must be unique."
+      }
     }
   }
 }

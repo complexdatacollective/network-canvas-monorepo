@@ -6,9 +6,6 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { ResourceClientProvider } from '../resources/client.tsx';
-import ContentBlockEditor from '../sections/content-blocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../sections/content-blocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../sections/content-blocks/contentBlockTypes.ts';
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
@@ -25,11 +22,7 @@ const meta = {
       <ResourceClientProvider>
         <StageEditSession target={target} formId={formId} onSaved={onSaved}>
           <StageEditorShell actions={actions}>
-            <PageContentSection
-              ItemEditor={ContentBlockEditor}
-              ItemPreview={ContentBlockPreview}
-              slots={contentBlockSlots}
-            />
+            <PageContentSection />
           </StageEditorShell>
         </StageEditSession>
       </ResourceClientProvider>

@@ -65,7 +65,7 @@ describe('dynamic values in stage text', () => {
   it('accepts an ego value guarded by a missing version on an Information screen', () => {
     const protocol = editing('information', (stage) => {
       stage.dynamicValues = { egoName: { path: 'ego.egoName' } };
-      stage.title = { en: guarded('egoName') };
+      stage.content = { en: guarded('egoName') };
     });
     expect(issuesOf(protocol)).toEqual([]);
   });
@@ -73,12 +73,12 @@ describe('dynamic values in stage text', () => {
   it('refuses a network value shown outside a version for when it has one', () => {
     const protocol = editing('information', (stage) => {
       stage.dynamicValues = { egoName: { path: 'ego.egoName' } };
-      stage.title = { en: 'Hello {egoName}' };
+      stage.content = { en: 'Hello {egoName}' };
     });
     const index = stageIndex(protocol, 'information');
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
-        path: `stages.${index}.title.en`,
+        path: `stages.${index}.content.en`,
         message: expect.stringContaining('"egoName" can be missing'),
       }),
     ]);
@@ -87,7 +87,7 @@ describe('dynamic values in stage text', () => {
   it('refuses a select without a missing version as the guard of its other version', () => {
     const protocol = editing('information', (stage) => {
       stage.dynamicValues = { egoName: { path: 'ego.egoName' } };
-      stage.title = { en: '{egoName, select, other {Hi {egoName}}}' };
+      stage.content = { en: '{egoName, select, other {Hi {egoName}}}' };
     });
     expect(issuesOf(protocol)).toHaveLength(1);
   });
@@ -95,7 +95,7 @@ describe('dynamic values in stage text', () => {
   it('needs no missing version for a value every host guarantees', () => {
     const protocol = editing('information', (stage) => {
       stage.dynamicValues = { today: { path: 'now' } };
-      stage.title = { en: 'Since {today}' };
+      stage.content = { en: 'Since {today}' };
     });
     expect(issuesOf(protocol)).toEqual([]);
   });
@@ -120,7 +120,7 @@ describe('dynamic values in stage text', () => {
 
   it('refuses a name the stage does not bind', () => {
     const protocol = editing('information', (stage) => {
-      stage.title = { en: 'Hello {someone}' };
+      stage.content = { en: 'Hello {someone}' };
     });
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
@@ -131,13 +131,10 @@ describe('dynamic values in stage text', () => {
     ]);
   });
 
-  it('refuses a binding to an attribute that does not exist, at the binding and at every site', () => {
+  it('refuses a binding to an attribute that does not exist, at the binding and at its site', () => {
     const protocol = editing('information', (stage) => {
       stage.dynamicValues = { gone: { path: 'ego.deleted' } };
-      stage.title = { en: guarded('gone') };
-      stage.items = [
-        { id: 'i1', type: 'text', content: { en: guarded('gone') } },
-      ];
+      stage.content = { en: guarded('gone') };
     });
     const index = stageIndex(protocol, 'information');
     const issues = issuesOf(protocol);
@@ -147,11 +144,7 @@ describe('dynamic values in stage text', () => {
           path: `stages.${index}.dynamicValues.gone.path`,
         }),
         expect.objectContaining({
-          path: `stages.${index}.title.en`,
-          message: expect.stringContaining('does not exist'),
-        }),
-        expect.objectContaining({
-          path: `stages.${index}.items.0.content.en`,
+          path: `stages.${index}.content.en`,
           message: expect.stringContaining('does not exist'),
         }),
       ]),
@@ -183,12 +176,12 @@ describe('dynamic values in stage text', () => {
   it('refuses text that is blank in every version', () => {
     const protocol = editing('information', (stage) => {
       stage.dynamicValues = { you: { path: 'ego.egoName' } };
-      stage.title = { en: '{you, select, missing {} other {}}' };
+      stage.content = { en: '{you, select, missing {} other {}}' };
     });
     const index = stageIndex(protocol, 'information');
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
-        path: `stages.${index}.title.en`,
+        path: `stages.${index}.content.en`,
         message: expect.stringContaining('blank in every version'),
       }),
     ]);
@@ -197,14 +190,14 @@ describe('dynamic values in stage text', () => {
   it('refuses text whose only words are in a plural version its language never chooses', () => {
     const protocol = editing('information', (stage) => {
       stage.dynamicValues = { count: { path: 'ego.egoAge' } };
-      stage.title = {
+      stage.content = {
         en: '{count, select, missing {} other {{count, plural, few {Some} other {}}}}',
       };
     });
     const index = stageIndex(protocol, 'information');
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
-        path: `stages.${index}.title.en`,
+        path: `stages.${index}.content.en`,
         message: expect.stringContaining('blank in every version'),
       }),
     ]);
@@ -212,7 +205,7 @@ describe('dynamic values in stage text', () => {
 
   it('refuses text holding the marker the interview places values with', () => {
     const protocol = editing('information', (stage) => {
-      stage.title = { en: 'Hello ' };
+      stage.content = { en: 'Hello ' };
     });
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
@@ -794,7 +787,7 @@ describe('dynamic values in stage text', () => {
       it('refuses a label for the participant, which has none', () => {
         const protocol = editing('information', (stage) => {
           stage.dynamicValues = { me: { path: 'ego.$label' } };
-          stage.title = { en: guarded('me') };
+          stage.content = { en: guarded('me') };
         });
         expect(issuesOf(protocol)).toEqual(
           expect.arrayContaining([
@@ -952,7 +945,7 @@ describe('dynamic values in stage text', () => {
           you: { path: 'ego.egoName' },
           count: { path: 'ego.egoAge' },
         };
-        stage.title = titles;
+        stage.content = titles;
       });
       return {
         ...protocol,
@@ -963,14 +956,14 @@ describe('dynamic values in stage text', () => {
       };
     };
 
-    const titleIssues = (titles: Record<string, string>) =>
+    const contentIssues = (titles: Record<string, string>) =>
       issuesOf(twoLanguages(titles)).filter((issue) =>
-        issue.path.includes('title'),
+        issue.path.includes('content'),
       );
 
     it('accepts a translation showing what the default-language text shows', () => {
       expect(
-        titleIssues({
+        contentIssues({
           en: guarded('you'),
           fr: '{you, select, missing {Parlez-nous d’eux.} other {Parlez-nous de {you}.}}',
         }),
@@ -981,13 +974,13 @@ describe('dynamic values in stage text', () => {
       // Piped values are optional: a translation may word the text without
       // them, in some version or in all of them.
       expect(
-        titleIssues({
+        contentIssues({
           en: guarded('you'),
           fr: '{you, select, missing {Parlez-nous d’eux.} other {Parlez-nous de cette personne.}}',
         }),
       ).toEqual([]);
       expect(
-        titleIssues({ en: guarded('you'), fr: 'Parlez-nous d’eux.' }),
+        contentIssues({ en: guarded('you'), fr: 'Parlez-nous d’eux.' }),
       ).toEqual([]);
     });
 
@@ -995,7 +988,7 @@ describe('dynamic values in stage text', () => {
       const english =
         '{count, select, missing {Some years.} other {{count, plural, one {# year.} other {# years.}}}}';
       expect(
-        titleIssues({
+        contentIssues({
           en: english,
           de: 'Einige Jahre.',
           ru: '{count, select, missing {Годы.} other {{count, plural, one {Один год.} few {Несколько лет.} many {Много лет.} other {Несколько лет.}}}}',
@@ -1006,7 +999,7 @@ describe('dynamic values in stage text', () => {
 
     it('accepts text that shows a value only in a translation', () => {
       expect(
-        titleIssues({
+        contentIssues({
           en: 'Tell us about them.',
           fr: guarded('you'),
         }),
@@ -1016,18 +1009,20 @@ describe('dynamic values in stage text', () => {
     it('still checks each translation on its own', () => {
       // A value that can be missing, shown without a version for when it is.
       expect(
-        titleIssues({ en: guarded('you'), fr: 'Parlez-nous de {you}.' }),
+        contentIssues({ en: guarded('you'), fr: 'Parlez-nous de {you}.' }),
       ).toEqual([
         expect.objectContaining({
-          path: expect.stringMatching(/title\.fr$/),
+          path: expect.stringMatching(/content\.fr$/),
           message: expect.stringContaining('"you" can be missing'),
         }),
       ]);
       // A value the stage does not bind.
       expect(
-        titleIssues({ en: guarded('you'), fr: 'Parlez-nous de {other}.' }),
+        contentIssues({ en: guarded('you'), fr: 'Parlez-nous de {other}.' }),
       ).toEqual([
-        expect.objectContaining({ path: expect.stringMatching(/title\.fr$/) }),
+        expect.objectContaining({
+          path: expect.stringMatching(/content\.fr$/),
+        }),
       ]);
     });
   });

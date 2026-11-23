@@ -2,7 +2,6 @@ import type {
   Codebook,
   FinishMode,
   FinishOutcome,
-  Item,
   Panel,
   StageSubject,
   StageType,
@@ -42,7 +41,8 @@ export type StageLabelDraft = Readonly<{
   id?: string | undefined;
   type: StageType;
   subject?: StageSubject | undefined;
-  items?: readonly Item[] | undefined;
+  /** The files an Information page shows, by asset id. */
+  shownAssets?: readonly string[] | undefined;
   panels?: readonly StageLabelPanel[] | undefined;
   mode?: FinishMode | undefined;
   outcome?: FinishOutcome | undefined;
@@ -78,7 +78,9 @@ export function proposeStageLabel(
     {
       type: stage.type,
       ...(stage.panels === undefined ? {} : { panels: [...stage.panels] }),
-      ...(stage.items === undefined ? {} : { items: [...stage.items] }),
+      ...(stage.shownAssets === undefined
+        ? {}
+        : { shownAssets: stage.shownAssets }),
       ...(stage.mode === undefined ? {} : { mode: stage.mode }),
       ...(stage.outcome === undefined ? {} : { outcome: stage.outcome }),
     },

@@ -5,6 +5,7 @@ import type { SqlError } from 'effect/sql';
 import { createEmptyProtocol } from '@codaco/protocol-builder-core/empty-protocol';
 import {
   escapeMessageText,
+  headingMarkdown,
   type LocalizationDeclaration,
   type LocalizedString,
 } from '@codaco/protocol-validation';
@@ -253,6 +254,21 @@ export function untitledScreenText(
   };
 }
 
+/**
+ * The page a new screen starts with, in the draft's default language only:
+ * the placeholder it is named with, as the page's heading. A page must say
+ * something, and this says the screen is still to be written.
+ */
+export function untitledScreenContent(
+  localization: LocalizationDeclaration,
+): LocalizedString {
+  return {
+    [localization.defaultLocale]: escapeMessageText(
+      headingMarkdown('Untitled screen'),
+    ),
+  };
+}
+
 export const addAuditedInformationStage: (
   access: TeamAccess,
   input: { protocolId: string; draftId: string; stageId: string },
@@ -310,8 +326,7 @@ export const addAuditedInformationStage: (
           id: input.stageId,
           type: 'Information',
           label: untitled,
-          title: untitled,
-          items: [],
+          content: untitledScreenContent(localization),
         },
       });
       const response = protocolRevision(result);

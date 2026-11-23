@@ -20,9 +20,6 @@ export const STUDY_CONTEXT: StudyContext = {
 export const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
   '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e01',
 );
-export const INTRO_ITEM_ID = ProtocolObjectIdSchema.parse(
-  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e02',
-);
 export const NAMES_STAGE_ID = ProtocolObjectIdSchema.parse(
   '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e03',
 );
@@ -74,14 +71,7 @@ export const makeProtocol = (
         id: WELCOME_STAGE_ID,
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
-        title: { en: 'Hello', fr: 'Bonjour' },
-        items: [
-          {
-            id: INTRO_ITEM_ID,
-            type: 'text',
-            content: { en: 'Hi', fr: 'Salut' },
-          },
-        ],
+        content: { en: '# Hello\n\nHi', fr: '# Bonjour\n\nSalut' },
       },
       {
         id: NAMES_STAGE_ID,

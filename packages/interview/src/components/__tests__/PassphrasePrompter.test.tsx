@@ -55,8 +55,7 @@ const informationStage: Stages[number] = {
   id: testId('information'),
   type: 'Information',
   label: { en: 'Welcome' },
-  title: { en: 'Welcome' },
-  items: [],
+  content: { en: '# Welcome' },
 };
 
 /**

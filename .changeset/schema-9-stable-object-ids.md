@@ -7,11 +7,11 @@
 
 Every object in a schema 9 protocol that is edited, reordered or pointed at on
 its own now has an `id` that is a UUID, and no two objects in one protocol may
-share an id. That covers stages, prompts, panels, Information items, form
-fields (including a Network Composer's node and connection forms), filter
-rules, sort rules, a prompt's additional attributes, a Name Generator Roster's
-card and sortable properties, Narrative presets with their edge and highlight
-rows, Narrative Pedigree diseases and Network Composer edge configurations.
+share an id. That covers stages, prompts, panels, form fields (including a
+Network Composer's node and connection forms), filter rules, sort rules, a
+prompt's additional attributes, a Name Generator Roster's card and sortable
+properties, Narrative presets with their edge and highlight rows, Narrative
+Pedigree diseases and Network Composer edge configurations.
 
 Upgrading a protocol from schema 8 gives every one of these objects a new,
 random UUID, including any that already had one. Skip logic destinations and

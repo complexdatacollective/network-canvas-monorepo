@@ -160,8 +160,7 @@ export const alterFormStages: Stages = [
     id: testId('next-screen'),
     type: 'Information',
     label: { en: 'Next screen' },
-    title: { en: 'Next screen' },
-    items: [],
+    content: { en: '# Next screen' },
   },
 ];
 

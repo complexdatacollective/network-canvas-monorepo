@@ -16,6 +16,7 @@ import {
   IMAGE_RESOURCE,
   PROTOCOL_RESOURCES,
   ROSTER_RESOURCE,
+  communityRosterFile,
   skylineImageFile,
   type StoryResource,
   type StoryStage,
@@ -29,65 +30,66 @@ import AssetPickerField from './AssetPickerField.tsx';
 
 /** Which stage the picker under the researcher's cursor is a field of. */
 type StagePreset =
-  /** An information screen showing one image. */
+  /** A stage showing one image. */
   | 'welcome-screen'
-  /** An information screen showing two, which may be the same image. */
-  | 'two-image-items'
+  /** A name generator with two side panels, which may name the same file. */
+  | 'two-panels'
   /** A roster name generator, whose data source is a network resource. */
   | 'roster'
   /** A sociogram whose background is a picture drawn behind the nodes. */
-  | 'canvas-background';
+  | 'canvas-background'
+  /** The welcome image, on one line, as dense settings show a file. */
+  | 'line';
 
 type StageScenario = Readonly<{ stage: StoryStage; children: ReactNode }>;
 
 /**
- * The id and type of an information screen's item, mounted so the stage draft
- * the picker asks "is anything else using this?" of is a real one.
+ * The id and title of a side panel, mounted so the stage draft the picker
+ * asks "is anything else using this?" of is a real one.
  *
- * The form replaces `items` wholesale with the paths that are mounted, and an
- * item without its `type` is not on the schema's asset branch — so a picker
- * inside an item whose type was left behind would find no references at all,
- * including its own. They carry nothing a researcher decides, so they are
- * mounted out of sight rather than put on screen.
+ * The form replaces `panels` wholesale with the paths that are mounted, so a
+ * panel left without its `id` would not be one the schema reads, and a picker
+ * inside it would find no references at all, including its own. They carry
+ * nothing a researcher decides, so they are mounted out of sight.
  */
-function itemIdentityFields(index: number): ReactNode {
+function panelIdentityFields(index: number): ReactNode {
   return (
     <div className="hidden">
       <Field
         component={InputField}
-        name={`items[${index}].id`}
+        name={`panels[${index}].id`}
         nameMode="path"
-        label={`Item ${index + 1} id`}
+        label={`Panel ${index + 1} id`}
         labelHidden
       />
       <Field
         component={InputField}
-        name={`items[${index}].type`}
+        name={`panels[${index}].title`}
         nameMode="path"
-        label={`Item ${index + 1} type`}
+        label={`Panel ${index + 1} title`}
         labelHidden
       />
     </div>
   );
 }
 
-function imageItemPicker(index: number, label: string): ReactNode {
+function panelPicker(index: number, label: string): ReactNode {
   return (
     <Field
       component={AssetPickerField}
-      name={`items[${index}].content`}
+      name={`panels[${index}].dataSource`}
       nameMode="path"
       label={label}
-      kind="image"
+      kind="network"
     />
   );
 }
 
-function assetItem(index: number, holding: string): SectionDoc {
+function panel(index: number, holding: string): SectionDoc {
   return {
-    id: testId(`item-${index + 1}`),
-    type: 'asset',
-    content: holding,
+    id: testId(`panel-${index + 1}`),
+    title: { en: `Panel ${index + 1}` },
+    dataSource: holding,
   };
 }
 
@@ -100,37 +102,43 @@ const STAGE_SCENARIOS: Readonly<
 > = {
   'welcome-screen': (holding) => ({
     stage: {
-      stageId: testId('welcome-screen'),
-      type: 'Information',
+      stageId: fixtureStageId('sociogram-1'),
+      type: 'Sociogram',
       fields: {
-        label: 'Welcome',
-        title: 'Welcome to the study',
-        items: [assetItem(0, holding ?? '')],
+        label: 'Sociogram',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          { id: testId('prompt-1'), text: 'Place the people you know' },
+        ],
+        background: { image: holding ?? '' },
       },
     },
     children: (
-      <>
-        {itemIdentityFields(0)}
-        {imageItemPicker(0, 'Welcome image')}
-      </>
+      <Field
+        component={AssetPickerField}
+        name="background.image"
+        nameMode="path"
+        label="Welcome image"
+        kind="image"
+      />
     ),
   }),
-  'two-image-items': (holding) => ({
+  'two-panels': (holding) => ({
     stage: {
-      stageId: testId('welcome-screen'),
-      type: 'Information',
+      stageId: fixtureStageId('name-generator-1'),
+      type: 'NameGenerator',
       fields: {
-        label: 'Welcome',
-        title: 'Welcome to the study',
-        items: [assetItem(0, holding ?? ''), assetItem(1, holding ?? '')],
+        label: 'People',
+        subject: { entity: 'node', type: 'person' },
+        panels: [panel(0, holding ?? ''), panel(1, holding ?? '')],
       },
     },
     children: (
       <>
-        {itemIdentityFields(0)}
-        {imageItemPicker(0, 'First image')}
-        {itemIdentityFields(1)}
-        {imageItemPicker(1, 'Second image')}
+        {panelIdentityFields(0)}
+        {panelPicker(0, 'First panel')}
+        {panelIdentityFields(1)}
+        {panelPicker(1, 'Second panel')}
       </>
     ),
   }),
@@ -155,6 +163,30 @@ const STAGE_SCENARIOS: Readonly<
         label="Background image"
         kind="image"
         canvasBackgroundPreview
+      />
+    ),
+  }),
+  'line': (holding) => ({
+    stage: {
+      stageId: fixtureStageId('sociogram-1'),
+      type: 'Sociogram',
+      fields: {
+        label: 'Sociogram',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          { id: testId('prompt-1'), text: 'Place the people you know' },
+        ],
+        background: { image: holding ?? '' },
+      },
+    },
+    children: (
+      <Field
+        component={AssetPickerField}
+        name="background.image"
+        nameMode="path"
+        label="Welcome image"
+        kind="image"
+        layout="line"
       />
     ),
   }),
@@ -310,6 +342,29 @@ export const Chosen: Story = {
     );
     await expect(buttonPaint(browse).background).not.toBe(TRANSPARENT);
     await expect(browse.querySelector('svg')).not.toBeNull();
+  },
+};
+
+/**
+ * On one line, for a field among dense settings beside the resource itself
+ * (an image placed in a text): the resource's name, marked with its kind, and
+ * a quieter button to change it. No picture and no card.
+ */
+export const OnOneLine: Story = {
+  args: { stage: 'line', holding: IMAGE_RESOURCE.id },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const field = within(
+      await canvas.findByRole('group', { name: 'Welcome image' }),
+    );
+    await expect(await field.findByText(IMAGE_RESOURCE.name)).toBeVisible();
+    await expect(field.queryByRole('img')).toBeNull();
+    await userEvent.click(
+      field.getByRole('button', { name: 'Change the image' }),
+    );
+    await expect(
+      await screen.findByRole('dialog', { name: 'Choose an image' }),
+    ).toBeVisible();
   },
 };
 
@@ -474,30 +529,30 @@ export const ARosterTheHostHasRead: Story = {
  * it can always do instead: let go of it.
  */
 export const SharedWithAnotherField: Story = {
-  args: { stage: 'two-image-items', resources: [] },
+  args: { stage: 'two-panels', resources: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    const first = await canvas.findByRole('group', { name: 'First image' });
-    const second = canvas.getByRole('group', { name: 'Second image' });
+    const first = await canvas.findByRole('group', { name: 'First panel' });
+    const second = canvas.getByRole('group', { name: 'Second panel' });
 
     await userEvent.click(
-      within(first).getByRole('button', { name: 'Select an image' }),
+      within(first).getByRole('button', { name: 'Select a data file' }),
     );
     await userEvent.upload(
       await screen.findByLabelText('Choose a file from your computer'),
-      skylineImageFile(),
+      communityRosterFile(),
     );
     await within(first).findByText('Imported, not yet saved');
 
     // The second field is pointed at the very same import, which the browser
     // offers because it lists everything staged in this edit.
     await userEvent.click(
-      within(second).getByRole('button', { name: 'Select an image' }),
+      within(second).getByRole('button', { name: 'Select a data file' }),
     );
     await userEvent.click(
-      await screen.findByRole('button', { name: 'skyline.svg' }),
+      await screen.findByRole('button', { name: 'community.json' }),
     );
     await within(second).findByText('Imported, not yet saved');
 

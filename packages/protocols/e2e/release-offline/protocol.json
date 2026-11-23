@@ -50,27 +50,9 @@
       "label": {
         "en-US": "Welcome"
       },
-      "title": {
-        "en-US": "Welcome"
-      },
-      "items": [
-        {
-          "id": "1e56a01a-7c9a-5d8b-a734-56bf3d8877f5",
-          "type": "text",
-          "content": {
-            "en-US": "# Release offline\n\nThis protocol was imported while the device was offline."
-          }
-        },
-        {
-          "id": "783e0fe0-d021-53a4-912e-b617580e1619",
-          "type": "asset",
-          "content": "marker",
-          "description": {
-            "en-US": "Release offline marker"
-          },
-          "size": "SMALL"
-        }
-      ]
+      "content": {
+        "en-US": "# Welcome\n\n# Release offline\n\nThis protocol was imported while the device was offline.\n\n![Release offline marker](asset:marker?size=small)"
+      }
     },
     {
       "id": "3d80572d-c637-5d36-8f41-acb5440b7bc4",

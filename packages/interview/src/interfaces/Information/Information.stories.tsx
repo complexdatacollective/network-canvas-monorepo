@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
@@ -210,5 +211,137 @@ export const MarkdownFormatting: Story = {
       '- :memo: Take your time answering',
       '- :rocket: Let us get started',
     ].join('\n'),
+  },
+};
+
+// Assets are served from addresses the story gives, so these are made in
+// place: a picture in four quadrants, and half a second of silence.
+const PICTURE_URL = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="200" height="150" fill="#e63946"/><rect x="200" width="200" height="150" fill="#457b9d"/><rect y="150" width="200" height="150" fill="#f4a261"/><rect x="200" y="150" width="200" height="150" fill="#2a9d8f"/></svg>',
+)}`;
+
+const SILENCE_URL = (() => {
+  const samples = 4000;
+  const bytes = new Uint8Array(44 + samples);
+  const view = new DataView(bytes.buffer);
+  const text = (offset: number, value: string) => {
+    for (let i = 0; i < value.length; i++) {
+      bytes[offset + i] = value.charCodeAt(i);
+    }
+  };
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + samples, true);
+  text(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 8000, true);
+  view.setUint32(28, 8000, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  text(36, 'data');
+  view.setUint32(40, samples, true);
+  bytes.fill(128, 44);
+  return `data:audio/wav;base64,${btoa(String.fromCharCode(...bytes))}`;
+})();
+
+function buildBlockSettingsInterview() {
+  const interview = new SyntheticInterview();
+  interview.addAsset({
+    assetId: 'picture',
+    name: 'picture',
+    type: 'image',
+    url: PICTURE_URL,
+  });
+  interview.addAsset({
+    assetId: 'silence',
+    name: 'silence',
+    type: 'audio',
+    url: SILENCE_URL,
+  });
+
+  interview.addInformationStage({
+    title: 'Before',
+    text: 'Padding stage before the main information stage.',
+  });
+  interview.addInformationStage({
+    title: 'Block settings',
+    text: 'Each picture is held to a size and sits at the start, centre or end of the page. The recordings do not start by themselves and do not repeat.',
+    blocks: [
+      {
+        assetId: 'picture',
+        size: 'small',
+        align: 'start',
+        description: 'A small picture at the start',
+      },
+      {
+        assetId: 'picture',
+        size: 'medium',
+        description: 'A medium picture in the centre',
+      },
+      {
+        assetId: 'picture',
+        size: 'large',
+        align: 'end',
+        description: 'A large picture at the end',
+      },
+      {
+        assetId: 'silence',
+        autoplay: false,
+        loop: false,
+        align: 'end',
+        description: 'A recording at the end that does not start or repeat',
+      },
+    ],
+  });
+  interview.addInformationStage({
+    title: 'After',
+    text: 'Padding stage after the main information stage.',
+  });
+  return interview;
+}
+
+const BlockSettingsWrapper = () => {
+  const rawPayload = useMemo(
+    () =>
+      SuperJSON.stringify(
+        buildBlockSettingsInterview().getInterviewPayload({ currentStep: 1 }),
+      ),
+    [],
+  );
+  return (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell rawPayload={rawPayload} />
+    </div>
+  );
+};
+
+/**
+ * An image's size and alignment, and an audio recording's autoplay and loop
+ * settings, as a researcher writes them in the page's text.
+ */
+export const BlockSettings: Story = {
+  render: () => <BlockSettingsWrapper />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const small = await canvas.findByRole('img', {
+      name: 'A small picture at the start',
+    });
+    const large = await canvas.findByRole('img', {
+      name: 'A large picture at the end',
+    });
+    await expect(small).toHaveClass('max-h-48', 'object-left');
+    await expect(large).toHaveClass('max-h-[60vh]', 'object-right');
+    await expect(
+      canvas.getByRole('img', { name: 'A medium picture in the centre' }),
+    ).toHaveClass('max-h-96');
+
+    const recording = await canvas.findByLabelText(
+      'A recording at the end that does not start or repeat',
+    );
+    await waitFor(() => expect(recording).toBeInstanceOf(HTMLAudioElement));
+    if (!(recording instanceof HTMLAudioElement)) return;
+    await expect(recording.autoplay).toBe(false);
+    await expect(recording.loop).toBe(false);
   },
 };

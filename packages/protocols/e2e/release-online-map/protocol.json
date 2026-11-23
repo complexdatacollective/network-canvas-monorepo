@@ -49,18 +49,9 @@
       "label": {
         "en-US": "Welcome"
       },
-      "title": {
-        "en-US": "Welcome"
-      },
-      "items": [
-        {
-          "id": "c8f505fc-9828-571b-b041-3efdf9db400f",
-          "type": "text",
-          "content": {
-            "en-US": "# Release online map\n\nThis protocol includes a map, which needs an internet connection."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# Welcome\n\n# Release online map\n\nThis protocol includes a map, which needs an internet connection."
+      }
     },
     {
       "id": "56eb19d6-111e-557c-863a-c03d97e34d37",

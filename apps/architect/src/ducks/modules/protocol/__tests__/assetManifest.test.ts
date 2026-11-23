@@ -40,8 +40,7 @@ const openStage: Stage = {
   id: createProtocolObjectId(),
   type: 'Information',
   label: { en: 'A' },
-  title: { en: 'A' },
-  items: [],
+  content: { en: '# A' },
 };
 
 const createTestStore = () =>

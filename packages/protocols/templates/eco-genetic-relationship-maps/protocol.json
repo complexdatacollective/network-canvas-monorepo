@@ -499,18 +499,9 @@
       "label": {
         "en": "Template notes (delete before fielding)"
       },
-      "title": {
-        "en": "Template notes"
-      },
-      "items": [
-        {
-          "id": "364928ba-02b8-5411-86b9-46c31508e9ab",
-          "type": "text",
-          "content": {
-            "en": "## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; family relationships are the family edges the pedigree records, and `tie_type` describes non-family contacts in analysis. The people named in the **People in your life** stage are marked `non_kin`; everyone the pedigree adds, including relatives the participant did not describe and parents the interface adds automatically, is not. The beyond-family stages and the family health-communication roles are filtered on that attribute rather than on any pedigree answer, so the pedigree can leave gender identity switched off.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Template notes\n\n## For researchers\n\n_Delete this screen before you field the study._\n\nThis template adapts the **Colored Eco-Genetic Relationship Map (CEGRM)**, a conjointly constructed instrument that overlays a personal support network onto a genetic pedigree. It blends the genetic pedigree, the family systems genogram and the ecomap, and is grounded in social exchange and resource theory. Published sessions run 20–60 minutes and are led by the interviewer alongside the participant.\n\n### Before you field this\n\n- **Name the condition.** Every prompt says \"this condition\". Replace it with the condition your study is about, in the words your participants use.\n- **Set the inheritance pattern.** The closing inheritance view deliberately defaults to `unknown`, and possible at-risk statuses are switched off. Only select a clinically supported inheritance pattern, and only enable inferred statuses when a qualified professional will interpret them under an approved disclosure procedure. The display is not a diagnosis and assumes full penetrance.\n- **Adapt the consent and support plan.** Replace the example consent language, participant information, confidentiality statement, referral pathways, safeguarding process and distress procedure with those approved for your setting.\n- **Review the scope.** The four support domains are asked about family and non-family contacts. Gatherer, disseminator and blocker are configured as family health-communication roles. Widen that stage only when non-family information brokerage is part of the research question.\n- **Review spiritual support.** Retain, adapt or remove the spiritual/religious prompt according to the population and study purpose.\n- **Plan how to capture reflection.** Narrative drawings and conversation are not exported. Arrange approved audio, notes or screen capture when the qualitative account is research data.\n\n### What it measures\n\nFour exchange domains (information, practical help, feelings, spiritual connection) are recorded for family and non-family contacts. Three communication roles (gatherer, disseminator, blocker) are recorded for family members. Closeness and contact frequency are collected as ordinal Network Canvas measures for the whole living network. From the exchange variables you can derive the published measures: **breadth** of support (how many people), **types** of support (which domains), and **depth** (how many domains one relationship covers, 0–4). Relationship categories are collected only for people added beyond the pedigree; family relationships are the family edges the pedigree records, and `tie_type` describes non-family contacts in analysis. The people named in the **People in your life** stage are marked `non_kin`; everyone the pedigree adds, including relatives the participant did not describe and parents the interface adds automatically, is not. The beyond-family stages and the family health-communication roles are filtered on that attribute rather than on any pedigree answer, so the pedigree can leave gender identity switched off.\n\n**Caveat:** these counts are a discussion aid, not a validated support scale. The instrument's own literature treats the conversation the map provokes as the primary data.\n\n### The instrument's literature\n\n- Kenen R, Peters J. [The Colored, Eco-Genetic Relationship Map (CEGRM): a conceptual approach and tool for genetic counseling research.](https://doi.org/10.1023/A:1016627426430) J Genet Couns. 2001;10(4):289–309.\n- Peters JA, et al. [Exploratory study of the feasibility and utility of the CEGRM in women at high genetic risk of developing breast cancer.](https://pubmed.ncbi.nlm.nih.gov/15378540/) Am J Med Genet A. 2004.\n- Peters JA, et al. [Evolution of the CEGRM for assessing social functioning in women in hereditary breast-ovarian (HBOC) families.](https://pubmed.ncbi.nlm.nih.gov/17111216/) J Genet Couns. 2006. — adds the spiritual/religious domain.\n- Koehly LM, et al. [Characteristics of health information gatherers, disseminators, and blockers within families at risk of hereditary cancer.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2775786/) Am J Public Health. 2009.\n- Peters JA, et al. [Easing the burden: describing the role of social, emotional and spiritual support in research families with Li-Fraumeni syndrome.](https://pubmed.ncbi.nlm.nih.gov/26621765/) J Genet Couns. 2016. — the breadth/types/depth framework."
+      }
     },
     {
       "id": "26e4299a-7c2b-5c20-99ef-487a1df48ee6",
@@ -929,18 +920,9 @@
       "label": {
         "en": "Beyond the family"
       },
-      "title": {
-        "en": "The people beyond your family"
-      },
-      "items": [
-        {
-          "id": "e2276d09-6645-54c8-ba28-46818d31377f",
-          "type": "text",
-          "content": {
-            "en": "You have mapped the people who belong in your family story. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
-          }
-        }
-      ]
+      "content": {
+        "en": "# The people beyond your family\n\nYou have mapped the people who belong in your family story. The next few screens add everyone else who matters — friends, colleagues, neighbours, people from groups you belong to, and the people who look after your health.\n\nThey will sit alongside your family on the same map."
+      }
     },
     {
       "id": "d525e0e3-ac7a-535f-85e1-f4b875e3a2c9",
@@ -1610,18 +1592,9 @@
       "label": {
         "en": "Closing"
       },
-      "title": {
-        "en": "Thank you"
-      },
-      "items": [
-        {
-          "id": "d9175668-24ab-597f-ad26-8bdc436fb2f8",
-          "type": "text",
-          "content": {
-            "en": "Thank you for building this map with us.\n\nIf anything we have talked about today has left you wanting to speak to someone, please tell the interviewer before you leave. They can help you find the right support."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Thank you\n\nThank you for building this map with us.\n\nIf anything we have talked about today has left you wanting to speak to someone, please tell the interviewer before you leave. They can help you find the right support."
+      }
     },
     {
       "id": "e7e32b33-2b53-5306-ad42-1ba0ad8a0573",

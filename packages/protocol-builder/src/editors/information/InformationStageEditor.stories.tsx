@@ -28,7 +28,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The editor for a page the participant reads rather than a task they do: a heading and an ordered list of blocks of text and media, plus the skip logic and interviewer guidance every stage carries. It is opened here over a real editing session holding the shared all-interfaces protocol.',
+          'The editor for a page the participant reads rather than a task they do: one text holding its heading, its words and its images, audio and video in the order they are read, plus the skip logic and interviewer guidance every stage carries. It is opened here over a real editing session holding the shared all-interfaces protocol.',
       },
     },
   },
@@ -66,8 +66,8 @@ export const Spectating: Story = {
 };
 
 /**
- * A value the interview fills in, inserted into the heading: typing `{`
- * offers what the heading can show, and choosing the participant's name
+ * A value the interview fills in, inserted into the page: typing `{`
+ * offers what the page can show, and choosing the participant's name
  * binds it to the stage, inside versions for when it is known and when it is
  * not.
  */
@@ -77,10 +77,10 @@ export const ShowingAValue: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await awaitPassiveEffects();
 
-    const heading = await canvas.findByRole('textbox', {
-      name: 'Page heading',
+    const page = await canvas.findByRole('textbox', {
+      name: /^Rich Text/,
     });
-    await userEvent.click(heading);
+    await userEvent.click(page);
     await userEvent.keyboard(' {{');
     await body.findByRole('combobox', { name: 'Search' });
     await userEvent.keyboard('ego_name{Enter}');

@@ -666,18 +666,9 @@
       "label": {
         "en": "Researcher notes (delete before fielding)"
       },
-      "title": {
-        "en": "Notes for the research team"
-      },
-      "items": [
-        {
-          "id": "b2ca39e0-7aa6-58ef-a65a-b5ea53adaec3",
-          "type": "text",
-          "content": {
-            "en": "**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).\n\n**Design rationale.** One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects \"know each other\" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.\n\n**Validated instruments.** Check the wording and scoring of audit_frequency, audit_typical, audit_heavy, who5_cheerful, who5_calm, who5_active, who5_rested, who5_interest against the published instrument; Sketch reproduces them from memory."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Notes for the research team\n\n**About this draft.** Sketch drafted this protocol from a study description. Review every stage before fielding.\n\n**Study.** First-year university students map the friendships they have formed during their first semester. The study links the drinking of a student's friends to the student's own drinking (AUDIT-C) and wellbeing (WHO-5).\n\n**Design rationale.** One person node type keeps everyone on a single map. A quick-add name generator capped at 20 people keeps the network small enough for a sociogram, which collects \"know each other\" ties and drinking companions in one place. Bins collect closeness, how people met and perceived heavy drinking with little burden. The validated AUDIT-C and WHO-5 items come after the network task, and the drinking-amount items are skipped for non-drinkers.\n\n**Validated instruments.** Check the wording and scoring of audit_frequency, audit_typical, audit_heavy, who5_cheerful, who5_calm, who5_active, who5_rested, who5_interest against the published instrument; Sketch reproduces them from memory."
+      }
     },
     {
       "id": "3df253b7-4ccd-5881-a528-d057f91fdd6b",
@@ -685,18 +676,9 @@
       "label": {
         "en": "Welcome"
       },
-      "title": {
-        "en": "Welcome to the study"
-      },
-      "items": [
-        {
-          "id": "1594c006-0991-5a89-bd9f-59fe23866d55",
-          "type": "text",
-          "content": {
-            "en": "Thank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Welcome to the study\n\nThank you for taking part. We will ask about the people you have got to know since starting university, about drinking, and about how you have been feeling."
+      }
     },
     {
       "id": "87a045da-9641-5946-a8f2-275d956422af",
@@ -790,18 +772,9 @@
       "label": {
         "en": "Naming friends (introduction)"
       },
-      "title": {
-        "en": "Naming people"
-      },
-      "items": [
-        {
-          "id": "959a9e7a-bfad-5c6d-ab8b-de9db309ef70",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will be asked a question. Tap the add button, then type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Naming people\n\nOn the next screen you will be asked a question. Tap the add button, then type the name of each person who comes to mind and press Enter. Move on when you have added everyone."
+      }
     },
     {
       "id": "a2b0fa2c-2e5d-51d4-8089-a59b365120dd",
@@ -882,18 +855,9 @@
           ]
         }
       },
-      "title": {
-        "en": "About the people you named"
-      },
-      "items": [
-        {
-          "id": "26c6b124-bc5c-5727-b5cb-3715af4aa908",
-          "type": "text",
-          "content": {
-            "en": "Next, you will answer a few questions about each of the people you named, one at a time."
-          }
-        }
-      ]
+      "content": {
+        "en": "# About the people you named\n\nNext, you will answer a few questions about each of the people you named, one at a time."
+      }
     },
     {
       "id": "27e31375-16d1-5606-b1bd-95a080e8e2c2",
@@ -960,18 +924,9 @@
           ]
         }
       },
-      "title": {
-        "en": "Sorting the people you named"
-      },
-      "items": [
-        {
-          "id": "2072b5cf-c596-5d0d-ba9f-3fdcfac95e06",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Sorting the people you named\n\nOn the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
+      }
     },
     {
       "id": "73f032c3-e63a-54c0-92f1-f3685df5f916",
@@ -1079,18 +1034,9 @@
           ]
         }
       },
-      "title": {
-        "en": "Your network map"
-      },
-      "items": [
-        {
-          "id": "d04ab400-6fde-5048-b841-0973e9ef4bdf",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the people you named on a map, with you at the centre.\n\nDrag each of the people onto the circles. The closer to the centre you place someone, the closer they are to you.\n\nTo connect two of the people, tap one and then the other. Do the same again to remove a connection.\n\nTap each person the question describes. Tap them again to undo."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Your network map\n\nOn the next screen you will see the people you named on a map, with you at the centre.\n\nDrag each of the people onto the circles. The closer to the centre you place someone, the closer they are to you.\n\nTo connect two of the people, tap one and then the other. Do the same again to remove a connection.\n\nTap each person the question describes. Tap them again to undo."
+      }
     },
     {
       "id": "818190cd-29bc-5841-a39a-a69eb3a2e8a2",
@@ -1197,18 +1143,9 @@
           ]
         }
       },
-      "title": {
-        "en": "Sorting the people you named"
-      },
-      "items": [
-        {
-          "id": "2bed1867-4904-5643-a2da-824940f16d32",
-          "type": "text",
-          "content": {
-            "en": "On the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Sorting the people you named\n\nOn the next screen you will see the people you named and a set of boxes. Drag each person into the box that describes them best."
+      }
     },
     {
       "id": "e1d1f13f-2a5b-5bd3-ae23-c4f2e3df09dd",
@@ -1497,18 +1434,9 @@
       "label": {
         "en": "Thank you"
       },
-      "title": {
-        "en": "Thank you"
-      },
-      "items": [
-        {
-          "id": "7a7f9fd2-31c9-5e6a-9615-9e4035fe9413",
-          "type": "text",
-          "content": {
-            "en": "Thank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Thank you\n\nThank you for taking part. If anything in this interview has worried you, your university student support or wellbeing service can help, and your doctor can give confidential advice about drinking."
+      }
     },
     {
       "id": "af898428-02c5-5ce8-a117-44999877bc18",

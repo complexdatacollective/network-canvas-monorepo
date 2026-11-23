@@ -2,10 +2,15 @@
 
 import {
   cloneElement,
+  type ComponentType,
+  createContext,
+  createElement,
   isValidElement,
   type MouseEvent,
   type ReactElement,
   type ReactNode,
+  useContext,
+  useMemo,
 } from 'react';
 import ReactMarkdown, { type Components, type Options } from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -13,6 +18,13 @@ import rehypeSanitize from 'rehype-sanitize';
 import remarkGemoji from 'remark-gemoji';
 import remarkGfm from 'remark-gfm';
 
+import {
+  BLOCK_IMAGE_ELEMENT,
+  blockImageOf,
+  type MarkdownBlockImage,
+  rehypeBlockImages,
+  remarkBlockImages,
+} from './markdownBlockImages';
 import { NativeLink } from './NativeLink';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
@@ -172,8 +184,43 @@ const defaultMarkdownRenderers = {
   }) => <OrderedList className={className}>{children}</OrderedList>,
 } satisfies Components;
 
+/**
+ * Images the markdown shows as blocks the caller draws, such as the files of
+ * a protocol (see `markdownBlockImages`). Any other image is not shown, as
+ * no image is without this.
+ */
+export type MarkdownBlockImages = Readonly<{
+  /** Whether an image's address is one the caller draws. */
+  matches: (url: string) => boolean;
+  /** Draws the block for one such image. */
+  Block: ComponentType<MarkdownBlockImage>;
+}>;
+
+/** How the caller draws a block, for the element standing for one. */
+const BlockImageContext =
+  createContext<ComponentType<MarkdownBlockImage> | null>(null);
+
+/**
+ * The element a block image was placed as, drawn by the caller. Any other
+ * element of that name is unwrapped, as it was before the name was allowed.
+ */
+function BlockImageElement({
+  node,
+  children,
+}: {
+  node?: { properties?: Record<string, unknown> };
+  children?: ReactNode;
+}) {
+  const Block = useContext(BlockImageContext);
+  const image = blockImageOf(node?.properties);
+  if (Block === null || image === undefined) return <>{children}</>;
+  // The caller's component, which it keeps the same between renders.
+  return createElement(Block, image);
+}
+
 type RenderMarkdownProps = Options & {
   render?: ReactElement;
+  blockImages?: MarkdownBlockImages;
 };
 
 const RenderMarkdown = ({
@@ -184,19 +231,39 @@ const RenderMarkdown = ({
   remarkPlugins,
   rehypePlugins,
   unwrapDisallowed,
+  blockImages,
   ...props
 }: RenderMarkdownProps) => {
+  const matches = blockImages?.matches;
+  // Made once for each way of telling the caller's images apart, rather
+  // than on every render.
+  const remarkBlocks = useMemo(
+    () => (matches === undefined ? undefined : remarkBlockImages(matches)),
+    [matches],
+  );
+  const allowed = allowedElements ?? defaultMarkdownOptions.allowedElements;
+  const remark = remarkPlugins ?? defaultMarkdownOptions.remarkPlugins;
+  const rehype = rehypePlugins ?? defaultMarkdownOptions.rehypePlugins;
+
   const markdownContent = (
     <ReactMarkdown
       allowedElements={
-        allowedElements ?? defaultMarkdownOptions.allowedElements
+        remarkBlocks === undefined ? allowed : [...allowed, BLOCK_IMAGE_ELEMENT]
       }
       components={{
         ...defaultMarkdownRenderers,
         ...components,
+        ...(remarkBlocks !== undefined && {
+          [BLOCK_IMAGE_ELEMENT]: BlockImageElement,
+        }),
       }}
-      remarkPlugins={remarkPlugins ?? defaultMarkdownOptions.remarkPlugins}
-      rehypePlugins={rehypePlugins ?? defaultMarkdownOptions.rehypePlugins}
+      remarkPlugins={
+        remarkBlocks === undefined ? remark : [...remark, remarkBlocks]
+      }
+      // Last, after the HTML has been sanitized (see `markdownBlockImages`).
+      rehypePlugins={
+        remarkBlocks === undefined ? rehype : [...rehype, rehypeBlockImages]
+      }
       unwrapDisallowed={
         unwrapDisallowed ?? defaultMarkdownOptions.unwrapDisallowed
       }
@@ -206,11 +273,20 @@ const RenderMarkdown = ({
     </ReactMarkdown>
   );
 
+  const content =
+    blockImages === undefined ? (
+      markdownContent
+    ) : (
+      <BlockImageContext.Provider value={blockImages.Block}>
+        {markdownContent}
+      </BlockImageContext.Provider>
+    );
+
   if (render) {
-    return cloneElement(render, undefined, markdownContent);
+    return cloneElement(render, undefined, content);
   }
 
-  return markdownContent;
+  return content;
 };
 
 export { getMarkdownAttributeValues, getMarkdownLabelText, RenderMarkdown };

@@ -78,6 +78,25 @@ The Per Alter Form and Per Alter Edge Form interface pages no longer show
 `interface-documentation/per-alter-form/architect-intro.png` and
 `interface-documentation/per-edge-form/architect-intro.png`.
 
+## Information page as one text (schema 9)
+
+An Information stage's page heading and list of items became one text, written
+in a single editor, with images, audio and video placed in it as blocks. These
+images predate that work:
+
+| Image                                                     | Page                                                                                                         | What changed                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface-documentation/information/architect-items.png` | `design-protocols/interface-documentation/information.en.mdx`                                                | Shows the removed **Page heading** field and the list of items. Recapture the **Content** section: the **Rich Text** editor holding a heading, a paragraph and an image block, with the image selected so that its resize handle (on the bottom corner of its outline) and its settings (Description, Display size, Alignment, the **Image** file field and **Delete**) show under it. |
+| `architect/localization/editor-missing-translation.png`   | `design-protocols/translating-your-protocol.en.mdx`, `design-protocols/tutorials/building-a-protocol.en.mdx` | Shows the removed **Page heading** field. The tutorial now has the reader choose Spanish from the menu beside **Rich Text** in the Welcome stage, so recapture that field with Spanish chosen and no translation, so that the note under it shows, and reword the image's description on both pages (and in their Spanish and French pages) to name that field.                        |
+| `architect-guide/information-interface.png`               | `design-protocols/tutorials/building-a-protocol.en.mdx`                                                      | Shows the removed **Page heading** field and list of items. Recapture the Information stage editor as it opens: the **Content** section with its empty **Rich Text** editor.                                                                                                                                                                                                           |
+| `architect-guide/edit-item.png`                           | `design-protocols/tutorials/building-a-protocol.en.mdx`                                                      | Shows the removed **Create item** dialog, so the tutorial now shows this capture only to Architect Classic readers. Recapture the **Content** section with "Welcome to the Sample Protocol" as a heading and an image block selected so that its settings show, then show it in the `current` block of "Adding images, video and audio".                                               |
+
+Every Architect capture that shows a rich text editor's toolbar also predates
+its regrouping (undo and redo, a list of text styles in place of the heading
+buttons, formatting, lists, then the buttons that insert something, the
+buttons that insert a file, and the ones that insert a placeholder); check
+them when they are next retaken.
+
 ## Interface documentation (Architect and interview captures)
 
 In November 2026 every Architect Classic stage-editor capture on the

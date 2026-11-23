@@ -97,7 +97,7 @@ const FINDINGS: Finding[] = [
   ),
   makeFinding(
     'title',
-    [op('set', `/stages/${WELCOME_STAGE_ID}/title/en`, 'Welcome to our study')],
+    [op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Welcome to our study')],
     { stageId: WELCOME_STAGE_ID, severity: 'suggestion', category: 'burden' },
   ),
   makeFinding(
@@ -966,7 +966,7 @@ describe('decisions', () => {
     await store.dispatch(decideFinding('title', 'fix'));
     store.dispatch(
       setProtocolTranslation({
-        path: ['stages', 0, 'title'],
+        path: ['stages', 0, 'label'],
         locale: 'en',
         text: 'Mine now',
       }),

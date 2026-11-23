@@ -4,10 +4,26 @@ import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { CURRENT_SCHEMA_VERSION, type Protocol } from '../../index.ts';
 import migrationV7toV8 from '../migration.ts';
+import ProtocolSchemaV8 from '../schema.ts';
 import { V8OutputSchema } from './v8-output-schema.ts';
 
 // The schema 9 output wraps participant copy in English.
 const en = (text: string) => ({ en: text });
+
+/**
+ * The items of the first stage of a migrated schema 8 document, as schema 8
+ * held them. Read from the schema 8 result itself: schema 9 has no items, so
+ * a document read through it would show none.
+ */
+const itemsOfFirstStage = (migrated: unknown): Record<string, unknown>[] => {
+  const [stage] = ProtocolSchemaV8.parse(migrated).stages;
+  const items = stage?.items;
+  if (!Array.isArray(items)) throw new Error('The stage has no items');
+  return items.filter(
+    (item): item is Record<string, unknown> =>
+      typeof item === 'object' && item !== null && !Array.isArray(item),
+  );
+};
 
 /**
  * Comprehensive tests for V7 to V8 migration
@@ -1682,13 +1698,9 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = V8OutputSchema.parse(migratedRaw);
-
-      const stage = parsed.stages[0];
-      if (stage && 'items' in stage) {
-        expect(stage.items[0]).not.toHaveProperty('loop');
-        expect(stage.items[0]?.content).toBe('video-asset-1');
-      }
+      const [item] = itemsOfFirstStage(migratedRaw);
+      expect(item).not.toHaveProperty('loop');
+      expect(item?.content).toBe('video-asset-1');
     });
 
     it('removes loop from video/audio assets in the manifest', () => {
@@ -3014,16 +3026,31 @@ describe('Migration V7 to V8', () => {
         buildInfoProtocol({ label: 'Welcome Screen' }),
         { name: 'Test Protocol' },
       );
-      const parsed = V8OutputSchema.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', en('Welcome Screen'));
+      // The 8 step writes the title as schema 8 held it, and schema 9 shows
+      // it as the heading of the page.
+      expect(ProtocolSchemaV8.parse(migratedRaw).stages[0]).toHaveProperty(
+        'title',
+        'Welcome Screen',
+      );
+      expect(V8OutputSchema.parse(migratedRaw).stages[0]).toHaveProperty(
+        'content',
+        en('# Welcome Screen\n\nWelcome'),
+      );
     });
 
     it("backfills 'Information' when there is no usable label", () => {
       const migratedRaw = migrationV7toV8.migrate(buildInfoProtocol({}), {
         name: 'Test Protocol',
       });
+      expect(ProtocolSchemaV8.parse(migratedRaw).stages[0]).toHaveProperty(
+        'title',
+        'Information',
+      );
       const parsed = V8OutputSchema.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', en('Information'));
+      expect(parsed.stages[0]).toHaveProperty(
+        'content',
+        en('# Information\n\nWelcome'),
+      );
       expect(parsed.stages[0]).toHaveProperty('label', en('Stage 1'));
     });
 
@@ -3032,8 +3059,14 @@ describe('Migration V7 to V8', () => {
         buildInfoProtocol({ label: 'Welcome Screen', title: 'Hello!' }),
         { name: 'Test Protocol' },
       );
-      const parsed = V8OutputSchema.parse(migratedRaw);
-      expect(parsed.stages[0]).toHaveProperty('title', en('Hello!'));
+      expect(ProtocolSchemaV8.parse(migratedRaw).stages[0]).toHaveProperty(
+        'title',
+        'Hello!',
+      );
+      expect(V8OutputSchema.parse(migratedRaw).stages[0]).toHaveProperty(
+        'content',
+        en('# Hello!\n\nWelcome'),
+      );
     });
   });
 
@@ -3547,11 +3580,10 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = V8OutputSchema.parse(migratedRaw);
-      const stage = parsed.stages[0];
-      if (stage && 'items' in stage) {
-        expect(stage.items[0]).toHaveProperty('size', 'MEDIUM');
-      }
+      expect(itemsOfFirstStage(migratedRaw)[0]).toHaveProperty(
+        'size',
+        'MEDIUM',
+      );
     });
 
     it('drops size values not in SMALL/MEDIUM/LARGE', () => {
@@ -3578,11 +3610,7 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = V8OutputSchema.parse(migratedRaw);
-      const stage = parsed.stages[0];
-      if (stage && 'items' in stage) {
-        expect(stage.items[0]).not.toHaveProperty('size');
-      }
+      expect(itemsOfFirstStage(migratedRaw)[0]).not.toHaveProperty('size');
     });
 
     it('removes size from text items', () => {
@@ -3609,12 +3637,9 @@ describe('Migration V7 to V8', () => {
       const migratedRaw = migrationV7toV8.migrate(v7Protocol, {
         name: 'Test Protocol',
       });
-      const parsed = V8OutputSchema.parse(migratedRaw);
-      const stage = parsed.stages[0];
-      if (stage && 'items' in stage) {
-        expect(stage.items[0]).not.toHaveProperty('size');
-        expect(stage.items[0]?.type).toBe('text');
-      }
+      const [item] = itemsOfFirstStage(migratedRaw);
+      expect(item).not.toHaveProperty('size');
+      expect(item?.type).toBe('text');
     });
   });
 

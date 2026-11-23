@@ -245,8 +245,7 @@ describe('the finish recorded for generated interviews', () => {
         id: createProtocolObjectId(),
         type: 'Information',
         label: { en: 'Info' },
-        title: { en: 'Info' },
-        items: [],
+        content: { en: '# Info' },
       },
       finishStage,
       // A later ending, which the generated routes below never reach.

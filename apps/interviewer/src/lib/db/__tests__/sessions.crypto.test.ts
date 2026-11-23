@@ -131,8 +131,7 @@ function informationStage(name: string): InformationStage {
     id: createProtocolObjectId(),
     type: 'Information',
     label: { en: name },
-    title: { en: name },
-    items: [],
+    content: { en: `# ${name}` },
   };
 }
 

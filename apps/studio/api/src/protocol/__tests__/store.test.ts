@@ -265,14 +265,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           id: STAGE_INFO1,
           type: 'Information',
           label: { en: 'About' },
-          title: { en: 'About this study' },
-          items: [
-            {
-              id: '9e0f3035-e108-5135-b78d-4fa8d34b9345',
-              type: 'text',
-              content: { en: 'Welcome.' },
-            },
-          ],
+          content: { en: '# About this study\n\nWelcome.' },
         },
         index: 1,
       }),
@@ -305,8 +298,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
             id: STAGE_TRANSACTIONAL_INFO,
             type: 'Information',
             label: { en: 'Transactional' },
-            title: { en: 'Transactional' },
-            items: [],
+            content: { en: '# Transactional' },
           },
           index: 1,
         });
@@ -357,14 +349,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
             id: STAGE_INFO2,
             type: 'Information',
             label: { en: 'X' },
-            title: { en: 'X' },
-            items: [
-              {
-                id: '85c0f7f4-b58b-52a6-be07-7b9bb8841a8b',
-                type: 'text',
-                content: { en: 'Y.' },
-              },
-            ],
+            content: { en: '# X\n\nY.' },
           },
           index: 99,
         }),
@@ -387,14 +372,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
               id: STAGE_INFO3,
               type: 'Information',
               label: { en: 'X' },
-              title: { en: 'X' },
-              items: [
-                {
-                  id: 'ed9d25a7-c4a9-536f-a1bc-b38aa5908d40',
-                  type: 'text',
-                  content: { en: 'Y.' },
-                },
-              ],
+              content: { en: '# X\n\nY.' },
             },
             index,
           }),
@@ -442,8 +420,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       id,
       type: 'Information',
       label: { en: id },
-      title: { en: id },
-      items: [],
+      content: { en: `# ${id}` },
     });
     const finish = (id: string) => ({
       id,
@@ -761,14 +738,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           id: STAGE_INFO_FENCE,
           type: 'Information',
           label: { en: 'Fence' },
-          title: { en: 'Fence' },
-          items: [
-            {
-              id: 'fcf21449-6282-5fe0-bff3-1914a944178e',
-              type: 'text',
-              content: { en: 'Z.' },
-            },
-          ],
+          content: { en: '# Fence\n\nZ.' },
         },
         index: 0,
       }),

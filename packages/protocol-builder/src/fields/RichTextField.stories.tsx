@@ -168,7 +168,7 @@ export const APassage: Story = {
       await canvas.findByRole('textbox', { name: EXPLANATION_LABEL }),
     ).toHaveAttribute('aria-multiline', 'true');
     await expect(
-      canvas.getByRole('button', { name: 'Heading 1' }),
+      canvas.getByRole('button', { name: /^Text style:/ }),
     ).toBeInTheDocument();
     await expect(
       canvas.getByRole('button', { name: 'Bullet list' }),
@@ -205,7 +205,7 @@ export const OneLineOnly: Story = {
       Math.abs((editableHeight ?? 0) - toolbarHeight),
     ).toBeLessThanOrEqual(1);
     await expect(
-      canvas.queryByRole('button', { name: 'Heading 1' }),
+      canvas.queryByRole('button', { name: /^Text style:/ }),
     ).toBeNull();
     await expect(
       canvas.queryByRole('button', { name: 'Bullet list' }),

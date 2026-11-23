@@ -603,6 +603,14 @@
     "defaultMessage": "Remove",
     "description": "Visible label of the link popover button removing the link."
   },
+  "frescoUi.richTextEditor.textStyleHeading": {
+    "defaultMessage": "Heading {level}",
+    "description": "Choice in the rich text editor toolbar’s list of text styles, and what the list shows while the line the caret is in is a heading. {level} is the heading’s level, a number from 1 (the largest) to 4."
+  },
+  "frescoUi.richTextEditor.textStyleParagraph": {
+    "defaultMessage": "Paragraph",
+    "description": "Choice in the rich text editor toolbar’s list of text styles, and what the list shows while the line the caret is in is ordinary text rather than a heading."
+  },
   "frescoUi.selectAllHeader.deselectAll": {
     "defaultMessage": "Deselect all",
     "description": "Menu action clearing the table row selection."

@@ -187,32 +187,41 @@ describe('a field mounting beneath overlapping fields', () => {
   });
 });
 
-/** A control that replaces the whole list it is registered at. */
+/**
+ * A skip logic holding one rule, written the way a stage holds it. The rule
+ * names an ego attribute the fixture protocol's codebook really has, so a
+ * stage holding it is one the protocol would take.
+ */
+const skipLogicOf = (value: string) => ({
+  action: 'SHOW',
+  filter: {
+    rules: [
+      {
+        type: 'ego',
+        id: testId('rule-1'),
+        options: {
+          operator: 'CONTAINS',
+          attribute: '3377af3f-3c79-41da-9b0b-6570fb519b93',
+          value,
+        },
+      },
+    ],
+  },
+});
+
+/** A control that replaces the whole skip logic it is registered at. */
 const SetItems = (({
   onChange,
 }: Readonly<{ onChange?: (value: unknown) => void }>) => (
-  <button
-    type="button"
-    onClick={() =>
-      onChange?.([
-        { id: testId('item-1'), type: 'text', content: en('Rewritten') },
-      ])
-    }
-  >
-    Rewrite the items
+  <button type="button" onClick={() => onChange?.(skipLogicOf('Rewritten'))}>
+    Rewrite the rule
   </button>
 )) as ComponentType<Record<string, unknown>>;
 
 const SEEDED_ITEMS: SectionDoc = {
   label: en('Welcome'),
-  title: en('Welcome to the study'),
-  items: [
-    {
-      id: testId('item-1'),
-      type: 'text',
-      content: en('As it was seeded'),
-    },
-  ],
+  content: en('Welcome to the study'),
+  skipLogic: skipLogicOf('As it was seeded'),
 };
 
 /**
@@ -229,13 +238,13 @@ const SEEDED_ITEMS: SectionDoc = {
 describe('a field mounting beneath a container holding an unsaved edit', () => {
   const overlappingItems = (
     <>
-      <Field name="items" label="Page items" component={SetItems} />
-      <Disclosure label="Show the first item">
+      <Field name="skipLogic" label="Skip logic" component={SetItems} />
+      <Disclosure label="Show the rule's value">
         <Field
-          name="items[0].content"
+          name="skipLogic.filter.rules[0].options.value"
           nameMode="path"
-          label="First item"
-          component={LocalizedInputField}
+          label="Rule value"
+          component={InputField}
         />
       </Disclosure>
     </>
@@ -252,14 +261,14 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
     });
 
     await harness.user.click(
-      await harness.findByRole('button', { name: 'Rewrite the items' }),
+      await harness.findByRole('button', { name: 'Rewrite the rule' }),
     );
     await harness.user.click(
-      harness.getByRole('button', { name: 'Show the first item' }),
+      harness.getByRole('button', { name: "Show the rule's value" }),
     );
 
     expect(
-      await harness.findByRole('textbox', { name: 'First item' }),
+      await harness.findByRole('textbox', { name: 'Rule value' }),
     ).toHaveValue('Rewritten');
   });
 
@@ -274,17 +283,15 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
     });
 
     await harness.user.click(
-      await harness.findByRole('button', { name: 'Rewrite the items' }),
+      await harness.findByRole('button', { name: 'Rewrite the rule' }),
     );
     await harness.user.click(
-      harness.getByRole('button', { name: 'Show the first item' }),
+      harness.getByRole('button', { name: "Show the rule's value" }),
     );
-    await harness.findByRole('textbox', { name: 'First item' });
+    await harness.findByRole('textbox', { name: 'Rule value' });
 
     const request = await harness.submit();
 
-    expect(request?.stageDocument.items).toEqual([
-      { id: testId('item-1'), type: 'text', content: en('Rewritten') },
-    ]);
+    expect(request?.stageDocument.skipLogic).toEqual(skipLogicOf('Rewritten'));
   });
 });

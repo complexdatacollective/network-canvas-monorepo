@@ -105,8 +105,7 @@ const stage: Stage = {
   id: STAGE_ID,
   type: 'Information',
   label: { en: 'A' },
-  title: { en: 'A' },
-  items: [],
+  content: { en: '# A' },
 };
 
 const editedStage: Stage = { ...stage, label: { en: 'A, edited' } };

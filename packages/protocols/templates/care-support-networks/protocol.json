@@ -2,7 +2,10 @@
   "name": "Care & Support Networks",
   "description": "An example of a study that looks at who supports a participant through a period of care, and the kinds of support they provide — emotional, practical, informational, and financial — across both informal and professional sources. Configured here for the perinatal period (pregnancy and new parenthood).",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en", "locales": ["en"] },
+  "localization": {
+    "defaultLocale": "en",
+    "locales": ["en"]
+  },
   "lastModified": "2026-06-15T00:00:00.000Z",
   "codebook": {
     "ego": {
@@ -12,19 +15,32 @@
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
-            { "label": { "en": "Pregnant" }, "value": "pregnant" },
             {
-              "label": { "en": "Postpartum (baby already born)" },
+              "label": {
+                "en": "Pregnant"
+              },
+              "value": "pregnant"
+            },
+            {
+              "label": {
+                "en": "Postpartum (baby already born)"
+              },
               "value": "postpartum"
             }
           ],
-          "validation": { "required": true, "maxSelected": 1 }
+          "validation": {
+            "required": true,
+            "maxSelected": 1
+          }
         },
         "weeks_since_birth": {
           "name": "weeks_since_birth",
           "type": "number",
           "component": "Number",
-          "validation": { "minValue": 0, "maxValue": 104 }
+          "validation": {
+            "minValue": 0,
+            "maxValue": 104
+          }
         },
         "living_situation": {
           "name": "living_situation",
@@ -32,18 +48,29 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
-              "label": { "en": "Living with a partner / spouse" },
+              "label": {
+                "en": "Living with a partner / spouse"
+              },
               "value": "with_partner"
             },
             {
-              "label": { "en": "Living with other family or relatives" },
+              "label": {
+                "en": "Living with other family or relatives"
+              },
               "value": "with_family"
             },
             {
-              "label": { "en": "Living with friends or housemates" },
+              "label": {
+                "en": "Living with friends or housemates"
+              },
               "value": "with_others"
             },
-            { "label": { "en": "Living alone" }, "value": "alone" }
+            {
+              "label": {
+                "en": "Living alone"
+              },
+              "value": "alone"
+            }
           ]
         },
         "epds_1": {
@@ -51,10 +78,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "As much as I always could" }, "value": 0 },
-            { "label": { "en": "Not quite so much now" }, "value": 1 },
-            { "label": { "en": "Definitely not so much now" }, "value": 2 },
-            { "label": { "en": "Not at all" }, "value": 3 }
+            {
+              "label": {
+                "en": "As much as I always could"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "Not quite so much now"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Definitely not so much now"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Not at all"
+              },
+              "value": 3
+            }
           ]
         },
         "epds_2": {
@@ -62,13 +109,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "As much as I ever did" }, "value": 0 },
-            { "label": { "en": "Rather less than I used to" }, "value": 1 },
             {
-              "label": { "en": "Definitely less than I used to" },
+              "label": {
+                "en": "As much as I ever did"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "Rather less than I used to"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Definitely less than I used to"
+              },
               "value": 2
             },
-            { "label": { "en": "Hardly at all" }, "value": 3 }
+            {
+              "label": {
+                "en": "Hardly at all"
+              },
+              "value": 3
+            }
           ]
         },
         "epds_3": {
@@ -76,10 +140,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Yes, most of the time" }, "value": 3 },
-            { "label": { "en": "Yes, some of the time" }, "value": 2 },
-            { "label": { "en": "Not very often" }, "value": 1 },
-            { "label": { "en": "No, never" }, "value": 0 }
+            {
+              "label": {
+                "en": "Yes, most of the time"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Yes, some of the time"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Not very often"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "No, never"
+              },
+              "value": 0
+            }
           ]
         },
         "epds_4": {
@@ -87,10 +171,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "No, not at all" }, "value": 0 },
-            { "label": { "en": "Hardly ever" }, "value": 1 },
-            { "label": { "en": "Yes, sometimes" }, "value": 2 },
-            { "label": { "en": "Yes, very often" }, "value": 3 }
+            {
+              "label": {
+                "en": "No, not at all"
+              },
+              "value": 0
+            },
+            {
+              "label": {
+                "en": "Hardly ever"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Yes, sometimes"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Yes, very often"
+              },
+              "value": 3
+            }
           ]
         },
         "epds_5": {
@@ -98,10 +202,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Yes, quite a lot" }, "value": 3 },
-            { "label": { "en": "Yes, sometimes" }, "value": 2 },
-            { "label": { "en": "No, not much" }, "value": 1 },
-            { "label": { "en": "No, not at all" }, "value": 0 }
+            {
+              "label": {
+                "en": "Yes, quite a lot"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Yes, sometimes"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "No, not much"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "No, not at all"
+              },
+              "value": 0
+            }
           ]
         },
         "epds_6": {
@@ -128,7 +252,9 @@
               "value": 1
             },
             {
-              "label": { "en": "No, I have been coping as well as ever" },
+              "label": {
+                "en": "No, I have been coping as well as ever"
+              },
               "value": 0
             }
           ]
@@ -138,10 +264,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Yes, most of the time" }, "value": 3 },
-            { "label": { "en": "Yes, sometimes" }, "value": 2 },
-            { "label": { "en": "Not very often" }, "value": 1 },
-            { "label": { "en": "No, not at all" }, "value": 0 }
+            {
+              "label": {
+                "en": "Yes, most of the time"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Yes, sometimes"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Not very often"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "No, not at all"
+              },
+              "value": 0
+            }
           ]
         },
         "epds_8": {
@@ -149,10 +295,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Yes, most of the time" }, "value": 3 },
-            { "label": { "en": "Yes, quite often" }, "value": 2 },
-            { "label": { "en": "Not very often" }, "value": 1 },
-            { "label": { "en": "No, not at all" }, "value": 0 }
+            {
+              "label": {
+                "en": "Yes, most of the time"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Yes, quite often"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Not very often"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "No, not at all"
+              },
+              "value": 0
+            }
           ]
         },
         "epds_9": {
@@ -160,10 +326,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Yes, most of the time" }, "value": 3 },
-            { "label": { "en": "Yes, quite often" }, "value": 2 },
-            { "label": { "en": "Only occasionally" }, "value": 1 },
-            { "label": { "en": "No, never" }, "value": 0 }
+            {
+              "label": {
+                "en": "Yes, most of the time"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Yes, quite often"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Only occasionally"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "No, never"
+              },
+              "value": 0
+            }
           ]
         },
         "epds_10": {
@@ -171,10 +357,30 @@
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
-            { "label": { "en": "Yes, quite often" }, "value": 3 },
-            { "label": { "en": "Sometimes" }, "value": 2 },
-            { "label": { "en": "Hardly ever" }, "value": 1 },
-            { "label": { "en": "Never" }, "value": 0 }
+            {
+              "label": {
+                "en": "Yes, quite often"
+              },
+              "value": 3
+            },
+            {
+              "label": {
+                "en": "Sometimes"
+              },
+              "value": 2
+            },
+            {
+              "label": {
+                "en": "Hardly ever"
+              },
+              "value": 1
+            },
+            {
+              "label": {
+                "en": "Never"
+              },
+              "value": 0
+            }
           ]
         }
       }
@@ -184,36 +390,64 @@
         "name": "Supporter",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "supporter_name": {
             "name": "supporter_name",
             "type": "text",
             "component": "Text",
-            "validation": { "required": true, "unique": true }
+            "validation": {
+              "required": true,
+              "unique": true
+            }
           },
           "relationship": {
             "name": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
-              { "label": { "en": "Partner or spouse" }, "value": "partner" },
               {
-                "label": { "en": "Parent or parent-in-law" },
+                "label": {
+                  "en": "Partner or spouse"
+                },
+                "value": "partner"
+              },
+              {
+                "label": {
+                  "en": "Parent or parent-in-law"
+                },
                 "value": "parent"
               },
               {
-                "label": { "en": "Other family member" },
+                "label": {
+                  "en": "Other family member"
+                },
                 "value": "family"
               },
-              { "label": { "en": "Friend" }, "value": "friend" },
               {
-                "label": { "en": "Another parent / peer" },
+                "label": {
+                  "en": "Friend"
+                },
+                "value": "friend"
+              },
+              {
+                "label": {
+                  "en": "Another parent / peer"
+                },
                 "value": "peer_parent"
               },
-              { "label": { "en": "Neighbour" }, "value": "neighbour" },
               {
-                "label": { "en": "Healthcare or service provider" },
+                "label": {
+                  "en": "Neighbour"
+                },
+                "value": "neighbour"
+              },
+              {
+                "label": {
+                  "en": "Healthcare or service provider"
+                },
                 "value": "provider"
               }
             ]
@@ -224,7 +458,9 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": { "en": "Informal (family, friends, peers)" },
+                "label": {
+                  "en": "Informal (family, friends, peers)"
+                },
                 "value": "informal"
               },
               {
@@ -241,20 +477,33 @@
             "component": "CheckboxGroup",
             "options": [
               {
-                "label": { "en": "Emotional support" },
+                "label": {
+                  "en": "Emotional support"
+                },
                 "value": "emotional"
               },
               {
-                "label": { "en": "Information or advice" },
+                "label": {
+                  "en": "Information or advice"
+                },
                 "value": "informational"
               },
               {
-                "label": { "en": "Practical help or childcare" },
+                "label": {
+                  "en": "Practical help or childcare"
+                },
                 "value": "practical"
               },
-              { "label": { "en": "Financial help" }, "value": "financial" }
+              {
+                "label": {
+                  "en": "Financial help"
+                },
+                "value": "financial"
+              }
             ],
-            "validation": { "minSelected": 1 }
+            "validation": {
+              "minSelected": 1
+            }
           },
           "proximity": {
             "name": "proximity",
@@ -262,12 +511,29 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
-                "label": { "en": "Same household" },
+                "label": {
+                  "en": "Same household"
+                },
                 "value": "same_household"
               },
-              { "label": { "en": "Nearby" }, "value": "nearby" },
-              { "label": { "en": "Far away" }, "value": "far_away" },
-              { "label": { "en": "Online only" }, "value": "online_only" }
+              {
+                "label": {
+                  "en": "Nearby"
+                },
+                "value": "nearby"
+              },
+              {
+                "label": {
+                  "en": "Far away"
+                },
+                "value": "far_away"
+              },
+              {
+                "label": {
+                  "en": "Online only"
+                },
+                "value": "online_only"
+              }
             ]
           },
           "contact_frequency": {
@@ -275,11 +541,36 @@
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
-              { "label": { "en": "Every day" }, "value": 5 },
-              { "label": { "en": "A few times a week" }, "value": 4 },
-              { "label": { "en": "About once a week" }, "value": 3 },
-              { "label": { "en": "A few times a month" }, "value": 2 },
-              { "label": { "en": "Less than once a month" }, "value": 1 }
+              {
+                "label": {
+                  "en": "Every day"
+                },
+                "value": 5
+              },
+              {
+                "label": {
+                  "en": "A few times a week"
+                },
+                "value": 4
+              },
+              {
+                "label": {
+                  "en": "About once a week"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en": "A few times a month"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en": "Less than once a month"
+                },
+                "value": 1
+              }
             ]
           },
           "reliance": {
@@ -287,14 +578,42 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": { "en": "Not at all" }, "value": 1 },
-              { "label": { "en": "A little" }, "value": 2 },
-              { "label": { "en": "A moderate amount" }, "value": 3 },
-              { "label": { "en": "A lot" }, "value": 4 },
-              { "label": { "en": "Completely" }, "value": 5 }
+              {
+                "label": {
+                  "en": "Not at all"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en": "A little"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en": "A moderate amount"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en": "A lot"
+                },
+                "value": 4
+              },
+              {
+                "label": {
+                  "en": "Completely"
+                },
+                "value": 5
+              }
             ]
           },
-          "layout": { "name": "layout", "type": "layout" }
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          }
         }
       }
     }
@@ -303,40 +622,34 @@
     {
       "id": "ea8a39be-184f-51c1-8f74-45a1dfb7399d",
       "type": "Information",
-      "label": { "en": "Template notes (delete before fielding)" },
-      "title": { "en": "Template notes" },
-      "items": [
-        {
-          "id": "4e957076-28ee-5169-b9fd-3a29ded2de15",
-          "type": "text",
-          "content": {
-            "en": "## For researchers\n\n_Delete this screen before you field the study._\n\n**Clinical safety:** the EPDS is a screening tool, not a diagnostic instrument. Item 10 screens for thoughts of self-harm, so before fielding put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line and referral details — for any participant who endorses item 10 or otherwise shows distress.\n\nThe instruments this template draws on:\n\n- [Cox JL, Holden JM, Sagovsky R (1987). Detection of postnatal depression: the 10-item Edinburgh Postnatal Depression Scale (EPDS). *Br J Psychiatry* 150:782–786.](https://pubmed.ncbi.nlm.nih.gov/3651732/)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
-          }
-        }
-      ]
+      "label": {
+        "en": "Template notes (delete before fielding)"
+      },
+      "content": {
+        "en": "# Template notes\n\n## For researchers\n\n_Delete this screen before you field the study._\n\n**Clinical safety:** the EPDS is a screening tool, not a diagnostic instrument. Item 10 screens for thoughts of self-harm, so before fielding put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line and referral details — for any participant who endorses item 10 or otherwise shows distress.\n\nThe instruments this template draws on:\n\n- [Cox JL, Holden JM, Sagovsky R (1987). Detection of postnatal depression: the 10-item Edinburgh Postnatal Depression Scale (EPDS). *Br J Psychiatry* 150:782–786.](https://pubmed.ncbi.nlm.nih.gov/3651732/)\n- [Sherbourne CD, Stewart AL (1991). The MOS Social Support Survey. *Soc Sci Med* 32(6):705–714.](https://www.rand.org/pubs/reprints/RP218.html)"
+      }
     },
     {
       "id": "e0703299-eb1a-5276-9d68-baf83cdd8976",
       "type": "Information",
-      "label": { "en": "Welcome" },
-      "title": { "en": "About this study" },
-      "items": [
-        {
-          "id": "72e74855-a412-5e29-8fd1-64e646cc8853",
-          "type": "text",
-          "content": {
-            "en": "## Welcome\n\nThank you for taking part. In this interview we will talk about the **people who support you** during this period, and the kinds of help they provide. There are no right or wrong answers — we are interested in your own experience."
-          }
-        }
-      ]
+      "label": {
+        "en": "Welcome"
+      },
+      "content": {
+        "en": "# About this study\n\n## Welcome\n\nThank you for taking part. In this interview we will talk about the **people who support you** during this period, and the kinds of help they provide. There are no right or wrong answers — we are interested in your own experience."
+      }
     },
     {
       "id": "01ae1cfa-e722-5a37-ac9a-0d1f9f2a87c8",
       "type": "EgoForm",
-      "label": { "en": "About you and your care episode" },
+      "label": {
+        "en": "About you and your care episode"
+      },
       "interviewScript": "Clinical safety: EPDS item 10 screens for thoughts of self-harm. Before fielding this protocol, put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line / referral details — for any participant who endorses item 10 or otherwise shows distress. The software records responses but does not act on them.",
       "introductionPanel": {
-        "title": { "en": "About you right now" },
+        "title": {
+          "en": "About you right now"
+        },
         "text": {
           "en": "First, a few questions about where you are in your care journey, and how you have been feeling.\n\nThe questions about your mood come from the **Edinburgh Postnatal Depression Scale (EPDS)**. There are no right or wrong answers. Please answer based on how you have felt in the **past 7 days**, not just today."
         }
@@ -356,7 +669,9 @@
             "prompt": {
               "en": "If your baby has already been born, how many weeks ago was that?"
             },
-            "hint": { "en": "Leave blank if you are still pregnant." }
+            "hint": {
+              "en": "Leave blank if you are still pregnant."
+            }
           },
           {
             "id": "6444a239-627e-5b63-88e4-b21722693332",
@@ -443,28 +758,44 @@
       "dynamicValues": {
         "careStage": {
           "path": "ego.care_stage",
-          "cases": { "pregnant": "pregnant", "postpartum": "postpartum" }
+          "cases": {
+            "pregnant": "pregnant",
+            "postpartum": "postpartum"
+          }
         }
       },
       "type": "NameGenerator",
-      "label": { "en": "People who support you" },
+      "label": {
+        "en": "People who support you"
+      },
       "interviewScript": "Use these prompts in turn. The same person can be named under more than one prompt. Functions that no one is named for are meaningful: they may indicate a support gap to explore with the participant.",
       "panels": [
         {
           "id": "329b6c5c-7380-54d5-928e-f72ae221912e",
-          "title": { "en": "Already mentioned" },
+          "title": {
+            "en": "Already mentioned"
+          },
           "dataSource": "existing"
         }
       ],
-      "subject": { "entity": "node", "type": "supporter" },
+      "subject": {
+        "entity": "node",
+        "type": "supporter"
+      },
       "form": {
-        "title": { "en": "Add Supporter" },
+        "title": {
+          "en": "Add Supporter"
+        },
         "fields": [
           {
             "id": "f45cf4ea-13d3-56f6-a332-6a33ff2323a5",
             "variable": "supporter_name",
-            "prompt": { "en": "What is this person's name or initials?" },
-            "hint": { "en": "Use whatever helps you remember who they are." }
+            "prompt": {
+              "en": "What is this person's name or initials?"
+            },
+            "hint": {
+              "en": "Use whatever helps you remember who they are."
+            }
           }
         ]
       },
@@ -498,8 +829,13 @@
     {
       "id": "baa96b78-4e4a-516c-af46-3879c26a5df8",
       "type": "CategoricalBin",
-      "label": { "en": "Formal or informal sources" },
-      "subject": { "entity": "node", "type": "supporter" },
+      "label": {
+        "en": "Formal or informal sources"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "supporter"
+      },
       "prompts": [
         {
           "id": "3f61dac4-27e8-5d0f-8a25-5ccc5120ff98",
@@ -513,30 +849,36 @@
     {
       "id": "9c6478f2-585d-5c2d-900d-62852371f1ae",
       "type": "Information",
-      "label": { "en": "A little more about each person" },
-      "title": { "en": "A little more about each person" },
-      "items": [
-        {
-          "id": "dd3ce16a-9989-5e06-ba2d-d38d04cf5101",
-          "type": "text",
-          "content": {
-            "en": "For each person you named, we'll ask a few short questions about where they are, how often you're in contact, and the kinds of support they give you."
-          }
-        }
-      ]
+      "label": {
+        "en": "A little more about each person"
+      },
+      "content": {
+        "en": "# A little more about each person\n\nFor each person you named, we'll ask a few short questions about where they are, how often you're in contact, and the kinds of support they give you."
+      }
     },
     {
       "id": "556d2d5b-34d1-5aaa-b1dd-82fb906ff1f8",
-      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
+      "dynamicValues": {
+        "nodeLabel": {
+          "path": "node.$label"
+        }
+      },
       "type": "AlterForm",
-      "label": { "en": "About each supporter" },
-      "subject": { "entity": "node", "type": "supporter" },
+      "label": {
+        "en": "About each supporter"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "supporter"
+      },
       "form": {
         "fields": [
           {
             "id": "fdfa96db-c2b9-573a-9652-a627f25a12fe",
             "variable": "relationship",
-            "prompt": { "en": "What is {nodeLabel}'s relationship to you?" }
+            "prompt": {
+              "en": "What is {nodeLabel}'s relationship to you?"
+            }
           },
           {
             "id": "72419354-c30b-5672-aedd-56a90fc7fb3e",
@@ -558,7 +900,9 @@
             "prompt": {
               "en": "Which kinds of support does {nodeLabel} give you?"
             },
-            "hint": { "en": "Select all that apply." }
+            "hint": {
+              "en": "Select all that apply."
+            }
           }
         ]
       }
@@ -568,12 +912,20 @@
       "dynamicValues": {
         "careStage": {
           "path": "ego.care_stage",
-          "cases": { "pregnant": "pregnant", "postpartum": "postpartum" }
+          "cases": {
+            "pregnant": "pregnant",
+            "postpartum": "postpartum"
+          }
         }
       },
       "type": "OrdinalBin",
-      "label": { "en": "How much you rely on each person" },
-      "subject": { "entity": "node", "type": "supporter" },
+      "label": {
+        "en": "How much you rely on each person"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "supporter"
+      },
       "prompts": [
         {
           "id": "bcb8bf48-524a-5df1-81dd-21ffff003575",
@@ -587,10 +939,17 @@
     },
     {
       "id": "792ae959-4ecb-5ce5-9d4b-f648e3563acc",
-      "groupsHeading": { "en": "Groups" },
+      "groupsHeading": {
+        "en": "Groups"
+      },
       "type": "Narrative",
-      "label": { "en": "Your support map" },
-      "subject": { "entity": "node", "type": "supporter" },
+      "label": {
+        "en": "Your support map"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "supporter"
+      },
       "behaviours": {
         "automaticLayout": true,
         "allowRepositioning": true,
@@ -599,17 +958,24 @@
       "presets": [
         {
           "id": "aa7cbf0f-c1cd-55c4-9696-56d96be740e2",
-          "label": { "en": "Support map by source (formal vs informal)" },
+          "label": {
+            "en": "Support map by source (formal vs informal)"
+          },
           "layoutVariable": "layout",
           "groupVariable": "formal_informal",
           "highlight": []
         }
       ],
-      "background": { "concentricCircles": 3, "skewedTowardCenter": true }
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      }
     },
     {
       "id": "18500d28-cce3-5f00-8a1c-22c43d5e1097",
-      "finishLabel": { "en": "Finish" },
+      "finishLabel": {
+        "en": "Finish"
+      },
       "finishConfirmation": {
         "en": "Are you sure you want to finish the interview?"
       },
@@ -618,7 +984,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en": "Finish Interview" },
+      "label": {
+        "en": "Finish Interview"
+      },
       "content": {
         "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -630,55 +998,97 @@
   ],
   "interfaceText": {
     "navigation": {
-      "exitInterview": { "en": "Exit interview" },
+      "exitInterview": {
+        "en": "Exit interview"
+      },
       "exitInterviewDescription": {
         "en": "Your answers so far will be saved and you can continue later."
       },
-      "back": { "en": "Back" },
-      "continue": { "en": "Continue" },
+      "back": {
+        "en": "Back"
+      },
+      "continue": {
+        "en": "Continue"
+      },
       "exitFailed": {
         "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
     "interviewer": {
-      "exitReview": { "en": "Exit review" },
-      "exitReviewTitle": { "en": "Exit this review?" },
+      "exitReview": {
+        "en": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?"
+      },
       "exitReviewDescription": {
         "en": "Changes made during this review will not be saved."
       },
-      "hiddenScreen": { "en": "Hidden by answers" },
-      "outsidePath": { "en": "Outside current path" },
-      "showScreenTitle": { "en": "Show this screen?" },
+      "hiddenScreen": {
+        "en": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?"
+      },
       "hiddenScreenDescription": {
         "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
       },
       "outsidePathDescription": {
         "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
       },
-      "showScreen": { "en": "Show screen" }
+      "showScreen": {
+        "en": "Show screen"
+      }
     },
     "buttons": {
-      "cancel": { "en": "Cancel" },
-      "done": { "en": "Done" },
-      "yes": { "en": "Yes" },
-      "pauseLayout": { "en": "Pause automatic layout" },
-      "resumeLayout": { "en": "Resume automatic layout" },
-      "copy": { "en": "Copy" },
-      "copied": { "en": "Copied" }
+      "cancel": {
+        "en": "Cancel"
+      },
+      "done": {
+        "en": "Done"
+      },
+      "yes": {
+        "en": "Yes"
+      },
+      "pauseLayout": {
+        "en": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en": "Resume automatic layout"
+      },
+      "copy": {
+        "en": "Copy"
+      },
+      "copied": {
+        "en": "Copied"
+      }
     },
     "messages": {
       "stageError": {
         "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "error": { "en": "An error occurred." },
-      "unnamed": { "en": "Unnamed" }
+      "error": {
+        "en": "An error occurred."
+      },
+      "unnamed": {
+        "en": "Unnamed"
+      }
     },
     "search": {
-      "searchLabel": { "en": "Search" },
-      "searchNoMatch": { "en": "Nothing matched your search term." }
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
+      }
     },
     "forms": {
-      "discardChangesTitle": { "en": "Discard changes?" },
+      "discardChangesTitle": {
+        "en": "Discard changes?"
+      },
       "discardChangesDescription": {
         "en": "Do you want to discard your changes?"
       }
@@ -687,20 +1097,32 @@
       "required": {
         "en": "You must answer this question before continuing."
       },
-      "minValue": { "en": "Enter a value greater than or equal to {min}." },
-      "maxValue": { "en": "Enter a value less than or equal to {max}." },
+      "minValue": {
+        "en": "Enter a value greater than or equal to {min}."
+      },
+      "maxValue": {
+        "en": "Enter a value less than or equal to {max}."
+      },
       "minSelected": {
         "en": "{count, plural, one {Select at least # value.} other {Select at least # values.}}"
       },
       "maxSelected": {
         "en": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
       },
-      "unique": { "en": "Must be unique." }
+      "unique": {
+        "en": "Must be unique."
+      }
     },
     "narrative": {
-      "toggleDrawing": { "en": "Toggle drawing" },
-      "toggleFreezing": { "en": "Toggle freezing annotations" },
-      "resetAnnotations": { "en": "Reset annotations" }
+      "toggleDrawing": {
+        "en": "Toggle drawing"
+      },
+      "toggleFreezing": {
+        "en": "Toggle freezing annotations"
+      },
+      "resetAnnotations": {
+        "en": "Reset annotations"
+      }
     }
   }
 }

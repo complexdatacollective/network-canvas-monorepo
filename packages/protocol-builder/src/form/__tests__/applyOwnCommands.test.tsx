@@ -33,8 +33,9 @@ const en = (text: string) => ({ 'en-US': text });
 
 const initialFields: SectionDoc = {
   label: en('Welcome'),
-  title: en('Welcome to the study'),
-  items: [],
+  content: en('Welcome to the study'),
+  // A key no control on screen is registered at.
+  interviewScript: 'Read this first.',
 };
 
 /**
@@ -45,16 +46,16 @@ const initialFields: SectionDoc = {
  * is routinely not mounted — collapsed, behind a switch, or simply not part of
  * this interface's editor.
  */
-function ItemsProbe() {
+function ScriptProbe() {
   return (
-    <output data-testid="items">
-      {JSON.stringify(useStageValue('items'))}
+    <output data-testid="script">
+      {JSON.stringify(useStageValue('interviewScript'))}
     </output>
   );
 }
 
-const probedItems = (): unknown =>
-  JSON.parse(screen.getByTestId('items').textContent ?? 'null');
+const probedScript = (): unknown =>
+  JSON.parse(screen.getByTestId('script').textContent ?? 'null');
 
 /**
  * What Studio asks before letting a researcher leave a stage, read the way
@@ -87,11 +88,11 @@ function renderEditor(readOnly = false) {
       <BuilderSection sectionKey="page-content" title="Page content">
         <Probe />
         <Field
-          name="title"
+          name="content"
           label="Page heading"
           component={LocalizedInputField}
         />
-        <ItemsProbe />
+        <ScriptProbe />
         <DirtyFlag />
       </BuilderSection>
     ),
@@ -127,10 +128,10 @@ describe('the form’s own structural writes', () => {
     await screen.findByRole('textbox', { name: 'Page heading' });
 
     const answered = apply([
-      { op: 'set', key: 'title', value: en('Written anyway') },
+      { op: 'set', key: 'content', value: en('Written anyway') },
     ]);
 
-    expect(answered.draft.title).toEqual(en('Welcome to the study'));
+    expect(answered.draft.content).toEqual(en('Welcome to the study'));
     // Answered with the document it already held, which is indistinguishable
     // from a write that changed nothing — so the refusal is said out loud, for
     // the row dialog whose draft depends on hearing it.
@@ -142,7 +143,7 @@ describe('the form’s own structural writes', () => {
     const { apply } = renderEditor(true);
     await screen.findByRole('textbox', { name: 'Page heading' });
 
-    apply([{ op: 'set', key: 'title', value: en('Written anyway') }]);
+    apply([{ op: 'set', key: 'content', value: en('Written anyway') }]);
 
     // Answering `refused` and saying nothing is the one that reads as the
     // editor being broken.
@@ -165,8 +166,8 @@ describe('the form’s own structural writes', () => {
     const answered = apply([
       {
         op: 'set',
-        key: 'items',
-        value: [{ id: testId('a'), type: 'text', content: en('Who?') }],
+        key: 'interviewScript',
+        value: 'Read this instead.',
       },
     ]);
 
@@ -178,8 +179,8 @@ describe('the form’s own structural writes', () => {
     // And both halves reach the protocol together on the next save.
     const written = await harness.submit();
     expect(written?.stageDocument).toMatchObject({
-      title: en('Half-written heading'),
-      items: [{ id: testId('a'), type: 'text', content: en('Who?') }],
+      content: en('Half-written heading'),
+      interviewScript: 'Read this instead.',
     });
   });
 
@@ -195,8 +196,8 @@ describe('the form’s own structural writes', () => {
     apply([
       {
         op: 'set',
-        key: 'items',
-        value: [{ id: testId('a'), type: 'text', content: en('Who?') }],
+        key: 'interviewScript',
+        value: 'Read this instead.',
       },
     ]);
 
@@ -212,13 +213,13 @@ describe('the form’s own structural writes', () => {
   it('is visible to a section reading a path no control covers', async () => {
     const { apply } = renderEditor();
     await screen.findByRole('textbox', { name: 'Page heading' });
-    expect(probedItems()).toEqual([]);
+    expect(probedScript()).toBe('Read this first.');
 
     apply([
       {
         op: 'set',
-        key: 'items',
-        value: [{ id: testId('a'), type: 'text', content: en('Who?') }],
+        key: 'interviewScript',
+        value: 'Read this instead.',
       },
     ]);
 
@@ -226,11 +227,7 @@ describe('the form’s own structural writes', () => {
     // over: a reader still answered from the opening document would report a
     // list that has since gained a row as empty, and go on doing so until the
     // stage was saved and reopened.
-    await waitFor(() =>
-      expect(probedItems()).toEqual([
-        { id: testId('a'), type: 'text', content: en('Who?') },
-      ]),
-    );
+    await waitFor(() => expect(probedScript()).toBe('Read this instead.'));
   });
 
   it('answers a read with the document as it stands, and never refuses one', async () => {
@@ -246,7 +243,7 @@ describe('the form’s own structural writes', () => {
     // so there is nothing for the stage to refuse — and what comes back is the
     // edit in the controls, not the document the stage was opened with.
     const read = apply([]);
-    expect(read.draft.title).toEqual(en('Typed but not saved'));
+    expect(read.draft.content).toEqual(en('Typed but not saved'));
     expect(read.refused).toBe(false);
   });
 
@@ -257,7 +254,7 @@ describe('the form’s own structural writes', () => {
     // A row dialog opened over a stage the researcher may only read still has
     // to be able to show them what is in the row.
     const read = apply([]);
-    expect(read.draft.title).toEqual(en('Welcome to the study'));
+    expect(read.draft.content).toEqual(en('Welcome to the study'));
     expect(read.refused).toBe(false);
     expect(screen.queryByText(/your change was not made/)).toBeNull();
   });

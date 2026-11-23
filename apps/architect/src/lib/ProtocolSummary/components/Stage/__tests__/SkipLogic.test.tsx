@@ -28,15 +28,13 @@ const protocol = {
       id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Source', fr: 'Source' },
-      title: { en: 'Source', fr: 'Source' },
-      items: [],
+      content: { en: '# Source', fr: '# Source' },
     },
     {
       id: DEBRIEF_STAGE_ID,
       type: 'Information',
       label: { en: 'Debrief', fr: 'Bilan' },
-      title: { en: 'Debrief', fr: 'Bilan' },
-      items: [],
+      content: { en: '# Debrief', fr: '# Bilan' },
     },
   ],
 } satisfies CurrentProtocol;

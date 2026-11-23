@@ -2,7 +2,10 @@
   "name": "Sexual & Injection Risk Networks",
   "description": "An example template for studying the sexual and injection partnerships through which HIV and other infections spread. It records partner attributes and partnership start and end dates so that overlapping partnerships can be identified, and encrypts partner labels so that only the participant can read them.",
   "schemaVersion": 9,
-  "localization": { "defaultLocale": "en", "locales": ["en"] },
+  "localization": {
+    "defaultLocale": "en",
+    "locales": ["en"]
+  },
   "lastModified": "2026-06-15T00:00:00.000Z",
   "experiments": {},
   "codebook": {
@@ -12,16 +15,32 @@
           "name": "ego_hiv_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
-          "validation": { "maxSelected": 1 },
+          "validation": {
+            "maxSelected": 1
+          },
           "options": [
-            { "label": { "en": "Living with HIV" }, "value": "positive" },
-            { "label": { "en": "HIV-negative" }, "value": "negative" },
             {
-              "label": { "en": "I don't know my status / never tested" },
+              "label": {
+                "en": "Living with HIV"
+              },
+              "value": "positive"
+            },
+            {
+              "label": {
+                "en": "HIV-negative"
+              },
+              "value": "negative"
+            },
+            {
+              "label": {
+                "en": "I don't know my status / never tested"
+              },
               "value": "unknown"
             },
             {
-              "label": { "en": "Prefer not to answer" },
+              "label": {
+                "en": "Prefer not to answer"
+              },
               "value": "declined"
             }
           ]
@@ -31,8 +50,18 @@
           "type": "boolean",
           "component": "Boolean",
           "options": [
-            { "label": { "en": "Yes" }, "value": true },
-            { "label": { "en": "No" }, "value": false }
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": true
+            },
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": false
+            }
           ]
         },
         "on_art": {
@@ -40,23 +69,45 @@
           "type": "boolean",
           "component": "Boolean",
           "options": [
-            { "label": { "en": "Yes" }, "value": true },
-            { "label": { "en": "No" }, "value": false }
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": true
+            },
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": false
+            }
           ]
         },
         "last_hiv_test": {
           "name": "last_hiv_test",
           "type": "datetime",
           "component": "DatePicker",
-          "parameters": { "type": "month" }
+          "parameters": {
+            "type": "month"
+          }
         },
         "injects_drugs": {
           "name": "injects_drugs",
           "type": "boolean",
           "component": "Boolean",
           "options": [
-            { "label": { "en": "Yes" }, "value": true },
-            { "label": { "en": "No" }, "value": false }
+            {
+              "label": {
+                "en": "Yes"
+              },
+              "value": true
+            },
+            {
+              "label": {
+                "en": "No"
+              },
+              "value": false
+            }
           ]
         }
       }
@@ -66,68 +117,135 @@
         "name": "Partner",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "partner_label": {
             "name": "partner_label",
             "type": "text",
             "component": "Text",
             "encrypted": true,
-            "validation": { "required": true, "unique": true }
+            "validation": {
+              "required": true,
+              "unique": true
+            }
           },
           "partner_type": {
             "name": "partner_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
-            "validation": { "maxSelected": 1 },
+            "validation": {
+              "maxSelected": 1
+            },
             "options": [
               {
-                "label": { "en": "Main or steady partner" },
+                "label": {
+                  "en": "Main or steady partner"
+                },
                 "value": "main"
               },
-              { "label": { "en": "Casual partner" }, "value": "casual" },
               {
-                "label": { "en": "Exchange or transactional partner" },
+                "label": {
+                  "en": "Casual partner"
+                },
+                "value": "casual"
+              },
+              {
+                "label": {
+                  "en": "Exchange or transactional partner"
+                },
                 "value": "exchange"
               },
-              { "label": { "en": "Other" }, "value": "other" }
+              {
+                "label": {
+                  "en": "Other"
+                },
+                "value": "other"
+              }
             ]
           },
           "partner_age": {
             "name": "partner_age",
             "type": "number",
             "component": "Number",
-            "validation": { "minValue": 0, "maxValue": 120 }
+            "validation": {
+              "minValue": 0,
+              "maxValue": 120
+            }
           },
           "partner_gender": {
             "name": "partner_gender",
             "type": "categorical",
             "component": "ToggleButtonGroup",
-            "validation": { "maxSelected": 1 },
+            "validation": {
+              "maxSelected": 1
+            },
             "options": [
-              { "label": { "en": "Woman" }, "value": "woman" },
-              { "label": { "en": "Man" }, "value": "man" },
               {
-                "label": { "en": "Transgender woman" },
+                "label": {
+                  "en": "Woman"
+                },
+                "value": "woman"
+              },
+              {
+                "label": {
+                  "en": "Man"
+                },
+                "value": "man"
+              },
+              {
+                "label": {
+                  "en": "Transgender woman"
+                },
                 "value": "trans_woman"
               },
-              { "label": { "en": "Transgender man" }, "value": "trans_man" },
               {
-                "label": { "en": "Non-binary or another gender" },
+                "label": {
+                  "en": "Transgender man"
+                },
+                "value": "trans_man"
+              },
+              {
+                "label": {
+                  "en": "Non-binary or another gender"
+                },
                 "value": "nonbinary"
               },
-              { "label": { "en": "Don't know" }, "value": "unknown" }
+              {
+                "label": {
+                  "en": "Don't know"
+                },
+                "value": "unknown"
+              }
             ]
           },
           "partner_serostatus": {
             "name": "partner_serostatus",
             "type": "categorical",
             "component": "ToggleButtonGroup",
-            "validation": { "maxSelected": 1 },
+            "validation": {
+              "maxSelected": 1
+            },
             "options": [
-              { "label": { "en": "Living with HIV" }, "value": "positive" },
-              { "label": { "en": "HIV-negative" }, "value": "negative" },
-              { "label": { "en": "Unknown" }, "value": "unknown" }
+              {
+                "label": {
+                  "en": "Living with HIV"
+                },
+                "value": "positive"
+              },
+              {
+                "label": {
+                  "en": "HIV-negative"
+                },
+                "value": "negative"
+              },
+              {
+                "label": {
+                  "en": "Unknown"
+                },
+                "value": "unknown"
+              }
             ]
           },
           "condom_use": {
@@ -135,11 +253,36 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": { "en": "Never" }, "value": 1 },
-              { "label": { "en": "Sometimes" }, "value": 2 },
-              { "label": { "en": "About half the time" }, "value": 3 },
-              { "label": { "en": "Usually" }, "value": 4 },
-              { "label": { "en": "Always" }, "value": 5 }
+              {
+                "label": {
+                  "en": "Never"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en": "Sometimes"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en": "About half the time"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en": "Usually"
+                },
+                "value": 4
+              },
+              {
+                "label": {
+                  "en": "Always"
+                },
+                "value": 5
+              }
             ]
           },
           "shared_injection_equipment": {
@@ -147,82 +290,104 @@
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": { "en": "Yes" }, "value": true },
-              { "label": { "en": "No" }, "value": false }
+              {
+                "label": {
+                  "en": "Yes"
+                },
+                "value": true
+              },
+              {
+                "label": {
+                  "en": "No"
+                },
+                "value": false
+              }
             ]
           },
           "partnership_start": {
             "name": "partnership_start",
             "type": "datetime",
             "component": "DatePicker",
-            "parameters": { "type": "month" }
+            "parameters": {
+              "type": "month"
+            }
           },
           "partnership_end": {
             "name": "partnership_end",
             "type": "datetime",
             "component": "DatePicker",
-            "parameters": { "type": "month" }
+            "parameters": {
+              "type": "month"
+            }
           },
-          "layout": { "name": "layout", "type": "layout" }
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          }
         }
       }
     },
     "edge": {
-      "knows": { "name": "Knows", "color": "edge-color-seq-1", "variables": {} }
+      "knows": {
+        "name": "Knows",
+        "color": "edge-color-seq-1",
+        "variables": {}
+      }
     }
   },
   "stages": [
     {
       "id": "7916338f-881c-5fd6-b5e9-32a5667c883d",
       "type": "Information",
-      "label": { "en": "Template notes (delete before fielding)" },
-      "title": { "en": "Template notes" },
-      "items": [
-        {
-          "id": "c03288d0-1986-5466-99cd-6cdcdf693afb",
-          "type": "text",
-          "content": {
-            "en": "## For researchers\n\n_Delete this screen before you field the study. It lists the surveillance instruments and studies this template draws on._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
-          }
-        }
-      ]
+      "label": {
+        "en": "Template notes (delete before fielding)"
+      },
+      "content": {
+        "en": "# Template notes\n\n## For researchers\n\n_Delete this screen before you field the study. It lists the surveillance instruments and studies this template draws on._\n\n- [CDC National HIV Behavioral Surveillance (NHBS) — overview.](https://pmc.ncbi.nlm.nih.gov/articles/PMC1804113/)\n- [Weiss KM et al. ARTnet: an egocentric sexual-network study of US MSM.](https://www.medrxiv.org/content/10.1101/19010579v1.full)\n- [Methods for HIV partner / transmission network studies.](https://pmc.ncbi.nlm.nih.gov/articles/PMC5985831/)"
+      }
     },
     {
       "id": "c996c1c2-7ab0-57c8-bd06-03f7f98a0f89",
       "type": "Information",
-      "label": { "en": "Welcome & Confidentiality" },
-      "title": { "en": "About this interview" },
-      "items": [
-        {
-          "id": "63d79381-1c58-55a2-afee-d7565b8e9abe",
-          "type": "text",
-          "content": {
-            "en": "Thank you for taking part. In this interview we will ask about people you have had **sexual contact** with, and (if relevant) people you have **injected drugs** with. These questions help researchers understand how HIV, other sexually transmitted infections, and bloodborne infections can spread through networks of partners.\n\nYour answers are **confidential**. You will never have to give anyone's real name: you can use initials or a code that only makes sense to you. In the next step you will create a private passphrase that encrypts these labels, so that **only you** can read them — not even the research team.\n\n## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time — whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
-          }
-        }
-      ]
+      "label": {
+        "en": "Welcome & Confidentiality"
+      },
+      "content": {
+        "en": "# About this interview\n\nThank you for taking part. In this interview we will ask about people you have had **sexual contact** with, and (if relevant) people you have **injected drugs** with. These questions help researchers understand how HIV, other sexually transmitted infections, and bloodborne infections can spread through networks of partners.\n\nYour answers are **confidential**. You will never have to give anyone's real name: you can use initials or a code that only makes sense to you. In the next step you will create a private passphrase that encrypts these labels, so that **only you** can read them — not even the research team.\n\n## Reference period\n\nUnless we say otherwise, please think about the **past 6 months** (the last half-year up to today). When we ask you to list partners, include everyone you had sexual contact with, or injected drugs with, during that time — whether the relationship was serious, casual, one-time, or anything else.\n\nThere are no right or wrong answers, and you can skip any question you would prefer not to answer."
+      }
     },
     {
       "id": "c3f8973e-1060-502e-8e0f-7f2aec79e122",
       "type": "Anonymisation",
-      "label": { "en": "Create your private passphrase" },
+      "label": {
+        "en": "Create your private passphrase"
+      },
       "explanationText": {
         "en": "# Protect the identities of the people you mention\n\nBecause the people you will describe are sensitive, this interview lets you **encrypt** the labels you give them so that they cannot be read by anyone but you — not even the researchers running this study.\n\nTo turn this on, choose a passphrase below and enter it. You will need the same passphrase if you ever return to this interview, so pick something you will remember. Do not share it with the interviewer."
       },
-      "validation": { "minLength": 8, "maxLength": 64 }
+      "validation": {
+        "minLength": 8,
+        "maxLength": 64
+      }
     },
     {
       "id": "3c5c3313-0f08-58f3-892e-81647d0ededa",
       "dynamicValues": {
         "egoHivStatus": {
           "path": "ego.ego_hiv_status",
-          "cases": { "positive": "positive" }
+          "cases": {
+            "positive": "positive"
+          }
         }
       },
       "type": "EgoForm",
-      "label": { "en": "About you" },
+      "label": {
+        "en": "About you"
+      },
       "introductionPanel": {
-        "title": { "en": "A few questions about you" },
+        "title": {
+          "en": "A few questions about you"
+        },
         "text": {
           "en": "Before we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
         }
@@ -232,7 +397,9 @@
           {
             "id": "e1e2a161-a14a-5e3d-8358-b81b6925258d",
             "variable": "ego_hiv_status",
-            "prompt": { "en": "What is your current HIV status?" }
+            "prompt": {
+              "en": "What is your current HIV status?"
+            }
           },
           {
             "id": "78125377-94fc-590a-a1b5-98251813a801",
@@ -240,7 +407,9 @@
             "prompt": {
               "en": "Are you currently taking PrEP to prevent HIV?"
             },
-            "hint": { "en": "PrEP stands for pre-exposure prophylaxis." }
+            "hint": {
+              "en": "PrEP stands for pre-exposure prophylaxis."
+            }
           },
           {
             "id": "3398c3a2-6f26-5e89-8e7d-7271d0a13763",
@@ -258,7 +427,9 @@
             "prompt": {
               "en": "When did you most recently take an HIV test?"
             },
-            "hint": { "en": "An approximate month and year is fine." }
+            "hint": {
+              "en": "An approximate month and year is fine."
+            }
           },
           {
             "id": "88c7107a-04de-537e-8acf-cdc5ee6ef12c",
@@ -273,22 +444,33 @@
     {
       "id": "6aaa0321-18f5-5412-80fe-a313b547d127",
       "type": "NameGenerator",
-      "label": { "en": "Sexual partners" },
+      "label": {
+        "en": "Sexual partners"
+      },
       "panels": [
         {
           "id": "4bfc68ad-f868-509e-bb86-bdb5849e8261",
-          "title": { "en": "Already listed" },
+          "title": {
+            "en": "Already listed"
+          },
           "dataSource": "existing"
         }
       ],
-      "subject": { "entity": "node", "type": "partner" },
+      "subject": {
+        "entity": "node",
+        "type": "partner"
+      },
       "form": {
-        "title": { "en": "Add Partner" },
+        "title": {
+          "en": "Add Partner"
+        },
         "fields": [
           {
             "id": "2878c819-e8d1-56c1-8e7d-83637aa1e411",
             "variable": "partner_label",
-            "prompt": { "en": "Enter initials or a code for this person." },
+            "prompt": {
+              "en": "Enter initials or a code for this person."
+            },
             "hint": {
               "en": "Use something that means something to you but would not identify them to anyone else."
             }
@@ -303,27 +485,40 @@
           }
         }
       ],
-      "behaviours": { "minNodes": 0 }
+      "behaviours": {
+        "minNodes": 0
+      }
     },
     {
       "id": "72835c2a-717b-5199-a910-0ca2064ae5ac",
       "type": "NameGenerator",
-      "label": { "en": "Injection partners" },
+      "label": {
+        "en": "Injection partners"
+      },
       "panels": [
         {
           "id": "d728f581-95a0-5412-9df8-64b63c409c11",
-          "title": { "en": "Already listed" },
+          "title": {
+            "en": "Already listed"
+          },
           "dataSource": "existing"
         }
       ],
-      "subject": { "entity": "node", "type": "partner" },
+      "subject": {
+        "entity": "node",
+        "type": "partner"
+      },
       "form": {
-        "title": { "en": "Add Partner" },
+        "title": {
+          "en": "Add Partner"
+        },
         "fields": [
           {
             "id": "d31f2245-f9e1-5c5a-aea9-510971cc67ef",
             "variable": "partner_label",
-            "prompt": { "en": "Enter initials or a code for this person." },
+            "prompt": {
+              "en": "Enter initials or a code for this person."
+            },
             "hint": {
               "en": "If you already listed them (for example, as a sexual partner), add them from the 'Already listed' panel instead of typing the label again."
             }
@@ -338,32 +533,38 @@
           }
         }
       ],
-      "behaviours": { "minNodes": 0 }
+      "behaviours": {
+        "minNodes": 0
+      }
     },
     {
       "id": "8b75b3eb-572a-5450-8073-ca3affd79e51",
       "type": "Information",
-      "label": { "en": "Tell us about each partnership" },
-      "title": { "en": "Tell us about each partnership" },
-      "items": [
-        {
-          "id": "7af45b1c-e05e-5d4b-9420-ec265d61404b",
-          "type": "text",
-          "content": {
-            "en": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
-          }
-        }
-      ]
+      "label": {
+        "en": "Tell us about each partnership"
+      },
+      "content": {
+        "en": "# Tell us about each partnership\n\nFor each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
+      }
     },
     {
       "id": "756e69ac-09e3-54e7-b836-9c5e02c4b3c4",
       "dynamicValues": {
-        "nodeLabel": { "path": "node.$label" },
-        "partnershipStart": { "path": "node.partnership_start" }
+        "nodeLabel": {
+          "path": "node.$label"
+        },
+        "partnershipStart": {
+          "path": "node.partnership_start"
+        }
       },
       "type": "AlterForm",
-      "label": { "en": "About each partnership" },
-      "subject": { "entity": "node", "type": "partner" },
+      "label": {
+        "en": "About each partnership"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "partner"
+      },
       "form": {
         "fields": [
           {
@@ -376,12 +577,16 @@
           {
             "id": "60e226df-90b9-55ab-8dc2-0be26ee503b6",
             "variable": "partner_age",
-            "prompt": { "en": "About how old is {nodeLabel}, in years?" }
+            "prompt": {
+              "en": "About how old is {nodeLabel}, in years?"
+            }
           },
           {
             "id": "9af3d1fd-a7a8-5e46-9c31-c0e11d11e701",
             "variable": "partner_gender",
-            "prompt": { "en": "What is {nodeLabel}'s gender?" }
+            "prompt": {
+              "en": "What is {nodeLabel}'s gender?"
+            }
           },
           {
             "id": "c676dac1-fa39-5435-9643-401b0ff4a58f",
@@ -413,12 +618,16 @@
             "prompt": {
               "en": "When did your sexual or injection relationship with {nodeLabel} begin?"
             },
-            "hint": { "en": "An approximate month and year is fine." }
+            "hint": {
+              "en": "An approximate month and year is fine."
+            }
           },
           {
             "id": "cab81d9d-0807-5c02-9920-83a4a51e1b05",
             "variable": "partnership_end",
-            "prompt": { "en": "When did it end?" },
+            "prompt": {
+              "en": "When did it end?"
+            },
             "hint": {
               "en": "{partnershipStart, select, missing {} other {It began in {partnershipStart}. }}If it is still going on, you can leave this blank or choose this month."
             }
@@ -429,25 +638,43 @@
     {
       "id": "20b81c52-f186-5046-a1a8-6926ef5afa06",
       "type": "Sociogram",
-      "label": { "en": "Connections between partners" },
-      "subject": { "entity": "node", "type": "partner" },
-      "background": { "concentricCircles": 4 },
-      "behaviours": { "automaticLayout": true },
+      "label": {
+        "en": "Connections between partners"
+      },
+      "subject": {
+        "entity": "node",
+        "type": "partner"
+      },
+      "background": {
+        "concentricCircles": 4
+      },
+      "behaviours": {
+        "automaticLayout": true
+      },
       "prompts": [
         {
           "id": "5174bbe3-136f-5969-93f6-f4e3a7499ad2",
           "text": {
             "en": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected."
           },
-          "layout": { "layoutVariable": "layout" },
-          "edges": { "create": "knows", "display": ["knows"] },
-          "highlight": { "allowHighlighting": false }
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          },
+          "highlight": {
+            "allowHighlighting": false
+          }
         }
       ]
     },
     {
       "id": "e8e11c03-2072-57d5-911b-8fd997e7cf7a",
-      "finishLabel": { "en": "Finish" },
+      "finishLabel": {
+        "en": "Finish"
+      },
       "finishConfirmation": {
         "en": "Are you sure you want to finish the interview?"
       },
@@ -456,7 +683,9 @@
       },
       "type": "FinishSession",
       "mode": "confirmation",
-      "label": { "en": "Finish Interview" },
+      "label": {
+        "en": "Finish Interview"
+      },
       "content": {
         "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
       },
@@ -468,56 +697,100 @@
   ],
   "interfaceText": {
     "navigation": {
-      "exitInterview": { "en": "Exit interview" },
+      "exitInterview": {
+        "en": "Exit interview"
+      },
       "exitInterviewDescription": {
         "en": "Your answers so far will be saved and you can continue later."
       },
-      "back": { "en": "Back" },
-      "continue": { "en": "Continue" },
+      "back": {
+        "en": "Back"
+      },
+      "continue": {
+        "en": "Continue"
+      },
       "exitFailed": {
         "en": "Your answers could not be saved, so the interview has not been closed. Please try again. If the problem continues, contact the study organizer."
       }
     },
     "interviewer": {
-      "exitReview": { "en": "Exit review" },
-      "exitReviewTitle": { "en": "Exit this review?" },
+      "exitReview": {
+        "en": "Exit review"
+      },
+      "exitReviewTitle": {
+        "en": "Exit this review?"
+      },
       "exitReviewDescription": {
         "en": "Changes made during this review will not be saved."
       },
-      "hiddenScreen": { "en": "Hidden by answers" },
-      "outsidePath": { "en": "Outside current path" },
-      "showScreenTitle": { "en": "Show this screen?" },
+      "hiddenScreen": {
+        "en": "Hidden by answers"
+      },
+      "outsidePath": {
+        "en": "Outside current path"
+      },
+      "showScreenTitle": {
+        "en": "Show this screen?"
+      },
       "hiddenScreenDescription": {
         "en": "This screen is hidden based on the answers given so far. Do you want to show it anyway?"
       },
       "outsidePathDescription": {
         "en": "This screen is outside the current interview path based on the answers given so far. Do you want to show it anyway?"
       },
-      "showScreen": { "en": "Show screen" }
+      "showScreen": {
+        "en": "Show screen"
+      }
     },
     "buttons": {
-      "cancel": { "en": "Cancel" },
-      "done": { "en": "Done" },
-      "yes": { "en": "Yes" },
-      "no": { "en": "No" },
-      "pauseLayout": { "en": "Pause automatic layout" },
-      "resumeLayout": { "en": "Resume automatic layout" },
-      "copy": { "en": "Copy" },
-      "copied": { "en": "Copied" }
+      "cancel": {
+        "en": "Cancel"
+      },
+      "done": {
+        "en": "Done"
+      },
+      "yes": {
+        "en": "Yes"
+      },
+      "no": {
+        "en": "No"
+      },
+      "pauseLayout": {
+        "en": "Pause automatic layout"
+      },
+      "resumeLayout": {
+        "en": "Resume automatic layout"
+      },
+      "copy": {
+        "en": "Copy"
+      },
+      "copied": {
+        "en": "Copied"
+      }
     },
     "messages": {
       "stageError": {
         "en": "# There was an error\n\nThere was an error with the interview software, and this task could not be displayed.\n\nSome tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page.\n\nIf the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
       },
-      "error": { "en": "An error occurred." },
-      "unnamed": { "en": "Unnamed" }
+      "error": {
+        "en": "An error occurred."
+      },
+      "unnamed": {
+        "en": "Unnamed"
+      }
     },
     "search": {
-      "searchLabel": { "en": "Search" },
-      "searchNoMatch": { "en": "Nothing matched your search term." }
+      "searchLabel": {
+        "en": "Search"
+      },
+      "searchNoMatch": {
+        "en": "Nothing matched your search term."
+      }
     },
     "passphrase": {
-      "passphrase": { "en": "Passphrase" },
+      "passphrase": {
+        "en": "Passphrase"
+      },
       "choosePassphraseHelp": {
         "en": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten."
       },
@@ -530,18 +803,26 @@
       "protectedAnswersNotSaved": {
         "en": "Your answers have not been saved. Enter your passphrase, then try again."
       },
-      "answerUnavailable": { "en": "Answer unavailable" },
+      "answerUnavailable": {
+        "en": "Answer unavailable"
+      },
       "answerUnavailableKept": {
         "en": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer."
       },
-      "confirmPassphrase": { "en": "Confirm Passphrase" },
+      "confirmPassphrase": {
+        "en": "Confirm Passphrase"
+      },
       "passphraseAccepted": {
         "en": "Passphrase accepted! Click \"Next\" to continue."
       },
-      "passwordPlaceholder": { "en": "Enter password" }
+      "passwordPlaceholder": {
+        "en": "Enter password"
+      }
     },
     "forms": {
-      "discardChangesTitle": { "en": "Discard changes?" },
+      "discardChangesTitle": {
+        "en": "Discard changes?"
+      },
       "discardChangesDescription": {
         "en": "Do you want to discard your changes?"
       }
@@ -556,12 +837,18 @@
       "maxLength": {
         "en": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}"
       },
-      "minValue": { "en": "Enter a value greater than or equal to {min}." },
-      "maxValue": { "en": "Enter a value less than or equal to {max}." },
+      "minValue": {
+        "en": "Enter a value greater than or equal to {min}."
+      },
+      "maxValue": {
+        "en": "Enter a value less than or equal to {max}."
+      },
       "maxSelected": {
         "en": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
       },
-      "unique": { "en": "Must be unique." },
+      "unique": {
+        "en": "Must be unique."
+      },
       "sameAs": {
         "en": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
       }

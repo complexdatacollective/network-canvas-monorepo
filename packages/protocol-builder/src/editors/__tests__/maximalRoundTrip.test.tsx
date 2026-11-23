@@ -174,26 +174,19 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     type: 'Information',
     fields: {
       label: { 'en-US': 'Information' },
-      title: { 'en-US': 'Welcome' },
+      content: {
+        'en-US': [
+          '# Welcome',
+          '',
+          'Welcome to this interview.',
+          '',
+          '![A map of the regions.](asset:rubberduck?size=large&align=start&autoplay=false&loop=false)',
+        ].join('\n'),
+      },
       interviewScript: 'Read this aloud.',
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
-      items: [
-        {
-          id: testId('info-item-1'),
-          type: 'text',
-          content: { 'en-US': 'Welcome to this interview.' },
-          description: 'The opening line.',
-        },
-        {
-          id: testId('info-item-2'),
-          type: 'asset',
-          content: 'geo_data',
-          description: { 'en-US': 'A map of the regions.' },
-          size: 'LARGE',
-        },
-      ],
     },
     settle: stageName,
   },

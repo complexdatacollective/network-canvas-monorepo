@@ -15,7 +15,7 @@ import { testId } from '../../testing/testId.ts';
 const untitledStage = {
   id: testId('information-unowned'),
   type: 'Information',
-  fields: { label: { 'en-US': 'Named' }, items: [] },
+  fields: { label: { 'en-US': 'Named' } },
 } as const;
 
 describe('what the protocol refuses that no section answers for', () => {
@@ -47,7 +47,7 @@ describe('what the protocol refuses that no section answers for', () => {
       sections: (
         <BuilderSection sectionKey="page-content" title="Page content">
           <Field
-            name="title"
+            name="content"
             label="Page heading"
             component={LocalizedInputField}
           />

@@ -1,24 +1,29 @@
-import type { Page } from '@playwright/test';
-
 import {
-  createProtocolObjectId,
-  ProtocolObjectIdSchema,
-} from '@codaco/protocol-validation';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-
-import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
+  DRAWN_FILES,
+  expect,
+  gotoProtocol,
+  informationProtocol,
+  PHOTO_ASSET,
+  PHOTO_FILE,
+  test,
+} from '../../fixtures/information-page.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
-import { readStageJson } from '../../helpers/read-store.js';
+import {
+  pageText,
+  readProtocolJson,
+  readStageJson,
+} from '../../helpers/read-store.js';
+import { AssetBlocks, placeBlockAt } from '../../pageobjects/asset-block.js';
+import { writeHeadingAndText } from '../../pageobjects/rich-text.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
-import { Timeline } from '../../pageobjects/timeline.js';
 
-const IMAGE_ITEM_ID = ProtocolObjectIdSchema.parse(
-  '643982f4-731e-45b5-8919-07e282f0ded9',
-);
-const TEXT_ITEM_ID = ProtocolObjectIdSchema.parse(
-  '9bc638d0-4d03-4130-8af0-b26f3a3b3f95',
-);
+// The page is ONE rich text: a heading is a heading in it, and each image,
+// audio recording or video is a block in it, saved as a markdown image whose
+// address names a protocol resource (`![alt](asset:<id>?size=medium)`). The
+// page's editor is the "Rich Text" field of the "Content" section
+// (`StageEditor.richText()`); the toolbar above it formats the text and
+// inserts media, and has a spec of its own (`rich-text-toolbar.spec.ts`).
 
 test('creates a valid Information stage from scratch', async ({
   architectPage,
@@ -31,36 +36,18 @@ test('creates a valid Information stage from scratch', async ({
   await editor.createNew('Information');
   await editor.setStageName('About This Study');
 
-  const pageContent = editor.section('Page content');
-
-  // The page heading and the blocks are one section (protocol-builder's
-  // `sections/page-content/PageContentSection.tsx`, the `page` variant). The
-  // heading is UI-required even though the schema marks `title` optional.
-  await pageContent
-    .locator('[data-field-name="title"]')
-    .getByRole('textbox')
-    .fill('Welcome');
-
-  // The add button names what it adds, so it needs no section scoping to be
-  // unambiguous — the whole point of #1391's rename.
-  await pageContent
-    .getByRole('button', { name: 'Create new content item', exact: true })
-    .click();
-
-  // The block dialog is a page-level portal (protocol-builder's
-  // `form/rowDialog.tsx` -> `DialogForm` -> fresco-ui `Dialog`), not nested
-  // under the section's DOM, so its controls are queried on the page directly.
-  await architectPage.getByRole('radio', { name: 'Text' }).click();
-  await editor.fillRichText('Content', 'Thanks for taking part.');
-  // `exact` avoids matching the RichTextEditor toolbar's "Add link" button
-  // (timeline.spec.ts hit this same ambiguity).
-  await architectPage.getByRole('button', { name: 'Add', exact: true }).click();
+  await writeHeadingAndText(
+    editor.richText(),
+    'Welcome',
+    'Thanks for taking part.',
+  );
 
   await editor.expectNoIssues();
   await editor.save();
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('Information');
+  expect(pageText(stage)).toBe('# Welcome\n\nThanks for taking part.');
   // `stageSnapshotJson` (helpers/normalize-stage.ts) normalizes generated ids
   // AND serializes to the exact string `toMatchSnapshot`'s file-snapshot mode
   // needs — see that function's comment for why a bare `normalizeStage(...)`
@@ -71,213 +58,28 @@ test('creates a valid Information stage from scratch', async ({
   );
 });
 
-// A saved image item plus the asset it points at, so the item dialog opens on
-// a real resolved image rather than a dangling reference.
-const INFORMATION_WITH_IMAGE_ITEM = (): CurrentProtocol => ({
-  ...emptyProtocol(),
-  assetManifest: {
-    'photo-asset': {
-      name: 'photo.svg',
-      type: 'image',
-      source: 'photo.svg',
-    },
-  },
-  stages: [
+test('places an image in the text from the toolbar, with its settings', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(
+    { ...emptyProtocol(), assetManifest: PHOTO_ASSET },
     {
-      id: createProtocolObjectId(),
-      type: 'Information',
-      label: { en: 'About This Study' },
-      title: { en: 'Welcome' },
-      items: [
-        { id: IMAGE_ITEM_ID, type: 'asset', content: 'photo-asset' },
-        {
-          id: TEXT_ITEM_ID,
-          type: 'text',
-          content: { en: 'Original text body' },
-        },
-      ],
+      assets: PHOTO_FILE,
     },
-    ...emptyProtocol().stages,
-  ],
-});
+  );
+  await gotoProtocol(architectPage);
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('Information');
+  await editor.setStageName('About This Study');
+  await writeHeadingAndText(editor.richText(), 'Welcome', 'Look at this.');
 
-const PHOTO_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
-  <rect width="80" height="80" fill="#6ecae8" />
-</svg>`;
-
-// `readStageJson` returns the whole Stage union, which has no `items` on
-// every member. Narrow at runtime rather than asserting, so a stage that
-// somehow committed without items fails loudly here instead of comparing
-// `undefined` against the expected rows.
-function informationItems(stage: unknown): unknown {
-  if (typeof stage !== 'object' || stage === null || !('items' in stage)) {
-    throw new Error('committed Information stage has no items');
-  }
-  return stage.items;
-}
-
-// What one committed block holds, by its id. `undefined` for a block that is
-// not there, or whose `content` has no English text — both of which a poll
-// predicate reads as "not what this test wrote", so it keeps waiting or lets
-// the assertion below say what did arrive.
-function informationItemContent(
-  stage: unknown,
-  id: string,
-): string | undefined {
-  const items = informationItems(stage);
-  if (!Array.isArray(items)) return undefined;
-  for (const item of items) {
-    if (typeof item !== 'object' || item === null) continue;
-    if (Reflect.get(item, 'id') !== id) continue;
-    const content: unknown = Reflect.get(item, 'content');
-    if (typeof content === 'string') return content;
-    if (typeof content !== 'object' || content === null) return undefined;
-    const english: unknown = Reflect.get(content, 'en');
-    return typeof english === 'string' ? english : undefined;
-  }
-  return undefined;
-}
-
-const openItemDialog = async (
-  editor: StageEditor,
-  page: Page,
-  position: number,
-) => {
-  // Each row of the blocks list names its own affordances after the list's
-  // noun ("block" — `pageItemNoun` in PageContentSection.tsx), so the row
-  // buttons read "Edit item" / "Delete item" and the dialog they open is
-  // titled for the row that already exists.
   await editor
-    .field('items')
-    .getByRole('button', { name: 'Edit item', exact: true })
-    .nth(position)
+    .section('Content')
+    .getByRole('button', { name: 'Insert image', exact: true })
     .click();
-  const dialog = page.getByRole('dialog', { name: 'Edit item' });
-  await expect(dialog).toBeVisible();
-  return dialog;
-};
-
-// #1393. Changing an item's content type used to hand the outgoing type's
-// value to the incoming control: an image asset's id appeared in the rich text
-// editor and, on the second save, became the text a participant reads.
-test('never turns an image item into its own asset id as participant text', async ({
-  architectPage,
-  seed,
-}) => {
-  await seed(INFORMATION_WITH_IMAGE_ITEM(), {
-    assets: [{ assetId: 'photo-asset', name: 'photo.svg', data: PHOTO_SVG }],
-  });
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-
-  const editor = new StageEditor(architectPage);
-  const dialog = await openItemDialog(editor, architectPage, 0);
-
-  await dialog.getByRole('radio', { name: 'Text', exact: true }).click();
-
-  // The editor is empty, and the asset id is nowhere in the Content field.
-  const contentEditor = dialog.getByRole('textbox', { name: 'Content' });
-  await expect(contentEditor).toBeEditable();
-  await expect(contentEditor).toHaveText('');
-  await expect(dialog).not.toContainText('photo-asset');
-
-  // The save is REFUSED, visibly: it used to be swallowed with no error, no
-  // invalid control and focus on <body> — and that silent attempt is what
-  // wrote the asset id back into the form. The refusal is the block editor's
-  // own sentence (`contentBlock.textRequired`), not the generic one.
-  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(
-    dialog.getByText('Write the text this block shows.'),
-  ).toBeVisible();
-  await expect(contentEditor).toHaveAttribute('aria-invalid', 'true');
-  await expect(contentEditor).toBeFocused();
-
-  await editor.fillRichText('Content', 'Prose the researcher actually typed');
-  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-  await dialog.waitFor({ state: 'detached' });
-  await editor.save();
-
-  const stage = await readStageJson(architectPage, 0, (saved) =>
-    JSON.stringify(saved).includes('actually typed'),
-  );
-  expect(informationItems(stage)).toEqual([
-    {
-      id: IMAGE_ITEM_ID,
-      type: 'text',
-      content: { en: 'Prose the researcher actually typed' },
-    },
-    {
-      id: TEXT_ITEM_ID,
-      type: 'text',
-      content: { en: 'Original text body' },
-    },
-  ]);
-});
-
-test('keeps an unsaved text draft across a round trip through Image', async ({
-  architectPage,
-  seed,
-}) => {
-  await seed(INFORMATION_WITH_IMAGE_ITEM(), {
-    assets: [{ assetId: 'photo-asset', name: 'photo.svg', data: PHOTO_SVG }],
-  });
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-
-  const editor = new StageEditor(architectPage);
-  const dialog = await openItemDialog(editor, architectPage, 1);
-
-  const contentEditor = dialog.getByRole('textbox', { name: 'Content' });
-  await expect(contentEditor).toHaveText('Original text body');
-  await editor.fillRichText('Content', 'Original text body plus unsaved work');
-
-  await dialog.getByRole('radio', { name: 'Image', exact: true }).click();
-  // The resource picker names the kind it is choosing
-  // (`resourceKinds.imageSelectAction`), so an image block's picker is the
-  // only control that could be reading the text draft.
-  await expect(
-    dialog.getByRole('button', { name: 'Select an image', exact: true }),
-  ).toBeVisible();
-
-  await dialog.getByRole('radio', { name: 'Text', exact: true }).click();
-  await expect(dialog.getByRole('textbox', { name: 'Content' })).toHaveText(
-    'Original text body plus unsaved work',
-  );
-});
-
-// The per-type drafts are session state: the block editor gives each content
-// type a slot of its own (`CONTENT_BLOCK_SLOTS` in
-// `sections/content-blocks/contentBlockTypes.ts`), and the row dialog commits
-// the row by writing the form store's DORMANT values through a lodash-style
-// `set` before `collapseContentBlock` strips every slot and promotes the
-// chosen type's one into `content`. That walk is why the slots carry flat
-// names: a `content.text`-style name would be read as a path and replace the
-// committed `content` STRING with an object. Only a real save exercises it, so
-// this saves after leaving a diverged text draft behind.
-test('drops a text draft left behind by a switch to Image', async ({
-  architectPage,
-  seed,
-}) => {
-  await seed(INFORMATION_WITH_IMAGE_ITEM(), {
-    assets: [{ assetId: 'photo-asset', name: 'photo.svg', data: PHOTO_SVG }],
-  });
-  await gotoProtocol(architectPage);
-  await new Timeline(architectPage).openStage('About This Study');
-
-  const editor = new StageEditor(architectPage);
-  const dialog = await openItemDialog(editor, architectPage, 1);
-  // Diverge the text slot from the value it registered with, so its dormant
-  // entry is a real edit the row merge writes onto the row.
-  await editor.fillRichText('Content', 'A text draft that must not be saved');
-
-  await dialog.getByRole('radio', { name: 'Image', exact: true }).click();
-  await dialog
-    .getByRole('button', { name: 'Select an image', exact: true })
-    .click();
-  // The browser is titled for the kind the field accepts
-  // (`resourceKinds.imageBrowserTitle`), and each stored resource is a button
-  // named for its own file — selecting one closes the browser.
+  // The browser is titled for the kind the field accepts, and each stored
+  // resource is a button named for its own file; choosing one closes it.
   const resourceBrowser = architectPage.getByRole('dialog', {
     name: 'Choose an image',
   });
@@ -285,30 +87,615 @@ test('drops a text draft left behind by a switch to Image', async ({
   await resourceBrowser
     .getByRole('button', { name: 'photo.svg', exact: true })
     .click();
-  await expect(
-    dialog.getByRole('button', { name: 'Change the image', exact: true }),
-  ).toBeVisible();
+  await expect(resourceBrowser).toBeHidden();
 
-  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-  await dialog.waitFor({ state: 'detached' });
+  // The image just placed is selected, which shows its settings beside it. An
+  // image has a size and a description, and no playback. With no description
+  // yet, it is named for its file.
+  const blocks = new AssetBlocks(architectPage);
+  await expect(blocks.image('photo.svg')).toBeVisible();
+  const settings = blocks.settings();
+  await expect(settings).toBeVisible();
+  await settings.getByLabel('Description', { exact: true }).fill('A photo');
+  await settings
+    .getByRole('group', { name: 'Display size' })
+    .getByText('Medium', { exact: true })
+    .click();
+  await expect(settings.getByLabel('Start playing automatically')).toHaveCount(
+    0,
+  );
+
   await editor.save();
 
-  // The predicate is the WAIT for the commit, not the judgement of it: the
-  // stage is seeded, so `readStageJson`'s existence check passes on the first
-  // poll and would hand back the pre-save row. It asks whether the edited
-  // block still holds the text the seed gave it — a question about that
-  // block's own value, rather than about the order the app happens to write an
-  // item's keys in, which is what the JSON substring this replaces depended
-  // on. What the save actually produced is judged by the assertion below, so a
-  // commit that got it wrong fails with a diff instead of a bare poll timeout.
+  const stage = await readStageJson(architectPage, 0, (saved) =>
+    (pageText(saved) ?? '').includes('asset:photo-asset'),
+  );
+  expect(pageText(stage)).toBe(
+    '# Welcome\n\nLook at this.\n\n![A photo](asset:photo-asset?size=medium)',
+  );
+});
+
+test('deletes a placed image from the text, keeping its file among the resources', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.',
+    ),
+    PHOTO_FILE,
+  );
+  const blocks = new AssetBlocks(architectPage);
+
+  // Clicking a block selects it and shows its settings.
+  await blocks.image('A photo').click();
+  await blocks
+    .settings()
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click();
+  await expect(blocks.image('A photo')).toHaveCount(0);
+
+  await new StageEditor(architectPage).save();
+
   const stage = await readStageJson(
     architectPage,
     0,
-    (saved) =>
-      informationItemContent(saved, TEXT_ITEM_ID) !== 'Original text body',
+    (saved) => !(pageText(saved) ?? '').includes('asset:'),
   );
-  expect(informationItems(stage)).toEqual([
-    { id: IMAGE_ITEM_ID, type: 'asset', content: 'photo-asset' },
-    { id: TEXT_ITEM_ID, type: 'asset', content: 'photo-asset' },
-  ]);
+  expect(pageText(stage)).toBe('# Welcome\n\nBye.');
+  // The file stays among the protocol's resources.
+  const protocol = await readProtocolJson(architectPage);
+  expect(Object.keys(protocol.assetManifest ?? {})).toContain('photo-asset');
+});
+
+test('keeps a placed image, byte for byte, through an edit of the text around it', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  const block = '![A photo](asset:photo-asset?size=large&align=end)';
+  await openInformationPage(
+    informationProtocol(`# Welcome\n\n${block}\n\nBye`),
+    PHOTO_FILE,
+  );
+  const editor = new StageEditor(architectPage);
+
+  // The caret goes to the end of the last paragraph, after the block.
+  await editor.richText().locator('p').last().click();
+  await architectPage.keyboard.press('End');
+  await architectPage.keyboard.insertText('!');
+  await editor.save();
+
+  const stage = await readStageJson(architectPage, 0, (saved) =>
+    (pageText(saved) ?? '').endsWith('Bye!'),
+  );
+  expect(pageText(stage)).toBe(`# Welcome\n\n${block}\n\nBye!`);
+});
+
+test('shows an image’s settings only while it is selected and the researcher is in the field', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.',
+    ),
+    PHOTO_FILE,
+  );
+  const pageEditor = new StageEditor(architectPage).richText();
+  const blocks = new AssetBlocks(architectPage);
+  const settings = blocks.settings();
+  const description = settings.getByLabel('Description', { exact: true });
+  await expect(pageEditor).toBeEditable();
+  await expect(settings).toBeHidden();
+
+  // Selecting the image shows them, and leaves the keyboard in the text.
+  await blocks.image('A photo').click();
+  await expect(settings).toBeVisible();
+  await expect(pageEditor).toBeFocused();
+
+  // Enter goes into them; Escape comes back to the image, still selected.
+  await architectPage.keyboard.press('Enter');
+  await expect(description).toBeFocused();
+  await architectPage.keyboard.press('Escape');
+  await expect(pageEditor).toBeFocused();
+  await expect(settings).toBeVisible();
+
+  // The caret going into the text takes them away.
+  await pageEditor.locator('p', { hasText: 'Bye.' }).click();
+  await expect(settings).toBeHidden();
+
+  // And so does leaving the field with the image still selected.
+  await blocks.image('A photo').click();
+  await expect(settings).toBeVisible();
+  await architectPage.getByRole('textbox', { name: 'Stage name' }).focus();
+  await expect(settings).toBeHidden();
+});
+
+test('resizes an image by dragging its corner, a size at a time', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=large)\n\nBye.',
+    ),
+    // Stored as the image it is, so that the picture is drawn: a picture that
+    // cannot be drawn has no corner to take hold of.
+    DRAWN_FILES,
+  );
+  const blocks = new AssetBlocks(architectPage);
+  const image = blocks.image('A photo');
+  await image.click();
+  const settings = blocks.settings();
+  await expect(settings).toBeVisible();
+
+  // The whole picture in view, so the pointer stays on the page as it goes.
+  await image.evaluate((element) =>
+    element.scrollIntoView({ block: 'center' }),
+  );
+  const handle = await blocks.resizeCorner().boundingBox();
+  if (handle === null) throw new Error('The corner is not drawn');
+  const x = handle.x + handle.width / 2;
+  const y = handle.y + handle.height / 2;
+
+  // The size follows how far the pointer has gone from where it took hold,
+  // not where it is: a little way up is one size smaller, further is two.
+  // (A square picture held to 60% of this 720px window is 432px tall; Medium
+  // holds it to 384px and Small to 192px.)
+  await architectPage.mouse.move(x, y);
+  await architectPage.mouse.down();
+  await architectPage.mouse.move(x, y - 60, { steps: 5 });
+  // While it is dragged, the size it would take is named beside the corner,
+  // and the settings stand aside.
+  const pill = (name: string) =>
+    new StageEditor(architectPage).richText().getByText(name, { exact: true });
+  await expect(pill('Medium')).toBeVisible();
+  await expect(settings).toBeHidden();
+  await architectPage.mouse.move(x, y - 220, { steps: 10 });
+  await expect(pill('Small')).toBeVisible();
+  await architectPage.mouse.up();
+
+  // Let go, the settings come back with the new size chosen.
+  await expect(
+    settings.getByRole('button', { name: 'Small', exact: true, pressed: true }),
+  ).toBeVisible();
+
+  await blocks.saveFromText('Bye.');
+  const stage = await readStageJson(architectPage, 0, (saved) =>
+    (pageText(saved) ?? '').includes('size=small'),
+  );
+  expect(pageText(stage)).toBe(
+    '# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.',
+  );
+});
+
+// The corner is drawn on the outline of the selected block, at the bottom, on
+// the side its picture grows towards: away from the side it is held against.
+for (const [align, corner] of [
+  ['start', 'right'],
+  ['end', 'left'],
+] as const) {
+  test(`puts the resize corner on the bottom ${corner} of the outline of an image aligned to the ${align}`, async ({
+    architectPage,
+    openInformationPage,
+  }) => {
+    const address = `size=small&align=${align}`;
+    await openInformationPage(
+      informationProtocol(
+        `# Welcome\n\n![A photo](asset:photo-asset?${address})\n\nBye.`,
+      ),
+      DRAWN_FILES,
+    );
+    const blocks = new AssetBlocks(architectPage);
+    await blocks.image('A photo').click();
+    await expect(blocks.settings()).toBeVisible();
+    const block = blocks.block('A photo');
+    await expect(block).toHaveAttribute('data-selected', 'true');
+
+    const handle = await blocks.resizeCorner().boundingBox();
+    if (handle === null) throw new Error('The corner is not drawn');
+    const outline = await block.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      // The outline's line runs half its width out from where it is offset.
+      const out =
+        Number.parseFloat(style.outlineOffset) +
+        Number.parseFloat(style.outlineWidth) / 2;
+      return {
+        width: Number.parseFloat(style.outlineWidth),
+        left: box.left - out,
+        right: box.right + out,
+        bottom: box.bottom + out,
+      };
+    });
+    // An outline is drawn, or there is no line for the corner to sit on.
+    expect(outline.width).toBeGreaterThan(0);
+    const middle = {
+      x: handle.x + handle.width / 2,
+      y: handle.y + handle.height / 2,
+    };
+    expect(Math.abs(middle.y - outline.bottom)).toBeLessThanOrEqual(2);
+    expect(Math.abs(middle.x - outline[corner])).toBeLessThanOrEqual(2);
+  });
+}
+
+test('replaces the file of a placed image, keeping its settings', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small&align=end)\n\nBye.',
+      { moreFiles: true },
+    ),
+    DRAWN_FILES,
+  );
+  const blocks = new AssetBlocks(architectPage);
+  await blocks.image('A photo').click();
+  const settings = blocks.settings();
+
+  // The file the block shows, with the way to choose another.
+  const file = settings.getByRole('group', { name: 'Image', exact: true });
+  await expect(file.getByText('photo.svg', { exact: true })).toBeVisible();
+  await file
+    .getByRole('button', { name: 'Change the image', exact: true })
+    .click();
+  const resourceBrowser = architectPage.getByRole('dialog', {
+    name: 'Choose an image',
+  });
+  await expect(resourceBrowser).toBeVisible();
+  // The settings stand aside while the browser is open, and do not cover the
+  // files in it.
+  await expect(settings).toBeHidden();
+  // Cancelled, they come back as they were, with the button that opened it.
+  await resourceBrowser
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(resourceBrowser).toBeHidden();
+  const change = file.getByRole('button', {
+    name: 'Change the image',
+    exact: true,
+  });
+  await expect(change).toBeFocused();
+  await change.click();
+  await expect(settings).toBeHidden();
+  await resourceBrowser
+    .getByRole('button', { name: 'garden.svg', exact: true })
+    .click();
+  await expect(resourceBrowser).toBeHidden();
+  await expect(settings).toBeVisible();
+
+  // The block, still selected, now shows the other file, under the same
+  // description, size and alignment.
+  await expect(file.getByText('garden.svg', { exact: true })).toBeVisible();
+  await expect(settings.getByLabel('Description', { exact: true })).toHaveValue(
+    'A photo',
+  );
+  await expect(
+    settings.getByRole('button', { name: 'Small', exact: true, pressed: true }),
+  ).toBeVisible();
+  await expect(
+    settings.getByRole('button', {
+      name: 'Align to the end',
+      exact: true,
+      pressed: true,
+    }),
+  ).toBeVisible();
+
+  await blocks.saveFromText('Bye.');
+  const stage = await readStageJson(architectPage, 0, (saved) =>
+    (pageText(saved) ?? '').includes('asset:garden-asset'),
+  );
+  expect(pageText(stage)).toBe(
+    '# Welcome\n\n![A photo](asset:garden-asset?size=small&align=end)\n\nBye.',
+  );
+});
+
+test('marks a block that a selection of the text runs across, and outlines one selected by itself', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A photo](asset:photo-asset?size=small)\n\nBye.',
+    ),
+    DRAWN_FILES,
+  );
+  const pageEditor = new StageEditor(architectPage).richText();
+  const blocks = new AssetBlocks(architectPage);
+  const block = blocks.block('A photo');
+  await expect(pageEditor).toBeEditable();
+
+  // Everything selected: the block is part of the selection, not selected on
+  // its own, so it has no settings.
+  await pageEditor.locator('p', { hasText: 'Bye.' }).click();
+  await expect(block).not.toHaveAttribute('data-in-selected-text');
+  await architectPage.keyboard.press('ControlOrMeta+a');
+  await expect(block).toHaveAttribute('data-in-selected-text', 'true');
+  await expect(block).not.toHaveAttribute('data-selected');
+  await expect(blocks.settings()).toHaveCount(0);
+
+  // A caret in the text selects nothing.
+  await pageEditor.locator('p', { hasText: 'Bye.' }).click();
+  await expect(block).not.toHaveAttribute('data-in-selected-text');
+
+  // The block clicked is selected by itself: outlined, and not marked.
+  await blocks.image('A photo').click();
+  await expect(block).toHaveAttribute('data-selected', 'true');
+  await expect(block).not.toHaveAttribute('data-in-selected-text');
+  expect(
+    await block.evaluate(
+      (element) => Number.parseFloat(getComputedStyle(element).outlineWidth),
+      undefined,
+    ),
+  ).toBeGreaterThan(0);
+});
+
+test('reaches and uses Delete in a video’s settings in a short window', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  // Shorter than an ordinary window, so that the whole of a video's settings
+  // cannot be seen at once (they can at 1280×720).
+  await architectPage.setViewportSize({ width: 1280, height: 560 });
+  await openInformationPage(
+    informationProtocol(
+      '# Welcome\n\n![A clip](asset:clip-asset?size=medium)\n\nBye.',
+      { moreFiles: true },
+    ),
+    DRAWN_FILES,
+  );
+  const blocks = new AssetBlocks(architectPage);
+  const block = blocks.blocks();
+  await expect(block).toHaveCount(1);
+  await block.click();
+  const settings = blocks.settings('Video');
+  await expect(settings).toBeVisible();
+
+  // The settings stay in the window, below the bar at its top (and below the
+  // banner a browser tab shows over it), and scroll within themselves to what
+  // does not fit.
+  const box = await settings.boundingBox();
+  const bars = await architectPage.evaluate(() => {
+    // The app's bar, drawn inside the padding of the header that holds it.
+    const top = document
+      .querySelector('header')
+      ?.firstElementChild?.getBoundingClientRect();
+    if (top === undefined) throw new Error('No bar at the top');
+    return { top: top.bottom, bottom: window.innerHeight };
+  });
+  if (box === null) throw new Error('Nothing is drawn');
+  expect(box.y).toBeGreaterThanOrEqual(bars.top);
+  expect(box.y + box.height).toBeLessThanOrEqual(bars.bottom);
+  const remove = settings.getByRole('button', { name: 'Delete', exact: true });
+  // Delete is out of sight, and the edge it is hidden behind fades, so that
+  // there is evidently more.
+  const hidden = await remove.evaluate(
+    (element) =>
+      new Promise<boolean>((resolve) => {
+        new IntersectionObserver((entries, observer) => {
+          observer.disconnect();
+          resolve((entries[0]?.intersectionRatio ?? 0) < 1);
+        }).observe(element);
+      }),
+  );
+  expect(hidden).toBe(true);
+  const fade = await settings
+    .locator('.scroll-area-viewport')
+    .evaluate((element) =>
+      Number.parseFloat(getComputedStyle(element, '::after').height),
+    );
+  expect(fade).toBeGreaterThan(0);
+  // Reached from the keyboard, it is scrolled into sight whole.
+  await remove.focus();
+  await expect(remove).toBeInViewport({ ratio: 1 });
+
+  await remove.click();
+  await expect(block).toHaveCount(0);
+  await new StageEditor(architectPage).save();
+  const stage = await readStageJson(
+    architectPage,
+    0,
+    (saved) => !(pageText(saved) ?? '').includes('asset:'),
+  );
+  expect(pageText(stage)).toBe('# Welcome\n\nBye.');
+});
+
+// The bar at the top of the window and the action toolbar at its bottom stand
+// over the page, and each publishes how far into the page it reaches
+// (`--architect-nav-bar-reach`, `--architect-action-toolbar-reach`). A large
+// image's settings do not fit beside it, so they are held against one bar or
+// the other, and keep 8px clear of it. Where the image is decides which: held
+// below the top bar when the image is lower down, above the toolbar when it
+// is at the top.
+for (const [width, height, cases] of [
+  [
+    1440,
+    1000,
+    [
+      ['top bar', 300],
+      ['action toolbar', 0],
+    ],
+  ],
+  [
+    1280,
+    720,
+    [
+      ['top bar', 200],
+      ['action toolbar', 0],
+    ],
+  ],
+] as const) {
+  for (const [bar, top] of cases) {
+    test(`keeps an image’s settings 8px clear of the ${bar} at ${width}×${height}`, async ({
+      architectPage,
+      openInformationPage,
+    }) => {
+      await architectPage.setViewportSize({ width, height });
+      const lines = (from: number) =>
+        Array.from({ length: 20 }, (_, index) => `Line ${from + index}.`).join(
+          '\n\n',
+        );
+      await openInformationPage(
+        informationProtocol(
+          `# Welcome\n\n${lines(1)}\n\n![A photo](asset:photo-asset?size=large)\n\n${lines(21)}`,
+        ),
+        DRAWN_FILES,
+      );
+      const blocks = new AssetBlocks(architectPage);
+      await blocks.image('A photo').click();
+      const settings = blocks.settings();
+      await expect(settings).toBeVisible();
+      await placeBlockAt(blocks.block('A photo'), top);
+
+      // What each bar publishes is how far it really reaches into the page:
+      // the top bar from the top of what the page scrolls in, and the toolbar
+      // (the fixed box drawn around its controls) from the bottom of the
+      // window.
+      const toolbar = architectPage.getByRole('toolbar', {
+        name: 'Stage editor actions',
+      });
+      await expect(toolbar).toBeVisible();
+      const bars = await toolbar.evaluate((controls) => {
+        const root = getComputedStyle(document.documentElement);
+        const header = document.querySelector('header');
+        const topBar = header?.firstElementChild?.getBoundingClientRect();
+        const page = header?.parentElement?.getBoundingClientRect();
+        let fixed: Element | null = controls;
+        while (fixed !== null && getComputedStyle(fixed).position !== 'fixed') {
+          fixed = fixed.parentElement;
+        }
+        if (topBar === undefined || page === undefined || fixed === null) {
+          throw new Error('A bar is not drawn');
+        }
+        return {
+          topBar: topBar.bottom,
+          topBarReach: topBar.bottom - page.top,
+          publishedTopBarReach: Number.parseFloat(
+            root.getPropertyValue('--architect-nav-bar-reach'),
+          ),
+          toolbar: fixed.getBoundingClientRect().top,
+          toolbarReach: window.innerHeight - fixed.getBoundingClientRect().top,
+          publishedToolbarReach: Number.parseFloat(
+            root.getPropertyValue('--architect-action-toolbar-reach'),
+          ),
+        };
+      });
+      expect(bars.publishedTopBarReach).toBeCloseTo(bars.topBarReach, 0);
+      expect(bars.publishedToolbarReach).toBeCloseTo(bars.toolbarReach, 0);
+
+      // Clear of both, and held 8px (to the pixel) from the one it is against.
+      await expect
+        .poll(async () => {
+          const box = await settings.boundingBox();
+          if (box === null) throw new Error('The settings are not drawn');
+          return {
+            belowTopBar: Math.round(box.y - bars.topBar),
+            aboveToolbar: Math.round(bars.toolbar - (box.y + box.height)),
+          };
+        })
+        .toEqual(
+          bar === 'top bar'
+            ? { belowTopBar: 8, aboveToolbar: expect.any(Number) }
+            : { belowTopBar: expect.any(Number), aboveToolbar: 8 },
+        );
+      const box = await settings.boundingBox();
+      if (box === null) throw new Error('The settings are not drawn');
+      expect(box.y - bars.topBar).toBeGreaterThanOrEqual(7.5);
+      expect(bars.toolbar - (box.y + box.height)).toBeGreaterThanOrEqual(7.5);
+    });
+  }
+}
+
+// A small image in a long page, at the top of the window (just under the
+// app's bar), in the middle of it, and at the bottom of it: wherever it is,
+// its settings are seen whole in a window of an ordinary size, with nothing
+// of them scrolled out of sight.
+for (const [where, top] of [
+  ['top', 110],
+  ['middle', 404],
+  ['bottom', 1000 - 110 - 192],
+] as const) {
+  test(`shows the whole of an image’s settings at 1440×1000 with the image at the ${where} of the window`, async ({
+    architectPage,
+    openInformationPage,
+  }) => {
+    await architectPage.setViewportSize({ width: 1440, height: 1000 });
+    const lines = (from: number) =>
+      Array.from({ length: 20 }, (_, index) => `Line ${from + index}.`).join(
+        '\n\n',
+      );
+    await openInformationPage(
+      informationProtocol(
+        `# Welcome\n\n${lines(1)}\n\n![A photo](asset:photo-asset?size=small)\n\n${lines(21)}`,
+        { moreFiles: true },
+      ),
+      DRAWN_FILES,
+    );
+    const blocks = new AssetBlocks(architectPage);
+    await blocks.image('A photo').click();
+    const settings = blocks.settings();
+    await expect(settings).toBeVisible();
+    await placeBlockAt(blocks.block('A photo'), top);
+
+    // Seen whole where they are, without scrolling the page or the settings.
+    for (const part of [
+      settings.getByLabel('Description', { exact: true }),
+      settings.getByRole('group', { name: 'Display size' }),
+      settings.getByRole('group', { name: 'Alignment' }),
+      settings.getByRole('group', { name: 'Image', exact: true }),
+      settings.getByRole('button', { name: 'Change the image', exact: true }),
+      settings.getByRole('button', { name: 'Delete', exact: true }),
+    ]) {
+      await expect(part).toBeInViewport({ ratio: 1 });
+    }
+    // Nothing inside them holds more than it shows.
+    expect(
+      await settings.evaluate((element) =>
+        [element, ...element.querySelectorAll('*')].some(
+          (at) =>
+            at.scrollHeight > at.clientHeight + 1 &&
+            /auto|scroll/.test(getComputedStyle(at).overflowY),
+        ),
+      ),
+    ).toBe(false);
+  });
+}
+
+test('shows the whole page however long it is, with nothing of it scrolled out of sight inside the field', async ({
+  architectPage,
+  openInformationPage,
+}) => {
+  const lines = Array.from({ length: 80 }, (_, index) => `Line ${index + 1}.`);
+  await openInformationPage(
+    informationProtocol(lines.join('\n\n')),
+    PHOTO_FILE,
+  );
+  const field = new StageEditor(architectPage).richText();
+  await expect(field.locator('p')).toHaveCount(80);
+
+  // Taller than the window, so a limit on the field's height would bite.
+  const viewport = architectPage.viewportSize();
+  const box = await field.boundingBox();
+  expect(box?.height).toBeGreaterThan(viewport?.height ?? Infinity);
+
+  // Nothing from the text up to its section holds more than it shows: the
+  // page as a whole scrolls, and no box within the field does.
+  const holdingBack = await field.evaluate((element) => {
+    const found: string[] = [];
+    for (
+      let at: Element | null = element;
+      at !== null && at.tagName !== 'SECTION';
+      at = at.parentElement
+    ) {
+      if (
+        at.scrollHeight > at.clientHeight + 1 &&
+        getComputedStyle(at).overflowY !== 'visible'
+      ) {
+        found.push(`${at.tagName.toLowerCase()}.${at.className}`);
+      }
+    }
+    return found;
+  });
+  expect(holdingBack).toEqual([]);
 });

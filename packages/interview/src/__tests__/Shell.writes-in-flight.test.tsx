@@ -90,15 +90,13 @@ const payload = {
         id: testId('first-stage'),
         type: 'Information',
         label: { en: 'First stage' },
-        title: { en: 'First stage' },
-        items: [],
+        content: { en: '# First stage' },
       },
       {
         id: testId('agreed-stage'),
         type: 'Information',
         label: { en: 'Agreed stage' },
-        title: { en: 'Agreed stage' },
-        items: [],
+        content: { en: '# Agreed stage' },
         skipLogic: {
           action: 'SKIP',
           filter: {
@@ -121,8 +119,7 @@ const payload = {
         id: testId('last-stage'),
         type: 'Information',
         label: { en: 'Last stage' },
-        title: { en: 'Last stage' },
-        items: [],
+        content: { en: '# Last stage' },
       },
     ],
   },

@@ -320,8 +320,7 @@ describe('typing a language code into the list of languages to change to', () =>
         id: createProtocolObjectId(),
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
-        title: { en: 'Hello', fr: 'Bonjour' },
-        items: [],
+        content: { en: '# Hello', fr: '# Bonjour' },
       },
     ],
   };
@@ -358,7 +357,7 @@ describe('typing a language code into the list of languages to change to', () =>
     const [stage] = getProtocol(store.getState())?.stages ?? [];
     expect(stage).toMatchObject({
       label: { haw: 'Welcome', fr: 'Bienvenue' },
-      title: { haw: 'Hello', fr: 'Bonjour' },
+      content: { haw: '# Hello', fr: '# Bonjour' },
     });
   });
 

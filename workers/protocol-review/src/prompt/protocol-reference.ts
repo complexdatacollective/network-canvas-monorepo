@@ -29,8 +29,8 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 - Write ONLY the protocol's default language (localization.defaultLocale). To change a text, set its default-language key: /stages/<stageId>/prompts/<promptId>/text/en. A new text object holds only that key: { "en": "…" }. Never add, change or remove another language's key: a text needs a version in only one language, and the researcher's translators own the others.
 - Write protocol text in the protocol's default language, whatever language your findings are in.
 - Each value is an ICU MessageFormat message that must be literal text. Write a literal { or } as '{' or '}'. An apostrophe is literal ("Don't", "the participant's") except directly before another apostrophe, {, }, < or >, where it must be doubled (''). Plural, select and placeholders such as {name} are not allowed, with two exceptions: keep a placeholder that is already in a text you edit (it names one of the stage's dynamicValues), and write the minimum notice's plural exactly as shown below.
-- Single-line texts (stage labels, prompts, form questions and hints, option labels, titles) cannot contain a line break. Information text items and FinishSession content may have several lines.
-- Markdown (**bold**, *italic*) is allowed in prompts, form questions and hints, option labels and Information text items; stage labels and titles are plain text. Bold the key phrase of a prompt.
+- Single-line texts (stage labels, prompts, form questions and hints, option labels, titles) cannot contain a line break. Information content and FinishSession content may have several lines.
+- Markdown (**bold**, *italic*) is allowed in prompts, form questions and hints, option labels and Information content; stage labels and titles are plain text. Bold the key phrase of a prompt.
 - A stage label is at most 100 characters.
 
 ## Codebook
@@ -57,13 +57,13 @@ Options: [{ "label": { "en": "…" }, "value": 1 }, …]. A value is a whole num
 
 ## Object ids
 
-Each of these objects has an "id": a stage, a prompt, a panel, an Information item, a form field, a filter rule, a sort rule (sortOptions.sortOrder), an additionalAttributes row, a roster card or sort property (cardOptions.additionalProperties, sortOptions.sortableProperties), a Narrative preset and the rows of its edges.display and highlight lists, a FamilyPedigree disease and a NetworkComposer edge setting. Every such id is a UUID, and no two objects anywhere in the protocol share one. Keep an object's id when you change the object. A finish stage is any stage whose type is FinishSession; its id is a UUID like any other.
+Each of these objects has an "id": a stage, a prompt, a panel, a form field, a filter rule, a sort rule (sortOptions.sortOrder), an additionalAttributes row, a roster card or sort property (cardOptions.additionalProperties, sortOptions.sortableProperties), a Narrative preset and the rows of its edges.display and highlight lists, a FamilyPedigree disease and a NetworkComposer edge setting. Every such id is a UUID, and no two objects anywhere in the protocol share one. Keep an object's id when you change the object. A finish stage is any stage whose type is FinishSession; its id is a UUID like any other.
 
 ## Stages
 
 Every stage: { "id", "type", "label": { "en": "…" }, "skipLogic"?, "interviewScript"? (plain text for the interviewer, never shown to the participant) }. Stages about people carry "subject": { "entity": "node", "type": <nodeTypeId> }; an AlterEdgeForm carries "subject": { "entity": "edge", "type": <edgeTypeId> }. A stage marked filter? below accepts "filter": Filter.
 
-- Information: "title": {…}, "items": [{ "id", "type": "text", "content": {…} } | { "id", "type": "asset", "content": <assetId>, … }]
+- Information: "content": {…}, the whole page as one markdown text. A heading that opens it ("# Welcome") is the page's heading. An image, audio recording or video is a markdown image in a paragraph of its own whose address names an asset by id: ![description](asset:<assetId>?size=small|medium|large&align=start|end&autoplay=false&loop=false), every setting optional. Keep each one exactly as written when you rewrite the text around it.
 - EgoForm: "form": { "fields": [Field, …] }, "introductionPanel": { "title": {…}, "text"?: {…} }. Fields use ego variables.
 - AlterForm (filter?): "form": { "fields": [ … ] }: one form per person shown. Fields use the subject node type's variables.
 - AlterEdgeForm (filter?): "form": { "fields": [ … ] }: one form per tie of the subject edge type. Fields use that edge type's variables.

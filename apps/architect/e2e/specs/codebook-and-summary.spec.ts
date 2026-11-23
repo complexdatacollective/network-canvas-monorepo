@@ -418,7 +418,7 @@ test('prints each protocol text in every protocol language', async ({
   }
   const { defaultLocale } = protocol.localization;
   protocol.localization = { defaultLocale, locales: [defaultLocale, 'fr'] };
-  stage.title = { ...stage.title, fr: 'Bienvenue' };
+  stage.content = { ...stage.content, fr: '# Bienvenue' };
   await seed(protocol, { name: 'Bilingual summary', assets });
   await architectPage.goto('/protocol/summary');
   await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
@@ -432,13 +432,15 @@ test('prints each protocol text in every protocol language', async ({
   await expect(coverLanguages.filter({ hasText: 'Default' })).toHaveCount(1);
 
   const section = architectPage.locator(`#stage-${stage.id}`);
-  await expect(section.locator('dd[lang="fr"]')).toHaveText('Bienvenue');
+  await expect(
+    section.locator('[lang="fr"]').getByRole('heading', { name: 'Bienvenue' }),
+  ).toBeVisible();
   await expect(
     section
-      .locator(`dd[lang="${defaultLocale}"]`)
-      .filter({ hasText: /^Welcome$/ }),
+      .locator(`[lang="${defaultLocale}"]`)
+      .getByRole('heading', { name: 'Welcome', exact: true }),
   ).toBeVisible();
-  // The stage's item has no French translation, so the summary says which
+  // The stage's name has no French translation, so the summary says which
   // language participants using French see it in instead.
   await expect(
     section

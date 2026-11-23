@@ -29,14 +29,40 @@ describe('collectStageResourceReferences', () => {
     ]);
   });
 
+  it('finds each file an Information page names as a block in its text', () => {
+    expect(
+      collectStageResourceReferences({
+        id: 'stage-3',
+        type: 'Information',
+        label: 'Welcome',
+        content: {
+          en: '# Welcome\n\n![A map](asset:map-1)\n\n![](asset:song-1?autoplay=false)',
+        },
+      }).map(({ resourceId }) => resourceId),
+    ).toEqual(['map-1', 'song-1']);
+  });
+
+  it('finds a file whose address is written with its colon escaped, which the interview shows all the same', () => {
+    expect(
+      collectStageResourceReferences({
+        id: 'stage-3',
+        type: 'Information',
+        label: 'Welcome',
+        content: {
+          en: '![A map](asset\\:map-1)',
+          fr: '![Une carte](asset&#58;map-2)',
+        },
+      }).map(({ resourceId }) => resourceId),
+    ).toEqual(['map-1', 'map-2']);
+  });
+
   it('finds nothing in a stage that uses no resources', () => {
     expect(
       collectStageResourceReferences({
         id: 'stage-2',
         type: 'Information',
         label: 'Welcome',
-        title: 'Welcome',
-        items: [],
+        content: 'Welcome',
       }),
     ).toEqual([]);
   });

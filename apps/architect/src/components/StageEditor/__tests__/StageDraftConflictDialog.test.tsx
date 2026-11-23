@@ -71,8 +71,7 @@ const protocol: CurrentProtocol = {
       id: STAGE_ID,
       type: 'Information',
       label: { en: 'A' },
-      title: { en: 'A' },
-      items: [],
+      content: { en: '# A' },
     },
   ],
   codebook: savedCodebook,
@@ -82,8 +81,7 @@ const editedStage: Stage = {
   id: STAGE_ID,
   type: 'Information',
   label: { en: 'A, edited' },
-  title: { en: 'A' },
-  items: [],
+  content: { en: '# A' },
 };
 
 const createTestStore = () =>

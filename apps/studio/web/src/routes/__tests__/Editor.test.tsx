@@ -78,7 +78,6 @@ const STAGE_A = '11111111-1111-4111-8111-111111111111';
 const STAGE_B = '22222222-2222-4222-8222-222222222222';
 const STAGE_C = '33333333-3333-4333-8333-333333333333';
 const FINISH = '44444444-4444-4444-8444-444444444444';
-const ITEM_A = '55555555-5555-4555-8555-555555555555';
 const queryDraft = vi.hoisted(() => vi.fn<Answer<'protocols.draft'>>());
 const addInformationStage = vi.fn<Answer<'protocols.addInformationStage'>>();
 const moveStage = vi.fn<Answer<'protocols.moveStage'>>();
@@ -128,15 +127,13 @@ const DRAFT_SECTIONS = {
     id: STAGE_A,
     type: 'Information',
     label: enUS('Welcome'),
-    title: enUS('Welcome'),
-    items: [],
+    content: enUS('# Welcome'),
   },
   [`stage:${STAGE_B}`]: {
     id: STAGE_B,
     type: 'Information',
     label: enUS('Follow-up'),
-    title: enUS('Follow-up'),
-    items: [],
+    content: enUS('# Follow-up'),
   },
   assets: {},
 };
@@ -388,8 +385,7 @@ async function collaboratorAddsScreen(label: string): Promise<void> {
     document: Redacted.make({
       type: 'Information',
       label: enUS(label),
-      title: enUS(label),
-      items: [],
+      content: enUS(`# ${label}`),
     }),
   });
 }
@@ -1116,8 +1112,7 @@ describe('Studio editor shell', () => {
         commandWrote.set(sectionId({ kind: 'stage', stageId }), {
           id: stageId,
           type: 'Information',
-          title: enUS('Untitled screen'),
-          items: [],
+          content: enUS('# Untitled screen'),
         });
         commandWrote.set(STAGE_ORDER, { stages: [STAGE_A, STAGE_B, stageId] });
         return { sequence: '3', hash: 'r3' };
@@ -1286,8 +1281,7 @@ describe('a protocol that is not all here', () => {
         id: STAGE_C,
         type: 'Information',
         label: enUS('Closing'),
-        title: enUS('Closing'),
-        items: [],
+        content: enUS('# Closing'),
       },
     });
     unreadableSections.set(sectionId({ kind: 'stage', stageId: missing }), how);
@@ -1799,8 +1793,7 @@ const THREE_SCREENS: Readonly<Record<string, SectionDoc>> = {
     id: STAGE_C,
     type: 'Information',
     label: enUS('Third'),
-    title: enUS('Third'),
-    items: [],
+    content: enUS('# Third'),
   },
 };
 
@@ -2192,22 +2185,15 @@ const BLANK_TITLE: Readonly<Record<string, SectionDoc>> = {
   ...ENDS_AT_FINISH,
   [`stage:${STAGE_B}`]: {
     ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
-    title: enUS(''),
+    content: enUS(''),
   },
 };
 
 const inspector = async () =>
   within(await screen.findByRole('complementary', { name: 'Inspector' }));
 
-/** The visible label of the control that has focus, as a screen reader reads it. */
-function focusedLabel(): string {
-  const ids = document.activeElement?.getAttribute('aria-labelledby') ?? '';
-  return ids
-    .split(' ')
-    .map((id) => document.getElementById(id)?.textContent ?? '')
-    .join(' ')
-    .trim();
-}
+/** The Information page's rich text field, by the name a screen reader reads. */
+const pageTextField = () => screen.getByRole('textbox', { name: 'Rich Text' });
 
 describe('the validation problems', () => {
   it('are controls that open the screen they are about and focus the field', async () => {
@@ -2220,7 +2206,7 @@ describe('the validation problems', () => {
       await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
     );
 
-    await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+    await waitFor(() => expect(pageTextField()).toHaveFocus());
     expect(
       screen.getByRole('button', { name: 'Follow-upInformation' }),
     ).toHaveAttribute('aria-current', 'page');
@@ -2250,7 +2236,7 @@ describe('the validation problems', () => {
     document.addEventListener('focusin', record);
     try {
       fireEvent.click(discard);
-      await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+      await waitFor(() => expect(pageTextField()).toHaveFocus());
     } finally {
       document.removeEventListener('focusin', record);
     }
@@ -2328,7 +2314,7 @@ describe('the validation problems', () => {
       ...ENDS_AT_FINISH,
       [`stage:${STAGE_A}`]: {
         ...HOST_SECTIONS[`stage:${STAGE_A}`],
-        title: enUS(''),
+        content: enUS(''),
       },
     });
     renderEditor();
@@ -2342,7 +2328,7 @@ describe('the validation problems', () => {
       }),
     );
 
-    await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+    await waitFor(() => expect(pageTextField()).toHaveFocus());
   });
 
   it('open a section of the protocol that is not a screen', async () => {
@@ -2361,33 +2347,6 @@ describe('the validation problems', () => {
       expect(
         screen.getByRole('heading', { name: 'Protocol settings' }),
       ).toHaveFocus(),
-    );
-  });
-
-  it('focus the row of the object a problem is about, not the list it is in', async () => {
-    const first = '77777777-7777-4777-8777-777777777777';
-    const blank = '66666666-6666-4666-8666-666666666666';
-    await seedHost({
-      ...ENDS_AT_FINISH,
-      [`stage:${STAGE_B}`]: {
-        ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
-        items: [
-          { id: first, type: 'text', content: enUS('First item') },
-          { id: blank, type: 'text', content: enUS('') },
-        ],
-      },
-    });
-    renderEditor();
-    await findStageNameField();
-
-    // The item's text is edited in a dialog, so no field of the stage's form
-    // is that text: without the item's id the list is the nearest field.
-    fireEvent.click(
-      await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
-    );
-
-    await waitFor(() =>
-      expect(document.activeElement?.getAttribute('data-item-id')).toBe(blank),
     );
   });
 
@@ -2415,16 +2374,19 @@ describe('the validation problems', () => {
   // The validator describes a shape, in English whatever the reader's
   // language: "Invalid input: expected string, received undefined".
   it.each([
-    ['has no heading at all', undefined],
-    ['has a blank heading', ''],
+    ['has no content at all', undefined],
+    ['has blank content', ''],
   ])(
     'say in the editor’s own words that a value is missing when a screen %s',
-    async (_, title) => {
-      const { title: _title, ...untitled } = DRAFT_SECTIONS[`stage:${STAGE_B}`];
+    async (_, content) => {
+      const { content: _content, ...untitled } =
+        DRAFT_SECTIONS[`stage:${STAGE_B}`];
       await seedHost({
         ...ENDS_AT_FINISH,
         [`stage:${STAGE_B}`]:
-          title === undefined ? untitled : { ...untitled, title: enUS(title) },
+          content === undefined
+            ? untitled
+            : { ...untitled, content: enUS(content) },
       });
       renderEditor();
 
@@ -2521,7 +2483,7 @@ describe('the editing lock', () => {
       ...HOST_SECTIONS,
       [`stage:${STAGE_A}`]: {
         ...HOST_SECTIONS[`stage:${STAGE_A}`],
-        items: [{ id: ITEM_A, type: 'text', content: enUS('Hello') }],
+        content: enUS('# Welcome, from the host\n\nHello'),
       },
     });
     renderEditor();

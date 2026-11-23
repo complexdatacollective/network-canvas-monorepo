@@ -202,7 +202,7 @@ describe('a single-line rich text field', () => {
     await field.editor();
 
     expect(
-      screen.queryByRole('button', { name: 'Heading 1' }),
+      screen.queryByRole('button', { name: /^Text style:/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Bullet list' }),

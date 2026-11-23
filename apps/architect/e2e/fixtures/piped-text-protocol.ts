@@ -107,23 +107,13 @@ export function pipedTextProtocol(
           id: INFO_STAGE_ID,
           type: 'Information',
           label: en('Welcome'),
-          title: en('Welcome to the study'),
-          items: [
-            { id: objectId('info-text'), type: 'text', content: en('Thanks.') },
-          ],
+          content: en('Welcome to the study'),
         },
         {
           id: ANSWERS_STAGE_ID,
           type: 'Information',
           label: en('Your answers'),
-          title: en('How are you'),
-          items: [
-            {
-              id: objectId('answers-text'),
-              type: 'text',
-              content: en('Thanks.'),
-            },
-          ],
+          content: en('How are you'),
         },
         finish,
       ],
@@ -165,10 +155,10 @@ export function protocolWithNickname({
         ? shown
           ? {
               ...stage,
-              title: { en: NICKNAME_TITLE },
+              content: { en: NICKNAME_TITLE },
               dynamicValues: { nick: { path: `ego.${EGO_NICKNAME_ID}` } },
             }
-          : { ...stage, title: { en: 'Hello' } }
+          : { ...stage, content: { en: 'Hello' } }
         : stage,
     ),
   });
@@ -178,7 +168,7 @@ export function protocolWithNickname({
 export const GHOST_TITLE = '{ghost} welcome';
 
 /**
- * A protocol whose Information stage heading names a value its stage never
+ * A protocol whose Information stage text names a value its stage never
  * binds, as a protocol written by hand or by another tool can. Not parsed:
  * the app's own checks are what refuse it.
  */
@@ -188,7 +178,7 @@ export function protocolNamingUnboundValue(): CurrentProtocol {
     ...protocol,
     stages: protocol.stages.map((stage) =>
       stage.id === INFO_STAGE_ID && stage.type === 'Information'
-        ? { ...stage, title: { en: GHOST_TITLE } }
+        ? { ...stage, content: { en: GHOST_TITLE } }
         : stage,
     ),
   };

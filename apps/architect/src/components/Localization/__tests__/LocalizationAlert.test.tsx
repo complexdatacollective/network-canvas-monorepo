@@ -25,8 +25,7 @@ const stage = (index: number) => ({
   id: createProtocolObjectId(),
   type: 'Information' as const,
   label: { en: `Label ${index}` },
-  title: { en: `Title ${index}` },
-  items: [],
+  content: { en: `# Title ${index}` },
 });
 
 const protocolWithStages = (count: number): CurrentProtocol => ({
@@ -46,8 +45,7 @@ const protocolWithGaps = (count: number): CurrentProtocol => ({
     id: createProtocolObjectId(),
     type: 'Information' as const,
     label: { en: `Label ${index}`, fr: `Etiquette ${index}` },
-    title: { en: `Title ${index}` },
-    items: [],
+    content: { en: `# Title ${index}` },
   })),
 });
 
@@ -92,8 +90,7 @@ describe('LocalizationAlert', () => {
             id: createProtocolObjectId(),
             type: 'Information',
             label: { en: 'Welcome', fr: 'Bienvenue', de: 'Willkommen' },
-            title: { en: 'Hello', de: 'Hallo' },
-            items: [],
+            content: { en: '# Hello', de: '# Hallo' },
           },
         ],
       }),

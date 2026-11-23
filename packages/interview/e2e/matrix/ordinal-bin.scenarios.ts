@@ -845,7 +845,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         synth.addInformationStage({
           label: 'Done',
           title: 'All done',
-          items: [{ id: 'done-1', type: 'text', content: 'Thanks.' }],
+          text: 'Thanks.',
         });
         return synth;
       },

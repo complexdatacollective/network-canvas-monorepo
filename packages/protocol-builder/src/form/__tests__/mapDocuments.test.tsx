@@ -44,8 +44,7 @@ const dropSpanish = (fields: StageFormDraft): StageFormDraft =>
 
 const initialFields: SectionDoc = {
   label: { en: 'Welcome', es: 'Bienvenida' },
-  title: { en: 'Welcome to the study', es: 'Bienvenida al estudio' },
-  items: [],
+  content: { en: 'Welcome to the study', es: 'Bienvenida al estudio' },
 };
 
 function DirtyFlag() {
@@ -76,7 +75,7 @@ function renderEditor(readOnly = false) {
       <BuilderSection sectionKey="page-content" title="Page content">
         <Probe />
         <Field
-          name="title"
+          name="content"
           label="Page heading"
           component={LocalizedInputField}
         />
@@ -113,12 +112,12 @@ describe('a host change carried into the open stage', () => {
 
     mapDocuments(dropSpanish);
 
-    expect(form().liveDraft().title).toEqual({ en: 'Welcome to the study' });
+    expect(form().liveDraft().content).toEqual({ en: 'Welcome to the study' });
     expect(form().liveDraft().label).toEqual({ en: 'Welcome' });
-    expect(form().committedFields.title).toEqual({
+    expect(form().committedFields.content).toEqual({
       en: 'Welcome to the study',
     });
-    expect(form().savedFields.title).toEqual({ en: 'Welcome to the study' });
+    expect(form().savedFields.content).toEqual({ en: 'Welcome to the study' });
     // The control and its baseline moved together, so the form has nothing
     // to ask the researcher about.
     expect(dirtyFlag()).toHaveTextContent('clean');
@@ -135,11 +134,11 @@ describe('a host change carried into the open stage', () => {
     mapDocuments(dropSpanish);
 
     expect(heading()).toHaveValue('Half-written heading');
-    expect(form().liveDraft().title).toEqual({ en: 'Half-written heading' });
+    expect(form().liveDraft().content).toEqual({ en: 'Half-written heading' });
     expect(dirtyFlag()).toHaveTextContent('dirty');
 
     const written = await harness.submit();
-    expect(written?.stageDocument.title).toEqual({
+    expect(written?.stageDocument.content).toEqual({
       en: 'Half-written heading',
     });
     expect(written?.stageDocument.label).toEqual({ en: 'Welcome' });
@@ -152,25 +151,22 @@ describe('a host change carried into the open stage', () => {
       form().applyOwnCommands([
         {
           op: 'set',
-          key: 'items',
-          value: [
-            {
-              id: testId('a'),
-              type: 'text',
-              content: { en: 'Who?', es: '¿Quién?' },
-            },
-          ],
+          key: 'interviewScript',
+          value: 'read this aloud',
         },
       ]);
     });
 
-    mapDocuments(dropSpanish);
+    // A rewrite that says what it did to the value no control holds, so the
+    // value is seen to have gone through it rather than past it.
+    mapDocuments((fields) => ({
+      ...dropSpanish(fields),
+      interviewScript: String(fields.interviewScript).toUpperCase(),
+    }));
 
     const written = await harness.submit();
-    expect(written?.stageDocument.items).toEqual([
-      { id: testId('a'), type: 'text', content: { en: 'Who?' } },
-    ]);
-    expect(written?.stageDocument.title).toEqual({
+    expect(written?.stageDocument.interviewScript).toBe('READ THIS ALOUD');
+    expect(written?.stageDocument.content).toEqual({
       en: 'Welcome to the study',
     });
   });
@@ -183,7 +179,7 @@ describe('a host change carried into the open stage', () => {
 
     // Nothing is written that the protocol does not already hold, so there is
     // no refusal to make.
-    expect(form().liveDraft().title).toEqual({ en: 'Welcome to the study' });
+    expect(form().liveDraft().content).toEqual({ en: 'Welcome to the study' });
     expect(screen.queryByText(/your change was not made/)).toBeNull();
     await waitFor(() => expect(dirtyFlag()).toHaveTextContent('clean'));
   });

@@ -130,7 +130,7 @@ const reload = async (id: string, protocol: CurrentProtocol) => {
 };
 
 const TITLE = makeFinding('title', [
-  op('set', `/stages/${WELCOME_STAGE_ID}/title/en`, 'Welcome to our study'),
+  op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Welcome to our study'),
 ]);
 
 let store: Store;
@@ -211,8 +211,7 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
       id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Added' },
-      title: { en: 'Added' },
-      items: [],
+      content: { en: '# Added' },
     };
     await reviewed(store, [
       makeFinding('add', [op('insert', `/stages/${FINISH_STAGE_ID}`, stage)]),
@@ -225,7 +224,7 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
 
     store.dispatch(
       setProtocolTranslation({
-        path: ['stages', 2, 'title'],
+        path: ['stages', 2, 'label'],
         locale: 'en',
         text: 'My own title',
       }),
@@ -289,9 +288,9 @@ describe('C: an id-aware path reaches the member with that id, or nothing', () =
   it('does not fix the stage that took the place of a deleted stage', async () => {
     await reviewed(store, [
       makeFinding('welcome', [
-        op('set', `/stages/${WELCOME_STAGE_ID}/title/en`, 'Better'),
+        op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Better'),
       ]),
-      makeFinding('by-index', [op('set', '/stages/0/title/en', 'Better')]),
+      makeFinding('by-index', [op('set', '/stages/0/label/en', 'Better')]),
     ]);
     expect(
       await store.dispatch(decideFinding('by-index', 'fix')),
@@ -313,7 +312,7 @@ describe('C: an id-aware path reaches the member with that id, or nothing', () =
       id: NAMES_STAGE_ID,
     });
     expect(protocolOf(store).stages[0]).not.toHaveProperty(
-      'title.en',
+      'label.en',
       'Better',
     );
   });
@@ -383,9 +382,9 @@ describe('E: a finding’s availability is checked whenever it needs it', () => 
     await store.dispatch(checkFixAvailability());
     store.dispatch(
       setProtocolTranslation({
-        path: ['stages', 0, 'label'],
+        path: ['stages', 0, 'content'],
         locale: 'en',
-        text: 'Another label',
+        text: 'Another content',
       }),
     );
     expect(findingOf(store, 'title').availability).toBe('checking');
@@ -434,12 +433,12 @@ describe('F: the preview shows every text change a fix makes', () => {
 describe('G: a problem reads as fixed only while its fix is made', () => {
   const titleOf = (target: Store) => {
     const [welcome] = protocolOf(target).stages;
-    return welcome && 'title' in welcome ? welcome.title : undefined;
+    return welcome && 'label' in welcome ? welcome.label : undefined;
   };
   const setTitle = (target: Store, text: string) =>
     target.dispatch(
       setProtocolTranslation({
-        path: ['stages', 0, 'title'],
+        path: ['stages', 0, 'label'],
         locale: 'en',
         text,
       }),
@@ -467,7 +466,7 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     await reviewed(store, [TITLE]);
     await store.dispatch(checkFixAvailability());
     await store.dispatch(decideFinding('title', 'fix'));
-    setTitle(store, 'Hello');
+    setTitle(store, 'Welcome');
     await store.dispatch(checkFixAvailability());
     expect(findingOf(store, 'title')).toMatchObject({
       status: 'undecided',
@@ -480,7 +479,7 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     await store.dispatch(checkFixAvailability());
     await store.dispatch(decideFinding('title', 'fix'));
     store.dispatch(timelineActions.undo());
-    expect(titleOf(store)).toMatchObject({ en: 'Hello' });
+    expect(titleOf(store)).toMatchObject({ en: 'Welcome' });
     expect(findingOf(store, 'title').status).toBe('undecided');
     // The researcher's own wording, written in place of the fix they undid.
     setTitle(store, 'Good morning');
@@ -504,7 +503,7 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     setTitle(store, 'Welcome, all');
     store.dispatch(timelineActions.undo());
     store.dispatch(timelineActions.undo());
-    expect(titleOf(store)).toMatchObject({ en: 'Hello' });
+    expect(titleOf(store)).toMatchObject({ en: 'Welcome' });
     expect(findingOf(store, 'title').status).toBe('undecided');
     store.dispatch(timelineActions.redo());
     expect(findingOf(store, 'title').status).toBe('fixed');

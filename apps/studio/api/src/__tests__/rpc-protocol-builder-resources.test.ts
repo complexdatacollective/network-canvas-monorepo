@@ -508,8 +508,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         document: Redacted.make({
           type: 'Information',
           label: inEnglish('Carries a secret'),
-          title: inEnglish('Carries a secret'),
-          items: [],
+          content: inEnglish('# Carries a secret'),
         }),
         promote: { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
       }),
@@ -553,8 +552,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           document: Redacted.make({
             type: 'Information',
             label: inEnglish('Never made'),
-            title: inEnglish('Never made'),
-            items: [],
+            content: inEnglish('# Never made'),
           }),
           promote: { editId: EDIT, resourceIds: ['never-staged'] },
         }),

@@ -28,14 +28,7 @@ const study = (
       id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome' },
-      title: { en: 'Hello' },
-      items: [
-        {
-          id: createProtocolObjectId(),
-          type: 'text',
-          content: { en: 'Read this' },
-        },
-      ],
+      content: { en: '# Hello\n\nRead this' },
     },
   ],
   ...(interfaceText === undefined ? {} : { interfaceText }),
@@ -134,7 +127,7 @@ describe('a text Network Canvas words, in the translation table', () => {
   it('still refuses to clear the only translation of a text Network Canvas does not word', async () => {
     const { user } = renderTable(study());
 
-    const title = screen.getByDisplayValue('Hello');
+    const title = screen.getByDisplayValue('Welcome');
     await user.clear(title);
     await user.tab();
 

@@ -1,7 +1,7 @@
 ---
 title: Información
 navOrder: 22
-translatedFrom: d019b85eb801edba143891a6e5628c74ad726aa5
+translatedFrom: 11ff08eea223d4432767b31316d7939292db2bac
 ---
 
 <InterfaceSummary type="Information">
@@ -14,13 +14,31 @@ translatedFrom: d019b85eb801edba143891a6e5628c74ad726aa5
 
 La interfaz «Información» es una pantalla de uso general que sirve para presentar información a quienes participan mediante diversos recursos de texto y multimedia. Por ejemplo, esta pantalla puede ser útil para presentar un estudio o para dar instrucciones o contexto sobre una etapa concreta de la encuesta.
 
-En una etapa «Información», puedes incorporar uno o varios [recursos](/es/design-protocols/key-concepts/resources), ya sea tomando archivos de tu biblioteca de recursos de Architect o directamente desde tu dispositivo. No hay límite en el número de elementos: quienes participan pueden desplazarse por la pantalla, así que añade todos los que necesites.
+Una página puede mostrar imágenes, vídeos y grabaciones de audio junto a su texto. Son [recursos](/es/design-protocols/key-concepts/resources) que se eligen de tu biblioteca de recursos de Architect o se añaden desde tu dispositivo. No hay límite en la cantidad de contenido de una página: quienes participan pueden desplazarse por la pantalla, así que añade todo lo que necesites.
 
 ## Configurar la etapa «Información» {#configuring-information-screen}
 
-Una etapa «Información» consta de un encabezado de página obligatorio, seguido de una columna de elementos que se muestran de arriba abajo. Cada elemento puede ser texto, una imagen, un vídeo o un audio, y una etapa necesita al menos uno. Los elementos se pueden reordenar arrastrándolos. A las imágenes y los vídeos se les puede asignar un tamaño de visualización: **Tamaño completo** los muestra con su altura natural, mientras que **Pequeño**, **Mediano** y **Grande** limitan la altura con la que se dibujan, manteniendo sus proporciones.
+La pantalla de una etapa «Información» es un único texto, escrito en un solo editor: el campo **Texto enriquecido** de la sección **Contenido** de la etapa. Todo lo que muestra la página forma parte de ese texto, en el orden en que lo leen quienes participan: encabezados, párrafos, listas y cualquier imagen, vídeo o grabación de audio. El editor crece a medida que escribes, de modo que la página entera permanece a la vista. Una etapa cuya página esté vacía no se puede guardar.
 
-![Configuración de los elementos de una etapa basada en la interfaz «Información» en Architect](/assets/img/interface-documentation/information/architect-items.png)
+Para dar un encabezado a la página, coloca el cursor en la primera línea del texto y elige **Encabezado 1** en la lista de estilos de texto de la barra de herramientas del editor. La lista muestra cada estilo tal como se ve en el texto, así que puedes ver el tamaño de cada encabezado. Un encabezado situado al principio de la página se muestra centrado, como siempre se ha mostrado el encabezado de página.
+
+![Configuración de una etapa basada en la interfaz «Información» en Architect](/assets/img/interface-documentation/information/architect-items.png)
+
+### Añadir imágenes, vídeo y audio {#adding-images-video-and-audio}
+
+Para añadir un archivo, coloca el cursor donde deba ir y elige el botón de imagen, de audio o de vídeo de la barra de herramientas del editor (**Insert image**, **Insert audio** o **Insert video** para quienes usan lectores de pantalla), y después elige el recurso. El archivo se añade como un bloque independiente entre los párrafos que lo rodean. Un bloque se puede arrastrar a otro lugar del texto y eliminar como cualquier otra parte de este. Cuando seleccionas un texto que abarca un bloque, el bloque se sombrea como parte de la selección, y se copia, se corta o se elimina junto con el texto.
+
+Selecciona un bloque para cambiar cómo se muestra. El bloque queda resaltado con un contorno, y sus ajustes se abren a su lado y permanecen abiertos mientras el bloque esté seleccionado. Con el teclado, pulsa Intro en un bloque seleccionado para pasar a sus ajustes y Esc para volver al texto. En una ventana pequeña, puedes desplazarte por los ajustes para llegar a todos ellos.
+
+- **Descripción** se lee en voz alta a las personas participantes que usan un lector de pantalla. Déjala en blanco si la imagen es solo decorativa.
+- **Tamaño de visualización** se aplica a imágenes y vídeos. **Tamaño completo** los muestra con su altura natural, mientras que **Pequeño**, **Mediano** y **Grande** limitan la altura con la que se dibujan, manteniendo sus proporciones. También puedes arrastrar el tirador redondo de la esquina inferior de una imagen o un vídeo seleccionados: arrástralo hacia arriba o hacia dentro para mostrarlo más pequeño, y hacia abajo o hacia fuera para mostrarlo más grande. Una etiqueta indica el tamaño que tendrá, y ese tamaño se aplica al soltar el tirador.
+- **Alineación** coloca un reproductor de audio, o una imagen o un vídeo con un **Tamaño de visualización** distinto de **Tamaño completo**, donde empieza una línea de texto, en el centro o donde termina una línea.
+- **Iniciar la reproducción automáticamente** se aplica al audio y al vídeo. Si está activado, la grabación empieza a reproducirse cuando la persona participante llega a la página. Un vídeo que empieza automáticamente se reproduce sin sonido hasta que la persona participante activa el sonido, porque los navegadores no permiten que una página inicie un vídeo con sonido.
+- **Repetir al terminar** se aplica al audio y al vídeo, y vuelve a reproducir la grabación desde el principio cada vez que termina.
+- **Imagen**, **Audio** o **Vídeo** muestra el archivo que contiene el bloque. Elige **Cambiar la imagen**, **Cambiar el archivo de audio** o **Cambiar el vídeo** para elegir otro recurso en su lugar. El bloque conserva su descripción, tamaño, alineación y ajustes de reproducción.
+- **Eliminar** quita el bloque del texto. El archivo permanece en tu biblioteca de recursos.
+
+Cuando un protocolo tiene [más de un idioma](/es/design-protocols/translating-your-protocol), cada idioma tiene su propio texto, con sus propios bloques. Esto permite que una página muestre una imagen o una grabación distinta en cada idioma, y significa que un archivo que añades en un idioma no se muestra en otro hasta que lo añadas también allí.
 
 ### Buenas prácticas {#best-practices}
 

@@ -142,7 +142,7 @@ const WRITES: readonly KeyedWrite[] = [
         kind: 'stage',
         document: Redacted.make({
           ...stageTemplate(host),
-          items: [{ id: testId('item-1'), type: 'asset', content: staged }],
+          content: { 'en-US': `![](asset:${staged})` },
         }),
         promote: { editId: EDIT, resourceIds: [staged] },
       }),

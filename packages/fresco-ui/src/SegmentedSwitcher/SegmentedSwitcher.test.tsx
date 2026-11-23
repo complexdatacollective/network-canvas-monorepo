@@ -111,4 +111,27 @@ describe('SegmentedSwitcher', () => {
     errorSpy.mockRestore();
     warnSpy.mockRestore();
   });
+
+  it('can be named and described by elements on the page, as a field’s control', () => {
+    render(
+      <>
+        <span id="size-label">Display size</span>
+        <span id="size-hint">How tall it is shown.</span>
+        <SegmentedSwitcher
+          id="size"
+          aria-labelledby="size-label"
+          aria-describedby="size-hint"
+          value="a"
+          onValueChange={vi.fn()}
+          options={[...OPTIONS]}
+        />
+      </>,
+    );
+    const group = screen.getByRole('group', { name: 'Display size' });
+    expect(group).toHaveAttribute('id', 'size');
+    expect(group).toHaveAccessibleDescription('How tall it is shown.');
+    expect(group).toContainElement(
+      screen.getByRole('button', { name: 'Alpha' }),
+    );
+  });
 });

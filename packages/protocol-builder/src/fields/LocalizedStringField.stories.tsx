@@ -23,16 +23,12 @@ import {
   LocalizedRichTextField,
 } from './LocalizedStringField.tsx';
 
-/** The heading an information page shows, and the text of its first block. */
-const TITLE_FIELD = 'title';
-const TITLE_LABEL = 'Page heading';
-const BODY_FIELD = 'items[0].content';
-const BODY_LABEL = 'Text';
-const BODY_SHAPE = markdownTextShapeAt(informationStage, [
-  'items',
-  0,
-  'content',
-]);
+/** The name of an information page's stage, a line of text, and the page's text. */
+const TITLE_FIELD = 'label';
+const TITLE_LABEL = 'Name of the page';
+const BODY_FIELD = 'content';
+const BODY_LABEL = 'Page content';
+const BODY_SHAPE = markdownTextShapeAt(informationStage, ['content']);
 
 const SETTINGS = sectionId({ kind: 'settings' });
 
@@ -55,7 +51,6 @@ const page = (
     />
     <Field<typeof LocalizedRichTextField>
       name={BODY_FIELD}
-      nameMode="path"
       component={LocalizedRichTextField}
       shape={BODY_SHAPE}
       label={BODY_LABEL}
@@ -125,7 +120,7 @@ export const SeveralLanguages: Story = {
     await waitFor(async () => {
       await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('"title":{"en-US":"Welcome","fr":"Bienvenue"}');
+      ).toHaveTextContent('"label":{"en-US":"Information","fr":"Bienvenue"}');
     });
   },
 };

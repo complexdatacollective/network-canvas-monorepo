@@ -2562,14 +2562,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'informationStage',
             type: 'Information',
             label: localized('Information Stage'),
-            title: localized('Information Stage'),
-            items: [
-              {
-                id: 'item1',
-                type: 'text',
-                content: localized('This is information'),
-              },
-            ],
+            content: localized('# Information Stage\n\nThis is information'),
           },
         ],
       };
@@ -2588,14 +2581,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'simpleStage',
             type: 'Information',
             label: localized('Simple Stage'),
-            title: localized('Simple Stage'),
-            items: [
-              {
-                id: 'item1',
-                type: 'text',
-                content: localized('Just some content'),
-              },
-            ],
+            content: localized('# Simple Stage\n\nJust some content'),
           },
         ],
       };

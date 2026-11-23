@@ -51,12 +51,12 @@ vi.mock('../interfaces', async () => {
   function AuthoredStage({
     stage,
   }: {
-    stage: { title: Readonly<Record<string, string>> };
+    stage: { content: Readonly<Record<string, string>> };
   }) {
     useEffect(() => {
       observed.mounts += 1;
     }, []);
-    const title = useLocalizedString(stage.title);
+    const title = useLocalizedString(stage.content);
     const { setLocale } = useProtocolLocale();
     const intl = useAppIntl();
     return (
@@ -160,8 +160,8 @@ function makePayload(id = 'locale-session') {
           id: testId('authored-screen'),
           type: 'Information',
           label: { en: 'Literal screen label' },
-          title: titles,
-          items: [],
+          // The probe stage shows its text as the heading, unrendered.
+          content: titles,
         },
       ],
     }),

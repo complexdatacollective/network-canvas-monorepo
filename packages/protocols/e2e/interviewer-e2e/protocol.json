@@ -76,18 +76,9 @@
       "label": {
         "en-US": "Welcome"
       },
-      "title": {
-        "en-US": "Welcome"
-      },
-      "items": [
-        {
-          "id": "8b69fc6a-ef58-52e4-ab5e-7254ed51e446",
-          "type": "text",
-          "content": {
-            "en-US": "# Welcome\n\nThanks for taking part."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# Welcome\n\n# Welcome\n\nThanks for taking part."
+      }
     },
     {
       "id": "f11f8918-b324-55c7-80ca-4f473bceb34f",

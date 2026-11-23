@@ -525,18 +525,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(withoutIds(introductionOf(migrated))).toEqual({
         type: 'Information',
         label: en('Your family (introduction)'),
-        title: en('Introduction'),
-        items: [
-          {
-            type: 'text',
-            content: en('We will draw your *family*.'),
-          },
-          {
-            type: 'asset',
-            content: 'family-image',
-            description: en('A drawn family tree'),
-          },
-        ],
+        content: en(
+          '# Introduction\n\nWe will draw your *family*.\n\n![A drawn family tree](asset:family-image)',
+        ),
       });
       expect(pedigreeOf(migrated)).not.toHaveProperty('introScreen');
     });
@@ -625,9 +616,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
           }),
         ]),
       );
-      expect(withoutIds(introductionOf(migrated).items)).toEqual([
-        { type: 'text', content: en('Welcome.') },
-      ]);
+      expect(introductionOf(migrated).content).toEqual(
+        en('# Introduction\n\nWelcome.'),
+      );
     });
 
     it.for([
@@ -1148,8 +1139,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
       });
       expect(introductionOf(migrated)).toMatchObject({
         type: 'Information',
-        title: en('Introduction'),
-        items: [{ type: 'text' }],
+        content: expect.objectContaining({
+          en: expect.stringMatching(/^# Introduction\n\n/),
+        }),
       });
       expect(
         variableAt(migrated, 'node', 'person', 'biologicalSex')?.options,

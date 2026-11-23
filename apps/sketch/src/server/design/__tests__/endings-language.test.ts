@@ -14,7 +14,7 @@ type Stage = {
   mode?: string;
   label?: Record<string, string>;
   skipLogic?: { destination?: { type: string; stageId?: string } };
-  items?: { content: Record<string, string> }[];
+  content?: Record<string, string>;
 };
 
 const stagesOf = (protocol: unknown) =>
@@ -157,8 +157,6 @@ describe('language', () => {
       locales: ['sw'],
       fallbackLocale: 'en',
     });
-    expect(protocol.stages[0]?.items?.[0]?.content.sw).toContain(
-      'still in English',
-    );
+    expect(protocol.stages[0]?.content?.sw).toContain('still in English');
   });
 });

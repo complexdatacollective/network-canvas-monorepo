@@ -304,7 +304,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           type: 'text',
           component: 'Text',
         });
-        synth.addInformationStage({ title: 'Previous stage', items: [] });
+        synth.addInformationStage({ title: 'Previous stage' });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
         });
@@ -1322,7 +1322,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
       currentStep: 1,
       build: () => {
         const synth = new SyntheticInterview();
-        synth.addInformationStage({ title: 'Previous stage', items: [] });
+        synth.addInformationStage({ title: 'Previous stage' });
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });

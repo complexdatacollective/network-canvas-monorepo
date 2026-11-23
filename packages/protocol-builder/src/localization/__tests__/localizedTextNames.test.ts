@@ -156,13 +156,8 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     en('Your first name is enough.'),
   ],
   [
-    [...fixtureStage('Information'), 'items', 1],
-    {
-      id: testId('information-picture'),
-      type: 'asset',
-      content: 'picture',
-      description: en('A picture'),
-    },
+    [...fixtureStage('Information'), 'content'],
+    en('# Welcome\n\n![A picture](asset:picture)'),
   ],
   [
     [...fixtureStage('NameGenerator'), 'form', 'fields', 0, 'hint'],
@@ -377,7 +372,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       'This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer.',
     ),
   ],
-  // What the additions above make the interview show: an Information item
+  // What the additions above make the interview show: an Information page
   // that shows a file, a Family Pedigree that checks completeness, and a
   // Network Composer whose inspector shows a form.
   [

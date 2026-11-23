@@ -9,7 +9,9 @@ import {
   stageSchema,
   validateProtocol,
   analyzeProtocolLocalization,
+  assetBlocksInMarkdown,
   CurrentProtocolSchema,
+  dynamicMessageParts,
   escapeMessageText,
   type LocalizedString,
   messageText,
@@ -1840,24 +1842,413 @@ describe('quickAdd variable reference', () => {
   });
 });
 
-describe('addInformationStage items', () => {
-  it('emits explicit items and interviewScript verbatim', () => {
+describe('addInformationStage content', () => {
+  const contentOf = (synth: SyntheticInterview) =>
+    (
+      synth.getProtocol().stages[0] as {
+        content: Record<string, string>;
+        interviewScript?: string;
+      }
+    ).content;
+
+  it('writes the title as a heading and the text as the body, with the interviewScript verbatim', () => {
     const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
     synth.addInformationStage({
       title: 'Media stage',
+      text: 'Hello',
       interviewScript: 'Internal note.',
-      items: [
-        { id: 'item-a', type: 'text', content: 'Hello' },
-        { id: 'item-b', type: 'asset', content: 'img-1', size: 'LARGE' },
-      ],
     });
     const stage = synth.getProtocol().stages[0] as {
-      items: { id: string; type: string }[];
       interviewScript?: string;
     };
-    expect(stage.items.map((i) => i.type)).toEqual(['text', 'asset']);
-    expect(stage.items.every((i) => isProtocolObjectId(i.id))).toBe(true);
+    expect(contentOf(synth)).toEqual({ en: '# Media stage\n\nHello' });
     expect(stage.interviewScript).toBe('Internal note.');
+  });
+
+  it('writes each block as an asset image after the text', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+    synth.addInformationStage({
+      title: 'Media',
+      text: 'Look',
+      blocks: [
+        { assetId: 'img-1', description: 'A map', size: 'large' },
+        { assetId: 'vid-1', autoplay: false, loop: false, align: 'end' },
+      ],
+    });
+    expect(contentOf(synth).en).toBe(
+      '# Media\n\nLook\n\n![A map](asset:img-1?size=large)\n\n![](asset:vid-1?align=end&autoplay=false&loop=false)',
+    );
+  });
+
+  it('composes a page per language when the inputs are written per language', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en', 'fr'] });
+    synth.addInformationStage({
+      title: { en: 'Welcome', fr: 'Bienvenue' },
+      blocks: [{ assetId: 'img-1', description: { en: 'Map', fr: 'Carte' } }],
+    });
+    expect(contentOf(synth)).toEqual({
+      en: '# Welcome\n\n![Map](asset:img-1)',
+      fr: '# Bienvenue\n\n![Carte](asset:img-1)',
+    });
+  });
+
+  // Each part was once a text of its own, which a participant read in their
+  // language or, without a translation there, as the interview falls back.
+  // The page in each language is those parts as they were read there.
+  describe('a part without a translation reads as the interview falls back', () => {
+    const informationIn = (
+      localization: { defaultLocale: string; locales: string[] },
+      opts: Parameters<SyntheticInterview['addInformationStage']>[0],
+    ) => {
+      const synth = new SyntheticInterview();
+      synth.setLocalization(localization);
+      synth.addInformationStage(opts);
+      return contentOf(synth);
+    };
+    const EN_FR = { defaultLocale: 'en', locales: ['en', 'fr'] };
+
+    it('keeps text written once under a translated title', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: { en: 'Welcome', fr: 'Bienvenue' },
+          text: 'Please read these instructions.',
+        }),
+      ).toEqual({
+        en: '# Welcome\n\nPlease read these instructions.',
+        fr: '# Bienvenue\n\nPlease read these instructions.',
+      });
+    });
+
+    it('keeps a title written once above translated text', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: 'Welcome',
+          text: { en: 'Hello', fr: 'Bonjour' },
+        }),
+      ).toEqual({
+        en: '# Welcome\n\nHello',
+        fr: '# Welcome\n\nBonjour',
+      });
+    });
+
+    it('keeps a translated part missing one language in the default language', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: { en: 'Welcome', fr: 'Bienvenue' },
+          text: { en: 'Hello' },
+        }),
+      ).toEqual({ en: '# Welcome\n\nHello', fr: '# Bienvenue\n\nHello' });
+    });
+
+    it('keeps a description written once, and one missing a language', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: { en: 'Welcome', fr: 'Bienvenue' },
+          blocks: [
+            { assetId: 'img-1', description: 'A map' },
+            { assetId: 'img-2', description: { en: 'A tree' } },
+            { assetId: 'img-3' },
+          ],
+        }),
+      ).toEqual({
+        en: '# Welcome\n\n![A map](asset:img-1)\n\n![A tree](asset:img-2)\n\n![](asset:img-3)',
+        fr: '# Bienvenue\n\n![A map](asset:img-1)\n\n![A tree](asset:img-2)\n\n![](asset:img-3)',
+      });
+    });
+
+    it('keeps a translated description under a title written once', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: 'Welcome',
+          blocks: [
+            { assetId: 'img-1', description: { en: 'Map', fr: 'Carte' } },
+          ],
+        }),
+      ).toEqual({
+        en: '# Welcome\n\n![Map](asset:img-1)',
+        fr: '# Welcome\n\n![Carte](asset:img-1)',
+      });
+    });
+
+    // The page is written in the languages a part is written in; a
+    // participant reading the default language falls back to it, as they
+    // fell back to the text.
+    it('writes a page only in the language a part alone is written in', () => {
+      expect(
+        informationIn(EN_FR, { title: 'Welcome', text: { fr: 'Bonjour' } }),
+      ).toEqual({ fr: '# Welcome\n\nBonjour' });
+    });
+
+    it("reads a part without a language in that language's closest relative", () => {
+      expect(
+        informationIn(
+          { defaultLocale: 'en', locales: ['en', 'fr', 'fr-CA'] },
+          {
+            title: { 'en': 'Welcome', 'fr-CA': 'Bienvenue' },
+            text: { en: 'Hello', fr: 'Bonjour' },
+          },
+        ),
+      ).toEqual({
+        'en': '# Welcome\n\nHello',
+        'fr': '# Bienvenue\n\nBonjour',
+        'fr-CA': '# Bienvenue\n\nBonjour',
+      });
+    });
+
+    it('writes no page in a language no part has', () => {
+      expect(
+        informationIn(
+          { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
+          { title: { en: 'Welcome', fr: 'Bienvenue' }, text: 'Hello' },
+        ),
+      ).toEqual({ en: '# Welcome\n\nHello', fr: '# Bienvenue\n\nHello' });
+    });
+
+    // Schema 9 holds no blank translation: it is left out, and the
+    // language falls back to another, as the migration does.
+    it('leaves out a translation that is blank', () => {
+      expect(
+        informationIn(EN_FR, {
+          title: { en: 'Welcome', fr: '  ' },
+          text: 'Hello',
+        }),
+      ).toEqual({ en: '# Welcome\n\nHello' });
+    });
+  });
+
+  // A part written per language is a message, and a participant is shown it
+  // with its values filled in, read as markdown. Its words are escaped to
+  // show as written; the values, versions and count it shows are left as
+  // they are. A part written as a string is the words as typed.
+  describe('a part shows its values, and its words as written', () => {
+    type Value = string | number;
+    // The page as the interview reads it for these values (see
+    // `dynamicMessageParts`): a number is a plural's count, any other value
+    // a select's case, and each is shown as its text.
+    const shown = (message: string, values: Record<string, Value> = {}) =>
+      dynamicMessageParts(message, 'en', (name) => {
+        const value = values[name];
+        if (value === undefined) return { missing: true };
+        return typeof value === 'number'
+          ? { missing: false, count: value }
+          : { missing: false, case: value };
+      })
+        .map((part) =>
+          typeof part === 'string' ? part : String(values[part.argument]),
+        )
+        .join('');
+    const page = (
+      opts: Parameters<SyntheticInterview['addInformationStage']>[0],
+    ) => {
+      const synth = new SyntheticInterview();
+      synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+      synth.addInformationStage(opts);
+      return contentOf(synth).en ?? '';
+    };
+    // What a participant reads as a file's description: the image's
+    // alternative text, as the interview's markdown reads it.
+    const description = (message: string, values: Record<string, Value>) =>
+      assetBlocksInMarkdown(shown(message, values))[0]?.block.description;
+
+    const COUNT = '{count, plural, one {# item} other {# items}}';
+
+    it("shows a plural title's count as the number", () => {
+      const message = page({ title: { en: COUNT } });
+      expect(shown(message, { count: 1 })).toBe('# 1 item');
+      expect(shown(message, { count: 3 })).toBe('# 3 items');
+    });
+
+    it("escapes the words in a title's versions, and not its count", () => {
+      const message = page({
+        title: {
+          en: '{count, plural, one {# *new* item} other {# new_items <here>}}',
+        },
+      });
+      expect(shown(message, { count: 1 })).toBe('# 1 \\*new\\* item');
+      expect(shown(message, { count: 3 })).toBe('# 3 new\\_items &lt;here&gt;');
+    });
+
+    it("keeps a title's select and its values", () => {
+      const message = page({
+        title: {
+          en: 'Hi {name}: {relation, select, parent {*your* parent} other {someone}}',
+        },
+      });
+      expect(shown(message, { name: 'Ana', relation: 'parent' })).toBe(
+        '# Hi Ana: \\*your\\* parent',
+      );
+      expect(shown(message, { name: 'Ana', relation: 'friend' })).toBe(
+        '# Hi Ana: someone',
+      );
+    });
+
+    it("reads a title's quoted text as the words it quotes", () => {
+      expect(shown(page({ title: { en: "'<'tag> and ''quote''" } }))).toBe(
+        "# &lt;tag&gt; and 'quote'",
+      );
+      expect(shown(page({ title: { en: "Rock 'n' roll '{'live'}'" } }))).toBe(
+        "# Rock 'n' roll {live}",
+      );
+    });
+
+    it('escapes markdown in the words of a title', () => {
+      expect(shown(page({ title: { en: '1. *A*_b_ #\nnext' } }))).toBe(
+        '# 1\\. \\*A\\*\\_b\\_ \\# next',
+      );
+      // Two tildes strike through what is between them, a value included.
+      expect(shown(page({ title: { en: '~{name}~' } }), { name: 'Ana' })).toBe(
+        '# \\~Ana\\~',
+      );
+    });
+
+    it('does not let a run of # ending a title close the heading', () => {
+      expect(
+        shown(page({ title: { en: '{n, select, other {Chapter ##}}' } }), {
+          n: 'x',
+        }),
+      ).toBe('# Chapter \\##');
+      expect(shown(page({ title: { en: '#' } }))).toBe('# \\#');
+    });
+
+    it('shows a title written as a string as typed', () => {
+      expect(shown(page({ title: "Rock 'n' roll {live}" }))).toBe(
+        "# Rock 'n' roll {live}",
+      );
+      expect(shown(page({ title: 'Item #3 *x*' }))).toBe('# Item #3 \\*x\\*');
+      expect(shown(page({ title: '##' }))).toBe('# \\##');
+    });
+
+    it('keeps the text as the markdown it is written in', () => {
+      const message = page({
+        title: 'T',
+        text: {
+          en: '{count, plural, one {# *new* item} other {# *new* items}}',
+        },
+      });
+      expect(shown(message, { count: 3 })).toBe('# T\n\n3 *new* items');
+      expect(shown(page({ title: 'T', text: '*Hi* {name}' }))).toBe(
+        '# T\n\n*Hi* {name}',
+      );
+    });
+
+    it("reads a description's quoted text as the words it quotes", () => {
+      const message = page({
+        title: 'T',
+        blocks: [
+          { assetId: 'img-1', description: { en: "'<'tag> [b] ''quote''" } },
+        ],
+      });
+      expect(description(message, {})).toBe("<tag> [b] 'quote'");
+    });
+
+    // Validation refuses a block whose description shows a value or chooses
+    // between versions, so no participant reads this one; the page keeps
+    // the message as written, for that to be reported of it.
+    it("keeps the values and count a description's message shows", () => {
+      const message = page({
+        title: 'T',
+        blocks: [
+          {
+            assetId: 'img-1',
+            description: {
+              en: '{count, plural, one {# photo} other {# photos}} of {place} [draft] \\ *x*',
+            },
+          },
+        ],
+      });
+      expect(description(message, { count: 1, place: 'Oslo' })).toBe(
+        '1 photo of Oslo [draft] \\ *x*',
+      );
+      expect(description(message, { count: 3, place: 'Oslo' })).toBe(
+        '3 photos of Oslo [draft] \\ *x*',
+      );
+    });
+
+    it('shows a description written as a string as typed', () => {
+      const message = page({
+        title: 'T',
+        blocks: [{ assetId: 'img-1', description: "A [b] c\\d {e} it's #1" }],
+      });
+      expect(description(message, {})).toBe("A [b] c\\d {e} it's #1");
+    });
+  });
+
+  // The title, the text and each file were once drawn apart, so what the
+  // text left open ended with it. In one page it would run on over the
+  // files below, as the Information migration closes it for.
+  describe('text that leaves something open', () => {
+    const page = (
+      opts: Parameters<SyntheticInterview['addInformationStage']>[0],
+    ) => {
+      const synth = new SyntheticInterview();
+      synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+      synth.addInformationStage(opts);
+      return contentOf(synth).en ?? '';
+    };
+    // The files a participant is shown, as the interview's markdown reads
+    // the page: a file swallowed by a code block or a comment is not one.
+    const filesShown = (text: string | LocalizedString) =>
+      assetBlocksInMarkdown(
+        messageText(
+          page({
+            title: 'T',
+            text,
+            blocks: [{ assetId: 'photo', description: 'Map' }],
+          }),
+        ),
+      ).map(({ block }) => block);
+
+    it.each([
+      ['a code block fenced with backticks', '```\nExample'],
+      ['a code block with a longer fence', '````\nExample'],
+      ['a code block fenced with tildes', '~~~\nExample'],
+      ['an HTML comment', '<!-- note'],
+      ['a pre element', '<pre>\nkept as typed'],
+      ['a processing instruction', '<?php echo 1'],
+    ])('closes %s, so the file below it is still shown', (_what, text) => {
+      expect(filesShown(text)).toEqual([
+        { assetId: 'photo', description: 'Map' },
+      ]);
+    });
+
+    it('closes each language of text written per language', () => {
+      expect(filesShown({ en: '```\nExample' })).toEqual([
+        { assetId: 'photo', description: 'Map' },
+      ]);
+    });
+
+    // The interview reads a page's raw HTML as one document, where an
+    // element left open holds what follows and bold is opened again in
+    // every block below.
+    it.each([
+      ['bold', 'Read <strong>this', 'Read <strong>this</strong>'],
+      ['a raw block', '<div>\n\nInside', '<div>\n\nInside\n\n</div>'],
+    ])('ends %s the text left open before the file', (_what, text, ended) => {
+      expect(
+        page({
+          title: 'T',
+          text,
+          blocks: [{ assetId: 'photo' }],
+        }),
+      ).toBe(`# T\n\n${ended}\n\n![](asset:photo)`);
+    });
+  });
+
+  it('takes the stage label as the heading of a page with nothing else', () => {
+    const synth = new SyntheticInterview();
+    synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+    synth.addInformationStage({ title: ' ', text: ' ', label: 'Intro screen' });
+    expect(contentOf(synth)).toEqual({ en: '# Intro screen' });
+  });
+
+  it('writes text given as a string in the default language set after the stage is added', () => {
+    const synth = new SyntheticInterview();
+    synth.addInformationStage({ title: 'Bienvenue', text: 'Lisez ceci.' });
+    synth.setLocalization({ defaultLocale: 'fr', locales: ['fr'] });
+    expect(contentOf(synth)).toEqual({ fr: '# Bienvenue\n\nLisez ceci.' });
   });
 });
 
@@ -3503,7 +3894,6 @@ describe('protocol object ids', () => {
         'narrativePresetHighlight',
         'disease',
         'composerEdge',
-        'informationItem',
       ]),
     );
   });

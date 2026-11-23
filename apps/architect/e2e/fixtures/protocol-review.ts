@@ -10,9 +10,6 @@ import {
 const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
   'd79c37ba-397e-4855-8435-f3226c3a2b50',
 );
-const WELCOME_TEXT_ITEM_ID = ProtocolObjectIdSchema.parse(
-  '6f0c2a43-8a5e-4f2b-9c1d-3e4f5a6b7c8d',
-);
 export const NAMES_STAGE_ID = ProtocolObjectIdSchema.parse(
   '4dc69897-321e-4d88-881f-8460d3e9c98d',
 );
@@ -69,14 +66,7 @@ export const reviewProtocol = (): CurrentProtocol =>
         id: WELCOME_STAGE_ID,
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
-        title: { en: 'Hello', fr: 'Bonjour' },
-        items: [
-          {
-            id: WELCOME_TEXT_ITEM_ID,
-            type: 'text',
-            content: { en: 'Hi', fr: 'Salut' },
-          },
-        ],
+        content: { en: '# Hello\n\nHi', fr: '# Bonjour\n\nSalut' },
       },
       {
         id: NAMES_STAGE_ID,

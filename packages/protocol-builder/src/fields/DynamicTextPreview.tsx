@@ -30,6 +30,9 @@ function StageMessage({
     <DynamicMessageSummary
       message={message}
       markdown={markdown}
+      // A row's preview is of a prompt or a label: text on one line, drawn
+      // as a label, as the preview draws it without values.
+      multiline={false}
       locale={locale}
       site={site}
     />

@@ -338,20 +338,10 @@
           "path": "now"
         }
       },
-      "title": {
-        "en": "Welcome",
-        "es": "Bienvenida"
-      },
-      "items": [
-        {
-          "id": "4d31be78-8fd7-5685-a51b-10ad2e6ef88d",
-          "type": "text",
-          "content": {
-            "en": "This interview was started on {today}.",
-            "es": "Esta entrevista se empezó el {today}."
-          }
-        }
-      ]
+      "content": {
+        "en": "# Welcome\n\nThis interview was started on {today}.",
+        "es": "# Bienvenida\n\nEsta entrevista se empezó el {today}."
+      }
     },
     {
       "id": "4badd6ae-28a8-5573-861e-121d5a911938",
@@ -431,20 +421,10 @@
           "path": "ego.ego-var-9009-1"
         }
       },
-      "title": {
-        "en": "{egoName, select, missing {Hello} other {Hello, {egoName}}}",
-        "es": "{egoName, select, missing {Hola} other {Hola, {egoName}}}"
-      },
-      "items": [
-        {
-          "id": "5ecb40a6-b92a-582b-aa58-7c1d9bbd66a6",
-          "type": "text",
-          "content": {
-            "en": "Thank you{egoName, select, missing {.} other {, {egoName}.}} Next, tell us about the people you know.",
-            "es": "Gracias{egoName, select, missing {.} other {, {egoName}.}} Ahora, háblanos de las personas que conoces."
-          }
-        }
-      ]
+      "content": {
+        "en": "# {egoName, select, missing {Hello} other {Hello, {egoName}}}\n\nThank you{egoName, select, missing {.} other {, {egoName}.}} Next, tell us about the people you know.",
+        "es": "# {egoName, select, missing {Hola} other {Hola, {egoName}}}\n\nGracias{egoName, select, missing {.} other {, {egoName}.}} Ahora, háblanos de las personas que conoces."
+      }
     },
     {
       "id": "3f242aec-7da7-5aab-b3e6-7066cceec574",

@@ -511,14 +511,7 @@ describe('NarrativePedigree protocol-level cross-references', () => {
       id: testId('info1'),
       label: localized('Information'),
       type: 'Information' as const,
-      title: localized('Welcome'),
-      items: [
-        {
-          id: testId('i1'),
-          type: 'text' as const,
-          content: localized('Hello'),
-        },
-      ],
+      content: localized('# Welcome\n\nHello'),
     };
     const result = ProtocolSchemaV9.safeParse(
       withFinishStage(
