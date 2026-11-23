@@ -211,6 +211,43 @@ describe('RichTextEditorField', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  // The interview draws only whole web, email and telephone addresses as
+  // links (see `linkAddress`); the field refuses any other, with the
+  // browser's message, rather than closing with no link made.
+  it.each(['ftp://files.example.org', 'https:example.org'])(
+    'refuses %j as a link address, and says so',
+    async (address) => {
+      const onChange = vi.fn();
+      const user = withSafeTypingIntoRichText(userEvent.setup());
+      render(
+        <RichTextEditorField
+          id="bio"
+          name="bio"
+          aria-describedby="bio-hint"
+          aria-label="Biography"
+          changeMode="input"
+          toolbarOptions={{ links: true }}
+          value={documentWithText}
+          onChange={onChange}
+        />,
+      );
+      await screen.findByRole('textbox', { name: 'Biography' });
+
+      await user.click(screen.getByRole('button', { name: 'Add link' }));
+      const url = await screen.findByLabelText('Link URL');
+      await user.type(url, address);
+      await user.click(screen.getByRole('button', { name: 'Apply link' }));
+
+      expect(screen.getByLabelText('Link URL')).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      );
+      const description = url.getAttribute('aria-describedby') ?? '';
+      expect(document.getElementById(description)?.textContent).not.toBe('');
+      expect(onChange).not.toHaveBeenCalled();
+    },
+  );
+
   /**
    * A button unavailable because of where the caret is says so the way the
    * ARIA toolbar pattern asks: still focusable, marked `aria-disabled`. Only a

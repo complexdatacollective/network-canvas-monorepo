@@ -9,8 +9,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import {
-  ALLOWED_MARKDOWN_LABEL_TAGS,
-  ALLOWED_MARKDOWN_SECTION_TAGS,
+  markdownElementsFor,
   type MarkdownBlockImages,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -99,7 +98,7 @@ const blockMarkdownWith = (
 ): BlockMarkdown | undefined =>
   blockImages === undefined
     ? undefined
-    : { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS, blockImages };
+    : { allowedElements: markdownElementsFor(false), blockImages };
 
 /** Whether the protocol has more than one language. */
 export const useMultilingualSummary = () => {
@@ -218,11 +217,7 @@ const TranslationText = ({
   // whose address is written between angle brackets read as its source).
   return format !== 'plain' ? (
     <RenderMarkdown
-      allowedElements={
-        format === 'markdown-lines'
-          ? ALLOWED_MARKDOWN_SECTION_TAGS
-          : ALLOWED_MARKDOWN_LABEL_TAGS
-      }
+      allowedElements={markdownElementsFor(format !== 'markdown-lines')}
       blockImages={blockImages}
       render={<span />}
     >

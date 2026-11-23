@@ -3,8 +3,7 @@ import type { ReactNode } from 'react';
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
-  ALLOWED_MARKDOWN_LABEL_TAGS,
-  ALLOWED_MARKDOWN_SECTION_TAGS,
+  markdownElementsFor,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import { getValidationLabel } from '@codaco/protocol-builder/codebook/variableValidation';
@@ -92,9 +91,7 @@ export const FixText = ({
   markdown ? (
     // As the interview reads it: the stored markdown, unchanged.
     <RenderMarkdown
-      allowedElements={
-        singleLine ? ALLOWED_MARKDOWN_LABEL_TAGS : ALLOWED_MARKDOWN_SECTION_TAGS
-      }
+      allowedElements={markdownElementsFor(singleLine)}
       render={<span className="wrap-break-word" />}
     >
       {text}

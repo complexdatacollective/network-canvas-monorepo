@@ -68,7 +68,7 @@ import { linesOf } from '@codaco/shared-consts';
 
 import { buttonVariants, Button } from '../../Button';
 import Surface from '../../layout/Surface';
-import { linkAddress } from '../../linkAddress';
+import { LINK_ADDRESS_PATTERN, linkAddress } from '../../linkAddress';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
 import { presentationalTextValue } from '../../PresentationalText';
 import {
@@ -1047,10 +1047,10 @@ function createCustomExtensions({
       link: enableLinks
         ? {
             openOnClick: false,
-            protocols: ['mailto'],
             // Only an address the interview draws as a link is made one
             // (see `linkAddress`), so a link is never shown here that the
-            // participant would read as words.
+            // participant would read as words. Email addresses are links to
+            // linkify already, so no scheme is registered.
             isAllowedUri: (url) => linkAddress(url) !== undefined,
             HTMLAttributes: {
               class: 'text-link underline underline-offset-4',
@@ -2577,6 +2577,10 @@ export default function RichTextEditorField({
               id={linkInputId}
               name={linkInputId}
               type="url"
+              // What the interview draws as a link (see `linkAddress`); the
+              // browser reports any other address as it reports a typing
+              // mistake.
+              pattern={LINK_ADDRESS_PATTERN}
               required
               value={linkHref}
               onChange={(nextHref) => {

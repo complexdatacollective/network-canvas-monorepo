@@ -5,9 +5,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { escapeMarkdownText } from '@codaco/protocol-validation';
 
 import {
+  ALLOWED_MARKDOWN_LABEL_TAGS,
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  applicationTextUrlTransform,
   getMarkdownAttributeValues,
   getMarkdownLabelText,
+  markdownElementsFor,
   RenderMarkdown,
 } from './RenderMarkdown';
 
@@ -267,6 +270,7 @@ describe('which link addresses are links', () => {
     ['a relative address', '/docs/page'],
     ['an address with no scheme', 'example.org'],
     ['an address only starting with //', '//example.org'],
+    ['a web scheme not followed by //', 'https:example.org'],
     ['an address the URL parser rejects', 'https://example.com"\\>a'],
     ['a script', 'javascript:alert(1)'],
     ['a data address', 'data:text/html,hi'],
@@ -280,6 +284,86 @@ describe('which link addresses are links', () => {
     expect(container.querySelector('[href]')).toBeNull();
     expect(container).toHaveTextContent('Isabel');
   });
+});
+
+describe('text the application wrote itself', () => {
+  it.each([
+    ['a page of the site', '/protocol-gallery'],
+    ['a place on the page', '#anchor'],
+    ['a web address', 'https://example.org/a'],
+  ])('keeps a link to %s', (_kind, address) => {
+    render(
+      <RenderMarkdown
+        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        urlTransform={applicationTextUrlTransform}
+      >
+        {`[Isabel](${address})`}
+      </RenderMarkdown>,
+    );
+    expect(screen.getByRole('link', { name: 'Isabel' })).toHaveAttribute(
+      'href',
+      address,
+    );
+  });
+
+  it('draws no link that could run code', () => {
+    render(
+      <RenderMarkdown
+        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        urlTransform={applicationTextUrlTransform}
+      >
+        {'[Isabel](javascript:alert(1))'}
+      </RenderMarkdown>,
+    );
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+});
+
+describe('getMarkdownAttributeValues', () => {
+  // It asks where the parser put text, not what is drawn, so an address that
+  // would be drawn as words is still found.
+  it.each([
+    '[x](/a/page)',
+    '[x](\uE0000\uE000)',
+    '[x](https:\uE0000\uE000)',
+    '[x](javascript:alert)',
+  ])('finds the address of %j', (markdown) => {
+    const address = /\]\((.*)\)/.exec(markdown)?.[1] ?? '';
+    const found = getMarkdownAttributeValues(markdown).map((value) =>
+      decodeURIComponent(value),
+    );
+    expect(found).toContain(address);
+  });
+});
+
+it('draws text of one line and of several lines with what the editor offers', () => {
+  expect(markdownElementsFor(true)).toBe(ALLOWED_MARKDOWN_LABEL_TAGS);
+  expect(markdownElementsFor(false)).toBe(ALLOWED_MARKDOWN_SECTION_TAGS);
+});
+
+it('reads a line ending in HTML inside a paragraph as a space', () => {
+  const { container } = render(
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'Words <span\nclass="x">across</span> lines'}
+    </RenderMarkdown>,
+  );
+  expect(container.querySelector('br')).toBeNull();
+  expect(container.textContent).toBe(
+    'Words <span\nclass="x">across</span> lines',
+  );
+  const label = render(
+    <RenderMarkdown>{'Words <span\nclass="x">across</span>'}</RenderMarkdown>,
+  ).container;
+  expect(label.textContent).toBe('Words <span\nclass="x">across</span>');
+});
+
+it('draws each line of a block of HTML on a line of its own', () => {
+  const { container } = render(
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'<div>\nA block\n</div>'}
+    </RenderMarkdown>,
+  );
+  expect(container.querySelectorAll('br')).toHaveLength(2);
 });
 
 it('retains custom components and wrapper props', () => {

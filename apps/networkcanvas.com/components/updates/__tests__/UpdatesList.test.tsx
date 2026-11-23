@@ -47,6 +47,24 @@ describe('UpdatesList', () => {
     ).toEqual(parts);
   });
 
+  // An update is the site's own text, which links to the site's own pages.
+  it('keeps a link to a page of the site', () => {
+    renderWithIntl(
+      <UpdatesList
+        updates={[
+          {
+            ...update,
+            summary: 'A collection. [Browse the gallery](/protocol-gallery).',
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Browse the gallery', hidden: true }),
+    ).toHaveAttribute('href', '/protocol-gallery');
+  });
+
   it('does not match words that only appear in a link address', () => {
     renderWithIntl(<UpdatesList updates={[update]} />);
 

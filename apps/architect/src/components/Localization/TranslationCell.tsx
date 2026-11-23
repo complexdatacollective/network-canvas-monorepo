@@ -17,7 +17,7 @@ import {
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
-  ALLOWED_MARKDOWN_LABEL_TAGS,
+  markdownElementsFor,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import {
@@ -154,23 +154,12 @@ const headingAsParagraph = ({ children }: { children?: ReactNode }) => (
   <p className="mb-2 font-semibold last:mb-0">{children}</p>
 );
 
-// Headings would add to the page's outline from inside a table cell, and a
-// link would add a stop to the Tab order between cells, so a cell draws
-// headings as bold lines and links as their text.
-const CELL_MARKDOWN_ELEMENTS = [
-  'p',
-  'br',
-  'em',
-  'strong',
-  'ul',
-  'ol',
-  'li',
-  'hr',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-];
+// What a cell draws text with: what the interview draws it with, but for
+// links. Headings would add to the page's outline from inside a table cell,
+// and a link would add a stop to the Tab order between cells, so a cell
+// draws headings as bold lines and links as their text.
+const cellMarkdownElements = (singleLine: boolean) =>
+  markdownElementsFor(singleLine).filter((element) => element !== 'a');
 
 const cellMarkdownComponents = {
   p: ({ children }: { children?: ReactNode }) => (
@@ -203,7 +192,7 @@ const CELL_ASSET_BLOCKS: RichTextAssetBlocks = {
 
 /** The same rules for text that shows values. */
 const CELL_BLOCK_MARKDOWN: BlockMarkdown = {
-  allowedElements: CELL_MARKDOWN_ELEMENTS,
+  allowedElements: cellMarkdownElements(false),
   components: cellMarkdownComponents,
 };
 const CELL_ASSET_BLOCK_MARKDOWN: BlockMarkdown = {
@@ -226,9 +215,7 @@ const CellMarkdown = ({
   singleLine: boolean;
 }) => (
   <RenderMarkdown
-    allowedElements={
-      singleLine ? ALLOWED_MARKDOWN_LABEL_TAGS : CELL_MARKDOWN_ELEMENTS
-    }
+    allowedElements={cellMarkdownElements(singleLine)}
     components={cellMarkdownComponents}
     blockImages={assetBlocks ? CELL_BLOCK_IMAGES : undefined}
     unwrapDisallowed

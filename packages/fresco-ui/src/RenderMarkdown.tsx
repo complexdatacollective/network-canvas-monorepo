@@ -41,7 +41,7 @@ import { OrderedList, UnorderedList } from './typography/UnorderedList';
  */
 export const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong'];
 /** What text of several lines is drawn with: what the editor offers for it. */
-export const ALLOWED_MARKDOWN_SECTION_TAGS = [
+export const ALLOWED_MARKDOWN_SECTION_TAGS: string[] = [
   'em',
   'strong',
   'a',
@@ -57,6 +57,13 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   'hr',
 ];
 
+/**
+ * What protocol text of one line, or of several lines, is drawn with: what
+ * the editor offers for that text.
+ */
+export const markdownElementsFor = (singleLine: boolean): readonly string[] =>
+  singleLine ? ALLOWED_MARKDOWN_LABEL_TAGS : ALLOWED_MARKDOWN_SECTION_TAGS;
+
 // Text is read as standard CommonMark and nothing more: no syntax
 // extensions, and no HTML. What the parser reads as HTML is shown as the
 // characters typed (see `markdownTypedHtml`), as Architect's editor shows it.
@@ -64,13 +71,22 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
 // plugins of its own; this one always runs first.
 const showHtmlAsTypedPlugin = () => showHtmlAsTyped;
 
-// A link is drawn only where its address passes the one rule the editor
-// shares (see `linkAddress`); any other is drawn as its words. Every other
-// address, such as an image's, keeps react-markdown's own handling.
+// The defaults are for protocol text. A link is drawn only where its address
+// passes the one rule the editor shares (see `linkAddress`); any other is
+// drawn as its words. Every other address, such as an image's, keeps
+// react-markdown's own handling.
 const urlTransform: UrlTransform = (url, key, node) =>
   node.tagName === 'a' && key === 'href'
     ? (linkAddress(url) ?? null)
     : defaultUrlTransform(url);
+
+/**
+ * How text the application wrote itself (site pages, release notes, help)
+ * treats addresses, passed as `urlTransform`: a link keeps any address that
+ * cannot run code, a relative one such as `/protocol-gallery` included.
+ * Protocol text never uses this.
+ */
+export const applicationTextUrlTransform: UrlTransform = defaultUrlTransform;
 
 const defaultMarkdownOptions = {
   allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
@@ -119,15 +135,17 @@ const attributeText = (node: unknown): string[] => {
 
 /**
  * Every attribute value (a link's destination or title, an image's source or
- * text) that RenderMarkdown produces from markdown with its default options,
- * with every element allowed. Lets a caller that splices text into markdown find
- * where the parser put it without a second parser.
+ * text) that the parser puts in markdown, read as RenderMarkdown reads it,
+ * with every element allowed and every address kept, whether or not it would
+ * be drawn. Lets a caller that splices text into markdown find where the
+ * parser put it without a second parser.
  */
 const getMarkdownAttributeValues = (markdown: string): string[] =>
   attributeText(
     ReactMarkdown({
       ...defaultMarkdownOptions,
       allowedElements: undefined,
+      urlTransform: (url) => url,
       children: markdown,
     }),
   );

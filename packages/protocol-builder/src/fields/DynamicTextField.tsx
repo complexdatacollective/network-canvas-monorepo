@@ -22,8 +22,7 @@ import RichTextEditorField, {
 import { optionLabelText } from '@codaco/fresco-ui/OptionLabel';
 import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import {
-  ALLOWED_MARKDOWN_LABEL_TAGS,
-  ALLOWED_MARKDOWN_SECTION_TAGS,
+  markdownElementsFor,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import {
@@ -1434,10 +1433,10 @@ export type BlockMarkdown = Readonly<{
 }>;
 
 const SECTION_MARKDOWN: BlockMarkdown = {
-  allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS,
+  allowedElements: markdownElementsFor(false),
 };
 const LABEL_MARKDOWN: BlockMarkdown = {
-  allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
+  allowedElements: markdownElementsFor(true),
 };
 
 /**

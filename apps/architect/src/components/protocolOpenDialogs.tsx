@@ -20,6 +20,7 @@ import type {
 } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  applicationTextUrlTransform,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -190,6 +191,7 @@ const MigrationNotes = ({
   return (
     <RenderMarkdown
       allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      urlTransform={applicationTextUrlTransform}
       render={<span />}
     >
       {formatMigrationNotes(version, notes, intl)}

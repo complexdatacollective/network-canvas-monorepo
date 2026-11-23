@@ -14,6 +14,7 @@ import Dialog from '../dialogs/Dialog';
 import Surface from '../layout/Surface';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  applicationTextUrlTransform,
   RenderMarkdown,
 } from '../RenderMarkdown';
 import { ScrollArea } from '../ScrollArea';
@@ -221,6 +222,7 @@ export default function AppUpdateIndicator({
         // Release notes are GitHub markdown, not protocol text: GitHub's
         // additions make a bare web address in them a link.
         remarkPlugins={RELEASE_NOTE_REMARK_PLUGINS}
+        urlTransform={applicationTextUrlTransform}
       >
         {releaseNotes.body}
       </RenderMarkdown>
