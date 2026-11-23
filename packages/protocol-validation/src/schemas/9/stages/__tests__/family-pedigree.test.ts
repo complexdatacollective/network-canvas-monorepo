@@ -338,6 +338,30 @@ describe('familyPedigreeStage', () => {
       );
     });
 
+    it('must name them in every translation, not only the default language', () => {
+      const text = pedigreeCompletenessText();
+      const result = familyPedigreeStage.safeParse(
+        withCompleteness({
+          ...text,
+          itemText: {
+            ...text.itemText,
+            parents: {
+              listItem: {
+                en: '{isYou, select, true {Add your biological parents} other {Add biological parents for {name}}}',
+                es: '{isYou, select, true {Añade a tus padres biológicos} other {Añade a los padres biológicos}}',
+              },
+            },
+          },
+        }),
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toHaveLength(1);
+      expect(result.error?.issues[0]?.path.at(-1)).toBe('es');
+      expect(result.error?.issues[0]?.message).toBe(
+        'The version of this text for isYou "other" must show "{name}".',
+      );
+    });
+
     it('may not use anything else', () => {
       expect(
         parseIssues(
