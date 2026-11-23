@@ -15,7 +15,7 @@ import {
 import type { StudyContext } from '@codaco/shared-consts';
 
 export const PERSON = testTypeId('person');
-export const NAME_VAR = testVariableId('name_var');
+const NAME_VAR = testVariableId('name_var');
 export const FREQ = testVariableId('freq');
 
 export const STUDY_CONTEXT: StudyContext = {
