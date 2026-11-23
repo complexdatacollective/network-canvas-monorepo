@@ -96,6 +96,31 @@ const explanationBehind = (source: unknown): string | undefined =>
     ? `# ${source.title}\n\n${source.body}`
     : undefined;
 
+// Schema 8 held an Information stage's heading as a title and the rest of its
+// page as items, which the migration writes as one text: the heading, each
+// text item as it is, and each file as a block naming it.
+const pageBehind = (document: unknown, at: Path): string | undefined => {
+  const stage = getAt(document, at.slice(0, -1));
+  if (
+    at.at(-1) !== 'content' ||
+    !isRecord(stage) ||
+    stage.type !== 'Information' ||
+    typeof stage.title !== 'string' ||
+    !Array.isArray(stage.items)
+  ) {
+    return undefined;
+  }
+  return [
+    `# ${stage.title}`,
+    ...stage.items.map((item: unknown) => {
+      if (!isRecord(item) || typeof item.content !== 'string') return '';
+      return item.type === 'asset'
+        ? `![${typeof item.description === 'string' ? item.description : ''}](asset:${item.content})`
+        : item.content;
+    }),
+  ].join('\n\n');
+};
+
 const nameBehindLabel = (document: unknown, at: Path): unknown => {
   const owner = getAt(document, at.slice(0, -1));
   if (at.at(-3) === 'edges' && isRecord(owner) && isRecord(owner.subject)) {
@@ -336,7 +361,9 @@ describe('v8 to v9 localization migration', () => {
       const expectedText =
         typeof source === 'string'
           ? source
-          : (explanationBehind(source) ?? nameBehindLabel(document, at));
+          : (explanationBehind(source) ??
+            pageBehind(document, at) ??
+            nameBehindLabel(document, at));
       expect(Object.keys(value)).toEqual(['en']);
       expect(messageText(value.en ?? '')).toBe(expectedText);
     }
@@ -936,10 +963,10 @@ describe('v8 to v9 localization migration', () => {
 
     it('records text it still holds as a string in its default language', () => {
       const document = inFrenchAndGerman();
-      const title = [...stagePath(document, 'information'), 'title'];
-      setAt(document, title, 'Bienvenue');
+      const content = [...stagePath(document, 'information'), 'content'];
+      setAt(document, content, 'Bienvenue');
 
-      expect(getAt(migrateStep(document), title)).toEqual({
+      expect(getAt(migrateStep(document), content)).toEqual({
         fr: 'Bienvenue',
       });
     });

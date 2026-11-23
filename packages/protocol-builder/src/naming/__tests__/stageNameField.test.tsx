@@ -89,8 +89,7 @@ describe('a second reader of the name', () => {
         type: 'Information',
         fields: {
           label: { [FIXTURE_LANGUAGE]: 'Named' },
-          title: { [FIXTURE_LANGUAGE]: 'Welcome' },
-          items: [],
+          content: { [FIXTURE_LANGUAGE]: '# Welcome' },
         },
       },
       sections: <RenameDialog />,
@@ -282,7 +281,7 @@ describe('a stage being created', () => {
       create: {
         type: 'Information',
         position: 0,
-        fields: { title: { es: 'Bienvenida' }, items: [] },
+        fields: { content: { es: '# Bienvenida' } },
       },
       localization: { defaultLocale: 'es', locales: ['es', 'en'] },
       sections: <></>,
@@ -301,7 +300,7 @@ describe('a stage being created', () => {
       create: {
         type: 'Information',
         position: 0,
-        fields: { title: { sw: 'Karibu' }, items: [] },
+        fields: { content: { sw: '# Karibu' } },
       },
       localization: { defaultLocale: 'sw', locales: ['sw'] },
       sections: <></>,

@@ -466,7 +466,12 @@ describe('RichTextEditorField', () => {
 
     const editor = await screen.findByRole('textbox', { name: 'Explanation' });
     await userEvent.click(editor);
-    await userEvent.click(screen.getByRole('button', { name: 'Heading 1' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /^Text style:\s*Paragraph$/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole('menuitemradio', { name: 'Heading 1' }),
+    );
 
     const heading = {
       type: 'heading',
@@ -543,6 +548,7 @@ describe('RichTextEditorField', () => {
         aria-label="Biography"
         value={documentWithText}
         onChange={() => undefined}
+        emojiMenu={false}
         toolbarOptions={{
           bold: false,
           italic: false,
@@ -557,8 +563,8 @@ describe('RichTextEditorField', () => {
 
     await screen.findByRole('textbox', { name: 'Biography' });
     // The link control renders at toolbar level; with both formatting
-    // toggles disabled there is no toggle set left to group, so an empty
-    // `group` element must not be mounted around nothing.
+    // toggles disabled there is no toggle set left to group, and a group of
+    // one control (the link button alone in "Insert") is not mounted either.
     expect(
       screen.getByRole('button', { name: 'Add link' }),
     ).toBeInTheDocument();
@@ -989,7 +995,7 @@ describe('versions folded to a pill', () => {
     );
     const toolbar = within(screen.getByRole('toolbar'));
     const blockControls = () => [
-      toolbar.getByRole('button', { name: 'Heading 1' }),
+      toolbar.getByRole('button', { name: /^Text style:/ }),
       toolbar.getByRole('button', { name: 'Bullet list' }),
       toolbar.getByRole('button', { name: 'Thematic break' }),
     ];
@@ -2878,7 +2884,7 @@ describe('a single-line RichTextEditorField', () => {
     await field.editor();
 
     expect(
-      screen.queryByRole('button', { name: 'Heading 1' }),
+      screen.queryByRole('button', { name: /^Text style:/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Bullet list' }),

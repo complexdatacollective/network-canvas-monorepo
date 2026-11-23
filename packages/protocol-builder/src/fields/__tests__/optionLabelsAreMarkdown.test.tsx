@@ -114,7 +114,7 @@ const readByTheParticipant = (label: unknown): string =>
 function expectTheOptionLabelBox(field: HTMLElement): void {
   const cell = within(field);
   expect(cell.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
-  expect(cell.queryByRole('button', { name: 'Heading 1' })).toBeNull();
+  expect(cell.queryByRole('button', { name: /^Text style:/ })).toBeNull();
   expect(cell.getByRole('textbox')).toHaveAttribute('aria-multiline', 'false');
 }
 

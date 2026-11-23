@@ -88,8 +88,7 @@ const protocolIn = (
         id: 'welcome',
         type: 'Information',
         label: text.stage,
-        title: text.title,
-        items: [],
+        content: text.title,
       },
       {
         id: 'finish',
@@ -114,7 +113,7 @@ const monolingual = () =>
     { defaultLocale: 'en', locales: ['en'] },
     {
       stage: { en: 'Welcome' },
-      title: { en: 'Hello' },
+      title: { en: '# Hello' },
       options: [{ en: 'Close' }, { en: 'Distant' }],
     },
   );
@@ -124,7 +123,7 @@ const bilingual = () =>
     { defaultLocale: 'en', locales: ['en', 'fr'] },
     {
       stage: { en: 'Welcome', fr: 'Bienvenue' },
-      title: { en: 'Hello', fr: 'Bonjour' },
+      title: { en: '# Hello', fr: '# Bonjour' },
       options: [{ en: 'Close', fr: 'Proche' }, { en: 'Distant' }],
     },
   );
@@ -140,7 +139,7 @@ const textOf = (protocol: CurrentProtocol) => {
   const variable = nodeType?.variables?.[VARIABLE];
   return {
     stage: stage?.label,
-    title: stage && 'title' in stage ? stage.title : undefined,
+    title: stage && 'content' in stage ? stage.content : undefined,
     options:
       variable && 'options' in variable
         ? variable.options?.map(({ label }) => label)
@@ -401,8 +400,8 @@ describe('removeLocale', () => {
     // The stage's title as the protocol holds it, and as an open editor holds
     // it unsaved, with the English deleted.
     const unsaved: LocalizedStringHit = {
-      path: ['stages', 0, 'title'],
-      value: { fr: 'Bonjour' },
+      path: ['stages', 0, 'content'],
+      value: { fr: '# Bonjour' },
       format: 'plain',
       lines: 'single',
     };
@@ -424,7 +423,7 @@ describe('removeLocale', () => {
     });
     expect(textOf(protocol)).toEqual({
       stage: { en: 'Welcome' },
-      title: { en: 'Hello' },
+      title: { en: '# Hello' },
       options: [{ en: 'Close' }, { en: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);
@@ -486,9 +485,8 @@ describe('rewriteLocalizedStrings', () => {
       {
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
-        title: { en: 'Hello', fr: 'Bonjour' },
+        content: { en: '# Hello', fr: '# Bonjour' },
         interviewScript: 'fr',
-        items: [],
       },
     ],
   });
@@ -500,9 +498,8 @@ describe('rewriteLocalizedStrings', () => {
           {
             type: 'Information',
             label: { en: 'Welcome' },
-            title: { en: 'Hello' },
+            content: { en: '# Hello' },
             interviewScript: 'fr',
-            items: [],
           },
         ],
       },
@@ -516,8 +513,7 @@ describe('rewriteLocalizedStrings', () => {
           {
             type: 'Information',
             label: { en: 'Welcome', fr: 'Bienvenue' },
-            title: { fr: 'Bonjour' },
-            items: [],
+            content: { fr: '# Bonjour' },
           },
         ],
       },
@@ -528,7 +524,7 @@ describe('rewriteLocalizedStrings', () => {
       ['es', 'Welcome'],
       ['fr', 'Bienvenue'],
     ]);
-    expect(stage?.title).toEqual({ fr: 'Bonjour' });
+    expect(stage?.content).toEqual({ fr: '# Bonjour' });
   });
 
   it('answers with the same document when nothing changes', () => {
@@ -653,7 +649,7 @@ describe('changeLocale', () => {
     });
     expect(textOf(protocol)).toEqual({
       stage: { es: 'Welcome' },
-      title: { es: 'Hello' },
+      title: { es: '# Hello' },
       options: [{ es: 'Close' }, { es: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);
@@ -755,7 +751,7 @@ describe('setTranslation', () => {
   it('stores the text escaped as message syntax, as the stage editors do', () => {
     const text = "Don't {skip} this";
     const protocol = protocolOf(
-      setTranslation(bilingual(), ['stages', 0, 'title'], 'fr', text),
+      setTranslation(bilingual(), ['stages', 0, 'content'], 'fr', text),
     );
     const stored = textOf(protocol).title?.fr;
 

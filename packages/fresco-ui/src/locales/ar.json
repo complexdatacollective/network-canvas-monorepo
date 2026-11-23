@@ -150,6 +150,8 @@
   "frescoUi.richTextEditor.linkUrlLabel": "عنوان الرابط (URL)",
   "frescoUi.richTextEditor.linkUrlPlaceholder": "https://example.com",
   "frescoUi.richTextEditor.removeLinkShort": "إزالة",
+  "frescoUi.richTextEditor.textStyleHeading": "عنوان {level}",
+  "frescoUi.richTextEditor.textStyleParagraph": "فقرة",
   "frescoUi.selectAllHeader.deselectAll": "إلغاء تحديد الكل",
   "frescoUi.selectAllHeader.selectAll": "تحديد الكل ({count, number})",
   "frescoUi.selectAllHeader.selectPage": "تحديد الصفحة ({count, number})",

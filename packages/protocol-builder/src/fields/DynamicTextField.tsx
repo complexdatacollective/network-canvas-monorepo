@@ -12,6 +12,7 @@ import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RichTextEditorField, {
+  type RichTextAssetBlocks,
   type RichTextEditorToken,
   type RichTextInsertMenu,
   type RichTextInsertMenuItem,
@@ -99,6 +100,7 @@ import {
 } from '../localization/useDynamicValueSite.ts';
 import type { RichTextContent } from '../markdown/markdownAdapter.ts';
 import ConditionDialog from '../rules/ConditionDialog.tsx';
+import { StageAssetBlocks } from './assetBlocks/StageAssetBlocks.tsx';
 import { participantVersionMessages } from './messageArgumentLabels.ts';
 
 const PLAIN_LINE: LocalizedTextShape = { format: 'plain', lines: 'single' };
@@ -641,6 +643,12 @@ export type DynamicMessageEditorProps = Readonly<{
   readOnly: boolean;
   markdown: boolean;
   singleLine: boolean;
+  /**
+   * How the files the text holds as blocks are drawn and chosen, for text
+   * declared to hold them (`textFieldPropsFor`). Absent for any other text,
+   * where an image written into it is read as its description.
+   */
+  assetBlocks?: RichTextAssetBlocks;
   message: string;
   onMessageChange: (message: string | undefined) => void;
   locale: LocaleTag;
@@ -674,6 +682,7 @@ export function DynamicMessageEditor({
   readOnly,
   markdown,
   singleLine,
+  assetBlocks,
   message,
   onMessageChange,
   locale,
@@ -683,9 +692,14 @@ export function DynamicMessageEditor({
 }: DynamicMessageEditorProps) {
   const intl = useAppIntl();
   const { localization } = useEditingLanguage();
+  const holdsAssetBlocks = assetBlocks !== undefined;
   const format = useMemo(
-    (): MessageDocumentFormat => ({ markdown, singleLine }),
-    [markdown, singleLine],
+    (): MessageDocumentFormat => ({
+      markdown,
+      singleLine,
+      assetBlocks: holdsAssetBlocks,
+    }),
+    [markdown, singleLine, holdsAssetBlocks],
   );
   const { context, bindings, setBindings, namesInUse } = site;
   const conditionValues = site.conditions?.values ?? NO_CONDITIONS;
@@ -1325,6 +1339,7 @@ export function DynamicMessageEditor({
         versions
         insertMenu={insertMenu}
         {...(logicItems.length > 0 && { logicMenu })}
+        {...(assetBlocks !== undefined && { assetBlocks })}
         onVersionsAction={handleVersionsAction}
         value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
         onChange={handleChange}
@@ -1418,6 +1433,8 @@ const SUMMARY_REHYPE_PLUGINS = [
 export type BlockMarkdown = Readonly<{
   allowedElements: readonly string[];
   components?: ComponentProps<typeof RenderMarkdown>['components'];
+  /** How a file the text holds as a block is drawn; without it, it is not. */
+  blockImages?: ComponentProps<typeof RenderMarkdown>['blockImages'];
 }>;
 
 const SECTION_MARKDOWN: BlockMarkdown = {
@@ -1489,12 +1506,15 @@ export function MessageNodesSummary({
   nodes: readonly MessageNode[];
   /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
-  /** Whether the words run over several lines, as a field on one line never does. */
+  /**
+   * Whether the text's field holds several lines, as a field on one line
+   * never does: a property of the field, not of the words it holds today.
+   */
   multiline: boolean;
   /**
-   * How markdown with line breaks (an Information screen's text) draws its
-   * paragraphs, headings and rules; text on one line keeps only inline
-   * formatting and lists, as a label does.
+   * How markdown in a field of several lines (an Information screen's text)
+   * draws its paragraphs, headings, rules and files; text on one line keeps
+   * only inline formatting and lists, as a label does.
    */
   blockMarkdown?: BlockMarkdown;
   /** What a value's pill says, by the name the message gives it. */
@@ -1595,6 +1615,7 @@ export function MessageNodesSummary({
             allowedElements={allowedElements}
             rehypePlugins={SUMMARY_REHYPE_PLUGINS}
             components={{ ...elements.components, span: SummaryValueSpan }}
+            blockImages={elements.blockImages}
           >
             {source}
           </RenderMarkdown>
@@ -1619,6 +1640,7 @@ export function MessageNodesSummary({
 export function DynamicMessageSummary({
   message,
   markdown,
+  multiline,
   locale,
   site,
   blockMarkdown,
@@ -1626,7 +1648,14 @@ export function DynamicMessageSummary({
   message: string;
   /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
-  /** How markdown with line breaks is drawn (see `MessageNodesSummary`). */
+  /**
+   * Whether the text's field holds several lines, so that its markdown is
+   * drawn with its blocks (see `MessageNodesSummary`), as its editor draws
+   * them. A property of the field, not of the text it holds today: a page
+   * that is one file and nothing else is still a page.
+   */
+  multiline: boolean;
+  /** How markdown with blocks is drawn (see `MessageNodesSummary`). */
   blockMarkdown?: BlockMarkdown;
   locale: LocaleTag;
   site: Pick<DynamicMessageSite, 'context' | 'bindings'>;
@@ -1668,7 +1697,7 @@ export function DynamicMessageSummary({
     <MessageNodesSummary
       nodes={structure.nodes}
       markdown={markdown}
-      multiline={message.includes('\n')}
+      multiline={multiline}
       blockMarkdown={blockMarkdown}
       valueLabel={valueLabel}
       switchSummary={labels.switchSummary}
@@ -1790,36 +1819,45 @@ export default function DynamicTextField({
   'aria-required': ariaRequired,
 }: DynamicTextFieldProps) {
   const site = useDynamicValueSite(siteKind, fieldPath);
-  const { markdown, singleLine } = textFieldPropsFor(shape);
+  const {
+    markdown,
+    singleLine,
+    assetBlocks: holdsAssetBlocks,
+  } = textFieldPropsFor(shape);
   const { localization, locale } = useEditingLanguage();
   const defaultLocale = localization?.defaultLocale;
 
   return (
-    <LocalizedStringField
-      value={value}
-      onChange={onChange}
-      hideUntranslatedNote={hideUntranslatedNote}
-    >
-      {(translation) => (
-        <DynamicMessageEditor
-          id={id}
-          name={name}
-          ariaDescribedBy={ariaDescribedBy}
-          ariaLabelledBy={ariaLabelledBy}
-          ariaInvalid={ariaInvalid}
-          ariaRequired={ariaRequired === true}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          disabled={disabled}
-          readOnly={readOnly === true || translation.readOnly}
-          markdown={markdown}
-          singleLine={singleLine}
-          message={translation.message}
-          onMessageChange={translation.onMessageChange}
-          locale={locale ?? defaultLocale ?? 'en'}
-          site={site}
-        />
+    <StageAssetBlocks enabled={holdsAssetBlocks}>
+      {(assetBlocks) => (
+        <LocalizedStringField
+          value={value}
+          onChange={onChange}
+          hideUntranslatedNote={hideUntranslatedNote}
+        >
+          {(translation) => (
+            <DynamicMessageEditor
+              id={id}
+              name={name}
+              ariaDescribedBy={ariaDescribedBy}
+              ariaLabelledBy={ariaLabelledBy}
+              ariaInvalid={ariaInvalid}
+              ariaRequired={ariaRequired === true}
+              placeholder={placeholder}
+              autoFocus={autoFocus}
+              disabled={disabled}
+              readOnly={readOnly === true || translation.readOnly}
+              markdown={markdown}
+              singleLine={singleLine}
+              {...(assetBlocks !== undefined && { assetBlocks })}
+              message={translation.message}
+              onMessageChange={translation.onMessageChange}
+              locale={locale ?? defaultLocale ?? 'en'}
+              site={site}
+            />
+          )}
+        </LocalizedStringField>
       )}
-    </LocalizedStringField>
+    </StageAssetBlocks>
   );
 }

@@ -121,8 +121,7 @@ function renderStage({
       id: 'next-screen',
       type: 'Information',
       label: { en: 'Next screen' },
-      title: { en: 'Next screen' },
-      items: [],
+      content: { en: '# Next screen' },
     },
   ]);
 

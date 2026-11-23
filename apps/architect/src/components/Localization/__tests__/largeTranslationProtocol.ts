@@ -33,9 +33,10 @@ const translations = (index: number, make: (locale: string) => string) =>
 
 /**
  * A protocol with `stages` Information stages in four languages, each stage
- * holding a name, a heading and two formatted texts, so the translation table
- * has four rows per stage and the interview's own words besides. Generated
- * rather than stored, so a test can ask for the size it needs.
+ * holding a name and a page content text (a heading and two paragraphs), so
+ * the translation table has two rows per stage and the interview's own words
+ * besides. Generated rather than stored, so a test can ask for the size it
+ * needs.
  */
 export const largeTranslationProtocol = (stages: number): CurrentProtocol => {
   const localization = { defaultLocale: 'en', locales: [...LOCALES] };
@@ -50,16 +51,15 @@ export const largeTranslationProtocol = (stages: number): CurrentProtocol => {
         id: `stage-${index}`,
         type: 'Information' as const,
         label: translations(index, (locale) => `Section ${index} ${locale}`),
-        title: translations(index, (locale) => `Heading ${index} ${locale}`),
-        items: [0, 1].map((item) => ({
-          id: `stage-${index}-text-${item}`,
-          type: 'text' as const,
-          content: translations(
-            index,
-            (locale) =>
-              `Paragraph ${item} of **section ${index}** in ${locale}, which is long enough to wrap onto a second line in a narrow column of the table.`,
-          ),
-        })),
+        content: translations(index, (locale) =>
+          [
+            `# Heading ${index} ${locale}`,
+            ...[0, 1].map(
+              (item) =>
+                `Paragraph ${item} of **section ${index}** in ${locale}, which is long enough to wrap onto a second line in a narrow column of the table.`,
+            ),
+          ].join('\n\n'),
+        ),
       })),
       createDefaultFinishSessionStage({ id: 'finish', localization }),
     ],

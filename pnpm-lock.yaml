@@ -3096,12 +3096,6 @@ importers:
       mapbox-gl:
         specifier: ^3.33.0
         version: 3.33.0
-      remark-parse:
-        specifier: ^11.0.0
-        version: 11.0.0(supports-color@10.2.2)
-      unified:
-        specifier: ^11.0.5
-        version: 11.0.5
       uuid:
         specifier: 'catalog:'
         version: 14.0.3
@@ -3285,6 +3279,9 @@ importers:
       '@formatjs/icu-messageformat-parser':
         specifier: 'catalog:'
         version: 3.5.22
+      '@types/mdast':
+        specifier: ^4.0.4
+        version: 4.0.4
       csvtojson:
         specifier: 'catalog:'
         version: 2.0.14
@@ -3294,6 +3291,15 @@ importers:
       mdast-util-from-markdown:
         specifier: ^2.0.3
         version: 2.0.3(supports-color@10.2.2)
+      mdast-util-gfm:
+        specifier: ^3.1.0
+        version: 3.1.0(supports-color@10.2.2)
+      mdast-util-to-markdown:
+        specifier: ^2.1.2
+        version: 2.1.2
+      micromark-extension-gfm:
+        specifier: ^3.0.0
+        version: 3.0.0
       ohash:
         specifier: ^2.0.12
         version: 2.0.12

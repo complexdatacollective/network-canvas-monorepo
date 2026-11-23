@@ -27,7 +27,6 @@ import { tieStrengthPromptMessages } from '../editors/tie-strength-census/sectio
 import { geospatialMessages } from '../fields/geospatial/geospatialMessages.ts';
 import { stageNameMessages } from '../naming/stageNameInternals.ts';
 import { binBehavioursMessages } from '../sections/bin-behaviours/binBehavioursMessages.ts';
-import { contentBlockMessages } from '../sections/content-blocks/ContentBlockEditor.tsx';
 import { composerFormFieldMessages } from '../sections/form-fields/composerFormFieldMessages.ts';
 import { formFieldsMessages } from '../sections/form-fields/FormFieldsSection.tsx';
 import { introductionMessages } from '../sections/introduction/IntroductionSection.tsx';
@@ -304,27 +303,6 @@ const PANEL_RULES: readonly Rule[] = [
   ),
 ];
 
-const contentItemRules = (
-  section: Step,
-  itemsPath: string,
-): readonly Rule[] => {
-  const itemCovers = segmentsOf(itemsPath).length + 1;
-  const item: Step = [itemCovers, numbered(messages.itemPosition)];
-  return [
-    rule(`${itemsPath}.#.content`, section, item, [
-      itemCovers + 1,
-      words(contentBlockMessages.contentLabel),
-    ]),
-    rule(`${itemsPath}.#.description`, section, item, [
-      itemCovers + 1,
-      words(contentBlockMessages.descriptionLabel),
-    ]),
-  ];
-};
-
-// The page heading and the page's items sit side by side in one section, so
-// the section names no segment of its own.
-const PAGE_CONTENT: Step = [0, words(pageContentMessages.pageTitle)];
 const FINISH_SCREEN: Step = [0, words(finishSessionMessages.closingTitle)];
 const FINISHED_SCREEN: Step = [0, words(finishSessionMessages.finishedTitle)];
 
@@ -552,10 +530,8 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       geospatialWordingMessages.outsideAreasLabel,
     ),
   ],
-  Information: [
-    rule('title', PAGE_CONTENT, [1, words(pageContentMessages.headingLabel)]),
-    ...contentItemRules(PAGE_CONTENT, 'items'),
-  ],
+  // The page is one text, which the section's own heading names.
+  Information: [rule('content', [1, words(pageContentMessages.pageTitle)])],
   LanguageChooser: [wordingRule('title', languageChooserMessages.headingLabel)],
   FinishSession: [
     rule('content', FINISH_SCREEN, [

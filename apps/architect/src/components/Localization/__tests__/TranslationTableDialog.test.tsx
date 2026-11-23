@@ -22,11 +22,8 @@ const bilingual: CurrentProtocol = {
     {
       id: 'welcome',
       type: 'Information',
-      label: { en: 'Welcome', fr: 'Bienvenue' },
-      title: { en: 'Hello' },
-      items: [
-        { id: 'intro', type: 'text', content: { en: 'Read **this** first' } },
-      ],
+      label: { en: 'Welcome' },
+      content: { en: '# Hello\n\nRead **this** first' },
     },
   ],
 };
@@ -69,12 +66,12 @@ const tableButton = (name: string) =>
 
 const frenchTitle = () =>
   screen.getByRole('textbox', {
-    name: /^Stage 1 .*\bPage heading French$/,
+    name: /^Stage 1 .*\bStage name French$/,
   });
 
 const stageTitle = (store: ReturnType<typeof renderPage>['store']) => {
   const stage = getProtocol(store.getState())?.stages[0];
-  return stage && 'title' in stage ? stage.title : undefined;
+  return stage && 'label' in stage ? stage.label : undefined;
 };
 
 describe('TranslationTableDialog', () => {
@@ -186,7 +183,7 @@ describe('TranslationTableDialog', () => {
     await user.click(tableButton('Save'));
 
     await expectClosed();
-    expect(stageTitle(store)).toEqual({ en: 'Hello', fr: 'Bonjour' });
+    expect(stageTitle(store)).toEqual({ en: 'Welcome', fr: 'Bonjour' });
     await waitFor(() => expect(address()).toBe('/protocol/localization'));
   });
 
@@ -231,7 +228,7 @@ describe('TranslationTableDialog', () => {
     }
     expect(asked).toEqual([false]);
     expect(openDialog).toHaveBeenCalledTimes(2);
-    expect(stageTitle(store)).toEqual({ en: 'Hello' });
+    expect(stageTitle(store)).toEqual({ en: 'Welcome' });
 
     // Opened again, the table shows what the protocol holds, not the text
     // that was thrown away.

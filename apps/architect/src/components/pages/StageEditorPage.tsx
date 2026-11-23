@@ -33,6 +33,7 @@ import StageDraftConflictDialog from '~/components/StageEditor/StageDraftConflic
 import StageEditorChrome, {
   StageEditorHeader,
 } from '~/components/StageEditor/StageEditorChrome';
+import StageEditorScroller from '~/components/StageEditor/StageEditorScroller';
 import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
 import { renderSectionWalkthroughButton } from '~/components/StageEditor/walkthrough/SectionWalkthroughButton';
 import { getActiveProtocolId, getProtocolOwnedHere } from '~/ducks/modules/app';
@@ -334,7 +335,7 @@ const StageEditorPage = () => {
   }
 
   return (
-    <div className="relative h-full overflow-y-auto pb-32">
+    <StageEditorScroller>
       <StageEditorNav
         stageName={stageName}
         onCancel={() => void handleCancel()}
@@ -444,7 +445,7 @@ const StageEditorPage = () => {
           </div>
         </div>
       </div>
-    </div>
+    </StageEditorScroller>
   );
 };
 

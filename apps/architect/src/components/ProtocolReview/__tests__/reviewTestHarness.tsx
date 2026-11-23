@@ -63,7 +63,7 @@ const FINDINGS: Finding[] = [
   ),
   makeFinding(
     'title',
-    [op('set', '/stages/welcome/title/en', 'Welcome to our study')],
+    [op('set', '/stages/welcome/label/en', 'Welcome to our study')],
     {
       stageId: 'welcome',
       severity: 'worth_fixing',

@@ -11,7 +11,7 @@ const informationStage = (id: string) => ({
   id,
   type: 'Information' as const,
   label: id,
-  items: [],
+  content: { en: `# ${id}` },
 });
 
 type CurrentStage = StoredCurrentProtocol['protocol']['stages'][number];
@@ -20,8 +20,7 @@ const currentInformationStage = (id: string): CurrentStage => ({
   id,
   type: 'Information',
   label: { en: id },
-  title: { en: id },
-  items: [],
+  content: { en: `# ${id}` },
 });
 
 const stageIds = ['one', 'two', 'three', 'four', 'five'];

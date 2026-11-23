@@ -29,8 +29,10 @@ const openDraft = () => {
   store.dispatch(setActiveProtocol(structuredClone(protocol)));
   const row = getTranslationGroups(store.getState())
     .flatMap((group) => group.rows)
-    .find(({ path }) => path.join('.') === 'stages.0.title');
-  if (row === undefined) throw new Error('The title is not a translation row.');
+    .find(({ path }) => path.join('.') === 'stages.0.content');
+  if (row === undefined) {
+    throw new Error('The content is not a translation row.');
+  }
   const wrapper = ({ children }: { children: ReactNode }) => (
     <Provider store={store}>
       <FormStoreProvider>{children}</FormStoreProvider>

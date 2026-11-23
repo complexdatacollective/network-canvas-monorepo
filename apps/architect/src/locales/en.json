@@ -2589,7 +2589,7 @@
   },
   "architect.protocolReview.problem.textInLanguage": {
     "defaultMessage": "{name} · {language}",
-    "description": "Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as \"Page content › Page heading\"; {language} is the language’s name. The dot is a separator."
+    "description": "Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as \"Prompt collection › Prompt 1 › Prompt text\"; {language} is the language’s name. The dot is a separator."
   },
   "architect.protocolReview.problem.translationsUnchanged": {
     "defaultMessage": "Not changed: {languages}",
@@ -3107,10 +3107,6 @@
     "defaultMessage": "Introduction Panel",
     "description": "Section heading in the printable protocol summary, above the title and text of a stage's introduction panel shown to participants."
   },
-  "architect.protocolSummary.stage.items.items": {
-    "defaultMessage": "Items",
-    "description": "Section heading in the printable protocol summary, above the list of text and media items on an Information stage."
-  },
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": {
     "defaultMessage": "GeoJSON Data Source",
     "description": "Section heading in the printable protocol summary, above the uploaded GeoJSON file that supplies the regions of a geospatial stage's map."
@@ -3131,9 +3127,65 @@
     "defaultMessage": "{shown, select, true {Shown} other {Not shown}}",
     "description": "Value, in the printable protocol summary, saying whether a Narrative Pedigree stage draws the possible (at-risk) statuses it infers, beside the label \"Show possible (at-risk) statuses\"."
   },
+  "architect.protocolSummary.stage.pageContent.description": {
+    "defaultMessage": "Description",
+    "description": "Label in the printable protocol summary, in the details of an image, audio recording or video placed in the text of an Information stage. Beside it are the words the researcher wrote to describe the file for a participant who cannot see or hear it."
+  },
+  "architect.protocolSummary.stage.pageContent.fileNotFound": {
+    "defaultMessage": "A file placed here is not among this protocol’s resources, or is not an image, audio recording or video.",
+    "description": "Shown in the printable protocol summary, within the text of an Information stage, in place of an image, audio recording or video placed in that text, when the file it names is missing from the protocol or is a kind of file a page cannot show."
+  },
+  "architect.protocolSummary.stage.pageContent.pageContent": {
+    "defaultMessage": "Page Content",
+    "description": "Section heading in the printable protocol summary, above the text of an Information stage: the one text, with its headings and the images, audio recordings and videos placed in it, that the stage shows participants as a page."
+  },
+  "architect.protocolSummary.stage.pageContent.playback": {
+    "defaultMessage": "Playback",
+    "description": "Label in the printable protocol summary, in the details of an audio recording or video placed in the text of an Information stage. Beside it is how the recording plays: whether it starts by itself, and whether it repeats."
+  },
+  "architect.protocolSummary.stage.pageContent.playsAutomaticallyOnce": {
+    "defaultMessage": "Starts automatically and plays once",
+    "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: it starts by itself when the participant reaches the page, and stops when it ends."
+  },
+  "architect.protocolSummary.stage.pageContent.playsAutomaticallyRepeating": {
+    "defaultMessage": "Starts automatically and repeats",
+    "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: it starts by itself when the participant reaches the page, and starts again each time it ends."
+  },
+  "architect.protocolSummary.stage.pageContent.playsWhenStartedOnce": {
+    "defaultMessage": "Started by the participant, and plays once",
+    "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: the participant starts it, and it stops when it ends."
+  },
+  "architect.protocolSummary.stage.pageContent.playsWhenStartedRepeating": {
+    "defaultMessage": "Started by the participant, then repeats",
+    "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: the participant starts it, and it then starts again each time it ends."
+  },
+  "architect.protocolSummary.stage.pageContent.position": {
+    "defaultMessage": "Position",
+    "description": "Label in the printable protocol summary, in the details of an image, audio recording or video placed in the text of an Information stage. Beside it is where the file sits across the page: at the side a line of text starts, in the middle, or at the side a line ends."
+  },
+  "architect.protocolSummary.stage.pageContent.positionEnd": {
+    "defaultMessage": "Where a line of text ends",
+    "description": "Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text ends (the right in English, the left in Arabic)."
+  },
+  "architect.protocolSummary.stage.pageContent.positionStart": {
+    "defaultMessage": "Where a line of text starts",
+    "description": "Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text starts (the left in English, the right in Arabic)."
+  },
+  "architect.protocolSummary.stage.pageContent.sizeLarge": {
+    "defaultMessage": "Large",
+    "description": "Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage."
+  },
+  "architect.protocolSummary.stage.pageContent.sizeMedium": {
+    "defaultMessage": "Medium",
+    "description": "Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage."
+  },
+  "architect.protocolSummary.stage.pageContent.sizeSmall": {
+    "defaultMessage": "Small",
+    "description": "Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage."
+  },
   "architect.protocolSummary.stage.pageHeading.pageHeading": {
     "defaultMessage": "Page Heading",
-    "description": "Section heading in the printable protocol summary, above the heading text shown at the top of an Information stage's page."
+    "description": "Section heading in the printable protocol summary, above the heading text shown at the top of a stage's page, such as a Language Chooser's."
   },
   "architect.protocolSummary.stage.panels.existingNetwork": {
     "defaultMessage": "Existing network",

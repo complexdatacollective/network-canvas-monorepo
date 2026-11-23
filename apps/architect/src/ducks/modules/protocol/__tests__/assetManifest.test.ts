@@ -39,8 +39,7 @@ const openStage: Stage = {
   id: 'stage-1',
   type: 'Information',
   label: { en: 'A' },
-  title: { en: 'A' },
-  items: [],
+  content: { en: '# A' },
 };
 
 const createTestStore = () =>

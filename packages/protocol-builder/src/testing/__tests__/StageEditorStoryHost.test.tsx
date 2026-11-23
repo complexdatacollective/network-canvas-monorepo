@@ -4,9 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { ResourceClientProvider } from '../../resources/client.tsx';
-import ContentBlockEditor from '../../sections/content-blocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from '../../sections/content-blocks/ContentBlockPreview.tsx';
-import { contentBlockSlots } from '../../sections/content-blocks/contentBlockTypes.ts';
 import PageContentSection from '../../sections/page-content/PageContentSection.tsx';
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { StageEditSession } from '../../stageEdit.tsx';
@@ -96,11 +93,7 @@ describe('what a family’s story tells the host', () => {
           <ResourceClientProvider>
             <StageEditSession target={target} formId={formId} onSaved={onSaved}>
               <StageEditorShell actions={actions}>
-                <PageContentSection
-                  ItemEditor={ContentBlockEditor}
-                  ItemPreview={ContentBlockPreview}
-                  slots={contentBlockSlots}
-                />
+                <PageContentSection />
               </StageEditorShell>
             </StageEditSession>
           </ResourceClientProvider>
@@ -113,15 +106,11 @@ describe('what a family’s story tells the host', () => {
     renderPageHost();
 
     await user.click(
-      await screen.findByRole('button', { name: 'Create new content item' }),
+      await screen.findByRole('button', { name: 'Insert image' }),
     );
-    await user.click(await screen.findByRole('radio', { name: 'Image' }));
 
     // The manifest half: the story's own entry is offered beside the
     // fixture's.
-    await user.click(
-      await screen.findByRole('button', { name: /^(Change the|Select an?) /u }),
-    );
     expect(await screen.findByText('Extra photo')).toBeInTheDocument();
 
     // The resource half: a file imported here is staged under the id the story
@@ -130,10 +119,12 @@ describe('what a family’s story tells the host', () => {
       await screen.findByLabelText('Choose a file from your computer'),
       new File(['a picture'], 'skyline.png', { type: 'image/png' }),
     );
-    await screen.findAllByText('skyline.png');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    // The browser closes. (The block it placed is selected, which opens the
+    // block's own settings, so "no dialog" is not what to wait for.)
     await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole('dialog', { name: 'Choose an image' }),
+      ).not.toBeInTheDocument(),
     );
     await user.click(screen.getByRole('button', { name: 'Save stage' }));
 
@@ -142,7 +133,7 @@ describe('what a family’s story tells the host', () => {
         screen.getByRole('region', {
           name: 'What the host was asked to commit',
         }),
-      ).toHaveTextContent('"content": "story-resource-1"'),
+      ).toHaveTextContent('asset:story-resource-1'),
     );
   });
 });

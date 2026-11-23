@@ -20,8 +20,7 @@ const en = (text: string) => ({ 'en-US': text });
 
 const initialFields: SectionDoc = {
   label: en('Welcome'),
-  title: en('Welcome to the study'),
-  items: [],
+  content: en('Welcome to the study'),
 };
 
 /** A host's own save control, which is how a host reaches the stage form. */
@@ -66,7 +65,7 @@ const threeSections = (pageContentTitle = 'Page content') => (
   <>
     <BuilderSection sectionKey="form-fields" title={pageContentTitle}>
       <Field
-        name="title"
+        name="content"
         label="Page heading"
         component={LocalizedInputField}
         required={REQUIRED}
@@ -178,7 +177,7 @@ describe('StageEditorShell', () => {
 
   it('reports a section whose required field is empty as unfinished', async () => {
     const harness = renderEditor({
-      fields: { label: en('Welcome'), items: [] },
+      fields: { label: en('Welcome') },
     });
 
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
@@ -218,8 +217,7 @@ describe('StageEditorShell', () => {
       id: harness.seeded.id,
       type: 'Information',
       label: en('Welcome'),
-      title: en('A new heading'),
-      items: [],
+      content: en('A new heading'),
     });
   });
 
@@ -278,7 +276,7 @@ describe('StageEditorShell', () => {
     // must render — so seeding a control cannot be the one place that throws
     // on it. A throw here is not cosmetic: the render never commits, and the
     // editor goes down over content the researcher did not write.
-    renderEditor({ fields: { ...initialFields, title: null } });
+    renderEditor({ fields: { ...initialFields, content: null } });
 
     // Nothing is there, which this package spells `undefined` and shows as an
     // empty control — never as the word "null".
@@ -297,7 +295,7 @@ describe('StageEditorShell', () => {
           </button>
           <BuilderSection sectionKey="form-fields" title={title}>
             <Field
-              name="title"
+              name="content"
               label="Page heading"
               component={LocalizedInputField}
               required
@@ -307,7 +305,7 @@ describe('StageEditorShell', () => {
       );
     }
     const harness = renderEditor({
-      fields: { label: en('Welcome'), items: [] },
+      fields: { label: en('Welcome') },
       sections: <RenameableSection />,
     });
     await waitFor(() =>
@@ -340,7 +338,7 @@ describe('StageEditorShell', () => {
 
   it('reports exactly one problem for a field that owns it', async () => {
     const harness = renderEditor({
-      fields: { label: en('Welcome'), items: [] },
+      fields: { label: en('Welcome') },
     });
 
     expect(await harness.submit()).toBeNull();
@@ -613,7 +611,7 @@ describe('StageEditorShell', () => {
           {shown.map((title) => (
             <BuilderSection sectionKey="form-fields" key={title} title={title}>
               <Field
-                name={title === 'Introduction' ? 'title' : 'label'}
+                name={title === 'Introduction' ? 'content' : 'label'}
                 label={`${title} text`}
                 component={LocalizedInputField}
               />
@@ -1095,7 +1093,7 @@ describe('StageEditorShell', () => {
         <BuilderSection sectionKey="page-content" title="Page content">
           <MountCounter />
           <Field
-            name="title"
+            name="content"
             label="Page heading"
             component={LocalizedInputField}
             required

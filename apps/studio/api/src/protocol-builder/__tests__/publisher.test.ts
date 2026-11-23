@@ -413,8 +413,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             document: Redacted.make({
               type: 'Information',
               label: inEnglish('Past the bound'),
-              title: inEnglish('Past the bound'),
-              items: [],
+              content: inEnglish('# Past the bound'),
             }),
           }),
         );
@@ -547,8 +546,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             document: Redacted.make({
               type: 'Information',
               label: inEnglish('Watched'),
-              title: inEnglish('Watched'),
-              items: [],
+              content: inEnglish('# Watched'),
             }),
           }),
         );
@@ -789,8 +787,7 @@ describe.skipIf(!testDb)('the protocol-builder relay', () => {
             document: Redacted.make({
               type: 'Information',
               label: inEnglish('Polled beside an unreadable draft'),
-              title: inEnglish('Polled beside an unreadable draft'),
-              items: [],
+              content: inEnglish('# Polled beside an unreadable draft'),
             }),
           }),
         );

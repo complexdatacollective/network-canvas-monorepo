@@ -12,19 +12,19 @@ const INSERT_A_VALUE = { name: /^Inject piped text/ };
 
 /**
  * Whether a text field offers to insert a value follows the site its schema
- * declares: a stage's label may not show values, its page heading may.
+ * declares: a stage's label may not show values, its page content may.
  */
 describe('the insert-a-value control', () => {
-  it('is declared by the schema for the heading and not for the label', () => {
+  it('is declared by the schema for the content and not for the label', () => {
     expect(declaredDynamicValueSite(informationStage, ['label'])).toBe(
       undefined,
     );
-    expect(declaredDynamicValueSite(informationStage, ['title'])).toBe(
+    expect(declaredDynamicValueSite(informationStage, ['content'])).toBe(
       'stageText',
     );
   });
 
-  it('is absent from a stage label and present on a page heading', async () => {
+  it('is absent from a stage label and present on the page content', async () => {
     renderStageEditor({
       stageId: 'information-1',
       editor: informationStageEditor.Information,
@@ -33,13 +33,13 @@ describe('the insert-a-value control', () => {
     const label = fieldAround(
       await screen.findByRole('textbox', { name: 'Stage name' }),
     );
-    const heading = fieldAround(
-      await screen.findByRole('textbox', { name: 'Page heading' }),
+    const content = fieldAround(
+      await screen.findByRole('textbox', { name: 'Rich Text' }),
     );
 
     expect(within(label).queryByRole('button', INSERT_A_VALUE)).toBeNull();
     expect(
-      within(heading).getByRole('button', INSERT_A_VALUE),
+      within(content).getByRole('button', INSERT_A_VALUE),
     ).toBeInTheDocument();
   });
 });

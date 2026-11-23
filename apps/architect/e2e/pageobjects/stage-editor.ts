@@ -97,6 +97,14 @@ export class StageEditor {
     return this.page.locator(`[data-field-name="${name}"]`);
   }
 
+  /**
+   * A rich text field's editor, by its accessible name. The default is an
+   * Information stage's page: the "Rich Text" field of its "Content" section.
+   */
+  richText(name = 'Rich Text'): Locator {
+    return this.page.getByRole('textbox', { name });
+  }
+
   // Tiptap renders its contenteditable root with `role="textbox"` and either
   // `aria-label` or `aria-labelledby` (pointing at fresco-ui's own field
   // label, whose visible text equals the `label` prop the call site passed) —

@@ -2,7 +2,7 @@
 
 exports[`indexes selectors > getAssetIndex() > extracts asset references into index 1`] = `
 {
-  "stages.6.items.0.content": "1234-asset-4",
+  "stages.6.content.en#0": "1234-asset-4",
 }
 `;
 

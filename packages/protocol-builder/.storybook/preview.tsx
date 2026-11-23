@@ -42,7 +42,28 @@ export default definePreview({
   parameters: {
     // Every rule axe ships, at error level: no rule is turned off here, and a
     // story that opens a dialog is checked with the dialog open.
-    a11y: { test: 'error' },
+    a11y: {
+      test: 'error',
+      /**
+       * A Base UI popup that is open puts focus guards around itself: spans
+       * that are hidden from assistive technology and take focus only to pass
+       * it on, which is how Tab walks into and out of the popup in order.
+       * axe reads each as a hidden element that can be focused. They are the
+       * library's, not a control of ours, so the rule passes over them and
+       * still reads every other hidden element (its own selector is
+       * `[aria-hidden="true"]`). Whether a guard is there when the audit runs
+       * is a matter of a frame, which made a story that ends with a popup
+       * open (a selected block's settings) fail now and then.
+       */
+      config: {
+        rules: [
+          {
+            id: 'aria-hidden-focus',
+            selector: '[aria-hidden="true"]:not([data-base-ui-focus-guard])',
+          },
+        ],
+      },
+    },
     layout: 'fullscreen',
   },
   decorators: [

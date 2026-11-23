@@ -2,7 +2,6 @@ import type {
   FinishKinds,
   FinishMode,
   FinishOutcome,
-  Item,
   MediaKinds,
   Panel,
   PanelSource,
@@ -36,7 +35,8 @@ type PanelQualifierInput = Pick<Panel, 'dataSource'>;
 type QualifierStageFields = {
   type?: StageType;
   panels?: PanelQualifierInput[];
-  items?: Item[];
+  /** The files an Information page shows, by asset id. */
+  shownAssets?: readonly string[];
   mode?: FinishMode;
   outcome?: FinishOutcome;
 };
@@ -88,7 +88,7 @@ function resolvePanelQualifier(
 }
 
 // Canonical order so the same set of media always yields the same name,
-// regardless of the order the Information items happen to be in.
+// regardless of the order an Information page happens to show them in.
 const MEDIA_ORDER = ['image', 'video', 'audio'] as const;
 
 const MEDIA_KINDS: Record<string, MediaKinds> = {
@@ -102,18 +102,14 @@ const MEDIA_KINDS: Record<string, MediaKinds> = {
 };
 
 function resolveInformationQualifier(
-  items: Item[] | undefined,
+  shownAssets: readonly string[] | undefined,
   resolveAssetType: (assetId: string) => string | null,
   language: StageNameLanguage,
 ): Qualifier | null {
-  if (!items) {
+  if (!shownAssets) {
     return null;
   }
-  const present = new Set(
-    items
-      .filter((item) => item.type === 'asset')
-      .map((item) => resolveAssetType(item.content)),
-  );
+  const present = new Set(shownAssets.map(resolveAssetType));
   const kinds =
     MEDIA_KINDS[MEDIA_ORDER.filter((kind) => present.has(kind)).join(',')];
   if (kinds === undefined) {
@@ -175,7 +171,7 @@ export function resolveStageQualifier(
       return resolvePanelQualifier(stage.panels, language);
     case 'Information':
       return resolveInformationQualifier(
-        stage.items,
+        stage.shownAssets,
         resolvers.resolveAssetType,
         language,
       );

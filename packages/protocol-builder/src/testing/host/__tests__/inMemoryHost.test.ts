@@ -251,7 +251,7 @@ function informationNaming(
   const { id: _id, ...template } = subject.store.read(INFORMATION).document;
   return {
     ...template,
-    items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+    content: { 'en-US': `![](asset:${resourceId})` },
   };
 }
 
@@ -666,13 +666,15 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       sectionId: INFORMATION,
     });
-    const items = Redacted.value(read.document).items;
-    if (!Array.isArray(items)) throw new Error('the fixture has no items');
+    const content = Redacted.value(read.document).content;
+    if (typeof content !== 'object' || content === null) {
+      throw new Error('the fixture has no content');
+    }
 
-    items.push({ id: 'smuggled', type: 'text', content: 'not submitted' });
+    Reflect.set(content, 'smuggled', 'not submitted');
 
-    const again = subject.store.read(INFORMATION).document.items;
-    expect(Array.isArray(again) && again).toHaveLength(items.length - 1);
+    const again = subject.store.read(INFORMATION).document.content;
+    expect(again).not.toHaveProperty('smuggled');
   });
 
   it('refuses every resource call that names another protocol', async () => {
@@ -1703,8 +1705,7 @@ describe('codebook sections written with a stage', () => {
       document: Redacted.make({
         type: 'Information',
         label: { 'en-US': 'Created with a type' },
-        title: { 'en-US': 'Created with a type' },
-        items: [],
+        content: { 'en-US': 'Created with a type' },
       }),
       position: 1,
       codebook: [
@@ -1769,8 +1770,7 @@ describe('codebook sections written with a stage', () => {
       document: Redacted.make({
         type: 'Information',
         label: { 'en-US': 'Created with a type' },
-        title: { 'en-US': 'Created with a type' },
-        items: [],
+        content: { 'en-US': 'Created with a type' },
       }),
       position: 1,
       codebook: [{ sectionId: INVENTED, document: Redacted.make(invented) }],

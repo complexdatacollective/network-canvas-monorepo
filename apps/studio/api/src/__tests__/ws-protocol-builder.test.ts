@@ -295,8 +295,7 @@ describe.skipIf(!testDb || !env.auth)(
             document: Redacted.make({
               type: 'Information',
               label: inEnglish(label),
-              title: inEnglish(label),
-              items: [],
+              content: inEnglish(`# ${label}`),
             }),
           }),
         )
@@ -414,8 +413,7 @@ describe.skipIf(!testDb || !env.auth)(
           document: Redacted.make({
             type: 'Information',
             label: inEnglish('Made over the socket'),
-            title: inEnglish('Made over the socket'),
-            items: [],
+            content: inEnglish('# Made over the socket'),
           }),
         }),
       );
