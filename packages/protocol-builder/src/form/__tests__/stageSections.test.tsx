@@ -55,8 +55,7 @@ const en = (text: string) => ({ 'en-US': text });
 
 const initialFields: SectionDoc = {
   label: en('Welcome'),
-  title: en('Welcome to the study'),
-  items: [],
+  content: en('Welcome to the study'),
 };
 
 /**
@@ -91,15 +90,18 @@ function Revealable({ children }: Readonly<{ children: ReactNode }>) {
 
 const twoSections = (
   <>
-    <BuilderSection title="Page content">
+    <BuilderSection sectionKey="page-content" title="Page content">
       <Field
-        name="title"
+        name="content"
         label="Page heading"
         component={LocalizedInputField}
         required={REQUIRED}
       />
     </BuilderSection>
-    <BuilderSection title="Interviewer guidance">
+    <BuilderSection
+      sectionKey="interviewer-guidance"
+      title="Interviewer guidance"
+    >
       <Field name="interviewScript" label="Script" component={InputField} />
     </BuilderSection>
   </>
@@ -136,9 +138,9 @@ describe('the sections a stage editor publishes to its host', () => {
 
   it('tells a subscriber when a control judges itself invalid', async () => {
     const { harness, probe } = renderEditor(
-      <BuilderSection title="Page content">
+      <BuilderSection sectionKey="page-content" title="Page content">
         <Field
-          name="title"
+          name="content"
           label="Page heading"
           component={JudgesItselfInvalid}
         />
@@ -165,15 +167,18 @@ describe('the sections a stage editor publishes to its host', () => {
   it('tells a subscriber when a section arrives on the page', async () => {
     const { harness, probe } = renderEditor(
       <>
-        <BuilderSection title="Page content">
+        <BuilderSection sectionKey="page-content" title="Page content">
           <Field
-            name="title"
+            name="content"
             label="Page heading"
             component={LocalizedInputField}
           />
         </BuilderSection>
         <Revealable>
-          <BuilderSection title="Interviewer guidance">
+          <BuilderSection
+            sectionKey="interviewer-guidance"
+            title="Interviewer guidance"
+          >
             <Field
               name="interviewScript"
               label="Script"
@@ -207,7 +212,6 @@ describe('the sections a stage editor publishes to its host', () => {
   it('tells a subscriber when the form’s own errors change', async () => {
     const { harness, probe } = renderEditor(twoSections, {
       label: en('Welcome'),
-      items: [],
     });
     await waitFor(() => expect(probe.store().getSnapshot()).toHaveLength(2));
     expect(probe.store().getSnapshot()[0]?.status).toBe('incomplete');

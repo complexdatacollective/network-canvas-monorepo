@@ -134,7 +134,12 @@ describe('the sections of an anonymisation stage', () => {
       name: 'Explanation',
     });
     await harness.user.clear(explanation);
-    await harness.user.click(screen.getByRole('button', { name: 'Heading 1' }));
+    await harness.user.click(
+      screen.getByRole('button', { name: /^Text style:\s*Paragraph$/ }),
+    );
+    await harness.user.click(
+      await screen.findByRole('menuitemradio', { name: 'Heading 1' }),
+    );
     // The editor takes focus back from the toolbar a frame later; typing
     // before then goes to the button and is lost.
     await waitFor(() => expect(explanation).toHaveFocus());
@@ -734,6 +739,39 @@ describe('the attributes a passphrase protects', () => {
       expect(Object.hasOwn(editorVariable(harness, 'name'), 'encrypted')).toBe(
         false,
       );
+    });
+
+    /**
+     * A narrative stage has no filter of its own: each preset narrows the
+     * network for itself, and those rules read interview answers too.
+     */
+    it('counts the rules in a narrative preset’s own filter', async () => {
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        adapter: withStageFields({
+          'narrative-1': {
+            presets: [
+              {
+                id: 'narrative-preset-1',
+                label: { 'en-US': 'Default layout' },
+                layoutVariable: 'layout',
+                filter: { rules: [personRule('preset-a', 'name')] },
+              },
+            ],
+          },
+        }),
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+
+      expect(
+        await screen.findByText(
+          '"name" cannot be encrypted while a rule in "Narrative" compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.',
+        ),
+      ).toBeInTheDocument();
+      expect(attributeCheckbox('person', 'name')).not.toBeChecked();
     });
 
     /**

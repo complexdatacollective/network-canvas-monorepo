@@ -95,15 +95,6 @@ const refused = (refusal: CodebookRefusal): CodebookWriteOutcome => ({
   refusal,
 });
 
-/** Every procedure can answer these two; anything else never reached a host. */
-const protocolRefusal = (
-  refusal: Refusal<ProtocolBuilderTag> | undefined,
-): CodebookRefusal => {
-  if (refusal?._tag === 'ProtocolNotFound') return { kind: 'protocolGone' };
-  if (refusal?._tag === 'SectionNotFound') return { kind: 'sectionGone' };
-  return { kind: 'unreachable' };
-};
-
 const promotionRefusal = (resourceId: string | undefined): CodebookRefusal =>
   resourceId === undefined
     ? { kind: 'promotionFailed' }
@@ -143,30 +134,48 @@ const blockedRefusal = (
   return holders.length === 0 ? { kind: 'held' } : { kind: 'held', holders };
 };
 
+/** Every procedure a codebook write calls. */
+type CodebookWriteTag = Extract<
+  ProtocolBuilderTag,
+  'AcquireLock' | 'Submit' | 'Create' | 'RefactorDeleteVariable'
+>;
+
 /**
- * Every way a compound refactor is refused, in the researcher's terms.
+ * Every way a host refuses a codebook write, in the researcher's terms.
  *
- * Both of the contract's refactor errors are answered here rather than falling
- * through to "could not be sent": a change refused because somebody is editing
- * and one refused because the protocol still names what would go are both
- * things the researcher can act on, and both were reported as a connection
- * problem while nothing offered a delete to reach them with.
+ * One switch for every procedure a write calls, so a refusal the contract
+ * gains does not type-check until it is placed here rather than falling
+ * through to "could not be sent" — which is how a change somebody else was
+ * holding up, and one the protocol still had references to, were once both
+ * reported. A procedure is only ever answered with the refusals its
+ * own contract declares (see `attempt`), so placing a refusal here for one
+ * procedure changes nothing for the others. `undefined` is a failure no
+ * contract declares: the call never reached a host that would answer it.
  */
-const refactorRefusal = (
-  refusal:
-    | Refusal<'RefactorDeleteVariable' | 'RefactorDeleteEntityType'>
-    | undefined,
+const writeRefusal = (
+  refusal: Refusal<CodebookWriteTag> | undefined,
 ): CodebookRefusal => {
-  if (refusal?._tag === 'SectionsLocked') {
-    return blockedRefusal(refusal.blocked);
+  if (refusal === undefined) return { kind: 'unreachable' };
+  switch (refusal._tag) {
+    case 'ProtocolNotFound':
+      return { kind: 'protocolGone' };
+    case 'SectionNotFound':
+      return { kind: 'sectionGone' };
+    case 'NotLockHolder':
+      return heldRefusal(refusal.holder);
+    case 'SectionsLocked':
+      return blockedRefusal(refusal.blocked);
+    case 'ReferencesRemain':
+      return { kind: 'referencesRemain', references: refusal.remaining.length };
+    case 'InvalidShape':
+      return { kind: 'invalidShape' };
+    case 'PromotionFailed':
+      return promotionRefusal(refusal.failure.resourceId);
+    case 'SectionExists':
+      return { kind: 'sectionCreatedElsewhere' };
   }
-  if (refusal?._tag === 'ReferencesRemain') {
-    return {
-      kind: 'referencesRemain',
-      references: refusal.remaining.length,
-    };
-  }
-  return protocolRefusal(refusal);
+  // Every refusal is placed above: a new one does not type-check here.
+  return refusal satisfies never;
 };
 
 /**
@@ -235,7 +244,7 @@ async function rewriteSection(
       // release: a host that will not take it leaves nothing to act on.
       await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
     }
-    return refused(protocolRefusal(acquired.refusal));
+    return refused(writeRefusal(acquired.refusal));
   }
   if (acquired.data.lock === 'readOnly') {
     return refused(heldRefusal(acquired.data.holder));
@@ -258,20 +267,7 @@ async function rewriteSection(
       ...(promote === undefined ? {} : { promote }),
     });
     if (submitted.isSuccess) return { status: 'applied', sectionId: id };
-    const { refusal } = submitted;
-    if (refusal?._tag === 'NotLockHolder') {
-      return refused(heldRefusal(refusal.holder));
-    }
-    if (refusal?._tag === 'SectionsLocked') {
-      return refused(blockedRefusal(refusal.blocked));
-    }
-    if (refusal?._tag === 'InvalidShape') {
-      return refused({ kind: 'invalidShape' });
-    }
-    if (refusal?._tag === 'PromotionFailed') {
-      return refused(promotionRefusal(refusal.failure.resourceId));
-    }
-    return refused(protocolRefusal(refusal));
+    return refused(writeRefusal(submitted.refusal));
   } finally {
     await attempt(adapter, 'ReleaseLock', { protocolId, sectionId: id });
   }
@@ -405,20 +401,7 @@ async function createEgoCodebook(
     await readCreatedSection(deps, created.data.sectionId);
     return { status: 'applied', sectionId: created.data.sectionId };
   }
-  const { refusal } = created;
-  if (refusal?._tag === 'InvalidShape') {
-    return refused({ kind: 'invalidShape' });
-  }
-  if (refusal?._tag === 'SectionsLocked') {
-    return refused(blockedRefusal(refusal.blocked));
-  }
-  if (refusal?._tag === 'SectionExists') {
-    return refused({ kind: 'sectionCreatedElsewhere' });
-  }
-  if (refusal?._tag === 'PromotionFailed') {
-    return refused(promotionRefusal(refusal.failure.resourceId));
-  }
-  return refused(protocolRefusal(refusal));
+  return refused(writeRefusal(created.refusal));
 }
 
 /**
@@ -479,16 +462,14 @@ export function useCreateCodebookEntity(): (
         return { status: 'applied', sectionId: created.data.sectionId };
       }
       const { refusal } = created;
-      if (refusal?._tag === 'InvalidShape') {
-        return refused({ kind: 'invalidShape' });
-      }
-      if (refusal?._tag === 'SectionsLocked') {
-        return refused(blockedRefusal(refusal.blocked));
-      }
-      if (refusal?._tag === 'PromotionFailed') {
-        return refused(promotionRefusal(refusal.failure.resourceId));
-      }
-      return refused(protocolRefusal(refusal));
+      // A node or edge type's section is minted by the host, so no
+      // collaborator can have made it first, and the sentence for one that
+      // did is about the participant's own section.
+      return refused(
+        refusal?._tag === 'SectionExists'
+          ? { kind: 'unreachable' }
+          : writeRefusal(refusal),
+      );
     },
     [adapter, createKey, protocolId, queryClient, stagedCodebook],
   );
@@ -520,7 +501,7 @@ export function useDeleteCodebookVariable(): (
           sectionId: sectionIdForCodebookSubject(subject),
         };
       }
-      return refused(refactorRefusal(removed.refusal));
+      return refused(writeRefusal(removed.refusal));
     },
     [adapter, protocolId],
   );

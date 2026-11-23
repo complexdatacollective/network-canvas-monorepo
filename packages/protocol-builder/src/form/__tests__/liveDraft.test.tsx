@@ -66,7 +66,7 @@ function renderProbe() {
       fields: { label: 'Welcome', title: 'Welcome to the study' },
     },
     sections: (
-      <BuilderSection title="Page content">
+      <BuilderSection sectionKey="page-content" title="Page content">
         <Probe />
         <Field name="title" label="Page heading" component={InputField} />
       </BuilderSection>

@@ -61,9 +61,23 @@ Selecting an Interface will open the stage editor, which is where the configurat
 
 All stages have a name, which appears next to the stage icon in the timeline and helps you quickly differentiate between stages of the same type. Enter "Welcome" under **Stage Name**. When creating your own protocols, use a consistent system for naming your stages.
 
+<AppOnly app="current">
+
+### Writing the page
+
+The **Content** section contains what participants will see on this screen. You write it as one piece of text in the **Rich Text** editor. Type "Welcome to the Sample Protocol" on the first line. With the cursor still on that line, choose **Heading 1** from the list of text styles in the editor's toolbar to make it the page's heading. Next, on the lines below it, add the information that you want to show on the screen.
+
+### Adding images, video and audio
+
+A page can also show images, video and audio. To add one, place the cursor where it should go and choose **Insert image**, **Insert video** or **Insert audio** in the editor's toolbar. Then choose the file, either from a location on your device or from the [resource library](/en/design-protocols/key-concepts/resources). The file is added to the text as a block, which you can drag to another place. Select a block to open its settings, where you can write a **Description** for participants who use a screen reader, and choose how large the file appears and where it is placed on the page.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 ### Page heading
 
-The page heading allows you to customize a large title element that appears at the top of your Information interface. Enter "Welcome to the Sample Protocol" as the heading. Next, add the information you want displayed on the screen.
+The page heading allows you to customize a large title element that appears at the top of your Information interface. Enter "Welcome to the Sample Protocol" as the heading. Next, add the information that you want to show on the screen.
 
 ### Items
 
@@ -72,6 +86,8 @@ The items panel allows you to add various types of media to the screen. You can 
 To add a resource to this screen, click the **add new item** button at the bottom of the panel. A new screen opens where you can choose between the available media types. You can add text content directly in markdown. Add image, audio, and video files by selecting the type and browsing for the file, either from a location on your device or from the [resource library](/en/design-protocols/key-concepts/resources).
 
 <Screenshot axis="architect" name="edit-item"></Screenshot>
+
+</AppOnly>
 
 This tutorial will not cover the configuration of each Information interface included in the sample protocol. You can use Information interfaces as frequently as needed throughout your protocol to describe an upcoming task, orient a participant to a series of prompts, or present participants with a resource to consider.
 
@@ -135,7 +151,7 @@ In Architect you can also choose a **shape** for the node type, which is used al
 
 ![The Shape selector in Architect, offering Circle, Square, and Diamond.](/assets/img/architect-guide/node-type-shape.png)
 
-To vary the shape of nodes within the same type, see [Mapping a node variable to shape](/en/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape). To use drawings of your own as shapes, see [Custom Node Shapes](/en/design-protocols/custom-node-shapes).
+To vary the shape of nodes within the same type, see [Mapping a node variable to shape](/en/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape). To use drawings of your own as shapes, see [Using Custom Node Shapes](/en/design-protocols/tutorials/custom-node-shapes).
 
 Click **Save entity** to create the node type and return to the name generator edit screen.
 
@@ -444,7 +460,7 @@ question concerns, an attribute of the participant, or today's date. A node's
 label is never missing, so it can be inserted on its own. Any attribute can be
 missing when the question is shown, so Architect asks for two versions of the
 surrounding text, one for when the value is known and one for when it is not.
-For the full account, see [Piped Text](/en/design-protocols/piped-text).
+For the full account, see [Piped Text](/en/design-protocols/key-concepts/piped-text).
 
 </KeyConcept>
 
@@ -495,7 +511,7 @@ You should think carefully about how the choices you make regarding the
 background will impact the way your participants position their nodes.
 
 If the background defines quadrants, axes, or other regions, see [Responsive
-SVG Backgrounds](/en/design-protocols/responsive-svg-backgrounds).
+SVG Backgrounds](/en/design-protocols/tutorials/responsive-svg-backgrounds).
 The guide explains how to make the regions adapt to portrait and landscape
 screens, and how to infer a node's region from the normalized coordinates stored
 in its layout variable.
@@ -688,7 +704,7 @@ our edits on the stage.
 
 Next we will implement another Categorical Bin Interface. This time, we will create the stage as before, set the stage name to "Relationship Type" and select node type as "Person."
 
-Now we will configure both the network filtering on the stage as well as the skip logic for the stage. First, toggle "Filter" to "on" and press the "Add Alter Rule" button. Next we will configure the rule according to the following: node type "Person", rule type "Attribute", variable query "discuss_network_research", operator "exactly", and attribute value of "True."
+Now we will configure both the network filtering on the stage as well as the skip logic for the stage. First, toggle "Filter network" to "on" and press the "Add Alter Rule" button. Next we will configure the rule according to the following: node type "Person", rule type "Attribute", variable query "discuss_network_research", operator "exactly", and attribute value of "True."
 
 <Screenshot axis="architect" name="filter-skip"></Screenshot>
 
@@ -745,7 +761,7 @@ Repositioning on the Narrative Interface enables a participant to drag their alt
 
 <AppOnly app="current">
 
-The sample protocol is written in American English. In this section you will make it available in Spanish, translate the Welcome stage, and add a stage at which participants choose their language. The same steps apply to any language. [Translating Your Protocol](/en/design-protocols/translating-your-protocol) describes each tool in full, and discusses the methodological considerations that should guide the translation of a protocol for a real study.
+The sample protocol is written in American English. In this section you will make it available in Spanish, translate the Welcome stage, and add a stage at which participants choose their language. The same steps apply to any language. [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol) describes each tool in full, and discusses the methodological considerations that should guide the translation of a protocol for a real study.
 
 ### Adding a language
 
@@ -757,11 +773,11 @@ Spanish now appears beside American English, with a **Missing translations** bad
 
 ### Translating the Welcome stage
 
-Return to the stage list, where a note now reports that some wording is not yet translated into Spanish, and open the **Welcome** stage. Because the protocol has two languages, each text field in the stage editor has a language menu. Choose **Spanish** from the menu beside **Page heading**. Every field in the editor switches to Spanish together. The heading field is empty, and a note beneath it explains that participants using Spanish will see the American English text.
+Return to the stage list, where a note now reports that some wording is not yet translated into Spanish, and open the **Welcome** stage. Because the protocol has two languages, each text field in the stage editor has a language menu. Choose **Spanish** from the menu beside **Rich Text**. Every field in the editor switches to Spanish together. The page's text is empty, and a note beneath it explains that participants using Spanish will see the American English text.
 
 ![The Welcome stage's Page heading with Spanish chosen for editing, before it has been translated.](/assets/img/architect/localization/editor-missing-translation.png)
 
-Enter "Bienvenida" as the stage name and "Te damos la bienvenida al protocolo de ejemplo" as the page heading, then click **Finished Editing**.
+Enter "Bienvenida" as the stage name. In the **Rich Text** editor, type "Te damos la bienvenida al protocolo de ejemplo" and make it the page's heading by choosing **Heading 1**, as you did in American English. Then click **Finished Editing**.
 
 Translating stage by stage suits short protocols. For a longer protocol, or when the translation is done by someone other than the protocol's author, the translation table is more efficient. Return to the **Languages** page and click **Open translation table**. The table lists every text in the protocol beside its translation into each language, and the texts you have just translated appear in the Spanish column. Untranslated texts show, in lighter type, the American English text that participants will see instead.
 
@@ -785,7 +801,7 @@ With the Language Chooser stage open, click **Preview**. The preview opens in a 
 
 <AppOnly app="classic">
 
-Protocols built in Architect Classic are written in a single language. To offer a protocol in more than one language, upgrade it in Architect, which supports schema 9 localization. See [Translating Your Protocol](/en/design-protocols/translating-your-protocol).
+Protocols built in Architect Classic are written in a single language. To offer a protocol in more than one language, upgrade it in Architect, which supports schema 9 localization. See [Translating Your Protocol](/en/design-protocols/tutorials/translating-your-protocol).
 
 </AppOnly>
 
@@ -826,6 +842,6 @@ There are numerous ways to transition from building the protocol within Architec
 
 </AppOnly>
 
-To see how other studies combine these interfaces in complete protocols, browse the [Protocol Gallery](/en/design-protocols/protocol-gallery).
+To see how other studies combine these interfaces in complete protocols, browse the [Protocol Gallery](https://protocolgallery.networkcanvas.com).
 
 In the next tutorial, [Protocol and Data Workflows](/en/collect-data/protocol-and-data-workflows), we will show you how to conduct research using the Network Canvas interview apps.

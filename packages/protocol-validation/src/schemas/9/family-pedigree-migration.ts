@@ -257,9 +257,10 @@ const INTRODUCTION_TITLE = 'Introduction';
 
 /**
  * Schema 9's pedigree has no introduction screen, so a schema 8 one becomes an
- * Information stage shown just before the pedigree. Schema 9 requires an
- * Information stage to have a title, so it takes the heading schema 8 showed
- * above the screen; the pedigree's label only names the stage for
+ * Information stage shown just before the pedigree. It is built in schema 8's
+ * shape, a title and items, for `combineInformationContent` to write as one
+ * text with every other Information stage. Its title is the heading schema 8
+ * showed above the screen; the pedigree's label only names the stage for
  * researchers. It is shown or skipped by the pedigree's own skip logic, so
  * the two still appear or are skipped together. Text items with no text,
  * which showed nothing, are left out; an introduction left with no items adds

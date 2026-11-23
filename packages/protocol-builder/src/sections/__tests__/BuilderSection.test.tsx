@@ -9,6 +9,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
 import { EntitySubjectPickerField } from '../../fields/EntityTypePickerField.tsx';
 import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
+import { SectionHeaderActionContext } from '../../form/sectionHeaderAction.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
@@ -34,7 +35,7 @@ const RadioGroup = RadioGroupField as ComponentType<Record<string, unknown>>;
  */
 function RosterSource() {
   return (
-    <BuilderSection title="Roster source">
+    <BuilderSection sectionKey="roster-source" title="Roster source">
       <Field<typeof RadioGroup>
         name="dataSource"
         label="Roster data source"
@@ -58,6 +59,7 @@ function SearchOptions() {
     <>
       <RosterSource />
       <BuilderSection
+        sectionKey="roster-search"
         title="Search options"
         capability={SEARCH}
         resetOn="dataSource"
@@ -81,7 +83,7 @@ function SearchOptions() {
 function SearchOptionsAgainstASubject() {
   return (
     <>
-      <BuilderSection title="Node type">
+      <BuilderSection sectionKey="node-type" title="Node type">
         <Field<typeof EntitySubjectPickerField>
           name="subject"
           label="Node type"
@@ -90,6 +92,7 @@ function SearchOptionsAgainstASubject() {
         />
       </BuilderSection>
       <BuilderSection
+        sectionKey="roster-search"
         title="Search options"
         capability={SEARCH}
         resetOn="subject"
@@ -159,6 +162,7 @@ function CardDetails() {
     <>
       <RosterSource />
       <BuilderSection
+        sectionKey="card-display"
         title="Card display"
         capability={CARDS}
         resetOn="dataSource"
@@ -474,6 +478,37 @@ describe('a capability that resets on a value with structure', () => {
       expect(
         screen.getByRole('switch', { name: 'Search options' }),
       ).not.toBeChecked(),
+    );
+  });
+});
+
+describe('the key a section is named by', () => {
+  it('is on the section’s element, in the published list, and handed to the host’s header action', async () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      sections: (
+        <SectionHeaderActionContext
+          value={({ key, title }) => (
+            <span data-testid={`action-${key}`}>{title}</span>
+          )}
+        >
+          <BuilderSection sectionKey="filter-network" title="Quién cuenta">
+            <Field name="label" label="Stage name" component={InputField} />
+          </BuilderSection>
+        </SectionHeaderActionContext>
+      ),
+    });
+
+    await waitFor(() =>
+      expect(harness.sectionKeys()).toEqual(['filter-network']),
+    );
+    const element = document.querySelector('[data-section-key]');
+    expect(element?.getAttribute('data-section-key')).toBe('filter-network');
+    expect(element).toContainElement(
+      screen.getByTestId('action-filter-network'),
+    );
+    expect(screen.getByTestId('action-filter-network')).toHaveTextContent(
+      'Quién cuenta',
     );
   });
 });

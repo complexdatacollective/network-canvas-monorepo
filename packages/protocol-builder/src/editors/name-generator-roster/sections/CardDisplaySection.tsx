@@ -167,6 +167,7 @@ export default function CardDisplaySection() {
 
   return (
     <BuilderSection
+      sectionKey="card-display"
       title={intl.formatMessage(cardDisplayMessages.title)}
       description={shell.description}
       disabled={shell.disabled}

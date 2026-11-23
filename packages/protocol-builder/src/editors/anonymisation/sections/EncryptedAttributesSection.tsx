@@ -54,14 +54,18 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const INTERVIEW_NETWORK = 'existing';
 
 /**
- * The rules in one stage that read interview answers: its own filter, its skip
- * logic, and any side panel over the interview's own network. These are the
+ * The rules in one stage that read interview answers: its own filter, each
+ * filter of a narrative's presets, its skip logic, and any side panel over
+ * the interview's own network. These are the
  * rule sets the protocol schema refuses a comparison on an encrypted attribute
  * in — rules are checked without the participant's passphrase. A panel over an
  * imported file reads the researcher's own rows, which are never encrypted.
  */
 const rulesReadingInterview = (stage: Readonly<Stage>) => [
   ...('filter' in stage ? (stage.filter?.rules ?? []) : []),
+  ...(stage.type === 'Narrative' ? stage.presets : []).flatMap(
+    (preset) => preset.filter?.rules ?? [],
+  ),
   ...(stage.skipLogic?.filter.rules ?? []),
   ...('panels' in stage ? (stage.panels ?? []) : []).flatMap((panel) =>
     panel.dataSource === INTERVIEW_NETWORK ? (panel.filter?.rules ?? []) : [],
@@ -520,6 +524,7 @@ export default function EncryptedAttributesSection() {
 
   return (
     <BuilderSection
+      sectionKey="encrypted-attributes"
       title={intl.formatMessage(anonymisationMessages.encryptedAttributesTitle)}
       description={intl.formatMessage(
         anonymisationMessages.encryptedAttributesDescription,

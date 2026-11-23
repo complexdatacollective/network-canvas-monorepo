@@ -127,15 +127,13 @@ const DRAFT_SECTIONS = {
     id: STAGE_A,
     type: 'Information',
     label: enUS('Welcome'),
-    title: enUS('Welcome'),
-    items: [],
+    content: enUS('# Welcome'),
   },
   [`stage:${STAGE_B}`]: {
     id: STAGE_B,
     type: 'Information',
     label: enUS('Follow-up'),
-    title: enUS('Follow-up'),
-    items: [],
+    content: enUS('# Follow-up'),
   },
   assets: {},
 };
@@ -387,8 +385,7 @@ async function collaboratorAddsScreen(label: string): Promise<void> {
     document: Redacted.make({
       type: 'Information',
       label: enUS(label),
-      title: enUS(label),
-      items: [],
+      content: enUS(`# ${label}`),
     }),
   });
 }
@@ -1115,8 +1112,7 @@ describe('Studio editor shell', () => {
         commandWrote.set(sectionId({ kind: 'stage', stageId }), {
           id: stageId,
           type: 'Information',
-          title: enUS('Untitled screen'),
-          items: [],
+          content: enUS('# Untitled screen'),
         });
         commandWrote.set(STAGE_ORDER, { stages: [STAGE_A, STAGE_B, stageId] });
         return { sequence: '3', hash: 'r3' };
@@ -1285,8 +1281,7 @@ describe('a protocol that is not all here', () => {
         id: STAGE_C,
         type: 'Information',
         label: enUS('Closing'),
-        title: enUS('Closing'),
-        items: [],
+        content: enUS('# Closing'),
       },
     });
     unreadableSections.set(sectionId({ kind: 'stage', stageId: missing }), how);
@@ -1798,8 +1793,7 @@ const THREE_SCREENS: Readonly<Record<string, SectionDoc>> = {
     id: STAGE_C,
     type: 'Information',
     label: enUS('Third'),
-    title: enUS('Third'),
-    items: [],
+    content: enUS('# Third'),
   },
 };
 
@@ -2191,22 +2185,15 @@ const BLANK_TITLE: Readonly<Record<string, SectionDoc>> = {
   ...ENDS_AT_FINISH,
   [`stage:${STAGE_B}`]: {
     ...DRAFT_SECTIONS[`stage:${STAGE_B}`],
-    title: enUS(''),
+    content: enUS(''),
   },
 };
 
 const inspector = async () =>
   within(await screen.findByRole('complementary', { name: 'Inspector' }));
 
-/** The visible label of the control that has focus, as a screen reader reads it. */
-function focusedLabel(): string {
-  const ids = document.activeElement?.getAttribute('aria-labelledby') ?? '';
-  return ids
-    .split(' ')
-    .map((id) => document.getElementById(id)?.textContent ?? '')
-    .join(' ')
-    .trim();
-}
+/** The Information page's rich text field, by the name a screen reader reads. */
+const pageTextField = () => screen.getByRole('textbox', { name: 'Rich Text' });
 
 describe('the validation problems', () => {
   it('are controls that open the screen they are about and focus the field', async () => {
@@ -2219,7 +2206,7 @@ describe('the validation problems', () => {
       await (await inspector()).findByRole('button', { name: /Follow-up$/ }),
     );
 
-    await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+    await waitFor(() => expect(pageTextField()).toHaveFocus());
     expect(
       screen.getByRole('button', { name: 'Follow-upInformation' }),
     ).toHaveAttribute('aria-current', 'page');
@@ -2249,7 +2236,7 @@ describe('the validation problems', () => {
     document.addEventListener('focusin', record);
     try {
       fireEvent.click(discard);
-      await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+      await waitFor(() => expect(pageTextField()).toHaveFocus());
     } finally {
       document.removeEventListener('focusin', record);
     }
@@ -2327,7 +2314,7 @@ describe('the validation problems', () => {
       ...ENDS_AT_FINISH,
       [`stage:${STAGE_A}`]: {
         ...HOST_SECTIONS[`stage:${STAGE_A}`],
-        title: enUS(''),
+        content: enUS(''),
       },
     });
     renderEditor();
@@ -2341,7 +2328,7 @@ describe('the validation problems', () => {
       }),
     );
 
-    await waitFor(() => expect(focusedLabel()).toMatch(/^Page heading/));
+    await waitFor(() => expect(pageTextField()).toHaveFocus());
   });
 
   it('open a section of the protocol that is not a screen', async () => {
@@ -2387,16 +2374,19 @@ describe('the validation problems', () => {
   // The validator describes a shape, in English whatever the reader's
   // language: "Invalid input: expected string, received undefined".
   it.each([
-    ['has no heading at all', undefined],
-    ['has a blank heading', ''],
+    ['has no content at all', undefined],
+    ['has blank content', ''],
   ])(
     'say in the editor’s own words that a value is missing when a screen %s',
-    async (_, title) => {
-      const { title: _title, ...untitled } = DRAFT_SECTIONS[`stage:${STAGE_B}`];
+    async (_, content) => {
+      const { content: _content, ...untitled } =
+        DRAFT_SECTIONS[`stage:${STAGE_B}`];
       await seedHost({
         ...ENDS_AT_FINISH,
         [`stage:${STAGE_B}`]:
-          title === undefined ? untitled : { ...untitled, title: enUS(title) },
+          content === undefined
+            ? untitled
+            : { ...untitled, content: enUS(content) },
       });
       renderEditor();
 
@@ -2493,7 +2483,7 @@ describe('the editing lock', () => {
       ...HOST_SECTIONS,
       [`stage:${STAGE_A}`]: {
         ...HOST_SECTIONS[`stage:${STAGE_A}`],
-        items: [{ id: 'item-1', type: 'text', content: enUS('Hello') }],
+        content: enUS('# Welcome, from the host\n\nHello'),
       },
     });
     renderEditor();

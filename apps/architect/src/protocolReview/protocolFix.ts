@@ -73,22 +73,367 @@ const parseJson = (value: string | null): unknown => {
 
 /**
  * A placeholder as the review writes one where a fix needs a fact it cannot
- * know: square brackets around capitals, such as [HELPLINE NAME].
+ * know: square brackets around capitals, such as [HELPLINE NAME]. The review
+ * writes it in the protocol's language, so "capitals" means no lower-case
+ * letter in any script: [NÚMERO DE TELÉFONO], and [热线名称] in a script that
+ * has no case. The brackets must hold a letter, so [1] is not one, and the
+ * text of a Markdown link ([NHS 111](https://…)) is not one either. One
+ * character is enough only in a script without case, where it can be a
+ * whole word ([姓]); a lone capital ([A], [X]) is far likelier a label.
  */
-const PLACEHOLDER = /\[[A-Z][A-Z0-9 _/'-]+\]/;
+const PLACEHOLDER =
+  /\[(?=[^[\]\n]*\p{L})(?:[^[\]\n\p{Ll}]{2,}|\p{Lo})\](?!\()/u;
 
-const holdsPlaceholder = (value: unknown): boolean => {
-  if (typeof value === 'string') return PLACEHOLDER.test(value);
-  if (Array.isArray(value)) return value.some(holdsPlaceholder);
-  return isJsonObject(value) && Object.values(value).some(holdsPlaceholder);
+/**
+ * Whether `written` holds a placeholder that `current`, what it replaces,
+ * does not hold in the same place. Members of arrays are paired as
+ * `replacedMembers` pairs them, so a translation kept as it was
+ * (`keepTranslations`) is not one the fix writes.
+ */
+const holdsNewPlaceholder = (written: unknown, current: unknown): boolean => {
+  if (typeof written === 'string') {
+    return written !== current && PLACEHOLDER.test(written);
+  }
+  if (Array.isArray(written)) {
+    const replaced = Array.isArray(current)
+      ? replacedMembers(written, current)
+      : [];
+    return written.some((member: unknown, index) =>
+      holdsNewPlaceholder(member, replaced[index]),
+    );
+  }
+  return (
+    isJsonObject(written) &&
+    Object.entries(written).some(([key, value]) =>
+      holdsNewPlaceholder(
+        value,
+        isJsonObject(current) && Object.hasOwn(current, key)
+          ? current[key]
+          : undefined,
+      ),
+    )
+  );
 };
 
 /**
  * Whether `operation` writes a placeholder: a text the researcher has still to
- * supply, which a participant must never be shown.
+ * supply, which a participant must never be shown. Given the protocol it
+ * applies to, a placeholder a `set` leaves where the protocol already holds
+ * it (a translation kept as it was) is not one it writes.
  */
-export const writesPlaceholder = (operation: StoredOperation): boolean =>
-  operation.op !== 'remove' && holdsPlaceholder(parseJson(operation.value));
+export const writesPlaceholder = (
+  operation: StoredOperation,
+  protocol?: unknown,
+): boolean => {
+  if (operation.op === 'remove') return false;
+  const segments =
+    operation.op === 'set' && protocol !== undefined
+      ? parsePath(operation.path)
+      : null;
+  const target = segments === null ? null : readPath(protocol, segments);
+  return holdsNewPlaceholder(
+    parseJson(operation.value),
+    target?.found ? target.value : undefined,
+  );
+};
+
+/**
+ * The top-level parts of a protocol a fix may edit: the interview and its
+ * data model. The rest is not the review's to change: the protocol's name
+ * and description, its languages, its assets (an API key among them, which
+ * the review is sent a stand-in for), Network Canvas's own wording, and the
+ * study details the review itself is kept in.
+ */
+const EDITABLE_PARTS = new Set(['stages', 'codebook']);
+
+/**
+ * Whether every operation is inside a part of the protocol a fix may edit.
+ * A path that is not a pointer is left for applying it to refuse.
+ */
+export const fixStaysInBounds = (
+  operations: readonly StoredOperation[],
+): boolean =>
+  operations.every((operation) => {
+    const first = parsePath(operation.path)?.[0];
+    return first === undefined || EDITABLE_PARTS.has(first);
+  });
+
+type MemberKey = (member: unknown) => string | null;
+
+const scalarKey =
+  (property: string): MemberKey =>
+  (member) => {
+    const found = isJsonObject(member) ? member[property] : undefined;
+    return typeof found === 'string' ||
+      typeof found === 'number' ||
+      typeof found === 'boolean'
+      ? `${typeof found}:${found}`
+      : null;
+  };
+
+/** A member's `id`. */
+const idOf = scalarKey('id');
+
+const isScalar = (value: unknown): boolean =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean';
+
+/**
+ * What a member holds that describes it rather than names what it refers to:
+ * its label, and whether a Yes/No answer is the negative one.
+ */
+const NOT_REFERENCES = new Set(['label', 'negative']);
+
+/**
+ * What a member without an id refers to: everything else it holds that is
+ * text, a number, or true or false (`NOT_REFERENCES`). An answer option's
+ * `value`, the edge `type` a narrative preset displays, the `variable` it
+ * highlights or a roster sorts by. A number reads as its text, as the
+ * protocol compares answer values (`optionValueKey`): `1` and `"1"` are the
+ * same answer.
+ */
+const referenceOf: MemberKey = (member) => {
+  if (!isJsonObject(member) || idOf(member) !== null) return null;
+  const held = Object.entries(member)
+    .filter(([key, value]) => !NOT_REFERENCES.has(key) && isScalar(value))
+    .map(([key, value]) => [
+      key,
+      typeof value === 'number' ? String(value) : value,
+    ])
+    .toSorted(([a], [b]) => String(a).localeCompare(String(b)));
+  return held.length === 0 ? null : JSON.stringify(held);
+};
+
+/**
+ * A member's label, as far as `written` words it: the same key for
+ * a member whose label holds every translation `written` gives, unchanged.
+ */
+const labelAsWordedBy =
+  (written: unknown): MemberKey =>
+  (member) => {
+    if (!isJsonObject(member) || idOf(member) !== null) return null;
+    const { label } = member;
+    if (typeof label === 'string') return label;
+    if (!isJsonObject(label)) return null;
+    const worded = isJsonObject(written) ? written.label : undefined;
+    if (!isJsonObject(worded) || Object.keys(worded).length === 0) return null;
+    const shared = Object.keys(worded).toSorted();
+    return shared.every((locale) => typeof label[locale] === 'string')
+      ? JSON.stringify(shared.map((locale) => [locale, label[locale]]))
+      : null;
+  };
+
+/**
+ * For each member of `written`, the member of `current` it replaces, or
+ * undefined when there is no telling; nothing is carried over to it.
+ *
+ * A member with an `id` replaces the one with that id. Others (an answer
+ * option, an entry in a narrative preset or a roster's sorting) have none.
+ * Such a member replaces the one whose label it leaves as it was, and
+ * failing that the one that refers to the same thing (`referenceOf`): a fix
+ * that rewords a label keeps what it refers to, and one that recodes the
+ * values keeps the labels, whose translations belong to the label. Each of
+ * these counts only when exactly one member on each side answers to it.
+ * Members that hold nothing to tell them apart are paired by position, when
+ * that is so of every member of both arrays and both are the same length.
+ */
+const replacedMembers = (
+  written: readonly unknown[],
+  current: readonly unknown[],
+): unknown[] => {
+  const replaced: unknown[] = written.map(() => undefined);
+  const paired = new Set<number>();
+  const claimed = new Set<number>();
+  const pairBy = (keyOf: (member: unknown, index: number) => MemberKey) => {
+    const pairs: [number, number][] = [];
+    for (const [index, member] of written.entries()) {
+      if (paired.has(index)) continue;
+      const key = keyOf(member, index);
+      const mine = key(member);
+      if (mine === null) continue;
+      const rivals = written.filter(
+        (other, at) => !paired.has(at) && key(other) === mine,
+      );
+      const candidates = current.flatMap((candidate, at) =>
+        !claimed.has(at) && key(candidate) === mine ? [at] : [],
+      );
+      const [only] = candidates;
+      if (
+        rivals.length === 1 &&
+        candidates.length === 1 &&
+        only !== undefined
+      ) {
+        pairs.push([index, only]);
+      }
+    }
+    for (const [index, at] of pairs) {
+      replaced[index] = current[at];
+      paired.add(index);
+      claimed.add(at);
+    }
+  };
+  pairBy(() => idOf);
+  pairBy((member) => labelAsWordedBy(member));
+  pairBy(() => referenceOf);
+  const told = [...written, ...current].some(
+    (member) => idOf(member) !== null || referenceOf(member) !== null,
+  );
+  if (!told && written.length === current.length) return [...current];
+  return replaced;
+};
+
+/**
+ * `written` with, in every text that `current` holds in the same place, the
+ * translations `written` does not name. The review writes only the
+ * protocol's default language, so a fix that replaces a whole prompt, option
+ * or stage would otherwise delete every other language's text in it. Members
+ * of arrays are paired as `replacedMembers` pairs them.
+ */
+const keepTranslations = (
+  written: unknown,
+  current: unknown,
+  locales: readonly string[],
+): unknown => {
+  if (isLocalizedValue(written, locales)) {
+    return isLocalizedValue(current, locales)
+      ? { ...current, ...written }
+      : written;
+  }
+  if (Array.isArray(written)) {
+    if (!Array.isArray(current)) return written;
+    const replaced = replacedMembers(written, current);
+    return written.map((member: unknown, index) =>
+      keepTranslations(member, replaced[index], locales),
+    );
+  }
+  if (isJsonObject(written)) {
+    if (!isJsonObject(current)) return written;
+    return Object.fromEntries(
+      Object.entries(written).map(([key, value]) => [
+        key,
+        Object.hasOwn(current, key)
+          ? keepTranslations(value, current[key], locales)
+          : value,
+      ]),
+    );
+  }
+  return written;
+};
+
+/**
+ * `value` with each localized string in it cut to its translation in the
+ * default language. The review is asked to write that language only, and
+ * Architect tells the researcher that a fix changes no other.
+ */
+const onlyDefaultLanguage = (
+  value: unknown,
+  locales: readonly string[],
+  defaultLocale: string,
+): unknown => {
+  if (isLocalizedValue(value, locales)) {
+    const text = value[defaultLocale];
+    return text === undefined ? {} : { [defaultLocale]: text };
+  }
+  if (Array.isArray(value)) {
+    return value.map((member: unknown) =>
+      onlyDefaultLanguage(member, locales, defaultLocale),
+    );
+  }
+  if (isJsonObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, member]) => [
+        key,
+        onlyDefaultLanguage(member, locales, defaultLocale),
+      ]),
+    );
+  }
+  return value;
+};
+
+/**
+ * Where a member with an id sits in its array, as a path spelled with its id,
+ * when `operation` removes it from `current`; null otherwise.
+ */
+const removedMemberPath = (
+  current: unknown,
+  operation: StoredOperation,
+): string | null => {
+  const segments = parsePath(operation.path);
+  if (operation.op !== 'remove' || segments === null) return null;
+  const parent = readPath(current, segments.slice(0, -1));
+  const member = readPath(current, segments);
+  return parent.found &&
+    Array.isArray(parent.value) &&
+    member.found &&
+    isJsonObject(member.value) &&
+    member.value.id === segments.at(-1)
+    ? formatPath(segments)
+    : null;
+};
+
+/**
+ * Where the member `operation` inserts will sit, as a path spelled with its
+ * id; null when it is not an insert of a member with an id.
+ */
+const insertedMemberPath = (
+  operation: StoredOperation,
+  value: unknown,
+): string | null => {
+  const segments = parsePath(operation.path);
+  if (operation.op !== 'insert' || segments === null) return null;
+  return isJsonObject(value) && typeof value.id === 'string'
+    ? formatPath([...segments.slice(0, -1), value.id])
+    : null;
+};
+
+/**
+ * Whether any of `operations` writes or removes a translation in a language
+ * other than `protocol`'s default one: by its path, or inside a member it
+ * adds. A member it adds in place of one with the same id it removed may
+ * keep that one's translations as they were (`normalizeOperations`), and a
+ * member it only moves (`markMoves`) keeps the ones it has. Read
+ * sequentially, each operation against what the ones before it made.
+ */
+const writesOtherLanguage = (
+  protocol: CurrentProtocol,
+  operations: readonly StoredOperation[],
+): boolean => {
+  const { locales, defaultLocale } = protocol.localization;
+  let current: unknown = protocol;
+  const removed = new Map<string, unknown>();
+  for (const operation of operations) {
+    const segments = parsePath(operation.path);
+    const last = segments?.at(-1);
+    if (
+      segments !== null &&
+      last !== undefined &&
+      last !== defaultLocale &&
+      locales.includes(last)
+    ) {
+      const parent = readPath(current, segments.slice(0, -1));
+      if (parent.found && isLocalizedValue(parent.value, locales)) return true;
+    }
+    if (operation.op === 'insert' && !operation.moves) {
+      const value = parseJson(operation.value);
+      const at = insertedMemberPath(operation, value);
+      const replaced = at === null ? undefined : removed.get(at);
+      const allowed = keepTranslations(
+        onlyDefaultLanguage(value, locales, defaultLocale),
+        replaced,
+        locales,
+      );
+      if (JSON.stringify(allowed) !== JSON.stringify(value)) return true;
+    }
+    const at = removedMemberPath(current, operation);
+    const member = segments === null ? null : readPath(current, segments);
+    if (at !== null && member?.found) removed.set(at, member.value);
+    const applied = applyOperations(current, [operation]);
+    if (!applied.ok) return false;
+    current = applied.result;
+  }
+  return false;
+};
 
 /**
  * The fix's operations rewritten to treat translations the way Architect's
@@ -98,8 +443,13 @@ export const writesPlaceholder = (operation: StoredOperation): boolean =>
  *
  * - a `set` of plain text where the protocol holds a localized string writes
  *   that text as the default language's translation, keeping the others;
- * - a `set` of a localized string over a localized string replaces the
- *   translations it names and keeps the ones it does not.
+ * - a `set` of a localized string writes only its default language's
+ *   translation (`onlyDefaultLanguage`) and keeps the others;
+ * - a `set` of anything that holds texts (a prompt, an option, a list of
+ *   them, a stage) does the same for each text inside it
+ *   (`keepTranslations`);
+ * - an `insert` of a member with the id of one the fix removed from that
+ *   array does the same against the member it removed.
  *
  * Read sequentially against `protocol` with each operation applied in turn,
  * so a later operation sees what an earlier one made. Operations past one
@@ -124,26 +474,54 @@ const normalizeEach = (
   const { locales, defaultLocale } = protocol.localization;
   let current: unknown = protocol;
   const normalized: StoredOperation[] = [];
+  const removed = new Map<string, unknown>();
   let applying = true;
   for (const operation of operations) {
     let next: StoredOperation = operation;
     const segments = parsePath(operation.path);
+    if (applying && operation.op === 'insert') {
+      const value = parseJson(operation.value);
+      const at = insertedMemberPath(operation, value);
+      const replaced = at === null ? undefined : removed.get(at);
+      if (replaced !== undefined) {
+        const kept = JSON.stringify(
+          keepTranslations(
+            onlyDefaultLanguage(value, locales, defaultLocale),
+            replaced,
+            locales,
+          ),
+        );
+        if (kept !== operation.value) next = { ...operation, value: kept };
+      }
+    }
+    const at = applying ? removedMemberPath(current, operation) : null;
+    if (at !== null && segments !== null) {
+      const member = readPath(current, segments);
+      if (member.found) removed.set(at, member.value);
+    }
     if (applying && operation.op === 'set' && segments !== null) {
       const target = readPath(current, segments);
-      const value = parseJson(operation.value);
-      if (target.found && isLocalizedValue(target.value, locales)) {
-        if (typeof value === 'string') {
-          next = {
-            op: 'set',
-            path: formatPath([...segments, defaultLocale]),
-            value: operation.value,
-          };
-        } else if (isLocalizedValue(value, locales)) {
-          next = {
-            op: 'set',
-            path: operation.path,
-            value: JSON.stringify({ ...target.value, ...value }),
-          };
+      const written = parseJson(operation.value);
+      const value =
+        written === undefined
+          ? undefined
+          : onlyDefaultLanguage(written, locales, defaultLocale);
+      if (
+        target.found &&
+        isLocalizedValue(target.value, locales) &&
+        typeof value === 'string'
+      ) {
+        next = {
+          op: 'set',
+          path: formatPath([...segments, defaultLocale]),
+          value: operation.value,
+        };
+      } else if (value !== undefined) {
+        const kept = JSON.stringify(
+          target.found ? keepTranslations(value, target.value, locales) : value,
+        );
+        if (kept !== JSON.stringify(written)) {
+          next = { op: 'set', path: operation.path, value: kept };
         }
       }
     }
@@ -204,10 +582,14 @@ export const recordFix = (
   const applied = applyOperations(reviewed, recorded);
   // A placeholder inside something the fix adds cannot be replaced before the
   // fix is made (only the texts a fix sets can be edited), so such a fix is
-  // not offered: it would put the placeholder in front of participants.
+  // not offered: it would put the placeholder in front of participants. Nor
+  // is one that reaches outside the interview and its data model, or one
+  // that changes a language other than the default.
   if (
     !applied.ok ||
-    recorded.some((o) => o.op === 'insert' && writesPlaceholder(o))
+    !fixStaysInBounds(recorded) ||
+    recorded.some((o) => o.op === 'insert' && writesPlaceholder(o)) ||
+    writesOtherLanguage(reviewed, recorded)
   ) {
     return { operations: recorded, targets: null, expected: null };
   }

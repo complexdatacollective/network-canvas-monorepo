@@ -8,6 +8,7 @@ import {
   withoutSuppliedWording,
   withSuppliedWording,
 } from '@codaco/interview/supplied-wording';
+import { withTranslation } from '@codaco/protocol-builder/localization/localizedText';
 import {
   canonicalizeLocale,
   collectLocalizedStrings,
@@ -28,7 +29,6 @@ import {
   suppliedOptionLabelsAfterLanguageChange,
   withFallbackLanguage,
 } from '@codaco/protocol-validation';
-import { withTranslation } from '~/utils/localizedText';
 
 export type LocaleOperationFailure =
   /** Not a well-formed BCP 47 language tag, or the undetermined language. */
@@ -471,7 +471,12 @@ export const setTranslation = (
     protocol: storedAfterEdit(
       protocol,
       createNextState(shown, (draft) => {
-        setAtPath(draft, hit.path, withTranslation(hit.value, locale, text));
+        // Never empty: blank text was refused above.
+        setAtPath(
+          draft,
+          hit.path,
+          withTranslation(hit.value, locale, text) ?? {},
+        );
       }),
     ),
   };

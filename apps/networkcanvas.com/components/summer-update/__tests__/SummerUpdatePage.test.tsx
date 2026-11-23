@@ -27,7 +27,7 @@ const { launchAnimationControls, motionPreferences } = vi.hoisted(() => ({
     start: vi.fn(() => Promise.resolve()),
     stop: vi.fn(),
   },
-  motionPreferences: { shouldReduce: false },
+  motionPreferences: { shouldReduce: false, heroInView: true },
 }));
 
 vi.mock('../../ui/HomepagePageBackground', () => ({
@@ -186,6 +186,7 @@ vi.mock('motion/react', () => ({
   },
   useAnimation: () => ({ start: vi.fn() }),
   useAnimationControls: () => launchAnimationControls,
+  useInView: () => motionPreferences.heroInView,
   useMotionValue: (value: number) => ({
     get: () => value,
     set: vi.fn(),
@@ -249,6 +250,7 @@ afterEach(() => {
   launchAnimationControls.start.mockClear();
   launchAnimationControls.stop.mockClear();
   motionPreferences.shouldReduce = false;
+  motionPreferences.heroInView = true;
 });
 
 describe('SummerUpdatePage', () => {
@@ -726,5 +728,25 @@ describe('SummerUpdatePage', () => {
 
     expect(projectName.style.animation).toBe('');
     expect(projectName.style.webkitTextFillColor).toBe('var(--color-white)');
+  });
+
+  it('runs the text glow only while the project name is in view', () => {
+    const playStateOfGlow = () =>
+      within(
+        screen.getByRole('heading', {
+          name: 'Introducing the next generation of Network Canvas apps',
+        }),
+      ).getByText('Network Canvas').style.animationPlayState;
+
+    // The glow repaints the text, and a browser keeps a repainting animation
+    // going for an element that has scrolled away.
+    motionPreferences.heroInView = false;
+    const { unmount } = renderWithIntl(<SummerUpdatePage />);
+    expect(playStateOfGlow()).toBe('paused');
+    unmount();
+
+    motionPreferences.heroInView = true;
+    renderWithIntl(<SummerUpdatePage />);
+    expect(playStateOfGlow()).toBe('running');
   });
 });

@@ -13,6 +13,7 @@ import {
   presentationalTextValue,
 } from '../../../PresentationalText';
 import { cx } from '../../../utils/cva';
+import type { RichTextVersionPlace } from './versionsNode';
 
 const messages = defineMessages({
   search: {
@@ -26,6 +27,12 @@ const messages = defineMessages({
     defaultMessage: 'Nothing matches your search.',
     description:
       'Shown in the rich text editor’s insert menu when the search matches nothing that can be inserted.',
+  },
+  required: {
+    id: 'frescoUi.richTextEditor.insertMenuRequired',
+    defaultMessage: 'Required in this text',
+    description:
+      'Marker on an entry in the rich text editor’s insert menu, such as a person’s name, that the text being written must include and does not include yet.',
   },
 });
 
@@ -60,6 +67,13 @@ export type RichTextInsertMenuItem = Readonly<{
   request?: (
     insert: (content: JSONContent | readonly JSONContent[]) => void,
   ) => void;
+  /**
+   * Whether the text being edited must include this and does not yet, given
+   * where the caret is: the versions it is in, outermost first, or none in
+   * the field's own line (see `RichTextVersionPlace`). Marked in the list,
+   * and the menu's button says that something required is missing.
+   */
+  required?: (place: readonly RichTextVersionPlace[]) => boolean;
 }>;
 
 /**
@@ -96,15 +110,19 @@ export function InsertMenuList({
   menu,
   onPick,
   limit,
+  required,
 }: {
   menu: RichTextInsertMenu;
   onPick: (item: RichTextInsertMenuItem) => void;
   /** The most items listed at once, for a menu too long to draw whole. */
   limit?: number;
+  /** The ids of the items the text being edited requires and lacks. */
+  required?: ReadonlySet<string>;
 }) {
   const intl = useAppIntl();
   const groups = useMemo(() => groupsOf(menu.items), [menu.items]);
   const search = intl.formatMessage(messages.search);
+  const requiredMarker = intl.formatMessage(messages.required);
 
   return (
     <Autocomplete.Root
@@ -148,39 +166,71 @@ export function InsertMenuList({
                 </Autocomplete.GroupLabel>
               )}
               <Autocomplete.Collection>
-                {(item: RichTextInsertMenuItem) => (
-                  <Autocomplete.Item
-                    key={item.id}
-                    value={item}
-                    data-insert-item={item.id}
-                    disabled={item.disabled}
-                    onClick={() => {
-                      if (item.disabled !== true) onPick(item);
-                    }}
-                    className={cx(
-                      'flex cursor-default flex-col rounded-sm px-2 py-1.5 text-sm select-none',
-                      'not-data-disabled:data-highlighted:bg-primary not-data-disabled:data-highlighted:text-primary-contrast',
-                      'data-disabled:cursor-not-allowed',
-                    )}
-                  >
-                    <span
-                      {...presentationalTextProps(item.label)}
+                {(item: RichTextInsertMenuItem) => {
+                  const isRequired = required?.has(item.id) === true;
+                  return (
+                    <Autocomplete.Item
+                      key={item.id}
+                      value={item}
+                      data-insert-item={item.id}
+                      data-required={isRequired || undefined}
+                      // Named piece by piece, so a screen reader pauses between
+                      // the name, what it is and the marker.
+                      aria-label={
+                        isRequired
+                          ? intl.formatList(
+                              [
+                                presentationalTextValue(item.label),
+                                ...(item.description === undefined
+                                  ? []
+                                  : [item.description]),
+                                requiredMarker,
+                              ],
+                              { type: 'unit', style: 'short' },
+                            )
+                          : undefined
+                      }
+                      disabled={item.disabled}
+                      onClick={() => {
+                        if (item.disabled !== true) onPick(item);
+                      }}
                       className={cx(
-                        'font-semibold in-data-disabled:opacity-60',
-                        // A name in its own direction stays on the
-                        // interface's side.
-                        typeof item.label !== 'string' && 'text-match-parent',
+                        'flex cursor-default flex-col rounded-sm px-2 py-1.5 text-sm select-none',
+                        'not-data-disabled:data-highlighted:bg-primary not-data-disabled:data-highlighted:text-primary-contrast',
+                        'data-disabled:cursor-not-allowed',
                       )}
                     >
-                      {presentationalTextValue(item.label)}
-                    </span>
-                    {item.description !== undefined && (
-                      <span className="text-xs opacity-80">
-                        {item.description}
+                      <span
+                        {...presentationalTextProps(item.label)}
+                        className={cx(
+                          'font-semibold in-data-disabled:opacity-60',
+                          // A name in its own direction stays on the
+                          // interface's side.
+                          typeof item.label !== 'string' && 'text-match-parent',
+                        )}
+                      >
+                        {presentationalTextValue(item.label)}
                       </span>
-                    )}
-                  </Autocomplete.Item>
-                )}
+                      {item.description !== undefined && (
+                        <span className="text-xs opacity-80">
+                          {item.description}
+                        </span>
+                      )}
+                      {isRequired && (
+                        <span
+                          data-required-marker=""
+                          className="mt-0.5 inline-flex items-center gap-1.5 text-xs font-semibold"
+                        >
+                          <span
+                            aria-hidden
+                            className="bg-warning size-2 shrink-0 rounded-full"
+                          />
+                          {requiredMarker}
+                        </span>
+                      )}
+                    </Autocomplete.Item>
+                  );
+                }}
               </Autocomplete.Collection>
             </Autocomplete.Group>
           )}

@@ -68,6 +68,7 @@ function renderList(
     }, [setDisabled]);
     return (
       <BuilderSection
+        sectionKey="form-fields"
         title={title}
         {...(optional ? { capability: OPTIONS_CAPABILITY } : {})}
       >
@@ -135,8 +136,7 @@ const renderSortRules = (fields: SectionDoc) =>
 /** A stage the schema accepts, so a refused save can only be the list's doing. */
 const SAVEABLE_STAGE = {
   label: { 'en-US': 'Welcome' },
-  title: { 'en-US': 'Welcome' },
-  items: [],
+  content: { 'en-US': 'Welcome' },
 };
 
 describe('Options', () => {

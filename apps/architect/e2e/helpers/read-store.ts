@@ -273,6 +273,19 @@ export async function readStageJson(
   return stage;
 }
 
+/**
+ * The text of an Information stage's page, in each language it is written
+ * in; `undefined` for any other stage.
+ */
+export function informationContent(stage: Stage | undefined) {
+  return stage?.type === 'Information' ? stage.content : undefined;
+}
+
+/** The English text of an Information stage's page. */
+export function pageText(stage: Stage | undefined): string | undefined {
+  return informationContent(stage)?.en;
+}
+
 // The names of every IndexedDB database on the page's origin. Listing never
 // opens (and so never creates) one, which is what the oracles below need.
 export async function readDatabaseNames(page: Page): Promise<string[]> {

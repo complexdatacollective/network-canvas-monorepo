@@ -102,6 +102,7 @@ export default function ExternalDataSourceSection() {
 
   return (
     <BuilderSection
+      sectionKey="roster-source"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
     >

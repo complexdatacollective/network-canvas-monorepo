@@ -76,18 +76,9 @@
       "label": {
         "en-US": "Welcome"
       },
-      "title": {
-        "en-US": "Welcome"
-      },
-      "items": [
-        {
-          "id": "item-1",
-          "type": "text",
-          "content": {
-            "en-US": "# Welcome\n\nThanks for taking part."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# Welcome\n\n# Welcome\n\nThanks for taking part."
+      }
     },
     {
       "id": "stage-ego",

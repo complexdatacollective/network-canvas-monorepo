@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
-import { NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
+import { NAV_BAR_REACH_VARIABLE, NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 
 import NavShell from './NavShell';
 
@@ -12,6 +12,7 @@ const publishedHeight = () =>
 
 afterEach(() => {
   document.documentElement.style.removeProperty(NAV_HEIGHT_VARIABLE);
+  document.documentElement.style.removeProperty(NAV_BAR_REACH_VARIABLE);
 });
 
 /**
@@ -70,6 +71,29 @@ describe('the height Architect’s navigation bar publishes', () => {
     unmount();
 
     expect(publishedHeight()).toBe('');
+  });
+});
+
+/**
+ * The header keeps space under its bar where the page shows through, so what
+ * the bar covers of a page scrolled under it is less than the header's
+ * height: the bar says how far down it reaches.
+ */
+describe('how far down the page Architect’s navigation bar reaches', () => {
+  const reach = () =>
+    document.documentElement.style.getPropertyValue(NAV_BAR_REACH_VARIABLE);
+
+  it('is published on the document root, measured, and taken away with the bar', async () => {
+    const { unmount } = render(
+      <ArchitectI18nProvider>
+        <NavShell />
+      </ArchitectI18nProvider>,
+    );
+    // The test environment lays nothing out: the bar is at the top of the
+    // header, and its observed height is 600px.
+    await waitFor(() => expect(reach()).toBe('600px'));
+    unmount();
+    expect(reach()).toBe('');
   });
 });
 

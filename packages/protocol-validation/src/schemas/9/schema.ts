@@ -24,6 +24,7 @@ import {
   getVariablesForSubject,
   variableExists,
 } from '../../utils/validation-helpers.ts';
+import { findAssetBlockProblems } from './asset-block-validation.ts';
 import { type Conditions, isEdgeCountRule } from './conditions.ts';
 import { findDynamicValueProblems } from './dynamic-value-validation.ts';
 import {
@@ -795,6 +796,15 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         });
       }
     }
+  }
+
+  // The files text shows as blocks: among the protocol's assets, and of a
+  // kind a page can show. Each language is checked on its own.
+  for (const problem of findAssetBlockProblems(
+    protocol.assetManifest,
+    localizedStrings,
+  )) {
+    ctx.addIssue({ code: 'custom' as const, ...problem });
   }
 
   // The values each stage's text shows: bound, available where shown, and
@@ -1593,6 +1603,22 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
         { allowEgoRules: false, readsInterview: true },
       );
+    }
+
+    // 3g.i.b. Narrative presets[].filter rules — a preset's filter narrows
+    // the nodes and edges the preset shows, as a stage filter does.
+    if (stage.type === 'Narrative') {
+      stage.presets.forEach((preset, presetIndex) => {
+        if (preset.filter?.rules) {
+          validateFilterRules(
+            preset.filter.rules,
+            protocol.codebook,
+            ['stages', stageIndex, 'presets', presetIndex, 'filter', 'rules'],
+            (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
+            { allowEgoRules: false, readsInterview: true },
+          );
+        }
+      });
     }
 
     // 3g.ii. skipLogic.filter rules — operator/value and ego-attribute

@@ -4,7 +4,7 @@ wip: false
 toc: true
 navOrder: 5
 date: 5th October 2026
-translatedFrom: ba415bac086f3e8be31ed0b8dec26798d865ad81
+translatedFrom: dceba54b0b65933d5632b30148bc87dd3f1a9eb6
 ---
 
 ## Qu’est-ce que Network Canvas ? {#what-is-network-canvas}
@@ -51,7 +51,7 @@ Network Canvas intègre des technologies qui permettent de mener des recherches 
 
 Architect, Interviewer et Fresco sont disponibles en anglais, en anglais britannique, en espagnol, en allemand, en français, en italien, en néerlandais, en portugais du Brésil, en chinois simplifié et en chinois traditionnel. La langue de l’interface couvre les menus, les boutons et les messages des applications elles-mêmes ; le texte de votre protocole (consignes, libellés des formulaires, options de réponse et écrans d’information) s’affiche tel que vous l’avez rédigé.
 
-Votre protocole peut être rédigé en plusieurs langues, dans toutes les langues dont vous avez besoin, et chaque personne participante passe l’entretien dans l’une d’entre elles. Consultez [Traduire votre protocole](/fr/design-protocols/translating-your-protocol).
+Votre protocole peut être rédigé en plusieurs langues, dans toutes les langues dont vous avez besoin, et chaque personne participante passe l’entretien dans l’une d’entre elles. Consultez [Traduire votre protocole](/fr/design-protocols/tutorials/translating-your-protocol).
 
 L’accessibilité dépend de la génération d’applications que vous utilisez. Les entretiens menés dans l’application **Interviewer** actuelle et dans **Fresco** sont conçus pour être utilisés avec un lecteur d’écran et entièrement au clavier. Les applications Classic n’offrent pas de prise en charge spécifique des lecteurs d’écran. Lorsqu’un entretien dans les applications actuelles s’affiche dans une langue qui s’écrit de droite à gauche, comme l’arabe ou l’hébreu, ses étapes sont disposées de droite à gauche. Les applications elles-mêmes (menus, boutons, messages) ne sont disponibles dans aucune langue qui s’écrit de droite à gauche.
 

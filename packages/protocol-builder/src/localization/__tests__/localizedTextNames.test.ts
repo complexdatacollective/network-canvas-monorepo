@@ -6,12 +6,21 @@ import {
   type CurrentProtocol,
   CurrentProtocolSchema,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
+  suppliedStageSettingPaths,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
+import {
+  PARTICIPANT_WORDING_GROUPS,
+  settingPath,
+} from '../../editors/family-pedigree/sections/participantWordingSettings.ts';
+import { STAGE_TYPES } from '../../stage-types.ts';
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
 import { enIntl } from '../../testing/i18n.ts';
-import { nameLocalizedText } from '../localizedTextNames.ts';
+import {
+  nameLocalizedText,
+  stageWordingSettings,
+} from '../localizedTextNames.ts';
 
 type Path = readonly (string | number)[];
 
@@ -146,13 +155,8 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     en('Your first name is enough.'),
   ],
   [
-    [...fixtureStage('Information'), 'items', 1],
-    {
-      id: 'information-picture',
-      type: 'asset',
-      content: 'picture',
-      description: en('A picture'),
-    },
+    [...fixtureStage('Information'), 'content'],
+    en('# Welcome\n\n![A picture](asset:picture)'),
   ],
   [
     [...fixtureStage('NameGenerator'), 'form', 'fields', 0, 'hint'],
@@ -751,5 +755,66 @@ describe('nameLocalizedText', () => {
     { path: ['codebook', 'ego', 'label'] },
   ])('returns undefined for the unknown path $path', ({ path }) => {
     expect(name(path)).toBeUndefined();
+  });
+});
+
+const pathsOf = (stageType: string) =>
+  stageWordingSettings(stageType).map(({ path }) => path.join('.'));
+
+describe('stageWordingSettings', () => {
+  // Every setting whose wording Network Canvas supplies is one the stage
+  // editor lists to customize, so a supplied setting the rules do not list
+  // fails here. The exceptions are settings their editors show in another
+  // section: a roster's panel title with the panel, and a pedigree's name
+  // question with the person's attributes.
+  const SHOWN_IN_ANOTHER_SECTION: ReadonlySet<string> = new Set([
+    'NameGeneratorRoster:panelTitle',
+    'FamilyPedigree:nodeConfiguration.nameField.prompt',
+    'FamilyPedigree:nodeConfiguration.nameField.hint',
+  ]);
+
+  it.each(STAGE_TYPES)('lists every supplied setting of a %s stage', (type) => {
+    const supplied = suppliedStageSettingPaths(type)
+      .map((path) => path.join('.'))
+      .filter((path) => !SHOWN_IN_ANOTHER_SECTION.has(`${type}:${path}`));
+    expect(pathsOf(type).toSorted()).toEqual(supplied.toSorted());
+  });
+
+  it('lists the settings in the order the stage editor shows them', () => {
+    expect(pathsOf('NameGeneratorRoster')).toEqual([
+      'minNodesNotice',
+      'maxNodesNotice',
+      'allAddedNotice',
+      'unnamedLabel',
+    ]);
+    expect(pathsOf('FinishSession')).toEqual([
+      'finishLabel',
+      'finishConfirmation',
+      'finishFailed',
+    ]);
+    expect(pathsOf('FamilyPedigree')).toEqual(
+      PARTICIPANT_WORDING_GROUPS.flatMap((group) =>
+        group.settings.map((setting) => settingPath(group, setting)),
+      ),
+    );
+  });
+
+  it('labels each setting as the translation table names it', () => {
+    for (const type of STAGE_TYPES) {
+      const stage = protocol.stages.find(
+        (candidate) => candidate.type === type,
+      );
+      if (stage === undefined) continue;
+      for (const { path, label } of stageWordingSettings(type)) {
+        expect(name([...stageAt(type), ...path])?.at(-1)?.label).toBe(
+          enIntl.formatMessage(label),
+        );
+      }
+    }
+  });
+
+  it('lists nothing for a stage type with no built-in wording', () => {
+    expect(stageWordingSettings('NetworkComposer')).toEqual([]);
+    expect(stageWordingSettings('NotAStageType')).toEqual([]);
   });
 });

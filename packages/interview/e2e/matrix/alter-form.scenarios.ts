@@ -31,7 +31,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           type: 'text',
           component: 'Text',
         });
-        synth.addInformationStage({ title: 'Previous stage', items: [] });
+        synth.addInformationStage({ title: 'Previous stage' });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
           label: 'Menu-only label',
@@ -48,7 +48,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         synth.addManualNode(alterForm.id, person.id, 'p2', {
           [nickname.id]: 'Grace',
         });
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage }) => {
@@ -118,7 +118,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         synth.addManualNode(alterForm.id, place.id, 'place1', {
           [placeName.id]: 'Office',
         });
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -208,7 +208,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           showValidationHints: true,
         });
         synth.addManualNode(alterForm.id, person.id, 'p1', {});
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage }) => {
@@ -282,7 +282,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           prompt: 'Age',
         });
         synth.addManualNode(alterForm.id, person.id, 'p1', {});
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -346,7 +346,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           prompt: 'Interests',
         });
         synth.addManualNode(alterForm.id, person.id, 'p1', {});
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -450,7 +450,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         synth.addManualNode(alterForm.id, person.id, 'p2', {
           [personName.id]: 'Grace',
         });
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -560,7 +560,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           alterForm.addFormField({ variable, component: 'Number', prompt });
         }
         synth.addManualNode(alterForm.id, person.id, 'p1', {});
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -778,7 +778,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
 
         synth.addManualNode(alterForm.id, person.id, 'p1', {});
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -902,7 +902,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           [personName.id]: 'Grace',
           [age.id]: 40,
         });
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -957,7 +957,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           type: 'text',
           component: 'Text',
         });
-        synth.addInformationStage({ title: 'Previous stage', items: [] });
+        synth.addInformationStage({ title: 'Previous stage' });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
         });
@@ -967,7 +967,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           prompt: 'Label',
         });
         // Intentionally no addManualNode calls: zero Person nodes exist.
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview }) => {
@@ -1023,7 +1023,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           prompt: 'Secret',
         });
         synth.addManualNode(alterForm.id, person.id, 'p1', {});
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {
@@ -1114,7 +1114,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         synth.addManualNode(alterForm.id, person.id, 'p2', {
           [personName.id]: 'Grace',
         });
-        synth.addInformationStage({ title: 'Next stage', items: [] });
+        synth.addInformationStage({ title: 'Next stage' });
         return synth;
       },
       run: async ({ page, interview, stage, protocol }) => {

@@ -2355,6 +2355,10 @@
     "defaultMessage": "Cancel review",
     "description": "Button that stops the review in progress. Nothing is saved and it does not count towards the hourly limit."
   },
+  "architect.protocolReview.popover.defaultLanguageOnly": {
+    "defaultMessage": "Fixes change the {language} text only. After a fix, check your other translations on the <page>Languages</page> page.",
+    "description": "Small note above the list of problems an automated review found, shown only when the protocol has more than one language. {language} is the name of the protocol’s default language, the only one a suggested fix rewords. The tag around \"Languages\" makes it a link to the page of that name, where translations are edited; keep the tag around that word, which must match the name of the page."
+  },
   "architect.protocolReview.popover.dismissRefused": {
     "defaultMessage": "The review could not be dismissed, because this protocol is open for editing in another tab. Dismiss it in that tab.",
     "description": "Notice when Dismiss review was refused because another browser tab holds this protocol for editing."
@@ -2471,6 +2475,10 @@
     "defaultMessage": "After the fix",
     "description": "Label over a piece of text as the suggested fix would change it."
   },
+  "architect.protocolReview.problem.afterFixIn": {
+    "defaultMessage": "After the fix · {language}",
+    "description": "Label over a piece of text as the suggested fix would change it, when the protocol also has that text in other languages. {language} is the name of the language the text shown is in. The dot is a separator."
+  },
   "architect.protocolReview.problem.cannotFix": {
     "defaultMessage": "This fix cannot be made for you. Make the change yourself, using the description below.",
     "description": "Notice on a problem whose suggested fix Architect cannot apply automatically."
@@ -2563,13 +2571,13 @@
     "defaultMessage": "Now",
     "description": "Label over a piece of text as it is in the protocol now, shown beside the same text as the suggested fix would change it."
   },
+  "architect.protocolReview.problem.nowIn": {
+    "defaultMessage": "Now · {language}",
+    "description": "Label over a piece of text as it is in the protocol now, when the protocol also has that text in other languages. {language} is the name of the language the text shown is in. The dot is a separator."
+  },
   "architect.protocolReview.problem.numberSetting": {
     "defaultMessage": "{setting} · {name}",
     "description": "Names a number a fix changes, above its Now and After the fix boxes. {setting} is the setting, such as \"Maximum selected\"; {name} is the attribute or stage it belongs to. The dot is a separator."
-  },
-  "architect.protocolReview.problem.otherTranslations": {
-    "defaultMessage": "This protocol also has this text in {languages}. Fix for me does not change {count, plural, one {that version} other {those versions}}, so check {count, plural, one {it} other {them}} after the fix.",
-    "description": "Note under a suggested change to a text that the protocol also has in other languages. {languages} is a list of language names, already joined for the reader’s language (for example \"Spanish and French\"); {count} is how many. \"Fix for me\" is the name of a button and must match its translation."
   },
   "architect.protocolReview.problem.problemOf": {
     "defaultMessage": "Problem {position, number} of {total, number}",
@@ -2581,7 +2589,11 @@
   },
   "architect.protocolReview.problem.textInLanguage": {
     "defaultMessage": "{name} · {language}",
-    "description": "Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as \"Page content › Page heading\"; {language} is the language’s name. The dot is a separator."
+    "description": "Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as \"Prompt collection › Prompt 1 › Prompt text\"; {language} is the language’s name. The dot is a separator."
+  },
+  "architect.protocolReview.problem.translationsUnchanged": {
+    "defaultMessage": "Not changed: {languages}",
+    "description": "Short note under one text a suggested fix rewords, naming the languages whose translation of that text the fix leaves as it is. {languages} is a list of language names, already joined for the reader’s language (for example \"Spanish and French\")."
   },
   "architect.protocolReview.problem.undo": {
     "defaultMessage": "Undo",
@@ -2752,11 +2764,11 @@
     "description": "Item in the list of what is sent for review, shown on the first step of the dialog. The next three steps are where the researcher describes their study."
   },
   "architect.protocolReview.wizard.sending.shareHint": {
-    "defaultMessage": "When this is checked, the Network Canvas team will retain a copy of your study details, the protocol, and the results of the review for {days, plural, one {# day} other {# days}}. We will use this information only for the purposes of improving this feature.",
-    "description": "Explanation under the share checkbox. {days} is how long a shared review is kept. \"Network Canvas\" is a product name and is not translated."
+    "defaultMessage": "When this is checked, the Network Canvas team keeps a copy of your study details, your protocol, and the review’s findings and suggested fixes. The copy also records which model wrote the review, when, and the language you use Architect in. Files in your protocol and the values of saved API keys are not included, only their names, and we add nothing that identifies you or your browser. The copy is deleted automatically {days, plural, one {# day} other {# days}} after the review and cannot be removed sooner. We use it only to improve this feature.",
+    "description": "Explanation under the share checkbox, read by a researcher deciding whether to let the Network Canvas team keep a copy of an automated review of their protocol. \"Findings\" are the problems the review found and \"suggested fixes\" the changes it proposes. \"Files\" are the images, video and data files a protocol uses; \"saved API keys\" are access keys for services such as maps. {days} is how long a shared review is kept, counted from the review. \"Network Canvas\" and \"Architect\" are product names and are not translated."
   },
   "architect.protocolReview.wizard.sending.shareLabel": {
-    "defaultMessage": "Share the results of this review with the Network Canvas team",
+    "defaultMessage": "Share this review with the Network Canvas team",
     "description": "Label of the checkbox, ticked unless the researcher unticks it, that lets the Network Canvas team keep a copy of this review. \"Network Canvas\" is a product name and is not translated."
   },
   "architect.protocolReview.wizard.sending.whatIsNeverSent": {
@@ -3095,10 +3107,6 @@
     "defaultMessage": "Introduction Panel",
     "description": "Section heading in the printable protocol summary, above the title and text of a stage's introduction panel shown to participants."
   },
-  "architect.protocolSummary.stage.items.items": {
-    "defaultMessage": "Items",
-    "description": "Section heading in the printable protocol summary, above the list of text and media items on an Information stage."
-  },
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": {
     "defaultMessage": "GeoJSON Data Source",
     "description": "Section heading in the printable protocol summary, above the uploaded GeoJSON file that supplies the regions of a geospatial stage's map."
@@ -3119,9 +3127,65 @@
     "defaultMessage": "{shown, select, true {Shown} other {Not shown}}",
     "description": "Value, in the printable protocol summary, saying whether a Narrative Pedigree stage draws the possible (at-risk) statuses it infers, beside the label \"Show possible (at-risk) statuses\"."
   },
+  "architect.protocolSummary.stage.pageContent.description": {
+    "defaultMessage": "Description",
+    "description": "Label in the printable protocol summary, in the details of an image, audio recording or video placed in the text of an Information stage. Beside it are the words the researcher wrote to describe the file for a participant who cannot see or hear it."
+  },
+  "architect.protocolSummary.stage.pageContent.fileNotFound": {
+    "defaultMessage": "A file placed here is not among this protocol’s resources, or is not an image, audio recording or video.",
+    "description": "Shown in the printable protocol summary, within the text of an Information stage, in place of an image, audio recording or video placed in that text, when the file it names is missing from the protocol or is a kind of file a page cannot show."
+  },
+  "architect.protocolSummary.stage.pageContent.pageContent": {
+    "defaultMessage": "Page Content",
+    "description": "Section heading in the printable protocol summary, above the text of an Information stage: the one text, with its headings and the images, audio recordings and videos placed in it, that the stage shows participants as a page."
+  },
+  "architect.protocolSummary.stage.pageContent.playback": {
+    "defaultMessage": "Playback",
+    "description": "Label in the printable protocol summary, in the details of an audio recording or video placed in the text of an Information stage. Beside it is how the recording plays: whether it starts by itself, and whether it repeats."
+  },
+  "architect.protocolSummary.stage.pageContent.playsAutomaticallyOnce": {
+    "defaultMessage": "Starts automatically and plays once",
+    "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: it starts by itself when the participant reaches the page, and stops when it ends."
+  },
+  "architect.protocolSummary.stage.pageContent.playsAutomaticallyRepeating": {
+    "defaultMessage": "Starts automatically and repeats",
+    "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: it starts by itself when the participant reaches the page, and starts again each time it ends."
+  },
+  "architect.protocolSummary.stage.pageContent.playsWhenStartedOnce": {
+    "defaultMessage": "Started by the participant, and plays once",
+    "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: the participant starts it, and it stops when it ends."
+  },
+  "architect.protocolSummary.stage.pageContent.playsWhenStartedRepeating": {
+    "defaultMessage": "Started by the participant, then repeats",
+    "description": "Value in the printable protocol summary, beside the label for how an audio recording or video on an Information stage plays: the participant starts it, and it then starts again each time it ends."
+  },
+  "architect.protocolSummary.stage.pageContent.position": {
+    "defaultMessage": "Position",
+    "description": "Label in the printable protocol summary, in the details of an image, audio recording or video placed in the text of an Information stage. Beside it is where the file sits across the page: at the side a line of text starts, in the middle, or at the side a line ends."
+  },
+  "architect.protocolSummary.stage.pageContent.positionEnd": {
+    "defaultMessage": "Where a line of text ends",
+    "description": "Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text ends (the right in English, the left in Arabic)."
+  },
+  "architect.protocolSummary.stage.pageContent.positionStart": {
+    "defaultMessage": "Where a line of text starts",
+    "description": "Value in the printable protocol summary, beside the label for where a file sits across the page of an Information stage: at the side a line of text starts (the left in English, the right in Arabic)."
+  },
+  "architect.protocolSummary.stage.pageContent.sizeLarge": {
+    "defaultMessage": "Large",
+    "description": "Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage."
+  },
+  "architect.protocolSummary.stage.pageContent.sizeMedium": {
+    "defaultMessage": "Medium",
+    "description": "Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage."
+  },
+  "architect.protocolSummary.stage.pageContent.sizeSmall": {
+    "defaultMessage": "Small",
+    "description": "Value in the printable protocol summary, beside the label for the display size of an image or video placed in the text of an Information stage."
+  },
   "architect.protocolSummary.stage.pageHeading.pageHeading": {
     "defaultMessage": "Page Heading",
-    "description": "Section heading in the printable protocol summary, above the heading text shown at the top of an Information stage's page."
+    "description": "Section heading in the printable protocol summary, above the heading text shown at the top of a stage's page, such as a Language Chooser's."
   },
   "architect.protocolSummary.stage.panels.existingNetwork": {
     "defaultMessage": "Existing network",
@@ -3438,6 +3502,50 @@
   "architect.stageEditor.stageTitle.position": {
     "defaultMessage": "Stage {index, number} of {total, number}",
     "description": "Where the stage being edited sits in the interview, shown above its name. index is one-based. A stage is one step of an interview."
+  },
+  "architect.stageEditor.walkthrough.avoid": {
+    "defaultMessage": "Avoid",
+    "description": "Heading over practices to avoid in the stage walkthrough."
+  },
+  "architect.stageEditor.walkthrough.back": {
+    "defaultMessage": "Back",
+    "description": "Button that returns to the previous walkthrough step."
+  },
+  "architect.stageEditor.walkthrough.collapse": {
+    "defaultMessage": "Hide the walkthrough for now",
+    "description": "Button that minimises the walkthrough panel to a progress ring in the stage editor toolbar, so the researcher can work on the page behind it. The ring opens it again at the same step."
+  },
+  "architect.stageEditor.walkthrough.do": {
+    "defaultMessage": "Do",
+    "description": "Heading over recommended practices in the stage walkthrough."
+  },
+  "architect.stageEditor.walkthrough.eyebrow": {
+    "defaultMessage": "Walkthrough",
+    "description": "Small label at the top of the walkthrough panel, above the name of the stage type it is about."
+  },
+  "architect.stageEditor.walkthrough.finish": {
+    "defaultMessage": "Finish",
+    "description": "Button on the last walkthrough step that closes it."
+  },
+  "architect.stageEditor.walkthrough.next": {
+    "defaultMessage": "Next",
+    "description": "Button that moves to the next walkthrough step."
+  },
+  "architect.stageEditor.walkthrough.progressShort": {
+    "defaultMessage": "{index, number}/{total, number}",
+    "description": "Compact step count in the centre of the progress ring the minimized walkthrough becomes in the stage editor toolbar, such as “3/18”. index is the current step and total the number of steps."
+  },
+  "architect.stageEditor.walkthrough.resumeEyebrow": {
+    "defaultMessage": "Resume walkthrough · {index} of {total}",
+    "description": "Small heading in the tooltip of the minimized walkthrough in the stage editor toolbar, above the title of the step the researcher was on."
+  },
+  "architect.stageEditor.walkthrough.sectionWalkthrough": {
+    "defaultMessage": "Walk me through {section}",
+    "description": "Accessible name and tooltip of the info button beside the title of a section of the stage being edited. It opens the step-by-step guide to the stage at the step about that section. section is the section’s title, such as “Prompts”."
+  },
+  "architect.stageEditor.walkthrough.start": {
+    "defaultMessage": "Walk me through this",
+    "description": "Accessible name and tooltip of the question-mark icon button in the stage editor toolbar that opens a step-by-step guide to the stage being edited, in a floating panel. It is hidden while the guide is open."
   },
   "architect.storageUnavailableBanner.downloadFailed": {
     "defaultMessage": "Download failed",

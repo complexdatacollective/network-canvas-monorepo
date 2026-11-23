@@ -2,7 +2,11 @@ import { isEqual } from 'es-toolkit';
 import { createContext, useContext, useSyncExternalStore } from 'react';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  parseSectionId,
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
 /**
  * One codebook section as a stage edit has changed it.
@@ -193,6 +197,52 @@ export function overlaySections(
     else overlaid[id] = document;
   }
   return overlaid;
+}
+
+/** A codebook as its sections are kept: node and edge types by id, and ego. */
+type CodebookOfSections = Readonly<{
+  node?: Readonly<Record<string, SectionDoc>>;
+  edge?: Readonly<Record<string, SectionDoc>>;
+  ego?: SectionDoc;
+}>;
+
+/**
+ * `codebook` with a stage's codebook changes laid over it, section by
+ * section, as a save would leave it: what a host previewing or validating the
+ * stage on screen builds its protocol with.
+ *
+ * Only the codebook's sections change; anything else it holds is kept as it
+ * is. The result is not checked against the schema, so a reader validates the
+ * protocol built from it before relying on it.
+ */
+export function codebookWithStaged<Codebook extends CodebookOfSections>(
+  codebook: Codebook,
+  staged: StagedCodebook,
+): Codebook {
+  if (Object.keys(staged).length === 0) return codebook;
+  const sections: Record<string, SectionDoc> = {};
+  for (const [typeId, definition] of Object.entries(codebook.node ?? {})) {
+    sections[sectionId({ kind: 'codebookNode', typeId })] = definition;
+  }
+  for (const [typeId, definition] of Object.entries(codebook.edge ?? {})) {
+    sections[sectionId({ kind: 'codebookEdge', typeId })] = definition;
+  }
+  if (codebook.ego !== undefined) {
+    sections[sectionId({ kind: 'codebookEgo' })] = codebook.ego;
+  }
+  const node: Record<string, SectionDoc> = {};
+  const edge: Record<string, SectionDoc> = {};
+  let ego: SectionDoc | undefined;
+  for (const [id, document] of Object.entries(
+    overlaySections(staged, sections),
+  )) {
+    const ref = parseSectionId(id);
+    if (ref.kind === 'codebookNode') node[ref.typeId] = document;
+    else if (ref.kind === 'codebookEdge') edge[ref.typeId] = document;
+    else if (ref.kind === 'codebookEgo') ego = document;
+  }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the codebook with sections replaced by documents the editor built; see the doc comment
+  return { ...codebook, node, edge, ego } as Codebook;
 }
 
 /** Why a staged write was not made. */

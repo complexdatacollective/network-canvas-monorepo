@@ -44,6 +44,7 @@ export default function PassphraseRulesSection() {
 
   return (
     <BuilderSection
+      sectionKey="passphrase-rules"
       title={intl.formatMessage(anonymisationMessages.passphraseRulesTitle)}
       description={intl.formatMessage(
         anonymisationMessages.passphraseRulesDescription,

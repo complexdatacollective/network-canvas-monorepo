@@ -398,8 +398,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       document: Redacted.make({
         type: 'Information',
         label: { 'en-US': 'Information' },
-        title: { 'en-US': 'Welcome' },
-        items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+        content: { 'en-US': `![](asset:${resourceId})` },
       }),
       promote: { editId: EDIT, resourceIds: [resourceId] },
     });

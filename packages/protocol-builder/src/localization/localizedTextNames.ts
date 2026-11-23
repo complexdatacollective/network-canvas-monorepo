@@ -8,6 +8,10 @@ import { parameterFieldMessages } from '../codebook/components/VariableParameter
 import { anonymisationMessages } from '../editors/anonymisation/sections/anonymisationMessages.ts';
 import { categoricalBinPromptMessages } from '../editors/categorical-bin/sections/CategoricalBinPromptsSection.tsx';
 import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
+import {
+  PARTICIPANT_WORDING_GROUPS,
+  settingPath,
+} from '../editors/family-pedigree/sections/participantWordingSettings.ts';
 import { familyPedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
 import { finishSessionMessages } from '../editors/finish-session/sections/finishSessionMessages.ts';
 import { geospatialWordingMessages } from '../editors/geospatial/sections/geospatialWording.tsx';
@@ -23,7 +27,6 @@ import { tieStrengthPromptMessages } from '../editors/tie-strength-census/sectio
 import { geospatialMessages } from '../fields/geospatial/geospatialMessages.ts';
 import { stageNameMessages } from '../naming/stageNameInternals.ts';
 import { binBehavioursMessages } from '../sections/bin-behaviours/binBehavioursMessages.ts';
-import { contentBlockMessages } from '../sections/content-blocks/ContentBlockEditor.tsx';
 import { composerFormFieldMessages } from '../sections/form-fields/composerFormFieldMessages.ts';
 import { formFieldsMessages } from '../sections/form-fields/FormFieldsSection.tsx';
 import { introductionMessages } from '../sections/introduction/IntroductionSection.tsx';
@@ -119,7 +122,15 @@ type Label = (context: NamingContext) => string;
 /** A step names the first `covers` segments after the place. */
 type Step = readonly [covers: number, label: Label];
 
-type Rule = Readonly<{ pattern: readonly string[]; steps: readonly Step[] }>;
+type Rule = Readonly<{
+  pattern: readonly string[];
+  steps: readonly Step[];
+  /**
+   * Set for a setting of the stage's Customize built-in wording section: the
+   * label its field has there (see `stageWordingSettings`).
+   */
+  wording?: MessageDescriptor;
+}>;
 
 const POSITION = '#';
 const KEY = '*';
@@ -292,44 +303,28 @@ const PANEL_RULES: readonly Rule[] = [
   ),
 ];
 
-const contentItemRules = (
-  section: Step,
-  itemsPath: string,
-): readonly Rule[] => {
-  const itemCovers = segmentsOf(itemsPath).length + 1;
-  const item: Step = [itemCovers, numbered(messages.itemPosition)];
-  return [
-    rule(`${itemsPath}.#.content`, section, item, [
-      itemCovers + 1,
-      words(contentBlockMessages.contentLabel),
-    ]),
-    rule(`${itemsPath}.#.description`, section, item, [
-      itemCovers + 1,
-      words(contentBlockMessages.descriptionLabel),
-    ]),
-  ];
-};
-
-// The page heading and the page's items sit side by side in one section, so
-// the section names no segment of its own.
-const PAGE_CONTENT: Step = [0, words(pageContentMessages.pageTitle)];
 const FINISH_SCREEN: Step = [0, words(finishSessionMessages.closingTitle)];
 const FINISHED_SCREEN: Step = [0, words(finishSessionMessages.finishedTitle)];
-const FINISHING: Step = [0, words(stageWordingMessages.title)];
-const NAME_GENERATOR_WORDING: Step = [0, words(stageWordingMessages.title)];
-const GEOSPATIAL_WORDING: Step = [0, words(stageWordingMessages.title)];
-const LANGUAGE_CHOOSER_WORDING: Step = [0, words(stageWordingMessages.title)];
 
-/** The limit and panel words a name generator stage holds, by setting. */
+/**
+ * A setting of the stage's Customize built-in wording section, which names no
+ * segment of its own: the section names it first, then the setting's label
+ * names the whole path to it. A stage type lists these in the order its
+ * editor shows them, which is the order `stageWordingSettings` gives.
+ */
+const wordingRule = (pattern: string, label: MessageDescriptor): Rule => ({
+  ...rule(
+    pattern,
+    [0, words(stageWordingMessages.title)],
+    [segmentsOf(pattern).length, words(label)],
+  ),
+  wording: label,
+});
+
+/** The limit words a name generator stage holds, by setting. */
 const NAME_GENERATOR_LIMIT_RULES: readonly Rule[] = [
-  rule('minNodesNotice', NAME_GENERATOR_WORDING, [
-    1,
-    words(nameGeneratorWordingMessages.minNoticeLabel),
-  ]),
-  rule('maxNodesNotice', NAME_GENERATOR_WORDING, [
-    1,
-    words(nameGeneratorWordingMessages.maxNoticeLabel),
-  ]),
+  wordingRule('minNodesNotice', nameGeneratorWordingMessages.minNoticeLabel),
+  wordingRule('maxNodesNotice', nameGeneratorWordingMessages.maxNoticeLabel),
 ];
 
 const NARRATIVE_PRESETS: Step = [
@@ -384,8 +379,17 @@ const PEDIGREE_PERSON_FIELD: Step = [
   attributeOr(messages.fieldPosition, stageSubject),
 ];
 
-/** The Customize built-in wording section, then a setting's label. */
-const PEDIGREE_WORDING: Step = [0, words(stageWordingMessages.title)];
+/**
+ * The words a pedigree shows the participant, as its editor's Customize
+ * built-in wording section lists them.
+ */
+const PEDIGREE_WORDING_RULES: readonly Rule[] =
+  PARTICIPANT_WORDING_GROUPS.flatMap((group) =>
+    group.settings.map((setting) =>
+      wordingRule(settingPath(group, setting), setting.label),
+    ),
+  );
+
 const composerEdgeSubject: SubjectOf = ({ place, at }) =>
   subjectFrom(valueAt(place, [...at.slice(0, 2), 'subject']));
 
@@ -432,65 +436,36 @@ const composerFieldRules = (
   );
 };
 
-/**
- * A text setting an editor shows under a section: the section names it first,
- * then the setting's own label names the whole path to it.
- */
-const settingRule = (
-  pattern: string,
-  section: MessageDescriptor,
-  label: MessageDescriptor,
-): Rule =>
-  rule(
-    pattern,
-    [0, words(section)],
-    [segmentsOf(pattern).length, words(label)],
-  );
-
-const NARRATIVE_WORDING = [
-  settingRule(
+const NARRATIVE_WORDING: readonly Rule[] = [
+  wordingRule(
     'attributesHeading',
-    stageWordingMessages.title,
     narrativeWordingMessages.attributesHeadingLabel,
   ),
-  settingRule(
-    'linksHeading',
-    stageWordingMessages.title,
-    narrativeWordingMessages.linksHeadingLabel,
-  ),
-  settingRule(
-    'groupsHeading',
-    stageWordingMessages.title,
-    narrativeWordingMessages.groupsHeadingLabel,
-  ),
+  wordingRule('linksHeading', narrativeWordingMessages.linksHeadingLabel),
+  wordingRule('groupsHeading', narrativeWordingMessages.groupsHeadingLabel),
 ];
 
-const NARRATIVE_PEDIGREE_WORDING = [
-  settingRule(
+const NARRATIVE_PEDIGREE_WORDING: readonly Rule[] = [
+  wordingRule(
     'saveSnapshot',
-    stageWordingMessages.title,
     narrativePedigreeMessages.saveSnapshotButtonLabel,
   ),
-  settingRule(
+  wordingRule(
     'conditionText.selectCondition',
-    stageWordingMessages.title,
     narrativePedigreeMessages.selectConditionLabel,
   ),
-  settingRule(
+  wordingRule(
     'conditionText.snapshotCondition',
-    stageWordingMessages.title,
     narrativePedigreeMessages.snapshotConditionLabel,
   ),
-  settingRule(
+  wordingRule(
     'conditionText.snapshotInheritance',
-    stageWordingMessages.title,
     narrativePedigreeMessages.snapshotInheritanceLabel,
   ),
 ];
 
-const UNPLACED_NODES_NOTICE = settingRule(
+const UNPLACED_NODES_NOTICE = wordingRule(
   'unplacedNodesNotice',
-  stageWordingMessages.title,
   binBehavioursMessages.unplacedNoticeLabel,
 );
 
@@ -546,343 +521,18 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       3,
       words(familyPedigreeMessages.nameHintTextLabel),
     ]),
-    ...(
-      [
-        ['parents.listItem', familyPedigreeMessages.trackerParentsLabel],
-        ['siblings.listItem', familyPedigreeMessages.trackerSiblingsLabel],
-        ['siblings.noneButton', familyPedigreeMessages.trackerNoSiblingsLabel],
-        [
-          'siblings.question',
-          familyPedigreeMessages.trackerSiblingsQuestionLabel,
-        ],
-        ['children.listItem', familyPedigreeMessages.trackerChildrenLabel],
-        ['children.noneButton', familyPedigreeMessages.trackerNoChildrenLabel],
-        [
-          'children.question',
-          familyPedigreeMessages.trackerChildrenQuestionLabel,
-        ],
-        ['details.listItem', familyPedigreeMessages.trackerDetailsLabel],
-      ] as const
-    ).map(([path, label]) =>
-      rule(`completeness.itemText.${path}`, PEDIGREE_WORDING, [
-        4,
-        words(label),
-      ]),
-    ),
-    rule('completeness.recommendedNote', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.trackerRecommendedNoteLabel),
-    ]),
-    rule('wording.placeholderParentsNote', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingPlaceholderParentsNote),
-    ]),
-    rule('wording.generatedLabelOf', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingGeneratedLabelOf),
-    ]),
-    rule('wording.relativeTerm', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingRelativeTerm),
-    ]),
-    rule('wording.you', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingYou),
-    ]),
-    rule('wording.connectQuestion', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingConnectQuestion),
-    ]),
-    rule('wording.connectParent', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingConnectParent),
-    ]),
-    rule('wording.connectPartners', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingConnectPartners),
-    ]),
-    rule('wording.disconnectConfirmTitle', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingDisconnectConfirmTitle),
-    ]),
-    rule('wording.disconnectConfirmDescription', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingDisconnectConfirmDescription),
-    ]),
-    rule('wording.disconnectWouldCutOff', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingDisconnectWouldCutOff),
-    ]),
-    rule('wording.disconnectStandIn', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingDisconnectStandIn),
-    ]),
-    rule('wording.changeWouldCutOff', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingChangeWouldCutOff),
-    ]),
-    rule('wording.unavailableAncestor', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingUnavailableAncestor),
-    ]),
-    rule('wording.removeConfirmTitle', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingRemoveConfirmTitle),
-    ]),
-    rule('wording.removeConfirmDescription', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingRemoveConfirmDescription),
-    ]),
-    rule('wording.stillTogetherLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingStillTogetherLabel),
-    ]),
-    rule('wording.panelTitle', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingPanelTitle),
-    ]),
-    rule('wording.parentKindLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingParentKindLabel),
-    ]),
-    rule('wording.parentKindCarrier', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingParentKindCarrier),
-    ]),
-    rule('wording.biologicalParentLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingBiologicalParentLabel),
-    ]),
-    rule('wording.biologicalParentHint', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingBiologicalParentHint),
-    ]),
-    rule('wording.biologicalParentBoth', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingBiologicalParentBoth),
-    ]),
-    rule('wording.carrierLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingCarrierLabel),
-    ]),
-    rule('wording.carrierUnknown', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingCarrierUnknown),
-    ]),
-    rule('wording.otherParentLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingOtherParentLabel),
-    ]),
-    rule('wording.otherParentNone', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingOtherParentNone),
-    ]),
-    rule('wording.otherParentUnknown', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingOtherParentUnknown),
-    ]),
-    rule('wording.otherParentBiologicalLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingOtherParentBiologicalLabel),
-    ]),
-    rule('wording.parentPartnerLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingParentPartnerLabel),
-    ]),
-    rule('wording.parentLinkKindLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingParentLinkKindLabel),
-    ]),
-    rule('wording.parentCarriedLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingParentCarriedLabel),
-    ]),
-    rule('wording.sharedParentCountLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSharedParentCountLabel),
-    ]),
-    rule('wording.sharedParentCountBoth', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSharedParentCountBoth),
-    ]),
-    rule('wording.sharedParentEggOnly', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSharedParentEggOnly),
-    ]),
-    rule('wording.sharedDonorsLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSharedDonorsLabel),
-    ]),
-    rule('wording.sharedSurrogateLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSharedSurrogateLabel),
-    ]),
-    rule('wording.sharedParentsNotSibling', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSharedParentsNotSibling),
-    ]),
-    rule('wording.siblingKindLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingKindLabel),
-    ]),
-    rule('wording.siblingBiologicalParentLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingBiologicalParentLabel),
-    ]),
-    rule('wording.siblingOtherBiologicalParentLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingOtherBiologicalParentLabel),
-    ]),
-    rule('wording.siblingTwinLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingTwinLabel),
-    ]),
-    rule('wording.siblingTwinHint', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingTwinHint),
-    ]),
-    rule('wording.siblingTwinNo', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingTwinNo),
-    ]),
-    rule('wording.siblingTwinIdentical', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingTwinIdentical),
-    ]),
-    rule('wording.siblingTwinFraternal', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingTwinFraternal),
-    ]),
-    rule('wording.siblingTwinUnknown', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSiblingTwinUnknown),
-    ]),
-    rule('wording.carriedSiblingsPregnancyLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingCarriedSiblingsPregnancyLabel),
-    ]),
-    rule('wording.childKindLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingChildKindLabel),
-    ]),
-    rule('wording.childKindBiological', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingChildKindBiological),
-    ]),
-    rule('wording.childKindAdoptive', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingChildKindAdoptive),
-    ]),
-    rule('wording.childKindSocial', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingChildKindSocial),
-    ]),
-    rule('wording.childKindDonor', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingChildKindDonor),
-    ]),
-    rule('wording.childKindSurrogate', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingChildKindSurrogate),
-    ]),
-    rule('wording.alsoParentOfLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingAlsoParentOfLabel),
-    ]),
-    rule('wording.standInPlaceTaken', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingStandInPlaceTaken),
-    ]),
-    rule('wording.sexAssignedAtBirthLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSexAssignedAtBirthLabel),
-    ]),
-    rule('wording.genderIdentityLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingGenderIdentityLabel),
-    ]),
-    rule('wording.twinsLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingTwinsLabel),
-    ]),
-    rule('wording.twinsHint', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingTwinsHint),
-    ]),
-    rule('wording.twinZygosityLabel', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingTwinZygosityLabel),
-    ]),
-    rule('wording.zygosityIdentical', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingZygosityIdentical),
-    ]),
-    rule('wording.zygosityFraternal', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingZygosityFraternal),
-    ]),
-    rule('wording.identicalTwinSharesParents', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingIdenticalTwinSharesParents),
-    ]),
-    rule('wording.unavailableSameSexGeneticParent', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingUnavailableSameSexGeneticParent),
-    ]),
-    rule('wording.geneticParentReplaced', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingGeneticParentReplaced),
-    ]),
-    rule('wording.unavailableGeneticParentsFull', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingUnavailableGeneticParentsFull),
-    ]),
-    rule('wording.unavailableBothSameSex', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingUnavailableBothSameSex),
-    ]),
-    rule('wording.unavailableCarrierRecorded', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingUnavailableCarrierRecorded),
-    ]),
-    rule('wording.carrierReplaced', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingCarrierReplaced),
-    ]),
-    rule('wording.unavailableCannotCarry', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingUnavailableCannotCarry),
-    ]),
-    rule('wording.unavailableCarried', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingUnavailableCarried),
-    ]),
-    rule('wording.sexChangeEndsCarrying', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSexChangeEndsCarrying),
-    ]),
-    rule('wording.sexChangeClearsCoParentSex', PEDIGREE_WORDING, [
-      2,
-      words(familyPedigreeMessages.wordingSexChangeClearsCoParentSex),
-    ]),
+    ...PEDIGREE_WORDING_RULES,
   ],
   Geospatial: [
     promptText(geospatialMessages.promptTextLabel),
-    rule('outsideAreasLabel', GEOSPATIAL_WORDING, [
-      1,
-      words(geospatialWordingMessages.outsideAreasLabel),
-    ]),
+    wordingRule(
+      'outsideAreasLabel',
+      geospatialWordingMessages.outsideAreasLabel,
+    ),
   ],
-  Information: [
-    rule('title', PAGE_CONTENT, [1, words(pageContentMessages.headingLabel)]),
-    ...contentItemRules(PAGE_CONTENT, 'items'),
-  ],
-  LanguageChooser: [
-    rule('title', LANGUAGE_CHOOSER_WORDING, [
-      1,
-      words(languageChooserMessages.headingLabel),
-    ]),
-  ],
+  // The page is one text, which the section's own heading names.
+  Information: [rule('content', [1, words(pageContentMessages.pageTitle)])],
+  LanguageChooser: [wordingRule('title', languageChooserMessages.headingLabel)],
   FinishSession: [
     rule('content', FINISH_SCREEN, [
       1,
@@ -892,18 +542,12 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       1,
       words(finishSessionMessages.finishedTextLabel),
     ]),
-    rule('finishLabel', FINISHING, [
-      1,
-      words(finishSessionMessages.finishLabelLabel),
-    ]),
-    rule('finishConfirmation', FINISHING, [
-      1,
-      words(finishSessionMessages.finishConfirmationLabel),
-    ]),
-    rule('finishFailed', FINISHING, [
-      1,
-      words(finishSessionMessages.finishFailedLabel),
-    ]),
+    wordingRule('finishLabel', finishSessionMessages.finishLabelLabel),
+    wordingRule(
+      'finishConfirmation',
+      finishSessionMessages.finishConfirmationLabel,
+    ),
+    wordingRule('finishFailed', finishSessionMessages.finishFailedLabel),
   ],
   NameGenerator: [
     NAME_GENERATOR_PROMPT,
@@ -916,23 +560,17 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     NAME_GENERATOR_PROMPT,
     ...PANEL_RULES,
     ...NAME_GENERATOR_LIMIT_RULES,
-    rule('addNamePlaceholder', NAME_GENERATOR_WORDING, [
-      1,
-      words(nameGeneratorWordingMessages.addNamePlaceholderLabel),
-    ]),
+    wordingRule(
+      'addNamePlaceholder',
+      nameGeneratorWordingMessages.addNamePlaceholderLabel,
+    ),
   ],
   NameGeneratorRoster: [
     NAME_GENERATOR_PROMPT,
     rule('panelTitle', [1, words(nodePanelsMessages.panelTitleLabel)]),
     ...NAME_GENERATOR_LIMIT_RULES,
-    rule('allAddedNotice', NAME_GENERATOR_WORDING, [
-      1,
-      words(nameGeneratorWordingMessages.allAddedLabel),
-    ]),
-    rule('unnamedLabel', NAME_GENERATOR_WORDING, [
-      1,
-      words(nameGeneratorWordingMessages.unnamedLabelLabel),
-    ]),
+    wordingRule('allAddedNotice', nameGeneratorWordingMessages.allAddedLabel),
+    wordingRule('unnamedLabel', nameGeneratorWordingMessages.unnamedLabelLabel),
     rule(
       'cardOptions.additionalProperties.#.label',
       [1, words(cardDisplayMessages.title)],
@@ -1007,6 +645,29 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ]),
   ],
 };
+
+/** A setting of a stage's Customize built-in wording section. */
+export type StageWordingSetting = Readonly<{
+  /** Where the stage holds the setting's text. */
+  path: readonly string[];
+  /** The label of the setting's field in the stage editor. */
+  label: MessageDescriptor;
+}>;
+
+/**
+ * The settings a stage of `stageType` shows in its editor's Customize
+ * built-in wording section, in the order the editor shows them, read from the
+ * same rules that name each where it is listed without its translation. None
+ * for a stage type with no such section.
+ */
+export function stageWordingSettings(
+  stageType: string,
+): readonly StageWordingSetting[] {
+  if (!isStageType(stageType)) return [];
+  return STAGE_RULES[stageType].flatMap(({ pattern, wording }) =>
+    wording === undefined ? [] : [{ path: pattern, label: wording }],
+  );
+}
 
 const variableName: Label = ({ place, at }) =>
   textAt(place, [...at, 'name']) ?? keyOf(at.at(-1));

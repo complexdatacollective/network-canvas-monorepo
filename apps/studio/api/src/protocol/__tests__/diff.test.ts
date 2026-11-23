@@ -60,8 +60,7 @@ function informationStage(label: Stage['label']): Stage {
     id: 'info1',
     type: 'Information',
     label,
-    title: { en: 'About this study' },
-    items: [{ id: 'item1', type: 'text', content: { en: 'Welcome.' } }],
+    content: { en: '# About this study\n\nWelcome.' },
   };
 }
 
@@ -109,6 +108,25 @@ describe('diffProtocolSections', () => {
         { variableId: 'close_friend', name: 'close_friend', change: 'added' },
       ],
     });
+  });
+
+  it('reports an Information screen whose text changed at its content', () => {
+    const before = baseProtocol();
+    before.stages = [informationStage({ en: 'About' }), ...before.stages];
+    const after = baseProtocol();
+    after.stages = [informationStage({ en: 'About' }), ...after.stages];
+    const screen = after.stages[0]!;
+    if (screen.type !== 'Information') throw new Error('an Information stage');
+    screen.content = { en: '# About this study\n\nWelcome back.' };
+
+    expect(diff(before, after)).toMatchObject([
+      {
+        kind: 'stage-changed',
+        stageId: 'info1',
+        stageType: 'Information',
+        changes: [{ path: ['content'], change: 'changed' }],
+      },
+    ]);
   });
 
   it('reports stage add and remove with position and identity', () => {

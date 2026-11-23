@@ -126,8 +126,7 @@ function informationStage(id: string): InformationStage {
     id,
     type: 'Information',
     label: { en: id },
-    title: { en: id },
-    items: [],
+    content: { en: `# ${id}` },
   };
 }
 

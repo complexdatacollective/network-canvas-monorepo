@@ -4,7 +4,7 @@ wip: false
 toc: true
 navOrder: 5
 date: 5th October 2026
-translatedFrom: ba415bac086f3e8be31ed0b8dec26798d865ad81
+translatedFrom: dceba54b0b65933d5632b30148bc87dd3f1a9eb6
 ---
 
 ## ¿Qué es Network Canvas? {#what-is-network-canvas}
@@ -51,7 +51,7 @@ Network Canvas incorpora tecnologías que permiten investigar con grupos con niv
 
 El idioma de la aplicación de Architect, Interviewer y Fresco puede ser inglés, inglés británico, español, alemán, francés, italiano, neerlandés, portugués de Brasil, chino simplificado o chino tradicional. El idioma de la aplicación abarca los menús, botones y mensajes de las propias aplicaciones; el texto de tu protocolo (preguntas, etiquetas de los formularios, opciones de respuesta y pantallas de información) aparece tal como lo hayas escrito.
 
-Tu protocolo se puede escribir en más de un idioma, en cualquier idioma que necesites, y cada participante hace la entrevista en uno de ellos. Consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol).
+Tu protocolo se puede escribir en más de un idioma, en cualquier idioma que necesites, y cada participante hace la entrevista en uno de ellos. Consulta [Traducir tu protocolo](/es/design-protocols/tutorials/translating-your-protocol).
 
 La accesibilidad depende de la generación de las aplicaciones que uses. Las entrevistas que se realizan con la versión actual de **Interviewer** y con **Fresco** están diseñadas para usarse con lectores de pantalla y manejarse por completo con el teclado. Las aplicaciones Classic no tienen compatibilidad específica con lectores de pantalla. Cuando una entrevista de las aplicaciones actuales se muestra en un idioma que se escribe de derecha a izquierda, como el árabe o el hebreo, sus etapas se disponen de derecha a izquierda. Los menús, botones y mensajes de las propias aplicaciones no están disponibles en ningún idioma que se escriba de derecha a izquierda.
 

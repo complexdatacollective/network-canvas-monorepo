@@ -42,9 +42,9 @@ const messages = defineMessages({
   },
   title: {
     id: 'protocolBuilder.networkFilter.title',
-    defaultMessage: 'Stage filter',
+    defaultMessage: 'Filter network',
     description:
-      'Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview.',
+      'Heading of the section where a researcher narrows which parts of the interview network one stage works on, written as an instruction (“filter the network”). A stage is one step of an interview.',
   },
   rulesLabel: {
     id: 'protocolBuilder.networkFilter.rulesLabel',
@@ -128,6 +128,7 @@ export default function NetworkFilterSection() {
 
   return (
     <BuilderSection
+      sectionKey="filter-network"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
       capability={FILTER_CAPABILITY}

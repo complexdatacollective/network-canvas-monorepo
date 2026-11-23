@@ -5,6 +5,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { NodeLabelFieldProvider } from './codebook/nodeLabelFieldSlot.ts';
 import NodeLabelField from './fields/NodeLabelField.tsx';
+import {
+  DialogDraftRegistrarContext,
+  type DialogDraftRegistrar,
+} from './form/dialogDraftRegistrar.ts';
 import { protocolLocalizationOf } from './localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from './localization/ProtocolLocalization.tsx';
 import { useProtocolChannel } from './state/channel.ts';
@@ -20,6 +24,13 @@ const SETTINGS = sectionId({ kind: 'settings' });
 export type ProtocolBuilderProps = Readonly<{
   adapter: ProtocolBuilderAdapter;
   protocolId: string;
+  /**
+   * Told about each of this package's dialogs while it holds unsaved work, so
+   * the host's own ways out can ask before throwing it away (see
+   * `DialogDraftRegistrar`). Without it, a dialog guards only its own
+   * dismissal.
+   */
+  dialogDraftRegistrar?: DialogDraftRegistrar;
   children?: ReactNode;
 }>;
 
@@ -31,6 +42,7 @@ export type ProtocolBuilderProps = Readonly<{
 export function ProtocolBuilder({
   adapter,
   protocolId,
+  dialogDraftRegistrar,
   children,
 }: ProtocolBuilderProps) {
   const queryClient = useMemo(() => createProtocolQueryClient(), []);
@@ -42,7 +54,9 @@ export function ProtocolBuilder({
         <ProtocolChannel protocolId={protocolId} />
         {/* Supplied here, above every editor: see `nodeLabelFieldSlot`. */}
         <NodeLabelFieldProvider value={NodeLabelField}>
-          <ProtocolLanguages>{children}</ProtocolLanguages>
+          <DialogDraftRegistrarContext value={dialogDraftRegistrar}>
+            <ProtocolLanguages>{children}</ProtocolLanguages>
+          </DialogDraftRegistrarContext>
         </NodeLabelFieldProvider>
       </ProtocolBuilderProvider>
     </QueryClientProvider>

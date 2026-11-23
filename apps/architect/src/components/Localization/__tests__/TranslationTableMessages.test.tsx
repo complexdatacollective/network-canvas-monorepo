@@ -297,7 +297,8 @@ describe('TranslationTable: texts with versions', () => {
     await user.type(await editedText('French'), 'Ses frères et sœurs');
     await leaveCell(user, 'French');
 
-    const missing = 'Include “Name” in this version: About someone else.';
+    const missing =
+      'This text must include the attribute “Name” in the “About someone else” scenario.';
     expect(await screen.findByText(missing)).toBeInTheDocument();
     expect(messageCell('French')).toHaveAttribute('aria-invalid', 'true');
 

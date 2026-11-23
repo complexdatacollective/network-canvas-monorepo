@@ -50,8 +50,7 @@ const stage: Stage = {
   id: 'stage-1',
   type: 'Information',
   label: { en: 'A' },
-  title: { en: 'A' },
-  items: [],
+  content: { en: '# A' },
 };
 
 // What the form holds after the researcher has typed into it. Genuinely
@@ -73,23 +72,13 @@ type TestStore = ReturnType<typeof createTestStore>;
 
 // A stage editor holding a real edit, exactly as its own chrome publishes one.
 const openDirtyStageDraft = () => {
-  publishStageDraft(
-    editedStage,
-    { label: { en: 'A' } },
-    { label: { en: 'A, edited' } },
-    true,
-  );
+  publishStageDraft({ stage: editedStage, unsaved: true, editing: true });
 };
 
 // A stage editor opened while another tab held the protocol: never granted its
 // stage, so it holds nothing of the researcher's.
 const openReadOnlyStageEditor = () => {
-  publishStageDraft(
-    stage,
-    { label: { en: 'A' } },
-    { label: { en: 'A' } },
-    false,
-  );
+  publishStageDraft({ stage, unsaved: false, editing: false });
 };
 
 // A page as the routes render one: it asks the guard whether to offer editing.
@@ -300,12 +289,7 @@ describe('ProtocolRouteGuard', () => {
       // editor publishes those. Deliberately against the SAME baseline — a
       // published pair whose baseline had moved too would report clean even if
       // the form still held the edit.
-      publishStageDraft(
-        stage,
-        { label: { en: 'A' } },
-        { label: { en: 'A' } },
-        true,
-      );
+      publishStageDraft({ stage, unsaved: false, editing: true });
     });
 
     expect(readStageDraft().dirty).toBe(false);

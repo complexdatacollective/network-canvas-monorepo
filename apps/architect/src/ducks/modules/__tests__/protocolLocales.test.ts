@@ -55,8 +55,7 @@ const englishProtocol = (): CurrentProtocol =>
         id: 'welcome',
         type: 'Information',
         label: { en: 'Welcome' },
-        title: { en: 'Hello' },
-        items: [],
+        content: { en: '# Hello' },
       },
     ],
   });
@@ -296,7 +295,10 @@ describe('protocol language reducers and undo', () => {
             path: ['stages', 0, 'label'],
             value: { en: 'Hello', fr: 'Bonjour' },
           },
-          { path: ['stages', 0, 'title'], value: { en: 'Hi', fr: 'Salut' } },
+          {
+            path: ['stages', 0, 'content'],
+            value: { en: '# Hi', fr: '# Salut' },
+          },
         ],
       }),
     );
@@ -304,7 +306,7 @@ describe('protocol language reducers and undo', () => {
     expect(pastLength(store)).toBe(before + 1);
     expect(presentOf(store).stages[0]).toMatchObject({
       label: { en: 'Hello', fr: 'Bonjour' },
-      title: { en: 'Hi', fr: 'Salut' },
+      content: { en: '# Hi', fr: '# Salut' },
     });
 
     store.dispatch(timelineActions.undo());

@@ -45,7 +45,7 @@ export const stageTypeDocumentationUrl = (stageType: StageType): string =>
 export const protocolAuthoringLinks = {
   skipLogic: `${DOCS_BASE_URL}/design-protocols/key-concepts/skip-logic/`,
   networkFiltering: `${DOCS_BASE_URL}/design-protocols/key-concepts/network-filtering/`,
-  responsiveSvgBackgrounds: `${DOCS_BASE_URL}/design-protocols/key-concepts/responsive-svg-backgrounds/`,
+  responsiveSvgBackgrounds: `${DOCS_BASE_URL}/design-protocols/tutorials/responsive-svg-backgrounds/`,
   inputControls: `${DOCS_BASE_URL}/design-protocols/key-concepts/input-controls/`,
   nodeLabelling: `${DOCS_BASE_URL}/design-protocols/key-concepts/node-labelling/`,
   attributeNaming: `${DOCS_BASE_URL}/design-protocols/key-concepts/variables/#variable-naming-best-practices`,

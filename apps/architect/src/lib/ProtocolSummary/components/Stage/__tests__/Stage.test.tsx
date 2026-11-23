@@ -134,6 +134,29 @@ describe('Protocol Summary stage', () => {
     expect(screen.queryByText('Submit your answers?')).not.toBeInTheDocument();
   });
 
+  // A Language Chooser's page heading is a field of its own, where an
+  // Information page's is part of its text.
+  it('prints the page heading of a Language Chooser stage under its own section', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <Stage
+          id="languages"
+          label={{ en: 'Languages' }}
+          stageNumber={1}
+          type="LanguageChooser"
+          configuration={{ title: { en: 'Choose a language' } }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('Page Heading')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Choose a language' }),
+    ).toBeInTheDocument();
+  });
+
   it('prints the heading a roster stage shows over the people it offers', () => {
     render(
       <SummaryContext.Provider
@@ -203,6 +226,41 @@ describe('Protocol Summary edge labels participants see', () => {
     const edges = screen.getByRole('row', { name: /Show edges/ });
     expect(within(edges).getByText('Friends')).toBeInTheDocument();
     expect(within(edges).getByText('knows')).toBeInTheDocument();
+  });
+
+  it('prints a Narrative preset’s own filter with that preset, and none for a preset without one', () => {
+    renderConfigured('Narrative', {
+      presets: [
+        {
+          id: 'filtered',
+          label: { en: 'Friends only' },
+          layoutVariable: 'layout',
+          filter: {
+            rules: [
+              {
+                id: 'rule',
+                type: 'edge',
+                options: { type: 'knows', operator: 'EXISTS' },
+              },
+            ],
+          },
+        },
+        { id: 'everyone', label: { en: 'Everyone' }, layoutVariable: 'layout' },
+      ],
+    });
+
+    const filtered = screen
+      .getByRole('heading', { name: 'Friends only' })
+      .closest('div');
+    const everyone = screen
+      .getByRole('heading', { name: 'Everyone' })
+      .closest('div');
+    if (!filtered || !everyone) throw new Error('A preset was not printed');
+    const row = within(filtered).getByRole('row', { name: /Preset filter/ });
+    expect(within(row).getByText('knows')).toBeInTheDocument();
+    expect(
+      within(everyone).queryByRole('row', { name: /Preset filter/ }),
+    ).toBeNull();
   });
 
   it('prints each edge type a Network Composer stage lets participants draw with its label', () => {
@@ -329,7 +387,7 @@ describe('Protocol Summary text that reads by a number answer', () => {
           stageNumber={6}
           type="Information"
           configuration={{
-            title: {
+            content: {
               cs: '{hours, select, missing {} other {{hours, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}',
             },
             dynamicValues: { hours: { path: 'ego.hours' } },

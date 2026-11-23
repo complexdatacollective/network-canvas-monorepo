@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { assetBlocksInMessage } from '../localization/assetBlock.ts';
 import { getAssetReferenceDescriptor } from '../schemas/9/asset-reference.ts';
 import type { StageSubject } from '../schemas/9/common/index.ts';
 import {
@@ -17,6 +18,7 @@ import {
   type SubjectResolution,
 } from '../schemas/9/entity-attribute-reference.ts';
 import { getEntityTypeReferenceDescriptor } from '../schemas/9/entity-type-reference.ts';
+import { getLocalizedStringDescriptor } from '../schemas/9/localized-string.ts';
 // The protocol's structure, imported from its own module rather than through
 // the schema module or `../schemas/index.ts`: the schema module calls this one
 // to validate references, so it cannot be imported back without a cycle.
@@ -51,6 +53,11 @@ export type EntityTypeReferenceHit = {
 };
 
 export type AssetReferenceHit = {
+  /**
+   * The field holding the id, or, for a file shown as a block in text, the
+   * translation that names it. Text can name several files, so two hits may
+   * share a path.
+   */
   path: (string | number)[];
   assetId: string;
 };
@@ -117,6 +124,12 @@ const unwrap = (schema: z.ZodType): z.ZodType => {
 // config, text, assets, network data) without descending into them or running
 // safeParse on union branches.
 const subtreeHasReference = new WeakMap<z.ZodType, boolean>();
+
+// Localized text declared to hold files as blocks names each file it shows
+// inside its markdown (see `AssetBlock`), so it is an asset reference site
+// with no field of its own.
+const holdsAssetBlocks = (node: z.ZodType): boolean =>
+  getLocalizedStringDescriptor(node)?.assetBlocks === true;
 const hasReference = (schema: z.ZodType): boolean => {
   const node = unwrap(schema);
   const cached = subtreeHasReference.get(node);
@@ -127,6 +140,7 @@ const hasReference = (schema: z.ZodType): boolean => {
     getEntityAttributeReferenceDescriptor(node) !== undefined ||
     getEntityTypeReferenceDescriptor(node) !== undefined ||
     getAssetReferenceDescriptor(node) !== undefined ||
+    holdsAssetBlocks(node) ||
     getStageReferenceSite(node) !== undefined ||
     isDynamicValuePathSchema(node);
   if (!result) {
@@ -370,6 +384,27 @@ const walk = (
     return [];
   }
 
+  if (holdsAssetBlocks(node)) {
+    if (!isRecord(value)) return [];
+    // Every translation is read: each is a text some participant is shown,
+    // and a file only one language shows is still in use.
+    return Object.entries(value).flatMap(([locale, message]) =>
+      typeof message === 'string'
+        ? assetBlocksInMessage(message).flatMap(({ block }): ReferenceHit[] =>
+            block.assetId === ''
+              ? []
+              : [
+                  {
+                    kind: 'asset',
+                    path: [...path, locale],
+                    assetId: block.assetId,
+                  },
+                ],
+          )
+        : [],
+    );
+  }
+
   if (node instanceof z.ZodObject) {
     if (!isRecord(value)) return [];
     const shape = node.shape;
@@ -548,7 +583,7 @@ export const collectEntityTypeReferences = (
  * schema's `assetReference` tags — the asset counterpart of
  * `collectEntityAttributeReferences`. Covers name generator and panel data
  * sources, sociogram/narrative background images, the Geospatial map's token
- * and data-source assets, Information intro-screen asset items, and the
+ * and data-source assets, the files an Information page shows as blocks, and the
  * images a node type's custom shapes draw with.
  *
  * Consumers that need to know whether an asset is in use must derive it from

@@ -29,7 +29,7 @@ const READ_ONLY_REFUSAL =
   'This stage is read-only, so your change was not made. Somebody else is editing it.';
 
 const FAMILIES = [
-  { family: 'form', stageId: 'information-1', settleLabel: 'Page heading' },
+  { family: 'form', stageId: 'information-1', settleLabel: 'Rich Text' },
   {
     family: 'name generator',
     stageId: 'name-generator-1',

@@ -133,18 +133,9 @@
         "en-US": "Prototype notes (delete before fielding)"
       },
       "type": "Information",
-      "title": {
-        "en-US": "For researchers"
-      },
-      "items": [
-        {
-          "id": "researcher-notes-text",
-          "type": "text",
-          "content": {
-            "en-US": "## Discussion prototype\n\n_Delete this screen before collecting any data._\n\nCo-design the wording and recruitment with Liz McConnell's group and youth advisers. No participant age range is assumed. If minors are involved, the group will need to establish age-appropriate consent, confidentiality and safeguarding procedures for its setting.\n\nThis protocol starts with perceived family, not biology. It does not ask sex assigned at birth, reproductive history or medical conditions. Add a structural pedigree only if youth advisers find it useful, as a separate optional component; the current pedigree wizard asks about sex recorded at birth and may not fit this research question.\n\nArrange approved consent before this prototype begins. Use participant-selected nicknames; do not infer identities of relatives. Categories may overlap and their absence is not evidence of rejection. Discuss whether prompted identity affirmation fits the study. Narrative drawing is transient and is not exported: capture the conversation only through the approved audio/notes procedure.\n\nDo not share identifiable maps, link family members across interviews or infer genetic risk from perceived-family ties."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# For researchers\n\n## Discussion prototype\n\n_Delete this screen before collecting any data._\n\nCo-design the wording and recruitment with Liz McConnell's group and youth advisers. No participant age range is assumed. If minors are involved, the group will need to establish age-appropriate consent, confidentiality and safeguarding procedures for its setting.\n\nThis protocol starts with perceived family, not biology. It does not ask sex assigned at birth, reproductive history or medical conditions. Add a structural pedigree only if youth advisers find it useful, as a separate optional component; the current pedigree wizard asks about sex recorded at birth and may not fit this research question.\n\nArrange approved consent before this prototype begins. Use participant-selected nicknames; do not infer identities of relatives. Categories may overlap and their absence is not evidence of rejection. Discuss whether prompted identity affirmation fits the study. Narrative drawing is transient and is not exported: capture the conversation only through the approved audio/notes procedure.\n\nDo not share identifiable maps, link family members across interviews or infer genetic risk from perceived-family ties."
+      }
     },
     {
       "id": "welcome",
@@ -152,18 +143,9 @@
         "en-US": "Welcome"
       },
       "type": "Information",
-      "title": {
-        "en-US": "Who feels like family to you?"
-      },
-      "items": [
-        {
-          "id": "welcome-text",
-          "type": "text",
-          "content": {
-            "en-US": "You decide what family means for this conversation. It might include people you grew up with, chosen family, partners, friends, or anyone else. There is no correct kind of family.\n\nYou can use nicknames, leave things out, change your mind, or stop. Tell the interviewer if a question does not fit."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# Who feels like family to you?\n\nYou decide what family means for this conversation. It might include people you grew up with, chosen family, partners, friends, or anyone else. There is no correct kind of family.\n\nYou can use nicknames, leave things out, change your mind, or stop. Tell the interviewer if a question does not fit."
+      }
     },
     {
       "id": "name-family",
@@ -229,18 +211,9 @@
       "label": {
         "en-US": "Your words for family"
       },
-      "title": {
-        "en-US": "Your words for family"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "Which descriptions fit each person? A person can fit more than one, and you can use your own words. You can also leave these questions blank."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# Your words for family\n\nWhich descriptions fit each person? A person can fit more than one, and you can use your own words. You can also leave these questions blank."
+      }
     },
     {
       "id": "family-meanings",
@@ -500,18 +473,9 @@
         "en-US": "Reflection"
       },
       "type": "Information",
-      "title": {
-        "en-US": "How was making this map?"
-      },
-      "items": [
-        {
-          "id": "debrief-text",
-          "type": "text",
-          "content": {
-            "en-US": "What felt easy or difficult? Did any question or picture fail to fit your experience? Is there anything you would change or remove?\n\nPlease tell the interviewer what you would want people studying family to understand."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# How was making this map?\n\nWhat felt easy or difficult? Did any question or picture fail to fit your experience? Is there anything you would change or remove?\n\nPlease tell the interviewer what you would want people studying family to understand."
+      }
     },
     {
       "id": "finish",

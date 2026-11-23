@@ -4,6 +4,7 @@ import type { FieldState } from '@codaco/fresco-ui/form/store/types';
 import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
+import type { SectionKey } from '../sections/sectionKeys.ts';
 import type { StageSectionStatus } from '../stage-editor-contract.ts';
 import {
   type SchemaProblem,
@@ -78,6 +79,8 @@ export type OutlineSectionIssue = Readonly<{
 
 export type OutlineSection = Readonly<{
   id: string;
+  /** The section's stable name; see `SectionKey`. */
+  sectionKey: SectionKey;
   title: string;
   availability: SectionAvailability;
   fields: readonly OutlineFieldRegistration[];
@@ -87,6 +90,7 @@ export type OutlineSection = Readonly<{
 
 type SectionRecord = {
   id: string;
+  sectionKey: SectionKey;
   title: string;
   availability: SectionAvailability;
   element: HTMLElement | null;
@@ -276,6 +280,7 @@ export class SectionOutlineStore {
       ordered.map((record, index) =>
         Object.freeze({
           id: record.id,
+          sectionKey: record.sectionKey,
           title: record.title,
           availability: record.availability,
           fields: Object.freeze(fields[index] ?? []),
@@ -312,7 +317,7 @@ export class SectionOutlineStore {
     this.validationIssues;
 
   registerSection(
-    section: Readonly<{ id: string; title: string }>,
+    section: Readonly<{ id: string; sectionKey: SectionKey; title: string }>,
   ): () => void {
     const existing = this.sections.get(section.id);
     if (existing) {
@@ -320,9 +325,11 @@ export class SectionOutlineStore {
       // StrictMode the effect runs twice around one mount, and the fields
       // beneath it do not remount in between.
       existing.title = section.title;
+      existing.sectionKey = section.sectionKey;
     } else {
       this.sections.set(section.id, {
         id: section.id,
+        sectionKey: section.sectionKey,
         title: section.title,
         availability: 'available',
         element: null,

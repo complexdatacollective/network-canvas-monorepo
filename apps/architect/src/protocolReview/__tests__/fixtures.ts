@@ -57,10 +57,7 @@ export const makeProtocol = (
         id: 'welcome',
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
-        title: { en: 'Hello', fr: 'Bonjour' },
-        items: [
-          { id: 'intro', type: 'text', content: { en: 'Hi', fr: 'Salut' } },
-        ],
+        content: { en: '# Hello\n\nHi', fr: '# Bonjour\n\nSalut' },
       },
       {
         id: 'names',

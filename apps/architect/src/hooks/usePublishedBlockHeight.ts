@@ -17,8 +17,20 @@ import { useLayoutEffect, useRef, type RefObject } from 'react';
  * clear, which is the fault this exists to fix; the stylesheet's starting
  * value stands until a real one arrives.
  */
+/**
+ * What is published for a block `height` tall: by default the height itself.
+ * For a block whose reach into the page is not its own height, such as a bar
+ * held away from the edge it covers, the distance from that edge to its far
+ * side. Declare it at module level, so that it is the same function each
+ * time it is passed.
+ */
+type BlockReach<T extends HTMLElement> = (element: T, height: number) => number;
+
+const ownHeight = (_element: HTMLElement, height: number): number => height;
+
 export function usePublishedBlockHeight<T extends HTMLElement = HTMLElement>(
   variable: string,
+  reach: BlockReach<T> = ownHeight,
 ): RefObject<T | null> {
   const element = useRef<T>(null);
 
@@ -29,7 +41,7 @@ export function usePublishedBlockHeight<T extends HTMLElement = HTMLElement>(
     const root = document.documentElement;
     const publish = (height: number) => {
       if (height <= 0) return;
-      root.style.setProperty(variable, `${height}px`);
+      root.style.setProperty(variable, `${reach(target, height)}px`);
     };
 
     publish(target.getBoundingClientRect().height);
@@ -49,7 +61,7 @@ export function usePublishedBlockHeight<T extends HTMLElement = HTMLElement>(
       observer.disconnect();
       root.style.removeProperty(variable);
     };
-  }, [variable]);
+  }, [variable, reach]);
 
   return element;
 }

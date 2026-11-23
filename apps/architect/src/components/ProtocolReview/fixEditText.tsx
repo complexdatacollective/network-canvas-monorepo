@@ -2,11 +2,14 @@ import type { ReactNode } from 'react';
 
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import { getValidationLabel } from '@codaco/protocol-builder/codebook/variableValidation';
 import { nameLocalizedText } from '@codaco/protocol-builder/localization/localizedTextNames';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
-import Markdown from '~/components/Markdown';
 import { useAppSelector } from '~/ducks/hooks';
 import type { FixTextEdit } from '~/protocolReview/describeFix';
 import { getProtocol } from '~/selectors/protocol';
@@ -29,7 +32,7 @@ export const fixEditMessages = defineMessages({
     id: 'architect.protocolReview.problem.textInLanguage',
     defaultMessage: '{name} · {language}',
     description:
-      'Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as "Page content › Page heading"; {language} is the language’s name. The dot is a separator.',
+      'Names a text a fix changes, above its Now and After the fix boxes, when the fix changes it in several languages. {name} is where the stage or codebook editor shows the text, such as "Prompt collection › Prompt 1 › Prompt text"; {language} is the language’s name. The dot is a separator.',
   },
   minNodes: {
     id: 'architect.protocolReview.problem.minNodes',
@@ -61,6 +64,18 @@ export const fixEditMessages = defineMessages({
     description:
       'Label over a piece of text as the suggested fix would change it.',
   },
+  nowIn: {
+    id: 'architect.protocolReview.problem.nowIn',
+    defaultMessage: 'Now · {language}',
+    description:
+      'Label over a piece of text as it is in the protocol now, when the protocol also has that text in other languages. {language} is the name of the language the text shown is in. The dot is a separator.',
+  },
+  afterFixIn: {
+    id: 'architect.protocolReview.problem.afterFixIn',
+    defaultMessage: 'After the fix · {language}',
+    description:
+      'Label over a piece of text as the suggested fix would change it, when the protocol also has that text in other languages. {language} is the name of the language the text shown is in. The dot is a separator.',
+  },
 });
 
 export const FixText = ({
@@ -71,7 +86,13 @@ export const FixText = ({
   markdown: boolean;
 }) =>
   markdown ? (
-    <Markdown label={text} className="wrap-break-word" />
+    // As the interview reads it: the stored markdown, unchanged.
+    <RenderMarkdown
+      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      render={<span className="wrap-break-word" />}
+    >
+      {text}
+    </RenderMarkdown>
   ) : (
     <span className="wrap-break-word whitespace-pre-wrap">{text}</span>
   );
@@ -124,6 +145,14 @@ const editContext = (
 };
 
 /**
+ * Whether the heading over each edit names its language: when the edits are
+ * not all texts in one language. Otherwise the labels on its boxes do.
+ */
+export const headingsNameLanguage = (
+  textEdits: readonly FixTextEdit[],
+): boolean => new Set(textEdits.map((edit) => edit.locale)).size > 1;
+
+/**
  * What each of a fix's edits is, by its path: where the editor shows a text
  * (with its language when the fix changes several), or a number's setting
  * and what it belongs to. Null where there is nothing to say.
@@ -134,8 +163,7 @@ export const useFixEditContexts = (
   const intl = useAppIntl();
   const protocol = useAppSelector(getProtocol);
   const languageName = useLanguageName();
-  const severalLanguages =
-    new Set(textEdits.map((edit) => edit.locale)).size > 1;
+  const severalLanguages = headingsNameLanguage(textEdits);
   return Object.fromEntries(
     textEdits.map((edit) => [
       edit.path,
@@ -173,13 +201,24 @@ export const ChangeLabel = ({
 );
 
 /** One text or number a fix changes, as it is now; absent when it has none. */
-export const NowBox = ({ id, edit }: { id?: string; edit: FixTextEdit }) => {
+export const NowBox = ({
+  id,
+  edit,
+  language,
+}: {
+  id?: string;
+  edit: FixTextEdit;
+  /** The language the text is in, when the label should name it. */
+  language?: string;
+}) => {
   const intl = useAppIntl();
   if (edit.now === null && edit.kind !== 'number') return null;
   return (
     <div id={id} className="flex flex-col gap-2">
       <ChangeLabel side="now">
-        {intl.formatMessage(fixEditMessages.now)}
+        {language
+          ? intl.formatMessage(fixEditMessages.nowIn, { language })
+          : intl.formatMessage(fixEditMessages.now)}
       </ChangeLabel>
       <div className="bg-surface border-outline rounded border p-4">
         {edit.now === null ? (

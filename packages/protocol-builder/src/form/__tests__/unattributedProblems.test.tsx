@@ -14,7 +14,7 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 const untitledStage = {
   id: 'information-unowned',
   type: 'Information',
-  fields: { label: { 'en-US': 'Named' }, items: [] },
+  fields: { label: { 'en-US': 'Named' } },
 } as const;
 
 describe('what the protocol refuses that no section answers for', () => {
@@ -44,9 +44,9 @@ describe('what the protocol refuses that no section answers for', () => {
     const harness = renderStageEditor({
       stage: untitledStage,
       sections: (
-        <BuilderSection title="Page content">
+        <BuilderSection sectionKey="page-content" title="Page content">
           <Field
-            name="title"
+            name="content"
             label="Page heading"
             component={LocalizedInputField}
           />

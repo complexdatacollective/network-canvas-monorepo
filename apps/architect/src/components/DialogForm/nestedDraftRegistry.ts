@@ -30,10 +30,11 @@ const draftPredicates = new Map<symbol, DirtyPredicate>();
 
 /**
  * The stage editor's own dialogs — a form field, a prompt, a rule — which
- * protocol-builder draws and reports through `DialogDraftRegistrarContext`.
- * Counted when a guard asks whether leaving would lose work, and NOT as open
- * nested editors: they live inside the stage editor, which the cross-tab lock
- * already treats as open, and the import surface `hasOpenNestedEditor` picks
+ * protocol-builder draws and reports through `ProtocolBuilder`'s
+ * `dialogDraftRegistrar`. Counted when a guard asks whether leaving would lose
+ * work, and NOT as open nested editors: they live inside the stage editor,
+ * which the cross-tab lock already treats as open, and the import surface
+ * `hasOpenNestedEditor` picks
  * is Architect's own editors' question.
  */
 const stageDialogPredicates = new Map<symbol, DirtyPredicate>();
@@ -149,8 +150,8 @@ export const registerNestedDraft = (isDirty: DirtyPredicate): (() => void) => {
 };
 
 /**
- * A protocol-builder dialog's draft, for `DialogDraftRegistrarContext`.
- * Answers with the way to forget it.
+ * A protocol-builder dialog's draft, for `ProtocolBuilder`'s
+ * `dialogDraftRegistrar`. Answers with the way to forget it.
  */
 export const registerStageDialogDraft = (
   hasDraft: DirtyPredicate,

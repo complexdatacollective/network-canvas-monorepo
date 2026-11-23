@@ -2,6 +2,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { find, findIndex } from 'es-toolkit/compat';
 
 import { withSuppliedWording } from '@codaco/interview/supplied-wording';
+import { declaredTranslationText } from '@codaco/protocol-builder/localization/localizedText';
 import { type Asset } from '@codaco/protocol-validation';
 import type { StudyContext } from '@codaco/shared-consts';
 import { canRedo, canUndo } from '~/ducks/middleware/timeline';
@@ -12,7 +13,6 @@ import {
   type StudyDetailsDraft,
 } from '~/protocolReview/settings';
 import { deriveAssetDisplayNames } from '~/utils/assetNames';
-import { localizedText } from '~/utils/localizedText';
 
 /**
  * The protocol as it stands: what the researcher sees, and what is validated,
@@ -134,8 +134,14 @@ export const getStageList = createSelector([getProtocol], (protocol) => {
   return stages.map((stage) => ({
     id: stage.id,
     type: stage.type,
-    label: localizedText(stage.label, protocol?.localization),
-    hasFilter: 'filter' in stage ? !!stage.filter : false,
+    label: declaredTranslationText(stage.label, protocol?.localization),
+    // A narrative stage is filtered preset by preset rather than as a whole.
+    hasFilter:
+      stage.type === 'Narrative'
+        ? stage.presets.some((preset) => !!preset.filter)
+        : 'filter' in stage
+          ? !!stage.filter
+          : false,
     hasSkipLogic: !!stage.skipLogic,
     skipLogic: stage.skipLogic
       ? { destination: stage.skipLogic.destination }

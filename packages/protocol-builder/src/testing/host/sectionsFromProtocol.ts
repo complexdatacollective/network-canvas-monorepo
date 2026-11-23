@@ -1,58 +1,50 @@
-import type { SectionDoc } from '@codaco/studio-sync/apply';
-import {
-  sectionId,
-  type ProtocolSectionId,
-} from '@codaco/studio-sync/taxonomy';
+import { Predicate } from 'effect';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
+
+import { protocolSections } from '../../host/protocolSections.ts';
 
 function recordOf(value: unknown): Record<string, unknown> {
-  return isRecord(value) ? value : {};
+  return Predicate.isObject(value) ? value : {};
+}
+
+function recordsIn(value: unknown): Record<string, SectionDoc> {
+  return Object.fromEntries(
+    Object.entries(recordOf(value)).filter(
+      (entry): entry is [string, SectionDoc] => Predicate.isObject(entry[1]),
+    ),
+  );
 }
 
 /**
- * Splits a protocol document into the section model a host stores, which is
- * the inverse of `@codaco/studio-sync`'s `assembleProtocolSections`.
+ * Splits a protocol document into the section model a host stores, as
+ * `protocolSections` does, from a document no schema has checked: a stage
+ * without an id, or a codebook entry that is not an object, is left out.
  */
 export function sectionsFromProtocol(
   protocol: Readonly<Record<string, unknown>>,
 ): Record<ProtocolSectionId, SectionDoc> {
-  const {
-    codebook,
-    stages,
-    assetManifest,
-    ...settings
-  }: Record<string, unknown> = protocol;
-  const sections: Record<ProtocolSectionId, SectionDoc> = {};
-
-  const stageDocs = Array.isArray(stages) ? stages.filter(isRecord) : [];
-  const stageIds: string[] = [];
-  for (const stage of stageDocs) {
-    if (typeof stage.id !== 'string' || stage.id === '') continue;
-    stageIds.push(stage.id);
-    sections[sectionId({ kind: 'stage', stageId: stage.id })] = stage;
-  }
-
-  sections[sectionId({ kind: 'settings' })] = settings;
-  sections[sectionId({ kind: 'stageOrder' })] = { stages: stageIds };
-  sections[sectionId({ kind: 'assets' })] = recordOf(assetManifest);
-
+  const { codebook, stages, assetManifest, ...settings } = protocol;
   const book = recordOf(codebook);
-  for (const [typeId, definition] of Object.entries(recordOf(book.node))) {
-    if (isRecord(definition)) {
-      sections[sectionId({ kind: 'codebookNode', typeId })] = definition;
-    }
-  }
-  for (const [typeId, definition] of Object.entries(recordOf(book.edge))) {
-    if (isRecord(definition)) {
-      sections[sectionId({ kind: 'codebookEdge', typeId })] = definition;
-    }
-  }
-  if (isRecord(book.ego)) {
-    sections[sectionId({ kind: 'codebookEgo' })] = book.ego;
-  }
-
-  return sections;
+  const stageDocs = Array.isArray(stages)
+    ? stages.filter(
+        (stage): stage is SectionDoc & { id: string } =>
+          Predicate.isObject(stage) &&
+          typeof stage.id === 'string' &&
+          stage.id !== '',
+      )
+    : [];
+  return Object.fromEntries(
+    protocolSections({
+      ...settings,
+      codebook: {
+        node: recordsIn(book.node),
+        edge: recordsIn(book.edge),
+        ...(Predicate.isObject(book.ego) ? { ego: book.ego } : {}),
+      },
+      stages: stageDocs,
+      assetManifest: recordOf(assetManifest),
+    }),
+  );
 }

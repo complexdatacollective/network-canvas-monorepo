@@ -13,12 +13,15 @@ import { renderStageEditor } from '../renderStageEditor.tsx';
  * on — an empty answer would agree with both halves of every contrast below.
  */
 const pageContent = (
-  <BuilderSection title="Page content">
+  <BuilderSection sectionKey="page-content" title="Page content">
     <Field name="title" label="Page heading" component={InputField} />
   </BuilderSection>
 );
 const guidance = (
-  <BuilderSection title="Interviewer guidance">
+  <BuilderSection
+    sectionKey="interviewer-guidance"
+    title="Interviewer guidance"
+  >
     <Field
       name="interviewScript"
       label="Interviewer script text"

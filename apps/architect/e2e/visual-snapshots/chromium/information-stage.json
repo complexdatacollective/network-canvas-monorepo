@@ -1,19 +1,10 @@
 {
+  "content": {
+    "en": "# Welcome\n\nThanks for taking part."
+  },
   "id": "id-1",
-  "items": [
-    {
-      "content": {
-        "en": "Thanks for taking part."
-      },
-      "id": "id-2",
-      "type": "text"
-    }
-  ],
   "label": {
     "en": "About This Study"
-  },
-  "title": {
-    "en": "Welcome"
   },
   "type": "Information"
 }

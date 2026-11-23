@@ -222,6 +222,7 @@ export default function QuickAddSection() {
 
   return (
     <BuilderSection
+      sectionKey="quick-add"
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(
         subject === undefined

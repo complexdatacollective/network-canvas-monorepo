@@ -9,7 +9,10 @@ import {
 } from '../markdownAdapter.ts';
 
 const roundTrip = (value: string, inline = false) =>
-  richTextContentToMarkdown(markdownToRichTextContent(value, inline), inline);
+  richTextContentToMarkdown(
+    markdownToRichTextContent(value, { inline }),
+    inline,
+  );
 
 describe('RichText markdown adapter', () => {
   it('round-trips the full Architect toolbar markdown subset', () => {
@@ -108,7 +111,7 @@ describe('RichText markdown adapter', () => {
   it('does not emit link marks for inline content', () => {
     const content = markdownToRichTextContent(
       '[Help](https://example.com) label',
-      true,
+      { inline: true },
     );
 
     expect(content.content?.[0]?.content?.[0]?.marks).toBeUndefined();
@@ -400,5 +403,65 @@ describe('RichText markdown adapter', () => {
     };
 
     expect(richTextContentToMarkdown(content, true)).toBe('Help');
+  });
+});
+
+// What the editor writes is what it reads the next time the field opens, so
+// text it has written once must come back as the same document.
+describe('lists through markdown and back', () => {
+  const read = (value: string) => markdownToRichTextContent(value);
+  const settles = (value: string) => {
+    const once = roundTrip(value);
+    expect(read(once)).toEqual(read(value));
+    expect(roundTrip(once)).toBe(once);
+    return once;
+  };
+
+  it('sets what follows a numbered item in by the width of its number', () => {
+    expect(settles('1. One\n   - nested\n2. Two')).toBe(
+      '1. One\n   - nested\n2. Two',
+    );
+    expect(settles('1. One\n   1. nested\n2. Two')).toBe(
+      '1. One\n   1. nested\n2. Two',
+    );
+    expect(settles('10. Ten\n    - nested\n11. Eleven')).toBe(
+      '10. Ten\n    - nested\n11. Eleven',
+    );
+  });
+
+  it('writes a bulleted item as before', () => {
+    expect(settles('- One\n  - nested\n    - deeper\n- Two')).toBe(
+      '- One\n  - nested\n    - deeper\n- Two',
+    );
+  });
+
+  it('keeps two paragraphs of one item apart', () => {
+    expect(settles('- a\n\n  second paragraph\n- b')).toBe(
+      '- a\n\n  second paragraph\n- b',
+    );
+  });
+
+  it('keeps a paragraph that follows a nested list out of that list', () => {
+    settles('- a\n  - nested\n\n  after the list\n- b');
+  });
+
+  it('keeps a nested numbered list that does not start at 1', () => {
+    settles('- a\n\n  3. third\n  4. fourth\n- b');
+  });
+
+  it('keeps two lists of one kind apart, by writing the second with the other marker', () => {
+    expect(settles('- a\n\n* b')).toBe('- a\n\n* b');
+    expect(settles('* a\n\n- b')).toBe('- a\n\n* b');
+    expect(settles('1. a\n\n1) b')).toBe('1. a\n\n1) b');
+    expect(settles('- a\n\n* b\n\n- c')).toBe('- a\n\n* b\n\n- c');
+    // Inside an item too.
+    settles('- item\n\n  - a\n\n  * b');
+  });
+
+  it('writes one list, and lists of different kinds, with the usual markers', () => {
+    expect(settles('* a\n* b')).toBe('- a\n- b');
+    expect(settles('1) a\n2) b')).toBe('1. a\n2. b');
+    expect(settles('- a\n\n1. b')).toBe('- a\n\n1. b');
+    expect(settles('- a\n\nBetween\n\n- b')).toBe('- a\n\nBetween\n\n- b');
   });
 });

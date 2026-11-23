@@ -23,7 +23,7 @@ A Sociogram is built from one or more [prompts](/en/design-protocols/key-concept
 
 Every prompt has a **layout variable**, which stores each node's position on the canvas as a pair of coordinates. This is where the spatial data you collect on the Sociogram is recorded.
 
-If you use the same layout variable across all of a stage's prompts, a node's position carries over as the participant moves between tasks, so they refine one shared arrangement. If you want separate spatial measures, give each prompt a different layout variable — reusing a variable replaces the earlier coordinates. Positions are stored as normalized coordinates that a [responsive SVG background](/en/design-protocols/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) can turn into meaningful regions during analysis.
+If you use the same layout variable across all of a stage's prompts, a node's position carries over as the participant moves between tasks, so they refine one shared arrangement. If you want separate spatial measures, give each prompt a different layout variable — reusing a variable replaces the earlier coordinates. Positions are stored as normalized coordinates that a [responsive SVG background](/en/design-protocols/tutorials/responsive-svg-backgrounds#classify-nodes-from-their-coordinates) can turn into meaningful regions during analysis.
 
 ### Automatic or manual positioning
 
@@ -34,7 +34,7 @@ A stage-level **Layout Mode** setting decides how nodes first reach the canvas:
 
 ### Background
 
-A Sociogram stage can sit on either a series of concentric circles or a custom background image. For the concentric-circles background you choose how many circles to draw, and can optionally skew them so the middle rings are proportionally larger. For an image background, a responsive SVG works best because it keeps regions and labels readable as the canvas changes shape between portrait and landscape — see [Responsive SVG Backgrounds](/en/design-protocols/responsive-svg-backgrounds).
+A Sociogram stage can sit on either a series of concentric circles or a custom background image. For the concentric-circles background you choose how many circles to draw, and can optionally skew them so the middle rings are proportionally larger. For an image background, a responsive SVG works best because it keeps regions and labels readable as the canvas changes shape between portrait and landscape — see [Creating responsive background images](/en/design-protocols/tutorials/responsive-svg-backgrounds).
 
 <GoodPractice>
 
@@ -62,7 +62,7 @@ Edge creation and attribute toggling are the two tap behaviors, and a single pro
 
 ### Pause and resume tooltips
 
-The tooltips of the pause and resume buttons for the automatic layout simulation are [interview text](/en/design-protocols/translating-your-protocol#interview-text), shared with the Narrative stage, so the stage editor has no section for them. They are reworded and translated in the translation table under **Buttons**, and a protocol holds them only while a stage uses automatic layout.
+The tooltips of the pause and resume buttons for the automatic layout simulation are [interview text](/en/design-protocols/tutorials/translating-your-protocol#interview-text), shared with the Narrative stage, so the stage editor has no section for them. They are reworded and translated in the translation table under **Buttons**, and a protocol holds them only while a stage uses automatic layout.
 
 </AppOnly>
 

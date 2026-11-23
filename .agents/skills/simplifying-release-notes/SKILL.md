@@ -77,6 +77,10 @@ and discards the rewrite, so the check turns red again and you re-apply it.
    apps' notes without backticks or angle brackets; describe the thing
    instead. Fresco's notes appear only on GitHub, so code formatting for file
    and variable names is fine there.
+7. **Write standard, complete English.** Follow the grammar and wording
+   rules in the `writing-user-facing-text` skill (Claude Code: invoke
+   `writing-user-facing-text`): keep the words that written English uses,
+   use standard terms, and say the concrete thing.
 
 ## Delivering
 

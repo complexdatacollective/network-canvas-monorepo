@@ -1,7 +1,7 @@
 ---
 title: Narrativa
 navOrder: 10
-translatedFrom: a21c6fb487cacde6abc161d81dd344278b8ee53a
+translatedFrom: 8b47e33a2105ed6cee4ac4dd2130b5f65611824b
 ---
 
 <InterfaceSummary type="Narrative">
@@ -29,6 +29,12 @@ Todo lo que configuras en una etapa «Narrativa» se guarda en una o varias **vi
 
 Cada vista predefinida tiene una etiqueta que la identifica en la interfaz. Durante la entrevista, un selector flotante de vistas predefinidas permite a quien investiga o a la persona participante pasar de una vista predefinida a otra y mostrar u ocultar los grupos, los vínculos y los atributos resaltados. Cuando una vista predefinida incluye varios atributos para resaltar, se elige cuál se muestra en cada momento en una lista que muestra la etiqueta que has dado a cada atributo. Los tipos de vínculo que dibuja una vista predefinida también se enumeran con las etiquetas que les has dado. Nada de lo que se hace aquí se guarda en los datos: la interfaz «Narrativa» se limita a leerlos.
 
+<AppOnly app="current">
+
+Una vista predefinida también puede tener un **filtro**: reglas que eligen qué parte de la red muestra esa vista predefinida. Cada vista predefinida tiene su propio filtro, así que una misma etapa puede mostrar toda la red en una vista predefinida y solo una parte en otra; por ejemplo, todas las personas en la primera vista y solo los familiares en la segunda.
+
+</AppOnly>
+
 ![Un ejemplo de vista predefinida de una etapa «Narrativa», con nodos resaltados, vínculos entre ellos y envolventes de color de los grupos](/assets/img/interface-documentation/narrative/narrative-example.png)
 
 ## Configurar las vistas predefinidas en Architect {#configuring-presets-in-architect}
@@ -39,13 +45,33 @@ Una etapa «Narrativa» necesita al menos una vista predefinida. En cada vista p
 - **Atributo de disposición**: el atributo que se usa para colocar los nodos en esta vista predefinida.
 - **Atributo de agrupación** (opcional): un atributo categórico que se usa para dibujar envolventes convexas alrededor de los nodos que comparten cada valor.
 - **Vínculos mostrados** (opcional): uno o varios tipos de vínculo que se dibujan. Cada tipo de vínculo que eliges también necesita una etiqueta, que quienes participan ven en el selector de vistas predefinidas. Inicialmente es el nombre del tipo de vínculo, y puedes traducirla como cualquier otro texto.
-- **Resaltado de nodos** (opcional): uno o varios atributos booleanos; los nodos cuyo valor es verdadero se resaltan mientras la vista predefinida está activa. Cada atributo que eliges también necesita una etiqueta, que quienes participan ven en el selector de vistas predefinidas. Inicialmente, la etiqueta es el nombre del atributo, y puedes traducirla como cualquier otro texto (consulta [Traducir tu protocolo](/es/design-protocols/translating-your-protocol#labels-in-a-narrative-stages-legend)).
+- **Resaltado de nodos** (opcional): uno o varios atributos booleanos; los nodos cuyo valor es verdadero se resaltan mientras la vista predefinida está activa. Cada atributo que eliges también necesita una etiqueta, que quienes participan ven en el selector de vistas predefinidas. Inicialmente, la etiqueta es el nombre del atributo, y puedes traducirla como cualquier otro texto (consulta [Traducir tu protocolo](/es/design-protocols/tutorials/translating-your-protocol#labels-in-a-narrative-stages-legend)).
 
 Las opciones de grupos, vínculos y resaltado se eligen entre los atributos que ya hay en tu libro de códigos, así que define los atributos que necesita una vista predefinida antes de crearla.
 
+### Filtrar una vista predefinida {#filtering-a-preset}
+
+<AppOnly app="current">
+
+Activa **Filtro de la vista predefinida** en una vista predefinida para limitarla a una parte de la red. El filtro se crea con reglas, igual que un [filtro de red](/es/design-protocols/key-concepts/network-filtering) en cualquier otra etapa: cada regla comprueba un atributo de un nodo, o si un nodo tiene un vínculo de un tipo determinado, y tú eliges si un nodo debe cumplir todas las reglas o basta con que cumpla alguna. Una vista predefinida con filtro dibuja solo los nodos que cumplen las reglas, y solo los vínculos entre ellos.
+
+Una vista predefinida sin filtro muestra a todas las personas que tienen una posición en su atributo de disposición. La etapa «Narrativa» no tiene un filtro propio, así que, para mostrar la misma parte de la red en toda la etapa, pon el mismo filtro en cada vista predefinida.
+
+Al cambiar de vista predefinida durante la entrevista, también cambia el filtro. Los nodos que la nueva vista predefinida excluye desaparecen del lienzo, y aparecen los que incluye.
+
+Una etapa «Narrativa» se omite de la entrevista cuando ninguna de sus vistas predefinidas tiene a nadie que mostrar, salvo que **Dibujo libre** esté activado.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+En Architect Classic, el filtro pertenece a toda la etapa «Narrativa» y se aplica a todas las vistas predefinidas. Para definirlo, activa **Filtrado de red** en el editor de la etapa (consulta [Filtrado de la red](/es/design-protocols/key-concepts/network-filtering)).
+
+</AppOnly>
+
 ### Fondo {#background}
 
-Como en una etapa «Sociograma», el fondo de una etapa «Narrativa» puede ser una serie de círculos concéntricos o una imagen de fondo personalizada. Como imagen de fondo funciona mejor un SVG adaptable, porque mantiene legibles las zonas y las etiquetas cuando cambia la forma del lienzo. Consulta [Fondos SVG adaptables](/es/design-protocols/responsive-svg-backgrounds) para saber cómo prepararlo.
+Como en una etapa «Sociograma», el fondo de una etapa «Narrativa» puede ser una serie de círculos concéntricos o una imagen de fondo personalizada. Como imagen de fondo funciona mejor un SVG adaptable, porque mantiene legibles las zonas y las etiquetas cuando cambia la forma del lienzo. Consulta [Crear imágenes de fondo adaptables](/es/design-protocols/tutorials/responsive-svg-backgrounds) para saber cómo prepararlo.
 
 ### Comportamientos {#behaviors}
 
@@ -59,11 +85,11 @@ Tres comportamientos de la etapa cambian la forma en que quienes participan pued
 
 ### Personalizar la redacción predeterminada {#customize-built-in-wording}
 
-La sección **Personalizar la redacción predeterminada** del editor de etapas contiene los encabezados de los paneles, en **Textos exclusivos de esta etapa**. Cada uno empieza con la redacción de Network Canvas, en todos los idiomas para los que Network Canvas la tiene, y puedes cambiarla y traducirla como cualquier otro texto. Tu protocolo solo conserva la redacción que cambias (consulta [Palabras que aporta Network Canvas](/es/design-protocols/translating-your-protocol#words-network-canvas-supplies)). Un encabezado solo está en la sección mientras alguna vista predefinida resalta atributos, muestra vínculos o agrupa nodos, y se elimina cuando ninguna lo hace.
+La sección **Personalizar la redacción predeterminada** del editor de etapas contiene los encabezados de los paneles, en **Textos exclusivos de esta etapa**. Cada uno empieza con la redacción de Network Canvas, en todos los idiomas para los que Network Canvas la tiene, y puedes cambiarla y traducirla como cualquier otro texto. Tu protocolo solo conserva la redacción que cambias (consulta [Palabras que aporta Network Canvas](/es/design-protocols/tutorials/translating-your-protocol#words-network-canvas-supplies)). Un encabezado solo está en la sección mientras alguna vista predefinida resalta atributos, muestra vínculos o agrupa nodos, y se elimina cuando ninguna lo hace.
 
 La información emergente de las herramientas de dibujo es la misma en todas las etapas «Narrativa», así que está en **Textos comunes a todas las etapas de este tipo**, en la misma sección, mientras **Dibujo libre** está activado. Un cambio en ella se aplica a todas esas etapas, y se guarda en cuanto sales del campo. Hay tres textos: **Información emergente de activar o desactivar el dibujo** nombra el botón que activa y desactiva el dibujo; **Información emergente de congelar o descongelar las anotaciones**, el botón que congela y descongela las anotaciones, y **Información emergente de restablecer las anotaciones**, el botón que las borra.
 
-La información emergente de los botones que pausan y reanudan la disposición automática es [texto de entrevista](/es/design-protocols/translating-your-protocol#interview-text), compartido con la interfaz «Sociograma», y se reformula y traduce en la tabla de traducciones, en **Botones**.
+La información emergente de los botones que pausan y reanudan la disposición automática es [texto de entrevista](/es/design-protocols/tutorials/translating-your-protocol#interview-text), compartido con la interfaz «Sociograma», y se reformula y traduce en la tabla de traducciones, en **Botones**.
 
 </AppOnly>
 
@@ -82,6 +108,16 @@ Da a cada vista predefinida un único enfoque que corresponda a una pregunta, y 
 Como la interfaz «Narrativa» solo muestra los álteres que tienen un valor en el atributo de disposición de la vista predefinida, reutiliza el atributo de disposición que quienes participan rellenaron en una etapa [«Sociograma»](/es/design-protocols/interface-documentation/sociogram) anterior. Así se reproduce la disposición de la red que hizo la propia persona participante, en lugar de empezar con un lienzo vacío.
 
 </GoodPractice>
+
+<AppOnly app="current">
+
+<GoodPractice>
+
+Usa los filtros de las vistas predefinidas para pasar de toda la red a la parte de la que trata una pregunta. Una primera vista predefinida sin filtro muestra a todas las personas; las siguientes pueden limitarse a la familia, a las personas que prestan apoyo o a las personas conectadas por un tipo de vínculo, todo ello sin salir de la etapa ni perder la disposición que hizo la persona participante.
+
+</GoodPractice>
+
+</AppOnly>
 
 ## Registrar la conversación {#capturing-the-conversation}
 

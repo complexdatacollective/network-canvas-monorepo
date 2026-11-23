@@ -199,7 +199,14 @@ describe('loadRosterNodesForStages', () => {
   it('never reads protocol assets when no stage uses a roster', async () => {
     const result = await loadRosterNodesForStages(
       storedProtocol(
-        [{ id: 'info', label: 'Info', type: 'Information', items: [] }],
+        [
+          {
+            id: 'info',
+            label: 'Info',
+            type: 'Information',
+            content: { en: '# Info' },
+          },
+        ],
         {},
       ),
     );

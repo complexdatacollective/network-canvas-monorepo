@@ -54,8 +54,7 @@ const informationStage = (id: string, label: string): SectionDoc => ({
   id,
   type: 'Information',
   label: { en: label },
-  title: { en: label },
-  items: [],
+  content: { en: label },
 });
 
 const ENGLISH = { defaultLocale: 'en', locales: ['en'] };
@@ -327,11 +326,9 @@ describe('useStageName', () => {
     const { input } = renderEditor({
       type: 'Information',
       fields: {
-        items: [
-          { id: 'item-1', type: 'asset', content: 'asset-video' },
-          { id: 'item-2', type: 'asset', content: 'asset-image' },
-          { id: 'item-3', type: 'text', content: { en: 'Some prose' } },
-        ],
+        content: {
+          en: 'Some prose\n\n![A film](asset:asset-video)\n\n![A photo](asset:asset-image)',
+        },
       },
       sections: protocolSections({
         [sectionId({ kind: 'assets' })]: {
@@ -348,6 +345,91 @@ describe('useStageName', () => {
     await waitFor(() =>
       expect(input).toHaveValue('Information with Image & Video'),
     );
+  });
+
+  describe('an Information page naming files in its text', () => {
+    const MANIFEST = {
+      'asset-video': { name: 'A film', type: 'video', source: 'film.mp4' },
+      'asset-image': { name: 'A photo', type: 'image', source: 'photo.png' },
+      'asset-audio': { name: 'A song', type: 'audio', source: 'song.mp3' },
+      'asset-roster': { name: 'People', type: 'network', source: 'people.csv' },
+    };
+    const informationNamed = async (
+      content: Record<string, string>,
+      localization?: typeof ENGLISH,
+    ) => {
+      const { input } = renderEditor({
+        type: 'Information',
+        fields: { content },
+        sections: protocolSections({
+          [sectionId({ kind: 'assets' })]: MANIFEST,
+          ...(localization === undefined
+            ? {}
+            : { [sectionId({ kind: 'settings' })]: { localization } }),
+        }),
+      });
+      return input;
+    };
+    const page = (...ids: string[]) =>
+      ['Some prose', ...ids.map((id) => `![](asset:${id})`)].join('\n\n');
+
+    it.each([
+      [['asset-image'], 'Information with Image'],
+      [['asset-video'], 'Information with Video'],
+      [['asset-audio'], 'Information with Audio'],
+      [['asset-image', 'asset-video'], 'Information with Image & Video'],
+      [['asset-video', 'asset-image'], 'Information with Image & Video'],
+      [['asset-image', 'asset-audio'], 'Information with Image & Audio'],
+      [['asset-video', 'asset-audio'], 'Information with Video & Audio'],
+      [
+        ['asset-audio', 'asset-video', 'asset-image'],
+        'Information with Image, Video & Audio',
+      ],
+      [['asset-image', 'asset-image'], 'Information with Image'],
+    ])('is named for %j', async (assets, expected) => {
+      const input = await informationNamed({ en: page(...assets) });
+      await waitFor(() => expect(input).toHaveValue(expected));
+    });
+
+    it('is named for no media when its text names no file', async () => {
+      const input = await informationNamed({ en: page() });
+      await waitFor(() => expect(input).toHaveValue('Information'));
+    });
+
+    it('is not named for a file that is not an image, video or audio', async () => {
+      const input = await informationNamed({ en: page('asset-roster') });
+      await waitFor(() => expect(input).toHaveValue('Information'));
+    });
+
+    it('is not named for a file the protocol does not hold', async () => {
+      const input = await informationNamed({ en: page('asset-missing') });
+      await waitFor(() => expect(input).toHaveValue('Information'));
+    });
+
+    it('is named for a file only a language other than the default shows', async () => {
+      const input = await informationNamed(
+        { en: page(), es: page('asset-video') },
+        ENGLISH_AND_SPANISH,
+      );
+      await waitFor(() => expect(input).toHaveValue('Information with Video'));
+    });
+
+    it('is named for the files of every language together', async () => {
+      const input = await informationNamed(
+        { en: page('asset-image'), es: page('asset-audio') },
+        ENGLISH_AND_SPANISH,
+      );
+      await waitFor(() =>
+        expect(input).toHaveValue('Information with Image & Audio'),
+      );
+    });
+
+    it('is not named for an image written as code rather than as a block', async () => {
+      const input = await informationNamed({
+        en: 'Write `![](asset:asset-video)` to add one.',
+      });
+      await waitFor(() => expect(input).toHaveValue('Information'));
+    });
   });
 
   it('qualifies a name generator from the panels beside its question', async () => {

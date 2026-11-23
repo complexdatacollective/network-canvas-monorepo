@@ -70,6 +70,7 @@ export default function NarrativePresetsSection() {
 
   return (
     <BuilderSection
+      sectionKey="presets"
       title={intl.formatMessage(messages.presetsTitle)}
       description={intl.formatMessage(
         waiting

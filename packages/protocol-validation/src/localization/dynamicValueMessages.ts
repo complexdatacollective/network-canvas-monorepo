@@ -4,9 +4,14 @@ import {
   type ParserOptions,
   TYPE,
 } from '@formatjs/icu-messageformat-parser';
+import { fromMarkdown } from 'mdast-util-from-markdown';
+
+import { holdsLineBreak } from '@codaco/shared-consts';
 
 import { isBlankText } from './blankText.ts';
 import type { LocaleTag } from './localeTag.ts';
+import { versionLineMarkdown } from './markdownText.ts';
+import { markdownAsEdited } from './markdownTree.ts';
 import type { MessagePart } from './messageArguments.ts';
 
 /**
@@ -227,7 +232,7 @@ const statesNamedIn = (
           for (const key of keys) counted.add(key);
           categories.set(node.value, counted);
         }
-        for (const option of Object.values(node.options)) collect(option.value);
+        for (const version of versionsOf(node)) collect(version);
       }
     }
   };
@@ -240,6 +245,14 @@ const statesNamedIn = (
   );
 };
 
+/** The versions a node chooses between: none, unless it is a choice. */
+const versionsOf = (
+  node: MessageFormatElement,
+): readonly (readonly MessageFormatElement[])[] =>
+  node.type === TYPE.select || node.type === TYPE.plural
+    ? Object.values(node.options).map((option) => option.value)
+    : [];
+
 const hasChoice = (elements: readonly MessageFormatElement[]): boolean =>
   elements.some(
     (node) => node.type === TYPE.select || node.type === TYPE.plural,
@@ -250,6 +263,85 @@ const BLANK_PROBLEM =
 
 const MARKER_PROBLEM =
   'Text cannot contain the private-use character U+E000: the interview uses it to place values.';
+
+/**
+ * Whether some version holds a line break. A version of a piece of text is
+ * part of one line; text outside any version may run over several lines.
+ */
+const versionHoldsLineBreak = (
+  nodes: readonly MessageFormatElement[],
+  inVersion = false,
+): boolean =>
+  nodes.some((node) =>
+    node.type === TYPE.literal
+      ? inVersion && holdsLineBreak(node.value)
+      : versionsOf(node).some((version) =>
+          versionHoldsLineBreak(version, true),
+        ),
+  );
+
+type MarkdownTree = ReturnType<typeof fromMarkdown>;
+type MarkdownNode = MarkdownTree | MarkdownTree['children'][number];
+
+const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
+  if (
+    node.type === 'link' &&
+    `${node.url}${node.title ?? ''}`.includes(DYNAMIC_VALUE_MARKER)
+  ) {
+    return true;
+  }
+  return 'children' in node && node.children.some(linkAddressHoldsValue);
+};
+
+/**
+ * Whether a link's address or title holds a value or a choice of versions:
+ * both are fixed text. The text and each of its versions is read as markdown
+ * of its own, twice: as written, which is how the interview renders it, and
+ * as the editor reads it (`markdownAsEdited`, with a version behind
+ * `versionLineMarkdown`). The two differ where a `>`, a `<` or a version's
+ * leading spaces decide what is a link, and a link in either reading counts.
+ */
+const linkHoldsValue = (
+  nodes: readonly MessageFormatElement[],
+  inVersion = false,
+): boolean => {
+  const markdown = nodes
+    .map((node) =>
+      node.type === TYPE.literal ? node.value : DYNAMIC_VALUE_MARKER,
+    )
+    .join('');
+  const readings = () => [
+    fromMarkdown(markdown),
+    markdownAsEdited(inVersion ? versionLineMarkdown(markdown) : markdown),
+  ];
+  return (
+    (markdown.includes(DYNAMIC_VALUE_MARKER) &&
+      readings().some(linkAddressHoldsValue)) ||
+    nodes.some((node) =>
+      versionsOf(node).some((version) => linkHoldsValue(version, true)),
+    )
+  );
+};
+
+/**
+ * Why `message` cannot be formatted text that may show dynamic values, or
+ * undefined when it can. These are the texts the editor cannot hold, so a
+ * protocol that passes holds none of them. Meant for messages
+ * `findDynamicMessageSyntaxProblem` accepts.
+ */
+export const findFormattedMessageProblem = (
+  message: string,
+): string | undefined => {
+  const elements = parseMessage(message);
+  if (typeof elements === 'string') return undefined;
+  if (versionHoldsLineBreak(elements)) {
+    return 'A version of this text cannot contain a line break. Put the line break outside the versions.';
+  }
+  if (linkHoldsValue(elements)) {
+    return 'A link address cannot contain a value. Put the value in the words of the link, or outside the link.';
+  }
+  return undefined;
+};
 
 /**
  * Why `message` cannot be the text of a site that may show dynamic values,
@@ -269,8 +361,8 @@ export const findDynamicMessageSyntaxProblem = (
   ): string | undefined => {
     for (const node of nodes) {
       if (node.type === TYPE.select || node.type === TYPE.plural) {
-        for (const option of Object.values(node.options)) {
-          const problem = visit(option.value);
+        for (const version of versionsOf(node)) {
+          const problem = visit(version);
           if (problem !== undefined) return problem;
         }
       } else if (
@@ -307,15 +399,8 @@ const argumentOf = (
 ): DynamicValueArgument | undefined =>
   Object.hasOwn(values, name) ? values[name] : undefined;
 
-const describeAllowed = (values: DynamicValueArguments): string => {
-  const names = Object.keys(values);
-  return names.length === 0
-    ? 'No values are available here.'
-    : `The values available here are ${names.map((name) => `"${name}"`).join(', ')}.`;
-};
-
-const unknownValue = (name: string, values: DynamicValueArguments): string =>
-  `"${name}" is not a value this text can show here. ${describeAllowed(values)}`;
+const unknownValue = (name: string): string =>
+  `This text refers to a value that does not exist: "${name}".`;
 
 const unguarded = (name: string): string =>
   `"${name}" can be missing, so the text needs a version for when it is missing ({${name}, select, ${MISSING_CASE} {…} other {…}}), and can show it only in the other versions.`;
@@ -332,7 +417,7 @@ const findElementsProblem = (
         break;
       case TYPE.argument: {
         const value = argumentOf(values, element.value);
-        if (value === undefined) return unknownValue(element.value, values);
+        if (value === undefined) return unknownValue(element.value);
         if (value.unshowable !== undefined) {
           return `"${element.value}" cannot be shown as words: ${value.unshowable}`;
         }
@@ -344,7 +429,7 @@ const findElementsProblem = (
       case TYPE.select: {
         const name = element.value;
         const value = argumentOf(values, name);
-        if (value === undefined) return unknownValue(name, values);
+        if (value === undefined) return unknownValue(name);
         const hasMissing = MISSING_CASE in element.options;
         for (const [key, option] of Object.entries(element.options)) {
           if (
@@ -372,7 +457,7 @@ const findElementsProblem = (
       case TYPE.plural: {
         const name = element.value;
         const value = argumentOf(values, name);
-        if (value === undefined) return unknownValue(name, values);
+        if (value === undefined) return unknownValue(name);
         if (!value.numeric || element.pluralType !== 'cardinal') {
           return `"${name}" is not a number, so it cannot choose a version of the text by number.`;
         }
@@ -450,7 +535,7 @@ export const dynamicValueNamesIn = (message: string): readonly string[] => {
       if (node.type === TYPE.argument) names.add(node.value);
       if (node.type === TYPE.select || node.type === TYPE.plural) {
         names.add(node.value);
-        for (const option of Object.values(node.options)) visit(option.value);
+        for (const version of versionsOf(node)) visit(version);
       }
     }
   };

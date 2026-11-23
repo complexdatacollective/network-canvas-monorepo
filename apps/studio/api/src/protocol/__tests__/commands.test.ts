@@ -7,6 +7,7 @@ import { describe, it } from 'vitest';
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { UserId } from '@codaco/studio-contract/schema/ids';
+import { sectionShapeIssues } from '@codaco/studio-sync/section-validation';
 
 import { testCipher } from '../../__tests__/support/secrets.ts';
 import { userAuditActor } from '../../audit/actor.ts';
@@ -17,7 +18,11 @@ import { RequestId } from '../../http/middleware/request-id.ts';
 import { Jobs } from '../../jobs/jobs.ts';
 import { Analytics } from '../../platform/analytics.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
-import { createAuditedProtocol, untitledScreenText } from '../commands.ts';
+import {
+  createAuditedProtocol,
+  untitledScreenContent,
+  untitledScreenText,
+} from '../commands.ts';
 
 const PRINCIPAL = Principal.of({
   kind: 'user',
@@ -69,5 +74,37 @@ describe('the placeholder a new screen is named with', () => {
       untitledScreenText({ defaultLocale: 'en', locales: ['fr', 'en', 'es'] }),
       { en: 'Untitled screen' },
     );
+  });
+});
+
+describe('the page a new screen starts with', () => {
+  it('is a heading in the default language only, leaving the others missing', () => {
+    assert.deepStrictEqual(
+      untitledScreenContent({
+        defaultLocale: 'en',
+        locales: ['fr', 'en', 'es'],
+      }),
+      { en: '# Untitled screen' },
+    );
+    assert.deepStrictEqual(
+      untitledScreenContent({ defaultLocale: 'fr', locales: ['fr', 'en'] }),
+      { fr: '# Untitled screen' },
+    );
+  });
+
+  it('makes an Information stage that validates, with content and no title or items', () => {
+    const localization = { defaultLocale: 'en', locales: ['en', 'fr'] };
+    const stage = {
+      id: 'new-screen',
+      type: 'Information',
+      label: untitledScreenText(localization),
+      content: untitledScreenContent(localization),
+    };
+
+    assert.deepStrictEqual(sectionShapeIssues('stage:new-screen', stage), []);
+    assert.deepStrictEqual(stage.label, { en: 'Untitled screen' });
+    assert.deepStrictEqual(stage.content, { en: '# Untitled screen' });
+    assert.isFalse('title' in stage);
+    assert.isFalse('items' in stage);
   });
 });

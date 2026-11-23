@@ -1,4 +1,3 @@
-import { isEqual } from 'es-toolkit/compat';
 import { useSyncExternalStore } from 'react';
 
 import {
@@ -36,14 +35,9 @@ type StageDraftBeacon = Readonly<{
    */
   editing: boolean;
   /**
-   * Whether it holds anything the protocol does not.
-   *
-   * A deep comparison against the document the editor opened on, so undoing an
-   * edit by hand reports clean again. The codebook changes and the shared
-   * words changed in the editor are part of it: they are kept with the stage
-   * and saved only with it, so leaving loses them (an edit undone by hand
-   * stops being one). Network Canvas's wording for a shared entry the stage
-   * is the first to use is not: the protocol gains it anyway.
+   * Whether it holds anything the protocol does not: protocol-builder's
+   * answer (`StageDraft.unsaved`), which the codebook changes and the shared
+   * words changed in the editor are part of.
    */
   dirty: boolean;
   /**
@@ -67,8 +61,6 @@ type StageDraftBeacon = Readonly<{
 }>;
 
 const NO_WORDS: readonly InterfaceTextUpdate[] = Object.freeze([]);
-
-const NO_PENDING_WORDS = Object.freeze({ words: NO_WORDS, reworded: false });
 
 const CLOSED: StageDraftBeacon = Object.freeze({
   open: false,
@@ -99,6 +91,15 @@ function announce(next: StageDraftBeacon): void {
   for (const listener of notifying) listener();
 }
 
+/** What the editor says about its draft: see `StageDraft`. */
+type PublishedDraft = Readonly<{
+  stage: Stage;
+  unsaved: boolean;
+  editing: boolean;
+  interfaceText?: readonly InterfaceTextUpdate[];
+  codebook?: StagedCodebook;
+}>;
+
 /**
  * Said by the editor on every change to its form.
  *
@@ -107,32 +108,19 @@ function announce(next: StageDraftBeacon): void {
  * one keystroke behind the screen — which is what every caller of the mirror
  * this replaces had to flush before asking.
  */
-export function publishStageDraft(
-  stage: Stage,
-  committed: Readonly<Record<string, unknown>>,
-  draft: Readonly<Record<string, unknown>>,
-  editing: boolean,
-  /** The shared words a save would write with the stage, when there are any. */
-  interfaceText: Readonly<{
-    words: readonly InterfaceTextUpdate[];
-    /**
-     * Whether any of them is the researcher's change rather than Network
-     * Canvas's wording for an entry the stage is the first to use.
-     */
-    reworded: boolean;
-  }> = NO_PENDING_WORDS,
-  /** The codebook changes held with the stage. */
-  codebook: StagedCodebook = NOTHING_STAGED,
-): void {
+export function publishStageDraft({
+  stage,
+  unsaved,
+  editing,
+  interfaceText = NO_WORDS,
+  codebook = NOTHING_STAGED,
+}: PublishedDraft): void {
   announce({
     open: true,
     editing,
-    dirty:
-      interfaceText.reworded ||
-      Object.keys(codebook).length > 0 ||
-      !isEqual(prune(draft), prune(committed)),
+    dirty: unsaved,
     stage,
-    interfaceText: interfaceText.words,
+    interfaceText,
     codebook,
   });
 }
@@ -152,35 +140,4 @@ export function closeStageDraft(): void {
  */
 export function useStageDraft<T>(select: (beacon: StageDraftBeacon) => T): T {
   return useSyncExternalStore(subscribeToStageDraft, () => select(current));
-}
-
-/**
- * What a document is compared as, on both sides.
- *
- * A field that is mounted and empty and a field that is not mounted at all are
- * the same thing to a researcher, and the form says the first as an absent
- * value and the second by not being there — so both sides drop absent values
- * and the empty containers that leaves behind. Clearing a field that had a
- * committed value still reads as dirty: the key survives on the committed side
- * only.
- */
-function prune(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(prune);
-  if (value === null || typeof value !== 'object') return value;
-
-  const result: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    if (entry === undefined) continue;
-    const pruned = prune(entry);
-    if (
-      pruned !== null &&
-      typeof pruned === 'object' &&
-      !Array.isArray(pruned) &&
-      Object.keys(pruned).length === 0
-    ) {
-      continue;
-    }
-    result[key] = pruned;
-  }
-  return result;
 }

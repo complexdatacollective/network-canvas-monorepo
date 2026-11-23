@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ReactNode, useState } from 'react';
+import { type ComponentProps, type ReactNode, useState } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
@@ -22,13 +22,30 @@ vi.mock('../interfaces', async () => {
   const { default: FinishSession } =
     await import('../interfaces/FinishSession/FinishSession');
   const { default: EgoForm } = await import('../interfaces/EgoForm/EgoForm');
+  const { useState: useStateMock } = await import('react');
+  // An Information stage with a control that makes it throw while it shows
+  // its resolved text.
+  function Throws(props: ComponentProps<typeof Information>) {
+    const [broken, setBroken] = useStateMock(false);
+    if (broken) throw new Error('stage failed');
+    return (
+      <>
+        <Information {...props} />
+        <button type="button" onClick={() => setBroken(true)}>
+          Break the stage
+        </button>
+      </>
+    );
+  }
   return {
     default: (type: string) =>
       type === 'FinishSession'
         ? FinishSession
         : type === 'EgoForm'
           ? EgoForm
-          : Information,
+          : type === 'Throws'
+            ? Throws
+            : Information,
   };
 });
 
@@ -62,24 +79,18 @@ const GREETING = {
   en: '{name, select, missing {Welcome} other {Welcome, {name}}}',
 };
 
+const BODY =
+  'Thanks for **joining**{name, select, missing {.} other {, {name}.}} [Your page]({name, select, missing {https://example.com} other {https://example.com/{name}}}): {nickname, select, missing {none} other {{nickname}}}';
+
 const information = {
   id: 'welcome',
   type: 'Information' as const,
   label: { en: 'Welcome' },
-  title: GREETING,
   dynamicValues: {
     name: { path: 'ego.name' },
     nickname: { path: 'ego.nickname' },
   },
-  items: [
-    {
-      id: 'body',
-      type: 'text' as const,
-      content: {
-        en: 'Thanks for **joining**{name, select, missing {.} other {, {name}.}} [Your page]({name, select, missing {https://example.com} other {https://example.com/{name}}}): {nickname, select, missing {none} other {{nickname}}}',
-      },
-    },
-  ],
+  content: { en: `# ${GREETING.en}\n\n${BODY}` },
 };
 
 const finishStage = {
@@ -158,10 +169,14 @@ function Host({
   payload,
   posthogClient,
   disableAnalytics,
+  onSync = () => Promise.resolve(),
+  onFinish = () => Promise.resolve(),
 }: {
   payload: InterviewPayload;
   posthogClient?: unknown;
   disableAnalytics: boolean;
+  onSync?: ComponentProps<typeof Shell>['onSync'];
+  onFinish?: ComponentProps<typeof Shell>['onFinish'];
 }) {
   const [step, setStep] = useState(0);
   return (
@@ -169,10 +184,10 @@ function Host({
       payload={payload}
       currentStep={step}
       onStepChange={setStep}
-      onSync={() => Promise.resolve()}
+      onSync={onSync}
       requestedLocales={['en']}
-      onFinish={() => Promise.resolve()}
-      onRequestAsset={() => Promise.resolve('')}
+      onFinish={onFinish}
+      onRequestAsset={() => Promise.resolve('blob://asset')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
       disableAnalytics={disableAnalytics}
       posthogClient={posthogClient as never}
@@ -182,7 +197,7 @@ function Host({
 
 function renderShell(
   payload: InterviewPayload,
-  analytics: { posthogClient?: unknown; disableAnalytics: boolean } = {
+  analytics: Omit<ComponentProps<typeof Host>, 'payload'> = {
     disableAnalytics: true,
   },
 ) {
@@ -261,6 +276,149 @@ describe('dynamic values in a stage’s text', () => {
       client.captureException.mock.calls,
       ...consoleCalls.map((spy) => spy.mock.calls),
     ]);
+    expect(sent).not.toContain('LEAK_SENTINEL');
+  });
+
+  it('shows the corrected value when the participant goes back and returns', async () => {
+    const payload = makePayload({ name: 'Ada' });
+    payload.protocol.stages = [
+      {
+        id: 'about-you',
+        type: 'EgoForm',
+        label: { en: 'About you' },
+        introductionPanel: { title: { en: 'About you' } },
+        form: {
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'name',
+              prompt: { en: 'What is your name?' },
+            },
+          ],
+        },
+      },
+      information,
+      finishStage,
+    ] as InterviewPayload['protocol']['stages'];
+    payload.protocol.codebook.ego = {
+      variables: {
+        name: { name: 'name', type: 'text', component: 'Text' },
+        nickname: { name: 'nickname', type: 'text', component: 'Text' },
+      },
+    } as InterviewPayload['protocol']['codebook']['ego'];
+    renderShell(payload);
+
+    const user = userEvent.setup();
+    await screen.findByRole('textbox', { name: 'What is your name?' });
+    await user.click(screen.getByTestId('next-button'));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Welcome, Ada' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('previous-button'));
+    const name = await screen.findByRole('textbox', {
+      name: 'What is your name?',
+    });
+    await user.clear(name);
+    await user.type(name, 'Grace');
+    await user.click(screen.getByTestId('next-button'));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Welcome, Grace' }),
+    ).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent('Ada');
+  });
+
+  it('never persists or hands on the text a value was shown in', async () => {
+    const stored = 'PERSIST_SENTINEL_Q7';
+    const synced: unknown[] = [];
+    const finished: unknown[] = [];
+    renderShell(makePayload({ name: stored }), {
+      disableAnalytics: true,
+      onSync: (...args) => {
+        synced.push(args);
+        return Promise.resolve();
+      },
+      onFinish: (...args) => {
+        finished.push(args);
+        return Promise.resolve();
+      },
+    });
+    const user = userEvent.setup();
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: `Welcome, ${stored}`,
+      }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByTestId('next-button'));
+    await user.click(await screen.findByRole('button', { name: 'Finish' }));
+    await waitFor(() => expect(synced.length).toBeGreaterThan(0));
+
+    const persisted = JSON.stringify([
+      synced,
+      finished,
+      Object.entries(localStorage),
+      Object.entries(sessionStorage),
+    ]);
+    // The stored attribute is network data and is allowed where it is kept.
+    expect(persisted).toContain(stored);
+    expect(persisted).not.toContain(`Welcome, ${stored}`);
+    expect(persisted).not.toContain(`joining, ${stored}`);
+    expect(persisted).not.toContain('Thanks for');
+  });
+
+  it('never sends a value to analytics or the console when a stage showing it fails', async () => {
+    const client = {
+      capture: vi.fn(),
+      register: vi.fn(),
+      captureException: vi.fn(),
+    };
+    const consoleCalls = (
+      ['log', 'info', 'warn', 'error', 'debug'] as const
+    ).map((method) =>
+      vi.spyOn(console, method).mockImplementation(() => undefined),
+    );
+    const payload = makePayload({
+      name: HOSTILE_NAME,
+      nickname: 'LEAK_SENTINEL_CASE',
+    });
+    payload.protocol.stages = [
+      { ...information, type: 'Throws' },
+      finishStage,
+    ] as InterviewPayload['protocol']['stages'];
+    renderShell(payload, { posthogClient: client, disableAnalytics: false });
+
+    const heading = await screen.findByRole('heading', { level: 1 });
+    expect(heading).toHaveTextContent('LEAK_SENTINEL');
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Break the stage' }));
+
+    await waitFor(() => expect(client.captureException).toHaveBeenCalled());
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'There was an error' }),
+    ).toBeInTheDocument();
+    const sent = JSON.stringify([
+      client.capture.mock.calls,
+      client.register.mock.calls,
+      client.captureException.mock.calls.map(([error, properties]) => [
+        error instanceof Error
+          ? [error.name, error.message, error.stack]
+          : error,
+        properties,
+      ]),
+      ...consoleCalls.map((spy) =>
+        spy.mock.calls.map((call) =>
+          call.map((argument) =>
+            argument instanceof Error
+              ? [argument.name, argument.message, argument.stack]
+              : argument,
+          ),
+        ),
+      ),
+    ]);
+    expect(sent).toContain('stage failed');
     expect(sent).not.toContain('LEAK_SENTINEL');
   });
 
@@ -435,6 +593,30 @@ describe('dynamic values in a stage’s text', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('keeps a value out of the description a block gives its file', async () => {
+    const payload = makePayload({ name: HOSTILE_NAME });
+    payload.protocol.assets = [
+      { assetId: 'portrait', name: 'Portrait', type: 'image' },
+    ] as InterviewPayload['protocol']['assets'];
+    payload.protocol.stages = [
+      {
+        ...information,
+        content: {
+          en: '# Welcome\n\n![Portrait of {name}](asset:portrait)\n\nBelow the portrait.',
+        },
+      },
+      finishStage,
+    ] as InterviewPayload['protocol']['stages'];
+    renderShell(payload);
+
+    const image = await screen.findByRole('img');
+    // The researcher's words describe the picture; the participant's answer
+    // is never part of an attribute.
+    expect(image.getAttribute('alt')).toBe('Portrait of');
+    expect(document.body.innerHTML).not.toContain('LEAK_SENTINEL');
+    expect(screen.getByText('Below the portrait.')).toBeInTheDocument();
+  });
+
   it('shows an option’s label as the text its markdown reads', async () => {
     const payload = makePayload({});
     payload.protocol.stages = [
@@ -444,8 +626,8 @@ describe('dynamic values in a stage’s text', () => {
           ...information.dynamicValues,
           colour: { path: 'ego.colour' },
         },
-        title: {
-          en: '{colour, select, missing {No colour} other {Favourite: {colour}}}',
+        content: {
+          en: `# {colour, select, missing {No colour} other {Favourite: {colour}}}\n\n${BODY}`,
         },
       },
       finishStage,

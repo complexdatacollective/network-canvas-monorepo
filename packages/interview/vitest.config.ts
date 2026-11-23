@@ -122,6 +122,13 @@ export default defineConfig({
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
+            // The markdown parser that finds the files an Information page
+            // shows as blocks (`assetBlocksInMarkdown`) and reads formatted
+            // text for validation as the interview and the editor read it.
+            '@codaco/protocol-validation > mdast-util-from-markdown',
+            '@codaco/protocol-validation > mdast-util-gfm',
+            '@codaco/protocol-validation > mdast-util-to-markdown',
+            '@codaco/protocol-validation > micromark-extension-gfm',
             'd3-force',
             'zod',
             'zod/mini',

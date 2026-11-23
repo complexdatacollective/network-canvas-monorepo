@@ -1,4 +1,3 @@
-import { isEqual } from 'es-toolkit';
 import { createElement, useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
@@ -11,21 +10,12 @@ import {
 } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import { standingSharedWord } from '@codaco/protocol-builder/form/sharedWordingDraft';
+import { useStageDraftStore } from '@codaco/protocol-builder/form/stageDraftStore';
 import { useStageEditorForm } from '@codaco/protocol-builder/form/stageEditorContext';
-import { useProtocolLocalization } from '@codaco/protocol-builder/localization/ProtocolLocalization';
-import { useStandingStageNameProposal } from '@codaco/protocol-builder/naming/useStandingStageNameProposal';
 import type {
   StageProblemsStore,
   StageSectionsStore,
 } from '@codaco/protocol-builder/stage-editor-contract';
-import {
-  stageDocument,
-  stageFieldsOf,
-} from '@codaco/protocol-builder/stageDocument';
-import { useStageEdit } from '@codaco/protocol-builder/stageEdit';
-import { useProtocolContext } from '@codaco/protocol-builder/state/protocolContext';
-import { useStagedCodebookStore } from '@codaco/protocol-builder/state/stagedCodebook';
 import { type Stage, validateProtocol } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 import { launchPreview } from '~/components/PreviewHost/launchPreview';
@@ -53,6 +43,11 @@ import {
 } from './stageDraftBeacon';
 import StageSectionOutline from './StageSectionOutline';
 import StageTitle from './StageTitle';
+import { hasWalkthrough } from './walkthrough/parseWalkthrough';
+import StageWalkthrough from './walkthrough/StageWalkthrough';
+import { useWalkthroughState } from './walkthrough/walkthroughStore';
+import { WalkthroughToolbarControl } from './walkthrough/WalkthroughToolbarControl';
+
 const messages = defineMessages({
   openingPreview: {
     id: 'architect.chrome.stageEditor.stageEditor.openingPreview',
@@ -174,6 +169,7 @@ export default function StageEditorChrome({
       <OpenStageRegistration />
       {outlineHost !== null &&
         createPortal(<StageSectionOutline sections={sections} />, outlineHost)}
+      <StageWalkthrough />
       <StageEditorActions
         formId={formId}
         readOnly={readOnly}
@@ -235,72 +231,25 @@ function OpenStageRegistration() {
  * something nobody is looking at.
  */
 function StageDraftPublisher() {
-  const { liveDraft, pendingSharedWording, storeApi, identity } =
-    useStageEditorForm();
-  const { committedFields, access } = useStageEdit();
-  const stagedCodebook = useStagedCodebookStore();
-  const localization = useProtocolLocalization();
-  const { interfaceText } = useProtocolContext();
-  const { withoutProposal } = useStandingStageNameProposal();
-  const editing = access === 'editing';
+  const draftStore = useStageDraftStore();
 
   useEffect(() => {
-    if (committedFields === undefined) return undefined;
+    if (draftStore === undefined) return undefined;
     const publish = () => {
-      const draft = liveDraft();
-      const words = pendingSharedWording();
-      publishStageDraft(
-        // As it would be saved, holding only the researcher's own wording.
+      const { stage, ...draft } = draftStore.getSnapshot();
+      publishStageDraft({
+        ...draft,
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the draft is a plain record that may not satisfy the stage schema mid-edit; every reader validates the protocol built from it (validateProtocol) before relying on it
-        stageDocument(identity, draft) as unknown as Stage,
-        committedFields,
-        // Compared without a name the editor proposed and nobody has touched:
-        // that is not work the researcher would lose by leaving. The shared
-        // words saved with the stage are weighed on their own below.
-        withoutProposal(stageFieldsOf(draft), committedFields),
-        editing,
-        {
-          words,
-          // A shared word the save would write is the researcher's to lose
-          // where it differs from what the protocol shows for it: their
-          // change to a word it holds, or their own wording for one the
-          // stage is the first to use. Network Canvas's wording for such an
-          // entry is what the protocol would gain anyway.
-          reworded:
-            localization !== undefined &&
-            words.some(
-              ({ group, key, value }) =>
-                !isEqual(
-                  value,
-                  standingSharedWord(
-                    { interfaceText, localization },
-                    group,
-                    key,
-                  ),
-                ),
-            ),
-        },
-        stagedCodebook?.read(),
-      );
+        stage: stage as unknown as Stage,
+      });
     };
     publish();
-    const unsubscribe = storeApi.subscribe(publish);
+    const unsubscribe = draftStore.subscribe(publish);
     return () => {
       unsubscribe();
       closeStageDraft();
     };
-  }, [
-    committedFields,
-    editing,
-    identity,
-    interfaceText,
-    liveDraft,
-    localization,
-    pendingSharedWording,
-    stagedCodebook,
-    storeApi,
-    withoutProposal,
-  ]);
+  }, [draftStore]);
 
   return null;
 }
@@ -319,6 +268,12 @@ function StageEditorActions({
   const protocol = useSelector(getProtocol);
   const useSyntheticData = useSelector(getPreviewUseSyntheticData);
   const respectSkipLogic = useSelector(getPreviewRespectSkipLogic);
+  const { identity } = useStageEditorForm();
+  // The toolbar offers the walkthrough while it is closed, and a ring to
+  // restore it while it is minimised; its open panel needs neither.
+  const walkthroughPanelOpen = useWalkthroughState(
+    (state) => state.open && !state.collapsed,
+  );
 
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   // Disabled until the stage is known to be previewable, so Preview cannot be
@@ -477,6 +432,17 @@ function StageEditorActions({
         previewOptionsContent={previewOptionsContent}
         isStageInvalid={!isStageValid}
         isOpeningPreview={isOpeningPreview}
+        walkthrough={
+          identity !== undefined &&
+          hasWalkthrough(identity.type) &&
+          !walkthroughPanelOpen ? (
+            <WalkthroughToolbarControl
+              key="walkthrough"
+              stage={identity.id}
+              type={identity.type}
+            />
+          ) : undefined
+        }
       />
     </>
   );

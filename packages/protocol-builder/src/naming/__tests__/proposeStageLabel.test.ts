@@ -17,8 +17,7 @@ const informationStage = (
   id,
   type: 'Information',
   label,
-  title: label,
-  items: [],
+  content: label,
 });
 
 /**
@@ -140,11 +139,7 @@ describe('proposeStageLabel', () => {
         {
           id: 'stage-1',
           type: 'Information',
-          items: [
-            { id: 'item-1', type: 'asset', content: 'asset-video' },
-            { id: 'item-2', type: 'asset', content: 'asset-image' },
-            { id: 'item-3', type: 'text', content: { en: 'Some prose' } },
-          ],
+          shownAssets: ['asset-video', 'asset-image'],
         },
         contextWith({
           [sectionId({ kind: 'assets' })]: {

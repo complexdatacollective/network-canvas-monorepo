@@ -14,6 +14,7 @@ import {
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
+import { declaredTranslationText } from '@codaco/protocol-builder/localization/localizedText';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   actionCreators as stageActions,
@@ -23,7 +24,6 @@ import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getStageList } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
-import { localizedText } from '~/utils/localizedText';
 
 import NewStageScreen from '../Screens/NewStageScreen';
 import {
@@ -281,7 +281,10 @@ const Timeline = () => {
           const names = {
             list: dependents.map(
               (dependent) =>
-                localizedText(dependent.label, protocol?.localization) || {
+                declaredTranslationText(
+                  dependent.label,
+                  protocol?.localization,
+                ) || {
                   messageError: createMessageError(finalMessages.untitledStage),
                 },
             ),

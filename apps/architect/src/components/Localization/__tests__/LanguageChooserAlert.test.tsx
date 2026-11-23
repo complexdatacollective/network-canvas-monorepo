@@ -22,8 +22,7 @@ const information = {
   id: 'welcome',
   type: 'Information' as const,
   label: { en: 'Welcome', fr: 'Bienvenue' },
-  title: { en: 'Hello', fr: 'Bonjour' },
-  items: [],
+  content: { en: '# Hello', fr: '# Bonjour' },
 };
 
 const chooser = {

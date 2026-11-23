@@ -1061,14 +1061,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         id: 'alter-form-introduction',
         type: 'Information',
         label: localized('Welcome'),
-        title: localized('Welcome'),
-        items: [
-          {
-            id: 'introduction-text',
-            type: 'text',
-            content: localized('Some questions about them.'),
-          },
-        ],
+        content: localized('# Welcome\n\nSome questions about them.'),
       });
       expect(migrated.stages[3]).not.toHaveProperty('introductionPanel');
     },
@@ -1080,7 +1073,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         schema8WithStages(alterFormWithPanel({ title: 'Welcome' })),
         'alter-form-introduction',
       ),
-    ).toMatchObject({ title: localized('Welcome'), items: [] });
+    ).toMatchObject({ content: localized('# Welcome') });
   });
 
   it('shows or skips the Information stage with its stage', () => {
@@ -1215,7 +1208,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
           schema8WithStages(alterFormWithPanel({ title: 'Welcome', text })),
           'alter-form-introduction',
         ),
-      ).toMatchObject({ items: [] });
+      ).toMatchObject({ content: localized('# Welcome') });
     },
   );
 
@@ -1255,7 +1248,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
           schema8WithStages(alterFormWithPanel({ title, text: 'Hello' })),
           'alter-form-introduction',
         ),
-      ).toMatchObject({ title: localized('About them') });
+      ).toMatchObject({ content: localized('# About them\n\nHello') });
     },
   );
 
@@ -1408,7 +1401,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
           text: localized('Some more questions.'),
         },
       },
-      { id: 'alter-1-introduction', title: localized('About them'), items: [] },
+      { id: 'alter-1-introduction', content: localized('# About them') },
       { id: 'alter-1' },
     ]);
     expect(migrated.stages[0]).not.toHaveProperty('introductionPanel.text');
@@ -1647,16 +1640,26 @@ const migratedInformationTitle = (title: string) => {
 };
 
 describe('Migrating an Information stage title from schema 8 to 9', () => {
-  it.each(BLANK_TEXT)('gives a title of %s the stage name', (_, blank) => {
-    expect(migratedInformationTitle(blank)).toMatchObject({
-      title: localized('Welcome'),
+  // The page shows its text with no heading above it, as it showed before.
+  it.each(BLANK_TEXT)(
+    'leaves out a title of %s, leaving the rest of the page',
+    (_, blank) => {
+      expect(migratedInformationTitle(blank)).toMatchObject({
+        content: localized('Hi'),
+      });
+    },
+  );
+
+  it('keeps a title that says something, as the heading of the page', () => {
+    expect(migratedInformationTitle('Hello')).toMatchObject({
+      content: localized('# Hello\n\nHi'),
     });
   });
 
-  it('keeps a title that says something', () => {
-    expect(migratedInformationTitle('Hello')).toMatchObject({
-      title: localized('Hello'),
-    });
+  it('removes the title and items the page was held in', () => {
+    const stage = migratedInformationTitle('Hello');
+    expect(stage).not.toHaveProperty('title');
+    expect(stage).not.toHaveProperty('items');
   });
 });
 
@@ -1760,6 +1763,83 @@ describe('Migrating Narrative preset labels from schema 8 to 9', () => {
   });
 });
 
+// A schema 8 Narrative stage with two presets, holding the settings given.
+const schema8Narrative = (settings: Record<string, unknown>) => ({
+  ...createBaseProtocol(),
+  schemaVersion: 8,
+  stages: [
+    {
+      id: 'narrative',
+      type: 'Narrative',
+      label: 'Tell the story',
+      subject: { entity: 'node', type: 'person' },
+      presets: [
+        { id: 'first', label: 'Closeness', layoutVariable: 'layoutPosition' },
+        { id: 'second', label: 'Support', layoutVariable: 'layoutPosition' },
+      ],
+      background: { concentricCircles: 3 },
+      ...settings,
+    },
+  ],
+});
+
+describe('Migrating a Narrative stage filter from schema 8 to 9', () => {
+  const filter = { join: 'AND', rules: [nameRule, ageRule] };
+
+  it('copies the stage filter to every preset, and leaves the stage none', () => {
+    const [stage] = stagesMigratedFrom(schema8Narrative({ filter }));
+
+    expect(stage).toMatchObject({
+      presets: [
+        { id: 'first', filter },
+        { id: 'second', filter },
+      ],
+    });
+    expect(stage).not.toHaveProperty('filter');
+  });
+
+  it('gives each preset a copy of its own', () => {
+    const [stage] = stagesMigratedFrom(schema8Narrative({ filter }));
+    const [first, second] = (stage as { presets: { filter: object }[] })
+      .presets;
+
+    expect(first?.filter).not.toBe(second?.filter);
+  });
+
+  it('gives a preset no filter where the stage had none', () => {
+    const [stage] = stagesMigratedFrom(schema8Narrative({}));
+
+    expect(stage).not.toHaveProperty('presets.0.filter');
+    expect(stage).not.toHaveProperty('presets.1.filter');
+  });
+
+  it('produces a protocol schema 9 accepts', () => {
+    const result = ProtocolSchemaV9.safeParse(
+      migrateProtocol(schema8Narrative({ filter }), 9),
+    );
+
+    expect(result.error?.issues ?? []).toEqual([]);
+  });
+
+  // Fresco re-runs this migration over rows already in schema 9 form.
+  it('leaves a preset its own filter when run over a stage already converted', () => {
+    const own = { rules: [nameRule] };
+    const base = schema8Narrative({});
+    const [stage] = stagesMigratedFrom({
+      ...base,
+      stages: base.stages.map((narrative) => ({
+        ...narrative,
+        presets: narrative.presets.map((preset, index) =>
+          index === 0 ? { ...preset, filter: own } : preset,
+        ),
+      })),
+    });
+
+    expect(stage).toMatchObject({ presets: [{ filter: own }, {}] });
+    expect(stage).not.toHaveProperty('presets.1.filter');
+  });
+});
+
 // The base protocol with its Name Generator form titled as given, as schema 8
 // stored it.
 const migratedFormTitle = (title: string, nodeTypeName = 'Person') => {
@@ -1844,21 +1924,20 @@ const migratedInformationItems = (content: string) => {
   const migrated = migrateProtocol(document, 9).stages.find(
     ({ id }) => id === 'welcome',
   );
-  return migrated && 'items' in migrated ? migrated.items : undefined;
+  return migrated && 'content' in migrated ? migrated.content : undefined;
 };
 
 describe('Migrating Information text items from schema 8 to 9', () => {
-  it.each(BLANK_TEXT)('removes an item of %s', (_, blank) => {
-    expect(migratedInformationItems(blank)).toEqual([
-      { id: 'second', type: 'text', content: localized('Bye') },
-    ]);
+  it.each(BLANK_TEXT)('leaves out an item of %s', (_, blank) => {
+    expect(migratedInformationItems(blank)).toEqual(
+      localized('# Welcome\n\nBye'),
+    );
   });
 
-  it('keeps an item that says something', () => {
-    expect(migratedInformationItems('Hello')).toEqual([
-      { id: 'first', type: 'text', content: localized('Hello') },
-      { id: 'second', type: 'text', content: localized('Bye') },
-    ]);
+  it('keeps an item that says something, in its place on the page', () => {
+    expect(migratedInformationItems('Hello')).toEqual(
+      localized('# Welcome\n\nHello\n\nBye'),
+    );
   });
 });
 

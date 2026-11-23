@@ -1,7 +1,7 @@
 ---
 title: Information
 navOrder: 22
-translatedFrom: d019b85eb801edba143891a6e5628c74ad726aa5
+translatedFrom: f1ddedd7827fec7477980734231a8446da7af824
 ---
 
 <InterfaceSummary type="Information">
@@ -14,13 +14,31 @@ translatedFrom: d019b85eb801edba143891a6e5628c74ad726aa5
 
 L’interface « Information » est un écran polyvalent qui permet de présenter des informations aux personnes participantes à l’aide de divers contenus textuels et multimédias. Cet écran peut par exemple servir à présenter une étude ou à donner des instructions ou du contexte pour une étape particulière de l’enquête.
 
-Dans une étape « Information », vous pouvez intégrer une ou plusieurs [ressources](/fr/design-protocols/key-concepts/resources), en prenant des fichiers dans votre bibliothèque de ressources d’Architect ou directement sur votre appareil. Le nombre d’éléments n’est pas limité : les personnes participantes peuvent faire défiler l’écran ; ajoutez-en donc autant que nécessaire.
+Une page peut afficher des images, des vidéos et des enregistrements audio au fil de son texte. Ce sont des [ressources](/fr/design-protocols/key-concepts/resources), choisies dans votre bibliothèque de ressources d’Architect ou ajoutées depuis votre appareil. La quantité de contenu d’une page n’est pas limitée : les personnes participantes peuvent faire défiler l’écran ; ajoutez-en donc autant que nécessaire.
 
 ## Configurer une étape « Information » {#configuring-information-screen}
 
-Un écran d’information se compose d’un titre de page obligatoire, suivi d’une colonne d’éléments affichés de haut en bas. Chaque élément peut être du texte, une image, une vidéo ou un fichier audio, et un écran doit en comporter au moins un. Les éléments peuvent être réorganisés par glisser-déposer. Une taille d’affichage peut être attribuée aux images et aux vidéos : **Taille réelle** les affiche à leur hauteur naturelle, tandis que **Petite**, **Moyenne** et **Grande** limitent la hauteur à laquelle elles s’affichent, en conservant leurs proportions.
+Un écran d’information est un seul texte, rédigé dans un seul éditeur : le champ **Texte enrichi** de la section **Contenu** de l’étape. Tout ce qu’affiche la page fait partie de ce texte, dans l’ordre où les personnes participantes le lisent : titres, paragraphes, listes, ainsi que les images, vidéos ou enregistrements audio. L’éditeur s’agrandit à mesure que vous écrivez, de sorte que toute la page reste visible. Une étape dont la page est vide ne peut pas être enregistrée.
 
-![Configuration des éléments d’une étape fondée sur l’interface « Information » dans Architect](/assets/img/interface-documentation/information/architect-items.png)
+Pour donner un titre à la page, placez le curseur sur la première ligne du texte et choisissez **Titre 1** dans la liste des styles de texte de la barre d’outils de l’éditeur. La liste présente chaque style tel qu’il apparaît dans le texte, ce qui vous permet de voir la taille de chaque titre. Un titre placé au début de la page est centré.
+
+![Configuration d’une étape fondée sur l’interface « Information » dans Architect](/assets/img/interface-documentation/information/architect-items.png)
+
+### Ajouter des images, des vidéos et des fichiers audio {#adding-images-video-and-audio}
+
+Pour ajouter un fichier, placez le curseur à l’endroit voulu et choisissez, dans la barre d’outils de l’éditeur, le bouton image (**Insert image**), audio (**Insert audio**) ou vidéo (**Insert video**), puis sélectionnez la ressource. Le fichier est ajouté sous forme de bloc distinct, entre les paragraphes qui l’entourent. Un bloc peut être déplacé par glisser-déposer à un autre endroit du texte, et supprimé comme n’importe quelle autre partie du texte. Lorsque vous sélectionnez un passage de texte qui englobe un bloc, celui-ci est mis en surbrillance avec le reste de la sélection, et il est copié, coupé ou supprimé avec le texte.
+
+Sélectionnez un bloc pour modifier la façon dont il s’affiche. Il est entouré d’un contour, et ses paramètres s’ouvrent à côté de lui et restent ouverts tant que le bloc est sélectionné. Au clavier, appuyez sur Entrée sur un bloc sélectionné pour accéder à ses paramètres, et sur Échap pour revenir au texte. Si la fenêtre est petite, vous pouvez faire défiler les paramètres pour tous les atteindre.
+
+- **Description** est lue à voix haute aux personnes participantes qui utilisent un lecteur d’écran. Laissez-la vide pour une image purement décorative.
+- **Taille d’affichage** s’applique aux images et aux vidéos. **Taille réelle** les affiche à leur hauteur naturelle, tandis que **Petite**, **Moyenne** et **Grande** limitent leur hauteur et conservent leurs proportions. Vous pouvez aussi faire glisser la poignée ronde située dans le coin inférieur d’une image ou d’une vidéo sélectionnée : faites-la glisser vers le haut ou vers l’intérieur pour réduire l’image ou la vidéo, et vers le bas ou vers l’extérieur pour l’agrandir. Une étiquette indique la taille qu’aura l’image ou la vidéo. Cette taille est appliquée lorsque vous relâchez la poignée.
+- **Alignement** place un lecteur audio, ainsi que toute image ou vidéo dont la **Taille d’affichage** n’est pas **Taille réelle**, du côté où commence une ligne de texte, au centre, ou du côté où se termine une ligne.
+- **Démarrer la lecture automatiquement** s’applique aux fichiers audio et aux vidéos. Lorsque cette option est activée, la lecture démarre dès que la personne participante arrive sur la page. Une vidéo qui démarre automatiquement est lue son coupé jusqu’à ce que la personne participante active le son, car les navigateurs ne permettent pas à une page de lancer une vidéo avec le son.
+- **Répéter à la fin de la lecture** s’applique aux fichiers audio et aux vidéos, et relance la lecture chaque fois qu’elle se termine.
+- **Image**, **Audio** ou **Vidéo** affiche le fichier que contient le bloc. Choisissez **Changer l’image**, **Changer le fichier audio** ou **Changer la vidéo** pour le remplacer par une autre ressource. Le bloc conserve sa description, sa taille, son alignement et ses paramètres de lecture.
+- **Supprimer** retire le bloc du texte. Le fichier reste dans votre bibliothèque de ressources.
+
+Lorsqu’un protocole est rédigé [dans plusieurs langues](/fr/design-protocols/tutorials/translating-your-protocol), chaque langue a son propre texte, avec ses propres blocs. Une page peut ainsi afficher une image ou un enregistrement différent dans chaque langue ; cela signifie aussi qu’un fichier ajouté dans une langue ne s’affiche pas dans une autre tant que vous ne l’y avez pas ajouté également.
 
 ### Bonnes pratiques {#best-practices}
 

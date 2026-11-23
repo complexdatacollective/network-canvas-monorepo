@@ -103,7 +103,7 @@ function RosterColumnsSection({
   }, [resources, resourceId]);
 
   return (
-    <BuilderSection title="Card display">
+    <BuilderSection sectionKey="card-display" title="Card display">
       <p>
         {unreadable || columns.length === 0
           ? 'That roster could not be read.'
@@ -134,7 +134,7 @@ function ResourceListSection() {
   }, [resources]);
 
   return (
-    <BuilderSection title="Files">
+    <BuilderSection sectionKey="form-fields" title="Files">
       {refused && <p>The host refused to list its files.</p>}
       <ul>
         {listed.map((resource) => (
@@ -210,7 +210,7 @@ describe('the stage-editor test harness', () => {
     const harness = renderStageEditor({
       stage: {
         type: 'Information',
-        fields: { label: {}, title: {}, items: [] },
+        fields: { label: {}, content: {} },
       },
       sections: commonSections,
     });
@@ -272,7 +272,7 @@ describe('the stage-editor test harness', () => {
       stageId: 'information-1',
       sections: commonSections,
     });
-    const unowned = ['title', 'items'];
+    const unowned = ['content'];
 
     await harness.roundTrip({ unowned });
     // Nothing tells the editor the lock has gone; the next save is refused by
@@ -294,7 +294,7 @@ describe('the stage-editor test harness', () => {
  */
 function SingleLineQuestion() {
   return (
-    <BuilderSection title="Question">
+    <BuilderSection sectionKey="form-fields" title="Question">
       <Field<typeof RichTextField>
         name="interviewScript"
         component={RichTextField}
@@ -532,9 +532,9 @@ describe('what a round trip refuses', () => {
       ),
     });
 
-    await expect(
-      harness.roundTrip({ unowned: ['title', 'items'] }),
-    ).rejects.toThrow(/Added: interviewScript\./);
+    await expect(harness.roundTrip({ unowned: ['content'] })).rejects.toThrow(
+      /Added: interviewScript\./,
+    );
   });
 
   it('refuses a stage that came back missing a key nested inside one', async () => {
@@ -740,8 +740,7 @@ describe('a stage being created', () => {
         position: INFORMATION_INDEX,
         fields: {
           label: { 'en-US': 'A new page' },
-          title: { 'en-US': 'A new page' },
-          items: [],
+          content: { 'en-US': 'A new page' },
           // A destination its insertion position allows, so the schema's rule
           // about skipping forwards is judged against the interview it joins.
           skipLogic: {
@@ -806,7 +805,7 @@ describe('a stage the interview already contains', () => {
       stage: {
         id: 'information-1',
         type: 'Information',
-        fields: { label: {}, title: { 'en-US': 'A page' }, items: [] },
+        fields: { label: {}, content: { 'en-US': 'A page' } },
       },
       sections: <></>,
     });
@@ -920,7 +919,7 @@ describe('a codebook change the harness seeds', () => {
     const { codebook } = useProtocolContext();
     const names = Object.keys(codebook.node?.person?.variables ?? {});
     return (
-      <BuilderSection title="Person attributes">
+      <BuilderSection sectionKey="person-attributes" title="Person attributes">
         <p>{`Attributes: ${names.toSorted().join(', ')}`}</p>
       </BuilderSection>
     );

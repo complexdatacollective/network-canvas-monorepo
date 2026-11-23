@@ -1,0 +1,733 @@
+import type { ReactNode } from 'react';
+
+import { backOut, segment } from '@codaco/art/illustration/motion';
+
+import {
+  Chip,
+  Click,
+  defineScene,
+  lerp,
+  PersonNode,
+  pressAt,
+  Prompt,
+  SidePanel,
+  smooth,
+  STAGE,
+  travel,
+  typed,
+  type Point,
+  type Stop,
+} from './parts';
+
+const TEXT = {
+  prompt: 'Which classmates do you spend time with?',
+  panel: 'Your classmates',
+  class: 'CLASS',
+  cardDisplay: 'Card display: Class',
+  name: 'Name',
+  classButton: 'Class',
+  search: 'Search...',
+  typed: 'Rossa',
+  low: 'Search accuracy: Low',
+  exact: 'Search accuracy: Exact',
+  // The interview's own message for a search that finds nothing.
+  noMatch: 'Nothing matched your search term.',
+} as const;
+
+type Detail = Readonly<{ label: string; value: string }>;
+type Entry = Readonly<{ key: string; label: string; detail?: Detail }>;
+
+const PANEL = {
+  x: STAGE.x + 14,
+  y: STAGE.y + 66,
+  width: 300,
+  height: STAGE.bottom - STAGE.y - 76,
+} as const;
+const CARD = { width: 134, gap: 8, head: 34, detail: 28 } as const;
+const GRID_X = PANEL.x + 12;
+const GRID_TOP = PANEL.y + 54;
+const NETWORK = {
+  x: PANEL.x + PANEL.width + 24,
+  right: STAGE.right - 16,
+  y: (PANEL.y + PANEL.y + PANEL.height) / 2,
+} as const;
+const NETWORK_CENTRE = (NETWORK.x + NETWORK.right) / 2;
+const NODE_R = 30;
+
+const netSlot = (i: number, count = 3): Point => [
+  NETWORK_CENTRE + (i - (count - 1) / 2) * 88,
+  NETWORK.y,
+];
+
+const cardHeight = (detailK: number) => CARD.head + CARD.detail * detailK;
+
+const gridSlot = (i: number, top: number, height: number): Point => [
+  GRID_X + (i % 2) * (CARD.width + CARD.gap),
+  top + Math.floor(i / 2) * (height + CARD.gap),
+];
+
+/** The centre of a card, where the cursor takes hold of it. */
+const centreOf = ([x, y]: Point, height: number): Point => [
+  x + CARD.width / 2,
+  y + height / 2,
+];
+
+type Placed = Readonly<{ at: Point; k: number }>;
+
+/**
+ * Where each card sits as the roster changes: `states` are the card orders
+ * in turn, and each change happens at the matching time in `changes`. Cards
+ * slide to their new places, and appear or leave in place.
+ */
+function flow(
+  states: readonly (readonly string[])[],
+  changes: readonly number[],
+  t: number,
+  slot: (i: number) => Point,
+): Map<string, Placed> {
+  const keys = new Set(states.flat());
+  const placed = new Map<string, Placed>();
+  for (const key of keys) {
+    const first = states[0]?.indexOf(key) ?? -1;
+    let at: Point = slot(Math.max(first, 0));
+    let k = first === -1 ? 0 : 1;
+    changes.forEach((change, i) => {
+      const m = smooth(segment(t, change, 0.35));
+      if (m <= 0) return;
+      const next = states[i + 1]?.indexOf(key) ?? -1;
+      if (next === -1) {
+        k = 0;
+        return;
+      }
+      const target = slot(next);
+      at =
+        k > 0 ? [lerp(at[0], target[0], m), lerp(at[1], target[1], m)] : target;
+      k = lerp(k, 1, m);
+    });
+    placed.set(key, { at, k });
+  }
+  return placed;
+}
+
+/** A roster card as the interview draws it: a name over its details. */
+function Card({
+  at,
+  label,
+  detail,
+  detailK = 0,
+  opacity = 1,
+}: Readonly<{
+  at: Point;
+  label: string;
+  detail?: Detail;
+  detailK?: number;
+  opacity?: number;
+}>) {
+  if (opacity <= 0) return null;
+  const [x, y] = at;
+  const shown = detail === undefined ? 0 : detailK;
+  const height = cardHeight(shown);
+  return (
+    <g opacity={opacity}>
+      <rect
+        x={x}
+        y={y}
+        width={CARD.width}
+        height={height}
+        rx={6}
+        className="fill-platinum-dark"
+      />
+      <rect
+        x={x}
+        y={y}
+        width={CARD.width}
+        height={CARD.head}
+        rx={6}
+        className="fill-platinum"
+      />
+      {shown > 0 ? (
+        <rect
+          x={x}
+          y={y + CARD.head - 6}
+          width={CARD.width}
+          height={6}
+          className="fill-platinum"
+        />
+      ) : null}
+      <text
+        x={x + 12}
+        y={y + 22}
+        fontSize={14}
+        fontWeight={800}
+        className="fill-charcoal"
+      >
+        {label}
+      </text>
+      {detail !== undefined && shown > 0 ? (
+        <g opacity={shown}>
+          <text
+            x={x + 48}
+            y={y + CARD.head + 18}
+            textAnchor="end"
+            fontSize={9}
+            fontWeight={800}
+            className="fill-charcoal"
+          >
+            {detail.label}
+          </text>
+          <text
+            x={x + 56}
+            y={y + CARD.head + 18}
+            fontSize={12}
+            fontWeight={600}
+            className="fill-charcoal"
+          >
+            {detail.value}
+          </text>
+        </g>
+      ) : null}
+    </g>
+  );
+}
+
+/** The roster panel the cards sit in, with its title. */
+function RosterPanel({
+  id,
+  children,
+}: Readonly<{ id: string; children?: ReactNode }>) {
+  return (
+    <SidePanel
+      id={id}
+      x={PANEL.x}
+      y={PANEL.y}
+      width={PANEL.width}
+      height={PANEL.height}
+      title={TEXT.panel}
+      bar="fill-cat-1"
+    >
+      {children}
+    </SidePanel>
+  );
+}
+
+/** The overlay over the roster while an added node is dragged back to it. */
+function DropBack({ k }: Readonly<{ k: number }>) {
+  if (k <= 0) return null;
+  const cx = PANEL.x + PANEL.width / 2;
+  const cy = PANEL.y + PANEL.height / 2;
+  return (
+    <g opacity={k}>
+      <rect
+        x={PANEL.x}
+        y={PANEL.y + 43}
+        width={PANEL.width}
+        height={PANEL.height - 53}
+        className="fill-navy-taupe/80"
+      />
+      <circle cx={cx} cy={cy - 18} r={22} className="fill-neon-coral" />
+      <path
+        d={`M ${cx} ${cy + 18} v 22 m -9 -9 l 9 9 l 9 -9 M ${cx - 11} ${cy + 46} h 22`}
+        className="fill-none stroke-white"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+  );
+}
+
+type Drag = Readonly<{
+  key: string;
+  label: string;
+  pick: number;
+  drop: number;
+  from: Point;
+  to: Point;
+}>;
+
+const carried = (t: number, drag: Drag): Point | null =>
+  t < drag.pick || t >= drag.drop
+    ? null
+    : travel(t, drag.from, [
+        { to: drag.to, at: drag.drop, glide: drag.drop - drag.pick },
+      ]);
+
+const dragStops = (drags: readonly Drag[]): Stop[] =>
+  drags.flatMap((drag) => [
+    { to: drag.from, at: drag.pick, ring: false },
+    {
+      to: drag.to,
+      at: drag.drop,
+      glide: drag.drop - drag.pick,
+      ring: false,
+    },
+  ]);
+
+const INTRO_CARDS: readonly Entry[] = [
+  'Kwame',
+  'Lin',
+  'Rosa',
+  'Sam',
+  'Ana',
+  'Jo',
+].map((label) => ({ key: label, label }));
+
+/**
+ * Shows a roster name generator where the participant drags Rosa and then Lin
+ * from the cards into their network, each card becoming a node and leaving the
+ * list, and then drags Rosa back to the cards to remove that alter.
+ */
+export const RosterIntroScene = defineScene(6.0, ({ t, id }) => {
+  const order = INTRO_CARDS.map((c) => c.key);
+  const states = [
+    order,
+    order.filter((k) => k !== 'Rosa'),
+    order.filter((k) => k !== 'Rosa' && k !== 'Lin'),
+    order.filter((k) => k !== 'Lin'),
+  ];
+  const slot = (i: number) => gridSlot(i, GRID_TOP, cardHeight(0));
+  const placed = flow(states, [1.8, 3.2, 4.8], t, slot);
+  const at = (key: string) => placed.get(key)?.at ?? slot(0);
+  const drags: Drag[] = [
+    {
+      key: 'Rosa',
+      label: 'Rosa',
+      pick: 0.9,
+      drop: 1.8,
+      from: centreOf(slot(2), cardHeight(0)),
+      to: netSlot(0, 2),
+    },
+    {
+      key: 'Lin',
+      label: 'Lin',
+      pick: 2.4,
+      drop: 3.2,
+      from: centreOf(slot(0), cardHeight(0)),
+      to: netSlot(1, 2),
+    },
+    {
+      key: 'Rosa',
+      label: 'Rosa',
+      pick: 3.9,
+      drop: 4.8,
+      from: netSlot(0, 2),
+      to: [PANEL.x + PANEL.width / 2, PANEL.y + PANEL.height / 2],
+    },
+  ];
+  const back = drags[2];
+  const overlay =
+    back === undefined
+      ? 0
+      : segment(t, back.pick, 0.2) * (1 - segment(t, back.drop, 0.2));
+  const inNetwork = [
+    { label: 'Rosa', at: netSlot(0, 2), from: 1.8, to: 3.9 },
+    { label: 'Lin', at: netSlot(1, 2), from: 3.2, to: Infinity },
+  ];
+  return {
+    rail: { progress: 0.3 },
+    body: (
+      <>
+        <Prompt text={TEXT.prompt} size={20} y={STAGE.y + 40} />
+        <RosterPanel id={id}>
+          {INTRO_CARDS.map((card) => {
+            const p = placed.get(card.key);
+            return (
+              <Card
+                key={card.key}
+                at={at(card.key)}
+                label={card.label}
+                opacity={p?.k ?? 0}
+              />
+            );
+          })}
+          <DropBack k={overlay} />
+        </RosterPanel>
+        {inNetwork.map((node) =>
+          t >= node.from && t < node.to ? (
+            <PersonNode
+              key={node.label}
+              x={node.at[0]}
+              y={node.at[1]}
+              r={NODE_R}
+              label={node.label}
+              k={backOut(segment(t, node.from, 0.3))}
+            />
+          ) : null,
+        )}
+        {drags.map((drag) => {
+          const p = carried(t, drag);
+          return p ? (
+            <PersonNode
+              key={`${drag.key}-${drag.pick}`}
+              x={p[0]}
+              y={p[1]}
+              r={26}
+              label={drag.label}
+              k={1}
+            />
+          ) : null;
+        })}
+      </>
+    ),
+    overlay: <Click t={t} stops={dragStops(drags)} leave={5.2} />,
+  };
+});
+
+const DISPLAY_CARDS: readonly Entry[] = [
+  { key: 'alex-a', label: 'Alex', detail: { label: TEXT.class, value: '7A' } },
+  { key: 'alex-b', label: 'Alex', detail: { label: TEXT.class, value: '7B' } },
+  { key: 'lin', label: 'Lin', detail: { label: TEXT.class, value: '7A' } },
+  { key: 'rosa', label: 'Rosa', detail: { label: TEXT.class, value: '7B' } },
+];
+
+/**
+ * Shows a roster name generator where two cards both read Alex until the card
+ * display adds each entry's class beneath the name, and the participant then
+ * drags the Alex in class 7B into the network.
+ */
+export const RosterCardDisplayScene = defineScene(5.2, ({ t, id }) => {
+  const detailK = smooth(segment(t, 1.4, 0.6));
+  const height = cardHeight(detailK);
+  const order = DISPLAY_CARDS.map((c) => c.key);
+  const slot = (i: number) => gridSlot(i, GRID_TOP, height);
+  const placed = flow(
+    [order, order.filter((k) => k !== 'alex-b')],
+    [3.5],
+    t,
+    slot,
+  );
+  const drag: Drag = {
+    key: 'alex-b',
+    label: 'Alex',
+    pick: 2.6,
+    drop: 3.5,
+    from: centreOf(gridSlot(1, GRID_TOP, cardHeight(1)), cardHeight(1)),
+    to: netSlot(0, 1),
+  };
+  const p = carried(t, drag);
+  return {
+    rail: { progress: 0.3 },
+    body: (
+      <>
+        <Prompt text={TEXT.prompt} size={20} y={STAGE.y + 40} />
+        <RosterPanel id={id}>
+          {DISPLAY_CARDS.map((card) => {
+            const placedCard = placed.get(card.key);
+            return (
+              <Card
+                key={card.key}
+                at={placedCard?.at ?? slot(0)}
+                label={card.label}
+                detail={card.detail}
+                detailK={detailK}
+                opacity={placedCard?.k ?? 0}
+              />
+            );
+          })}
+        </RosterPanel>
+        <Chip
+          x={NETWORK_CENTRE}
+          y={PANEL.y + 20}
+          text={TEXT.cardDisplay}
+          size={13}
+          k={backOut(segment(t, 1.1, 0.4))}
+        />
+        {t >= drag.drop ? (
+          <PersonNode
+            x={netSlot(0, 1)[0]}
+            y={netSlot(0, 1)[1]}
+            r={NODE_R}
+            label={drag.label}
+            k={backOut(segment(t, drag.drop, 0.3))}
+          />
+        ) : null}
+        {p ? (
+          <PersonNode x={p[0]} y={p[1]} r={26} label={drag.label} k={1} />
+        ) : null}
+      </>
+    ),
+    overlay: <Click t={t} stops={dragStops([drag])} leave={4.0} />,
+  };
+});
+
+const SORT_CARDS: readonly Entry[] = [
+  { key: 'Rosa', label: 'Rosa', detail: { label: TEXT.class, value: '7B' } },
+  { key: 'Kwame', label: 'Kwame', detail: { label: TEXT.class, value: '7A' } },
+  { key: 'Lin', label: 'Lin', detail: { label: TEXT.class, value: '7B' } },
+  { key: 'Ana', label: 'Ana', detail: { label: TEXT.class, value: '7A' } },
+];
+
+const BUTTON_Y = PANEL.y + 68;
+const BUTTONS = [
+  { label: TEXT.name, x: PANEL.x + 14, width: 96 },
+  { label: TEXT.classButton, x: PANEL.x + 118, width: 96 },
+] as const;
+
+/** A sort button: the active one takes the accent fill and an arrow. */
+function SortButton({
+  x,
+  width,
+  label,
+  active,
+  descending,
+  press,
+}: Readonly<{
+  x: number;
+  width: number;
+  label: string;
+  active: number;
+  descending: number;
+  press: number;
+}>) {
+  const cy = BUTTON_Y;
+  const squash = 1 - 0.08 * Math.sin(Math.PI * press);
+  const ax = x + width - 20;
+  return (
+    <g
+      transform={`translate(${x + width / 2} ${cy}) scale(${squash}) translate(${-(x + width / 2)} ${-cy})`}
+    >
+      <rect
+        x={x}
+        y={cy - 16}
+        width={width}
+        height={32}
+        rx={16}
+        className="fill-white/15"
+      />
+      <rect
+        x={x}
+        y={cy - 16}
+        width={width}
+        height={32}
+        rx={16}
+        className="fill-slate-blue"
+        opacity={active}
+      />
+      <text
+        x={x + 16}
+        y={cy + 5}
+        fontSize={14}
+        fontWeight={700}
+        className="fill-white"
+      >
+        {label}
+      </text>
+      {active > 0 ? (
+        <g
+          opacity={active}
+          transform={`rotate(${descending * 180} ${ax} ${cy})`}
+        >
+          <path
+            d={`M ${ax} ${cy + 7} v -14 m -5 5 l 5 -5 l 5 5`}
+            className="fill-none stroke-white"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      ) : null}
+    </g>
+  );
+}
+
+/**
+ * Shows a roster name generator where the participant clicks the Name sort
+ * button to sort the cards A to Z, clicks it again to reverse the order, and
+ * then clicks Class to sort the cards by class.
+ */
+export const RosterSortScene = defineScene(5.6, ({ t, id }) => {
+  const clicks = [1.0, 2.4, 3.8];
+  const states = [
+    ['Rosa', 'Kwame', 'Lin', 'Ana'],
+    ['Ana', 'Kwame', 'Lin', 'Rosa'],
+    ['Rosa', 'Lin', 'Kwame', 'Ana'],
+    ['Kwame', 'Ana', 'Rosa', 'Lin'],
+  ];
+  const height = cardHeight(1);
+  const slot = (i: number) => gridSlot(i, BUTTON_Y + 30, height);
+  const placed = flow(
+    states,
+    clicks.map((c) => c + 0.1),
+    t,
+    slot,
+  );
+  const nameOn =
+    smooth(segment(t, 1.0, 0.2)) * (1 - smooth(segment(t, 3.8, 0.2)));
+  const classOn = smooth(segment(t, 3.8, 0.2));
+  const nameDown = smooth(segment(t, 2.4, 0.3));
+  const target = (b: (typeof BUTTONS)[number]): Point => [
+    b.x + b.width / 2,
+    BUTTON_Y,
+  ];
+  return {
+    rail: { progress: 0.3 },
+    body: (
+      <>
+        <Prompt text={TEXT.prompt} size={20} y={STAGE.y + 40} />
+        <RosterPanel id={id}>
+          <SortButton
+            {...BUTTONS[0]}
+            active={nameOn}
+            descending={nameDown}
+            press={pressAt(t, [1.0, 2.4])}
+          />
+          <SortButton
+            {...BUTTONS[1]}
+            active={classOn}
+            descending={0}
+            press={pressAt(t, [3.8])}
+          />
+          {SORT_CARDS.map((card) => (
+            <Card
+              key={card.key}
+              at={placed.get(card.key)?.at ?? slot(0)}
+              label={card.label}
+              detail={card.detail}
+              detailK={1}
+            />
+          ))}
+        </RosterPanel>
+      </>
+    ),
+    overlay: (
+      <Click
+        t={t}
+        stops={[
+          { to: target(BUTTONS[0]), at: clicks[0] ?? 0 },
+          { to: target(BUTTONS[0]), at: clicks[1] ?? 0 },
+          { to: target(BUTTONS[1]), at: clicks[2] ?? 0 },
+        ]}
+        leave={4.6}
+      />
+    ),
+  };
+});
+
+const SEARCH_CARDS = ['Kwame', 'Lin', 'Rosa', 'Sam', 'Ana', 'Jo'];
+const SEARCH_Y = PANEL.y + 68;
+
+/** The search box above the cards, with what the participant has typed. */
+function SearchBox({
+  query,
+  caret,
+}: Readonly<{ query: string; caret: boolean }>) {
+  const x = PANEL.x + 14;
+  const width = PANEL.width - 28;
+  return (
+    <g>
+      <rect
+        x={x}
+        y={SEARCH_Y - 17}
+        width={width}
+        height={34}
+        rx={8}
+        className="fill-white/15"
+      />
+      <circle
+        cx={x + 18}
+        cy={SEARCH_Y - 2}
+        r={6}
+        className="fill-none stroke-white/70"
+        strokeWidth={2}
+      />
+      <path
+        d={`M ${x + 22} ${SEARCH_Y + 2} l 5 5`}
+        className="stroke-white/70"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <text
+        x={x + 36}
+        y={SEARCH_Y + 5}
+        fontSize={14}
+        fontWeight={600}
+        className={query === '' ? 'fill-white/50' : 'fill-white'}
+      >
+        {query === '' ? TEXT.search : query}
+      </text>
+      {caret ? (
+        <rect
+          x={x + 37 + query.length * 8.2}
+          y={SEARCH_Y - 9}
+          width={2}
+          height={18}
+          className="fill-white"
+        />
+      ) : null}
+    </g>
+  );
+}
+
+/**
+ * Shows a roster name generator where typing the misspelled "Rossa" at low
+ * search accuracy still finds Rosa, but the same search at exact accuracy finds
+ * nothing.
+ */
+export const RosterSearchScene = defineScene(7.0, ({ t, id }) => {
+  const second = t >= 3.4;
+  const search = typed(t, TEXT.typed, second ? 4.06 : 0.86, 0.16);
+  const slot = (i: number) => gridSlot(i, SEARCH_Y + 30, cardHeight(0));
+  const placed = flow(
+    [SEARCH_CARDS, ['Rosa'], SEARCH_CARDS, []],
+    [1.6, 3.4, 4.8],
+    t,
+    slot,
+  );
+  const noMatch = segment(t, 5.0, 0.3);
+  const caret = (t > 0.6 && t < 2.2) || (t > 3.8 && t < 5.4);
+  return {
+    rail: { progress: 0.3 },
+    body: (
+      <>
+        <Prompt text={TEXT.prompt} size={20} y={STAGE.y + 40} />
+        <RosterPanel id={id}>
+          <SearchBox
+            query={search}
+            caret={caret && Math.floor(t * 3) % 2 === 0}
+          />
+          {SEARCH_CARDS.map((label) => {
+            const p = placed.get(label);
+            return (
+              <Card
+                key={label}
+                at={p?.at ?? slot(0)}
+                label={label}
+                opacity={p?.k ?? 0}
+              />
+            );
+          })}
+          {noMatch > 0 ? (
+            <text
+              x={PANEL.x + PANEL.width / 2}
+              y={SEARCH_Y + 80}
+              textAnchor="middle"
+              fontSize={13}
+              fontWeight={600}
+              opacity={noMatch}
+              className="fill-white/70"
+            >
+              {TEXT.noMatch}
+            </text>
+          ) : null}
+        </RosterPanel>
+        <Chip
+          x={NETWORK_CENTRE}
+          y={PANEL.y + 20}
+          text={second ? TEXT.exact : TEXT.low}
+          size={13}
+          k={backOut(segment(t, second ? 3.4 : 0.2, 0.4))}
+        />
+      </>
+    ),
+    overlay: (
+      <Click
+        t={t}
+        stops={[
+          { to: [PANEL.x + 230, SEARCH_Y], at: 0.6 },
+          { to: [PANEL.x + 230, SEARCH_Y], at: 3.8 },
+        ]}
+        leave={5.4}
+      />
+    ),
+  };
+});

@@ -116,7 +116,7 @@ describe('the narrative stage editor', () => {
    */
   it('offers automatic layout as a switch in the behaviours section', async () => {
     const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(8));
+    await waitFor(() => expect(harness.outline()).toHaveLength(7));
 
     expect(
       screen.queryByRole('listbox', { name: 'Layout mode' }),
@@ -140,6 +140,16 @@ describe('the narrative stage editor', () => {
     );
     expect(switches[0]).toHaveAccessibleDescription(
       /^Position nodes automatically using a force-directed layout\s*$/,
+    );
+  });
+
+  /** The stage has no filter of its own: each preset has one instead. */
+  it('offers no stage filter', async () => {
+    const harness = openFixture();
+    await waitFor(() => expect(harness.outline()).toHaveLength(7));
+
+    expect(harness.outline().map((section) => section.title)).not.toContain(
+      'Filter network',
     );
   });
 

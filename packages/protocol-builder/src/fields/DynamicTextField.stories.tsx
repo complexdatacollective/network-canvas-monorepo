@@ -3,14 +3,15 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { withMod } from '@codaco/fresco-ui/testing/modKey';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import DynamicTextField from './DynamicTextField.tsx';
 
-/** The heading an information page shows above its content. */
-const TITLE_FIELD = 'title';
-const TITLE_LABEL = 'Page heading';
+/** The heading a roster stage shows over the people it offers. */
+const TITLE_FIELD = 'panelTitle';
+const TITLE_LABEL = 'Panel heading';
 const INSERT_LABEL =
   'Inject piped text from interview metadata or a network attribute';
 
@@ -37,7 +38,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'information-1',
+    stageId: 'name-generator-roster-1',
     sectionTitle: 'What the participant is told',
     children: title,
   },
@@ -107,11 +108,11 @@ export const UndoingAValue: Story = {
     ).not.toBeVisible();
     await waitFor(() => expect(editor).toHaveFocus());
 
-    await userEvent.keyboard('{Control>}z{/Control}');
+    await userEvent.keyboard(withMod('z'));
     await waitFor(() =>
       expect(editor.querySelector('[data-versions-element]')).toBeNull(),
     );
-    await userEvent.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await userEvent.keyboard(withMod('{Shift>}z{/Shift}'));
     await waitFor(() =>
       expect(editor.querySelector('[data-versions-element]')).not.toBeNull(),
     );

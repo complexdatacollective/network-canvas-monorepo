@@ -90,8 +90,7 @@ const sessionPayload = (
         id: 'welcome',
         type: 'Information',
         label: { en: 'Welcome' },
-        title: { en: 'Welcome to the study' },
-        items: [],
+        content: { en: '# Welcome to the study' },
       },
       // Schema 9 ends every interview at a finish stage of the protocol's own.
       {

@@ -44,8 +44,7 @@ const stage: Stage = {
   id: 'stage-1',
   type: 'Information',
   label: { en: 'A' },
-  title: { en: 'A' },
-  items: [],
+  content: { en: '# A' },
 };
 
 // What the form holds after the researcher has typed into it. Genuinely
@@ -130,12 +129,7 @@ describe('ProtocolLockBanner', () => {
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
     // An editor open on a stage, holding an edit the researcher made: what
     // "Discard Changes" is offered about.
-    publishStageDraft(
-      editedStage,
-      { label: { en: 'A' } },
-      { label: { en: 'A, edited' } },
-      true,
-    );
+    publishStageDraft({ stage: editedStage, unsaved: true, editing: true });
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     expect(readStageDraft().dirty).toBe(true);
@@ -162,12 +156,7 @@ describe('ProtocolLockBanner', () => {
   // them looking for a tab that no longer exists.
   it('stops blaming the other tab once it has closed and a choice is outstanding', () => {
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    publishStageDraft(
-      editedStage,
-      { label: { en: 'A' } },
-      { label: { en: 'A, edited' } },
-      true,
-    );
+    publishStageDraft({ stage: editedStage, unsaved: true, editing: true });
     store.dispatch(setProtocolLockState('reclaim-blocked'));
 
     renderBanner(store);

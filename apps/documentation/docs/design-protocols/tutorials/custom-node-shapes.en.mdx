@@ -1,0 +1,206 @@
+---
+title: Using Custom Node Shapes
+navOrder: 5
+toc: true
+---
+
+<Definition>
+  A custom node shape is a drawing of your own, supplied as an SVG file, that
+  Network Canvas uses to draw the nodes of a node type in place of a circle,
+  square, or diamond.
+</Definition>
+
+## When to use custom shapes
+
+The built-in shapes suit most studies. A drawing can help when participants
+need to recognize what a node stands for at a glance. Studies with children are
+a common case: a house for a home, a paw print for a pet, or a book for a
+school is easier to read than a colored circle.
+
+Custom shapes work everywhere a node is drawn, including name generators,
+sociograms, bins, and forms. You can use one as the default shape of a node
+type, or let an attribute decide which shape each node has.
+
+![A name generator where each node is drawn as a small illustration, such as a person, a house, a school, and a dog, with the node's label on a white plate beneath it.](/assets/img/custom-node-shapes/interview-name-generator.png)
+
+<TipBox>
+
+Custom shapes need a schema 9 protocol, which means Architect 9 and either
+Interviewer 9 or Fresco 5. See [Protocol Schema
+Information](/en/get-started/protocol-schema-information) for details.
+
+</TipBox>
+
+## Add shapes to a node type
+
+Custom shapes belong to one node type. To add them:
+
+1. Open the codebook and edit the node type, or create a new one.
+2. Find **Custom shapes** in the **Node appearance** section.
+3. Click **Add a shape**. A window opens where you can import a new SVG file,
+   or choose an SVG image that is already one of the protocol's resources.
+4. Give the shape a name. Architect suggests the name of the file. Every shape
+   of the node type needs a name that no other shape of that type uses.
+
+![The Edit Node Type dialog in Architect. The Custom shapes section lists the shapes of the node type, each with a preview showing where the label will go, a Shape name field, and a remove button, above an Add a shape button.](/assets/img/custom-node-shapes/architect-custom-shapes.png)
+
+Each shape is shown with a preview that includes a sample label, so you can
+check where the label will sit before you use the shape.
+
+Architect checks each file when you add it. A file that can't be used as a
+shape is refused, with a message saying what needs to change. See [Prepare an
+SVG file](#prepare-an-svg-file) for the rules.
+
+Once a shape is added it appears alongside circle, square, and diamond wherever
+you choose a shape for that node type:
+
+- As the node type's **default shape**.
+- As the shape for a value or threshold when you turn on **Map attribute to
+  shape**. See [Mapping a node variable to
+  shape](/en/design-protocols/key-concepts/codebook#mapping-a-node-variable-to-shape).
+
+![The Map attribute to shape settings in Architect. Under the heading Shape for each value, each value of a categorical attribute named type has its label above a set of tiles offering circle, square, and diamond followed by the node type's custom shapes, with the chosen tile highlighted.](/assets/img/custom-node-shapes/architect-shape-mapping.png)
+
+To remove a shape, click its remove button. A shape that is in use as the
+default shape or in the shape mapping can't be removed until you choose another
+shape in its place.
+
+## Prepare an SVG file
+
+You can draw a shape in any tool that exports SVG, such as Inkscape, Figma, or
+Illustrator, or write the file by hand. A file needs to follow a few rules.
+
+- **Give the drawing a `viewBox`.** The `viewBox` tells Network Canvas how big
+  the drawing is. A file without one is accepted only if its `svg` element has
+  a numeric `width` and `height`. A square `viewBox` such as `0 0 100 100`
+  fills the node's space best.
+- **Keep the file small.** A shape can be at most 50,000 characters long. Simple
+  drawings with a few flat colors also stay readable when a node is drawn at a
+  small size.
+- **Use basic drawing elements.** Paths, rectangles, circles, ellipses, lines,
+  polygons, text, groups, gradients, clipping paths, and masks are all
+  supported.
+
+Architect leaves out anything a node shape can't use: scripts, embedded images,
+style sheets, filters, animations, and links or references to other files. When
+this happens, a notice under the shape lists what was left out. Check the
+preview, because a drawing that relied on one of these may look different.
+Converting effects to plain shapes and setting colors directly on each element
+(`fill="#ffd23f"`) before you export avoids the problem.
+
+## Colors
+
+A shape can use its own fixed colors, the colors of the interview, or a mix of
+the two.
+
+To use a color from the interview, write it as a CSS variable in a `fill` or
+`stroke`:
+
+| Variable                                               | Color                                                |
+| ------------------------------------------------------ | ---------------------------------------------------- |
+| `var(--node-color)`                                    | The color of the node type                           |
+| `var(--node-color-dark)`                               | A darker shade of the node type's color              |
+| `var(--node-color-seq-1)` to `var(--node-color-seq-8)` | The eight node colors of the palette                 |
+| `var(--text)`                                          | The interview's text color                           |
+| `var(--background)`                                    | The interview's background color                     |
+| `var(--surface)`                                       | The color of panels and cards                        |
+| `var(--primary)`, `var(--accent)`, `var(--selected)`   | The interview's primary, accent and selection colors |
+
+`currentColor` also means the color of the node type.
+
+Using the node type's color lets one set of drawings serve several node types,
+and keeps the meaning of color in your study. In the sociogram below every
+drawing takes its main color from the node type, with fixed colors for the
+details.
+
+![A sociogram with concentric circles. Each node is an illustration whose main color is the blue of its node type, with other details in fixed colors, and edges drawn between the nodes.](/assets/img/custom-node-shapes/interview-sociogram.png)
+
+Most drawing tools don't understand these variables, so give each one a
+fallback color for the tool to show: `fill="var(--node-color, #e0457b)"`.
+Network Canvas ignores the fallback.
+
+## Position the label
+
+By default a node's label sits in the middle of the shape, in the interview's
+text color. To choose where it goes, add a rectangle with the id `label-area`:
+
+```xml
+<rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+```
+
+The rectangle is never drawn. Its position and size set the space the label may
+use, and its `fill` sets the color of the label. Choose a fill that contrasts
+with whatever is drawn behind the label.
+
+### Give long labels room to grow
+
+Labels vary in length, and participants choose most of them. Network Canvas
+fits a label into its area by reducing the type size in steps, and then by
+breaking long words. A label that still doesn't fit ends in an ellipsis at the
+last full line. Participants can press and hold a node to read the whole label.
+
+If your drawing has a backing behind the label, such as a white plate or a
+banner, you can let it grow with the label. Give that rectangle the id
+`label-plate`:
+
+```xml
+<rect id="label-plate" x="10" y="62" width="80" height="32" rx="9" fill="#ffffff"/>
+<rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+```
+
+Unlike the label area, the label plate is drawn. When a label needs more lines
+than the label area holds, Network Canvas makes the plate taller, extending it
+downwards, to fit up to four lines. Longer labels end in an ellipsis as before.
+
+A label plate must be a `rect` with a numeric `height`. It can't be rotated or
+otherwise transformed, and a shape can have only one. It has an effect only
+when the shape also has a label area.
+
+<TipBox>
+
+A plate that has grown extends below the shape. Leave a little space under the
+drawing's baseline if you expect long labels, and test with the longest labels
+you anticipate in [Preview Mode](/en/design-protocols/preview-mode).
+
+</TipBox>
+
+## Example
+
+This shape draws a house. The roof and door use the node type's color, the
+walls and windows use fixed colors, and the label sits on a plate that grows.
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g stroke="#2b2340" stroke-width="3" stroke-linejoin="round">
+    <rect x="18" y="32" width="64" height="34" fill="#ffe2b0"/>
+    <path d="M8 37 L50 8 L92 37 Z" fill="var(--node-color, #e0457b)"/>
+    <rect x="24" y="42" width="13" height="12" rx="2" fill="#a7d8f0"/>
+    <rect x="63" y="42" width="13" height="12" rx="2" fill="#a7d8f0"/>
+    <path d="M43 66 V50 C43 46 46 44 50 44 C54 44 57 46 57 50 V66 Z"
+          fill="var(--node-color-dark, #c22f63)"/>
+  </g>
+  <rect id="label-plate" x="10" y="62" width="80" height="32" rx="9"
+        fill="#ffffff" stroke="#2b2340" stroke-width="3"/>
+  <rect id="label-area" x="16" y="64" width="68" height="28" fill="#2b2340"/>
+</svg>
+```
+
+<DownloadLink href="/assets/custom-node-shape-example.svg">
+  Download a complete example shape
+</DownloadLink>
+
+## Things to keep in mind
+
+- **Shapes are resources of the protocol.** Each SVG file is saved in the
+  protocol file with its other resources, so you don't need to keep the
+  original files alongside it. The same image can be used by more than one
+  node type.
+- **Participants still need the label.** A drawing shows what kind of thing a
+  node is, and the label says which one. Leave enough room for it.
+- **Selection and other states are shown around the shape.** When a node is
+  selected, highlighted, or being linked, Network Canvas draws the state around
+  the shape, so your drawing doesn't need versions of its own.
+- **Test at small sizes.** Nodes are drawn smaller on crowded screens and on
+  phones. Fine detail and thin lines can disappear.
+- **Text in a drawing isn't translated.** If your protocol has more than one
+  language, keep words out of the artwork and let the label carry them.

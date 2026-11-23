@@ -485,20 +485,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
         id: 'pedigree-introduction',
         type: 'Information',
         label: en('Your family (introduction)'),
-        title: en('Introduction'),
-        items: [
-          {
-            id: 'intro-text',
-            type: 'text',
-            content: en('We will draw your *family*.'),
-          },
-          {
-            id: 'intro-image',
-            type: 'asset',
-            content: 'family-image',
-            description: en('A drawn family tree'),
-          },
-        ],
+        content: en(
+          '# Introduction\n\nWe will draw your *family*.\n\n![A drawn family tree](asset:family-image)',
+        ),
       });
       expect(pedigreeOf(migrated)).not.toHaveProperty('introScreen');
     });
@@ -577,9 +566,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
           }),
         ]),
       );
-      expect(stageById(migrated, 'pedigree-introduction').items).toEqual([
-        { id: 'kept', type: 'text', content: en('Welcome.') },
-      ]);
+      expect(stageById(migrated, 'pedigree-introduction').content).toEqual(
+        en('# Introduction\n\nWelcome.'),
+      );
     });
 
     it.for([
@@ -1085,8 +1074,9 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(stageById(migrated, 'family-pedigree-introduction')).toMatchObject(
         {
           type: 'Information',
-          title: en('Introduction'),
-          items: [{ id: 'pedigree-intro', type: 'text' }],
+          content: expect.objectContaining({
+            en: expect.stringMatching(/^# Introduction\n\n/),
+          }),
         },
       );
       expect(
