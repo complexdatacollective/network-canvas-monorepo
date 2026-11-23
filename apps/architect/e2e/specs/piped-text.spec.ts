@@ -189,7 +189,9 @@ test.describe('text that names a value it does not bind', () => {
     await expect(summary).toContainText(
       'This text refers to a value that does not exist: "ghost".',
     );
-    await expect(page).toHaveURL(/\/protocol\/stage\/info$/);
+    await expect(page).toHaveURL(
+      new RegExp(`/protocol/stage/${INFO_STAGE_ID}$`),
+    );
     await expect(section).toHaveAccessibleName(
       /Has a problem\. This text refers to a value that does not exist: "ghost"\./,
     );

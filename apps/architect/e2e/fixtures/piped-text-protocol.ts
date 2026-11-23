@@ -2,6 +2,7 @@ import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   type CurrentProtocol,
   CurrentProtocolSchema,
+  deterministicProtocolObjectId,
 } from '@codaco/protocol-validation';
 
 import { emptyProtocol } from './seed.js';
@@ -12,9 +13,12 @@ export const EGO_MOOD_ID = 'mood';
 const NODE_NICKNAME_ID = 'nickname';
 
 /** Stage ids the specs open by address. */
-const EGO_FORM_STAGE_ID = 'ego-form';
-export const INFO_STAGE_ID = 'info';
-export const ANSWERS_STAGE_ID = 'answers';
+const objectId = deterministicProtocolObjectId(
+  '6f1d2c3b-4a5e-4f60-8a71-9b2c3d4e5f60',
+);
+const EGO_FORM_STAGE_ID = objectId('ego-form');
+export const INFO_STAGE_ID = objectId('info');
+export const ANSWERS_STAGE_ID = objectId('answers');
 
 /** An ego attribute no form collects, so only a stage's text can use it. */
 export const EGO_NICKNAME_ID = 'egoNickname';
@@ -82,12 +86,20 @@ export function pipedTextProtocol(
           form: {
             fields: [
               {
-                id: 'f1',
+                id: objectId('f1'),
                 variable: EGO_FIRST_NAME_ID,
                 prompt: en('Your name?'),
               },
-              { id: 'f2', variable: EGO_AGE_ID, prompt: en('Your age?') },
-              { id: 'f3', variable: EGO_MOOD_ID, prompt: en('Your mood?') },
+              {
+                id: objectId('f2'),
+                variable: EGO_AGE_ID,
+                prompt: en('Your age?'),
+              },
+              {
+                id: objectId('f3'),
+                variable: EGO_MOOD_ID,
+                prompt: en('Your mood?'),
+              },
             ],
           },
         },
@@ -96,14 +108,22 @@ export function pipedTextProtocol(
           type: 'Information',
           label: en('Welcome'),
           title: en('Welcome to the study'),
-          items: [{ id: 'info-text', type: 'text', content: en('Thanks.') }],
+          items: [
+            { id: objectId('info-text'), type: 'text', content: en('Thanks.') },
+          ],
         },
         {
           id: ANSWERS_STAGE_ID,
           type: 'Information',
           label: en('Your answers'),
           title: en('How are you'),
-          items: [{ id: 'answers-text', type: 'text', content: en('Thanks.') }],
+          items: [
+            {
+              id: objectId('answers-text'),
+              type: 'text',
+              content: en('Thanks.'),
+            },
+          ],
         },
         finish,
       ],
