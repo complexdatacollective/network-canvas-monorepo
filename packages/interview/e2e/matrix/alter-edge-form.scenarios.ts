@@ -266,15 +266,15 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         synth.addManualNode(stage.id, nt.id, 'a', {
           [personName.id]: 'Avery',
-          excluded: false,
+          [EXCLUDED]: false,
         });
         synth.addManualNode(stage.id, nt.id, 'b', {
           [personName.id]: 'Blair',
-          excluded: false,
+          [EXCLUDED]: false,
         });
         synth.addManualNode(stage.id, nt.id, 'c', {
           [personName.id]: 'Cameron',
-          excluded: true,
+          [EXCLUDED]: true,
         });
         synth.addManualEdge(et.id, 'ab', 'a', 'b', {});
         synth.addManualEdge(et.id, 'bc', 'b', 'c', {});
