@@ -9,6 +9,7 @@ import {
 import { getValidationLabel } from '@codaco/protocol-builder/codebook/variableValidation';
 import { nameLocalizedText } from '@codaco/protocol-builder/localization/localizedTextNames';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { LineInParagraph } from '~/components/LineInParagraph';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { useAppSelector } from '~/ducks/hooks';
 import type { FixTextEdit } from '~/protocolReview/describeFix';
@@ -90,12 +91,13 @@ export const FixText = ({
 }) =>
   markdown ? (
     // As the interview reads it: the stored markdown, unchanged.
-    <RenderMarkdown
-      allowedElements={markdownElementsFor(singleLine)}
-      render={<span className="wrap-break-word" />}
-    >
-      {text}
-    </RenderMarkdown>
+    <span className="wrap-break-word">
+      <LineInParagraph singleLine={singleLine}>
+        <RenderMarkdown allowedElements={markdownElementsFor(singleLine)}>
+          {text}
+        </RenderMarkdown>
+      </LineInParagraph>
+    </span>
   ) : (
     <span className="wrap-break-word whitespace-pre-wrap">{text}</span>
   );

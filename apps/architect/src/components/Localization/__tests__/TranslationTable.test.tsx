@@ -775,6 +775,44 @@ describe('TranslationTable', () => {
       });
     });
 
+    it('draws a one-line text in a paragraph, as each paragraph of several lines', () => {
+      const census = {
+        ...structuredClone(trilingual),
+        codebook: {
+          ...structuredClone(trilingual.codebook),
+          edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
+        },
+        stages: [
+          ...structuredClone(trilingual.stages),
+          {
+            id: 'census',
+            type: 'DyadCensus',
+            label: { en: 'Census' },
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
+              {
+                id: 'knows',
+                text: { en: 'Do they *know* each other?' },
+                createEdge: 'knows',
+              },
+            ],
+          },
+        ],
+      } as unknown as CurrentProtocol;
+      renderTable(census);
+
+      // The welcome page's text, which its field holds as several lines.
+      const [bold] = screen.getAllByText('this');
+      const page = bold?.closest('p');
+      expect(page).not.toBeNull();
+      // The prompt's own cell, and the French cell that shows it in English.
+      const prompts = screen.getAllByText('Do they', { exact: false });
+      expect(prompts.length).toBeGreaterThan(0);
+      for (const prompt of prompts) {
+        expect(prompt.closest('p')?.className).toBe(page?.className);
+      }
+    });
+
     it('edits a prompt as one line, even where a translation holds a line break', async () => {
       const census = {
         ...structuredClone(trilingual),

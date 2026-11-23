@@ -55,6 +55,7 @@ import {
   type MessageArguments,
 } from '@codaco/protocol-validation';
 import { lineBreaksAsSpaces } from '@codaco/shared-consts';
+import { LineInParagraph } from '~/components/LineInParagraph';
 import { useAppSelector } from '~/ducks/hooks';
 import type { TranslationRow } from '~/selectors/issues';
 import { getDisplayAssetManifest, getProtocol } from '~/selectors/protocol';
@@ -161,10 +162,12 @@ const headingAsParagraph = ({ children }: { children?: ReactNode }) => (
 const cellMarkdownElements = (singleLine: boolean) =>
   markdownElementsFor(singleLine).filter((element) => element !== 'a');
 
+const CellParagraph = ({ children }: { children?: ReactNode }) => (
+  <p className="mb-2 last:mb-0">{children}</p>
+);
+
 const cellMarkdownComponents = {
-  p: ({ children }: { children?: ReactNode }) => (
-    <p className="mb-2 last:mb-0">{children}</p>
-  ),
+  p: CellParagraph,
   h1: headingAsParagraph,
   h2: headingAsParagraph,
   h3: headingAsParagraph,
@@ -214,14 +217,16 @@ const CellMarkdown = ({
    */
   singleLine: boolean;
 }) => (
-  <RenderMarkdown
-    allowedElements={cellMarkdownElements(singleLine)}
-    components={cellMarkdownComponents}
-    blockImages={assetBlocks ? CELL_BLOCK_IMAGES : undefined}
-    unwrapDisallowed
-  >
-    {children}
-  </RenderMarkdown>
+  <LineInParagraph singleLine={singleLine} paragraph={CellParagraph}>
+    <RenderMarkdown
+      allowedElements={cellMarkdownElements(singleLine)}
+      components={cellMarkdownComponents}
+      blockImages={assetBlocks ? CELL_BLOCK_IMAGES : undefined}
+      unwrapDisallowed
+    >
+      {children}
+    </RenderMarkdown>
+  </LineInParagraph>
 );
 
 /**

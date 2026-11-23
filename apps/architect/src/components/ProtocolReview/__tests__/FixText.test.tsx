@@ -56,4 +56,17 @@ describe('protocol text in a review’s Now and After boxes', () => {
   it('never shows the markdown a file is written in', () => {
     expect(fixWords('![Map](<asset:map>)')).not.toContain('asset:map');
   });
+
+  it('draws a one-line text in a paragraph, as each paragraph of several lines', () => {
+    const { container } = render(
+      <>
+        <FixText text="Several lines" markdown singleLine={false} />
+        <FixText text="One *line*" markdown singleLine />
+      </>,
+    );
+    const [several, line] = Array.from(container.querySelectorAll('p'));
+    expect(several).toHaveTextContent('Several lines');
+    expect(line).toHaveTextContent('One line');
+    expect(line?.className).toBe(several?.className);
+  });
 });
