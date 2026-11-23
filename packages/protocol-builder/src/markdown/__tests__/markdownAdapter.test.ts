@@ -302,8 +302,9 @@ describe('RichText markdown adapter', () => {
       ],
     };
 
+    // Written so that it reads back as exactly the address and title.
     expect(richTextContentToMarkdown(content)).toBe(
-      '[Example](https://example.com/a%20path/%28x%29%3E "A \\"quoted\\" title")',
+      '[Example](<https://example.com/a path/(x)\\>> "A \\"quoted\\" title")',
     );
   });
 

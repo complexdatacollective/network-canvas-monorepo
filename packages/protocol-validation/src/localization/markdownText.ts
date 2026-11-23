@@ -15,19 +15,31 @@ import {
 const DASHES_OPENING_A_LINE = /^([^\S\n]*)(-+)/gm;
 
 /**
- * An `&` the renderer would decode: typed as `&lt;`, it would be shown as `<`.
- * A bare `&` is text to markdown, so it is left readable.
+ * What markdown reads as a character reference (`&lt;`, `&#60;`, `&#x3c;`):
+ * markdown shows the character it names rather than the characters typed.
+ * Whether a named one is decoded depends on the name; this matches the
+ * shape, so text escaped by it may escape an `&` that needed nothing.
  */
-const CHARACTER_REFERENCE = /&(?=#\d{1,7};|#x[\da-f]{1,6};|[a-z][a-z\d]*;)/gi;
+export const CHARACTER_REFERENCE =
+  /&(?:#\d{1,7}|#x[\da-f]{1,6}|[a-z][a-z\d]*);/i;
+
+/** One ASCII punctuation character, each of which a backslash makes literal. */
+export const ASCII_PUNCTUATION = /[!-/:-@[-`{-~]/;
+
+/** Every `&` that opens a character reference (see `CHARACTER_REFERENCE`). */
+const REFERENCE_AMPERSAND = new RegExp(
+  `&(?=${CHARACTER_REFERENCE.source.slice(1)})`,
+  'gi',
+);
 
 const LINE_SO_FAR_IS_BLANK = /(^|\n)[^\S\n]*$/;
 
 /**
- * The interview renderer passes raw HTML through and then sanitises it, so a
- * typed `<IRB OR ETHICS BOARD HERE>` was read as an unknown element and dropped
- * from the participant's screen. `<` can open HTML or an autolink almost
- * anywhere, so every one is escaped. `>` means something only where it opens a
- * line (a block quote) or closes a bracket, and is escaped only there: the
+ * Markdown reads `<` as the start of HTML or of an address in angle brackets,
+ * so a typed `<IRB OR ETHICS BOARD HERE>` would not be shown as typed. `<` can
+ * open either almost anywhere, so every one is escaped. `>` means something
+ * only where it opens a line (a block quote) or closes a bracket, and is
+ * escaped only there: the
  * comparison in an option label like `A > B` stays readable in the lists that
  * show the stored source. Both are written as character references, the form
  * the sample protocol stores, so text saved again comes back unchanged.
@@ -62,7 +74,7 @@ const escapeAngleBrackets = (value: string): string =>
  * around a word rather than becoming emphasis.
  */
 export const escapeMarkdownText = (value: string): string =>
-  escapeAngleBrackets(value.replace(CHARACTER_REFERENCE, '&amp;'))
+  escapeAngleBrackets(value.replace(REFERENCE_AMPERSAND, '&amp;'))
     .replace(/\\/g, '\\\\')
     .replace(/(^\d+)+(\.)/g, '$1\\$2')
     .replace(/\*/g, '\\*')
@@ -77,6 +89,34 @@ export const escapeMarkdownText = (value: string): string =>
     .replace(/`/g, '\\`')
     .replace(/\[/g, '\\[')
     .replace(/\]/g, '\\]');
+
+/**
+ * A link's address as markdown that reads back as exactly that address, for
+ * every writer of a link (the 8 to 9 migration and Architect's editor), so
+ * that saving a text without a change never changes where a link leads.
+ * A backslash, an angle bracket, a parenthesis and an `&` that would open a
+ * character reference are escaped. An address holding a space or another
+ * control character is written between angle brackets, where markdown allows
+ * them; a line ending cannot be written there and is percent-encoded.
+ */
+export const linkDestinationMarkdown = (address: string): string => {
+  const escaped = address
+    .replace(/[\\<>]/g, '\\$&')
+    .replace(REFERENCE_AMPERSAND, '\\&');
+  // oxlint-disable-next-line no-control-regex -- control characters are what this looks for
+  if (address === '' || /[\s\u0000-\u001f\u007f]/.test(address)) {
+    return `<${escaped.replace(/\n/g, '%0A').replace(/\r/g, '%0D')}>`;
+  }
+  return escaped.replace(/[()]/g, '\\$&');
+};
+
+/**
+ * A link's title as markdown, in double quotes, that reads back as exactly
+ * that title: a backslash, a double quote and an `&` that would open a
+ * character reference are escaped.
+ */
+export const linkTitleMarkdown = (title: string): string =>
+  `"${title.replace(/[\\"]/g, '\\$&').replace(REFERENCE_AMPERSAND, '\\&')}"`;
 
 const oneLine = (text: string): string => text.replace(/\s+/g, ' ');
 

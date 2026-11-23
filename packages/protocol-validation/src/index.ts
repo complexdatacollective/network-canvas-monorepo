@@ -136,8 +136,12 @@ export {
   assetInManifest,
 } from './localization/assetBlockDisplay.ts';
 export {
+  ASCII_PUNCTUATION,
+  CHARACTER_REFERENCE,
   escapeMarkdownText,
   headingMarkdown,
+  linkDestinationMarkdown,
+  linkTitleMarkdown,
   VERSION_LINE_LEAD,
 } from './localization/markdownText.ts';
 export { markdownTree } from './localization/markdownTree.ts';

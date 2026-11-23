@@ -103,13 +103,42 @@ const legacyReading = (markdown: string, lines: Lines): Root => {
 /**
  * What a reading shows, ignoring what HTML rendering ignores: where each
  * node was read from, runs of white space, white space beside a line break,
- * and a line break, or white space, at either end of a paragraph or heading.
+ * a line break, or white space, at either end of a paragraph or heading, and
+ * whether a line break that ends emphasis is inside it or just after it.
  */
 const shown = (tree: Root): unknown => {
+  // A line break or white space ending emphasis, moved to just after it.
+  const breakOutOfEmphasis = (child: Nodes): Nodes[] => {
+    if (child.type !== 'emphasis' && child.type !== 'strong') return [child];
+    const last = child.children.at(-1);
+    if (last?.type === 'break') {
+      return [
+        ...breakOutOfEmphasis({
+          ...child,
+          children: child.children.slice(0, -1),
+        }),
+        { type: 'break' },
+      ];
+    }
+    if (last?.type === 'text' && /\s$/.test(last.value)) {
+      const words = last.value.trimEnd();
+      return [
+        ...breakOutOfEmphasis({
+          ...child,
+          children: [
+            ...child.children.slice(0, -1),
+            ...(words === '' ? [] : [{ ...last, value: words }]),
+          ],
+        }),
+        { type: 'text', value: ' ' },
+      ];
+    }
+    return [child];
+  };
   const tidy = (node: Nodes): Nodes => {
     if (!('children' in node)) return node;
     const merged: Nodes[] = [];
-    for (const child of node.children.map(tidy)) {
+    for (const child of node.children.map(tidy).flatMap(breakOutOfEmphasis)) {
       const last = merged.at(-1);
       if (child.type === 'text' && last?.type === 'text') {
         last.value += child.value;
@@ -304,6 +333,47 @@ const CASES: readonly (readonly [string, string, string])[] = [
   ],
 ];
 
+/**
+ * Texts that test how the source is followed: character references side by
+ * side, which each stand for a number of characters only decoding tells, and
+ * a line break followed by the end of emphasis or by something else that
+ * would open a block, which is read from the source whatever node it is in.
+ */
+const SOURCE_FOLLOWING: readonly string[] = [
+  'Hello&nbsp;&nbsp;<br>world',
+  'Ages&nbsp;&nbsp;\n> 5 years',
+  '&#97;&#97;:smile:',
+  'x&#8203;&#8203;:smile: <y>',
+  '&copy;&reg; <IRB>',
+  '&#x1F600;&#128512;<br>- b',
+  '&lt;&gt;&amp;<br># b',
+  '&nosuch;&amp;<br>1. b',
+  '*a<br>* b',
+  '**a<br>** b',
+  '_a<br>_ b',
+  '*a<br>*- b',
+  '***a<br>***\n+ b',
+  '*a <br>* b',
+  '[a<br>](https://example.org)- b',
+  'a<br>```x```',
+  'a<br>```js',
+  '`x`<br>> b',
+  '*a*<br>> b',
+];
+
+/**
+ * Addresses holding what a link's address must escape to read back as
+ * itself: an `&` that looks like a character reference, a backslash,
+ * parentheses, angle brackets and a space.
+ */
+const LINK_ADDRESSES: readonly string[] = [
+  'See https://example.org/a\\b(c)&amp;d now',
+  'See www.example.org/?q=&lt;x&gt; now',
+  '[x](https://example.org/?q=\\&lt;)',
+  '[x](<https://example.org/a b>)',
+  '[x](https://example.org/a\\(b\\)c "A &amp; B")',
+];
+
 /** The inputs whose bare address is escaped in one line. */
 const ESCAPED_ADDRESSES = new Set([
   'See www.example.org/*a* now',
@@ -335,6 +405,52 @@ describe('legacyMarkdownAsStandard', () => {
       const once = legacyMarkdownAsStandard(input, { lines });
       expect(legacyMarkdownAsStandard(once, { lines })).toBe(once);
     });
+  });
+
+  it.each(SOURCE_FOLLOWING)(
+    'follows the source of %j character by character',
+    (input) => {
+      expectSameReading(input, 'multiple');
+      expectSameReading(input, 'single');
+    },
+  );
+
+  it.each(LINK_ADDRESSES)(
+    'keeps where %j leads, and keeps it once written',
+    (input) => {
+      for (const lines of ['multiple', 'single'] as const) {
+        expectSameReading(input, lines);
+        const once = legacyMarkdownAsStandard(input, { lines });
+        if (lines === 'multiple') {
+          expect(legacyMarkdownAsStandard(once, { lines })).toBe(once);
+        }
+      }
+    },
+  );
+
+  it('decodes each of two character references side by side', () => {
+    expect(
+      legacyMarkdownAsStandard('Hello&nbsp;&nbsp;<br>world', {
+        lines: 'multiple',
+      }),
+    ).toBe('Hello&nbsp;&nbsp;\\\nworld');
+    expect(
+      legacyMarkdownAsStandard('Ages&nbsp;&nbsp;\n> 5 years', {
+        lines: 'multiple',
+      }),
+    ).toBe('Ages&nbsp;&nbsp;\n&gt; 5 years');
+    expect(
+      legacyMarkdownAsStandard('&#97;&#97;:smile:', { lines: 'multiple' }),
+    ).toBe('&#97;&#97;😄');
+  });
+
+  it('writes a line break that ends emphasis after the emphasis closes', () => {
+    expect(legacyMarkdownAsStandard('*a<br>* b', { lines: 'multiple' })).toBe(
+      '*a*\\\n b',
+    );
+    expect(legacyMarkdownAsStandard('*a<br>*- b', { lines: 'multiple' })).toBe(
+      '*a*\\\n\\- b',
+    );
   });
 
   it('reads what GitHub added and nothing reads now as words or a list item', () => {

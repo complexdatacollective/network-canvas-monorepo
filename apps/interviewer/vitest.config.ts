@@ -155,11 +155,13 @@ export default defineConfig({
             // The markdown parser every reader of stored text uses
             // (`markdownTree`), and what the migration from schema 8 reads
             // legacy text with (`legacyMarkdownAsStandard`).
+            '@codaco/protocol-validation > decode-named-character-reference',
             '@codaco/protocol-validation > gemoji',
             '@codaco/protocol-validation > mdast-util-from-markdown',
             '@codaco/protocol-validation > mdast-util-gfm-autolink-literal',
             '@codaco/protocol-validation > mdast-util-to-markdown',
             '@codaco/protocol-validation > micromark-extension-gfm-autolink-literal',
+            '@codaco/protocol-validation > micromark-util-decode-numeric-character-reference',
             'chromatic/isChromatic',
             'jszip',
             // Reached through @codaco/interview: OnlineStatusProvider imports

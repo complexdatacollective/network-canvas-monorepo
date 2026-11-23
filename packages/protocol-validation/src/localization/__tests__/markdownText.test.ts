@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { assetBlockMessage, assetBlocksInMarkdown } from '../assetBlock.ts';
 import { dynamicMessageParts } from '../dynamicValueMessages.ts';
-import { headingMarkdown, messageHeadingMarkdown } from '../markdownText.ts';
+import {
+  headingMarkdown,
+  linkDestinationMarkdown,
+  linkTitleMarkdown,
+  messageHeadingMarkdown,
+} from '../markdownText.ts';
 import { markdownTree } from '../markdownTree.ts';
 import { escapeMessageText } from '../messageSyntax.ts';
 
@@ -108,5 +113,34 @@ describe('assetBlockMessage', () => {
       assetBlocksInMarkdown(filled(message, { count: 3, place: 'Oslo' }))[0]
         ?.block,
     ).toEqual({ assetId: 'a', description: '3 photos of Oslo [draft] \\ *x*' });
+  });
+});
+
+describe('linkDestinationMarkdown and linkTitleMarkdown', () => {
+  const ADDRESSES = [
+    'https://example.org',
+    'https://example.org/?a=1&amp;b=2',
+    'https://example.org/?q=&lt;&#60;&#x3c;',
+    'https://example.org/a\\b',
+    'https://example.org/wiki/Foo_(bar)',
+    'https://example.org/a)b(c',
+    'https://example.org/<a>',
+    'https://example.org/a b',
+    '<https://example.org>',
+    'mailto:a@example.org',
+    '',
+  ];
+
+  it.each(ADDRESSES)('writes %j so that it reads back as itself', (address) => {
+    const [paragraph] = markdownTree(
+      `[x](${linkDestinationMarkdown(address)} ${linkTitleMarkdown(address)})`,
+    ).children;
+    expect(paragraph).toMatchObject({
+      type: 'paragraph',
+      // An empty title is no title.
+      children: [
+        { type: 'link', url: address, title: address === '' ? null : address },
+      ],
+    });
   });
 });

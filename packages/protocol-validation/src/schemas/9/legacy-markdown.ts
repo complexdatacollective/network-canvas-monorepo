@@ -1,12 +1,17 @@
+import { decodeNamedCharacterReference } from 'decode-named-character-reference';
 import { nameToEmoji } from 'gemoji';
 import type { Nodes, Parents, Text } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmAutolinkLiteralFromMarkdown } from 'mdast-util-gfm-autolink-literal';
 import { gfmAutolinkLiteral } from 'micromark-extension-gfm-autolink-literal';
+import { decodeNumericCharacterReference } from 'micromark-util-decode-numeric-character-reference';
 
 import {
+  ASCII_PUNCTUATION,
+  CHARACTER_REFERENCE,
   escapedAngleBracketAt,
   escapeMarkdownText,
+  linkDestinationMarkdown,
 } from '../../localization/markdownText.ts';
 import type { LocalizedTextLines } from './localized-string.ts';
 
@@ -47,22 +52,52 @@ const ONLY_SPACE_AND_BREAKS = /^(?:\s|<br\s*\/?>)*$/i;
 /** A shortcode as `remark-gemoji`, which drew the emoji, finds one. */
 const SHORTCODE = /:(\+1|[-\w]+):/g;
 
-const ASCII_PUNCTUATION = /^[!-/:-@[-`{-~]$/;
+/** A character reference starting exactly where `lastIndex` is set. */
+const REFERENCE_HERE = new RegExp(CHARACTER_REFERENCE.source, 'iy');
 
-const CHARACTER_REFERENCE = /^&(?:#\d{1,7}|#x[\da-f]{1,6}|[a-z][a-z\d]*);/i;
-
-const ENTITY_LIKE_AMPERSAND = /&(?=#\d{1,7};|#x[\da-f]{1,6};|[a-z][a-z\d]*;)/gi;
+/**
+ * The reference written at `at` in `source` and the characters markdown reads
+ * it as, or undefined where what is written there is not one markdown
+ * decodes, such as an unknown name (`&nosuch;`), which is read as typed.
+ */
+const referenceAt = (
+  source: string,
+  at: number,
+): Readonly<{ written: string; read: string }> | undefined => {
+  REFERENCE_HERE.lastIndex = at;
+  const written = REFERENCE_HERE.exec(source)?.[0];
+  if (written === undefined) return undefined;
+  const name = written.slice(1, -1);
+  if (!name.startsWith('#')) {
+    const read = decodeNamedCharacterReference(name);
+    return read === false ? undefined : { written, read };
+  }
+  const hex = /^#x/i.test(name);
+  return {
+    written,
+    read: decodeNumericCharacterReference(
+      name.slice(hex ? 2 : 1),
+      hex ? 16 : 10,
+    ),
+  };
+};
 
 /** Where in the source a character of a text node's words was written. */
 type Span = readonly [start: number, end: number];
 
 /**
  * Where each character of a text node's words was written in the source:
- * one character, or an escape (`\*`), or a character reference (`&lt;`).
- * Spaces that indent a line, or end one, are not part of the words. Gives
- * undefined for a node it cannot follow, whose words are then left as typed.
+ * one character, or an escape (`\*`), or a character reference (`&lt;`),
+ * which markdown always decodes in words. In an address written as it is
+ * (`raw`), such as one in angle brackets, neither is decoded. Spaces that
+ * indent a line, or end one, are not part of the words. Gives undefined for
+ * a node whose words do not follow from its source.
  */
-const sourceSpansOf = (source: string, node: Text): Span[] | undefined => {
+const sourceSpansOf = (
+  source: string,
+  node: Text,
+  raw: boolean,
+): Span[] | undefined => {
   const start = node.position?.start.offset;
   const end = node.position?.end.offset;
   if (start === undefined || end === undefined) return undefined;
@@ -74,38 +109,23 @@ const sourceSpansOf = (source: string, node: Text): Span[] | undefined => {
     if (at >= end) return undefined;
     const char = source.charAt(at);
     const next = source.charAt(at + 1);
-    if (
-      char === '\\' &&
-      at + 1 < end &&
-      ASCII_PUNCTUATION.test(next) &&
-      value.charAt(index) === next
-    ) {
+    if (!raw && char === '\\' && at + 1 < end && ASCII_PUNCTUATION.test(next)) {
+      if (value.charAt(index) !== next) return undefined;
       spans.push([at, at + 2]);
       at += 2;
       index += 1;
       continue;
     }
     const reference =
-      char === '&'
-        ? CHARACTER_REFERENCE.exec(source.slice(at, end))?.[0]
-        : undefined;
-    if (reference !== undefined && !value.startsWith(reference, index)) {
-      // The character it stands for takes one to four code units in the
-      // words; the source after it says where they end.
-      const after = source.charAt(at + reference.length);
-      let width = 1;
-      while (
-        width < 4 &&
-        index + width < value.length &&
-        value.charAt(index + width) !== after
-      ) {
-        width += 1;
+      !raw && char === '&' ? referenceAt(source, at) : undefined;
+    if (reference !== undefined) {
+      if (!value.startsWith(reference.read, index)) return undefined;
+      // One span for each code unit the reference is read as.
+      for (const _unit of reference.read.split('')) {
+        spans.push([at, at + reference.written.length]);
       }
-      for (let unit = 0; unit < width; unit += 1) {
-        spans.push([at, at + reference.length]);
-      }
-      at += reference.length;
-      index += width;
+      at += reference.written.length;
+      index += reference.read.length;
       continue;
     }
     if (char === value.charAt(index)) {
@@ -126,6 +146,8 @@ const sourceSpansOf = (source: string, node: Text): Span[] | undefined => {
 /** Each character from `from` to `to` was written as itself. */
 const writtenAsTyped = (spans: readonly Span[], from: number, to: number) =>
   spans.slice(from, to).every(([start, end]) => end - start === 1);
+
+type Edit = Readonly<{ start: number; end: number; text: string }>;
 
 /** A stretch of a text node's words, from `from` up to `to`. */
 type Stretch = Readonly<{ from: number; to: number }>;
@@ -276,28 +298,40 @@ const withEmoji = (words: string): string =>
  * characters that would end it or be read as markdown escaped.
  */
 const linkMarkdown = (words: string, href: string): string =>
-  `[${escapeMarkdownText(withEmoji(words))}](${href
-    .replace(/[\\()<>]/g, '\\$&')
-    .replace(ENTITY_LIKE_AMPERSAND, '\\&')})`;
+  `[${escapeMarkdownText(withEmoji(words))}](${linkDestinationMarkdown(href)})`;
 
 /**
  * What would open a block of its own at the start of a line: a heading, a
- * list item, a fence, a heading's underline or a rule. The group that
+ * list item, a code fence, a heading's underline or a rule. The group that
  * matched holds the marker, whose first character is escaped to keep the
  * line words.
  */
 const OPENS_A_BLOCK =
-  /^[^\S\n]*(?:(#{1,6})(?=[ \t]|$)|([-+*])(?=[ \t]|$)|\d{1,9}([.)])(?=[ \t]|$)|(`{3,}|~{3,})|(=+)[ \t]*$|(-+)[ \t]*$|([-*_])(?:[ \t]*[-*_]){2,}[ \t]*$)/;
+  /^[^\S\n]*(?:(#{1,6})(?=[ \t]|$)|([-+*])(?=[ \t]|$)|\d{1,9}([.)])(?=[ \t]|$)|(`{3,}(?=[^`]*$)|~{3,})|(=+)[ \t]*$|(-+)[ \t]*$|([-*_])(?:[ \t]*[-*_]){2,}[ \t]*$)/;
 
-/** Where in `words` a backslash keeps a line that starts there words. */
-const blockOpenerAt = (words: string, from: number): number | undefined => {
-  const line = words.slice(from).split('\n')[0] ?? '';
+/** A `>` opening a line, which would open a quotation. */
+const OPENS_A_QUOTATION = /^[^\S\n]*>/;
+
+/**
+ * The edits that keep a line a break opens, at `from` in the source, the
+ * words it was: a `>` opening it is written `&gt;`, and the marker of
+ * anything else that would open a block there is escaped. What follows the
+ * break is read from the source, whatever node it belongs to, since a line
+ * may open with the end of emphasis or the start of a link as well as with
+ * the words of the node the break was in.
+ */
+const lineOpeningEdits = (source: string, from: number): Edit[] => {
+  const line = source.slice(from).split('\n')[0] ?? '';
+  const quotation = OPENS_A_QUOTATION.exec(line);
+  if (quotation !== null) {
+    const at = from + quotation[0].length - 1;
+    return [{ start: at, end: at + 1, text: '&gt;' }];
+  }
   const match = OPENS_A_BLOCK.exec(line);
-  if (match === null) return undefined;
-  const marker = match.slice(1).find((group) => group !== undefined);
-  if (marker === undefined) return undefined;
+  const marker = match?.slice(1).find((group) => group !== undefined);
+  if (marker === undefined) return [];
   const at = line.indexOf(marker, line.length - line.trimStart().length);
-  return at === -1 ? undefined : from + at;
+  return at === -1 ? [] : [{ start: from + at, end: from + at, text: '\\' }];
 };
 
 /**
@@ -309,12 +343,27 @@ const blockOpenerAt = (words: string, from: number): number | undefined => {
 const addressAsTyped = (words: string): string | undefined =>
   /[*_`[\]\\&<>]/.test(words) ? escapeMarkdownText(words) : undefined;
 
-type Edit = Readonly<{ start: number; end: number; text: string }>;
-
 const leavesOf = (node: Nodes): Nodes[] =>
   'children' in node && node.children.length > 0
     ? node.children.flatMap(leavesOf)
     : [node];
+
+/**
+ * The outermost emphasis that `node` ends, together with any emphasis inside
+ * it that it also ends, or undefined where it ends none.
+ */
+const closingFormatting = (
+  node: Nodes,
+  ancestors: readonly Parents[],
+): Parents | undefined => {
+  let outermost: Parents | undefined;
+  for (const ancestor of ancestors.toReversed()) {
+    if (ancestor.type !== 'emphasis' && ancestor.type !== 'strong') break;
+    if (leavesOf(ancestor).at(-1) !== node) break;
+    outermost = ancestor;
+  }
+  return outermost;
+};
 
 type Context = Readonly<{
   source: string;
@@ -331,9 +380,27 @@ const editWords = (
   ancestors: readonly Parents[],
   { source, multiline, edits }: Context,
 ) => {
-  const spans = sourceSpansOf(source, node);
-  if (spans === undefined) return;
   const { value } = node;
+  // Words in an address written as it is (in angle brackets, or found bare
+  // by the parser) are not decoded.
+  const raw = ancestors.some(
+    (ancestor) =>
+      ancestor.type === 'link' &&
+      source.charAt(ancestor.position?.start.offset ?? -1) !== '[',
+  );
+  const spans = sourceSpansOf(source, node, raw);
+  if (spans === undefined) {
+    // Words whose source cannot be followed character by character are
+    // written again as words, every character escaped to show as typed, so
+    // that nothing in them can become HTML, a quotation or a block. A line
+    // break, emoji shortcode or address in them is then shown as typed too.
+    const start = node.position?.start.offset;
+    const end = node.position?.end.offset;
+    if (start !== undefined && end !== undefined) {
+      edits.push({ start, end, text: escapeMarkdownText(value) });
+    }
+    return;
+  }
   const sourceOf = ({ from, to }: Stretch) => ({
     start: spans[from]?.[0] ?? 0,
     end: spans[to - 1]?.[1] ?? 0,
@@ -349,10 +416,9 @@ const editWords = (
   const firstInBlock = leaves[0] === node;
   const lastInBlock = leaves.at(-1) === node;
 
-  // Several lines hold links, which a bare address becomes. In one line an
-  // address stays words, as typed.
-  // In one line an address is written so that its characters still read as
-  // typed (see `addressAsTyped`), and is left alone where they already do.
+  // In several lines a bare address becomes a link. In one line it stays
+  // words, written so that its characters still read as typed (see
+  // `addressAsTyped`), and is left alone where they already do.
   const addresses = (inLink ? [] : bareAddressesIn(value)).filter(
     (address) =>
       multiline ||
@@ -388,6 +454,27 @@ const editWords = (
     const after = value.slice(stretch.to);
     const leading = firstInBlock && ONLY_SPACE_AND_BREAKS.test(before);
     const trailing = lastInBlock && ONLY_SPACE_AND_BREAKS.test(after);
+    // A break that ends emphasis is written after the emphasis closes, with
+    // the spaces beside it: a closing `*` or `_` after a space, or opening a
+    // line, would close nothing.
+    const closingEnd =
+      !leading && !trailing && after.trim() === ''
+        ? closingFormatting(node, ancestors)?.position?.end.offset
+        : undefined;
+    if (closingEnd !== undefined) {
+      const spaces = /\s*$/.exec(before)?.[0].length ?? 0;
+      edits.push({
+        ...sourceOf({ from: stretch.from - spaces, to: value.length }),
+        text: '',
+      });
+      edits.push({
+        start: closingEnd,
+        end: closingEnd,
+        text: breaksApart ? '\\\n' : ' ',
+      });
+      if (breaksApart) edits.push(...lineOpeningEdits(source, closingEnd));
+      continue;
+    }
     let text: string;
     let opensLine = false;
     let replaced = stretch;
@@ -413,11 +500,8 @@ const editWords = (
       : ' '.repeat(replaced.to - replaced.from);
     context = `${context.slice(0, replaced.from)}${placeholder}${context.slice(replaced.to)}`;
     edits.push({ ...sourceOf(replaced), text });
-    if (!opensLine) continue;
-    const opener = blockOpenerAt(value, stretch.to);
-    if (opener !== undefined && writtenAsTyped(spans, opener, opener + 1)) {
-      const at = spans[opener]?.[0] ?? 0;
-      edits.push({ start: at, end: at, text: '\\' });
+    if (opensLine) {
+      edits.push(...lineOpeningEdits(source, sourceOf(replaced).end));
     }
   }
 

@@ -82,6 +82,19 @@ const roundTrip = (text: string, shape: Shape) =>
 type Character = Readonly<{ character: string; marks: string }>;
 type Block = { kind: string; characters: (Character | 'break')[] };
 
+/**
+ * Where a link leads, as written in its element: the interview's renderer
+ * percent-encodes an address (`a b` as `a%20b`) where the editor keeps it as
+ * typed, and both lead to the same place.
+ */
+const linkTarget = (href: string): string => {
+  try {
+    return decodeURI(href);
+  } catch {
+    return href;
+  }
+};
+
 const read = (root: Node): string[] => {
   const blocks: Block[] = [{ kind: '', characters: [] }];
   const current = () => blocks.at(-1) as Block;
@@ -117,7 +130,10 @@ const read = (root: Node): string[] => {
       case 'EM':
         return children([...marks, 'italic']);
       case 'A':
-        return children([...marks, `link ${(node as HTMLAnchorElement).href}`]);
+        return children([
+          ...marks,
+          `link ${linkTarget(node.getAttribute('href') ?? '')}`,
+        ]);
       case 'BR':
         current().characters.push('break');
         return;
@@ -358,6 +374,8 @@ const SCHEMA_8_TEXTS = [
   '- [ ] first',
   'About ~5 minutes',
   'Some <em>words</em> and <a href="https://example.com">a link</a>',
+  // An address holding what its link must escape to lead where it led.
+  'See https://example.org/a\\b(c)&amp;d now',
 ];
 
 const SCHEMA_9_TEXTS = [
@@ -380,6 +398,13 @@ const SCHEMA_9_TEXTS = [
   'Mail [us](mailto:help@example.org) or [call](tel:+15555550123)',
   'Do not [run](javascript:alert(1)) this',
   'See [here](https://example.com"\\>a) now',
+  // Addresses holding what a link's address must escape to read back as
+  // itself (see `linkDestinationMarkdown`).
+  'See [this](https://example.org/?a=1\\&amp;b=2) and [that](https://example.org/?q=\\&lt;)',
+  'See [this](https://example.org/a\\\\b\\(c\\)\\<d\\>) now',
+  'See [this](<https://example.org/a b> "A &amp; B") now',
+  // Inline HTML across a line ending, which is a space where the line ends.
+  'Words <span\nclass="x">across</span> lines',
 ];
 
 const cases = (

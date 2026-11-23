@@ -10,6 +10,8 @@ import {
   escapeMarkdownText,
   isAssetBlockAlignment,
   isAssetBlockSize,
+  linkDestinationMarkdown,
+  linkTitleMarkdown,
   markdownTree,
   readAssetBlockUrl,
 } from '@codaco/protocol-validation';
@@ -65,17 +67,6 @@ const definitionsIn = (
   for (const child of node.children ?? []) definitionsIn(child, found);
   return found;
 };
-
-const escapeLinkDestination = (value: string): string =>
-  value
-    .replace(/\\/g, '%5C')
-    .replace(/\s/g, '%20')
-    .replace(/\(/g, '%28')
-    .replace(/\)/g, '%29')
-    .replace(/>/g, '%3E');
-
-const escapeLinkTitle = (value: string): string =>
-  value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
 type InlineParseOptions = {
   links?: boolean;
@@ -476,9 +467,9 @@ const serializeTextNode = (node: RichTextContent): string => {
 };
 
 const serializeLink = (content: string, target: LinkTarget): string => {
-  const titleText = target.title ? ` "${escapeLinkTitle(target.title)}"` : '';
+  const titleText = target.title ? ` ${linkTitleMarkdown(target.title)}` : '';
 
-  return `[${content}](${escapeLinkDestination(target.href)}${titleText})`;
+  return `[${content}](${linkDestinationMarkdown(target.href)}${titleText})`;
 };
 
 const serializeInlineNode = (
