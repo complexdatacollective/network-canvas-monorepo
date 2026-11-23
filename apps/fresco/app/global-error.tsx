@@ -10,6 +10,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 import Link from '~/components/Link';
 import RecoveryI18nProvider from '~/i18n/RecoveryI18nProvider';
 import { captureClientException } from '~/lib/posthog-client';
@@ -56,7 +57,7 @@ const messages = defineMessages({
 });
 
 const renderCommunityLinkChunks = (chunks: ReactNode[]) => (
-  <Link href="https://community.networkcanvas.com">{chunks}</Link>
+  <Link href={COMMUNITY_FORUM_URL}>{chunks}</Link>
 );
 
 function ErrorContent({

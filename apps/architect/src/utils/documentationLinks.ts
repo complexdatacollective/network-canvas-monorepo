@@ -3,10 +3,11 @@ import {
   interfaceDocumentationUrl,
   protocolAuthoringLinks,
 } from '@codaco/protocol-builder/interfaces/documentation';
+import { COMMUNITY_FORUM_URL } from '@codaco/shared-consts';
 
 export const documentationLinks = {
   home: DOCS_BASE_URL,
-  communityForum: 'https://community.networkcanvas.com/',
+  communityForum: COMMUNITY_FORUM_URL,
   skipLogic: protocolAuthoringLinks.skipLogic,
   networkFiltering: protocolAuthoringLinks.networkFiltering,
   resources: `${DOCS_BASE_URL}/design-protocols/key-concepts/resources/`,
