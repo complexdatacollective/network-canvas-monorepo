@@ -53,11 +53,19 @@ export type LocalizedTextLines = 'single' | 'multiple';
 export type LocalizedTextShape = Readonly<{
   format: LocalizedStringFormat;
   lines: LocalizedTextLines;
+  /**
+   * The text may hold files of the protocol as blocks among its paragraphs:
+   * images, audio and video (see `AssetBlock`). Only for markdown of several
+   * lines, which is the only text with a place for a block.
+   */
+  assetBlocks?: true;
 }>;
 
 type LocalizedStringDescriptor = Readonly<{
   format: LocalizedStringFormat;
   lines: LocalizedTextLines;
+  /** The text may hold files as blocks (see `LocalizedTextShape`). */
+  assetBlocks?: true;
   /**
    * The arguments a localized message's translations may use (see
    * `localizedMessage`); absent for text made only of literal text.
@@ -236,9 +244,25 @@ const localizedTranslations = (
       }
     });
 
+// A block needs paragraphs to sit among, so a declaration that offers blocks
+// on any other text is a mistake in the schema, caught as its module loads.
+const holdsAssetBlocks = ({
+  format,
+  lines,
+  assetBlocks,
+}: LocalizedTextShape): boolean => {
+  if (assetBlocks !== true) return false;
+  if (format !== 'markdown' || lines !== 'multiple') {
+    throw new Error(
+      'Only markdown text of several lines can hold files as blocks.',
+    );
+  }
+  return true;
+};
+
 export const localizedString = (
   content: z.ZodString,
-  { format, lines }: LocalizedTextShape,
+  { format, lines, assetBlocks }: LocalizedTextShape,
   {
     mayBeEmpty = false,
     dynamicValues,
@@ -278,6 +302,9 @@ export const localizedString = (
     [LOCALIZED_STRING]: {
       format,
       lines,
+      ...(holdsAssetBlocks({ format, lines, assetBlocks })
+        ? { assetBlocks: true }
+        : {}),
       ...(dynamicValues === undefined ? {} : { dynamicValues }),
       ...(mayBeEmpty ? { mayBeEmpty: true } : {}),
     },
@@ -364,7 +391,8 @@ const isLocalizedStringDescriptor = (
     value.dynamicValues === 'prompt' ||
     value.dynamicValues === 'formField' ||
     value.dynamicValues === 'nodeLabel') &&
-  (!('mayBeEmpty' in value) || value.mayBeEmpty === true);
+  (!('mayBeEmpty' in value) || value.mayBeEmpty === true) &&
+  (!('assetBlocks' in value) || value.assetBlocks === true);
 
 export const getLocalizedStringDescriptor = (
   schema: z.ZodType,

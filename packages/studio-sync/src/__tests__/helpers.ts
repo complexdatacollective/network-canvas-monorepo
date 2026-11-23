@@ -11,6 +11,7 @@ import {
 } from 'drizzle-orm/effect-postgres';
 import { Context, Effect, Layer, ManagedRuntime, Redacted } from 'effect';
 import { Reactivity } from 'effect/reactivity';
+import type { SqlClient } from 'effect/sql';
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
@@ -42,7 +43,9 @@ export type RunTenant = <A, E>(
 ) => Promise<A>;
 
 type SyncDbShape = {
-  readonly sql: PgClient.PgClient;
+  // `PgClient.make` returns both; since Effect 4.1 a driver client alone is no
+  // longer a `SqlClient`, and the `Transaction` service takes a `SqlClient`.
+  readonly sql: PgClient.PgClient & SqlClient.SqlClient;
   readonly db: Effect.Success<ReturnType<typeof makeDrizzle>>;
 };
 

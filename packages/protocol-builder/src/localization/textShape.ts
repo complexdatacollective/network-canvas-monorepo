@@ -9,6 +9,7 @@ import {
 export type MarkdownTextShape = Readonly<{
   format: 'markdown';
   lines: LocalizedTextShape['lines'];
+  assetBlocks?: true;
 }>;
 
 /**
@@ -22,13 +23,13 @@ export const markdownTextShapeAt = (
   schema: z.ZodType,
   path: readonly (string | number)[],
 ): MarkdownTextShape => {
-  const { format, lines } = localizedTextShapeAt(schema, path);
+  const { format, lines, assetBlocks } = localizedTextShapeAt(schema, path);
   if (format !== 'markdown') {
     throw new Error(
       `The localized text at ${path.join('.')} is plain, not markdown.`,
     );
   }
-  return { format, lines };
+  return { format, lines, ...(assetBlocks === true && { assetBlocks }) };
 };
 
 /** How a text field edits text of one declared shape. */
@@ -40,6 +41,11 @@ type TextFieldShapeProps = Readonly<{
    * and the editor offers formatting for words (bold, italics) only.
    */
   singleLine: boolean;
+  /**
+   * The text may hold files of the protocol as blocks among its paragraphs:
+   * images, audio and video, each put in from the toolbar.
+   */
+  assetBlocks: boolean;
 }>;
 
 /**
@@ -51,9 +57,11 @@ type TextFieldShapeProps = Readonly<{
 export const textFieldPropsFor = ({
   format,
   lines,
+  assetBlocks,
 }: LocalizedTextShape): TextFieldShapeProps => ({
   markdown: format === 'markdown',
   singleLine: lines === 'single',
+  assetBlocks: assetBlocks === true,
 });
 
 /**

@@ -15,7 +15,7 @@ const openWithUnboundValue = () => {
     stage: {
       type,
       // `ghost` is shown by the text and bound by no one.
-      fields: { ...fields, title: { 'en-US': 'Hello {ghost}' } },
+      fields: { ...fields, content: { 'en-US': 'Hello {ghost}' } },
     },
     registry: informationStageEditor,
   });
@@ -30,8 +30,7 @@ describe('a stage text that shows a value the stage does not bind', () => {
 
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Page content')
-          ?.state,
+        harness.outline().find((section) => section.title === 'Content')?.state,
       ).toMatch(/^Has a problem\./),
     );
   });
@@ -42,10 +41,10 @@ describe('a stage text that shows a value the stage does not bind', () => {
 
     expect(await harness.submit()).toBeNull();
 
-    const heading = fieldAround(
-      screen.getByRole('textbox', { name: 'Page heading' }),
+    const content = fieldAround(
+      screen.getByRole('textbox', { name: 'Rich Text' }),
     );
-    expect(await within(heading).findByText(NOT_A_VALUE)).toBeInTheDocument();
+    expect(await within(content).findByText(NOT_A_VALUE)).toBeInTheDocument();
     const name = fieldAround(
       screen.getByRole('textbox', { name: 'Stage name' }),
     );
@@ -59,9 +58,7 @@ describe('a stage text that shows a value the stage does not bind', () => {
     expect(await harness.submit()).toBeNull();
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Page heading' }),
-      ).toHaveFocus(),
+      expect(screen.getByRole('textbox', { name: 'Rich Text' })).toHaveFocus(),
     );
   });
 });

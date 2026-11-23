@@ -1,9 +1,20 @@
-import { createContext, useCallback, useContext } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  useCallback,
+  useContext,
+} from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  type MarkdownBlockImages,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  type BlockMarkdown,
   type DynamicMessageSite,
   DynamicMessageSummary,
 } from '@codaco/protocol-builder/fields/DynamicTextField';
@@ -23,7 +34,6 @@ import {
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
-import Markdown from '~/components/Markdown';
 
 import SummaryContext from './SummaryContext';
 
@@ -54,11 +64,36 @@ const languageAttributes = (locale: LocaleTag) => ({
   dir: getLocaleMetadata(locale).direction,
 });
 
+// The language of the translation being drawn, for what is drawn inside it
+// in the interface's words (a file placed in a page) and has protocol text
+// of its own to mark.
+const TranslationLanguageContext = createContext<LocaleTag | undefined>(
+  undefined,
+);
+
+/**
+ * `lang` and `dir` of the translation being drawn, for protocol text drawn
+ * inside something that is itself in the interface's language; nothing
+ * outside a translation.
+ */
+export const useTranslationLanguage = () => {
+  const locale = useContext(TranslationLanguageContext);
+  return locale === undefined ? {} : languageAttributes(locale);
+};
+
 type SummaryTextProps = {
   value: LocalizedString | undefined;
 };
 
 type Format = 'plain' | 'markdown';
+
+/** How markdown that holds files as blocks is drawn where it shows values. */
+const blockMarkdownWith = (
+  blockImages: MarkdownBlockImages | undefined,
+): BlockMarkdown | undefined =>
+  blockImages === undefined
+    ? undefined
+    : { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS, blockImages };
 
 /** Whether the protocol has more than one language. */
 export const useMultilingualSummary = () => {
@@ -132,16 +167,18 @@ const showsValues = (text: string) => {
  * versions, one for each case it distinguishes, with its placeholders named;
  * text that shows values reads with each value as a pill.
  */
-const TranslationContent = ({
+const TranslationText = ({
   text,
   format,
   locale,
   messageArguments,
+  blockImages,
 }: {
   text: string;
   format: Format;
   locale: LocaleTag;
   messageArguments: MessageArguments | undefined;
+  blockImages: MarkdownBlockImages | undefined;
 }) => {
   const dynamicSite = useContext(SummaryDynamicValuesContext);
   // A setting that declares arguments is given them by the interview, not
@@ -160,14 +197,40 @@ const TranslationContent = ({
       <DynamicMessageSummary
         message={text}
         markdown={format === 'markdown'}
+        // The summary draws all markdown with its blocks, as it does text
+        // without values (`Markdown`), whatever lines the text holds today.
+        multiline
+        blockMarkdown={blockMarkdownWith(blockImages)}
         locale={locale}
         site={dynamicSite}
       />
     );
   }
   const literal = messageText(text);
-  return format === 'markdown' ? <Markdown label={literal} /> : literal;
+  // The words go to the renderer as they are stored, as the interview gives
+  // them to it and as text with values reaches it above: the stored markdown
+  // is already escaped by whatever wrote it, so rewriting it here could only
+  // make the summary read differently from the participant's screen (a file
+  // whose address is written between angle brackets read as its source).
+  return format === 'markdown' ? (
+    <RenderMarkdown
+      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      blockImages={blockImages}
+      render={<span />}
+    >
+      {literal}
+    </RenderMarkdown>
+  ) : (
+    literal
+  );
 };
+
+/** One translation, its language known to what is drawn inside it. */
+const TranslationContent = (props: ComponentProps<typeof TranslationText>) => (
+  <TranslationLanguageContext.Provider value={props.locale}>
+    <TranslationText {...props} />
+  </TranslationLanguageContext.Provider>
+);
 
 /**
  * What participants using `locale` see in place of the missing translation:
@@ -203,10 +266,12 @@ const Translations = ({
   value,
   format,
   messageArguments,
+  blockImages,
 }: {
   value: LocalizedString;
   format: Format;
   messageArguments: MessageArguments | undefined;
+  blockImages: MarkdownBlockImages | undefined;
 }) => {
   const languageName = useLanguageName();
   const { protocol } = useContext(SummaryContext);
@@ -243,6 +308,7 @@ const Translations = ({
                   format={format}
                   locale={locale}
                   messageArguments={messageArguments}
+                  blockImages={blockImages}
                 />
               </dd>
             )}
@@ -262,9 +328,11 @@ const LocalizedText = ({
   value,
   format,
   messageArguments,
+  blockImages,
 }: SummaryTextProps & {
   format: Format;
   messageArguments?: MessageArguments;
+  blockImages?: MarkdownBlockImages;
 }) => {
   const multilingual = useMultilingualSummary();
   const resolved = useDefaultLanguageText()(value);
@@ -277,6 +345,7 @@ const LocalizedText = ({
         value={value}
         format={format}
         messageArguments={messageArguments}
+        blockImages={blockImages}
       />
     );
   }
@@ -287,6 +356,7 @@ const LocalizedText = ({
         format={format}
         locale={resolved.lang}
         messageArguments={messageArguments}
+        blockImages={blockImages}
       />
     </span>
   );
@@ -296,8 +366,14 @@ export const SummaryText = ({ value }: SummaryTextProps) => (
   <LocalizedText value={value} format="plain" />
 );
 
-export const SummaryMarkdown = ({ value }: SummaryTextProps) => (
-  <LocalizedText value={value} format="markdown" />
+export const SummaryMarkdown = ({
+  value,
+  blockImages,
+}: SummaryTextProps & {
+  /** How a file the text holds as a block is drawn; without it, it is not. */
+  blockImages?: MarkdownBlockImages;
+}) => (
+  <LocalizedText value={value} format="markdown" blockImages={blockImages} />
 );
 
 /** A message that reads differently by what it is about: its versions. */

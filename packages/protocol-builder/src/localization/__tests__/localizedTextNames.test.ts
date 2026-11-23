@@ -155,13 +155,8 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     en('Your first name is enough.'),
   ],
   [
-    [...fixtureStage('Information'), 'items', 1],
-    {
-      id: 'information-picture',
-      type: 'asset',
-      content: 'picture',
-      description: en('A picture'),
-    },
+    [...fixtureStage('Information'), 'content'],
+    en('# Welcome\n\n![A picture](asset:picture)'),
   ],
   [
     [...fixtureStage('NameGenerator'), 'form', 'fields', 0, 'hint'],

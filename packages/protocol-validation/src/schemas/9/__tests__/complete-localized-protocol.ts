@@ -252,16 +252,9 @@ const protocolDocument = () => ({
       id: 'information',
       type: 'Information',
       label: localized('Welcome'),
-      title: localized('Welcome title'),
-      items: [
-        { id: 'i1', type: 'text', content: localized('Welcome text') },
-        {
-          id: 'i2',
-          type: 'asset',
-          content: 'img',
-          description: localized('Image caption'),
-        },
-      ],
+      content: localized(
+        '# Welcome title\n\nWelcome text\n\n![Image caption](asset:img)',
+      ),
     },
     {
       id: 'egoForm',

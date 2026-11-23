@@ -58,8 +58,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         document: Redacted.make({
           type: 'Information',
           label: inEnglish('Watched write'),
-          title: inEnglish('Watched write'),
-          items: [],
+          content: inEnglish('# Watched write'),
         }),
       }),
     );
@@ -216,8 +215,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
         document: Redacted.make({
           type: 'Information',
           label: inEnglish('Past the bound'),
-          title: inEnglish('Past the bound'),
-          items: [],
+          content: inEnglish('# Past the bound'),
         }),
       }),
     );
@@ -326,8 +324,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
             document: Redacted.make({
               type: 'Information',
               label: inEnglish('Created as the tab closed'),
-              title: inEnglish('Created as the tab closed'),
-              items: [],
+              content: inEnglish('# Created as the tab closed'),
             }),
           }),
         );

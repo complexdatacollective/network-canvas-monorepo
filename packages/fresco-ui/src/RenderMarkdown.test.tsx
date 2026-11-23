@@ -96,6 +96,12 @@ it.each([
   ['an ordered list marker', '1. Isabel'],
   ['a link', '[Isabel](https://example.org)'],
   ['a backslash before a tag', '\\<b>'],
+  ['a run of heading markers in a line', 'Section ## 2'],
+  ['a longer run of heading markers', 'a ### b'],
+  ['a run of heading markers opening a line', '## Isabel'],
+  ['struck-through words', '~~Isabel~~ Zelda'],
+  ['a tilde on either side of words', 'about ~5 to ~10 minutes'],
+  ['a lone tilde', 'about ~5 minutes'],
 ] as const)(
   'renders escaped plain text holding %s as written',
   (_kind, text) => {

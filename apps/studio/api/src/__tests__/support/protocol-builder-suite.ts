@@ -417,8 +417,7 @@ export function setupProtocolBuilderSuite() {
         document: Redacted.make({
           type: 'Information',
           label: inEnglish(label),
-          title: inEnglish(label),
-          items: [],
+          content: inEnglish(`# ${label}`),
         }),
       }),
     );
@@ -858,8 +857,7 @@ export function setupProtocolBuilderSuite() {
         document: Redacted.make({
           type: 'Information',
           label: inEnglish(label),
-          title: inEnglish(label),
-          items: [],
+          content: inEnglish(`# ${label}`),
         }),
       }),
     );

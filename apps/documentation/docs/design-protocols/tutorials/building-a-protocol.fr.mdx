@@ -2,7 +2,7 @@
 navOrder: 1
 title: Construire un protocole
 toc: true
-translatedFrom: 5051e0c9502634888b5695e5e3d79fb0f8215da9
+translatedFrom: 594f15a5e77d6961d6b6b97ff20719d3fc1f3704
 ---
 
 <SummaryCard duration="2 heures">
@@ -62,6 +62,20 @@ Sélectionner une interface ouvre l’éditeur d’étape, dans lequel se fait l
 
 Toutes les étapes ont un nom, qui apparaît à côté de l’icône de l’étape dans la chronologie et vous aide à distinguer rapidement les étapes d’un même type. Saisissez « Welcome » (bienvenue) dans **Nom de l’étape**. Lorsque vous créez vos propres protocoles, utilisez un système cohérent pour nommer vos étapes.
 
+<AppOnly app="current">
+
+### Rédiger la page {#writing-the-page}
+
+La section **Contenu** contient ce que les personnes participantes verront sur cet écran, rédigé sous la forme d’un texte unique dans l’éditeur **Texte enrichi**. Saisissez « Welcome to the Sample Protocol » (bienvenue dans le protocole d’exemple) sur la première ligne. Le curseur toujours sur cette ligne, choisissez **Titre 1** dans la liste des styles de texte de la barre d’outils de l’éditeur pour en faire le titre de la page. Ajoutez ensuite, sur les lignes suivantes, les informations que vous souhaitez afficher à l’écran.
+
+### Ajouter des images, des vidéos et des fichiers audio {#adding-images-video-and-audio}
+
+Une page peut aussi afficher des images, des vidéos et des fichiers audio. Pour ajouter un fichier, placez le curseur à l’endroit voulu et choisissez, dans la barre d’outils de l’éditeur, le bouton image (**Insert image**), vidéo (**Insert video**) ou audio (**Insert audio**). Choisissez ensuite le fichier, soit depuis votre appareil, soit dans la [bibliothèque de ressources](/fr/design-protocols/key-concepts/resources). Le fichier est ajouté au texte sous forme de bloc, que vous pouvez faire glisser à un autre endroit. Sélectionnez un bloc pour ouvrir ses paramètres, où vous pouvez rédiger une **Description** pour les personnes participantes qui utilisent un lecteur d’écran, et choisir la taille d’affichage du fichier ainsi que sa position sur la page.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 ### Titre de la page {#page-heading}
 
 Le titre de la page vous permet de personnaliser un grand titre qui s’affiche en haut de votre interface « Information ». Saisissez « Welcome to the Sample Protocol » (bienvenue dans le protocole d’exemple) comme titre. Ajoutez ensuite les informations que vous souhaitez afficher à l’écran.
@@ -73,6 +87,8 @@ Le panneau des éléments vous permet d’ajouter différents types de contenus 
 Pour ajouter une ressource à cet écran, cliquez sur le bouton **Créer un élément de contenu** en bas du panneau. Un nouvel écran s’ouvre, dans lequel vous pouvez choisir parmi les types de médias disponibles. Vous pouvez ajouter du texte directement en markdown. Pour ajouter des fichiers image, audio et vidéo, sélectionnez le type, puis parcourez vos fichiers, soit à un emplacement de votre appareil, soit dans la [bibliothèque de ressources](/fr/design-protocols/key-concepts/resources).
 
 <Screenshot axis="architect" name="edit-item"></Screenshot>
+
+</AppOnly>
 
 Ce tutoriel ne détaille pas la configuration de chacune des interfaces « Information » du protocole d’exemple. Vous pouvez utiliser des interfaces « Information » aussi souvent que nécessaire dans votre protocole pour décrire une tâche à venir, préparer la personne participante à une série de consignes ou lui présenter une ressource à examiner.
 
@@ -758,11 +774,11 @@ L’espagnol apparaît maintenant à côté de l’anglais américain, avec un b
 
 ### Traduire l’étape « Welcome » {#translating-the-welcome-stage}
 
-Revenez à la liste des étapes, où une note indique désormais qu’une partie du contenu n’est pas encore traduite en espagnol, et ouvrez l’étape **Welcome**. Comme le protocole a deux langues, chaque champ de texte de l’éditeur d’étape possède un menu de langue. Choisissez **espagnol** dans le menu à côté de **Titre de la page**. Tous les champs de l’éditeur passent ensemble à l’espagnol. Le champ du titre est vide, et une note en dessous explique que les personnes participantes qui utilisent l’espagnol verront le texte en anglais américain.
+Revenez à la liste des étapes, où une note indique désormais qu’une partie du contenu n’est pas encore traduite en espagnol, et ouvrez l’étape **Welcome**. Comme le protocole a deux langues, chaque champ de texte de l’éditeur d’étape possède un menu de langue. Choisissez **espagnol** dans le menu à côté de **Texte enrichi**. Tous les champs de l’éditeur passent ensemble à l’espagnol. Le texte de la page est vide, et une note en dessous explique que les personnes participantes qui utilisent l’espagnol verront le texte en anglais américain.
 
 ![Le champ « Titre de la page » de l’étape « Welcome », avec l’espagnol choisi pour la modification, avant sa traduction.](/assets/img/architect/localization/editor-missing-translation.png)
 
-Saisissez « Bienvenida » comme nom de l’étape et « Te damos la bienvenida al protocolo de ejemplo » comme titre de la page, puis cliquez sur **Modification terminée**.
+Saisissez « Bienvenida » comme nom de l’étape. Dans l’éditeur **Texte enrichi**, saisissez « Te damos la bienvenida al protocolo de ejemplo » et faites-en le titre de la page en choisissant **Titre 1**, comme vous l’avez fait en anglais américain. Cliquez ensuite sur **Modification terminée**.
 
 Traduire étape par étape convient aux protocoles courts. Pour un protocole plus long, ou lorsque la traduction est faite par une autre personne que celle qui a rédigé le protocole, le tableau des traductions est plus efficace. Revenez à la page **Langues** et cliquez sur **Ouvrir le tableau des traductions**. Le tableau liste chaque texte du protocole à côté de sa traduction dans chaque langue, et les textes que vous venez de traduire apparaissent dans la colonne de l’espagnol. Les textes non traduits affichent, en caractères plus clairs, le texte en anglais américain que les personnes participantes verront à la place.
 

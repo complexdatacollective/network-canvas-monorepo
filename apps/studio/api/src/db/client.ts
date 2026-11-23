@@ -8,7 +8,7 @@ import {
 } from 'drizzle-orm/effect-postgres';
 import { Context, Effect, Layer, Redacted } from 'effect';
 import { Reactivity } from 'effect/reactivity';
-import type { SqlError } from 'effect/sql';
+import type { SqlClient, SqlError } from 'effect/sql';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -43,7 +43,9 @@ const roleFor = (identity: DatabaseIdentity): string | null => {
 
 export type DatabaseService = {
   readonly identity: DatabaseIdentity;
-  readonly sql: PgClient.PgClient;
+  // What `PgClient.make` returns. Since Effect 4.1 a driver client alone is no
+  // longer a `SqlClient`, and the transaction and readiness code takes one.
+  readonly sql: PgClient.PgClient & SqlClient.SqlClient;
   readonly db: DrizzleDatabase;
 };
 

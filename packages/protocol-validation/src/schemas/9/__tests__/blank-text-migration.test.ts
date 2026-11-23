@@ -79,6 +79,12 @@ const FIXTURES = [
   ['the CEGRM template', () => structuredClone(ecoGeneticTemplate)],
 ] as const;
 
+const isAssetItemId = (document: unknown, at: Path): boolean =>
+  at[0] === 'stages' &&
+  at[2] === 'items' &&
+  at[4] === 'content' &&
+  getAt(document, [...at.slice(0, 4), 'type']) === 'asset';
+
 /**
  * The strings of a schema 8 document that become localized text in schema 9,
  * found from what the migration does rather than from a list: each string in
@@ -88,6 +94,10 @@ const FIXTURES = [
  */
 const textSites = (document: unknown): Path[] =>
   stringPaths(document).filter((at, index) => {
+    // The id of a file an Information stage shows reaches the text as the
+    // file a block names. It is an id, not text, and is covered with the
+    // rest of the Information migration.
+    if (isAssetItemId(document, at)) return false;
     const marked = structuredClone(document);
     const word = `zqx${index}zqx`;
     setAt(marked, at, word);

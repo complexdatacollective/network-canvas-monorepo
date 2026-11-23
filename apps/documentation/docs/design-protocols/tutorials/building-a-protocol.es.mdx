@@ -2,7 +2,7 @@
 navOrder: 1
 title: Crear un protocolo
 toc: true
-translatedFrom: 5051e0c9502634888b5695e5e3d79fb0f8215da9
+translatedFrom: 594f15a5e77d6961d6b6b97ff20719d3fc1f3704
 ---
 
 <SummaryCard duration="2 horas">
@@ -62,6 +62,20 @@ Al seleccionar una interfaz se abre el editor de etapas, que es donde se configu
 
 Todas las etapas tienen un nombre, que aparece junto al icono de la etapa en la línea de tiempo y te ayuda a distinguir rápidamente entre etapas del mismo tipo. Introduce «Welcome» (bienvenida) en **Nombre de la etapa**. Cuando crees tus propios protocolos, usa un sistema coherente para dar nombre a tus etapas.
 
+<AppOnly app="current">
+
+### Escribir la página {#writing-the-page}
+
+La sección **Contenido** reúne lo que quienes participan verán en esta pantalla, escrito como un único texto en el editor **Texto enriquecido**. Escribe «Welcome to the Sample Protocol» (te damos la bienvenida al protocolo de ejemplo) en la primera línea. Con el cursor todavía en esa línea, elige **Encabezado 1** en la lista de estilos de texto de la barra de herramientas del editor para convertirla en el encabezado de la página. A continuación, en las líneas de debajo, añade la información que quieres que se muestre en la pantalla.
+
+### Añadir imágenes, vídeo y audio {#adding-images-video-and-audio}
+
+Una página también puede mostrar imágenes, vídeo y audio. Para añadir un archivo, coloca el cursor donde deba ir y elige el botón de imagen, de vídeo o de audio de la barra de herramientas del editor (**Insert image**, **Insert video** o **Insert audio** para quienes usan lectores de pantalla). Después elige el archivo, ya sea desde una ubicación de tu dispositivo o desde la [biblioteca de recursos](/es/design-protocols/key-concepts/resources). El archivo se añade al texto como un bloque, que puedes arrastrar a otro lugar. Selecciona un bloque para abrir sus ajustes, donde puedes escribir una **Descripción** para las personas participantes que usan un lector de pantalla, y elegir a qué tamaño se muestra el archivo y dónde se sitúa en la página.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 ### Encabezado de página {#page-heading}
 
 El encabezado de página te permite personalizar un título grande que aparece en la parte superior de tu interfaz «Información». Introduce «Welcome to the Sample Protocol» (te damos la bienvenida al protocolo de ejemplo) como encabezado. A continuación, añade la información que quieres que se muestre en la pantalla.
@@ -73,6 +87,8 @@ El panel de elementos te permite añadir varios tipos de contenido multimedia a 
 Para añadir un recurso a esta pantalla, haz clic en el botón **Añadir nuevo elemento** de la parte inferior del panel. Se abre una nueva pantalla en la que puedes elegir entre los tipos de contenido disponibles. El texto se puede añadir directamente en markdown. Los archivos de imagen, audio y vídeo se añaden seleccionando el tipo y buscando el archivo, ya sea en una ubicación de tu dispositivo o en la [biblioteca de recursos](/es/design-protocols/key-concepts/resources).
 
 <Screenshot axis="architect" name="edit-item"></Screenshot>
+
+</AppOnly>
 
 Este tutorial no explica la configuración de cada una de las etapas «Información» del protocolo de ejemplo. Puedes usar etapas «Información» tantas veces como necesites a lo largo de tu protocolo para describir una tarea que viene a continuación, preparar a la persona participante para una serie de preguntas o presentarle un recurso para que lo tenga en cuenta.
 
@@ -758,11 +774,11 @@ El español aparece ahora junto al inglés estadounidense, con un distintivo **T
 
 ### Traducir la etapa «Welcome» {#translating-the-welcome-stage}
 
-Vuelve a la lista de etapas, donde ahora una nota indica que parte del contenido aún no está traducido al español, y abre la etapa **Welcome**. Como el protocolo tiene dos idiomas, cada campo de texto del editor de etapas tiene un menú de idioma. Elige **español** en el menú que hay junto a **Encabezado de página**. Todos los campos del editor cambian a la vez al español. El campo del encabezado está vacío, y una nota debajo explica que quienes usen el español verán el texto en inglés estadounidense.
+Vuelve a la lista de etapas, donde ahora una nota indica que parte del contenido aún no está traducido al español, y abre la etapa **Welcome**. Como el protocolo tiene dos idiomas, cada campo de texto del editor de etapas tiene un menú de idioma. Elige **español** en el menú que hay junto a **Texto enriquecido**. Todos los campos del editor cambian a la vez al español. El texto de la página está vacío, y una nota debajo explica que las personas participantes que usen el español verán el texto en inglés estadounidense.
 
 ![El Encabezado de página de la etapa «Welcome» con el español elegido para editar, antes de traducirlo.](/assets/img/architect/localization/editor-missing-translation.png)
 
-Introduce «Bienvenida» como nombre de la etapa y «Te damos la bienvenida al protocolo de ejemplo» como encabezado de página y, a continuación, haz clic en **Finalizar edición**.
+Introduce «Bienvenida» como nombre de la etapa. En el editor **Texto enriquecido**, escribe «Te damos la bienvenida al protocolo de ejemplo» y conviértelo en el encabezado de la página eligiendo **Encabezado 1**, como hiciste en inglés estadounidense. A continuación, haz clic en **Finalizar edición**.
 
 Traducir etapa por etapa es adecuado para protocolos cortos. Para un protocolo más largo, o cuando la traducción la hace una persona distinta de quien ha creado el protocolo, la tabla de traducciones es más eficiente. Vuelve a la página **Idiomas** y haz clic en **Abrir tabla de traducciones**. La tabla muestra cada texto del protocolo junto a su traducción a cada idioma, y los textos que acabas de traducir aparecen en la columna del español. Los textos sin traducir muestran, en un tono más claro, el texto en inglés estadounidense que verán quienes participan en su lugar.
 

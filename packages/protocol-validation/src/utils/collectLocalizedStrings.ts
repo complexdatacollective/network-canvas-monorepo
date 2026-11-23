@@ -25,6 +25,8 @@ export type LocalizedStringHit = Readonly<{
   dynamicValues?: DynamicValueSite;
   /** The text may have no translation at all (see `localizedString`). */
   mayBeEmpty?: true;
+  /** The text may hold files as blocks (see `LocalizedTextShape`). */
+  assetBlocks?: true;
 }>;
 
 export type LocalizedStringSite = Readonly<{
@@ -39,6 +41,8 @@ export type LocalizedStringSite = Readonly<{
   dynamicValues?: DynamicValueSite;
   /** The text may have no translation at all (see `localizedString`). */
   mayBeEmpty?: true;
+  /** The text may hold files as blocks (see `LocalizedTextShape`). */
+  assetBlocks?: true;
   /** The tagged declaration, shared by every site it describes. */
   schema: z.ZodType;
   /** The owning object lets the field be left out. */
@@ -193,6 +197,7 @@ const walk = (
           ? {}
           : { dynamicValues: descriptor.dynamicValues }),
         ...(descriptor.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
+        ...(descriptor.assetBlocks === true ? { assetBlocks: true } : {}),
         schema: node,
         ...context,
       },
@@ -294,6 +299,7 @@ export const collectLocalizedStringsFromSchema = (
               ? {}
               : { dynamicValues: site.dynamicValues }),
             ...(site.mayBeEmpty === true ? { mayBeEmpty: true } : {}),
+            ...(site.assetBlocks === true ? { assetBlocks: true } : {}),
           },
         ]
       : [],
@@ -331,7 +337,11 @@ export const localizedTextShapeAt = (
   if (site === undefined) {
     throw new Error(`No localized text is declared at ${path.join('.')}.`);
   }
-  return { format: site.format, lines: site.lines };
+  return {
+    format: site.format,
+    lines: site.lines,
+    ...(site.assetBlocks === true ? { assetBlocks: true } : {}),
+  };
 };
 
 export const collectLocalizedStrings = (

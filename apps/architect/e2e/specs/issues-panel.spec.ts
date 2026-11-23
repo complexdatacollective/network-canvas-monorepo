@@ -33,9 +33,9 @@ test('names the offending field on the first open of the issues panel', async ({
     defaultLanguageText(protocol, informationStage.label),
   );
 
-  // Clearing Information's required page heading is the smallest way to make
+  // Clearing Information's required page content is the smallest way to make
   // the stage fail its own validation.
-  await architectPage.getByRole('textbox', { name: 'Page heading' }).fill('');
+  await new StageEditor(architectPage).richText().fill('');
 
   // A failed submit opens the panel by itself. Nothing is edited afterwards, so
   // this is the first — and for most researchers, only — pass over these rows.
@@ -48,7 +48,7 @@ test('names the offending field on the first open of the issues panel', async ({
   // #1400 this read "Title", which is not the label at all: the harvest ran,
   // but what it harvested was `startCase('title')`, and that only looks right
   // for the handful of fields whose path start-cases into their own label.
-  await expect(row).toHaveText(/^Page heading - /);
+  await expect(row).toHaveText(/^Rich Text - /);
 });
 
 /**
@@ -78,7 +78,7 @@ test('sends focus to the control an issue row names', async ({
     defaultLanguageText(protocol, informationStage.label),
   );
 
-  const heading = architectPage.getByRole('textbox', { name: 'Page heading' });
+  const heading = new StageEditor(architectPage).richText();
   await heading.fill('');
   await architectPage.getByRole('button', { name: 'Finished Editing' }).click();
 

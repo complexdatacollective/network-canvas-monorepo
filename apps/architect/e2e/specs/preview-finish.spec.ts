@@ -43,27 +43,15 @@ function twoScreenProtocol(): CurrentProtocol {
           id: 'welcome',
           type: 'Information',
           label: { en: STAGE_LABEL },
-          title: { en: 'Welcome' },
-          items: [
-            {
-              id: 'welcome-text',
-              type: 'text',
-              content: { en: 'Thank you for taking part.' },
-            },
-          ],
+          content: { en: '# Welcome\n\nThank you for taking part.' },
         },
         {
           id: 'closing',
           type: 'Information',
           label: { en: 'Closing' },
-          title: { en: 'Closing' },
-          items: [
-            {
-              id: 'closing-text',
-              type: 'text',
-              content: { en: 'That is everything we wanted to ask.' },
-            },
-          ],
+          content: {
+            en: '# Closing\n\nThat is everything we wanted to ask.',
+          },
         },
         {
           id: 'finish',

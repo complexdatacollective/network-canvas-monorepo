@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
-import { NodeWS } from '@effect/platform-node/NodeSocket';
+import * as NodeWS from '@effect/platform-node/NodeWS';
 import {
   Cause,
   Context,
@@ -295,8 +295,7 @@ describe.skipIf(!testDb || !env.auth)(
             document: Redacted.make({
               type: 'Information',
               label: inEnglish(label),
-              title: inEnglish(label),
-              items: [],
+              content: inEnglish(`# ${label}`),
             }),
           }),
         )
@@ -414,8 +413,7 @@ describe.skipIf(!testDb || !env.auth)(
           document: Redacted.make({
             type: 'Information',
             label: inEnglish('Made over the socket'),
-            title: inEnglish('Made over the socket'),
-            items: [],
+            content: inEnglish('# Made over the socket'),
           }),
         }),
       );

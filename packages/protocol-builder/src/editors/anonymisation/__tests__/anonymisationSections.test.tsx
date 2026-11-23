@@ -134,7 +134,12 @@ describe('the sections of an anonymisation stage', () => {
       name: 'Explanation',
     });
     await harness.user.clear(explanation);
-    await harness.user.click(screen.getByRole('button', { name: 'Heading 1' }));
+    await harness.user.click(
+      screen.getByRole('button', { name: /^Text style:\s*Paragraph$/ }),
+    );
+    await harness.user.click(
+      await screen.findByRole('menuitemradio', { name: 'Heading 1' }),
+    );
     // The editor takes focus back from the toolbar a frame later; typing
     // before then goes to the button and is lost.
     await waitFor(() => expect(explanation).toHaveFocus());

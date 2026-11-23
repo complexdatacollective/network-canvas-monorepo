@@ -54,13 +54,6 @@ const EDITOR_SITES: Readonly<Record<string, readonly EditorSite[]>> = {
       path: ['panels', 0, 'title'],
     },
   ],
-  'sections/content-blocks/ContentBlockEditor.tsx': [
-    {
-      kind: 'stageText',
-      schema: informationStage,
-      path: ['items', 0, 'content'],
-    },
-  ],
   'sections/form-fields/ComposerFormFields.tsx': [
     { kind: 'formField', schema: ComposerFormFieldSchema, path: ['label'] },
     { kind: 'formField', schema: ComposerFormFieldSchema, path: ['hint'] },
@@ -71,7 +64,7 @@ const EDITOR_SITES: Readonly<Record<string, readonly EditorSite[]>> = {
     { kind: 'formField', schema: FormFieldSchema, path: ['hint'] },
   ],
   'sections/page-content/PageContentSection.tsx': [
-    { kind: 'stageText', schema: informationStage, path: ['title'] },
+    { kind: 'stageText', schema: informationStage, path: ['content'] },
   ],
   'editors/sociogram/sections/prompts/SociogramPromptFields.tsx': [
     {

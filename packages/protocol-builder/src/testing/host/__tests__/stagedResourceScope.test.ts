@@ -219,7 +219,7 @@ const REACHES: readonly Reach[] = [
         kind: 'stage',
         document: Redacted.make({
           ...template,
-          items: [{ id: 'item-1', type: 'asset', content: staged }],
+          content: { 'en-US': `![](asset:${staged})` },
         }),
         promote: { editId: caller.editId, resourceIds: [staged] },
       });

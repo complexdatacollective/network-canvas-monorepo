@@ -109,22 +109,19 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'Information',
-          items: [{ id: 'i1', type: 'asset', content: 'a1' }],
+          shownAssets: ['a1'],
         },
         r,
         english,
       )?.full,
     ).toBe('with Video');
     // Media types are emitted in a canonical order (Image, Video, Audio), so
-    // the same assets produce the same name regardless of item order.
+    // the same assets produce the same name regardless of the order the page shows them in.
     expect(
       resolveStageQualifier(
         {
           type: 'Information',
-          items: [
-            { id: 'i1', type: 'asset', content: 'a1' },
-            { id: 'i2', type: 'asset', content: 'a2' },
-          ],
+          shownAssets: ['a1', 'a2'],
         },
         r,
         english,
@@ -134,10 +131,7 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'Information',
-          items: [
-            { id: 'i2', type: 'asset', content: 'a2' },
-            { id: 'i1', type: 'asset', content: 'a1' },
-          ],
+          shownAssets: ['a2', 'a1'],
         },
         r,
         english,
@@ -147,7 +141,7 @@ describe('resolveStageQualifier', () => {
       resolveStageQualifier(
         {
           type: 'Information',
-          items: [{ id: 'i1', type: 'text', content: { en: 'hello' } }],
+          shownAssets: [],
         },
         r,
         english,
@@ -193,11 +187,7 @@ describe('a qualifier follows the language it is in', () => {
     return resolveStageQualifier(
       {
         type: 'Information',
-        items: [
-          { id: 'i1', type: 'asset', content: 'a1' },
-          { id: 'i2', type: 'asset', content: 'a2' },
-          { id: 'i3', type: 'asset', content: 'a3' },
-        ],
+        shownAssets: ['a1', 'a2', 'a3'],
       },
       { resolveAssetType: (id: string) => types[id] ?? null },
       languageOf(locale),

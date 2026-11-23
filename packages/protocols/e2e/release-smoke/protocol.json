@@ -355,24 +355,14 @@
         "en-US": "Welcome",
         "es": "Bienvenida"
       },
-      "title": {
-        "en-US": "Welcome",
-        "es": "Bienvenida"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en-US": "# Release smoke\n\nThis short interview exercises every data write path. Today is {today}.",
-            "es": "# Prueba de humo\n\nEsta breve entrevista pone a prueba todas las vías de escritura de datos. Hoy es {today}."
-          }
-        }
-      ],
       "dynamicValues": {
         "today": {
           "path": "now"
         }
+      },
+      "content": {
+        "en-US": "# Welcome\n\n# Release smoke\n\nThis short interview exercises every data write path. Today is {today}.",
+        "es": "# Bienvenida\n\n# Prueba de humo\n\nEsta breve entrevista pone a prueba todas las vías de escritura de datos. Hoy es {today}."
       }
     },
     {
@@ -531,20 +521,10 @@
         "en-US": "Friendships",
         "es": "Amistades"
       },
-      "title": {
-        "en-US": "Friendships",
-        "es": "Amistades"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en-US": "You will be asked about each pair of people you named.",
-            "es": "Se te preguntará por cada par de personas que nombraste."
-          }
-        }
-      ]
+      "content": {
+        "en-US": "# Friendships\n\nYou will be asked about each pair of people you named.",
+        "es": "# Amistades\n\nSe te preguntará por cada par de personas que nombraste."
+      }
     },
     {
       "id": "stage-dyad",

@@ -96,10 +96,7 @@ export const BoldAndItalicOnly: Story = {
     await expect(canvas.getByRole('button', { name: 'Bold' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Italic' })).toBeVisible();
     await expect(
-      canvas.queryByRole('button', { name: 'Heading 1' }),
-    ).toBeNull();
-    await expect(
-      canvas.queryByRole('button', { name: 'Heading 2' }),
+      canvas.queryByRole('button', { name: /^Text style:/ }),
     ).toBeNull();
     await expect(
       canvas.queryByRole('button', { name: 'Bullet list' }),

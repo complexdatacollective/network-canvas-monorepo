@@ -1,3 +1,4 @@
+export * from './asset-block.ts';
 export * from './canonical-text.ts';
 export * from './date-fields.ts';
 export * from './ensure-error.ts';
