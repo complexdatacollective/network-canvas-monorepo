@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 
 import { nameToEmoji } from 'gemoji';
 import type { Nodes, PhrasingContent, Root } from 'mdast';
@@ -107,33 +108,41 @@ const legacyReading = (markdown: string, lines: Lines): Root => {
  * whether a line break that ends emphasis is inside it or just after it.
  */
 const shown = (tree: Root): unknown => {
-  // A line break or white space ending emphasis, moved to just after it.
+  // A line break or white space at the edge of emphasis or of a link's
+  // text, moved to just outside it, and a container left holding nothing
+  // left out: a reader sees no difference.
+  const CONTAINERS = new Set(['emphasis', 'strong', 'link', 'linkReference']);
   const breakOutOfEmphasis = (child: Nodes): Nodes[] => {
-    if (child.type !== 'emphasis' && child.type !== 'strong') return [child];
-    const last = child.children.at(-1);
-    if (last?.type === 'break') {
-      return [
-        ...breakOutOfEmphasis({
-          ...child,
-          children: child.children.slice(0, -1),
-        }),
-        { type: 'break' },
-      ];
+    if (!CONTAINERS.has(child.type) || !('children' in child)) return [child];
+    const children: Nodes[] = [...child.children];
+    const before: Nodes[] = [];
+    const after: Nodes[] = [];
+    for (;;) {
+      const first = children[0];
+      if (first?.type === 'break') {
+        before.push(first);
+        children.shift();
+      } else if (first?.type === 'text' && /^\s/.test(first.value)) {
+        before.push({ type: 'text', value: ' ' });
+        const words = first.value.trimStart();
+        if (words === '') children.shift();
+        else children[0] = { ...first, value: words };
+      } else break;
     }
-    if (last?.type === 'text' && /\s$/.test(last.value)) {
-      const words = last.value.trimEnd();
-      return [
-        ...breakOutOfEmphasis({
-          ...child,
-          children: [
-            ...child.children.slice(0, -1),
-            ...(words === '' ? [] : [{ ...last, value: words }]),
-          ],
-        }),
-        { type: 'text', value: ' ' },
-      ];
+    for (;;) {
+      const last = children.at(-1);
+      if (last?.type === 'break') {
+        after.unshift(last);
+        children.pop();
+      } else if (last?.type === 'text' && /\s$/.test(last.value)) {
+        after.unshift({ type: 'text', value: ' ' });
+        const words = last.value.trimEnd();
+        if (words === '') children.pop();
+        else children[children.length - 1] = { ...last, value: words };
+      } else break;
     }
-    return [child];
+    const kept = children.length === 0 ? [] : [{ ...child, children } as Nodes];
+    return [...before, ...kept, ...after];
   };
   const tidy = (node: Nodes): Nodes => {
     if (!('children' in node)) return node;
@@ -192,6 +201,129 @@ const expectSameReading = (input: string, lines: Lines) => {
     `${JSON.stringify(input)} written as ${JSON.stringify(output)}`,
   ).toEqual(shown(legacyReading(input, lines)));
 };
+
+/** Whether the standard reading of the output shows what the input showed. */
+const readsTheSame = (input: string, lines: Lines): boolean =>
+  isDeepStrictEqual(
+    shown(markdownTree(legacyMarkdownAsStandard(input, { lines }))),
+    shown(legacyReading(input, lines)),
+  );
+
+/**
+ * Every way a run of line breaks can be typed: one, two or three tags, in
+ * each spelling, with and without spaces among them and beside them.
+ */
+const BREAK_RUNS: readonly string[] = [1, 2, 3].flatMap((count) =>
+  ['<br>', '<br/>', '<br />'].flatMap((tag) =>
+    ['', ' '].flatMap((among) =>
+      ['', ' '].map(
+        (beside) =>
+          `${beside}${Array.from({ length: count }, () => tag).join(among)}${beside}`,
+      ),
+    ),
+  ),
+);
+
+/** Inline containers, by what opens and what closes each. */
+const CONTAINERS: readonly (readonly [string, string])[] = [
+  ['*', '*'],
+  ['_', '_'],
+  ['**', '**'],
+  ['__', '__'],
+  ['***', '***'],
+  ['**_', '_**'],
+  ['_**', '**_'],
+  ['[', '](https://example.org)'],
+  ['[*', '*](https://example.org)'],
+];
+
+/** What comes before and after a container: words, nothing, another
+ * container, a line that would open a block, punctuation. */
+const OUTSIDE: readonly (readonly [string, string])[] = [
+  ['x ', ' y'],
+  ['', ''],
+  ['*z* ', ' *z*'],
+  ['x ', '- b'],
+  ['(', ').'],
+];
+
+/** The shapes text is read in: several lines, one line, and a heading. */
+const SHAPES: readonly (readonly [string, Lines, string])[] = [
+  ['several lines', 'multiple', ''],
+  ['one line', 'single', ''],
+  ['a heading', 'multiple', '# '],
+];
+
+/**
+ * Where a run of breaks sits in a container: before its closer, after its
+ * opener, or alone in it.
+ */
+const EDGES: readonly (readonly [string, (run: string) => string])[] = [
+  ['a run before a closer', (run) => `a${run}`],
+  ['a run after an opener', (run) => `${run}a`],
+  ['a run alone in a container', (run) => run],
+];
+
+/**
+ * Words the migration rewrites, at the edge of a container: an emoji for a
+ * shortcode, a link for a bare address, and an escaped angle bracket.
+ */
+const REWRITTEN_AT_EDGES: readonly string[] = [
+  ':smile:',
+  'a :smile:',
+  ':smile: a',
+  'see www.example.org',
+  'www.example.org now',
+  '<a>',
+  'a >',
+  '< a',
+];
+
+type Generated = readonly (readonly [string, Lines])[];
+
+const inContainers = (
+  contents: readonly string[],
+  containers: readonly (readonly [string, string])[],
+  [, lines, lead]: readonly [string, Lines, string],
+): Generated =>
+  contents.flatMap((content) =>
+    containers.flatMap(([open, close]) =>
+      OUTSIDE.map(
+        ([before, after]) =>
+          [`${lead}${before}${open}${content}${close}${after}`, lines] as const,
+      ),
+    ),
+  );
+
+const isLinkLabel = ([open]: readonly [string, string]) => open.startsWith('[');
+
+/** The generated texts, grouped by the kind of edge they test. */
+const EDGE_CASES: readonly (readonly [string, Generated])[] = SHAPES.flatMap(
+  (shape) => [
+    ...EDGES.flatMap(([edge, place]) => [
+      [
+        `${edge} of emphasis, in ${shape[0]}`,
+        inContainers(
+          BREAK_RUNS.map(place),
+          CONTAINERS.filter((container) => !isLinkLabel(container)),
+          shape,
+        ),
+      ] as const,
+      [
+        `${edge} of a link's label, in ${shape[0]}`,
+        inContainers(
+          BREAK_RUNS.map(place),
+          CONTAINERS.filter(isLinkLabel),
+          shape,
+        ),
+      ] as const,
+    ]),
+    [
+      `an emoji, a link or an escaped bracket at an edge, in ${shape[0]}`,
+      inContainers(REWRITTEN_AT_EDGES, CONTAINERS, shape),
+    ] as const,
+  ],
+);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -257,6 +389,20 @@ const CASES: readonly (readonly [string, string, string])[] = [
   ['a<br>1) b', 'a\\\n1\\) b', 'a 1) b'],
   ['a<br>===', 'a\\\n\\===', 'a ==='],
   ['a<br>#', 'a\\\n\\#', 'a #'],
+  // Breaks at the inner edge of emphasis or of a link's text are written
+  // just outside it, all of them.
+  ['**a<br><br>** b', '**a**\\\n\\\n b', '**a**  b'],
+  ['*a <br>* b', '*a*\\\n b', '*a*  b'],
+  ['x **<br> <br>a** y', 'x \\\n\\\n**a** y', 'x  **a** y'],
+  [
+    'see [the site <br>](https://example.org) now',
+    'see [the site](https://example.org)\\\n now',
+    'see [the site](https://example.org)  now',
+  ],
+  ['x **_a<br>_** y', 'x **_a_**\\\n y', 'x **_a_**  y'],
+  ['x _**<br>a**_ y', 'x \\\n_**a**_ y', 'x  _**a**_ y'],
+  // Breaks written as a space must not leave a line that reads as a rule.
+  ['** <br> **', '** \\\n **', '\\*\\*  \\*\\*'],
   [
     'Visit www.example.org today',
     'Visit [www.example.org](http://www.example.org) today',
@@ -411,6 +557,32 @@ describe('legacyMarkdownAsStandard', () => {
       expect(legacyMarkdownAsStandard(once, { lines })).toBe(once);
     });
   });
+
+  // A closing delimiter run cannot follow white space, a line ending
+  // included, and an opening one cannot be followed by it: whatever is
+  // written for a `<br>` must never be the first or last thing in emphasis.
+  it.each(EDGE_CASES)(
+    'writes %s so that it reads as it did',
+    (_kind, cases) => {
+      expect(
+        cases.filter(([input, lines]) => !readsTheSame(input, lines)),
+      ).toEqual([]);
+    },
+  );
+
+  it.each(EDGE_CASES)(
+    'leaves %s alone once it has been written',
+    (_kind, cases) => {
+      expect(
+        cases.filter(([input, lines]) => {
+          // An address in one line is escaped each time (see below).
+          if (lines === 'single' && input.includes('www.')) return false;
+          const once = legacyMarkdownAsStandard(input, { lines });
+          return legacyMarkdownAsStandard(once, { lines }) !== once;
+        }),
+      ).toEqual([]);
+    },
+  );
 
   it.each(SOURCE_FOLLOWING)(
     'follows the source of %j character by character',

@@ -47,8 +47,6 @@ const legacyTree = (markdown: string) =>
 /** The one tag the legacy editor wrote for a line break, in any spelling. */
 const BREAK_TAG = /<br\s*\/?>/gi;
 
-const ONLY_SPACE_AND_BREAKS = /^(?:\s|<br\s*\/?>)*$/i;
-
 /** A shortcode as `remark-gemoji`, which drew the emoji, finds one. */
 const SHORTCODE = /:(\+1|[-\w]+):/g;
 
@@ -303,11 +301,47 @@ const linkMarkdown = (words: string, href: string): string =>
 /**
  * What would open a block of its own at the start of a line: a heading, a
  * list item, a code fence, a heading's underline or a rule. The group that
- * matched holds the marker, whose first character is escaped to keep the
- * line words.
+ * matched holds the marker, whose first character (every character, in a
+ * rule) is escaped to keep the line words.
  */
 const OPENS_A_BLOCK =
-  /^[^\S\n]*(?:(#{1,6})(?=[ \t]|$)|([-+*])(?=[ \t]|$)|\d{1,9}([.)])(?=[ \t]|$)|(`{3,}(?=[^`]*$)|~{3,})|(=+)[ \t]*$|(-+)[ \t]*$|([-*_])(?:[ \t]*[-*_]){2,}[ \t]*$)/;
+  /^[^\S\n]*(?:(#{1,6})(?=[ \t]|$)|([-+*])(?=[ \t]|$)|\d{1,9}([.)])(?=[ \t]|$)|(`{3,}(?=[^`]*$)|~{3,})|(=+)[ \t]*$|(-+)[ \t]*$|([-*_])(?:[ \t]*\7){2,}[ \t]*$)/;
+
+/**
+ * The edits that escape every marker of a rule, `line`, at `from` in the
+ * source. Escaping the first alone would leave the rest after punctuation,
+ * where a run of `*` or `_` can close emphasis the line before opened; with
+ * every one escaped none can, as none could while spaces or the line's start
+ * stood beside them.
+ */
+const ruleMarkerEdits = (line: string, from: number): Edit[] =>
+  [...line.matchAll(/[-*_]/g)].map(({ index }) => ({
+    start: from + index,
+    end: from + index,
+    text: '\\',
+  }));
+
+/**
+ * The edits that keep the line holding `removed`, a run of breaks the
+ * migration writes as a space or as nothing, from being read as a rule once
+ * the tags in it are gone: `** <br> **` written `**  **` would be one.
+ */
+const ruleEdits = (
+  source: string,
+  removed: Readonly<{ start: number; end: number }>,
+): Edit[] => {
+  const lineStart = source.lastIndexOf('\n', removed.start - 1) + 1;
+  const newline = source.indexOf('\n', removed.end);
+  const lineEnd = newline === -1 ? source.length : newline;
+  const line = `${source.slice(lineStart, removed.start)} ${source.slice(removed.end, lineEnd)}`;
+  if (OPENS_A_BLOCK.exec(line.replace(BREAK_TAG, ' '))?.[7] === undefined) {
+    return [];
+  }
+  return [
+    ...ruleMarkerEdits(source.slice(lineStart, removed.start), lineStart),
+    ...ruleMarkerEdits(source.slice(removed.end, lineEnd), removed.end),
+  ];
+};
 
 /** A `>` opening a line, which would open a quotation. */
 const OPENS_A_QUOTATION = /^[^\S\n]*>/;
@@ -329,7 +363,8 @@ const lineOpeningEdits = (source: string, from: number): Edit[] => {
   }
   const match = OPENS_A_BLOCK.exec(line);
   const marker = match?.slice(1).find((group) => group !== undefined);
-  if (marker === undefined) return [];
+  if (match === null || marker === undefined) return [];
+  if (match[7] !== undefined) return ruleMarkerEdits(line, from);
   const at = line.indexOf(marker, line.length - line.trimStart().length);
   return at === -1 ? [] : [{ start: from + at, end: from + at, text: '\\' }];
 };
@@ -349,21 +384,59 @@ const leavesOf = (node: Nodes): Nodes[] =>
     : [node];
 
 /**
- * The outermost emphasis that `node` ends, together with any emphasis inside
- * it that it also ends, or undefined where it ends none.
+ * Inline containers: emphasis, strong emphasis and a link's text, whose
+ * delimiters decide what they hold by the characters beside them.
  */
-const closingFormatting = (
+const INLINE_CONTAINERS = new Set([
+  'emphasis',
+  'strong',
+  'link',
+  'linkReference',
+]);
+
+/**
+ * The outermost inline container whose words start (`start`) or end (`end`)
+ * with `node`, or undefined where `node` is not at that edge of any.
+ */
+const outermostContainerAt = (
+  node: Nodes,
+  ancestors: readonly Parents[],
+  edge: 'start' | 'end',
+): Parents | undefined => {
+  let outermost: Parents | undefined;
+  for (const ancestor of ancestors.toReversed()) {
+    if (!INLINE_CONTAINERS.has(ancestor.type)) break;
+    const leaves = leavesOf(ancestor);
+    if ((edge === 'start' ? leaves[0] : leaves.at(-1)) !== node) break;
+    outermost = ancestor;
+  }
+  return outermost;
+};
+
+/**
+ * The outermost inline container that holds `node` and nothing else, or
+ * undefined where none does.
+ */
+const containerOfOnly = (
   node: Nodes,
   ancestors: readonly Parents[],
 ): Parents | undefined => {
   let outermost: Parents | undefined;
   for (const ancestor of ancestors.toReversed()) {
-    if (ancestor.type !== 'emphasis' && ancestor.type !== 'strong') break;
-    if (leavesOf(ancestor).at(-1) !== node) break;
+    if (!INLINE_CONTAINERS.has(ancestor.type)) break;
+    const leaves = leavesOf(ancestor);
+    if (leaves.length !== 1 || leaves[0] !== node) break;
     outermost = ancestor;
   }
   return outermost;
 };
+
+/**
+ * `count` line breaks as markdown: each a backslash ending a line, but for
+ * the last where the line already ends there.
+ */
+const lineBreaks = (count: number, lineEndsAfter: boolean): string =>
+  '\\\n'.repeat(count - (lineEndsAfter ? 1 : 0)) + (lineEndsAfter ? '\\' : '');
 
 type Context = Readonly<{
   source: string;
@@ -435,73 +508,125 @@ const editWords = (
     });
   }
 
-  // A line break: several of them in a line that runs on are each a break;
-  // anywhere a break cannot be, a run of them is one space between words.
+  // Line breaks, in runs: the tags side by side, with any spaces among and
+  // beside them. In several lines each tag is a break; where no break can
+  // be (one line, or a heading) a run is one space between words; at the
+  // start or end of a paragraph, where it showed nothing, a run is dropped.
   const breaksApart = multiline && !inHeading;
-  const breakPattern = breaksApart
-    ? BREAK_TAG
-    : /<br\s*\/?>(?:\s*<br\s*\/?>)*/gi;
-  const breaks: Stretch[] = [];
-  // The words as they will be read around each break, for where a `>`
-  // opens a line.
-  let context = value;
-  for (const match of value.matchAll(breakPattern)) {
+  const runs: { from: number; to: number; breaks: Stretch[] }[] = [];
+  for (const match of value.matchAll(BREAK_TAG)) {
     const stretch = { from: match.index, to: match.index + match[0].length };
     if (overlaps(stretch, addresses)) continue;
     if (!writtenAsTyped(spans, stretch.from, stretch.to)) continue;
-    breaks.push(stretch);
-    const before = value.slice(0, stretch.from);
-    const after = value.slice(stretch.to);
-    const leading = firstInBlock && ONLY_SPACE_AND_BREAKS.test(before);
-    const trailing = lastInBlock && ONLY_SPACE_AND_BREAKS.test(after);
-    // A break that ends emphasis is written after the emphasis closes, with
-    // the spaces beside it: a closing `*` or `_` after a space, or opening a
-    // line, would close nothing.
-    const closingEnd =
-      !leading && !trailing && after.trim() === ''
-        ? closingFormatting(node, ancestors)?.position?.end.offset
-        : undefined;
-    if (closingEnd !== undefined) {
-      const spaces = /\s*$/.exec(before)?.[0].length ?? 0;
-      edits.push({
-        ...sourceOf({ from: stretch.from - spaces, to: value.length }),
-        text: '',
-      });
-      edits.push({
-        start: closingEnd,
-        end: closingEnd,
-        text: breaksApart ? '\\\n' : ' ',
-      });
-      if (breaksApart) edits.push(...lineOpeningEdits(source, closingEnd));
+    const last = runs.at(-1);
+    if (
+      last !== undefined &&
+      value.slice(last.to, stretch.from).trim() === ''
+    ) {
+      last.to = stretch.to;
+      last.breaks.push(stretch);
+    } else runs.push({ ...stretch, breaks: [stretch] });
+  }
+  const breaks = runs.flatMap((run) => run.breaks);
+  // The words as they will be read around each break, for where a `>`
+  // opens a line.
+  let context = value;
+  const blank = (stretch: Stretch, opensLine: boolean) => {
+    const width = stretch.to - stretch.from;
+    const placeholder = opensLine
+      ? `\n${' '.repeat(width - 1)}`
+      : ' '.repeat(width);
+    context = `${context.slice(0, stretch.from)}${placeholder}${context.slice(stretch.to)}`;
+  };
+  for (const run of runs) {
+    const before = value.slice(0, run.from);
+    const after = value.slice(run.to);
+    const atStart = before.trim() === '';
+    const atEnd = after.trim() === '';
+    // The run with the spaces beside it, up to the edge of the words it
+    // touches.
+    const spacesBefore = /\s*$/.exec(before)?.[0].length ?? 0;
+    const spacesAfter = /^\s*/.exec(after)?.[0].length ?? 0;
+    const whole = {
+      from: run.from - spacesBefore,
+      to: run.to + spacesAfter,
+    };
+    const only =
+      atStart && atEnd ? containerOfOnly(node, ancestors) : undefined;
+    const removed = (() => {
+      const from = only?.position?.start.offset;
+      const to = only?.position?.end.offset;
+      return from === undefined || to === undefined
+        ? sourceOf(whole)
+        : { start: from, end: to };
+    })();
+
+    if ((firstInBlock && atStart) || (lastInBlock && atEnd)) {
+      edits.push({ ...removed, text: '' }, ...ruleEdits(source, removed));
+      blank(whole, false);
+      if (firstInBlock && atStart && !inHeading) {
+        edits.push(...lineOpeningEdits(source, removed.end));
+      }
       continue;
     }
-    let text: string;
-    let opensLine = false;
-    let replaced = stretch;
-    if (leading || trailing) {
-      text = '';
-      opensLine = leading && !inHeading;
-    } else if (!breaksApart) {
+
+    /**
+     * A delimiter run that closes emphasis cannot follow white space, and
+     * one that opens it cannot be followed by white space; a line ending
+     * counts as white space, so a break is one too (CommonMark's
+     * right-flanking and left-flanking delimiter runs). So whatever is
+     * written for a run of breaks, a line break or a space, is never the
+     * first or last thing inside emphasis, or, for the same look, inside a
+     * link's text. A run that touches the inner edge of such a container,
+     * with the spaces beside it, is written just outside the outermost
+     * container it touches, on the side it touches, keeping its number of
+     * breaks; a container that held nothing but the run goes with it.
+     */
+    const closing = atEnd
+      ? outermostContainerAt(node, ancestors, 'end')
+      : undefined;
+    const opening =
+      closing === undefined && atStart
+        ? outermostContainerAt(node, ancestors, 'start')
+        : undefined;
+    const at = closing?.position?.end.offset ?? opening?.position?.start.offset;
+    if (at !== undefined) {
+      const lineEndsAfter =
+        closing !== undefined && /^[^\S\n]*\n/.test(source.slice(at));
+      edits.push({ ...removed, text: '' });
+      edits.push({
+        start: at,
+        end: at,
+        text: breaksApart ? lineBreaks(run.breaks.length, lineEndsAfter) : ' ',
+      });
+      blank(whole, false);
+      if (breaksApart && !lineEndsAfter) {
+        edits.push(...lineOpeningEdits(source, at));
+      }
+      continue;
+    }
+
+    if (!breaksApart) {
       const spaced = /\s$/.test(before) || /^\s/.test(after);
-      text = spaced ? '' : ' ';
-    } else {
-      const spaces = /^[^\S\n]*/.exec(after)?.[0].length ?? 0;
+      edits.push(
+        { ...sourceOf(run), text: spaced ? '' : ' ' },
+        ...ruleEdits(source, sourceOf(run)),
+      );
+      blank(run, false);
+      continue;
+    }
+    for (const stretch of run.breaks) {
+      const spaces = /^[^\S\n]*/.exec(value.slice(stretch.to))?.[0].length ?? 0;
       if (value.charAt(stretch.to + spaces) === '\n') {
         // The line already ends here: the break ends it.
-        text = '\\';
-        replaced = { from: stretch.from, to: stretch.to + spaces };
-      } else {
-        text = '\\\n';
-        opensLine = true;
+        const replaced = { from: stretch.from, to: stretch.to + spaces };
+        edits.push({ ...sourceOf(replaced), text: '\\' });
+        blank(replaced, false);
+        continue;
       }
-    }
-    const placeholder = opensLine
-      ? `\n${' '.repeat(replaced.to - replaced.from - 1)}`
-      : ' '.repeat(replaced.to - replaced.from);
-    context = `${context.slice(0, replaced.from)}${placeholder}${context.slice(replaced.to)}`;
-    edits.push({ ...sourceOf(replaced), text });
-    if (opensLine) {
-      edits.push(...lineOpeningEdits(source, sourceOf(replaced).end));
+      edits.push({ ...sourceOf(stretch), text: '\\\n' });
+      blank(stretch, true);
+      edits.push(...lineOpeningEdits(source, sourceOf(stretch).end));
     }
   }
 
