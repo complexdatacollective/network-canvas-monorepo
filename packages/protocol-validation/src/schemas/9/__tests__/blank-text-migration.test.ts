@@ -17,11 +17,12 @@ import { migratedStageId } from './migrated-stage-ids.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 /**
- * The migration gives every node type, edge type and variable a new random
- * id. The tests here blank the names a test could otherwise find them by, so
- * the migration's renaming is recorded instead: each new id against the key
- * the schema 8 document gave it, which `readablePath` and `withReadableKeys`
- * put back.
+ * The migration gives each node type, edge type and variable with a readable
+ * key a new random id. The tests here blank the names a test could otherwise
+ * find them by, so the migration's renaming is recorded instead: each new id
+ * against the key the schema 8 document gave it, which `readablePath` and
+ * `withReadableKeys` put back. The fixtures here have no UUID keys, so the
+ * migration's handling of a UUID key used by two entities is not repeated.
  */
 const { originalKeys } = vi.hoisted(() => ({
   originalKeys: new Map<string, string>(),
@@ -30,19 +31,21 @@ const { originalKeys } = vi.hoisted(() => ({
 vi.mock('../migration-codebook-ids.ts', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('../migration-codebook-ids.ts')>();
-  const { createEntityTypeId, createVariableId } =
+  const { createEntityTypeId, createVariableId, isEntityTypeId, isVariableId } =
     await import('../codebook-ids.ts');
-  const recorded = (create: () => string) => (key: string) => {
-    const id = create();
-    originalKeys.set(id, key);
-    return id;
-  };
+  const recorded =
+    (isId: (key: string) => boolean, create: () => string) => (key: string) => {
+      if (isId(key)) return key;
+      const id = create();
+      originalKeys.set(id, key);
+      return id;
+    };
   return {
     ...actual,
     assignCodebookIds: (document: Record<string, unknown>) => {
       actual.renameCodebookIds(document, {
-        typeId: recorded(createEntityTypeId),
-        variableId: recorded(createVariableId),
+        typeId: recorded(isEntityTypeId, createEntityTypeId),
+        variableId: recorded(isVariableId, createVariableId),
       });
     },
   };

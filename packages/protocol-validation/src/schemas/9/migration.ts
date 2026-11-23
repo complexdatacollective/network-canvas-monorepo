@@ -1144,8 +1144,8 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   assignProtocolObjectIds(assembled);
   // Last for the same reason: the steps above add variables (a Family
   // Pedigree's relativesNotRecorded) and read and write references by the
-  // keys schema 8 gave, so one pass at the end renames every type and
-  // variable, and every reference any step wrote.
+  // keys schema 8 gave, so one pass at the end renames each type and
+  // variable that needs a new id, and every reference any step wrote.
   assignCodebookIds(assembled);
 
   // None of the wording Network Canvas supplies is written in: the

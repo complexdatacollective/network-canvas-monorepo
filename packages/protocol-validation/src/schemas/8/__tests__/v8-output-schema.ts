@@ -19,9 +19,10 @@ const withKeysIn = (text: string, keys: ReadonlyMap<string, string>) =>
  * host validates it: checked against that stub, migrated to version 9, and
  * parsed by the schema 9 root. Issue paths and messages are schema 9's.
  *
- * The migration gives every node type, edge type and variable a new random
- * id, so the result, and each issue's path and message, name each by the
- * key the version 8 document gave it (see `withOriginalCodebookKeys`).
+ * The migration gives each node type, edge type and variable whose key is
+ * not a UUID a new random id, so the result, and each issue's path and
+ * message, name each by the key the version 8 document gave it (see
+ * `withOriginalCodebookKeys`).
  */
 export const V8OutputSchema = ProtocolSchemaV8.transform((protocol, ctx) => {
   const migrated = migrationV8toV9.migrate(protocol, {});

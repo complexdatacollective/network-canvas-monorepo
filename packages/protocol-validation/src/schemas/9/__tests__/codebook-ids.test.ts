@@ -738,17 +738,206 @@ describe('the schema 8 to 9 migration', () => {
     }
   });
 
-  it('gives new ids to keys that were UUIDs already', () => {
-    // Given its ids in schema 9's form, which the renaming reads.
-    const original = asSchema8Protocol(withTestCodebookIds(completeProtocol()));
+  // Given its ids in schema 9's form, which the renaming reads.
+  const schema8WithUuidKeys = () =>
+    asSchema8Protocol(withTestCodebookIds(completeProtocol()));
+
+  const heldId = (reference: Reference) => {
+    const parsed = reference.dynamicValuePath
+      ? parseDynamicValuePath(reference.held)
+      : undefined;
+    return parsed?.kind === 'attribute' ? parsed.variableId : reference.held;
+  };
+
+  it('keeps keys that were UUIDs already, and every reference still names them', () => {
+    const original = schema8WithUuidKeys();
     const migrated = migrate(original);
     const before = codebookKeys(original);
     const after = codebookKeys(migrated);
+
     expect(before.types.every(isEntityTypeId)).toBe(true);
-    expect(after.types.filter((id) => before.types.includes(id))).toEqual([]);
+    expect(before.variables.every(isVariableId)).toBe(true);
+    expect(after).toEqual(before);
+    const references = referencesIn(migrated).filter(
+      ({ dataSourceColumn }) => !dataSourceColumn,
+    );
+    expect(references.length).toBeGreaterThan(50);
+    for (const reference of references) {
+      expect({ at: reference.kind, held: heldId(reference) }).toEqual({
+        at: reference.kind,
+        held:
+          reference.entity === undefined
+            ? expect.toSatisfy((id: string) => before.variables.includes(id))
+            : expect.toSatisfy((id: string) => before.types.includes(id)),
+      });
+    }
+    expect(
+      references.filter(
+        (reference) => heldId(reference) === testVariableId('nickname'),
+      ),
+    ).not.toEqual([]);
+    expect(issuesOf(migrated)).toEqual([]);
+  });
+
+  it('keeps a UUID variable key, so a roster file whose columns name the variable by it still matches the codebook', () => {
+    const protocol = withTestCodebookIds(completeProtocol());
+    const roster = stageNamed(protocol, 'roster');
+    const nameId = testVariableId('name');
+    roster.searchOptions = { fuzziness: 0.5, matchProperties: [nameId] };
+    roster.cardOptions = {
+      additionalProperties: [
+        { label: { en: 'Card detail' }, variable: nameId },
+      ],
+    };
+
+    const migrated = migrate(asSchema8Protocol(protocol));
+    const migratedRoster = stageOfType(migrated, 'NameGeneratorRoster');
+    const subjectType = String(valueAt(migratedRoster, ['subject', 'type']));
+
+    expect(subjectType).toBe(testTypeId('person'));
+    expect(
+      Object.keys(
+        recordAt(migrated, ['codebook', 'node', subjectType, 'variables']),
+      ),
+    ).toContain(nameId);
+    expect(
+      valueAt(migratedRoster, ['searchOptions', 'matchProperties']),
+    ).toEqual([nameId]);
+    expect(
+      valueAt(migratedRoster, [
+        'cardOptions',
+        'additionalProperties',
+        0,
+        'variable',
+      ]),
+    ).toBe(nameId);
+    expect(issuesOf(migrated)).toEqual([]);
+  });
+
+  it('keeps the UUID keys of a mixed codebook and gives the readable keys new ids', () => {
+    const protocol = completeProtocol();
+    renameCodebookIds(protocol, {
+      typeId: (type) => (type === 'person' ? testTypeId(type) : type),
+      variableId: (key, owner) =>
+        owner.entity === 'node' && owner.type === 'person'
+          ? testVariableId(key)
+          : key,
+    });
+    const original = asSchema8Protocol(protocol);
+    const before = codebookKeys(original);
+    const migrated = migrate(original);
+    const after = codebookKeys(migrated);
+
+    const keptTypes = before.types.filter(isEntityTypeId);
+    const keptVariables = before.variables.filter(isVariableId);
+    expect(keptTypes).toEqual([testTypeId('person')]);
+    expect(keptVariables).toContain(testVariableId('nickname'));
+    expect(keptVariables.length).toBeLessThan(before.variables.length);
+
+    expect(after.types.every(isEntityTypeId)).toBe(true);
+    expect(after.variables.every(isVariableId)).toBe(true);
+    expect(after.types.filter((id) => before.types.includes(id))).toEqual(
+      keptTypes,
+    );
     expect(
       after.variables.filter((id) => before.variables.includes(id)),
-    ).toEqual([]);
+    ).toEqual(keptVariables);
+    expect(after.variables).toHaveLength(before.variables.length);
+
+    expect(
+      valueAt(stageOfType(migrated, 'NameGenerator'), ['subject', 'type']),
+    ).toBe(testTypeId('person'));
+    expect(
+      valueAt(stageOfType(migrated, 'FamilyPedigree'), ['subject', 'type']),
+    ).toEqual(
+      expect.toSatisfy(
+        (id: unknown) =>
+          typeof id === 'string' &&
+          isEntityTypeId(id) &&
+          after.types.includes(id) &&
+          !keptTypes.includes(id),
+      ),
+    );
+    expect(issuesOf(migrated)).toEqual([]);
+  });
+
+  it('keeps a UUID variable key used by two entities for the first, and gives the other a new id its references follow', () => {
+    const original = schema8WithUuidKeys();
+    const nicknameId = testVariableId('nickname');
+    const relativeVariables = recordAt(original, [
+      'codebook',
+      'node',
+      testTypeId('relative'),
+      'variables',
+    ]);
+    // Schema 8 allowed a key on two entity types; schema 9 does not.
+    relativeVariables[nicknameId] = {
+      name: 'RelativeNickname',
+      type: 'text',
+      component: 'Text',
+    };
+    const pedigree = stageNamed(original, 'familyPedigree');
+    arrayAt(pedigree, ['form', 'fields']).push({
+      id: 'nickname-field',
+      variable: nicknameId,
+      prompt: 'Nick',
+    });
+
+    const migrated = migrate(original);
+    const personVariables = recordAt(migrated, [
+      'codebook',
+      'node',
+      testTypeId('person'),
+      'variables',
+    ]);
+    const relativeNickname = Object.entries(
+      recordAt(migrated, [
+        'codebook',
+        'node',
+        testTypeId('relative'),
+        'variables',
+      ]),
+    ).find(
+      ([, definition]) =>
+        isRecord(definition) && definition.name === 'RelativeNickname',
+    )?.[0];
+
+    expect(personVariables[nicknameId]).toMatchObject({ name: 'Nickname' });
+    expect(relativeNickname).toEqual(
+      expect.toSatisfy(
+        (id: unknown) =>
+          typeof id === 'string' && isVariableId(id) && id !== nicknameId,
+      ),
+    );
+    expect(
+      arrayAt(stageOfType(migrated, 'FamilyPedigree'), ['form', 'fields']).at(
+        -1,
+      ),
+    ).toMatchObject({ variable: relativeNickname });
+    expect(issuesOf(migrated)).toEqual([]);
+  });
+
+  it('keeps a UUID that is both a type key and a variable key in both places, which validation accepts', () => {
+    const protocol = withTestCodebookIds(completeProtocol());
+    const personId = testTypeId('person');
+    renameCodebookIds(protocol, {
+      typeId: (type, entity) =>
+        entity === 'edge' && type === testTypeId('knows') ? personId : type,
+      variableId: (key) =>
+        key === testVariableId('nickname') ? personId : key,
+    });
+    const original = asSchema8Protocol(protocol);
+    const migrated = migrate(original);
+
+    expect(codebookKeys(migrated)).toEqual(codebookKeys(original));
+    expect(Object.keys(recordAt(migrated, ['codebook', 'edge']))).toContain(
+      personId,
+    );
+    expect(
+      Object.keys(
+        recordAt(migrated, ['codebook', 'node', personId, 'variables']),
+      ),
+    ).toContain(personId);
     expect(issuesOf(migrated)).toEqual([]);
   });
 

@@ -29,9 +29,11 @@ import {
 /**
  * A roster column name. The roster is an external data source, so this is NOT
  * guaranteed to be a codebook variable — but in a Network Canvas-format roster
- * it usually is one: the shipped development protocol's roster keys its node
- * attributes by the venue type's own variable ids, and one of those variables
- * (`Abbreviated_Name`) is referenced nowhere else in the protocol.
+ * it usually is one: the development protocol's roster (`HIVServices.json`)
+ * keys its node attributes by the venue type's own variable ids, and one of
+ * those variables (`Abbreviated_Name`) is referenced nowhere else in the
+ * protocol. Those ids are UUIDs, which the schema 8 to 9 migration keeps, so
+ * the roster still matches the codebook after migration.
  *
  * Tagging it as an existence-unchecked reference is what keeps the Codebook
  * from offering to delete a variable the roster still reads (#1392); leaving it

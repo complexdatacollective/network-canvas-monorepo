@@ -25,8 +25,9 @@ export type CodebookIdRenames = {
   typeId?: (typeId: string, entity: 'node' | 'edge') => string;
   /**
    * The new id of the variable stored under `variableId` by `owner`, which
-   * names the owning type by the id it had before. Absent, every variable
-   * keeps its id.
+   * names the owning type by the id it had before. Called once for each
+   * variable, in codebook order: the node types' variables, then the edge
+   * types', then the ego's. Absent, every variable keeps its id.
    */
   variableId?: (variableId: string, owner: VariableOwner) => string;
 };

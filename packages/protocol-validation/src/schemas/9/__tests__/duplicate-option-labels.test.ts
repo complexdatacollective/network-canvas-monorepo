@@ -31,7 +31,7 @@ const CATEGORY_PATH = [
   testVariableId('category'),
 ];
 
-// A migration gives the type and the attribute new random ids.
+// A migration gives the readable keys `person` and `category` new random ids.
 const MIGRATED_CATEGORY_PATH = [
   'codebook',
   'node',
