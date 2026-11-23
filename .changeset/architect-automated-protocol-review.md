@@ -29,12 +29,22 @@ asks an AI model to look for problems in your protocol and suggest fixes.
 - The review and your choices are kept in your browser, beside the protocol.
   They are not part of the protocol file.
 - You choose which model writes each review: Claude Opus 5.5, made by
-  Anthropic, or GPT-6.1 Sol, made by OpenAI.
-- A review needs an internet connection. It sends the protocol and your study
-  details to a Network Canvas service, which passes them to the provider of
-  the model you chose. Images, video, audio, other resources and any API keys
-  saved in the protocol are never sent. Check that your IRB or ethics review
-  body permits this before you use the feature.
+  Anthropic, GPT-6.1 Sol, made by OpenAI, or a model of your own.
+- A review by Claude or GPT needs an internet connection. It sends the
+  protocol and your study details to a Network Canvas service, which passes
+  them to the provider of the model you chose. Images, video, audio, other
+  resources and any API keys saved in the protocol are never sent. Check that
+  your IRB or ethics review body permits this before you use the feature.
+- **Your own model** is one you run yourself or that your institution
+  provides, for example with Ollama or LM Studio: anything with an
+  OpenAI-compatible API that accepts requests from a web page. You give its
+  address, the model's name and an API key if it needs one, and can test the
+  connection before you start. The protocol and your study details then go
+  straight from your browser to that address, and never through the Network
+  Canvas service; the review is not shared with the team, and the hourly limit
+  and budgets do not apply. The address, model name and key are kept in your
+  browser only. A model on your own computer also works offline. To allow
+  this, Architect may now connect to any `https` address and to `localhost`.
 - **Share this review with the Network Canvas team** is ticked unless you
   untick it. While it is ticked, the team keeps a copy of your study details,
   your protocol, and the review's findings and suggested fixes, with which

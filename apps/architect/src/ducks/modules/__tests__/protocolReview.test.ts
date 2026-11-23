@@ -1,6 +1,5 @@
 // fake-indexeddb must be installed before Dexie opens a database.
 import 'fake-indexeddb/auto';
-import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { withSuppliedWording } from '@codaco/interview/supplied-wording';
@@ -14,7 +13,6 @@ import {
   type ReviewEvent,
   type ReviewResult,
 } from '@codaco/protocol-review-worker/contract';
-import { type CurrentProtocol } from '@codaco/protocol-validation';
 import { posthog } from '~/analytics';
 import { registerOpenStage } from '~/components/StageEditor/openStageChange';
 import { timelineActions } from '~/ducks/middleware/timeline';
@@ -41,20 +39,18 @@ import {
   refreshReviewProviders,
   reviewProgressFraction,
   reviewProviderChoices,
-  reviewProviderFor,
+  serviceProviderFor,
   setShareReviews,
   startReview,
   undoFix,
   WITHHELD_API_KEY,
 } from '~/ducks/modules/protocolReview';
-import { rootReducer } from '~/ducks/modules/root';
 import {
   makeFinding,
   makeProtocol,
   op,
   STUDY_CONTEXT,
 } from '~/protocolReview/__tests__/fixtures';
-import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import {
   clearReviewRecords,
   FINDING_DECISIONS,
@@ -65,19 +61,13 @@ import {
   PROTOCOL_REVIEW_QUOTA_KEY,
 } from '~/utils/storageNames';
 
+import {
+  makeReviewStore,
+  openProtocol,
+  type ReviewStore,
+} from './protocolReviewStore';
+
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
-
-const makeStore = () => {
-  const created = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  keepProtocolReviewOnActiveProtocol(created);
-  return created;
-};
-
-type Store = ReturnType<typeof makeStore>;
 
 const FINDINGS: Finding[] = [
   makeFinding(
@@ -143,35 +133,18 @@ const answering = (result: ReviewResult = RESULT) => {
   return answer;
 };
 
-let protocolCounter = 0;
-
-/** Opens `protocol` under a fresh library id, as the app does. */
-const open = async (
-  store: Store,
-  protocol: CurrentProtocol = makeProtocol(),
-) => {
-  protocolCounter += 1;
-  const id = `protocol-${protocolCounter}`;
-  store.dispatch(setActiveProtocolId(id));
-  store.dispatch(setActiveProtocol(protocol));
-  await vi.waitFor(() => {
-    expect(store.getState().protocolReview.record?.protocolId).toBe(id);
-  });
-  return id;
-};
-
-const protocolOf = (store: Store) => {
+const protocolOf = (store: ReviewStore) => {
   const protocol = store.getState().activeProtocol.present;
   if (!protocol) throw new Error('No protocol open');
   return protocol;
 };
 
-const promptText = (store: Store) => {
+const promptText = (store: ReviewStore) => {
   const stage = protocolOf(store).stages[1];
   return stage && 'prompts' in stage ? stage.prompts[0]?.text : undefined;
 };
 
-const findingOf = (store: Store, id: string) => {
+const findingOf = (store: ReviewStore, id: string) => {
   const finding = getProtocolReviewFindings(store.getState()).find(
     (candidate) => candidate.id === id,
   );
@@ -180,8 +153,8 @@ const findingOf = (store: Store, id: string) => {
 };
 
 /** Opens a protocol and completes a review of it. */
-const reviewed = async (store: Store) => {
-  const id = await open(store);
+const reviewed = async (store: ReviewStore) => {
+  const id = await openProtocol(store);
   vi.stubGlobal('fetch', answering().fetchImpl);
   expect(await store.dispatch(startReview())).toEqual({
     status: 'completed',
@@ -191,7 +164,7 @@ const reviewed = async (store: Store) => {
   return id;
 };
 
-let store: Store;
+let store: ReviewStore;
 
 beforeEach(() => {
   // A test that does not answer the request itself must never reach a network.
@@ -201,7 +174,7 @@ beforeEach(() => {
       throw new Error('This test must not request a review');
     }),
   );
-  store = makeStore();
+  store = makeReviewStore();
   localStorage.clear();
   vi.mocked(posthog.capture).mockClear();
 });
@@ -214,7 +187,7 @@ afterEach(() => {
 
 describe('startReview refusals', () => {
   it('refuses when offline', async () => {
-    await open(store);
+    await openProtocol(store);
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
     expect(await store.dispatch(startReview())).toEqual({
       status: 'refused',
@@ -231,18 +204,21 @@ describe('startReview refusals', () => {
 
   it('refuses when the experiment is off', async () => {
     const { experiments: _off, ...withoutExperiment } = makeProtocol();
-    await open(store, withoutExperiment);
+    await openProtocol(store, withoutExperiment);
     expect(await store.dispatch(startReview())).toMatchObject({
       reason: 'experiment_off',
     });
   });
 
   it('refuses when the study details are missing or incomplete', async () => {
-    await open(store, makeProtocol({ experiments: { protocolReview: {} } }));
+    await openProtocol(
+      store,
+      makeProtocol({ experiments: { protocolReview: {} } }),
+    );
     expect(await store.dispatch(startReview())).toMatchObject({
       reason: 'missing_study_context',
     });
-    await open(
+    await openProtocol(
       store,
       makeProtocol({
         experiments: {
@@ -258,7 +234,7 @@ describe('startReview refusals', () => {
   });
 
   it('reviews a protocol whose study details have no research questions, sending none', async () => {
-    await open(
+    await openProtocol(
       store,
       makeProtocol({
         experiments: {
@@ -291,7 +267,10 @@ describe('startReview refusals', () => {
         resetsAt: new Date(now + 60_000).toISOString(),
       }),
     );
-    await open(store, makeProtocol({ experiments: { protocolReview: {} } }));
+    await openProtocol(
+      store,
+      makeProtocol({ experiments: { protocolReview: {} } }),
+    );
     expect(getProtocolReviewStartBlock(store.getState(), now)).toMatchObject({
       code: 'hourly_limit',
     });
@@ -301,7 +280,7 @@ describe('startReview refusals', () => {
   });
 
   it('refuses while a review is running', async () => {
-    await open(store);
+    await openProtocol(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const first = store.dispatch(startReview());
@@ -349,7 +328,7 @@ describe('startReview refusals', () => {
         resetsAt: new Date(now + 60_000).toISOString(),
       }),
     );
-    await open(store);
+    await openProtocol(store);
     expect(getProtocolReviewStartBlock(store.getState(), now)).toEqual({
       code: 'hourly_limit',
       resetsAt: new Date(now + 60_000).toISOString(),
@@ -365,7 +344,7 @@ describe('startReview refusals', () => {
 
 describe('a review run', () => {
   it('sends the protocol with the wording a participant is shown written out, and saves the result beside it', async () => {
-    const id = await open(store);
+    const id = await openProtocol(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const run = store.dispatch(startReview());
@@ -431,7 +410,7 @@ describe('a review run', () => {
   });
 
   it('withholds every API key from the protocol it sends, and sends the other resources as the protocol names them', async () => {
-    await open(
+    await openProtocol(
       store,
       makeProtocol({
         assetManifest: {
@@ -484,7 +463,7 @@ describe('a review run', () => {
   });
 
   it('records targets against the protocol sent, when the answer arrives after it changed', async () => {
-    await open(store);
+    await openProtocol(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const run = store.dispatch(startReview());
@@ -514,7 +493,7 @@ describe('a review run', () => {
   });
 
   it('aborts a review in flight when its protocol closes, and saves nothing', async () => {
-    const id = await open(store);
+    const id = await openProtocol(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const run = store.dispatch(startReview());
@@ -526,7 +505,7 @@ describe('a review run', () => {
   });
 
   it('cancels on request', async () => {
-    const id = await open(store);
+    const id = await openProtocol(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const run = store.dispatch(startReview());
@@ -538,7 +517,7 @@ describe('a review run', () => {
   });
 
   it('fails with the service’s code, and remembers an hourly limit', async () => {
-    await open(store);
+    await openProtocol(store);
     const retryAt = '2099-01-01T00:00:00.000Z';
     vi.stubGlobal(
       'fetch',
@@ -553,6 +532,7 @@ describe('a review run', () => {
       status: 'failed',
       code: 'hourly_limit',
       retryAt,
+      provider: 'anthropic',
     });
     expect(getProtocolReviewRun(store.getState())).toEqual({
       status: 'failed',
@@ -604,7 +584,7 @@ describe('a review run', () => {
   });
 
   it('is thinking until any of the answer has arrived, then writing', async () => {
-    await open(store);
+    await openProtocol(store);
     expect(getProtocolReviewPhase(store.getState())).toBeNull();
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
@@ -692,7 +672,7 @@ describe('decisions', () => {
   });
 
   it('does not remove the stage an editor has open, which would lose its draft', async () => {
-    await open(store);
+    await openProtocol(store);
     const [first] = protocolOf(store).stages;
     if (!first) throw new Error('The fixture needs a stage');
     const removal = makeFinding('drop', [op('remove', `/stages/${first.id}`)], {
@@ -724,7 +704,7 @@ describe('decisions', () => {
   });
 
   it('does not change the interface of the stage an editor has open', async () => {
-    await open(store);
+    await openProtocol(store);
     const names = protocolOf(store).stages.find(
       (stage) => stage.id === 'names',
     );
@@ -765,7 +745,7 @@ describe('decisions', () => {
   });
 
   it('returns a fix that reorders stages to undecided when the order is put back', async () => {
-    await open(store);
+    await openProtocol(store);
     const stageIds = () => protocolOf(store).stages.map((stage) => stage.id);
     const [first, second, ...rest] = protocolOf(store).stages;
     if (!first || !second) throw new Error('The fixture needs two stages');
@@ -888,7 +868,7 @@ describe('decisions', () => {
   });
 
   it('rewords text Network Canvas supplies, which the protocol holds only once it differs, and Undo takes it back out', async () => {
-    await open(store);
+    await openProtocol(store);
     vi.stubGlobal(
       'fetch',
       answering({
@@ -974,7 +954,7 @@ describe('decisions', () => {
     await store.dispatch(decideFinding('title', 'undecided'));
     expect(findingOf(store, 'title').status).toBe('undecided');
     // Kept beside the protocol, so a reopened protocol finds them again.
-    const reopened = makeStore();
+    const reopened = makeReviewStore();
     reopened.dispatch(setActiveProtocolId(id));
     reopened.dispatch(setActiveProtocol(makeProtocol()));
     await vi.waitFor(() => {
@@ -986,7 +966,7 @@ describe('decisions', () => {
   });
 
   it('shows a problem as fixed once another fix has already made its change, and undecided again once that is undone', async () => {
-    await open(store);
+    await openProtocol(store);
     vi.stubGlobal(
       'fetch',
       answering({
@@ -1029,7 +1009,7 @@ describe('decisions', () => {
   });
 
   it('numbers the stages a problem names as the protocol stands now', async () => {
-    await open(store);
+    await openProtocol(store);
     vi.stubGlobal(
       'fetch',
       answering({
@@ -1122,7 +1102,7 @@ describe('stage numbers in the review’s text', () => {
   };
 
   const reviewedWith = async (findings: Finding[]) => {
-    await open(store);
+    await openProtocol(store);
     vi.stubGlobal('fetch', answering({ ...RESULT, findings }).fetchImpl);
     await store.dispatch(startReview());
     await store.dispatch(checkFixAvailability());
@@ -1175,7 +1155,7 @@ describe('stage numbers in the review’s text', () => {
 
 describe('sharing', () => {
   it('is not chosen until the researcher chooses, and nothing is shared meanwhile', async () => {
-    await open(store);
+    await openProtocol(store);
     expect(getShareReviewsChoice(store.getState())).toBeNull();
     const answer = answering();
     vi.stubGlobal('fetch', answer.fetchImpl);
@@ -1187,7 +1167,7 @@ describe('sharing', () => {
   it.each([true, false])(
     'keeps a choice of %s between reviews, and sends it with the request',
     async (choice) => {
-      await open(store);
+      await openProtocol(store);
       await store.dispatch(setShareReviews(choice));
       const answer = answering();
       vi.stubGlobal('fetch', answer.fetchImpl);
@@ -1224,7 +1204,7 @@ describe('dismissing a review', () => {
   });
 
   it('does nothing with no review, or in a tab that does not hold the protocol', async () => {
-    await open(store);
+    await openProtocol(store);
     expect(await store.dispatch(dismissReview())).toBe(false);
 
     const id = await reviewed(store);
@@ -1246,7 +1226,7 @@ describe('a review that is stopped, replaced or outlived', () => {
       resetsAt: '2099-01-01T00:00:00.000Z',
     };
     localStorage.setItem(PROTOCOL_REVIEW_QUOTA_KEY, JSON.stringify(quota));
-    await open(store);
+    await openProtocol(store);
     expect(store.getState().protocolReview.quota?.remaining).toBe(3);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
@@ -1273,7 +1253,7 @@ describe('a review that is stopped, replaced or outlived', () => {
         resetsAt: '2000-01-01T00:00:00.000Z',
       }),
     );
-    await open(store);
+    await openProtocol(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const run = store.dispatch(startReview());
@@ -1291,7 +1271,7 @@ describe('a review that is stopped, replaced or outlived', () => {
 
   it('counts a review cancelled before any quota was saved', async () => {
     localStorage.removeItem(PROTOCOL_REVIEW_QUOTA_KEY);
-    await open(store);
+    await openProtocol(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const run = store.dispatch(startReview());
@@ -1311,7 +1291,7 @@ describe('a review that is stopped, replaced or outlived', () => {
   });
 
   it('saves nothing when every review was cleared while it ran', async () => {
-    const id = await open(store);
+    const id = await openProtocol(store);
     const answer = gatedAnswer();
     vi.stubGlobal('fetch', answer.fetchImpl);
     const run = store.dispatch(startReview());
@@ -1534,15 +1514,19 @@ describe('providers', () => {
       { provider: 'anthropic' as const, available: anthropic, retryAt: null },
       { provider: 'openai' as const, available: openai, retryAt: null },
     ];
-    expect(reviewProviderFor('openai', choices(true, true))).toBe('openai');
-    expect(reviewProviderFor('openai', choices(true, false))).toBe('anthropic');
-    expect(reviewProviderFor('anthropic', choices(false, true))).toBe('openai');
-    expect(reviewProviderFor('openai', choices(false, false))).toBe('openai');
+    expect(serviceProviderFor('openai', choices(true, true))).toBe('openai');
+    expect(serviceProviderFor('openai', choices(true, false))).toBe(
+      'anthropic',
+    );
+    expect(serviceProviderFor('anthropic', choices(false, true))).toBe(
+      'openai',
+    );
+    expect(serviceProviderFor('openai', choices(false, false))).toBe('openai');
   });
 
   it('names the chosen provider in the request, records it with the review, and remembers the choice', async () => {
     const { reviews } = service({});
-    const id = await open(store);
+    const id = await openProtocol(store);
     store.dispatch(chooseReviewProvider('openai'));
     expect(localStorage.getItem(PROTOCOL_REVIEW_PROVIDER_KEY)).toBe('openai');
     expect(await store.dispatch(startReview())).toMatchObject({
@@ -1556,8 +1540,8 @@ describe('providers', () => {
     });
 
     // A new session in this browser starts from the same choice.
-    const next = makeStore();
-    await open(next);
+    const next = makeReviewStore();
+    await openProtocol(next);
     expect(next.getState().protocolReview.provider).toBe('openai');
     next.dispatch(cancelReview());
   });
@@ -1582,11 +1566,12 @@ describe('providers', () => {
           );
         },
       });
-      await open(store);
+      await openProtocol(store);
       expect(await store.dispatch(startReview())).toEqual({
         status: 'failed',
         code,
         retryAt: MUCH_LATER,
+        provider: 'anthropic',
       });
       expect(getProtocolReviewRun(store.getState())).toEqual({
         status: 'failed',
@@ -1621,7 +1606,7 @@ describe('providers', () => {
     const { reviews } = service({
       status: [spent('anthropic', MUCH_LATER), spent('openai', LATER)],
     });
-    await open(store);
+    await openProtocol(store);
     await store.dispatch(refreshReviewProviders());
 
     expect(getProtocolReviewStartBlock(store.getState(), NOW)).toEqual({
@@ -1668,10 +1653,10 @@ describe('providers', () => {
 
   it('keeps the choice and what the service said when another protocol opens', async () => {
     service({ status: [open_('anthropic'), spent('openai', LATER)] });
-    await open(store);
+    await openProtocol(store);
     store.dispatch(chooseReviewProvider('openai'));
     await store.dispatch(refreshReviewProviders());
-    await open(store);
+    await openProtocol(store);
     expect(store.getState().protocolReview.provider).toBe('openai');
     expect(store.getState().protocolReview.spent).toEqual({
       openai: { retryAt: LATER },

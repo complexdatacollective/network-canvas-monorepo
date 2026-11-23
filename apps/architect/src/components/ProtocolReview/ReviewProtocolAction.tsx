@@ -17,7 +17,7 @@ import {
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import type { ProjectActionsMode } from '~/components/ProjectNav/ProjectActions';
-import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
+import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
   getIsProtocolReviewRecordRead,
@@ -25,9 +25,11 @@ import {
   getProtocolReviewProgress,
   getProtocolReviewRun,
   getProtocolReviewSummary,
+  getProtocolReviewTarget,
   refreshReviewProviders,
   startReview,
 } from '~/ducks/modules/protocolReview';
+import { OWN_MODEL } from '~/protocolReview/ownModel';
 import { type ReviewPlace, reviewPlaceAt } from '~/protocolReview/reviewPlace';
 import { getIsProtocolReviewEnabled } from '~/selectors/protocol';
 
@@ -73,6 +75,7 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
 }: ReviewProtocolActionProps) {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
+  const store = useAppStore();
   const { online, canRequest } = useReviewAvailability();
   const recordRead = useAppSelector(getIsProtocolReviewRecordRead);
   const run = useAppSelector(getProtocolReviewRun);
@@ -141,15 +144,26 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
   // Every review is asked for through the dialog. Completing it opens the
   // panel, where the review is seen running; leaving it returns the
   // researcher to the button.
-  const requestReview = useCallback(async () => {
-    handingOff.current = true;
-    setOpen(false);
-    const completed = await openWizard(returnToTrigger);
-    handingOff.current = false;
-    if (!completed) return;
-    setOpen(true);
-    if (online) await start();
-  }, [online, openWizard, returnToTrigger, start]);
+  const requestReview = useCallback(
+    async (options: { preferOwnModel?: boolean } = {}) => {
+      handingOff.current = true;
+      setOpen(false);
+      const completed = await openWizard(returnToTrigger, options);
+      handingOff.current = false;
+      if (!completed) return;
+      setOpen(true);
+      // Offline, the dialog saved the study details and nothing can be sent;
+      // but for the researcher's own model, which may be on this computer.
+      // Who writes the review was chosen in the dialog, so it is read now.
+      if (
+        online ||
+        getProtocolReviewTarget(store.getState()).provider === OWN_MODEL
+      ) {
+        await start();
+      }
+    },
+    [online, openWizard, returnToTrigger, start, store],
+  );
 
   const running = run.status === 'running';
   let icon: ReactNode = <ReviewSparklesIcon aria-hidden />;
@@ -224,6 +238,7 @@ const ReviewProtocolAction = defineToolbarChild(function ReviewProtocolAction({
           onClose={() => setOpen(false)}
           onRequestReview={() => void requestReview()}
           onRetryReview={() => void start()}
+          onUseOwnModel={() => void requestReview({ preferOwnModel: true })}
           announce={announce}
           place={place}
         />

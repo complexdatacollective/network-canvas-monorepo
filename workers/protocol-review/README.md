@@ -17,6 +17,13 @@ The wire contract (the request, the events, the error codes and the limits)
 is `src/contract.ts`. Architect imports it as
 `@codaco/protocol-review-worker/contract`.
 
+Architect can also send a review to a model endpoint of the researcher's own,
+straight from the browser and never through this service. For that it imports
+the prompt (`@codaco/protocol-review-worker/prompt`, `src/prompt/build.ts`) and
+the answer reader (`@codaco/protocol-review-worker/findings`,
+`src/findings.ts`), so both kinds of review are asked for and read by the same
+rules. Those two modules and the contract must stay free of Worker-only APIs.
+
 ## How it works
 
 1. Architect sends `POST /review` from `https://architect.networkcanvas.com`

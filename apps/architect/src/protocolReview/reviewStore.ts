@@ -1,9 +1,6 @@
 import { Dexie, type EntityTable } from 'dexie';
 
-import type {
-  Finding,
-  ReviewProvider,
-} from '@codaco/protocol-review-worker/contract';
+import type { Finding } from '@codaco/protocol-review-worker/contract';
 import { reportError } from '~/utils/reportError';
 import { isStorageUnavailableError } from '~/utils/storageErrors';
 import { PROTOCOL_REVIEW_DB_NAME } from '~/utils/storageNames';
@@ -13,6 +10,7 @@ import type {
   TargetSnapshot,
   WrittenSnapshot,
 } from './fixEngine';
+import type { ReviewWriter } from './ownModel';
 
 /**
  * Each protocol's automated review and the researcher's choices about it,
@@ -81,7 +79,7 @@ export type StoredReview = {
    * Who wrote it. Absent from reviews saved before there was a choice, all
    * of which Anthropic wrote.
    */
-  provider?: ReviewProvider;
+  provider?: ReviewWriter;
   stageIds?: string[];
   findings: StoredFinding[];
 };

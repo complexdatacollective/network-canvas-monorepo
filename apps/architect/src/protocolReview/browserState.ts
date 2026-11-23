@@ -6,9 +6,17 @@ import {
 } from '@codaco/protocol-review-worker/contract';
 import {
   PROTOCOL_REVIEW_INSTALLATION_ID_KEY,
+  PROTOCOL_REVIEW_OWN_MODEL_KEY,
   PROTOCOL_REVIEW_PROVIDER_KEY,
   PROTOCOL_REVIEW_QUOTA_KEY,
 } from '~/utils/storageNames';
+
+import {
+  completeOwnModelSettings,
+  OWN_MODEL,
+  type OwnModelSettings,
+  type ReviewWriter,
+} from './ownModel';
 
 /**
  * What the protocol review keeps per browser rather than per protocol. A
@@ -72,10 +80,11 @@ export const effectiveQuota = (
 /** The provider chosen until the researcher chooses another. */
 export const DEFAULT_REVIEW_PROVIDER: ReviewProvider = REVIEW_PROVIDERS[0];
 
-/** The provider this browser last chose to write its reviews. */
-export const readStoredProvider = (): ReviewProvider => {
+/** Who this browser last chose to write its reviews. */
+export const readStoredProvider = (): ReviewWriter => {
   try {
     const raw = localStorage.getItem(PROTOCOL_REVIEW_PROVIDER_KEY);
+    if (raw === OWN_MODEL) return OWN_MODEL;
     return (
       REVIEW_PROVIDERS.find((provider) => provider === raw) ??
       DEFAULT_REVIEW_PROVIDER
@@ -85,10 +94,36 @@ export const readStoredProvider = (): ReviewProvider => {
   }
 };
 
-export const writeStoredProvider = (provider: ReviewProvider): void => {
+export const writeStoredProvider = (provider: ReviewWriter): void => {
   try {
     localStorage.setItem(PROTOCOL_REVIEW_PROVIDER_KEY, provider);
   } catch {
     // A choice that is not remembered lasts for this session only.
+  }
+};
+
+/**
+ * The researcher's own model endpoint, as this browser keeps it; null when
+ * none is kept or what is kept could not send a review. It is kept here and
+ * nowhere else: never in a protocol file, and never sent to the Network
+ * Canvas service.
+ */
+export const readStoredOwnModel = (): OwnModelSettings | null => {
+  try {
+    const raw = localStorage.getItem(PROTOCOL_REVIEW_OWN_MODEL_KEY);
+    return raw === null ? null : completeOwnModelSettings(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+};
+
+export const writeStoredOwnModel = (settings: OwnModelSettings): void => {
+  try {
+    localStorage.setItem(
+      PROTOCOL_REVIEW_OWN_MODEL_KEY,
+      JSON.stringify(settings),
+    );
+  } catch {
+    // Settings that are not remembered last for this session only.
   }
 };

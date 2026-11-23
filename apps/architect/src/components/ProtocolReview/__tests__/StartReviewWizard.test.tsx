@@ -46,6 +46,14 @@ vi.mock('~/protocolReview/reviewClient', async (importOriginal) => ({
   requestProviderStatus: client.requestProviderStatus,
 }));
 
+// Nor may a review, or a connection test, reach an endpoint of the
+// researcher's own.
+const ownClient = vi.hoisted(() => ({
+  requestOwnModelReview: vi.fn(),
+  testOwnModel: vi.fn(),
+}));
+vi.mock('~/protocolReview/ownModelClient', () => ownClient);
+
 const NO_DETAILS = makeProtocol({ experiments: { protocolReview: {} } });
 
 const SHARE_LABEL = 'Share this review with the Network Canvas team';
@@ -90,6 +98,10 @@ beforeEach(() => {
   client.requestReview.mockReturnValue(gatedOutcome().promise);
   client.requestProviderStatus.mockReset();
   client.requestProviderStatus.mockResolvedValue(null);
+  ownClient.requestOwnModelReview.mockReset();
+  ownClient.requestOwnModelReview.mockReturnValue(new Promise(() => undefined));
+  ownClient.testOwnModel.mockReset();
+  ownClient.testOwnModel.mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
@@ -110,7 +122,7 @@ describe('asking for a first review', () => {
 
     expect(
       requestDialog().getByText(
-        'This experimental feature uses LLMs (also known as ‘AI’) to generate review feedback to help you improve your protocol. To use this feature, your protocol must be sent to one of the providers we support (Anthropic and OpenAI). Ensure that you are permitted to do this by your IRB or ethics review body.',
+        'This experimental feature uses LLMs (also known as ‘AI’) to generate review feedback to help you improve your protocol. To use this feature, your protocol must be sent to a model: one from the providers we support (Anthropic and OpenAI), or one of your own that you set up in the last step of this dialog. Ensure that you are permitted to do this by your IRB or ethics review body.',
       ),
     ).toBeVisible();
 
@@ -505,6 +517,7 @@ describe('choosing the model', () => {
     ).toEqual([
       'Claude Opus 5.5Made by Anthropic',
       'GPT-6.1 SolMade by OpenAI',
+      'Your own modelA model you run yourself, for example with Ollama or LM Studio, or one your institution provides. No limit on reviews per hour.',
     ]);
     expect(model(/Claude Opus 5\.5/)).toHaveAttribute('aria-selected', 'true');
     expect(model(/GPT-6\.1 Sol/)).toHaveAttribute('aria-selected', 'false');
@@ -680,6 +693,281 @@ describe('choosing the model', () => {
     );
     await waitFor(() =>
       expect(screen.queryByTestId('wizard-next')).not.toBeInTheDocument(),
+    );
+    expect(client.requestReview).not.toHaveBeenCalled();
+  });
+});
+
+describe('choosing your own model', () => {
+  const OWN_KEY = 'architect-v9-protocol-review-own-model';
+  const SETTINGS = {
+    address: 'http://localhost:11434/v1',
+    model: 'llama',
+    apiKey: '',
+  };
+
+  const address = () =>
+    requestDialog().getByRole('textbox', { name: /Endpoint address/ });
+  const modelName = () =>
+    requestDialog().getByRole('textbox', { name: /Model name/ });
+  const apiKey = () => requestDialog().getByLabelText(/API key \(optional\)/);
+  const testButton = () =>
+    requestDialog().getByRole('button', { name: 'Test connection' });
+
+  /** What the researcher's own endpoint was last asked. */
+  const lastOwnRequest = (): unknown =>
+    ownClient.requestOwnModelReview.mock.lastCall?.[0];
+
+  const openOnOwnModel = async () => {
+    await openProtocol(store);
+    renderToolbar(store);
+    await openRequestDialogAt('Choose a model');
+    await userEvent.click(model(/Your own model/));
+  };
+
+  it('asks where the model is only once it is chosen, and says where the protocol then goes', async () => {
+    await openProtocol(store);
+    renderToolbar(store);
+    await openRequestDialogAt('Choose a model');
+    expect(
+      requestDialog().queryByRole('textbox', { name: /Endpoint address/ }),
+    ).toBeNull();
+
+    await userEvent.click(model(/Your own model/));
+    expect(model(/Your own model/)).toHaveAttribute('aria-selected', 'true');
+    expect(
+      requestDialog().getByText(
+        'Your protocol and study details are sent straight from this browser to the address you give here, and nowhere else. They do not pass through the Network Canvas service, and this review is not shared with the Network Canvas team. The address, model name and API key are kept in this browser only.',
+      ),
+    ).toBeVisible();
+    expect(address()).toHaveValue('');
+    expect(modelName()).toHaveValue('');
+    expect(apiKey()).toHaveValue('');
+    // The hourly limit is the service's, so nothing is said of it.
+    expect(
+      requestDialog().queryByText(/reviews left this hour/),
+    ).not.toBeInTheDocument();
+
+    // Back on a model of the service's, the fields go and the limit returns.
+    await userEvent.click(model(/Claude Opus 5\.5/));
+    expect(
+      requestDialog().queryByRole('textbox', { name: /Endpoint address/ }),
+    ).toBeNull();
+    expect(
+      requestDialog().getByText(/^\d+ of \d+ reviews left this hour$/),
+    ).toBeVisible();
+  });
+
+  it('does not start until it has an address it can call and a model name', async () => {
+    await openOnOwnModel();
+
+    await pressNext('Start review');
+    expect(
+      await requestDialog().findByText('Enter the address of your endpoint.'),
+    ).toBeVisible();
+    expect(
+      requestDialog().getByText('Enter the name of the model.'),
+    ).toBeVisible();
+    await waitFor(() => expect(address()).toHaveFocus());
+
+    // Plain http is only for this computer.
+    await userEvent.type(address(), 'http://192.168.1.20:11434/v1');
+    await userEvent.type(modelName(), 'llama');
+    await pressNext('Start review');
+    expect(
+      await requestDialog().findByText(
+        'Enter an address that starts with https://, or with http://localhost for a model on this computer.',
+      ),
+    ).toBeVisible();
+    expect(ownClient.requestOwnModelReview).not.toHaveBeenCalled();
+    expect(client.requestReview).not.toHaveBeenCalled();
+    expect(localStorage.getItem(OWN_KEY)).toBeNull();
+  });
+
+  it('sends the review to the endpoint and not the service, and keeps the endpoint for next time', async () => {
+    await openOnOwnModel();
+    await userEvent.type(address(), SETTINGS.address);
+    await userEvent.type(modelName(), SETTINGS.model);
+    await userEvent.type(apiKey(), 'sk-own');
+    await pressNext('Start review');
+
+    await waitFor(() =>
+      expect(lastOwnRequest()).toMatchObject({
+        settings: { ...SETTINGS, apiKey: 'sk-own' },
+        request: { locale: 'en', studyContext: STUDY_CONTEXT },
+      }),
+    );
+    expect(client.requestReview).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem(OWN_KEY) ?? '')).toEqual({
+      ...SETTINGS,
+      apiKey: 'sk-own',
+    });
+    expect(localStorage.getItem('architect-v9-protocol-review-provider')).toBe(
+      'own',
+    );
+
+    // The panel shows it running, with nothing about the hourly limit.
+    const panel = await screen.findByRole('dialog', {
+      name: 'Protocol review',
+    });
+    expect(
+      within(panel).getByRole('button', { name: 'Cancel review' }),
+    ).toBeVisible();
+    expect(within(panel).queryByText(/this hour/)).not.toBeInTheDocument();
+  });
+
+  it('offers the endpoint kept from last time, already chosen', async () => {
+    localStorage.setItem(OWN_KEY, JSON.stringify(SETTINGS));
+    localStorage.setItem('architect-v9-protocol-review-provider', 'own');
+    await openProtocol(store);
+    renderToolbar(store);
+    await openRequestDialogAt('Choose a model');
+
+    expect(model(/Your own model/)).toHaveAttribute('aria-selected', 'true');
+    expect(address()).toHaveValue(SETTINGS.address);
+    expect(modelName()).toHaveValue(SETTINGS.model);
+
+    await pressNext('Start review');
+    await waitFor(() =>
+      expect(lastOwnRequest()).toMatchObject({ settings: SETTINGS }),
+    );
+  });
+
+  it('tests the connection with what is entered, and withdraws the answer when that changes', async () => {
+    await openOnOwnModel();
+    // Nothing to test until there is an address and a model.
+    expect(testButton()).toBeDisabled();
+    await userEvent.type(address(), SETTINGS.address);
+    await userEvent.type(modelName(), SETTINGS.model);
+
+    await userEvent.click(testButton());
+    expect(
+      await requestDialog().findByText('Connected. The model answered.'),
+    ).toBeVisible();
+    expect(ownClient.testOwnModel.mock.lastCall?.[0]).toMatchObject({
+      settings: SETTINGS,
+    });
+
+    // The answer was about the model named then.
+    await userEvent.type(modelName(), '2');
+    expect(
+      requestDialog().queryByText('Connected. The model answered.'),
+    ).not.toBeInTheDocument();
+
+    ownClient.testOwnModel.mockResolvedValue({
+      ok: false,
+      code: 'unreachable',
+    });
+    await userEvent.click(testButton());
+    expect(
+      await requestDialog().findByText('Your endpoint could not be reached'),
+    ).toBeVisible();
+    expect(
+      requestDialog().getByText(
+        `Check that the address is right, that the model server is running, and that it accepts requests from web pages: its CORS setting must allow ${window.location.origin}.`,
+      ),
+    ).toBeVisible();
+    // A test saves nothing and reviews nothing.
+    expect(localStorage.getItem(OWN_KEY)).toBeNull();
+    expect(ownClient.requestOwnModelReview).not.toHaveBeenCalled();
+  });
+
+  it('says in the panel why the endpoint did not answer, and asks again through the dialog', async () => {
+    ownClient.requestOwnModelReview.mockResolvedValue({
+      kind: 'error',
+      code: 'refused',
+    });
+    localStorage.setItem(OWN_KEY, JSON.stringify(SETTINGS));
+    localStorage.setItem('architect-v9-protocol-review-provider', 'own');
+    await openProtocol(store);
+    renderToolbar(store);
+    await openRequestDialogAt('Choose a model');
+    await pressNext('Start review');
+
+    const panel = await screen.findByRole('dialog', {
+      name: 'Protocol review',
+    });
+    expect(
+      await within(panel).findByText('Your endpoint refused the API key'),
+    ).toBeVisible();
+    expect(
+      within(panel).getByText(
+        'Check the API key, and that it is allowed to use this model.',
+      ),
+    ).toBeVisible();
+    // The settings are what needs changing, and the dialog is where they are.
+    expect(
+      within(panel).queryByRole('button', { name: 'Try again' }),
+    ).toBeNull();
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'Start review' }),
+    );
+    await requestStep('Before you use this feature');
+  });
+
+  it('can start while offline, where a model of the service’s cannot', async () => {
+    await openProtocol(store);
+    renderToolbar(store);
+    await openRequestDialogAt('What are your research questions?');
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+    await pressNext();
+    await requestStep('Choose a model');
+    expect(
+      requestDialog().getByRole('button', { name: 'Save details' }),
+    ).toBeVisible();
+
+    await userEvent.click(model(/Your own model/));
+    expect(requestDialog().queryByText(/^You’re offline\./)).toBeNull();
+    await userEvent.type(address(), SETTINGS.address);
+    await userEvent.type(modelName(), SETTINGS.model);
+    await pressNext('Start review');
+    await waitFor(() =>
+      expect(lastOwnRequest()).toMatchObject({ settings: SETTINGS }),
+    );
+  });
+
+  it('is offered from the panel while the hourly limit holds the service’s models', async () => {
+    localStorage.setItem(
+      'architect-v9-protocol-review-quota',
+      JSON.stringify({
+        limit: 5,
+        remaining: 0,
+        resetsAt: '2099-01-01T00:00:00.000Z',
+      }),
+    );
+    await openProtocol(store);
+    renderToolbar(store);
+    await userEvent.click(reviewButton());
+    const panel = await screen.findByRole('dialog', {
+      name: 'Protocol review',
+    });
+    expect(
+      within(panel).getByRole('button', { name: 'Start review' }),
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    await userEvent.click(
+      within(panel).getByRole('button', { name: 'Use your own model instead' }),
+    );
+    for (const step of [
+      'Before you use this feature',
+      'Describe your study',
+      'Who takes part, and how?',
+      'What are your research questions?',
+    ] as const) {
+      await requestStep(step);
+      await pressNext();
+    }
+    await requestStep('Choose a model');
+    expect(model(/Your own model/)).toHaveAttribute('aria-selected', 'true');
+
+    await userEvent.type(address(), SETTINGS.address);
+    await userEvent.type(modelName(), SETTINGS.model);
+    await pressNext('Start review');
+    await waitFor(() =>
+      expect(lastOwnRequest()).toMatchObject({ settings: SETTINGS }),
     );
     expect(client.requestReview).not.toHaveBeenCalled();
   });

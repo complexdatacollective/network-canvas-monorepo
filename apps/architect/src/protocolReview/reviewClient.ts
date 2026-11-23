@@ -12,6 +12,8 @@ import {
   type ReviewResult,
 } from '@codaco/protocol-review-worker/contract';
 
+import { readEventStream } from './eventStream';
+
 /**
  * Talks to the protocol review service. A review is one `POST`, answered with
  * a stream of server-sent events (`ReviewEvent`) or with a JSON error; which
@@ -37,55 +39,6 @@ const UNAVAILABLE: ReviewOutcome = {
   kind: 'error',
   code: 'service_unavailable',
   retryAt: null,
-};
-
-/**
- * Reads server-sent events from chunks of text that may split an event, or a
- * line, anywhere. Each complete event's `data:` lines, joined, are handed to
- * `onData`.
- */
-export const createEventStreamParser = (onData: (data: string) => void) => {
-  let buffer = '';
-  let dataLines: string[] = [];
-
-  const dispatch = () => {
-    if (dataLines.length > 0) onData(dataLines.join('\n'));
-    dataLines = [];
-  };
-
-  const line = (text: string) => {
-    if (text === '') {
-      dispatch();
-      return;
-    }
-    if (text.startsWith(':')) return;
-    const colon = text.indexOf(':');
-    const field = colon === -1 ? text : text.slice(0, colon);
-    let value = colon === -1 ? '' : text.slice(colon + 1);
-    if (value.startsWith(' ')) value = value.slice(1);
-    if (field === 'data') dataLines.push(value);
-  };
-
-  return {
-    push(chunk: string) {
-      buffer += chunk;
-      // A trailing `\r` may be the first half of a `\r\n` still arriving, so
-      // it waits with the unfinished line for the next chunk.
-      const holdReturn = buffer.endsWith('\r');
-      const lines = (holdReturn ? buffer.slice(0, -1) : buffer).split(
-        /\r\n|\r|\n/u,
-      );
-      buffer = (lines.pop() ?? '') + (holdReturn ? '\r' : '');
-      for (const text of lines) line(text);
-    },
-    /** The stream ended: an event without its closing blank line still counts. */
-    end() {
-      const rest = buffer.endsWith('\r') ? buffer.slice(0, -1) : buffer;
-      if (rest !== '') line(rest);
-      buffer = '';
-      dispatch();
-    },
-  };
 };
 
 const isAbort = (error: unknown, signal: AbortSignal) =>
@@ -165,7 +118,7 @@ export const requestReview = async ({
       };
     }
   };
-  const parser = createEventStreamParser((data) => {
+  const onData = (data: string) => {
     if (outcome !== null || malformed) return;
     let json: unknown;
     try {
@@ -177,31 +130,17 @@ export const requestReview = async ({
     const parsed = ReviewEventSchema.safeParse(json);
     if (parsed.success) handle(parsed.data);
     else malformed = true;
-  });
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  // Aborting a fetch errors its body too; cancelling here as well means an
-  // abort ends the read whatever the body is.
-  const stopReading = () => {
-    reader.cancel().catch(() => undefined);
   };
-  signal.addEventListener('abort', stopReading, { once: true });
+
   try {
-    for (;;) {
-      // oxlint-disable-next-line no-await-in-loop -- a stream is read one chunk after another
-      const { done, value } = await reader.read();
-      if (done) break;
-      parser.push(decoder.decode(value, { stream: true }));
-      if (outcome !== null || malformed) break;
-    }
-    parser.push(decoder.decode());
-    parser.end();
+    await readEventStream(
+      response.body,
+      signal,
+      onData,
+      () => outcome !== null || malformed,
+    );
   } catch (error) {
     return isAbort(error, signal) ? { kind: 'aborted' } : UNAVAILABLE;
-  } finally {
-    signal.removeEventListener('abort', stopReading);
-    stopReading();
   }
   if (signal.aborted) return { kind: 'aborted' };
   if (malformed) return UNAVAILABLE;

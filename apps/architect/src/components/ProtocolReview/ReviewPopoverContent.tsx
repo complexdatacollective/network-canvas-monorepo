@@ -20,6 +20,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   REVIEW_PROVIDER_NAMES,
   type ReviewErrorCode,
+  type ReviewProvider,
 } from '@codaco/protocol-review-worker/contract';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
@@ -40,9 +41,11 @@ import {
   type ReviewRun,
   undoFix,
 } from '~/ducks/modules/protocolReview';
+import { OWN_MODEL, type OwnModelErrorCode } from '~/protocolReview/ownModel';
 import { isFixedAt, type ReviewPlace } from '~/protocolReview/reviewPlace';
 import { getProtocol } from '~/selectors/protocol';
 
+import { formatOwnModelFailure } from './ownModelText';
 import { GuardedButton, ProtocolPlaceLink } from './reviewControls';
 import ReviewProblemView from './ReviewProblemView';
 import {
@@ -320,6 +323,12 @@ const messages = defineMessages({
       'The review service only accepts protocols up to a fixed size, and this one is larger. Nothing in your protocol was changed, and this attempt did not count towards your limit.',
     description: 'Text of the too-large notice.',
   },
+  ownModelInstead: {
+    id: 'architect.protocolReview.ownModel.useInstead',
+    defaultMessage: 'Use your own model instead',
+    description:
+      'Link in the review panel, shown while a review cannot be started with the models the Network Canvas service offers (offline, the hourly limit is reached, or the budget is spent). It opens the dialog that starts a review with "Your own model" chosen: a model the researcher runs themselves or that their institution provides.',
+  },
   dismissNotice: {
     id: 'architect.protocolReview.notice.dismiss',
     defaultMessage: 'Dismiss',
@@ -350,25 +359,57 @@ const failureNotices: Record<ReviewErrorCode, NoticeKind> = {
   invalid_request: 'unavailable',
 };
 
+type Notice =
+  | { kind: Exclude<NoticeKind, 'budget'> }
+  | { kind: 'budget'; provider: ReviewProvider }
+  /** Why the researcher's own model did not answer. */
+  | { kind: 'own_model'; code: OwnModelErrorCode };
+
 const languagesLink = (onFollow: () => void) => (chunks: ReactNode[]) => (
   <ProtocolPlaceLink href="/protocol/localization" onFollow={onFollow}>
     {chunks}
   </ProtocolPlaceLink>
 );
 
+const plainNotices = {
+  offline: {
+    title: messages.offlineTitle,
+    body: messages.offlineBodyNoReview,
+  },
+  all_spent: { title: messages.allSpentTitle, body: messages.allSpentBody },
+  unavailable: {
+    title: messages.unavailableTitle,
+    body: messages.unavailableBody,
+  },
+  too_large: { title: messages.tooLargeTitle, body: messages.tooLargeBody },
+};
+
 const noticeOf = (
   online: boolean,
   run: ReviewRun,
   hourlyLimitReached: boolean,
   anyProviderAvailable: boolean,
-): NoticeKind | null => {
-  if (!online) return 'offline';
-  if (run.status === 'failed') {
-    const notice = failureNotices[run.code];
-    return notice === 'budget' && !anyProviderAvailable ? 'all_spent' : notice;
+  /** Whether a review started now would be asked of the researcher's own model. */
+  ownModel: boolean,
+): Notice | null => {
+  const failure = run.status === 'failed' ? run : null;
+  // Their own model's failure is its endpoint's to explain, online or not.
+  if (failure?.provider === OWN_MODEL) {
+    return { kind: 'own_model', code: failure.code };
   }
-  if (!anyProviderAvailable) return 'all_spent';
-  if (hourlyLimitReached) return 'hourly';
+  // Nothing of the service's stands in the way of their own model: it has
+  // no limit or budget, and may be on this computer.
+  if (ownModel) return null;
+  if (!online) return { kind: 'offline' };
+  if (failure) {
+    const kind = failureNotices[failure.code];
+    if (kind !== 'budget') return { kind };
+    return anyProviderAvailable
+      ? { kind, provider: failure.provider }
+      : { kind: 'all_spent' };
+  }
+  if (!anyProviderAvailable) return { kind: 'all_spent' };
+  if (hourlyLimitReached) return { kind: 'hourly' };
   return null;
 };
 
@@ -406,6 +447,8 @@ type ReviewPopoverContentProps = {
   onRequestReview: () => void;
   /** Sends the review that failed again, as it was asked for. */
   onRetryReview: () => void;
+  /** Opens the dialog with the researcher's own model as the choice. */
+  onUseOwnModel: () => void;
   announce: (message: string) => void;
   /**
    * The screen the review was opened from, other than the Stages screen.
@@ -432,6 +475,7 @@ const ReviewPopoverContent = ({
   onClose,
   onRequestReview,
   onRetryReview,
+  onUseOwnModel,
   announce,
   place = null,
 }: ReviewPopoverContentProps) => {
@@ -505,6 +549,7 @@ const ReviewPopoverContent = ({
           run,
           hourlyResetsAt !== null,
           providers.some((choice) => choice.available),
+          provider === OWN_MODEL,
         );
 
   const subline = (() => {
@@ -522,6 +567,35 @@ const ReviewPopoverContent = ({
       : intl.formatMessage(messages.resultsIntro);
   })();
 
+  const noticeContent = (
+    shown: Notice,
+  ): { title: string; body: string | null } => {
+    if (shown.kind === 'own_model') {
+      return formatOwnModelFailure(intl, shown.code);
+    }
+    if (shown.kind === 'hourly') {
+      return {
+        title: intl.formatMessage(messages.hourlyTitle, { limit }),
+        body:
+          hourlyResetsAt === null
+            ? null
+            : intl.formatMessage(messages.hourlyBody, {
+                when: formatWhen(intl, hourlyResetsAt, now),
+              }),
+      };
+    }
+    if (shown.kind === 'budget') {
+      return {
+        title: intl.formatMessage(messages.budgetTitle, {
+          company: REVIEW_PROVIDER_NAMES[shown.provider].company,
+        }),
+        body: intl.formatMessage(messages.budgetBody),
+      };
+    }
+    const { title, body } = plainNotices[shown.kind];
+    return { title: intl.formatMessage(title), body: intl.formatMessage(body) };
+  };
+
   const renderNotice = () => {
     if (notice === null) return null;
     const dismiss =
@@ -534,44 +608,7 @@ const ReviewPopoverContent = ({
           {intl.formatMessage(messages.dismissNotice)}
         </Button>
       ) : null;
-    const contents: Record<NoticeKind, { title: string; body: string | null }> =
-      {
-        offline: {
-          title: intl.formatMessage(messages.offlineTitle),
-          body: intl.formatMessage(messages.offlineBodyNoReview),
-        },
-        hourly: {
-          title: intl.formatMessage(messages.hourlyTitle, { limit }),
-          body:
-            hourlyResetsAt === null
-              ? null
-              : intl.formatMessage(messages.hourlyBody, {
-                  when: formatWhen(intl, hourlyResetsAt, now),
-                }),
-        },
-        budget: {
-          title: intl.formatMessage(messages.budgetTitle, {
-            company:
-              REVIEW_PROVIDER_NAMES[
-                run.status === 'failed' ? run.provider : provider
-              ].company,
-          }),
-          body: intl.formatMessage(messages.budgetBody),
-        },
-        all_spent: {
-          title: intl.formatMessage(messages.allSpentTitle),
-          body: intl.formatMessage(messages.allSpentBody),
-        },
-        unavailable: {
-          title: intl.formatMessage(messages.unavailableTitle),
-          body: intl.formatMessage(messages.unavailableBody),
-        },
-        too_large: {
-          title: intl.formatMessage(messages.tooLargeTitle),
-          body: intl.formatMessage(messages.tooLargeBody),
-        },
-      };
-    const content = contents[notice];
+    const content = noticeContent(notice);
     return (
       <div className="px-6 pb-4">
         <Alert variant="warning" density="compact" className="my-0">
@@ -684,7 +721,9 @@ const ReviewPopoverContent = ({
   // A review the service could not answer is sent again as it was asked
   // for. Every other start goes through the dialog.
   const retry =
-    run.status === 'failed' && failureNotices[run.code] === 'unavailable';
+    run.status === 'failed' &&
+    run.provider !== OWN_MODEL &&
+    failureNotices[run.code] === 'unavailable';
 
   const shownIndex =
     view.kind === 'problem' && summary && !running
@@ -788,13 +827,22 @@ const ReviewPopoverContent = ({
     </>
   );
 
+  // The hourly limit is the service's: a review the researcher's own model
+  // writes is not counted, so nothing is said of it.
   const caption = running
-    ? intl.formatMessage(messages.runningCaption, {
-        current: Math.min(limit, limit - remaining + 1),
-        limit,
-      })
+    ? run.provider === OWN_MODEL
+      ? null
+      : intl.formatMessage(messages.runningCaption, {
+          current: Math.min(limit, limit - remaining + 1),
+          limit,
+        })
     : (blockedReason ??
-      intl.formatMessage(messages.quota, { remaining, limit }));
+      (provider === OWN_MODEL
+        ? null
+        : intl.formatMessage(messages.quota, { remaining, limit })));
+  // While the service's models cannot be asked, the researcher's own still
+  // can: the dialog opens with it as the choice.
+  const offerOwnModel = !canRequest && blockedReason !== null;
 
   // The panel stays above the button and scrolls inside when it is tall. Its
   // height stops a little short of the room there is: a popup that fills the
@@ -861,7 +909,9 @@ const ReviewPopoverContent = ({
                 {intl.formatMessage(messages.cancelReview)}
               </Button>
             </div>
-            <span className="text-sm text-current/70">{caption}</span>
+            {caption !== null && (
+              <span className="text-sm text-current/70">{caption}</span>
+            )}
           </>
         ) : summary ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -894,10 +944,17 @@ const ReviewPopoverContent = ({
                   retry ? messages.tryAgain : messages.startReview,
                 )}
               </GuardedButton>
+              {offerOwnModel && (
+                <Button variant="link" size="sm" onClick={onUseOwnModel}>
+                  {intl.formatMessage(messages.ownModelInstead)}
+                </Button>
+              )}
             </div>
-            <span id={captionId} className="text-sm text-current/70">
-              {caption}
-            </span>
+            {caption !== null && (
+              <span id={captionId} className="text-sm text-current/70">
+                {caption}
+              </span>
+            )}
           </>
         )}
       </div>

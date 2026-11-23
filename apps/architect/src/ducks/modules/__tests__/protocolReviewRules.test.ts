@@ -1,6 +1,5 @@
 // fake-indexeddb must be installed before Dexie opens a database.
 import 'fake-indexeddb/auto';
-import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -11,10 +10,8 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import {
   actionCreators,
-  setActiveProtocol,
   setProtocolTranslation,
 } from '~/ducks/modules/activeProtocol';
-import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
 import {
   cancelReview,
   checkFixAvailability,
@@ -25,19 +22,22 @@ import {
   startReview,
   undoFix,
 } from '~/ducks/modules/protocolReview';
-import { rootReducer } from '~/ducks/modules/root';
 import {
   makeFinding,
   makeProtocol,
   op,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
-import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 
 /**
  * The slice's halves of the review engine's rules (the engine's own are in
  * `protocolReview/__tests__/reviewRules.test.ts`).
  */
+import {
+  makeReviewStore,
+  openProtocol,
+  type ReviewStore,
+} from './protocolReviewStore';
 
 vi.mock('~/analytics', () => ({ posthog: { capture: vi.fn() } }));
 
@@ -47,18 +47,6 @@ vi.mock('~/protocolReview/reviewClient', async (importOriginal) => ({
   requestReview: client.requestReview,
 }));
 
-const makeStore = () => {
-  const created = configureStore({
-    reducer: rootReducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
-  });
-  keepProtocolReviewOnActiveProtocol(created);
-  return created;
-};
-
-type Store = ReturnType<typeof makeStore>;
-
 const DEEP = `${'['.repeat(100_000)}${']'.repeat(100_000)}`;
 
 const resultOf = (findings: Finding[]): ReviewResult => ({
@@ -67,30 +55,13 @@ const resultOf = (findings: Finding[]): ReviewResult => ({
   quota: { limit: 5, remaining: 4, resetsAt: '2099-01-01T00:00:00.000Z' },
 });
 
-let protocolCounter = 0;
-
-/** Opens `protocol` as library row `id` (a fresh one by default), owned here. */
-const open = async (
-  target: Store,
-  protocol: CurrentProtocol = makeProtocol(),
-  id = `rules-${(protocolCounter += 1)}`,
-) => {
-  target.dispatch(setProtocolLockState('owned'));
-  target.dispatch(setActiveProtocolId(id));
-  target.dispatch(setActiveProtocol(protocol));
-  await vi.waitFor(() => {
-    expect(target.getState().protocolReview.record?.protocolId).toBe(id);
-  });
-  return id;
-};
-
 /** Opens `protocol` and completes a review that found `findings`. */
 const reviewed = async (
-  target: Store,
+  target: ReviewStore,
   findings: Finding[],
   protocol: CurrentProtocol = makeProtocol(),
 ) => {
-  const id = await open(target, protocol);
+  const id = await openProtocol(target, protocol);
   client.requestReview.mockResolvedValueOnce({
     kind: 'result',
     result: resultOf(findings),
@@ -101,13 +72,13 @@ const reviewed = async (
   return id;
 };
 
-const protocolOf = (target: Store) => {
+const protocolOf = (target: ReviewStore) => {
   const protocol = target.getState().activeProtocol.present;
   if (!protocol) throw new Error('No protocol open');
   return protocol;
 };
 
-const findingOf = (target: Store, id: string) => {
+const findingOf = (target: ReviewStore, id: string) => {
   const finding = getProtocolReviewFindings(target.getState()).find(
     (candidate) => candidate.id === id,
   );
@@ -117,8 +88,8 @@ const findingOf = (target: Store, id: string) => {
 
 /** A new store that opens the same library row: what a reload does. */
 const reload = async (id: string, protocol: CurrentProtocol) => {
-  const reloaded = makeStore();
-  await open(reloaded, protocol, id);
+  const reloaded = makeReviewStore();
+  await openProtocol(reloaded, protocol, id);
   return reloaded;
 };
 
@@ -126,10 +97,10 @@ const TITLE = makeFinding('title', [
   op('set', '/stages/welcome/label/en', 'Welcome to our study'),
 ]);
 
-let store: Store;
+let store: ReviewStore;
 
 beforeEach(() => {
-  store = makeStore();
+  store = makeReviewStore();
   client.requestReview.mockReset();
 });
 
@@ -420,11 +391,11 @@ describe('F: the preview shows every text change a fix makes', () => {
 });
 
 describe('G: a problem reads as fixed only while its fix is made', () => {
-  const titleOf = (target: Store) => {
+  const titleOf = (target: ReviewStore) => {
     const [welcome] = protocolOf(target).stages;
     return welcome && 'label' in welcome ? welcome.label : undefined;
   };
-  const setTitle = (target: Store, text: string) =>
+  const setTitle = (target: ReviewStore, text: string) =>
     target.dispatch(
       setProtocolTranslation({
         path: ['stages', 0, 'label'],

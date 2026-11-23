@@ -1,13 +1,5 @@
 import { Plus, X } from 'lucide-react';
-import {
-  type RefObject,
-  useCallback,
-  useContext,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -20,8 +12,6 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import CheckboxField from '@codaco/fresco-ui/form/fields/Checkbox';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import TextAreaField from '@codaco/fresco-ui/form/fields/TextArea';
-import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import {
   Table,
   TableBody,
@@ -36,7 +26,6 @@ import {
   REVIEW_LIMITS,
   REVIEW_PROVIDER_NAMES,
   REVIEW_PROVIDERS,
-  type ReviewProvider,
 } from '@codaco/protocol-review-worker/contract';
 import {
   STUDY_ADMINISTRATION_MODES,
@@ -50,9 +39,15 @@ import {
   chooseReviewProvider,
   getShareReviewsChoice,
   refreshReviewProviders,
-  reviewProviderFor,
+  serviceProviderFor,
+  saveOwnModelSettings,
   setShareReviews,
 } from '~/ducks/modules/protocolReview';
+import {
+  OWN_MODEL,
+  type OwnModelSettings,
+  type ReviewWriter,
+} from '~/protocolReview/ownModel';
 import {
   completeStudyContext,
   type StudyDetailsDraft,
@@ -60,8 +55,10 @@ import {
 import { getProtocolReviewStudyDetailsDraft } from '~/selectors/protocol';
 import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 
+import OwnModelFields, { readOwnModelFields } from './OwnModelFields';
 import { formatWhen } from './reviewText';
 import { useReviewAvailability } from './useReviewAvailability';
+import { textOf, useFocusFirstErrorOnRefusal } from './wizardFields';
 
 const messages = defineMessages({
   wizardTitle: {
@@ -79,9 +76,9 @@ const messages = defineMessages({
   beforeDescription: {
     id: 'architect.protocolReview.wizard.before.description',
     defaultMessage:
-      'This experimental feature uses LLMs (also known as ‘AI’) to generate review feedback to help you improve your protocol. To use this feature, your protocol must be sent to one of the providers we support (Anthropic and OpenAI). Ensure that you are permitted to do this by your IRB or ethics review body.',
+      'This experimental feature uses LLMs (also known as ‘AI’) to generate review feedback to help you improve your protocol. To use this feature, your protocol must be sent to a model: one from the providers we support (Anthropic and OpenAI), or one of your own that you set up in the last step of this dialog. Ensure that you are permitted to do this by your IRB or ethics review body.',
     description:
-      'Text of the first step of the dialog that starts an automated protocol review. An LLM is a large language model. "Anthropic" and "OpenAI" are company names and are not translated. An IRB is an institutional review board, the body that approves research involving people.',
+      'Text of the first step of the dialog that starts an automated protocol review. An LLM is a large language model. "Anthropic" and "OpenAI" are company names and are not translated. "One of your own" is a model the researcher runs themselves or that their institution provides. An IRB is an institutional review board, the body that approves research involving people.',
   },
   whatIsSent: {
     id: 'architect.protocolReview.wizard.sending.whatIsSent',
@@ -348,6 +345,19 @@ const messages = defineMessages({
     description:
       'Note on the last step of the dialog that starts an automated protocol review: how many reviews the researcher may still start this hour.',
   },
+  ownModel: {
+    id: 'architect.protocolReview.ownModel.option',
+    defaultMessage: 'Your own model',
+    description:
+      'Option in the choice of which AI model writes the automated protocol review, beside the models the Network Canvas service offers: a model the researcher runs themselves or that their institution provides.',
+  },
+  ownModelDescription: {
+    id: 'architect.protocolReview.ownModel.optionDescription',
+    defaultMessage:
+      'A model you run yourself, for example with Ollama or LM Studio, or one your institution provides. No limit on reviews per hour.',
+    description:
+      'Line under the "Your own model" option in the choice of AI model. "Ollama" and "LM Studio" are names of programs that run AI models on a researcher’s own computer, and are not translated. The models the Network Canvas service offers are limited to a few reviews an hour; this one is not.',
+  },
   startReview: {
     id: 'architect.protocolReview.wizard.startReview',
     defaultMessage: 'Start review',
@@ -379,33 +389,9 @@ const isAdministrationMode = (
 ): value is StudyAdministrationMode =>
   STUDY_ADMINISTRATION_MODES.some((mode) => mode === value);
 
-const isReviewProvider = (value: unknown): value is ReviewProvider =>
+const isReviewWriter = (value: unknown): value is ReviewWriter =>
+  value === OWN_MODEL ||
   REVIEW_PROVIDERS.some((provider) => provider === value);
-
-const textOf = (value: unknown, fallback: string) =>
-  typeof value === 'string' ? value : fallback;
-
-/**
- * Sends focus to the first invalid field once Continue has been refused. The
- * wizard validates the step's fields itself and only scrolls to the first
- * error; this answers the moment that validation ends with errors.
- */
-const useFocusFirstErrorOnRefusal = (root: RefObject<HTMLElement | null>) => {
-  const store = useContext(FormStoreContext);
-  useEffect(
-    () =>
-      store?.subscribe((state, previous) => {
-        if (
-          previous.isValidating &&
-          !state.isValidating &&
-          Object.keys(state.errors.fieldErrors).length > 0
-        ) {
-          focusFirstError(state.errors, root.current);
-        }
-      }),
-    [store, root],
-  );
-};
 
 const StepIntro = ({ text }: { text: string }) => (
   <Paragraph className="max-w-[65ch]">{text}</Paragraph>
@@ -692,7 +678,7 @@ function QuestionsStep() {
   );
 }
 
-function ModelStep() {
+function ModelStep({ preferOwnModel = false }: { preferOwnModel?: boolean }) {
   const intl = useAppIntl();
   const store = useAppStore();
   const dispatch = useAppDispatch();
@@ -707,6 +693,23 @@ function ModelStep() {
     if (online) void dispatch(refreshReviewProviders());
   }, [dispatch, online]);
 
+  // The researcher's pick starts as the model they chose last time. The one
+  // shown, and asked for, is that pick while it has budget left, and the
+  // first that has while it has none: which have is only known once the
+  // service answers, which can be after the pick was made. Their own model
+  // has no budget to run out, and is never moved to or from by itself.
+  const stored = data[PROVIDER];
+  const [picked, setPicked] = useState<ReviewWriter>(() => {
+    if (isReviewWriter(stored)) return stored;
+    return preferOwnModel ? OWN_MODEL : lastChosen;
+  });
+  const selected: ReviewWriter =
+    picked === OWN_MODEL ? OWN_MODEL : serviceProviderFor(picked, providers);
+  const own = selected === OWN_MODEL;
+  useEffect(() => {
+    setStepData({ [PROVIDER]: selected });
+  }, [selected, setStepData]);
+
   const anyAvailable = providers.some((choice) => choice.available);
   // With every budget spent no review can start, perhaps not until next
   // month, and what was typed in the earlier steps lives only in this dialog.
@@ -714,9 +717,10 @@ function ModelStep() {
   // review that follows is refused for want of a budget, and the panel says
   // when one starts again. Being offline is the same: nothing can be sent, so
   // the button saves what was typed, and the review is started once the
-  // connection is back.
+  // connection is back. None of this holds a review the researcher's own
+  // model writes: it has no budget, and may be on this computer.
   const allSpent = online && !anyAvailable;
-  const saveOnly = !online || allSpent;
+  const saveOnly = !own && (!online || allSpent);
   useEffect(() => {
     setNextLabel(saveOnly ? intl.formatMessage(messages.saveDetails) : null);
     return () => setNextLabel(null);
@@ -741,19 +745,6 @@ function ModelStep() {
     ? refusedCommitMessage(lockState, 'study-details', intl)
     : null;
 
-  // The researcher's pick starts as the model they chose last time. The one
-  // shown, and asked for, is that pick while it has budget left, and the
-  // first that has while it has none: which have is only known once the
-  // service answers, which can be after the pick was made.
-  const stored = data[PROVIDER];
-  const [picked, setPicked] = useState<ReviewProvider>(() =>
-    isReviewProvider(stored) ? stored : lastChosen,
-  );
-  const selected = reviewProviderFor(picked, providers);
-  useEffect(() => {
-    setStepData({ [PROVIDER]: selected });
-  }, [selected, setStepData]);
-
   return (
     <div className="flex flex-col gap-4">
       <StepIntro text={intl.formatMessage(messages.modelDescription)} />
@@ -762,14 +753,14 @@ function ModelStep() {
           <AlertDescription>{refusal}</AlertDescription>
         </Alert>
       )}
-      {!online && (
+      {!online && !own && (
         <Alert variant="warning" className="my-0">
           <AlertDescription>
             {intl.formatMessage(messages.offline)}
           </AlertDescription>
         </Alert>
       )}
-      {allSpent && (
+      {allSpent && !own && (
         <Alert variant="warning" className="my-0">
           <AlertDescription>
             {intl.formatMessage(messages.allSpent)}
@@ -784,34 +775,49 @@ function ModelStep() {
           aria-labelledby={labelId}
           value={selected}
           onChange={(next) => {
-            if (isReviewProvider(next)) setPicked(next);
+            if (isReviewWriter(next)) setPicked(next);
           }}
-          options={providers.map((choice) => {
-            const { company, model } = REVIEW_PROVIDER_NAMES[choice.provider];
-            // An option that cannot be chosen says why in place of who makes it.
-            const description = choice.available
-              ? intl.formatMessage(messages.modelBy, { company })
-              : choice.retryAt === null
-                ? intl.formatMessage(messages.modelSpent, { company })
-                : intl.formatMessage(messages.modelSpentUntil, {
-                    company,
-                    when: formatWhen(intl, choice.retryAt, now),
-                  });
-            return {
-              value: choice.provider,
-              label: model,
-              description,
-              disabled: !choice.available,
-            };
-          })}
+          options={[
+            ...providers.map((choice) => {
+              const { company, model } = REVIEW_PROVIDER_NAMES[choice.provider];
+              // An option that cannot be chosen says why in place of who makes it.
+              const description = choice.available
+                ? intl.formatMessage(messages.modelBy, { company })
+                : choice.retryAt === null
+                  ? intl.formatMessage(messages.modelSpent, { company })
+                  : intl.formatMessage(messages.modelSpentUntil, {
+                      company,
+                      when: formatWhen(intl, choice.retryAt, now),
+                    });
+              return {
+                value: choice.provider satisfies ReviewWriter as string,
+                label: model,
+                description,
+                disabled: !choice.available,
+              };
+            }),
+            {
+              value: OWN_MODEL,
+              label: intl.formatMessage(messages.ownModel),
+              description: intl.formatMessage(messages.ownModelDescription),
+              disabled: false,
+            },
+          ]}
         />
       </div>
-      <Paragraph intent="smallText" emphasis="muted" margin="none">
-        {intl.formatMessage(messages.quota, { remaining, limit })}
-      </Paragraph>
+      {own ? (
+        <OwnModelFields />
+      ) : (
+        <Paragraph intent="smallText" emphasis="muted" margin="none">
+          {intl.formatMessage(messages.quota, { remaining, limit })}
+        </Paragraph>
+      )}
     </div>
   );
 }
+
+/** The last step, opened by a researcher who asked to use their own model. */
+const OwnModelFirstStep = () => <ModelStep preferOwnModel />;
 
 /** What the completed wizard holds, read back out of its fields. */
 const readWizardResult = (
@@ -819,7 +825,9 @@ const readWizardResult = (
 ): {
   draft: StudyDetailsDraft;
   share: boolean;
-  provider: ReviewProvider | null;
+  provider: ReviewWriter | null;
+  /** The researcher's own model endpoint, when that is the choice and it is complete. */
+  ownModel: OwnModelSettings | null;
 } => {
   const keys = data[QUESTION_KEYS];
   const researchQuestions = (isStringArray(keys) ? keys : [])
@@ -837,7 +845,8 @@ const readWizardResult = (
       synopsis: textOf(data[SYNOPSIS], '').trim(),
     },
     share: data[SHARE] === true,
-    provider: isReviewProvider(provider) ? provider : null,
+    provider: isReviewWriter(provider) ? provider : null,
+    ownModel: provider === OWN_MODEL ? readOwnModelFields(data) : null,
   };
 };
 
@@ -861,7 +870,10 @@ export const useStartReviewWizard = () => {
   const dispatch = useAppDispatch();
 
   return useCallback(
-    async (finalFocus?: FinalFocusTarget): Promise<boolean> => {
+    async (
+      finalFocus?: FinalFocusTarget,
+      { preferOwnModel = false }: { preferOwnModel?: boolean } = {},
+    ): Promise<boolean> => {
       const steps: WizardStep[] = [
         {
           title: intl.formatMessage(messages.beforeTitle),
@@ -881,7 +893,7 @@ export const useStartReviewWizard = () => {
         },
         {
           title: intl.formatMessage(messages.modelTitle),
-          content: ModelStep,
+          content: preferOwnModel ? OwnModelFirstStep : ModelStep,
           nextLabel: intl.formatMessage(messages.startReview),
         },
       ];
@@ -893,15 +905,19 @@ export const useStartReviewWizard = () => {
         steps,
       });
       if (!isRecord(result)) return false;
-      const { draft, share, provider } = readWizardResult(result);
+      const { draft, share, provider, ownModel } = readWizardResult(result);
       const studyContext = completeStudyContext(draft);
       // Every step validated what it holds, so this is complete; a draft that
       // is not would be a fault in the steps, and writes nothing.
       if (!studyContext) return false;
+      if (provider === OWN_MODEL && ownModel === null) return false;
       // Details left as they were are not a change to the protocol: the
       // protocol's history keeps no step for a write that changes nothing.
       dispatch(setProtocolReviewStudyContext(studyContext));
       await dispatch(setShareReviews(share));
+      // Before the choice: their own model is only asked once this browser
+      // holds where it is.
+      if (ownModel !== null) dispatch(saveOwnModelSettings(ownModel));
       if (provider !== null) dispatch(chooseReviewProvider(provider));
       return true;
     },

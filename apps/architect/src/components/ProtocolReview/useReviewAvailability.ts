@@ -3,10 +3,7 @@ import { shallowEqual } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  REVIEW_LIMITS,
-  type ReviewProvider,
-} from '@codaco/protocol-review-worker/contract';
+import { REVIEW_LIMITS } from '@codaco/protocol-review-worker/contract';
 import { useAppSelector } from '~/ducks/hooks';
 import {
   getProtocolReviewQuota,
@@ -14,8 +11,13 @@ import {
   getProtocolReviewStartBlock,
   type ReviewProviderChoice,
   reviewProviderChoices,
-  reviewProviderFor,
+  reviewTargetFor,
 } from '~/ducks/modules/protocolReview';
+import {
+  OWN_MODEL,
+  type OwnModelSettings,
+  type ReviewWriter,
+} from '~/protocolReview/ownModel';
 
 import { formatWhen } from './reviewText';
 import { useNowUntil, useOnline } from './useReviewClock';
@@ -49,8 +51,10 @@ export type ReviewAvailability = {
   remaining: number;
   /** Every provider, and whether a review can be asked of it now. */
   providers: ReviewProviderChoice[];
-  /** The provider a review started now would be asked of. */
-  provider: ReviewProvider;
+  /** Who a review started now would be asked of. */
+  provider: ReviewWriter;
+  /** The researcher's own model endpoint, when this browser keeps one. */
+  ownModel: OwnModelSettings | null;
   /** When the hourly limit lifts, while it is reached; otherwise null. */
   hourlyResetsAt: number | null;
   /**
@@ -75,8 +79,11 @@ export const useReviewAvailability = (): ReviewAvailability => {
   const storedQuota = useAppSelector((state) => state.protocolReview.quota);
   const spent = useAppSelector((state) => state.protocolReview.spent);
   const chosen = useAppSelector((state) => state.protocolReview.provider);
+  const ownModel = useAppSelector((state) => state.protocolReview.ownModel);
   const retryAt =
-    run.status === 'failed' && run.retryAt !== null
+    run.status === 'failed' &&
+    run.provider !== OWN_MODEL &&
+    run.retryAt !== null
       ? Date.parse(run.retryAt)
       : null;
   const now = useNowUntil([
@@ -120,8 +127,15 @@ export const useReviewAvailability = (): ReviewAvailability => {
         )
       : null;
 
+  const { provider } = reviewTargetFor(chosen, providers, ownModel);
+  // The researcher's own model is not the service's to limit, and may be on
+  // this computer: neither a limit nor being offline stands in its way.
+  const own = provider === OWN_MODEL;
+
   let reason: string | null = null;
-  if (!online) {
+  if (own) {
+    reason = null;
+  } else if (!online) {
     reason = intl.formatMessage(messages.offline);
   } else if (block?.code === 'hourly_limit') {
     reason = intl.formatMessage(messages.nextReviewAt, {
@@ -139,10 +153,12 @@ export const useReviewAvailability = (): ReviewAvailability => {
     limit,
     remaining,
     providers,
-    provider: reviewProviderFor(chosen, providers),
+    provider,
+    ownModel,
     hourlyResetsAt,
     canRequest:
-      online && (block === null || block.code === 'missing_study_context'),
+      (online || own) &&
+      (block === null || block.code === 'missing_study_context'),
     reason,
   };
 };

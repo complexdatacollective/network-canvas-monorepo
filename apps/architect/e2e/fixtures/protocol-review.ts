@@ -13,8 +13,14 @@ import {
 // service's own, and a mock that borrowed its types could not notice a change
 // to the wire format.
 
-/** The only origin the built app's Content-Security-Policy lets it call. */
+/** Where the built app asks the review service. */
 const REVIEW_SERVICE_ORIGIN = 'https://protocol-review.networkcanvas.com';
+
+/**
+ * A model endpoint of the researcher's own, as Ollama serves one. The built
+ * app's Content-Security-Policy lets it call `http://localhost` on any port.
+ */
+export const OWN_MODEL_ADDRESS = 'http://localhost:11434/v1';
 
 /** Fixed so the mocked result is the same on every run. */
 export const REVIEW_ID = '0b8f4c1e-9d0a-4a3e-8f8f-1f2e3d4c5b6a';
@@ -391,6 +397,107 @@ export async function mockReviewService(
     },
     providers(next: MockProviderStatus[]) {
       providers = next;
+    },
+  };
+}
+
+type ChatBody = {
+  model: string;
+  stream: boolean;
+  messages: { role: string; content: string }[];
+};
+
+export type OwnModelReply =
+  | { kind: 'result'; findings: MockFinding[] }
+  | { kind: 'error'; status: number };
+
+/**
+ * Stands in for a model endpoint of the researcher's own on `context`: an
+ * OpenAI-compatible chat API at `OWN_MODEL_ADDRESS`, answering the CORS
+ * preflight and each `POST /v1/chat/completions` with `reply`. A request with
+ * `stream: false` is the connection test, and gets one word. A review gets
+ * the findings as a model writes them (without the ids the app gives them),
+ * streamed in two pieces. Every request is recorded with its key, and nothing
+ * is sent anywhere real.
+ */
+export async function mockOwnModelEndpoint(
+  context: BrowserContext,
+  initial: OwnModelReply,
+) {
+  let reply = initial;
+  const requests: { authorization: string | null; body: ChatBody }[] = [];
+  const origin = new URL(OWN_MODEL_ADDRESS).origin;
+
+  await context.route(`${origin}/**`, async (route: Route) => {
+    const request = route.request();
+    const cors = {
+      'access-control-allow-origin': request.headers().origin ?? '*',
+      'vary': 'Origin',
+    };
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: {
+          ...cors,
+          'access-control-allow-methods': 'POST, OPTIONS',
+          'access-control-allow-headers': 'content-type, authorization',
+          'access-control-max-age': '0',
+        },
+      });
+      return;
+    }
+    if (
+      request.method() !== 'POST' ||
+      new URL(request.url()).pathname !== '/v1/chat/completions'
+    ) {
+      throw new Error(`unexpected ${request.method()} ${request.url()}`);
+    }
+    const parsed: unknown = JSON.parse(request.postData() ?? 'null');
+    if (!isRecord(parsed)) throw new Error('chat request body is not JSON');
+    const body = JSON.parse(JSON.stringify(parsed)) as ChatBody;
+    requests.push({
+      authorization: request.headers().authorization ?? null,
+      body,
+    });
+
+    const current = reply;
+    if (current.kind === 'error') {
+      await route.fulfill({
+        status: current.status,
+        headers: { ...cors, 'content-type': 'application/json' },
+        body: JSON.stringify({ error: { message: 'refused' } }),
+      });
+      return;
+    }
+    if (!body.stream) {
+      await route.fulfill({
+        status: 200,
+        headers: { ...cors, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          choices: [{ message: { role: 'assistant', content: 'OK' } }],
+        }),
+      });
+      return;
+    }
+    const answer = JSON.stringify({
+      findings: current.findings.map(({ id: _id, ...finding }) => finding),
+    });
+    const half = Math.floor(answer.length / 2);
+    const data = (content: string) =>
+      `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`;
+    await route.fulfill({
+      status: 200,
+      headers: { ...cors, 'content-type': 'text/event-stream' },
+      body: `${data(answer.slice(0, half))}${data(answer.slice(half))}data: [DONE]\n\n`,
+    });
+  });
+
+  return {
+    requests,
+    /** The review requests: every request that was not a connection test. */
+    reviews: () => requests.filter((request) => request.body.stream),
+    reply(next: OwnModelReply) {
+      reply = next;
     },
   };
 }

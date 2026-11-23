@@ -1,0 +1,89 @@
+---
+title: Reviewing a Protocol with Your Own Model
+navOrder: 5.5
+toc: true
+---
+
+<Definition>
+  Automated Protocol Review is an experimental feature of Architect that asks
+  an AI model to look for problems in your protocol. You can have the review
+  written by a model you run yourself, or one your institution provides,
+  instead of the models offered through the Network Canvas service.
+</Definition>
+
+## When to use your own model
+
+Choose **Your own model** in the last step of the **Review protocol** dialog when:
+
+- your institution or ethics review body only permits a model it has approved, or one that keeps data inside the institution;
+- you want the protocol and your study details to stay on your own computer;
+- you are working without an internet connection, with a model running on the same computer; or
+- the hourly limit or the budget of the Network Canvas service has been reached.
+
+## What happens to your data
+
+With your own model, Architect sends the review straight from your browser to the address you give, and nowhere else.
+
+- Your protocol and study details do **not** pass through the Network Canvas service.
+- The review is never shared with the Network Canvas team, whatever you chose for **Share the results of this review**.
+- The address, model name and API key are kept in your browser only. They are not saved in the protocol file.
+- As with every review, images, video, audio, other resources and any API keys saved in the protocol are not sent.
+
+An API key kept in a browser can be read by anyone who can use that browser profile. Use a key that is limited to this purpose where your provider allows it.
+
+## What your endpoint needs
+
+Architect talks to an **OpenAI-compatible chat API**. Most tools for running models locally, and many hosted and institutional services, offer one. To work with Architect, the endpoint must:
+
+- **Answer at an `https://` address, or at `http://localhost`** (or `http://127.0.0.1`) for a model on the same computer as your browser. Browsers do not let a secure page such as Architect call a plain `http://` address on another machine.
+- **Accept requests from web pages (CORS).** The server must allow the address you open Architect at, for example `https://architect.networkcanvas.com`. Model servers usually refuse web pages until you change this setting. A hosted provider that does not allow requests from browsers cannot be used.
+- **Have room for the review.** The review instructions are long (roughly 10,000 tokens) before your protocol is added. A model with a small context window cannot review a large protocol.
+
+Enter three things in the dialog:
+
+| Field                | What to enter                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| **Endpoint address** | The base address of the API, usually ending in `/v1`. Architect adds `/chat/completions` to it. |
+| **Model name**       | The name of the model, exactly as your endpoint lists it.                                       |
+| **API key**          | Only if your endpoint needs one. A model running on your own computer usually does not.         |
+
+**Test connection** asks the model for a single word, using the same address, model name and key a review will use. It sends nothing from your protocol.
+
+## Ollama
+
+1. Install [Ollama](https://ollama.com) and download a model.
+2. Allow Architect to call it by setting the `OLLAMA_ORIGINS` environment variable to the address you open Architect at (for example `https://architect.networkcanvas.com`), then restart Ollama.
+3. Check the context length. Ollama chooses a default from your computer's graphics memory, and on most computers it is too small for a review; text beyond it is cut off without warning. Set a larger context length in Ollama's settings, or with the `OLLAMA_CONTEXT_LENGTH` environment variable.
+4. In Architect, enter the endpoint address `http://localhost:11434/v1` and the model's name as `ollama list` shows it. Leave the API key empty.
+
+See Ollama's own documentation for how to set environment variables on your operating system.
+
+## LM Studio
+
+1. Install [LM Studio](https://lmstudio.ai) and download a model.
+2. Start the local server from LM Studio's developer view, and turn on its **CORS** setting.
+3. Load the model with a context length large enough for the review instructions and your protocol.
+4. In Architect, enter the endpoint address `http://localhost:1234/v1` and the model's identifier as LM Studio shows it. Leave the API key empty.
+
+## Other endpoints
+
+Any service with an OpenAI-compatible chat API can be used if it meets the requirements above. Enter its base address, the model name and, if it needs one, your API key. If you are unsure whether a service accepts requests from browsers, use **Test connection**.
+
+## If something goes wrong
+
+| Architect says                                   | What to check                                                                                                                                       |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Your endpoint could not be reached               | The address, that the model server is running, and that its CORS setting allows the address you open Architect at.                                  |
+| Your endpoint refused the API key                | The API key, and that it is allowed to use the model.                                                                                               |
+| The address or the model was not found           | The model name, and that the address is the base address of the API (it often ends in `/v1`).                                                       |
+| This protocol is too long for your model         | Use a model with a larger context window, or raise the context length your model server allows.                                                     |
+| Your model's answer could not be used            | The model did not answer in the form Architect needs, or its answer was cut short. A more capable model, or a larger context window, may do better. |
+| Your endpoint returned an error or took too long | The model server's own logs.                                                                                                                        |
+
+Your browser may also ask for permission before letting Architect reach a model server on your computer or local network. Allow it for the review to work.
+
+## What to expect
+
+The review instructions were written and tested with the models the Network Canvas service offers. A smaller model may find fewer problems, describe them less well, or suggest fixes that do not fit your protocol. Architect checks every fix before offering **Fix for me**, so a fix that does not apply, or that would leave the protocol invalid, is never made for you.
+
+A model running on your own computer can take much longer than a hosted one. You can stop a review at any time with **Cancel review**.
