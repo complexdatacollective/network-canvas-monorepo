@@ -1,7 +1,7 @@
 import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 
 import { expect, test } from '../fixtures/architect-test.js';
-import { typeIdNamed } from '../helpers/codebook-ids.js';
+import { typeIdNamed, variableIdNamed } from '../helpers/codebook-ids.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { assertBaselinesCommitted, makeCapture } from '../helpers/visual.js';
@@ -205,19 +205,25 @@ test(
     expect(names.filter((name) => name === '')).toEqual([]);
     expect(new Set(names).size).toBe(names.length);
 
-    // A stage section's id carries the stage's UUID, which says nothing to
-    // whoever reads a failure, so a stage baseline is named by the stage's
-    // type and its position among the stages of that type.
-    const stageNames = new Map<string, string>();
+    // Stage and entity section ids carry UUIDs, which say nothing to whoever
+    // reads a failure. A stage baseline is named by the stage's type and its
+    // position among the stages of that type, and an entity baseline by the
+    // entity type's name.
+    const sectionNames = new Map<string, string>();
     const typeCounts = new Map<string, number>();
     for (const stage of protocol.stages) {
       const ordinal = (typeCounts.get(stage.type) ?? 0) + 1;
       typeCounts.set(stage.type, ordinal);
       const type = stage.type.replace(/([a-z])([A-Z])/g, '$1-$2');
-      stageNames.set(`stage-${stage.id}`, `stage-${type}-${ordinal}`);
+      sectionNames.set(`stage-${stage.id}`, `stage-${type}-${ordinal}`);
+    }
+    for (const types of [protocol.codebook.node, protocol.codebook.edge]) {
+      for (const [id, { name }] of Object.entries(types ?? {})) {
+        sectionNames.set(`entity-${id}`, `entity-${name}`);
+      }
     }
     const baselines = names.map(
-      (name) => `summary-${sectionSlug(stageNames.get(name) ?? name)}`,
+      (name) => `summary-${sectionSlug(sectionNames.get(name) ?? name)}`,
     );
     // One actionable failure instead of one opaque "a snapshot doesn't exist"
     // per section. Derived from `names`, so it checks the exact set the loop
@@ -396,7 +402,12 @@ test('names each stage once in the printable summary Used In column', async ({
     (stage) => stage.type === 'NameGeneratorRoster',
   );
   if (!roster) throw new Error('Expected the NameGeneratorRoster fixture');
-  expect(usage.find((row) => row.id === 'variable-age')?.links).toEqual([
+  const ageId = variableIdNamed(
+    protocol,
+    { entity: 'node', typeName: 'person' },
+    'age',
+  );
+  expect(usage.find((row) => row.id === `variable-${ageId}`)?.links).toEqual([
     `#stage-${roster.id}`,
   ]);
 

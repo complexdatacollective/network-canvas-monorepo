@@ -30,11 +30,16 @@ const CROSS_VARIABLE_VALIDATIONS = [
   'lessThanOrEqualToVariable',
 ] as const;
 
+type ShippedEntityType = {
+  name: string;
+  variables?: Record<string, { name: string }>;
+};
+
 type ShippedProtocol = {
   codebook: {
-    node?: Record<string, { variables?: Record<string, unknown> }>;
-    edge?: Record<string, { variables?: Record<string, unknown> }>;
-    ego?: { variables?: Record<string, unknown> };
+    node?: Record<string, ShippedEntityType>;
+    edge?: Record<string, ShippedEntityType>;
+    ego?: { variables?: Record<string, { name: string }> };
   };
   stages: unknown[];
 };
@@ -291,6 +296,34 @@ describe('indexes selectors', () => {
       // button, while the roster still displayed it.
       expect(Object.values(index)).toContain(
         '1e9ce62c-44c5-484d-9c26-0d20cc7d7238',
+      );
+    });
+
+    it('counts a variable that a roster column names by its name as used', () => {
+      const protocol = loadShippedProtocol('e2e/all-interfaces/protocol.json');
+      const [personId, person] =
+        Object.entries(protocol.codebook.node ?? {}).find(
+          ([, type]) => type.name === 'person',
+        ) ?? [];
+      const ageId = Object.entries(person?.variables ?? {}).find(
+        ([, variable]) => variable.name === 'age',
+      )?.[0];
+      expect(personId).toBeDefined();
+      expect(ageId).toBeDefined();
+
+      // person.age is named only by the roster's columns, which spell the
+      // variable's name (`age`), not its id, as the roster file does.
+      const usage = getVariableUsageHits(stateFor(protocol), ageId ?? '');
+      expect(usage.map(({ path }) => path.slice(2).join('.'))).toEqual(
+        expect.arrayContaining([
+          'cardOptions.additionalProperties.0.variable',
+          'sortOptions.sortOrder.0.property',
+          'sortOptions.sortableProperties.0.variable',
+          'searchOptions.matchProperties.1',
+        ]),
+      );
+      expect(Object.values(getVariableIndex(stateFor(protocol)))).not.toContain(
+        'age',
       );
     });
 

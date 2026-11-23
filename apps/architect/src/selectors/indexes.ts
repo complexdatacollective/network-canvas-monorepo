@@ -3,12 +3,12 @@ import { isArray, values } from 'es-toolkit/compat';
 
 import {
   collectAssetReferences,
-  collectEntityAttributeReferences,
   collectEntityTypeReferences,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
 } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
+import { collectVariableReferences } from '~/utils/collectVariableReferences';
 
 import { getProtocol } from './protocol';
 
@@ -106,7 +106,7 @@ export const getEntityTypeUsageHitsById = createSelector(
 // the index or the per-variable usage hits doesn't re-collect unless the
 // protocol changes.
 const getEntityAttributeHits = createSelector(getProtocol, (protocol) =>
-  protocol ? collectEntityAttributeReferences(protocol) : [],
+  protocol ? collectVariableReferences(protocol) : [],
 );
 
 /**
