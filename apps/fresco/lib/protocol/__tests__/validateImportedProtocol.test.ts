@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
+  createEntityTypeId,
   createProtocolObjectId,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
@@ -14,7 +15,7 @@ const protocolWithRawColor = {
   schemaVersion: 9,
   codebook: {
     node: {
-      person: {
+      [createEntityTypeId()]: {
         name: 'Person',
         color: '#cc0000',
         shape: { default: 'circle' },

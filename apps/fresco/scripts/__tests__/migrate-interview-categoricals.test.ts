@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type Codebook } from '@codaco/protocol-validation';
+import {
+  type Codebook,
+  createEntityTypeId,
+  createVariableId,
+} from '@codaco/protocol-validation';
 import { type NcNetwork, NcNetworkSchema } from '@codaco/shared-consts';
 import {
   encryptedNetwork,
@@ -16,16 +20,18 @@ import {
  * categorical edge variable, and one categorical ego variable. The variable ids
  * double as the network attribute keys (the Network Canvas contract).
  */
-const CAT_NODE = 'cat-node-var';
-const ORD_NODE = 'ord-node-var';
-const TEXT_NODE = 'text-node-var';
-const CAT_EDGE = 'cat-edge-var';
-const CAT_EGO = 'cat-ego-var';
+const PERSON = createEntityTypeId();
+const FRIEND = createEntityTypeId();
+const CAT_NODE = createVariableId();
+const ORD_NODE = createVariableId();
+const TEXT_NODE = createVariableId();
+const CAT_EDGE = createVariableId();
+const CAT_EGO = createVariableId();
 
 function makeCodebook(): Codebook {
   return {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
@@ -57,7 +63,7 @@ function makeCodebook(): Codebook {
       },
     },
     edge: {
-      friend: {
+      [FRIEND]: {
         name: 'Friend',
         color: 'edge-color-seq-1',
         variables: {
@@ -94,7 +100,7 @@ function makeNetwork(overrides?: Partial<NcNetwork>): NcNetwork {
     nodes: [
       {
         _uid: 'node-1',
-        type: 'person',
+        type: PERSON,
         attributes: {
           [CAT_NODE]: 'family',
           [ORD_NODE]: 1,
@@ -105,7 +111,7 @@ function makeNetwork(overrides?: Partial<NcNetwork>): NcNetwork {
     edges: [
       {
         _uid: 'edge-1',
-        type: 'friend',
+        type: FRIEND,
         from: 'node-1',
         to: 'node-1',
         attributes: { [CAT_EDGE]: 'work' },
@@ -147,7 +153,7 @@ describe('migrateNetworkCategoricals', () => {
       nodes: [
         {
           _uid: 'node-1',
-          type: 'person',
+          type: PERSON,
           attributes: { [CAT_NODE]: 2 },
         },
       ],
@@ -163,7 +169,7 @@ describe('migrateNetworkCategoricals', () => {
       nodes: [
         {
           _uid: 'node-1',
-          type: 'person',
+          type: PERSON,
           attributes: { [CAT_NODE]: ['family'] },
         },
       ],
@@ -181,7 +187,7 @@ describe('migrateNetworkCategoricals', () => {
       nodes: [
         {
           _uid: 'node-1',
-          type: 'person',
+          type: PERSON,
           attributes: {},
         },
       ],
@@ -208,6 +214,7 @@ describe('migrateNetworkCategoricals', () => {
       ...encrypted,
       nodes: encrypted.nodes.map((node) => ({
         ...node,
+        type: PERSON,
         attributes: { ...node.attributes, [CAT_NODE]: value },
       })),
     });
@@ -227,7 +234,7 @@ describe('migrateNetworkCategoricals', () => {
       nodes: [
         {
           _uid: 'node-1',
-          type: 'person',
+          type: PERSON,
           attributes: { [ORD_NODE]: 1, [TEXT_NODE]: 'Bob' },
         },
       ],
@@ -262,7 +269,7 @@ function makeRow(id: string, attributes: Record<string, unknown>) {
     protocolId: 'protocol-1',
     protocol: { codebook: makeCodebook() },
     network: {
-      nodes: [{ _uid: 'node-1', type: 'person', attributes }],
+      nodes: [{ _uid: 'node-1', type: PERSON, attributes }],
       edges: [],
       ego: { _uid: 'ego-1', attributes: {} },
     },

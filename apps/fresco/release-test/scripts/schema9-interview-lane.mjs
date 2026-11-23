@@ -23,7 +23,7 @@
 //
 // Prints one JSON line: { ok, checks, ... }. The workflow binds the check ids
 // to a list of its own (expectedScriptChecks.schema9).
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // The interview's own encryption format, loaded from source, so Linda's
@@ -133,8 +133,61 @@ const TRANSCRIPT = {
   declinedName: 'Declina Prueba',
 };
 
-/** The fixture's person type, and the attribute that names each person. */
-const PERSON = { type: 'node-type-9009-3', attribute: 'var-9009-4' };
+/** The schema 9 fixture's codebook, whose type and variable ids are UUIDs. */
+const fixtureCodebook = JSON.parse(
+  readFileSync(
+    join(
+      import.meta.dirname,
+      '..',
+      '..',
+      '..',
+      '..',
+      'packages',
+      'protocols',
+      'e2e',
+      'fresco-release-test-v9',
+      'protocol.json',
+    ),
+    'utf8',
+  ),
+).codebook;
+
+/** The id of the one entry of `record` whose `name` is `name`. */
+const idNamed = (record, name, what) => {
+  const ids = Object.entries(record ?? {})
+    .filter(([, entry]) => entry?.name === name)
+    .map(([id]) => id);
+  if (ids.length !== 1) {
+    throw new Error(
+      `The schema 9 fixture has ${ids.length} ${what} named "${name}".`,
+    );
+  }
+  return ids[0];
+};
+
+const typeNamed = (entity, name) =>
+  idNamed(fixtureCodebook[entity], name, `${entity} types`);
+
+const variableNamed = (entity, type, name) =>
+  idNamed(
+    fixtureCodebook[entity]?.[type]?.variables,
+    name,
+    `variables of ${entity} type ${type}`,
+  );
+
+const personType = typeNamed('node', 'Person');
+const relativeType = typeNamed('node', 'Relative');
+const familyType = typeNamed('edge', 'Family');
+
+/**
+ * The fixture's person type, the attribute that names each person, and the
+ * bins' categorical attribute.
+ */
+const PERSON = {
+  type: personType,
+  attribute: variableNamed('node', personType, 'name'),
+  context: variableNamed('node', personType, 'context'),
+};
 
 /**
  * The fixture's Family Pedigree person type and relationship, the attributes
@@ -142,15 +195,15 @@ const PERSON = { type: 'node-type-9009-3', attribute: 'var-9009-4' };
  * names; a categorical answer is one true/false column per option).
  */
 const RELATIVE = {
-  type: 'node-type-9009-17',
-  name: 'var-9009-18',
-  genderIdentity: 'var-9009-20',
-  sexAssignedAtBirth: 'var-9009-21',
-  ego: 'var-9009-22',
-  edge: 'edge-type-9009-23',
-  kind: 'var-9009-24',
-  gestationalCarrier: 'var-9009-25',
-  currentPartner: 'var-9009-26',
+  type: relativeType,
+  name: variableNamed('node', relativeType, 'name'),
+  genderIdentity: variableNamed('node', relativeType, 'genderIdentity'),
+  sexAssignedAtBirth: variableNamed('node', relativeType, 'sexAssignedAtBirth'),
+  ego: variableNamed('node', relativeType, 'isEgo'),
+  edge: familyType,
+  kind: variableNamed('edge', familyType, 'kind'),
+  gestationalCarrier: variableNamed('edge', familyType, 'gestationalCarrier'),
+  currentPartner: variableNamed('edge', familyType, 'currentPartner'),
 };
 
 /**
@@ -488,7 +541,7 @@ try {
       let stored = '';
       while (Date.now() < deadline) {
         stored = psql(
-          `select string_agg(n->'attributes'->'var-9009-4' #>> '{}' || '=' || coalesce(n->'attributes'->'context'->>0, ''), ',' order by n->'attributes'->>'var-9009-4') from "Interview", jsonb_array_elements(network::jsonb->'nodes') n where id = ${sqlText(result.interviewId)} and n->>'type' = 'node-type-9009-3';`,
+          `select string_agg(n->'attributes'->${sqlText(PERSON.attribute)} #>> '{}' || '=' || coalesce(n->'attributes'->${sqlText(PERSON.context)}->>0, ''), ',' order by n->'attributes'->>${sqlText(PERSON.attribute)}) from "Interview", jsonb_array_elements(network::jsonb->'nodes') n where id = ${sqlText(result.interviewId)} and n->>'type' = ${sqlText(PERSON.type)};`,
         );
         if (stored === 'Ana=work,Bruno=family') break;
         await page.waitForTimeout(1000);
@@ -584,7 +637,7 @@ try {
         .then(() => true)
         .catch(() => false);
       const row = psql(
-        `select coalesce("finishStageId", '') || '|' || coalesce("finishOutcome"::text, '') || '|' || ("finishTime" is not null) || '|' || (select count(*) from jsonb_array_elements(network::jsonb->'nodes') n where n->>'type' = 'node-type-9009-17') from "Interview" where id = ${sqlText(result.interviewId)};`,
+        `select coalesce("finishStageId", '') || '|' || coalesce("finishOutcome"::text, '') || '|' || ("finishTime" is not null) || '|' || (select count(*) from jsonb_array_elements(network::jsonb->'nodes') n where n->>'type' = ${sqlText(RELATIVE.type)}) from "Interview" where id = ${sqlText(result.interviewId)};`,
       );
       const finishStageId = finishStageIdFor('completed');
       // The pedigree was the last thing answered before finishing; finishing
@@ -861,7 +914,7 @@ try {
                   codebook,
                   'node',
                   PERSON.type,
-                  'context',
+                  PERSON.context,
                   TRANSCRIPT.context[name].value,
                 ),
               },
