@@ -1,5 +1,9 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   asEntityAttributeReference,
   type CurrentProtocol,
   type Variable,
@@ -26,9 +30,11 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
  */
 
 const ATTRIBUTE = 'name';
+const PERSON_TYPE_ID = testTypeId('person');
+const NAME_VARIABLE_ID = testVariableId('name');
 
 const quickAddAttribute = (protocol: CurrentProtocol): Variable | undefined =>
-  Object.values(protocol.codebook.node?.person?.variables ?? {}).find(
+  Object.values(protocol.codebook.node?.[PERSON_TYPE_ID]?.variables ?? {}).find(
     (variable) => variable.name === ATTRIBUTE,
   );
 
@@ -52,12 +58,12 @@ const quickAddProtocol = (): CurrentProtocol => {
     ...base,
     codebook: {
       node: {
-        person: {
+        [PERSON_TYPE_ID]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name_var: {
+            [NAME_VARIABLE_ID]: {
               name: ATTRIBUTE,
               type: 'text',
               validation: { required: true },
@@ -71,8 +77,8 @@ const quickAddProtocol = (): CurrentProtocol => {
         id: createProtocolObjectId(),
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Quickly Add Friends' },
-        subject: { entity: 'node', type: 'person' },
-        quickAdd: asEntityAttributeReference('name_var'),
+        subject: { entity: 'node', type: PERSON_TYPE_ID },
+        quickAdd: asEntityAttributeReference(NAME_VARIABLE_ID),
         prompts: [
           {
             id: createProtocolObjectId(),

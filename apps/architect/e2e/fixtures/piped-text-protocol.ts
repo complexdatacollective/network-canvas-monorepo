@@ -1,5 +1,9 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   type CurrentProtocol,
   CurrentProtocolSchema,
   deterministicProtocolObjectId,
@@ -7,10 +11,11 @@ import {
 
 import { emptyProtocol } from './seed.js';
 
-export const EGO_FIRST_NAME_ID = 'firstName';
-export const EGO_AGE_ID = 'age';
-export const EGO_MOOD_ID = 'mood';
-const NODE_NICKNAME_ID = 'nickname';
+export const EGO_FIRST_NAME_ID = testVariableId('firstName');
+export const EGO_AGE_ID = testVariableId('age');
+export const EGO_MOOD_ID = testVariableId('mood');
+const NODE_NICKNAME_ID = testVariableId('nickname');
+const PERSON_TYPE_ID = testTypeId('person');
 
 /** Stage ids the specs open by address. */
 const objectId = deterministicProtocolObjectId(
@@ -21,7 +26,7 @@ export const INFO_STAGE_ID = objectId('info');
 export const ANSWERS_STAGE_ID = objectId('answers');
 
 /** An ego attribute no form collects, so only a stage's text can use it. */
-export const EGO_NICKNAME_ID = 'egoNickname';
+export const EGO_NICKNAME_ID = testVariableId('egoNickname');
 
 /**
  * A protocol with an ego form that collects three attributes (a name, an age
@@ -63,7 +68,7 @@ export function pipedTextProtocol(
           },
         },
         node: {
-          person: {
+          [PERSON_TYPE_ID]: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },

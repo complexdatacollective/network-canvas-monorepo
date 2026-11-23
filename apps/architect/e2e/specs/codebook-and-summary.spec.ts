@@ -1,4 +1,7 @@
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
+
 import { expect, test } from '../fixtures/architect-test.js';
+import { typeIdNamed } from '../helpers/codebook-ids.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { assertBaselinesCommitted, makeCapture } from '../helpers/visual.js';
@@ -521,12 +524,14 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
   architectPage,
   seed,
 }) => {
+  const LONG_VARIABLE_ID = testVariableId('long-name-variable');
   const LONG_NAME = `long_${'x'.repeat(240)}`;
   const { protocol, assets } = loadAllInterfacesFixture();
   const withLongVariable = structuredClone(protocol);
-  const personType = withLongVariable.codebook.node?.person;
+  const personTypeId = typeIdNamed(protocol, 'node', 'person');
+  const personType = withLongVariable.codebook.node?.[personTypeId];
   if (!personType?.variables) throw new Error('fixture lost its person type');
-  personType.variables['long-name-variable'] = {
+  personType.variables[LONG_VARIABLE_ID] = {
     name: LONG_NAME,
     type: 'text',
     component: 'Text',
@@ -581,11 +586,11 @@ test('deletes a very long variable from a dialog that stays inside its box', asy
   const stored = await readProtocolJson(
     architectPage,
     (current) =>
-      current.codebook.node?.person?.variables?.['long-name-variable'] ===
+      current.codebook.node?.[personTypeId]?.variables?.[LONG_VARIABLE_ID] ===
       undefined,
   );
   expect(
-    stored.codebook.node?.person?.variables?.['long-name-variable'],
+    stored.codebook.node?.[personTypeId]?.variables?.[LONG_VARIABLE_ID],
   ).toBeUndefined();
 });
 

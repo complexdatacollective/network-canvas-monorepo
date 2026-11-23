@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
+import { withTestCodebookIds } from '@codaco/protocol-builder/testing/testId';
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
@@ -77,7 +78,7 @@ const localizedOptions = (
 ) => options.map(({ value, label }) => ({ value, label: { en: label } }));
 
 function protocolWithFamilyPedigreeStage(): CurrentProtocol {
-  return {
+  return withTestCodebookIds({
     ...emptyProtocol(),
     codebook: {
       node: {
@@ -158,7 +159,7 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
       },
       ...emptyProtocol().stages,
     ],
-  };
+  });
 }
 
 test('creates a valid NarrativePedigree stage from scratch', async ({

@@ -5,6 +5,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
+import { typeIdNamed, variableIdNamed } from '../helpers/codebook-ids.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 
@@ -26,7 +27,14 @@ for (const { kind, label } of [
     const stage = protocol.stages.find(
       (candidate) => candidate.type === 'Information',
     );
-    const variable = protocol.codebook.node?.person?.variables?.contactType;
+    const personTypeId = typeIdNamed(protocol, 'node', 'person');
+    const contactTypeId = variableIdNamed(
+      protocol,
+      { entity: 'node', typeName: 'person' },
+      'contactType',
+    );
+    const variable =
+      protocol.codebook.node?.[personTypeId]?.variables?.[contactTypeId];
     if (!stage || !variable || variable.type !== 'categorical') {
       throw new Error('Expected the Information stage and contactType fixture');
     }
@@ -44,8 +52,8 @@ for (const { kind, label } of [
             id: createProtocolObjectId(),
             type: 'node',
             options: {
-              type: 'person',
-              attribute: asEntityAttributeReference('contactType'),
+              type: personTypeId,
+              attribute: asEntityAttributeReference(contactTypeId),
               operator: 'INCLUDES',
               value: ['in_person', 'call', 'text'],
             },

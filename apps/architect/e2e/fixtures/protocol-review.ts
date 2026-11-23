@@ -2,10 +2,17 @@ import type { BrowserContext, Route } from '@playwright/test';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   asEntityAttributeReference,
   type CurrentProtocol,
   ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
+
+const PERSON_TYPE_ID = testTypeId('person');
+const NAME_VARIABLE_ID = testVariableId('name');
 
 const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
   'd79c37ba-397e-4855-8435-f3226c3a2b50',
@@ -49,12 +56,12 @@ export const reviewProtocol = (): CurrentProtocol =>
     assetManifest: {},
     codebook: {
       node: {
-        person: {
+        [PERSON_TYPE_ID]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name_var: { name: 'name', type: 'text' },
+            [NAME_VARIABLE_ID]: { name: 'name', type: 'text' },
           },
         },
       },
@@ -72,8 +79,8 @@ export const reviewProtocol = (): CurrentProtocol =>
         id: NAMES_STAGE_ID,
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Names', fr: 'Noms' },
-        subject: { entity: 'node', type: 'person' },
-        quickAdd: asEntityAttributeReference('name_var'),
+        subject: { entity: 'node', type: PERSON_TYPE_ID },
+        quickAdd: asEntityAttributeReference(NAME_VARIABLE_ID),
         prompts: [
           { id: NAMES_PROMPT_ID, text: { en: 'Name people', fr: 'Nommez' } },
           {

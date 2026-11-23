@@ -2,6 +2,10 @@ import type { Locator, Page } from '@playwright/test';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testVariableId,
+  withTestCodebookIds,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   createProtocolObjectId,
   type CurrentProtocol,
   CurrentProtocolSchema,
@@ -687,29 +691,31 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
   const english = bilingualProtocol();
   await seed(
     CurrentProtocolSchema.parse(
-      withInterfaceText({
-        ...english,
-        codebook: {
-          ...english.codebook,
-          ego: {
-            variables: {
-              lastName: { name: 'last_name', type: 'text' },
+      withInterfaceText(
+        withTestCodebookIds({
+          ...english,
+          codebook: {
+            ...english.codebook,
+            ego: {
+              variables: {
+                lastName: { name: 'last_name', type: 'text' },
+              },
             },
           },
-        },
-        stages: english.stages.map((stage) =>
-          stage.type === 'Information'
-            ? {
-                ...stage,
-                content: {
-                  en: 'Hello{name, select, missing {} other {, {name}}}',
-                  fr: 'Bonjour{name, select, missing {} other {, {name}}}',
-                },
-                dynamicValues: { name: { path: 'ego.lastName' } },
-              }
-            : stage,
-        ),
-      }),
+          stages: english.stages.map((stage) =>
+            stage.type === 'Information'
+              ? {
+                  ...stage,
+                  content: {
+                    en: 'Hello{name, select, missing {} other {, {name}}}',
+                    fr: 'Bonjour{name, select, missing {} other {, {name}}}',
+                  },
+                  dynamicValues: { name: { path: 'ego.lastName' } },
+                }
+              : stage,
+          ),
+        }),
+      ),
     ),
   );
   await page.goto('/protocol/localization?table=open');
@@ -758,7 +764,10 @@ for (const withValues of [false, true]) {
             ? {
                 ego: {
                   variables: {
-                    firstName: { name: 'first_name', type: 'text' },
+                    [testVariableId('firstName')]: {
+                      name: 'first_name',
+                      type: 'text',
+                    },
                   },
                 },
               }
@@ -770,7 +779,11 @@ for (const withValues of [false, true]) {
               label: { en: STAGE_NAME, fr: 'Bienvenue' },
               content: { en: block, fr: block },
               ...(withValues
-                ? { dynamicValues: { name: { path: 'ego.firstName' } } }
+                ? {
+                    dynamicValues: {
+                      name: { path: `ego.${testVariableId('firstName')}` },
+                    },
+                  }
                 : {}),
             },
             ...emptyProtocol({ defaultLocale: 'en', locales: ['en', 'fr'] })

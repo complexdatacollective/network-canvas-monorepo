@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import {
   createProtocolObjectId,
   CurrentProtocolSchema,
@@ -323,6 +324,7 @@ test('formats printed attribute order and updates linked-list grammar live while
 }) => {
   // Underscore/hyphen/dot distinguish locale collation from codepoint order.
   const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
+  const attributeId = (index: number) => testVariableId(`attribute-${index}`);
   const sortStageId = createProtocolObjectId();
   const conjunctionStageId = createProtocolObjectId();
   const protocol = CurrentProtocolSchema.parse(
@@ -332,7 +334,7 @@ test('formats printed attribute order and updates linked-list grammar live while
         ego: {
           variables: Object.fromEntries(
             names.map((name, index) => [
-              `attribute-${index}`,
+              attributeId(index),
               { name, type: 'text', component: 'Text' },
             ]),
           ),
@@ -350,7 +352,7 @@ test('formats printed attribute order and updates linked-list grammar live while
           form: {
             fields: names.map((_, index) => ({
               id: createProtocolObjectId(),
-              variable: `attribute-${index}`,
+              variable: attributeId(index),
               prompt: { en: `Authored_prompt_${index}` },
             })),
           },
@@ -366,7 +368,7 @@ test('formats printed attribute order and updates linked-list grammar live while
           form: {
             fields: [0, 3].map((index) => ({
               id: createProtocolObjectId(),
-              variable: `attribute-${index}`,
+              variable: attributeId(index),
               prompt: { en: `Authored_prompt_${index}` },
             })),
           },
@@ -390,7 +392,7 @@ test('formats printed attribute order and updates linked-list grammar live while
       });
   await expect(attributeRow(sortStageId)).toHaveCount(1);
   const links = attributeRow(sortStageId).getByRole('link');
-  const rows = page.locator('tr[id^="variable-attribute-"]');
+  const rows = page.locator('tr[id^="variable-"]');
   await expect(links).toHaveText([
     'alpha_name',
     'alpha-name',
@@ -401,10 +403,10 @@ test('formats printed attribute order and updates linked-list grammar live while
   expect(
     await rows.evaluateAll((elements) => elements.map((element) => element.id)),
   ).toEqual([
-    'variable-attribute-0',
-    'variable-attribute-2',
-    'variable-attribute-1',
-    'variable-attribute-3',
+    `variable-${attributeId(0)}`,
+    `variable-${attributeId(2)}`,
+    `variable-${attributeId(1)}`,
+    `variable-${attributeId(3)}`,
   ]);
   await expect(attributeRow(conjunctionStageId)).toHaveCount(1);
   const conjunction = attributeRow(conjunctionStageId)
@@ -426,18 +428,18 @@ test('formats printed attribute order and updates linked-list grammar live while
       elements.map((element) => element.getAttribute('href')),
     ),
   ).toEqual([
-    '#variable-attribute-0',
-    '#variable-attribute-2',
-    '#variable-attribute-1',
-    '#variable-attribute-3',
+    `#variable-${attributeId(0)}`,
+    `#variable-${attributeId(2)}`,
+    `#variable-${attributeId(1)}`,
+    `#variable-${attributeId(3)}`,
   ]);
   expect(
     await rows.evaluateAll((elements) => elements.map((element) => element.id)),
   ).toEqual([
-    'variable-attribute-0',
-    'variable-attribute-2',
-    'variable-attribute-1',
-    'variable-attribute-3',
+    `variable-${attributeId(0)}`,
+    `variable-${attributeId(2)}`,
+    `variable-${attributeId(1)}`,
+    `variable-${attributeId(3)}`,
   ]);
   await expect(conjunction).toHaveText('alpha_name and Isabel');
   expect(await readProtocolJson(page)).toEqual(before);
