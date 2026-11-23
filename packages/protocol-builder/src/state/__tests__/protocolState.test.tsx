@@ -27,12 +27,14 @@ import {
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
 import { fixtureStageId } from '../../testing/protocolFixture.ts';
-import { testId } from '../../testing/testId.ts';
+import { testId, testTypeId } from '../../testing/testId.ts';
 import {
   useProtocolBuilderContext,
   type ProtocolBuilderAdapter,
 } from '../context.ts';
 import { useEntityTypes, useSection, useSectionMutation } from '../hooks.ts';
+
+const PLACE_TYPE = testTypeId('place');
 
 /** The edit these calls are made from: one editor, open throughout. */
 const EDIT = 'edit-1';
@@ -340,9 +342,9 @@ describe('the protocol state layer', () => {
   it('lists a section created while the section list was in flight', async () => {
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(FIXTURE),
-      nextId: () => 'place',
+      nextId: () => PLACE_TYPE,
     });
-    const created = sectionId({ kind: 'codebookNode', typeId: 'place' });
+    const created = sectionId({ kind: 'codebookNode', typeId: PLACE_TYPE });
     const gated = gatedSectionList(host);
     const watched = watchedEvents(gated.adapter);
     render(

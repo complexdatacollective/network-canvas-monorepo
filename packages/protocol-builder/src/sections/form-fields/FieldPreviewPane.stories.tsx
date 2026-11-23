@@ -5,9 +5,14 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import { egoFormStageEditor } from '../../editors/ego-form/EgoFormStageEditor.ts';
 import StageEditor from '../../StageEditor.tsx';
-import { fixtureStageId } from '../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { testId } from '../../testing/testId.ts';
+
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
 
 /**
  * The two panes, as a browser lays them out.
@@ -171,7 +176,7 @@ export const SwitchingLanguage: Story = {
           fields: [
             {
               id: testId('field-1'),
-              variable: 'ego_name',
+              variable: EGO_NAME,
               prompt: {
                 'en-US': 'What is your name?',
                 'es': '¿Cómo te llamas?',

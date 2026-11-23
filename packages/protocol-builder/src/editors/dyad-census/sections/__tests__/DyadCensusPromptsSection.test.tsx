@@ -3,12 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   fixtureStageId,
+  fixtureTypeId,
   loadFixtureStage,
 } from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../../testing/testId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import DyadCensusPromptsSection from '../DyadCensusPromptsSection.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
 
 /** The id the fixture gives its one prompt, read from the fixture itself. */
 const fixturePromptId = (): unknown => {
@@ -88,7 +93,7 @@ describe('the questions a dyad census asks about a pair', () => {
     expect(rows[0]?.id).toBe(fixturePromptId());
     expect(rows[1]?.id).toEqual(expect.any(String));
     expect(rows[1]?.id).not.toBe(rows[0]?.id);
-    expect(rows[1]?.createEdge).toBe('family_edge');
+    expect(rows[1]?.createEdge).toBe(FAMILY_EDGE);
   });
 
   /**
@@ -104,17 +109,17 @@ describe('the questions a dyad census asks about a pair', () => {
         type: 'DyadCensus',
         fields: {
           label: { 'en-US': 'Dyad Census' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           prompts: [
             {
               id: testId('prompt-a'),
               text: { 'en-US': 'Know each other?' },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
             {
               id: testId('prompt-b'),
               text: { 'en-US': 'Worked together?' },
-              createEdge: 'family_edge',
+              createEdge: FAMILY_EDGE,
             },
           ],
         },
@@ -137,7 +142,7 @@ describe('the questions a dyad census asks about a pair', () => {
     const remaining = prompts(request?.stageDocument ?? {});
     expect(remaining).toHaveLength(1);
     expect(remaining[0]?.id).toBe(testId('prompt-b'));
-    expect(remaining[0]?.createEdge).toBe('family_edge');
+    expect(remaining[0]?.createEdge).toBe(FAMILY_EDGE);
   });
 });
 
@@ -276,7 +281,7 @@ describe('a prompt whose connection type is no longer in the codebook', () => {
     );
     await screen.findByRole('radio', { name: 'knows' });
 
-    harness.receiveCodebookUpdate({ edge: { knows: null } });
+    harness.receiveCodebookUpdate({ edge: { [KNOWS]: null } });
     expect(
       await screen.findByText(
         'This type is no longer in the codebook. Choose another one.',

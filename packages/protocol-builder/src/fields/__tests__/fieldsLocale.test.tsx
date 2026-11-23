@@ -23,9 +23,15 @@ import {
   HARNESS_PRINCIPAL,
   SeedProtocolCache,
 } from '../../testing/seedProtocolCache.tsx';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import EntityTypePickerField from '../EntityTypePickerField.tsx';
 import StageDestinationPickerField from '../StageDestinationPickerField.tsx';
 import VariablePickerField from '../VariablePickerField.tsx';
+
+const PERSON = testTypeId('person');
+const GHOST = testTypeId('ghost');
+const AGE = testVariableId('age');
+const GONE = testVariableId('gone');
 
 /**
  * The three controls in this directory, read in the researcher's own language.
@@ -44,7 +50,7 @@ import VariablePickerField from '../VariablePickerField.tsx';
 
 const settingsSection = sectionId({ kind: 'settings' });
 const stageOrderSection = sectionId({ kind: 'stageOrder' });
-const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const personSection = sectionId({ kind: 'codebookNode', typeId: PERSON });
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: 'stage-1' });
 
 /** Copy in the protocol's only language, as schema 9 holds it. */
@@ -181,14 +187,14 @@ describe('the fields in this directory, read in Spanish', () => {
     // Literals rather than the same descriptors re-formatted: asserting
     // `esIntl.formatMessage(...)` here would pass whatever the catalog said,
     // including nothing.
-    render(inEditor(<EntityTypePickerField entityType="node" value="ghost" />));
+    render(inEditor(<EntityTypePickerField entityType="node" value={GHOST} />));
 
     expect(
       screen.getByRole('radiogroup', { name: 'Node type options' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('radio', {
-        name: 'ghost: este tipo ya no está en el libro de códigos',
+        name: `${GHOST}: este tipo ya no está en el libro de códigos`,
       }),
     ).toBeInTheDocument();
     expect(
@@ -199,7 +205,7 @@ describe('the fields in this directory, read in Spanish', () => {
     // The assertions above name what this surface is supposed to say; the sweep
     // is what reports whatever else it said, including a sentence rebuilt out
     // of an English pattern that matches no whole message.
-    expectNoLocaleLeaks('the entity select', researcherWords('ghost'));
+    expectNoLocaleLeaks('the entity select', researcherWords(GHOST));
   });
 
   it('says a protocol has no types yet in Spanish', () => {
@@ -219,8 +225,8 @@ describe('the fields in this directory, read in Spanish', () => {
       standalone(
         <VariablePickerField
           name="attribute"
-          options={[{ value: 'age', label: 'Age', type: 'number' }]}
-          value="gone"
+          options={[{ value: AGE, label: 'Age', type: 'number' }]}
+          value={GONE}
         />,
       ),
     );
@@ -228,7 +234,7 @@ describe('the fields in this directory, read in Spanish', () => {
     // The stored choice nothing offers is kept and named on the field itself,
     // beside the sentence saying what the researcher has to do about it.
     expect(
-      screen.getByText('gone: este atributo no está disponible aquí'),
+      screen.getByText(`${GONE}: este atributo no está disponible aquí`),
     ).toBeInTheDocument();
     expect(
       screen.getByText('Este atributo no está disponible aquí. Elige otro.'),
@@ -250,7 +256,7 @@ describe('the fields in this directory, read in Spanish', () => {
     ).toBeInTheDocument();
     expectNoLocaleLeaks(
       'the attribute picker',
-      researcherWords([{ value: 'age', label: 'Age', type: 'number' }], 'gone'),
+      researcherWords([{ value: AGE, label: 'Age', type: 'number' }], GONE),
     );
   });
 
@@ -259,8 +265,8 @@ describe('the fields in this directory, read in Spanish', () => {
       standalone(
         <VariablePickerField
           name="attribute"
-          options={[{ value: 'age', label: 'Age', type: 'number' }]}
-          value="age"
+          options={[{ value: AGE, label: 'Age', type: 'number' }]}
+          value={AGE}
         />,
       ),
     );

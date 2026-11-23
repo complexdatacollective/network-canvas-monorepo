@@ -8,10 +8,13 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
 import type { CodebookWriteOutcome } from '../writes.ts';
 import { CodebookEditorHost } from './codebookEditorHost.tsx';
+
+const PERSON_TYPE = testTypeId('person');
 
 /**
  * A codebook editor is opened from inside something the researcher is already
@@ -33,11 +36,11 @@ import { CodebookEditorHost } from './codebookEditorHost.tsx';
  * of these editors' bare `<form onSubmit>` calls too.
  */
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const SUBJECT = { entity: 'node', type: PERSON_TYPE } as const;
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
 
 /** The attribute of the fixture's people that the editors below work on. */
-const ATTRIBUTE = 'relationship_to_ego';
+const ATTRIBUTE = testVariableId('relationship_to_ego');
 
 /** What the researcher has typed into the enclosing form and not finished. */
 const HALF_TYPED = 'Who else have you spoken to';

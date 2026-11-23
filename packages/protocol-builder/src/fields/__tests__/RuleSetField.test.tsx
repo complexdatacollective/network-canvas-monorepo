@@ -18,12 +18,22 @@ import {
   openAttributePicker,
 } from '../../testing/attributePicker.ts';
 import type { InMemoryProtocolStore } from '../../testing/host/protocolStore.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
 
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
+const FRIEND = testTypeId('friend');
+const GHOST = testTypeId('ghost');
+const AGE = testVariableId('age');
+const EGO_NAME = testVariableId('egoName');
+const FAVOURITE_COLOUR = testVariableId('favouriteColour');
+const MOOD = testVariableId('mood');
+
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
-const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const placeSection = sectionId({ kind: 'codebookNode', typeId: 'place' });
-const friendSection = sectionId({ kind: 'codebookEdge', typeId: 'friend' });
+const personSection = sectionId({ kind: 'codebookNode', typeId: PERSON });
+const placeSection = sectionId({ kind: 'codebookNode', typeId: PLACE });
+const friendSection = sectionId({ kind: 'codebookEdge', typeId: FRIEND });
 const egoSection = sectionId({ kind: 'codebookEgo' });
 const settingsSection = sectionId({ kind: 'settings' });
 const stageOrderSection = sectionId({ kind: 'stageOrder' });
@@ -42,8 +52,8 @@ const personDefinition: SectionDoc = {
   color: 'node-color-seq-2',
   shape: { default: 'square' },
   variables: {
-    age: { name: 'Age', type: 'number' },
-    mood: {
+    [AGE]: { name: 'Age', type: 'number' },
+    [MOOD]: {
       name: 'Mood',
       type: 'categorical',
       options: [
@@ -75,7 +85,7 @@ const baseSections: Record<string, SectionDoc> = {
   },
   [egoSection]: {
     variables: {
-      egoName: { name: 'EgoName', type: 'text' },
+      [EGO_NAME]: { name: 'EgoName', type: 'text' },
     },
   },
 };
@@ -177,7 +187,7 @@ const openRuleEditor = async (user: ReturnType<typeof userEvent.setup>) => {
   return await screen.findByRole('dialog', { name: 'Construct a Rule' });
 };
 
-const nodeRule = (id: string, typeId = 'person'): RuleDraft => ({
+const nodeRule = (id: string, typeId = PERSON): RuleDraft => ({
   id,
   type: 'node',
   options: { type: typeId, operator: 'EXISTS' },
@@ -266,7 +276,7 @@ describe('the rule set field', () => {
     expect(saved?.rules).toHaveLength(1);
     expect(saved?.rules?.[0]).toMatchObject({
       type: 'node',
-      options: { type: 'person', operator: 'EXISTS' },
+      options: { type: PERSON, operator: 'EXISTS' },
     });
     expect(isProtocolObjectId(saved?.rules?.[0]?.id)).toBe(true);
     expect(screen.getByText('Person')).toBeInTheDocument();
@@ -372,7 +382,7 @@ describe('a stored rule about whether an attribute was answered', () => {
   const attributePresenceRule = (operator: string): RuleDraft => ({
     id: 'rule-a',
     type: 'node',
-    options: { type: 'person', attribute: 'age', operator },
+    options: { type: PERSON, attribute: AGE, operator },
   });
 
   it('reads it as one phrase rather than repeating the operator', () => {
@@ -399,8 +409,8 @@ describe('rules the codebook can no longer account for', () => {
             id: 'rule-a',
             type: 'node',
             options: {
-              type: 'person',
-              attribute: 'favouriteColour',
+              type: PERSON,
+              attribute: FAVOURITE_COLOUR,
               operator: 'EXACTLY',
               value: 'blue',
             },
@@ -416,11 +426,11 @@ describe('rules the codebook can no longer account for', () => {
     ).toBeInTheDocument();
     // The rest of the rule still reads, so the researcher can see which one to
     // fix.
-    expect(screen.getByText('favouriteColour')).toBeInTheDocument();
+    expect(screen.getByText(FAVOURITE_COLOUR)).toBeInTheDocument();
   });
 
   it('reports a deleted entity type on the rule, without throwing', () => {
-    renderEditor(ruleSections({ rules: [nodeRule('rule-a', 'ghost')] }));
+    renderEditor(ruleSections({ rules: [nodeRule('rule-a', GHOST)] }));
 
     expect(
       screen.getByText(
@@ -440,7 +450,7 @@ describe('rules the codebook can no longer account for', () => {
             // two that ask whether the type is there. An imported or
             // hand-edited protocol can hold this, and nothing else marks it
             // before the whole stage is saved.
-            options: { type: 'person', operator: 'EXACTLY', value: 3 },
+            options: { type: PERSON, operator: 'EXACTLY', value: 3 },
           },
         ],
       }),
@@ -466,7 +476,7 @@ describe('rules the codebook can no longer account for', () => {
       ruleSections({
         rules: [
           // Every part the editor asks for is answered; the id is not there.
-          { type: 'node', options: { type: 'person', operator: 'EXISTS' } },
+          { type: 'node', options: { type: PERSON, operator: 'EXISTS' } },
         ],
       }),
     );
@@ -498,14 +508,14 @@ describe('two stored rules that share an identifier', () => {
     {
       id: 'rule-a',
       type: 'node',
-      options: { type: 'person', operator: 'EXISTS' },
+      options: { type: PERSON, operator: 'EXISTS' },
     },
     {
       id: 'rule-a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'age',
+        type: PERSON,
+        attribute: AGE,
         operator: 'EXACTLY',
         value: 30,
       },
@@ -537,7 +547,7 @@ describe('two stored rules that share an identifier', () => {
     // The one that survives is the one that was not deleted, and it is no
     // longer sharing its id with anything.
     expect(probedRuleSet()?.rules?.[0]?.options).toMatchObject({
-      attribute: 'age',
+      attribute: AGE,
     });
     expect(screen.queryByText(SHARED_ID_MESSAGE)).toBeNull();
   });
@@ -551,14 +561,14 @@ describe('two stored rules that share an identifier', () => {
           {
             id: 3,
             type: 'node',
-            options: { type: 'person', operator: 'EXISTS' },
+            options: { type: PERSON, operator: 'EXISTS' },
           },
           {
             id: 3,
             type: 'node',
             options: {
-              type: 'person',
-              attribute: 'age',
+              type: PERSON,
+              attribute: AGE,
               operator: 'EXACTLY',
               value: 30,
             },
@@ -579,7 +589,7 @@ describe('two stored rules that share an identifier', () => {
 
     await waitFor(() => expect(probedRuleSet()?.rules).toHaveLength(1));
     expect(probedRuleSet()?.rules?.[0]?.options).toMatchObject({
-      attribute: 'age',
+      attribute: AGE,
     });
   });
 
@@ -605,7 +615,7 @@ describe('two stored rules that share an identifier', () => {
     const saved = probedRuleSet()?.rules ?? [];
     expect(saved.map((rule) => rule.options?.attribute)).toEqual([
       undefined,
-      'age',
+      AGE,
     ]);
     expect(saved[0]?.id).toBe('rule-a');
     expect(saved[1]?.id).toEqual(expect.any(String));
@@ -627,14 +637,14 @@ describe('a stored rule that does not say what it is about', () => {
   it.each([
     {
       what: 'no target at all',
-      rule: { id: 'rule-a', options: { type: 'person', operator: 'EXISTS' } },
+      rule: { id: 'rule-a', options: { type: PERSON, operator: 'EXISTS' } },
     },
     {
       what: 'a target that is not a string',
       rule: {
         id: 'rule-a',
         type: 3,
-        options: { type: 'person', operator: 'EXISTS' },
+        options: { type: PERSON, operator: 'EXISTS' },
       },
     },
   ])(
@@ -709,8 +719,8 @@ describe('a codebook that changes underneath the editor', () => {
             id: 'rule-a',
             type: 'node',
             options: {
-              type: 'person',
-              attribute: 'age',
+              type: PERSON,
+              attribute: AGE,
               operator: 'EXACTLY',
               value: 30,
             },
@@ -727,7 +737,7 @@ describe('a codebook that changes underneath the editor', () => {
         // `EXACTLY` survives the retype — it is legal for both types — so the
         // operator check has nothing to say, and the operand left behind is a
         // number where the runtime now compares a list.
-        age: {
+        [AGE]: {
           name: 'Age',
           type: 'categorical',
           options: [
@@ -753,8 +763,8 @@ describe('a codebook that changes underneath the editor', () => {
             id: 'rule-a',
             type: 'node',
             options: {
-              type: 'person',
-              attribute: 'mood',
+              type: PERSON,
+              attribute: MOOD,
               operator: 'INCLUDES',
               value: ['happy'],
             },
@@ -768,7 +778,7 @@ describe('a codebook that changes underneath the editor', () => {
 
     harness.collaboratorWrites(personSection, {
       ...personDefinition,
-      variables: { age: { name: 'Age', type: 'number' } },
+      variables: { [AGE]: { name: 'Age', type: 'number' } },
     });
 
     expect(

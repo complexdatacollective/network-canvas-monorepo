@@ -24,9 +24,11 @@ import {
 import BuilderSection from '../sections/BuilderSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import { buttonPaint, TRANSPARENT } from '../testing/buttonPaint.ts';
-import { fixtureStageId } from '../testing/protocolFixture.ts';
+import { fixtureStageId, fixtureTypeId } from '../testing/protocolFixture.ts';
 import { testId } from '../testing/testId.ts';
 import AssetPickerField from './AssetPickerField.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
 
 /** Which stage the picker under the researcher's cursor is a field of. */
 type StagePreset =
@@ -106,7 +108,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'Sociogram',
       fields: {
         label: 'Sociogram',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
         prompts: [
           { id: testId('prompt-1'), text: 'Place the people you know' },
         ],
@@ -129,7 +131,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'NameGenerator',
       fields: {
         label: 'People',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
         panels: [panel(0, holding ?? ''), panel(1, holding ?? '')],
       },
     },
@@ -148,7 +150,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'Sociogram',
       fields: {
         label: 'Sociogram',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
         prompts: [
           { id: testId('prompt-1'), text: 'Place the people you know' },
         ],
@@ -172,7 +174,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'Sociogram',
       fields: {
         label: 'Sociogram',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
         prompts: [
           { id: testId('prompt-1'), text: 'Place the people you know' },
         ],
@@ -196,7 +198,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'NameGeneratorRoster',
       fields: {
         label: 'People you know',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
         prompts: [
           { id: testId('prompt-1'), text: 'Choose the people you know' },
         ],

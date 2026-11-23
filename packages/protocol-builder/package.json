@@ -74,6 +74,7 @@
     "./testing/host/createInMemoryHost": "./src/testing/host/createInMemoryHost.ts",
     "./testing/host/sectionsFromProtocol": "./src/testing/host/sectionsFromProtocol.ts",
     "./testing/protocolFixture": "./src/testing/protocolFixture.ts",
+    "./testing/testId": "./src/testing/testId.ts",
     "./testing/renderStageEditor": "./src/testing/renderStageEditor.tsx"
   },
   "scripts": {

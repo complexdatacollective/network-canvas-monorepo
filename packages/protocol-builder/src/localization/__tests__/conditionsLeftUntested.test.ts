@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { testVariableId } from '../../testing/testId.ts';
 import {
   conditionsLeftUntested,
   newConditionId,
   retireConditionId,
 } from '../conditionText.ts';
+
+const NAME = testVariableId('name');
 
 const yesNo = { yes: 'true', no: 'false' };
 
@@ -12,7 +15,7 @@ describe('conditionsLeftUntested', () => {
   it('drops a condition once the last binding that tested it is gone', () => {
     expect(
       conditionsLeftUntested(['big'], {
-        name: { path: 'ego.name' },
+        name: { path: `ego.${NAME}` },
         other: { path: '$condition.other', cases: yesNo },
       }),
     ).toEqual(['big']);

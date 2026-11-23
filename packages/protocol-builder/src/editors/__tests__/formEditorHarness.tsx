@@ -20,6 +20,7 @@ import type {
   CodebookPatch,
   renderStageEditor,
 } from '../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../testing/testId.ts';
 
 type Harness = ReturnType<typeof renderStageEditor>;
 
@@ -316,7 +317,7 @@ const addOption = async (harness: Harness, label: string, value: string) => {
 };
 
 /** The id the seeded categorical attribute below is filed under. */
-const SEEDED_CATEGORICAL = 'seeded-contact-setting';
+const SEEDED_CATEGORICAL = testVariableId('seeded-contact-setting');
 
 /** A codebook patch that replaces one subject's definition, whichever it is. */
 const patchReplacing = (

@@ -5,8 +5,15 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import AlterLimitsSection from '../../sections/alter-limits/AlterLimitsSection.tsx';
 import { nameGeneratorWording } from '../../sections/name-generator-wording/nameGeneratorWording.tsx';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { testId } from '../../testing/testId.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
 const en = (text: string) => ({ 'en-US': text });
@@ -24,13 +31,13 @@ const unlimitedStage = {
     type: 'NameGenerator' as const,
     fields: {
       label: en('Name Generator'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         title: en('Add a person'),
         fields: [
           {
             id: testId('field-1'),
-            variable: 'name',
+            variable: NAME,
             prompt: en('Name?'),
           },
         ],

@@ -1,10 +1,18 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../../testing/testId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import OneToManyDyadCensusPromptsSection from '../OneToManyDyadCensusPromptsSection.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const openSection = () => ({
   stageId: 'one-to-many-dyad-census-1' as const,
@@ -92,7 +100,7 @@ describe('the questions a one-to-many dyad census asks', () => {
     // The wildcard the interview supplies, plus the person's own attributes —
     // including `name`, which the stage's form collects and validates.
     expect(offered).toContain('*');
-    expect(offered).toContain('name');
+    expect(offered).toContain(NAME);
   });
 
   it('saves the two orders a researcher wrote, and nothing else', async () => {
@@ -112,7 +120,7 @@ describe('the questions a one-to-many dyad census asks', () => {
     );
     await harness.user.selectOptions(
       within(asked).getByRole('combobox', { name: 'Property' }),
-      'name',
+      NAME,
     );
     await harness.user.selectOptions(
       within(asked).getByRole('combobox', { name: 'Direction' }),
@@ -126,7 +134,7 @@ describe('the questions a one-to-many dyad census asks', () => {
     const request = await harness.submit();
     const saved = prompts(request?.stageDocument ?? {})[0];
     expect(saved?.bucketSortOrder).toEqual([
-      { id: expect.any(String), property: 'name', direction: 'asc' },
+      { id: expect.any(String), property: NAME, direction: 'asc' },
     ]);
     // The order the researcher never opened carries no key at all, rather than
     // an empty list saying what its absence already says.
@@ -145,17 +153,17 @@ describe('the questions a one-to-many dyad census asks', () => {
         type: 'OneToManyDyadCensus',
         fields: {
           label: { 'en-US': 'One to Many Dyad Census' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           behaviours: { removeAfterConsideration: true },
           prompts: [
             {
               id: testId('prompt-a'),
               text: { 'en-US': 'Who does this person know?' },
-              createEdge: 'knows',
+              createEdge: KNOWS,
               bucketSortOrder: [
                 {
                   id: testId('bucket-sort-name'),
-                  property: 'name',
+                  property: NAME,
                   direction: 'asc',
                 },
               ],
@@ -180,7 +188,7 @@ describe('the questions a one-to-many dyad census asks', () => {
     const request = await harness.submit();
     const saved = prompts(request?.stageDocument ?? {})[0];
     expect(saved).not.toHaveProperty('bucketSortOrder');
-    expect(saved?.createEdge).toBe('knows');
+    expect(saved?.createEdge).toBe(KNOWS);
   });
 
   it('refuses a prompt that creates no connection, and says which one', async () => {
@@ -222,7 +230,7 @@ describe('a one-to-many prompt whose connection type is no longer in the codeboo
     );
     await screen.findByRole('radio', { name: 'knows' });
 
-    harness.receiveCodebookUpdate({ edge: { knows: null } });
+    harness.receiveCodebookUpdate({ edge: { [KNOWS]: null } });
     await screen.findByText(
       'This type is no longer in the codebook. Choose another one.',
     );

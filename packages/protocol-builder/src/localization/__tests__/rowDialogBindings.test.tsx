@@ -14,17 +14,9 @@ import { testId } from '../../testing/testId.ts';
 
 const PERSON = fixtureTypeId('node', 'person');
 const KNOWS = fixtureTypeId('edge', 'knows');
-const RELATIONSHIP_TO_EGO = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'relationship_to_ego',
-);
 const CONTACT_FREQ = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
   'contactFreq',
-);
-const FLAGGED = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'flagged',
 );
 
 const openCensus = () => {
@@ -182,7 +174,7 @@ describe('a value with answers inserted in a row dialog', () => {
 
   it('is bound without cases when only the value itself is shown', async () => {
     expect(await insertAndSave(/First node: contactFreq.*Ordinal/)).toEqual([
-      { path: 'dyad.source[CONTACT_FREQ]' },
+      { path: `dyad.source.${CONTACT_FREQ}` },
     ]);
   });
 
@@ -191,7 +183,7 @@ describe('a value with answers inserted in a row dialog', () => {
       /First node: contactFreq.*Different wording for each answer/,
     );
     expect(binding).toEqual({
-      path: 'dyad.source[CONTACT_FREQ]',
+      path: `dyad.source.${CONTACT_FREQ}`,
       cases: expect.any(Object),
     });
     expect(Object.keys(binding?.cases ?? {}).length).toBeGreaterThan(0);
@@ -281,7 +273,7 @@ describe('a yes-or-no value without labels for its answers', () => {
     await harness.user.click(asItself);
     expect(
       dialog.getByRole('textbox', { name: /^Prompt text/ }),
-    ).not.toHaveTextContent(FLAGGED);
+    ).not.toHaveTextContent('flagged');
 
     // By answer it needs no labels, and is offered with the logic.
     await harness.user.keyboard('{Escape}');
@@ -352,7 +344,7 @@ describe('a form field saved before fields had ids', () => {
     );
     // The name comes from an earlier stage; the form asks for the other two,
     // the first field for relationship_to_ego itself.
-    for (const attribute of ['name', RELATIONSHIP_TO_EGO, FLAGGED]) {
+    for (const attribute of ['name', 'relationship_to_ego', 'flagged']) {
       expect(offered.some((label) => label.startsWith(attribute))).toBe(true);
     }
   });

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fixtureStageIds,
   fixtureStageId,
+  fixtureTypeId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
@@ -70,7 +71,7 @@ describe('creating a roster name generator', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'NameGeneratorRoster',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
       dataSource: 'roster_data',
     });
     // The heading over the people it offers, which the researcher was never

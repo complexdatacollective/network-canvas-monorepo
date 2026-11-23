@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { fixtureTypeId } from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
 import RemoveAfterConsiderationSection from '../RemoveAfterConsiderationSection.tsx';
 
@@ -54,9 +55,13 @@ describe('what becomes of a person already considered', () => {
         type: 'OneToManyDyadCensus',
         fields: {
           label: { 'en-US': 'One to Many Dyad Census' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
           prompts: [
-            { id: 'prompt-a', text: { 'en-US': 'Who?' }, createEdge: 'knows' },
+            {
+              id: 'prompt-a',
+              text: { 'en-US': 'Who?' },
+              createEdge: fixtureTypeId('edge', 'knows'),
+            },
           ],
         },
       },

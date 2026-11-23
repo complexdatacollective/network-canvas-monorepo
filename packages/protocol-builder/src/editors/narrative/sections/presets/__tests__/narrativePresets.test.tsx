@@ -11,10 +11,18 @@ import {
   closeAttributePicker,
   openAttributePicker,
 } from '../../../../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../../../../testing/protocolFixture.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+} from '../../../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
-import { testId } from '../../../../../testing/testId.ts';
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+} from '../../../../../testing/testId.ts';
 import {
   addPreset,
   narrativeHolding,
@@ -24,7 +32,18 @@ import {
   presetsOf,
 } from '../../../__tests__/narrativeFixtures.tsx';
 
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const LAYOUT = personVariable('layout');
+const CONTACT_TYPE = personVariable('contactType');
+const FLAGGED = personVariable('flagged');
+const HIGHLIGHTED = personVariable('highlighted');
+
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 const idOf = (row: unknown): unknown =>
   typeof row === 'object' && row !== null && 'id' in row ? row.id : undefined;
@@ -97,13 +116,13 @@ describe('the ways of looking at the network a narrative stage offers', () => {
       {
         id: fixturePreset.id,
         label: { 'en-US': 'Ties' },
-        layoutVariable: 'layout',
-        groupVariable: 'contactType',
+        layoutVariable: LAYOUT,
+        groupVariable: CONTACT_TYPE,
         edges: {
           display: [
             {
               id: fixturePreset.edgeId,
-              type: 'knows',
+              type: KNOWS,
               label: { 'en-US': 'knows' },
             },
           ],
@@ -111,7 +130,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
         highlight: [
           {
             id: fixturePreset.highlightId,
-            variable: 'flagged',
+            variable: FLAGGED,
             label: { 'en-US': 'Flagged' },
           },
         ],
@@ -130,7 +149,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Layout attribute'),
-      'layout',
+      LAYOUT,
     );
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
@@ -143,7 +162,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(rows[1]).toEqual({
       id: rows[1]?.id,
       label: { 'en-US': 'All' },
-      layoutVariable: 'layout',
+      layoutVariable: LAYOUT,
     });
     expect(isProtocolObjectId(rows[1]?.id)).toBe(true);
     expect(rows[1]?.id).not.toBe(fixturePresetIds().id);
@@ -208,7 +227,7 @@ describe('the label of a highlighted attribute', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Layout attribute'),
-      'layout',
+      LAYOUT,
     );
     await harness.user.click(
       preset.getByRole('checkbox', { name: 'highlighted' }),
@@ -226,9 +245,7 @@ describe('the label of a highlighted attribute', () => {
     const saved = await harness.submit();
     const added = presetsOf(saved?.stageDocument ?? {})[1];
     expect(added).toMatchObject({
-      highlight: [
-        { variable: 'highlighted', label: { 'en-US': 'Close ties' } },
-      ],
+      highlight: [{ variable: HIGHLIGHTED, label: { 'en-US': 'Close ties' } }],
     });
     expect(isProtocolObjectId(idOf(firstOf(added?.highlight)))).toBe(true);
   });
@@ -303,7 +320,7 @@ describe('an attribute another interface owns', () => {
       type: 'Narrative' as const,
       fields: {
         label: { 'en-US': 'Family narrative' },
-        subject: { entity: 'node', type: 'family_member' },
+        subject: { entity: 'node', type: FAMILY_MEMBER },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { freeDraw: true, allowRepositioning: true },
         presets: [],
@@ -348,8 +365,8 @@ describe('a preset’s tick lists with nothing in them', () => {
     // A preset being ADDED holds no reference of its own, so neither list has
     // a lost reference to report in place of a choice.
     harness.receiveCodebookUpdate({
-      edge: { knows: null, family_edge: null },
-      node: { person: personWithoutHighlights(harness) },
+      edge: { [KNOWS]: null, [FAMILY_EDGE]: null },
+      node: { [PERSON]: personWithoutHighlights(harness) },
     });
 
     const preset = await addPreset(harness);
@@ -395,8 +412,8 @@ const personWithoutHighlights = (harness: StageEditorHarness): SectionDoc => {
   };
 };
 
-const LOST_EDGE = 'former_edge';
-const LOST_HIGHLIGHT = 'former_flag';
+const LOST_EDGE = testTypeId('former_edge');
+const LOST_HIGHLIGHT = testVariableId('former_flag');
 const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
 const LOST_HIGHLIGHT_CHOICE = `${LOST_HIGHLIGHT} — this attribute is not available here`;
 
@@ -416,12 +433,12 @@ describe('a preset naming what the codebook no longer has', () => {
       narrativeHolding({
         id: testId('narrative-preset-1'),
         label: { 'en-US': 'Default layout' },
-        layoutVariable: 'layout',
+        layoutVariable: LAYOUT,
         edges: {
           display: [
             {
               id: testId('edge-knows'),
-              type: 'knows',
+              type: KNOWS,
               label: { 'en-US': 'knows' },
             },
             {
@@ -434,7 +451,7 @@ describe('a preset naming what the codebook no longer has', () => {
         highlight: [
           {
             id: testId('highlight-flagged'),
-            variable: 'flagged',
+            variable: FLAGGED,
             label: { 'en-US': 'Flagged' },
           },
           {
@@ -482,12 +499,12 @@ describe('a preset naming what the codebook no longer has', () => {
     expect(presetsOf(saved?.stageDocument ?? {})[0]).toEqual({
       id: testId('narrative-preset-1'),
       label: { 'en-US': 'Default layout' },
-      layoutVariable: 'layout',
+      layoutVariable: LAYOUT,
       edges: {
         display: [
           {
             id: testId('edge-knows'),
-            type: 'knows',
+            type: KNOWS,
             label: { 'en-US': 'knows' },
           },
         ],
@@ -495,7 +512,7 @@ describe('a preset naming what the codebook no longer has', () => {
       highlight: [
         {
           id: testId('highlight-flagged'),
-          variable: 'flagged',
+          variable: FLAGGED,
           label: { 'en-US': 'Flagged' },
         },
       ],
@@ -524,10 +541,10 @@ describe('a codebook change made while a preset dialog is open', () => {
       preset.getByRole('checkbox', { name: 'family_edge' }),
     );
 
-    harness.receiveCodebookUpdate({ edge: { family_edge: null } });
+    harness.receiveCodebookUpdate({ edge: { [FAMILY_EDGE]: null } });
 
     const lost = await preset.findByRole('checkbox', {
-      name: 'family_edge \u2014 this edge type is no longer in the codebook',
+      name: `${FAMILY_EDGE} \u2014 this edge type is no longer in the codebook`,
     });
     expect(lost).toBeChecked();
 
@@ -539,7 +556,7 @@ describe('a codebook change made while a preset dialog is open', () => {
 
     const saved = await harness.submit();
     expect(presetsOf(saved?.stageDocument ?? {})[0]).toMatchObject({
-      edges: { display: [{ type: 'knows', label: { 'en-US': 'knows' } }] },
+      edges: { display: [{ type: KNOWS, label: { 'en-US': 'knows' } }] },
     });
   });
 
@@ -560,7 +577,7 @@ describe('a codebook change made while a preset dialog is open', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        person: personWithVariable(harness, 'seating', {
+        [PERSON]: personWithVariable(harness, testVariableId('seating'), {
           name: 'seating',
           type: 'layout',
         }),
@@ -581,7 +598,7 @@ const presetFilter = {
     {
       id: testId('rule-1'),
       type: 'edge',
-      options: { type: 'knows', operator: 'EXISTS' },
+      options: { type: KNOWS, operator: 'EXISTS' },
     },
   ],
 };
@@ -589,7 +606,7 @@ const presetFilter = {
 const presetHolding = (settings: Record<string, unknown> = {}) => ({
   id: testId('narrative-preset-1'),
   label: { 'en-US': 'Default layout' },
-  layoutVariable: 'layout',
+  layoutVariable: LAYOUT,
   ...settings,
 });
 

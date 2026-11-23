@@ -7,9 +7,15 @@ import NodeLabelField from '../../fields/NodeLabelField.tsx';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import { buttonPaint, TRANSPARENT } from '../../testing/buttonPaint.ts';
 import { ProtocolWithShapeImages } from '../../testing/ProtocolWithShapeImages.tsx';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import { NodeLabelFieldProvider } from '../nodeLabelFieldSlot.ts';
 import CodebookEntityEditor from './CodebookEntityEditor.tsx';
+
+const PERSON_ID = testTypeId('person');
+const PLACE_ID = testTypeId('place');
+const NAME_ID = testVariableId('name');
+const ETHNICITY_ID = testVariableId('ethnicity');
 
 const PERSON: SectionDoc = {
   name: 'Person',
@@ -17,12 +23,12 @@ const PERSON: SectionDoc = {
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
-    name: {
+    [NAME_ID]: {
       name: 'Name',
       type: 'text',
       component: 'Text',
     },
-    ethnicity: {
+    [ETHNICITY_ID]: {
       name: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
@@ -41,7 +47,7 @@ const PERSON_NODE = {
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
-    name: { name: 'Name', type: 'text', component: 'Text' },
+    [NAME_ID]: { name: 'Name', type: 'text', component: 'Text' },
   },
 } as const;
 
@@ -51,7 +57,7 @@ const PERSON_WITH_SHAPE_MAPPING: SectionDoc = {
   shape: {
     default: 'circle',
     dynamic: {
-      variable: 'ethnicity',
+      variable: ETHNICITY_ID,
       type: 'discrete',
       map: [{ value: 'asian', shape: 'square' }],
     },
@@ -69,7 +75,7 @@ const PLACE_WITH_CUSTOM_SHAPES: SectionDoc = {
   shape: {
     default: 'custom:home',
     dynamic: {
-      variable: 'ethnicity',
+      variable: ETHNICITY_ID,
       type: 'discrete',
       map: [{ value: 'asian', shape: 'custom:school' }],
     },
@@ -82,7 +88,7 @@ function ExistingNodeEditor() {
       <CodebookEntityEditor
         mode="update"
         sessionKey="storybook-person-open-1"
-        subject={{ entity: 'node', type: 'person' }}
+        subject={{ entity: 'node', type: PERSON_ID }}
         initialDraft={PERSON}
         authoritativeDocument={PERSON}
         existingEntityNames={['Place']}
@@ -164,7 +170,7 @@ export const InADialog: Story = {
       mode="update"
       sessionKey="storybook-person-dialog-1"
       dialog={{ title: 'Edit this node type', open: true }}
-      subject={{ entity: 'node', type: 'person' }}
+      subject={{ entity: 'node', type: PERSON_ID }}
       initialDraft={PERSON}
       authoritativeDocument={PERSON}
       existingEntityNames={['Place']}
@@ -211,7 +217,7 @@ export const WithAShapeMapping: Story = {
       mode="update"
       sessionKey="storybook-person-mapping-1"
       dialog={{ title: 'Edit this node type', open: true }}
-      subject={{ entity: 'node', type: 'person' }}
+      subject={{ entity: 'node', type: PERSON_ID }}
       initialDraft={PERSON_WITH_SHAPE_MAPPING}
       authoritativeDocument={PERSON_WITH_SHAPE_MAPPING}
       existingEntityNames={['Place']}
@@ -256,7 +262,7 @@ export const WithCustomShapes: Story = {
       mode="update"
       sessionKey="storybook-place-custom-shapes-1"
       dialog={{ title: 'Edit this node type', open: true }}
-      subject={{ entity: 'node', type: 'place' }}
+      subject={{ entity: 'node', type: PLACE_ID }}
       initialDraft={PLACE_WITH_CUSTOM_SHAPES}
       authoritativeDocument={PLACE_WITH_CUSTOM_SHAPES}
       existingEntityNames={['Person']}
@@ -305,7 +311,7 @@ export const ShapeImageUnavailable: Story = {
       mode="update"
       sessionKey="storybook-place-image-unavailable-1"
       dialog={{ title: 'Edit this node type', open: true }}
-      subject={{ entity: 'node', type: 'place' }}
+      subject={{ entity: 'node', type: PLACE_ID }}
       initialDraft={PLACE_WITH_CUSTOM_SHAPES}
       authoritativeDocument={PLACE_WITH_CUSTOM_SHAPES}
       existingEntityNames={['Person']}
@@ -350,7 +356,7 @@ export const AddingAShape: Story = {
       mode="update"
       sessionKey="storybook-person-add-shape-1"
       dialog={{ title: 'Edit this node type', open: true }}
-      subject={{ entity: 'node', type: 'person' }}
+      subject={{ entity: 'node', type: PERSON_ID }}
       initialDraft={PERSON}
       authoritativeDocument={PERSON}
       existingEntityNames={['Place']}
@@ -395,7 +401,7 @@ const PERSON_WITH_DYNAMIC_LABEL: SectionDoc = {
   ...PERSON,
   dynamicLabel: {
     text: { en: '{name} 🙂' },
-    dynamicValues: { name: { path: 'node.name' } },
+    dynamicValues: { name: { path: `node.${NAME_ID}` } },
   },
 };
 
@@ -410,11 +416,11 @@ export const WithADynamicLabel: Story = {
       mode="update"
       sessionKey="storybook-person-label-1"
       dialog={{ title: 'Edit this node type', open: true }}
-      subject={{ entity: 'node', type: 'person' }}
+      subject={{ entity: 'node', type: PERSON_ID }}
       initialDraft={PERSON_WITH_DYNAMIC_LABEL}
       authoritativeDocument={PERSON_WITH_DYNAMIC_LABEL}
       existingEntityNames={['Place']}
-      codebook={{ node: { person: PERSON_NODE } }}
+      codebook={{ node: { [PERSON_ID]: PERSON_NODE } }}
       onCancel={() => undefined}
       onSubmit={() =>
         Promise.resolve({

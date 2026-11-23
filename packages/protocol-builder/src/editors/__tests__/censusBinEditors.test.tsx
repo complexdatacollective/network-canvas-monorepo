@@ -10,7 +10,11 @@ import {
   expectNoLocaleLeaks,
   protocolStrings,
 } from '../../testing/localeSweep.ts';
-import type { FixtureStageId } from '../../testing/protocolFixture.ts';
+import {
+  type FixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -42,11 +46,16 @@ import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrength
  * and bins alone.
  */
 
-const SUBJECT = { entity: 'node', type: 'person' };
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+
+const SUBJECT = { entity: 'node', type: PERSON };
 const BUCKET_SORT_ORDER = [
   {
     id: testId('bucket-sort-rule-1'),
-    property: 'name',
+    property: personVariable('name'),
     direction: 'asc',
   },
 ];
@@ -61,8 +70,8 @@ const FILTER = {
       type: 'node',
       id: testId('filter-rule-1'),
       options: {
-        type: 'person',
-        attribute: 'age',
+        type: PERSON,
+        attribute: personVariable('age'),
         operator: 'GREATER_THAN',
         value: 18,
       },
@@ -78,7 +87,7 @@ const SKIP_LOGIC = {
       {
         type: 'node',
         id: testId('skip-rule-1'),
-        options: { type: 'person', operator: 'NOT_EXISTS' },
+        options: { type: PERSON, operator: 'NOT_EXISTS' },
       },
     ],
   },
@@ -172,21 +181,24 @@ const sortRuleControls = (group: string): readonly Control[] => [
 const DYAD_PROMPT = {
   id: testId('p1'),
   text: { 'en-US': 'Do they know each other?' },
-  createEdge: 'knows',
+  createEdge: KNOWS,
 };
 
 const TIE_STRENGTH_PROMPT = {
   id: testId('p1'),
   text: { 'en-US': 'How close?' },
-  createEdge: 'knows',
-  edgeVariable: 'closeness',
+  createEdge: KNOWS,
+  edgeVariable: fixtureVariableId(
+    { entity: 'edge', typeName: 'knows' },
+    'closeness',
+  ),
   negativeLabel: { 'en-US': 'Not connected' },
 };
 
 const ONE_TO_MANY_PROMPT = {
   id: testId('p1'),
   text: { 'en-US': 'Who does this person know?' },
-  createEdge: 'knows',
+  createEdge: KNOWS,
   bucketSortOrder: BUCKET_SORT_ORDER,
   binSortOrder: BIN_SORT_ORDER,
 };
@@ -194,7 +206,7 @@ const ONE_TO_MANY_PROMPT = {
 const ORDINAL_BIN_PROMPT = {
   id: testId('p1'),
   text: { 'en-US': 'How often?' },
-  variable: 'contactFreq',
+  variable: personVariable('contactFreq'),
   color: 'ord-color-seq-1',
   bucketSortOrder: BUCKET_SORT_ORDER,
   binSortOrder: BIN_SORT_ORDER,
@@ -237,7 +249,7 @@ const NAME_GENERATOR_PROMPT = {
   additionalAttributes: [
     {
       id: testId('additional-attribute-1'),
-      variable: 'highlighted',
+      variable: personVariable('highlighted'),
       value: true,
     },
   ],
@@ -263,7 +275,7 @@ const REWRITE_A_STAMP: Rewrite = {
   value: [
     {
       id: testId('additional-attribute-1'),
-      variable: 'highlighted',
+      variable: personVariable('highlighted'),
       value: false,
     },
   ],
@@ -280,8 +292,8 @@ const REWRITE_A_STAMP: Rewrite = {
 const CATEGORICAL_BIN_PROMPT = {
   id: testId('p1'),
   text: { 'en-US': 'What kind of contact?' },
-  variable: 'contactType',
-  otherVariable: 'relationship_to_ego',
+  variable: personVariable('contactType'),
+  otherVariable: personVariable('relationship_to_ego'),
   otherOptionLabel: { 'en-US': 'Something else' },
   otherVariablePrompt: { 'en-US': 'What kind of contact is it?' },
   bucketSortOrder: BUCKET_SORT_ORDER,
@@ -340,7 +352,7 @@ const CASES: readonly EditorCase[] = [
     },
     rewrite: {
       key: 'createEdge',
-      value: 'family_edge',
+      value: fixtureTypeId('edge', 'family_edge'),
       write: async (harness) => {
         await harness.user.click(
           screen.getByRole('radio', { name: 'family_edge' }),
@@ -428,7 +440,7 @@ const CASES: readonly EditorCase[] = [
       value: [
         {
           id: testId('bucket-sort-rule-1'),
-          property: 'name',
+          property: personVariable('name'),
           direction: 'desc',
         },
       ],
@@ -593,7 +605,7 @@ const CASES: readonly EditorCase[] = [
     wholeStage: {
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full quick-add name generator' },
-      quickAdd: 'name',
+      quickAdd: personVariable('name'),
       addNamePlaceholder: { 'en-US': 'Type the name of a {subject}' },
       minNodesNotice: {
         'en-US':

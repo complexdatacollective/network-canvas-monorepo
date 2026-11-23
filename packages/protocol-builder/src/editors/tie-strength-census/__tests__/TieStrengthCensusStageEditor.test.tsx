@@ -8,10 +8,19 @@ import {
 import {
   fixtureStageIds,
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { tieStrengthCensusStageEditor } from '../TieStrengthCensusStageEditor.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const CLOSENESS = fixtureVariableId(
+  { entity: 'edge', typeName: 'knows' },
+  'closeness',
+);
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const TIE_STRENGTH_INDEX = fixtureStageIds().indexOf(
@@ -71,7 +80,7 @@ describe('creating a tie-strength census stage', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Ordinal attribute'),
-      'closeness',
+      CLOSENESS,
     );
     await writeInto(
       harness,
@@ -87,14 +96,14 @@ describe('creating a tie-strength census stage', () => {
     expect(request?.stageDocument).toMatchObject({
       type: 'TieStrengthCensus',
       label: { 'en-US': 'Person Tie-Strength Census' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         text: { 'en-US': 'How close are they?' },
-        createEdge: 'knows',
-        edgeVariable: 'closeness',
+        createEdge: KNOWS,
+        edgeVariable: CLOSENESS,
         negativeLabel: { 'en-US': 'They have never met' },
       },
     ]);

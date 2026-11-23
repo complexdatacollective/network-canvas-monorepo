@@ -8,8 +8,14 @@ import {
   type ProtocolBuilderProtocolContext,
   protocolContextFromSections,
 } from '../../protocol-context.ts';
-import { testId } from '../../testing/testId.ts';
+import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
 import { proposeStageLabel } from '../proposeStageLabel.ts';
+
+const PERSON = testTypeId('person');
+const FRIENDSHIP = testTypeId('friendship');
+const DIABETES = testVariableId('diabetes');
+const ASTHMA = testVariableId('asthma');
+const CLOSENESS = testVariableId('closeness');
 
 const informationStage = (
   id: string,
@@ -37,22 +43,22 @@ const contextWith = (
   protocolContextFromSections({
     [sectionId({ kind: 'settings' })]: { localization },
     [sectionId({ kind: 'stageOrder' })]: { stages: [] },
-    [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+    [sectionId({ kind: 'codebookNode', typeId: PERSON })]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        diabetes: {
+        [DIABETES]: {
           name: 'Diabetes',
           type: 'boolean',
         },
-        asthma: { name: 'Asthma', type: 'boolean' },
+        [ASTHMA]: { name: 'Asthma', type: 'boolean' },
       },
     },
-    [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
+    [sectionId({ kind: 'codebookEdge', typeId: FRIENDSHIP })]: {
       name: 'Friendship',
       variables: {
-        closeness: {
+        [CLOSENESS]: {
           name: 'Closeness',
           type: 'scalar',
         },
@@ -89,7 +95,7 @@ describe('proposeStageLabel', () => {
         {
           id: testId('stage-1'),
           type: 'NameGenerator',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
         },
         contextWith(),
       ),
@@ -244,7 +250,7 @@ describe('the language a proposal is in', () => {
         {
           id: testId('stage-1'),
           type: 'NameGenerator',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
         },
         contextWith({}, inLanguage('es', ['es', 'en'])),
       ),
@@ -342,7 +348,7 @@ describe('the language a proposal is in', () => {
         localization: inLanguage('es'),
       },
       [sectionId({ kind: 'stageOrder' })]: { stages: [] },
-      [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+      [sectionId({ kind: 'codebookNode', typeId: PERSON })]: {
         name: longName,
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
@@ -353,7 +359,7 @@ describe('the language a proposal is in', () => {
       {
         id: testId('stage-1'),
         type: 'NameGenerator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
       },
       context,
     );

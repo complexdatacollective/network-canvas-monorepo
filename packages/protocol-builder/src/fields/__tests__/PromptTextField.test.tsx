@@ -3,9 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import { dyadCensusStageEditor } from '../../editors/dyad-census/DyadCensusStageEditor.ts';
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureTypeId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { testId } from '../../testing/testId.ts';
+
+const KNOWS = fixtureTypeId('edge', 'knows');
 
 const ENGLISH_AND_SPANISH: ProtocolLocalization = {
   defaultLocale: 'en-US',
@@ -30,7 +35,7 @@ const openTranslated = () => {
           {
             id: testId('dyad-census-prompt-1'),
             text: { 'en-US': 'Who do you know?', 'es': '¿A quién conoces?' },
-            createEdge: 'knows',
+            createEdge: KNOWS,
           },
         ],
       },
@@ -71,7 +76,7 @@ describe('PromptTextField', () => {
       {
         id: testId('dyad-census-prompt-1'),
         text: { 'en-US': 'Who do you know?', 'es': '¿A quién conoces bien?' },
-        createEdge: 'knows',
+        createEdge: KNOWS,
       },
     ]);
   });

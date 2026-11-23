@@ -7,9 +7,28 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { sectionIdForCodebookSubject } from '../editing.ts';
 import { useSetVariableOptions } from '../useCodebookVariableEdits.ts';
+
+const FAMILY_MEMBER_TYPE = fixtureTypeId('node', 'family member');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const GENDER_IDENTITY = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'genderIdentity',
+);
+const SEX_ASSIGNED_AT_BIRTH = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'sexAssignedAtBirth',
+);
+const CLOSENESS = fixtureVariableId(
+  { entity: 'edge', typeName: 'knows' },
+  'closeness',
+);
 
 /**
  * The type the family pedigree describes, whose `sexAssignedAtBirth` values
@@ -18,7 +37,7 @@ import { useSetVariableOptions } from '../useCodebookVariableEdits.ts';
  */
 const FAMILY_MEMBER: CodebookSubject = {
   entity: 'node',
-  type: 'family_member',
+  type: FAMILY_MEMBER_TYPE,
 };
 
 /** The canonical set, plus one value the pedigree does not know. */
@@ -80,7 +99,7 @@ function WriteOptions({
 
 const familyMemberSection = sectionId({
   kind: 'codebookNode',
-  typeId: 'family_member',
+  typeId: FAMILY_MEMBER_TYPE,
 });
 
 const write = async (
@@ -121,7 +140,7 @@ describe('writing the answers an attribute offers', () => {
    */
   it('refuses a list an interface owns, and writes nothing', async () => {
     const { harness, outcome, before } = await write(
-      'sexAssignedAtBirth',
+      SEX_ASSIGNED_AT_BIRTH,
       WITH_AN_EXTRA_VALUE,
     );
 
@@ -135,7 +154,7 @@ describe('writing the answers an attribute offers', () => {
 
   /** An unchanged list is not a revision anybody has to merge. */
   it('writes nothing when the list already matches', async () => {
-    const { harness, outcome, before } = await write('sexAssignedAtBirth', [
+    const { harness, outcome, before } = await write(SEX_ASSIGNED_AT_BIRTH, [
       { value: 'female', label: { 'en-US': 'Female' } },
       { value: 'male', label: { 'en-US': 'Male' } },
       { value: 'intersex', label: { 'en-US': 'Intersex' } },
@@ -163,9 +182,9 @@ describe('writing the answers an attribute offers', () => {
   });
 
   it('says a list of one value is too short to hold, and writes nothing', async () => {
-    const knows: CodebookSubject = { entity: 'edge', type: 'knows' };
+    const knows: CodebookSubject = { entity: 'edge', type: KNOWS };
     const { harness, outcome, before } = await write(
-      'closeness',
+      CLOSENESS,
       [{ value: 1, label: { 'en-US': 'Some' } }],
       knows,
     );
@@ -194,7 +213,7 @@ describe('writing the answers an attribute offers', () => {
 
     it('is refused from another stage’s editor, naming the stage that manages it', async () => {
       const { harness, outcome, before } = await write(
-        'genderIdentity',
+        GENDER_IDENTITY,
         WITH_A_NEW_OPTION,
         FAMILY_MEMBER,
         'name-generator-1',
@@ -210,7 +229,7 @@ describe('writing the answers an attribute offers', () => {
 
     it('is written from the editor of the stage that manages it', async () => {
       const { harness, outcome } = await write(
-        'genderIdentity',
+        GENDER_IDENTITY,
         WITH_A_NEW_OPTION,
       );
 
@@ -220,15 +239,17 @@ describe('writing the answers an attribute offers', () => {
       // only once the stage is saved.
       expect(
         Reflect.get(
-          harness.editorCodebook().node?.family_member?.variables
-            ?.genderIdentity ?? {},
+          harness.editorCodebook().node?.[FAMILY_MEMBER_TYPE]?.variables?.[
+            GENDER_IDENTITY
+          ] ?? {},
           'options',
         ),
       ).toEqual(WITH_A_NEW_OPTION);
       expect(
         Reflect.get(
-          harness.hostCodebook().node?.family_member?.variables
-            ?.genderIdentity ?? {},
+          harness.hostCodebook().node?.[FAMILY_MEMBER_TYPE]?.variables?.[
+            GENDER_IDENTITY
+          ] ?? {},
           'options',
         ),
       ).not.toEqual(WITH_A_NEW_OPTION);
@@ -236,7 +257,7 @@ describe('writing the answers an attribute offers', () => {
 
     it('leaves another attribute of the same type editable', async () => {
       const { outcome } = await write(
-        'sexAssignedAtBirth',
+        SEX_ASSIGNED_AT_BIRTH,
         [
           { value: 'female', label: { 'en-US': 'Female' } },
           { value: 'male', label: { 'en-US': 'Male' } },

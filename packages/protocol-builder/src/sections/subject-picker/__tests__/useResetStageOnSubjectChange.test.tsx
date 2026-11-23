@@ -11,13 +11,20 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
 import type { RowPreviewProps } from '../../../form/rowDialog.tsx';
 import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx';
-import { fixtureStageId } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
 import BuilderSection from '../../BuilderSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const KNOWS = fixtureTypeId('edge', 'knows');
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
 const en = (text: string) => ({ 'en-US': text });
@@ -114,13 +121,13 @@ const censusHoldingNonDefault = {
   type: 'OneToManyDyadCensus' as const,
   fields: {
     label: en('One to Many Dyad Census'),
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     behaviours: { removeAfterConsideration: false },
     prompts: [
       {
         id: testId('one-to-many-dyad-census-prompt-1'),
         text: en('Tap on all the people who this person knows'),
-        createEdge: 'knows',
+        createEdge: KNOWS,
       },
     ],
   },
@@ -168,7 +175,7 @@ const A_PERSON_FILTER: SectionDoc = {
     {
       id: testId('rule-1'),
       type: 'node',
-      options: { type: 'person', operator: 'EXISTS' },
+      options: { type: PERSON, operator: 'EXISTS' },
     },
   ],
 };
@@ -178,13 +185,13 @@ const censusWithAFilter = {
   type: 'DyadCensus' as const,
   fields: {
     label: en('Dyad Census'),
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     filter: A_PERSON_FILTER,
     prompts: [
       {
         id: testId('dyad-census-prompt-1'),
         text: en('Do these two people know each other?'),
-        createEdge: 'knows',
+        createEdge: KNOWS,
       },
     ],
   },
@@ -216,7 +223,7 @@ describe('resetting a key the researcher has never looked at', () => {
     const written = await harness.submit();
 
     expect(written?.stageDocument).toMatchObject({
-      subject: { entity: 'node', type: 'family_member' },
+      subject: { entity: 'node', type: FAMILY_MEMBER },
     });
     expect(written?.stageDocument).not.toHaveProperty('filter');
   });
@@ -320,7 +327,7 @@ describe('resetting a key the form is holding parked', () => {
     const written = await harness.submit();
 
     expect(written?.stageDocument).toMatchObject({
-      subject: { entity: 'node', type: 'family_member' },
+      subject: { entity: 'node', type: FAMILY_MEMBER },
     });
     expect(written?.stageDocument).not.toHaveProperty('filter');
   });

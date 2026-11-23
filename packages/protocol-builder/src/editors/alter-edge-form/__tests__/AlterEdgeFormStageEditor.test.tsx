@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   fixtureStageIds,
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
@@ -16,6 +18,12 @@ import {
   stageNameInput,
 } from '../../__tests__/formEditorHarness.tsx';
 import { alterEdgeFormStageEditor } from '../AlterEdgeFormStageEditor.ts';
+
+const KNOWS = fixtureTypeId('edge', 'knows');
+const CLOSENESS = fixtureVariableId(
+  { entity: 'edge', typeName: 'knows' },
+  'closeness',
+);
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
 vi.mock('../../../fields/RichTextField.tsx', () => ({
@@ -110,8 +118,8 @@ describe('the editor for a form about each relationship', () => {
 
     harness.receiveCodebookUpdate({
       edge: {
-        knows: knowsDefinition({
-          closeness: {
+        [KNOWS]: knowsDefinition({
+          [CLOSENESS]: {
             name: 'closeness',
             type: 'ordinal',
             options: [
@@ -145,7 +153,7 @@ describe('the editor for a form about each relationship', () => {
 
     await authorsValuesFromField(harness, {
       kind: 'codebookEdge',
-      typeId: 'knows',
+      typeId: KNOWS,
     });
   });
 
@@ -154,7 +162,7 @@ describe('the editor for a form about each relationship', () => {
 
     await authorsDateSettingsFromField(harness, {
       kind: 'codebookEdge',
-      typeId: 'knows',
+      typeId: KNOWS,
     });
   });
 });

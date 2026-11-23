@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   fixtureStageId,
   loadFixtureStage,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { testId } from '../../testing/testId.ts';
@@ -16,6 +18,9 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from './rowFixtures.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const en = (text: string) => ({ 'en-US': text });
 
@@ -157,13 +162,13 @@ describe('the prompt list a stage owns', () => {
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           form: {
             title: en('Add a person'),
             fields: [
               {
                 id: testId('field-1'),
-                variable: 'name',
+                variable: NAME,
                 prompt: en('Name?'),
               },
             ],
@@ -648,13 +653,13 @@ describe('what a family says about its own prompt', () => {
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           form: {
             title: en('Add a person'),
             fields: [
               {
                 id: testId('field-1'),
-                variable: 'name',
+                variable: NAME,
                 prompt: en('Name?'),
               },
             ],

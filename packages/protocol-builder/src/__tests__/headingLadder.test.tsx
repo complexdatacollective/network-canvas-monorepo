@@ -22,8 +22,11 @@ import { StageEditSession } from '../stageEdit.tsx';
 import { fixtureStageId } from '../testing/protocolFixture.ts';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 import { StageEditorStoryHost } from '../testing/StageEditorStoryHost.tsx';
+import { testTypeId } from '../testing/testId.ts';
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const PERSON = testTypeId('person');
+
+const SUBJECT = { entity: 'node', type: PERSON } as const;
 const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   codebook: { node: {}, edge: {} },
   assets: {},

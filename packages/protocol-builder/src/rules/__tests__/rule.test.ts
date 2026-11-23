@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { incompleteRulePart, isCompleteRule, type RuleDraft } from '../rule.ts';
+
+const PERSON = testTypeId('person');
+const AGE = testVariableId('age');
+const EGO_NAME = testVariableId('egoName');
 
 const alterRule = (options: Record<string, unknown>): RuleDraft => ({
   type: 'node',
@@ -37,9 +42,9 @@ describe('the part of a rule that has not been answered', () => {
   it('names the attribute an alter rule left empty after asking for one', () => {
     // The `attribute` KEY is what makes this an attribute rule rather than a
     // presence rule, so an empty one is a gap rather than a different shape.
-    expect(
-      incompleteRulePart(alterRule({ type: 'person', attribute: '' })),
-    ).toBe('attribute');
+    expect(incompleteRulePart(alterRule({ type: PERSON, attribute: '' }))).toBe(
+      'attribute',
+    );
   });
 
   it('reads an attribute key holding nothing as a gap, not as a presence rule', () => {
@@ -49,30 +54,30 @@ describe('the part of a rule that has not been answered', () => {
     // happens to be complete.
     expect(
       incompleteRulePart(
-        alterRule({ type: 'person', attribute: undefined, operator: 'EXISTS' }),
+        alterRule({ type: PERSON, attribute: undefined, operator: 'EXISTS' }),
       ),
     ).toBe('attribute');
     expect(
-      incompleteRulePart(alterRule({ type: 'person', operator: 'EXISTS' })),
+      incompleteRulePart(alterRule({ type: PERSON, operator: 'EXISTS' })),
     ).toBeUndefined();
   });
 
   it('names the operator once the rule knows what it is comparing', () => {
-    expect(incompleteRulePart(alterRule({ type: 'person' }))).toBe('operator');
+    expect(incompleteRulePart(alterRule({ type: PERSON }))).toBe('operator');
     expect(
-      incompleteRulePart(alterRule({ type: 'person', attribute: 'age' })),
+      incompleteRulePart(alterRule({ type: PERSON, attribute: AGE })),
     ).toBe('operator');
   });
 
   it('names the operand of an operator that compares against one', () => {
     expect(
       incompleteRulePart(
-        alterRule({ type: 'person', attribute: 'age', operator: 'EXACTLY' }),
+        alterRule({ type: PERSON, attribute: AGE, operator: 'EXACTLY' }),
       ),
     ).toBe('value');
     expect(
       incompleteRulePart(
-        egoRule({ attribute: 'egoName', operator: 'OPTIONS_EQUALS' }),
+        egoRule({ attribute: EGO_NAME, operator: 'OPTIONS_EQUALS' }),
       ),
     ).toBe('value');
   });
@@ -81,10 +86,10 @@ describe('the part of a rule that has not been answered', () => {
     // A presence rule is about the entity itself, so it never has an operand
     // to be missing whatever its operator says.
     expect(
-      incompleteRulePart(alterRule({ type: 'person', operator: 'EXISTS' })),
+      incompleteRulePart(alterRule({ type: PERSON, operator: 'EXISTS' })),
     ).toBeUndefined();
     expect(
-      incompleteRulePart(alterRule({ type: 'person', operator: 'NOT_EXISTS' })),
+      incompleteRulePart(alterRule({ type: PERSON, operator: 'NOT_EXISTS' })),
     ).toBeUndefined();
   });
 
@@ -95,7 +100,7 @@ describe('the part of a rule that has not been answered', () => {
     // there, so an absent one becomes the literal text "undefined".
     expect(
       incompleteRulePart(
-        alterRule({ type: 'person', attribute: 'age', operator: 'CONTAINS' }),
+        alterRule({ type: PERSON, attribute: AGE, operator: 'CONTAINS' }),
       ),
     ).toBe('value');
   });
@@ -104,8 +109,8 @@ describe('the part of a rule that has not been answered', () => {
     const withValue = (value: unknown) =>
       incompleteRulePart(
         alterRule({
-          type: 'person',
-          attribute: 'age',
+          type: PERSON,
+          attribute: AGE,
           operator: 'EXACTLY',
           ...(value === undefined ? {} : { value }),
         }),
@@ -122,8 +127,8 @@ describe('the part of a rule that has not been answered', () => {
 
 describe('whether a rule is complete', () => {
   it('agrees with the part that is missing, in both directions', () => {
-    const complete = alterRule({ type: 'person', operator: 'EXISTS' });
-    const incomplete = alterRule({ type: 'person' });
+    const complete = alterRule({ type: PERSON, operator: 'EXISTS' });
+    const incomplete = alterRule({ type: PERSON });
 
     expect(isCompleteRule(complete)).toBe(true);
     expect(incompleteRulePart(complete)).toBeUndefined();

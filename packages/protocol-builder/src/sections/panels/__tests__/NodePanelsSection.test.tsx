@@ -10,9 +10,23 @@ import {
   answeredRule,
   personRule,
 } from '../../../editors/anonymisation/__tests__/anonymisationFixtures.tsx';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testId } from '../../../testing/testId.ts';
+import { testId, testTypeId } from '../../../testing/testId.ts';
 import NodePanelsSection from '../NodePanelsSection.tsx';
+
+const PLACE = testTypeId('place');
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const en = (text: string) => ({ 'en-US': text });
 
@@ -55,13 +69,13 @@ const nameGeneratorWith = (configured: SectionDoc[]) => ({
   type: 'NameGenerator' as const,
   fields: {
     label: en('Name Generator'),
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     form: {
       title: en('Add a person'),
       fields: [
         {
           id: testId('field-1'),
-          variable: 'name',
+          variable: NAME,
           prompt: en("What is this person's name?"),
         },
       ],
@@ -94,7 +108,7 @@ const panelWithAnEdgeRule = {
       {
         id: testId('rule-1'),
         type: 'edge',
-        options: { type: 'knows', operator: 'EXISTS' },
+        options: { type: KNOWS, operator: 'EXISTS' },
       },
     ],
   },
@@ -116,7 +130,7 @@ const panelWithAnEgoRule = {
         id: testId('rule-1'),
         type: 'ego',
         options: {
-          attribute: 'ego_name',
+          attribute: EGO_NAME,
           operator: 'EXACTLY',
           value: 'Ada',
         },
@@ -560,7 +574,7 @@ describe('the side panels a name generator shows', () => {
             fields: [
               {
                 id: testId('field-1'),
-                variable: 'name',
+                variable: NAME,
                 prompt: en('What is their name?'),
               },
             ],
@@ -701,7 +715,7 @@ describe('the side panels a name generator shows', () => {
               {
                 id: testId('rule-1'),
                 type: 'edge',
-                options: { type: 'knows', operator: 'EXISTS' },
+                options: { type: KNOWS, operator: 'EXISTS' },
               },
             ],
           },
@@ -830,7 +844,7 @@ describe('the side panels a name generator shows', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        place: {
+        [PLACE]: {
           name: 'place',
           color: 'node-color-seq-2',
           icon: 'add-a-place',
@@ -944,7 +958,7 @@ describe('a panel filter on an encrypted attribute', () => {
     dataSource,
     filter: {
       join: 'AND',
-      rules: [personRule(testId('rule-1'), 'relationship_to_ego')],
+      rules: [personRule(testId('rule-1'), RELATIONSHIP_TO_EGO)],
     },
   });
 
@@ -952,7 +966,7 @@ describe('a panel filter on an encrypted attribute', () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([panelReading('roster_data')]),
       sections: panels,
-      adapter: alreadyProtecting('relationship_to_ego'),
+      adapter: alreadyProtecting(RELATIONSHIP_TO_EGO),
     });
 
     const dialog = await openPanel(harness, 'Edit panel');
@@ -972,7 +986,7 @@ describe('a panel filter on an encrypted attribute', () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([panelReading('existing')]),
       sections: panels,
-      adapter: alreadyProtecting('relationship_to_ego'),
+      adapter: alreadyProtecting(RELATIONSHIP_TO_EGO),
     });
 
     const dialog = await openPanel(harness, 'Edit panel');
@@ -996,13 +1010,13 @@ describe('a panel filter on an encrypted attribute', () => {
       ...panelReading('existing'),
       filter: {
         join: 'AND',
-        rules: [answeredRule(testId('rule-1'), 'relationship_to_ego')],
+        rules: [answeredRule(testId('rule-1'), RELATIONSHIP_TO_EGO)],
       },
     };
     const harness = renderStageEditor({
       stage: nameGeneratorWith([panel]),
       sections: panels,
-      adapter: alreadyProtecting('relationship_to_ego'),
+      adapter: alreadyProtecting(RELATIONSHIP_TO_EGO),
     });
 
     const dialog = await openPanel(harness, 'Edit panel');

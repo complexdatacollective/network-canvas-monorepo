@@ -6,11 +6,20 @@ import {
   chooseAttributeById,
   offeredAttributes,
 } from '../../../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../../../testing/protocolFixture.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+} from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../../testing/testId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import OrdinalBinPromptsSection from '../OrdinalBinPromptsSection.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const CONTACT_FREQ = personVariable('contactFreq');
 
 /** The label of the field a prompt's scale is chosen in. */
 const SCALE_LABEL = 'Attribute';
@@ -91,7 +100,7 @@ describe('the questions an ordinal bin asks', () => {
     // gives `person` one, and the rest are text, boolean, number, layout and
     // categorical.
     expect(await offeredAttributes(harness.user, picker)).toEqual([
-      'contactFreq',
+      CONTACT_FREQ,
     ]);
     await waitFor(() =>
       expect(within(picker).getByText('contactFreq')).toBeVisible(),
@@ -151,7 +160,7 @@ describe('the questions an ordinal bin asks', () => {
     await chooseAttributeById(
       harness.user,
       await findScaleField(),
-      'contactFreq',
+      CONTACT_FREQ,
     );
 
     // Already chosen, so the prompt is complete without the researcher
@@ -189,14 +198,14 @@ describe('the questions an ordinal bin asks', () => {
         type: 'OrdinalBin',
         fields: {
           label: { 'en-US': 'Ordinal Bin' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           prompts: [
             {
               id: testId('ordinal-bin-legacy-prompt-1'),
               text: {
                 'en-US': 'How often do you have contact with this person?',
               },
-              variable: 'contactFreq',
+              variable: CONTACT_FREQ,
             },
           ],
         },
@@ -237,7 +246,7 @@ describe('the questions an ordinal bin asks', () => {
     await chooseAttributeById(
       harness.user,
       attributeField(SCALE_LABEL),
-      'contactFreq',
+      CONTACT_FREQ,
     );
 
     await waitFor(() =>
@@ -311,7 +320,11 @@ describe('the questions an ordinal bin asks', () => {
     const saved = prompts(request?.stageDocument ?? {})[0];
     expect(saved?.color).toBe('ord-color-seq-3');
     expect(saved?.binSortOrder).toEqual([
-      { id: expect.any(String), property: 'age', direction: 'asc' },
+      {
+        id: expect.any(String),
+        property: personVariable('age'),
+        direction: 'asc',
+      },
     ]);
     expect(saved?.id).toBe(fixturePromptId());
     // The rule went into the prompt, not beside it: a list inside a row dialog
@@ -341,14 +354,14 @@ describe('an ordinal bin prompt whose scale is not an ordinal attribute', () => 
         type: 'OrdinalBin',
         fields: {
           label: { 'en-US': 'Ordinal Bin' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           prompts: [
             {
               id: testId('prompt-a'),
               text: { 'en-US': 'How often?' },
               // Categorical: its values have no order for a scale to run
               // along, so this interface cannot draw them.
-              variable: 'contactType',
+              variable: personVariable('contactType'),
               color: 'ord-color-seq-1',
             },
           ],

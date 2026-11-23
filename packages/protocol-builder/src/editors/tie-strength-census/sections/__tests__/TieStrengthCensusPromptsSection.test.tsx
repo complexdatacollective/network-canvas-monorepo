@@ -13,6 +13,8 @@ import {
 } from '../../../../testing/attributePicker.ts';
 import {
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
   loadFixtureStage,
 } from '../../../../testing/protocolFixture.ts';
 import {
@@ -21,6 +23,13 @@ import {
 } from '../../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import TieStrengthCensusPromptsSection from '../TieStrengthCensusPromptsSection.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const CLOSENESS = fixtureVariableId(
+  { entity: 'edge', typeName: 'knows' },
+  'closeness',
+);
 
 /** The label of the field a prompt's scale is chosen in. */
 const SCALE_LABEL = 'Ordinal attribute';
@@ -121,9 +130,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     expect(await screen.findByRole('radio', { name: 'knows' })).toBeChecked();
     // The scale is the CONNECTION's attribute, not the person's.
     const picker = await findScaleField();
-    expect(await offeredAttributes(harness.user, picker)).toEqual([
-      'closeness',
-    ]);
+    expect(await offeredAttributes(harness.user, picker)).toEqual([CLOSENESS]);
     await waitFor(() =>
       expect(within(picker).getByText('closeness')).toBeVisible(),
     );
@@ -323,8 +330,8 @@ describe('the questions a tie-strength census asks about a pair', () => {
 
     const request = await harness.submit();
     expect(prompts(request?.stageDocument ?? {})[0]).toMatchObject({
-      createEdge: 'knows',
-      edgeVariable: 'closeness',
+      createEdge: KNOWS,
+      edgeVariable: CLOSENESS,
     });
   });
 
@@ -376,17 +383,17 @@ describe('the questions a tie-strength census asks about a pair', () => {
     };
     await waitFor(() =>
       expect(
-        harness.editorCodebook().edge?.knows?.variables?.closeness,
+        harness.editorCodebook().edge?.[KNOWS]?.variables?.[CLOSENESS],
       ).toMatchObject(edited),
     );
     // The protocol keeps the old points until the stage is saved.
     expect(
-      harness.hostCodebook().edge?.knows?.variables?.closeness,
+      harness.hostCodebook().edge?.[KNOWS]?.variables?.[CLOSENESS],
     ).not.toMatchObject(edited);
 
     await harness.submit();
     expect(
-      harness.hostCodebook().edge?.knows?.variables?.closeness,
+      harness.hostCodebook().edge?.[KNOWS]?.variables?.[CLOSENESS],
     ).toMatchObject(edited);
   });
 
@@ -437,11 +444,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
       'How much trust?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await chooseAttributeById(
-      harness.user,
-      await findScaleField(),
-      'closeness',
-    );
+    await chooseAttributeById(harness.user, await findScaleField(), CLOSENESS);
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
@@ -464,11 +467,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
       'How much trust?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await chooseAttributeById(
-      harness.user,
-      await findScaleField(),
-      'closeness',
-    );
+    await chooseAttributeById(harness.user, await findScaleField(), CLOSENESS);
     await writeInto(
       harness,
       screen.getByRole('textbox', { name: 'Decline option' }),
@@ -486,8 +485,8 @@ describe('the questions a tie-strength census asks about a pair', () => {
     expect(rows[1]).toEqual({
       id: expect.any(String) as unknown as string,
       text: { 'en-US': 'How much trust?' },
-      createEdge: 'knows',
-      edgeVariable: 'closeness',
+      createEdge: KNOWS,
+      edgeVariable: CLOSENESS,
       negativeLabel: { 'en-US': 'Not at all' },
     });
   });
@@ -567,7 +566,7 @@ describe('creating a scale from inside a tie-strength prompt', () => {
 
     // Not in the protocol: nothing is written until the stage is saved.
     expect(
-      Object.values(harness.hostCodebook().edge?.knows?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().edge?.[KNOWS]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).not.toContain('trust');
@@ -580,18 +579,18 @@ describe('creating a scale from inside a tie-strength prompt', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
     expect(
-      Object.values(harness.editorCodebook().edge?.knows?.variables ?? {}).map(
-        (variable) => variable.name,
-      ),
+      Object.values(
+        harness.editorCodebook().edge?.[KNOWS]?.variables ?? {},
+      ).map((variable) => variable.name),
     ).toContain('trust');
     expect(
-      Object.values(harness.editorCodebook().node?.person?.variables ?? {}).map(
-        (variable) => variable.name,
-      ),
+      Object.values(
+        harness.editorCodebook().node?.[PERSON]?.variables ?? {},
+      ).map((variable) => variable.name),
     ).not.toContain('trust');
     await harness.submit();
     expect(
-      Object.values(harness.hostCodebook().edge?.knows?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().edge?.[KNOWS]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).toContain('trust');
@@ -721,7 +720,7 @@ describe('a tie-strength prompt whose scale has gone', () => {
 
     harness.receiveCodebookUpdate({
       edge: {
-        knows: {
+        [KNOWS]: {
           name: 'knows',
           color: 'edge-color-seq-1',
           variables: {},
@@ -730,7 +729,7 @@ describe('a tie-strength prompt whose scale has gone', () => {
     });
     expect(
       await screen.findByText(
-        'closeness — this attribute is not available here',
+        `${CLOSENESS} — this attribute is not available here`,
       ),
     ).toBeInTheDocument();
 
@@ -749,16 +748,16 @@ const PEDIGREE_SECTION = sectionId({
   kind: 'stage',
   stageId: fixtureStageId('family-pedigree-1'),
 });
-const CENSUS_EDGE = 'knows';
+const CENSUS_EDGE = KNOWS;
 const CENSUS_EDGE_SECTION = sectionId({
   kind: 'codebookEdge',
   typeId: CENSUS_EDGE,
 });
 const PEDIGREE_EDGE_SECTION = sectionId({
   kind: 'codebookEdge',
-  typeId: 'family_edge',
+  typeId: fixtureTypeId('edge', 'family_edge'),
 });
-const SCALE_VARIABLE = 'closeness';
+const SCALE_VARIABLE = CLOSENESS;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -794,12 +793,12 @@ function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
   }
   if (censusEdge === undefined) {
     throw new Error(
-      `the fixture protocol has no "${CENSUS_EDGE}" edge type, which is the one this census's prompt asks about.`,
+      `the fixture protocol has no "knows" edge type, which is the one this census's prompt asks about.`,
     );
   }
   if (edgeConfiguration.type === CENSUS_EDGE) {
     throw new Error(
-      `the fixture pedigree already records "${CENSUS_EDGE}" connections, so pointing it there proves nothing.`,
+      `the fixture pedigree already records "knows" connections, so pointing it there proves nothing.`,
     );
   }
 
@@ -850,7 +849,7 @@ describe('a tie-strength prompt whose scale a pedigree sets', () => {
     // reference the researcher has to repair.
     const scale = await findScaleField();
     await waitFor(() =>
-      expect(within(scale).getByText(SCALE_VARIABLE)).toBeVisible(),
+      expect(within(scale).getByText('closeness')).toBeVisible(),
     );
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));

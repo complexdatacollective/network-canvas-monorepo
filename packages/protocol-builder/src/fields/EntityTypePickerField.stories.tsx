@@ -8,10 +8,15 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import { fixtureStageId } from '../testing/protocolFixture.ts';
+import { fixtureStageId, fixtureTypeId } from '../testing/protocolFixture.ts';
+import { testTypeId } from '../testing/testId.ts';
 import EntityTypePickerField, {
   EntitySubjectPickerField,
 } from './EntityTypePickerField.tsx';
+
+const ORGANISATION = testTypeId('organisation');
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
 const meta = {
   title: 'Protocol Builder/Fields/Entity type picker',
@@ -144,7 +149,7 @@ export const ATypeAddedElsewhere: Story = {
   args: {
     seedEdit: (host) => {
       host.store.applyAsCollaborator(
-        sectionId({ kind: 'codebookNode', typeId: 'organisation' }),
+        sectionId({ kind: 'codebookNode', typeId: ORGANISATION }),
         {
           name: 'organisation',
           color: 'node-color-seq-3',
@@ -173,7 +178,7 @@ export const ATypeThatWasDeleted: Story = {
   args: {
     seedEdit: (host) => {
       host.store.applyAsCollaborator(
-        sectionId({ kind: 'codebookNode', typeId: 'person' }),
+        sectionId({ kind: 'codebookNode', typeId: PERSON }),
         undefined,
       );
     },
@@ -332,7 +337,7 @@ export const OnAProtocolWithNoTypes: Story = {
       />
     ),
     seedEdit: (host) => {
-      for (const typeId of ['person', 'family_member']) {
+      for (const typeId of [PERSON, FAMILY_MEMBER]) {
         host.store.applyAsCollaborator(
           sectionId({ kind: 'codebookNode', typeId }),
           undefined,

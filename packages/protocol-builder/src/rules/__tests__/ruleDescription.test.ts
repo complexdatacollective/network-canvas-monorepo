@@ -2,8 +2,24 @@ import { describe, expect, it } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
 
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { describeRule } from '../ruleDescription.ts';
 import { testCodebook } from './fixtures.ts';
+
+const PERSON = testTypeId('person');
+const FRIEND = testTypeId('friend');
+const GHOST = testTypeId('ghost');
+const RIVAL = testTypeId('rival');
+const AGE = testVariableId('age');
+const CLOSENESS = testVariableId('closeness');
+const CONSENT = testVariableId('consent');
+const EGO_NAME = testVariableId('egoName');
+const FAVOURITE_COLOUR = testVariableId('favouriteColour');
+const GONE = testVariableId('gone');
+const MET = testVariableId('met');
+const MOOD = testVariableId('mood');
+const NOTE = testVariableId('note');
+const SECRET = testVariableId('secret');
 
 const codebook = testCodebook;
 
@@ -13,14 +29,14 @@ describe('describeRule', () => {
       rule: {
         id: 'rule-1',
         type: 'node',
-        options: { type: 'person', operator: 'EXISTS' },
+        options: { type: PERSON, operator: 'EXISTS' },
       },
       codebook,
     });
 
     expect(description.entity).toEqual({
       kind: 'node',
-      typeId: 'person',
+      typeId: PERSON,
       label: 'Person',
       color: 'node-color-seq-2',
       shape: 'square',
@@ -40,8 +56,8 @@ describe('describeRule', () => {
         id: 'rule-2',
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'mood',
+          type: PERSON,
+          attribute: MOOD,
           operator: 'INCLUDES',
           value: ['happy', 'sad'],
         },
@@ -50,7 +66,7 @@ describe('describeRule', () => {
     });
 
     expect(description.attribute).toEqual({
-      id: 'mood',
+      id: MOOD,
       label: 'Mood',
       type: 'categorical',
       missing: false,
@@ -68,8 +84,8 @@ describe('describeRule', () => {
         id: 'rule-3',
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'note',
+          type: PERSON,
+          attribute: NOTE,
           operator: 'CONTAINS',
           value: '.*abc.*',
         },
@@ -89,8 +105,8 @@ describe('describeRule', () => {
         id: 'rule-21',
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'mood',
+          type: PERSON,
+          attribute: MOOD,
           operator: 'CONTAINS',
           value: '.*happy.*',
         },
@@ -113,8 +129,8 @@ describe('describeRule', () => {
         id: 'rule-4',
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'mood',
+          type: PERSON,
+          attribute: MOOD,
           operator: 'OPTIONS_GREATER_THAN',
           value: 1,
         },
@@ -134,7 +150,7 @@ describe('describeRule', () => {
         id: 'rule-5',
         type: 'ego',
         options: {
-          attribute: 'egoName',
+          attribute: EGO_NAME,
           operator: 'EXACTLY',
           value: 'Alex',
         },
@@ -159,8 +175,8 @@ describe('describeRule', () => {
         id: 'rule-6',
         type: 'edge',
         options: {
-          type: 'friend',
-          attribute: 'closeness',
+          type: FRIEND,
+          attribute: CLOSENESS,
           operator: 'GREATER_THAN',
           value: 3,
         },
@@ -193,7 +209,7 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-13',
           type: 'node',
-          options: { type: 'person', attribute: 'age', operator: 'EXISTS' },
+          options: { type: PERSON, attribute: AGE, operator: 'EXISTS' },
         },
         codebook,
       });
@@ -209,7 +225,7 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-14',
           type: 'node',
-          options: { type: 'person', attribute: 'age', operator: 'NOT_EXISTS' },
+          options: { type: PERSON, attribute: AGE, operator: 'NOT_EXISTS' },
         },
         codebook,
       });
@@ -223,7 +239,7 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-15',
           type: 'ego',
-          options: { attribute: 'egoName', operator: 'EXISTS' },
+          options: { attribute: EGO_NAME, operator: 'EXISTS' },
         },
         codebook,
       });
@@ -238,8 +254,8 @@ describe('describeRule', () => {
           id: 'rule-16',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'age',
+            type: PERSON,
+            attribute: AGE,
             operator: 'EXISTS',
             // Nothing is compared, so an operand a legacy protocol left behind
             // is not part of what the rule says.
@@ -258,7 +274,7 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-17',
           type: 'node',
-          options: { type: 'person', attribute: 'note', operator: 'EXISTS' },
+          options: { type: PERSON, attribute: NOTE, operator: 'EXISTS' },
         },
         codebook,
       });
@@ -277,8 +293,8 @@ describe('describeRule', () => {
           id: 'rule-18',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'note',
+            type: PERSON,
+            attribute: NOTE,
             operator: 'GREATER_THAN',
             value: 3,
           },
@@ -299,8 +315,8 @@ describe('describeRule', () => {
           id: 'rule-19',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'age',
+            type: PERSON,
+            attribute: AGE,
             operator: 'GREATER_THAN',
             value: 3,
           },
@@ -317,8 +333,8 @@ describe('describeRule', () => {
           id: 'rule-20',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'favouriteColour',
+            type: PERSON,
+            attribute: FAVOURITE_COLOUR,
             operator: 'GREATER_THAN',
             value: 3,
           },
@@ -345,7 +361,7 @@ describe('describeRule', () => {
           // the schema's type-level set is EXISTS/NOT_EXISTS. A hand-edited or
           // imported protocol can hold this, and the row is where the
           // researcher has to be able to see it.
-          options: { type: 'person', operator: 'EXACTLY', value: 3 },
+          options: { type: PERSON, operator: 'EXACTLY', value: 3 },
         },
         codebook,
       });
@@ -362,7 +378,7 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-22',
           type: 'node',
-          options: { type: 'person', operator: 'NOT_EXISTS' },
+          options: { type: PERSON, operator: 'NOT_EXISTS' },
         },
         codebook,
       });
@@ -378,8 +394,8 @@ describe('describeRule', () => {
           // The same operator, against an attribute that allows it. A presence
           // check that reached this rule would refuse a rule that is correct.
           options: {
-            type: 'person',
-            attribute: 'age',
+            type: PERSON,
+            attribute: AGE,
             operator: 'EXACTLY',
             value: 3,
           },
@@ -395,7 +411,7 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-24',
           type: 'chimera',
-          options: { type: 'person', operator: 'EXACTLY', value: 3 },
+          options: { type: PERSON, operator: 'EXACTLY', value: 3 },
         },
         codebook,
       });
@@ -415,8 +431,8 @@ describe('describeRule', () => {
           id: 'rule-7',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'favouriteColour',
+            type: PERSON,
+            attribute: FAVOURITE_COLOUR,
             operator: 'EXACTLY',
             value: 'blue',
           },
@@ -425,8 +441,8 @@ describe('describeRule', () => {
       });
 
       expect(description.attribute).toEqual({
-        id: 'favouriteColour',
-        label: 'favouriteColour',
+        id: FAVOURITE_COLOUR,
+        label: FAVOURITE_COLOUR,
         type: undefined,
         missing: true,
       });
@@ -438,7 +454,7 @@ describe('describeRule', () => {
       // The rest of the sentence still reads, so the researcher can see which
       // rule they have to fix.
       expect(description.text).toBe(
-        'Person where favouriteColour is exactly equal to blue',
+        `Person where ${FAVOURITE_COLOUR} is exactly equal to blue`,
       );
     });
 
@@ -447,14 +463,14 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-8',
           type: 'node',
-          options: { type: 'ghost', operator: 'EXISTS' },
+          options: { type: GHOST, operator: 'EXISTS' },
         },
         codebook,
       });
 
       expect(description.entity).toMatchObject({
         kind: 'node',
-        label: 'ghost',
+        label: GHOST,
         missing: true,
       });
       expect(description.problems.map((problem) => problem.code)).toContain(
@@ -467,7 +483,7 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-9',
           type: 'edge',
-          options: { type: 'rival', operator: 'NOT_EXISTS' },
+          options: { type: RIVAL, operator: 'NOT_EXISTS' },
         },
         codebook,
       });
@@ -483,7 +499,7 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-10',
           type: 'ego',
-          options: { attribute: 'egoName', operator: 'EXISTS' },
+          options: { attribute: EGO_NAME, operator: 'EXISTS' },
         },
         codebook: { node: {}, edge: {} },
       });
@@ -507,8 +523,8 @@ describe('describeRule', () => {
       id: 'rule-11',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'secret',
+        type: PERSON,
+        attribute: SECRET,
         operator: 'EXACTLY',
         value: 'Ada',
       },
@@ -519,7 +535,7 @@ describe('describeRule', () => {
 
       // Still the attribute the codebook has, not one it lost.
       expect(description.attribute).toMatchObject({
-        id: 'secret',
+        id: SECRET,
         label: 'Secret',
         missing: false,
       });
@@ -540,7 +556,7 @@ describe('describeRule', () => {
             rule: {
               id: 'rule-12',
               type: 'node',
-              options: { type: 'person', attribute: 'secret', operator },
+              options: { type: PERSON, attribute: SECRET, operator },
             },
             codebook,
           }).problems,
@@ -576,8 +592,8 @@ describe('describeRule', () => {
           id: 'rule-22',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'mood',
+            type: PERSON,
+            attribute: MOOD,
             operator: 'EXACTLY',
             value: 5,
           },
@@ -597,8 +613,8 @@ describe('describeRule', () => {
           id: 'rule-23',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'age',
+            type: PERSON,
+            attribute: AGE,
             operator: 'EXACTLY',
             value: ['happy'],
           },
@@ -617,8 +633,8 @@ describe('describeRule', () => {
           id: 'rule-24',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'mood',
+            type: PERSON,
+            attribute: MOOD,
             operator: 'EXACTLY',
             value: ['happy'],
           },
@@ -635,8 +651,8 @@ describe('describeRule', () => {
           id: 'rule-25',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'mood',
+            type: PERSON,
+            attribute: MOOD,
             operator: 'OPTIONS_EQUALS',
             value: 2,
           },
@@ -653,8 +669,8 @@ describe('describeRule', () => {
           id: 'rule-26',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'mood',
+            type: PERSON,
+            attribute: MOOD,
             operator: 'INCLUDES',
             // The runtime compares one option against the stored selection, so
             // a rule authored before the editor emitted a list still matches.
@@ -673,8 +689,8 @@ describe('describeRule', () => {
           id: 'rule-27',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'favouriteColour',
+            type: PERSON,
+            attribute: FAVOURITE_COLOUR,
             operator: 'EXACTLY',
             value: ['happy'],
           },
@@ -707,8 +723,8 @@ describe('describeRule', () => {
           id: 'rule-28',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'mood',
+            type: PERSON,
+            attribute: MOOD,
             operator: 'EXACTLY',
             value: ['retired'],
           },
@@ -728,8 +744,8 @@ describe('describeRule', () => {
           id: 'rule-29',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'mood',
+            type: PERSON,
+            attribute: MOOD,
             operator: 'INCLUDES',
             value: ['happy', 'retired'],
           },
@@ -748,8 +764,8 @@ describe('describeRule', () => {
           id: 'rule-30',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'mood',
+            type: PERSON,
+            attribute: MOOD,
             operator: 'INCLUDES',
             value: ['happy', 'sad'],
           },
@@ -769,8 +785,8 @@ describe('describeRule', () => {
           id: 'rule-31',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'mood',
+            type: PERSON,
+            attribute: MOOD,
             operator: 'EXACTLY',
             value: ['retired'],
           },
@@ -793,13 +809,13 @@ describe('describeRule', () => {
      */
     const sparseCodebook: Readonly<Codebook> = Object.freeze({
       node: {
-        person: {
+        [PERSON]: {
           name: '',
           color: 'node-color-seq-2',
           shape: { default: 'square' },
         },
       },
-      edge: { friend: { name: '' } },
+      edge: { [FRIEND]: { name: '' } },
     });
 
     it('names a node type by its id', () => {
@@ -807,13 +823,13 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-28',
           type: 'node',
-          options: { type: 'person', operator: 'EXISTS' },
+          options: { type: PERSON, operator: 'EXISTS' },
         },
         codebook: sparseCodebook,
       });
 
-      expect(description.entity?.label).toBe('person');
-      expect(description.text).toBe('person exists');
+      expect(description.entity?.label).toBe(PERSON);
+      expect(description.text).toBe(`${PERSON} exists`);
     });
 
     it('names an edge type by its id', () => {
@@ -821,13 +837,13 @@ describe('describeRule', () => {
         rule: {
           id: 'rule-29',
           type: 'edge',
-          options: { type: 'friend', operator: 'NOT_EXISTS' },
+          options: { type: FRIEND, operator: 'NOT_EXISTS' },
         },
         codebook: sparseCodebook,
       });
 
-      expect(description.entity?.label).toBe('friend');
-      expect(description.text).toBe('friend does not exist');
+      expect(description.entity?.label).toBe(FRIEND);
+      expect(description.text).toBe(`${FRIEND} does not exist`);
     });
   });
 
@@ -846,7 +862,7 @@ describe('describeRule', () => {
 
     it('reports an unfinished rule as incomplete', () => {
       const description = describeRule({
-        rule: { id: 'rule-11', type: 'node', options: { type: 'person' } },
+        rule: { id: 'rule-11', type: 'node', options: { type: PERSON } },
         codebook,
       });
       expect(description.problems.map((problem) => problem.code)).toContain(
@@ -860,8 +876,8 @@ describe('describeRule', () => {
           id: 'rule-12',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'age',
+            type: PERSON,
+            attribute: AGE,
             operator: 'EXACTLY',
             value: { nested: true },
           },
@@ -889,20 +905,20 @@ describe('describeRule', () => {
           id: 'rule-13',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'consent',
+            type: PERSON,
+            attribute: CONSENT,
             operator: 'INCLUDES',
             value: [true],
           },
         },
         codebook: {
           node: {
-            person: {
+            [PERSON]: {
               name: 'Person',
               color: 'node-color-seq-2',
               shape: { default: 'square' },
               variables: {
-                consent: {
+                [CONSENT]: {
                   name: 'Consent',
                   type: 'categorical',
                   options: [
@@ -942,12 +958,12 @@ describe('describeRule', () => {
 describe('a problem beside an operator that negates its comparison', () => {
   const yearCodebook: Readonly<Codebook> = {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          met: {
+          [MET]: {
             name: 'Met on',
             type: 'datetime',
             component: 'DatePicker',
@@ -962,8 +978,8 @@ describe('a problem beside an operator that negates its comparison', () => {
     id: 'rule-1',
     type: 'node' as const,
     options: {
-      type: 'person',
-      attribute: 'met',
+      type: PERSON,
+      attribute: MET,
       operator,
       value: '2020-05-14',
     },
@@ -1003,12 +1019,12 @@ describe('a problem beside an operator that negates its comparison', () => {
   it('makes no never-match claim in any date message', () => {
     const boundedCodebook: Readonly<Codebook> = {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            met: {
+            [MET]: {
               name: 'Met on',
               type: 'datetime',
               component: 'DatePicker',
@@ -1031,8 +1047,8 @@ describe('a problem beside an operator that negates its comparison', () => {
           id: 'rule-1',
           type: 'node',
           options: {
-            type: 'person',
-            attribute: 'met',
+            type: PERSON,
+            attribute: MET,
             operator: 'NOT',
             value,
           },
@@ -1102,7 +1118,7 @@ describe('a rule that counts edges', () => {
       rule: {
         id: 'count-4',
         type: 'edge',
-        options: { type: 'gone', count: 'FEWEST' },
+        options: { type: GONE, count: 'FEWEST' },
       },
       codebook,
     });

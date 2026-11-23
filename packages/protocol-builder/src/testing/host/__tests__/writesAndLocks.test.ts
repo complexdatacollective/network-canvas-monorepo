@@ -11,8 +11,12 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import { fixtureStageId } from '../../protocolFixture.ts';
-import { testId } from '../../testId.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../protocolFixture.ts';
+import { testId, testTypeId, testVariableId } from '../../testId.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -20,6 +24,13 @@ import {
 import type { HostPrincipal } from '../protocolStore.ts';
 import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
 import { procedureTags } from './contractProcedures.ts';
+
+const EGO_AGE = testVariableId('ego_age');
+const PERSON_TYPE = fixtureTypeId('node', 'person');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
 
 /** The edit these calls are made from: one editor, open throughout. */
 const EDIT = 'edit-1';
@@ -34,8 +45,9 @@ const INFORMATION = sectionId({
   kind: 'stage',
   stageId: fixtureStageId('information-1'),
 });
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const SPARE = sectionId({ kind: 'codebookNode', typeId: 'spare' });
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
+const SPARE_TYPE = testTypeId('spare');
+const SPARE = sectionId({ kind: 'codebookNode', typeId: SPARE_TYPE });
 const EGO = sectionId({ kind: 'codebookEgo' });
 
 const ADA: HostPrincipal = {
@@ -302,7 +314,7 @@ const CALLS: readonly Call[] = [
         kind: 'codebookEgo',
         document: Redacted.make({
           variables: {
-            ego_age: {
+            [EGO_AGE]: {
               name: 'ego_age',
               type: 'number',
               component: 'Number',
@@ -327,8 +339,8 @@ const CALLS: readonly Call[] = [
     run: (host) =>
       host.adapter.rpcCall('RefactorDeleteVariable', {
         protocolId: host.protocolId,
-        subject: { entity: 'node', type: 'person' },
-        variableId: 'relationship_to_ego',
+        subject: { entity: 'node', type: PERSON_TYPE },
+        variableId: RELATIONSHIP_TO_EGO,
       }),
   },
   {
@@ -340,7 +352,7 @@ const CALLS: readonly Call[] = [
       host.adapter.rpcCall('RefactorDeleteEntityType', {
         protocolId: host.protocolId,
         entity: 'node',
-        typeId: 'spare',
+        typeId: SPARE_TYPE,
       }),
   },
   {

@@ -10,16 +10,30 @@ import type { RuleDraft } from '../../../rules/rule.ts';
 import {
   loadFixtureStage,
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import {
   type CodebookPatch,
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testId } from '../../../testing/testId.ts';
+import { testId, testVariableId } from '../../../testing/testId.ts';
 import BuilderSection from '../../BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../interviewer-guidance/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../SkipLogicSection.tsx';
+
+const BORN = testVariableId('born');
+const PERSON = fixtureTypeId('node', 'person');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
+const CONTACT_TYPE = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactType',
+);
+const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
 
 /**
  * The stage most of these open: the third of the fixture's twenty, and the
@@ -34,12 +48,12 @@ const STAGE = loadFixtureStage('information-1');
  */
 const LATE_STAGE = loadFixtureStage('narrative-1');
 
-const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const personSection = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 const nodeRule = (id: string): RuleDraft => ({
   id,
   type: 'node',
-  options: { type: 'person', operator: 'EXISTS' },
+  options: { type: PERSON, operator: 'EXISTS' },
 });
 
 /** The stage under test, with these keys written over the fixture's own. */
@@ -151,7 +165,7 @@ const personWith = (
   variables: Record<string, unknown>,
 ): CodebookPatch => ({
   node: {
-    person: { ...harness.protocolSections()[personSection], variables },
+    [PERSON]: { ...harness.protocolSections()[personSection], variables },
   },
 });
 
@@ -297,7 +311,7 @@ describe('a stage editor composing the skip-logic section', () => {
           {
             id: expect.any(String) as unknown as string,
             type: 'node',
-            options: { type: 'person', operator: 'EXISTS' },
+            options: { type: PERSON, operator: 'EXISTS' },
           },
         ],
       },
@@ -375,8 +389,8 @@ describe('a rule set the researcher cannot save', () => {
             id: testId('rule-a'),
             type: 'node',
             options: {
-              type: 'person',
-              attribute: 'age',
+              type: PERSON,
+              attribute: AGE,
               operator: 'GREATER_THAN',
               value: 30,
             },
@@ -478,8 +492,8 @@ describe('a rule set the researcher cannot save', () => {
                 id: testId('rule-a'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'relationship_to_ego',
+                  type: PERSON,
+                  attribute: RELATIONSHIP_TO_EGO,
                   operator: 'CONTAINS',
                   // An unterminated character class.
                   value: '[unclosed',
@@ -531,8 +545,8 @@ describe('a rule set the researcher cannot save', () => {
                 id: testId('rule-a'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'born',
+                  type: PERSON,
+                  attribute: BORN,
                   operator: 'EXACTLY',
                   value: '2020-05-14',
                 },
@@ -546,7 +560,7 @@ describe('a rule set the researcher cannot save', () => {
 
     harness.receiveCodebookUpdate(
       personWith(harness, {
-        born: {
+        [BORN]: {
           name: 'Born',
           type: 'datetime',
           component: 'DatePicker',
@@ -562,7 +576,7 @@ describe('a rule set the researcher cannot save', () => {
       personWith(harness, {
         // The attribute is still a datetime and the operator is still legal
         // for one. Only the dates it records have changed.
-        born: {
+        [BORN]: {
           name: 'Born',
           type: 'datetime',
           component: 'DatePicker',
@@ -633,7 +647,7 @@ describe('a rule set the researcher cannot save', () => {
     // something the schema accepts.
     harness.receiveCodebookUpdate(
       personWith(harness, {
-        age: { name: 'Age', type: 'text' },
+        [AGE]: { name: 'Age', type: 'text' },
       }),
     );
 
@@ -666,8 +680,8 @@ describe('a rule set the researcher cannot save', () => {
                 id: testId('rule-a'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'contactType',
+                  type: PERSON,
+                  attribute: CONTACT_TYPE,
                   operator: 'INCLUDES',
                   value: ['call'],
                 },
@@ -686,7 +700,7 @@ describe('a rule set the researcher cannot save', () => {
       personWith(harness, {
         // The attribute is still a categorical and the operator is still legal
         // for one. Only the option this rule names has gone.
-        contactType: {
+        [CONTACT_TYPE]: {
           name: 'contactType',
           type: 'categorical',
           options: [
@@ -730,8 +744,8 @@ describe('a rule set the researcher cannot save', () => {
                 id: testId('rule-a'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'contactType',
+                  type: PERSON,
+                  attribute: CONTACT_TYPE,
                   operator: 'INCLUDES',
                   value: ['retired'],
                 },
@@ -784,14 +798,14 @@ describe('a rule set the researcher cannot save', () => {
               {
                 id: testId('rule-a'),
                 type: 'node',
-                options: { type: 'person', operator: 'EXISTS' },
+                options: { type: PERSON, operator: 'EXISTS' },
               },
               {
                 id: testId('rule-a'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'age',
+                  type: PERSON,
+                  attribute: AGE,
                   operator: 'EXACTLY',
                   value: 30,
                 },
@@ -844,8 +858,8 @@ describe('a rule set the researcher cannot save', () => {
                 id: testId('rule-a'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'age',
+                  type: PERSON,
+                  attribute: AGE,
                   operator: 'EXACTLY',
                 },
               },

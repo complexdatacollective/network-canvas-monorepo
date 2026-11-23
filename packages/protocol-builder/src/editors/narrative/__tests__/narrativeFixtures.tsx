@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { fixtureTypeId } from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { suppliedWordingFor } from '../../../testing/suppliedWording.ts';
 import { testId } from '../../../testing/testId.ts';
@@ -34,7 +35,8 @@ export const narrativeSections = (
   </>
 );
 
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON = fixtureTypeId('node', 'person');
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 /** The presets of a saved stage, read as tolerantly as the editor reads them. */
 export const presetsOf = (
@@ -51,7 +53,7 @@ export const presetsOf = (
 export const narrativeHolding = (preset: Record<string, unknown>) => {
   const fields = {
     label: { 'en-US': 'Narrative' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     background: { concentricCircles: 4, skewedTowardCenter: true },
     behaviours: { freeDraw: true, allowRepositioning: true },
     presets: [preset],

@@ -3,8 +3,11 @@ import { dirname, join, relative, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId } from '../../testing/testId.ts';
 import type * as RuleDescriptionModule from '../ruleDescription.ts';
 import { testCodebook } from './fixtures.ts';
+
+const PERSON = testTypeId('person');
 
 /**
  * `describeRule` is the package's one public rule export, and its consumer —
@@ -44,7 +47,7 @@ describe('the rule description a host imports', () => {
         rule: {
           id: 'rule-1',
           type: 'node',
-          options: { type: 'person', operator: 'EXISTS' },
+          options: { type: PERSON, operator: 'EXISTS' },
         },
         codebook: testCodebook,
       }).text,

@@ -16,8 +16,14 @@ import BuilderSection from '../../sections/BuilderSection.tsx';
 import FormFieldsSection from '../../sections/form-fields/FormFieldsSection.tsx';
 import type { StageFormDraft } from '../../stageDocument.ts';
 import { useStageEdit } from '../../stageEdit.tsx';
+import { fixtureVariableId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { useStageEditorForm } from '../stageEditorContext.ts';
+
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
 vi.mock('../../fields/RichTextField.tsx', () => ({
@@ -167,7 +173,7 @@ it('follows a row a list section has added beneath a top-level key', async () =>
   expect(fieldsOf(read().draft)).toHaveLength(1);
 
   const dialog = await openField(harness, 'Create new form field');
-  await collectAttribute(harness, dialog, 'relationship_to_ego');
+  await collectAttribute(harness, dialog, RELATIONSHIP_TO_EGO);
   await writeInto(
     harness,
     dialog.getByRole('textbox', { name: 'Question text' }),

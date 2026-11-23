@@ -3,18 +3,25 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
+import { testTypeId, testVariableId } from '../../../testing/testId.ts';
 import CodebookSurface from '../CodebookSurface.tsx';
+
+const PERSON = testTypeId('person');
+const KNOWS = testTypeId('knows');
+const AGE = testVariableId('age');
+const CLOSENESS = testVariableId('closeness');
+const CONSENT = testVariableId('consent');
 
 const context: ProtocolBuilderProtocolContext = {
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          age: {
+          [AGE]: {
             name: 'Age',
             type: 'number',
             component: 'Number',
@@ -23,11 +30,11 @@ const context: ProtocolBuilderProtocolContext = {
       },
     },
     edge: {
-      knows: {
+      [KNOWS]: {
         name: 'Knows',
         color: 'edge-color-seq-1',
         variables: {
-          closeness: {
+          [CLOSENESS]: {
             name: 'Closeness',
             type: 'number',
           },
@@ -36,7 +43,7 @@ const context: ProtocolBuilderProtocolContext = {
     },
     ego: {
       variables: {
-        consent: { name: 'Consent', type: 'boolean' },
+        [CONSENT]: { name: 'Consent', type: 'boolean' },
       },
     },
   },
@@ -104,7 +111,7 @@ describe('CodebookSurface', () => {
     );
     expect(onEditEntity).toHaveBeenCalledWith({
       entity: 'node',
-      type: 'person',
+      type: PERSON,
     });
 
     await user.click(
@@ -119,7 +126,7 @@ describe('CodebookSurface', () => {
     );
     expect(onCreateVariable).toHaveBeenCalledWith({
       entity: 'edge',
-      type: 'knows',
+      type: KNOWS,
     });
 
     await user.click(
@@ -127,7 +134,7 @@ describe('CodebookSurface', () => {
         name: 'Edit attribute Consent for Ego attributes',
       }),
     );
-    expect(onEditVariable).toHaveBeenCalledWith({ entity: 'ego' }, 'consent');
+    expect(onEditVariable).toHaveBeenCalledWith({ entity: 'ego' }, CONSENT);
   });
 
   it('offers creation for a missing ego section and names empty groups explicitly', async () => {

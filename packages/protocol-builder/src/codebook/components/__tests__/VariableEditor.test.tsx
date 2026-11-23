@@ -15,12 +15,28 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
+import { testTypeId, testVariableId } from '../../../testing/testId.ts';
 import { richTextOf } from '../../../testing/text.ts';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import VariableEditor, {
   type VariableEditorProps,
 } from '../VariableEditor.tsx';
+
+const NEW_VARIABLE_ID = testVariableId('new-variable');
+const PREFERENCE_ID = testVariableId('preference');
+const GENDER_ID = testVariableId('gender');
+const COMMENT_ID = testVariableId('comment');
+const BIRTHDAY_ID = testVariableId('birthday');
+const SECRET_ID = testVariableId('secret');
+const SECOND_VARIABLE_ID = testVariableId('second-variable');
+const SUBJECT_ID = testVariableId('subject');
+const MET_ID = testVariableId('met');
+const CLOSENESS_ID = testVariableId('closeness');
+const FLAGGED_ID = testVariableId('flagged');
+
+const PERSON = testTypeId('person');
+const AGE = testVariableId('age');
 
 const ENGLISH = { defaultLocale: 'en', locales: ['en'] };
 
@@ -36,8 +52,8 @@ function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
 const render = (ui: ReactElement) =>
   renderUnwrapped(ui, { wrapper: InEnglishProtocol });
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const SUBJECT = { entity: 'node', type: PERSON } as const;
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
 const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   codebook: { node: {}, edge: {} },
   assets: {},
@@ -65,8 +81,7 @@ const TOO_FEW_OPTIONS =
   'Requires a minimum of two options. If you need fewer options, consider using a boolean attribute.';
 
 /** What a host says. None of it reaches the researcher. */
-const HOST_WORDS =
-  'Expected object, received undefined at codebook.node.person';
+const HOST_WORDS = `Expected object, received undefined at codebook.node.${PERSON}`;
 
 /**
  * The one thing a thrown refusal says that a researcher can act on.
@@ -159,7 +174,7 @@ function createProps(
     mode: 'create',
     subject: SUBJECT,
     authoritativeDocument: personDocument(),
-    variableId: 'new-variable',
+    variableId: NEW_VARIABLE_ID,
     initialDraft: { name: '', type: 'text' },
     protocolContext: EMPTY_CONTEXT,
     onSubmitDocument: async () => APPLIED,
@@ -208,7 +223,7 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
+    expect(submittedVariables(onSubmitDocument)[NEW_VARIABLE_ID]).toEqual({
       name: 'preference',
       type: 'categorical',
       options: [
@@ -219,7 +234,7 @@ describe('VariableEditor', () => {
     // The name as well as the id: a caller that can no longer use what was
     // created has to be able to say which attribute it was, and the id is a
     // record key the researcher has never seen.
-    expect(onComplete).toHaveBeenCalledWith('new-variable', 'preference');
+    expect(onComplete).toHaveBeenCalledWith(NEW_VARIABLE_ID, 'preference');
   });
 
   it('preserves host-supplied properties when creating a new variable', async () => {
@@ -243,7 +258,7 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
+    expect(submittedVariables(onSubmitDocument)[NEW_VARIABLE_ID]).toEqual({
       name: 'comment',
       type: 'text',
       component: 'TextArea',
@@ -261,7 +276,7 @@ describe('VariableEditor', () => {
         { label: { en: 'High' }, value: 2 },
       ],
     } as const;
-    const authoritativeDocument = personDocument({ preference: existing });
+    const authoritativeDocument = personDocument({ [PREFERENCE_ID]: existing });
     const onSubmitDocument = submitting();
 
     render(
@@ -270,7 +285,7 @@ describe('VariableEditor', () => {
         mode="update"
         subject={SUBJECT}
         authoritativeDocument={authoritativeDocument}
-        variableId="preference"
+        variableId={PREFERENCE_ID}
         initialDraft={existing}
         onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
@@ -287,7 +302,7 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument).preference).toEqual({
+    expect(submittedVariables(onSubmitDocument)[PREFERENCE_ID]).toEqual({
       name: 'ranking',
       type: 'ordinal',
       options: existing.options,
@@ -319,8 +334,8 @@ describe('VariableEditor', () => {
           openId="managed"
           mode="update"
           subject={SUBJECT}
-          authoritativeDocument={personDocument({ gender: MANAGED })}
-          variableId="gender"
+          authoritativeDocument={personDocument({ [GENDER_ID]: MANAGED })}
+          variableId={GENDER_ID}
           initialDraft={MANAGED}
           managedByStages={managedByStages}
           onSubmitDocument={onSubmitDocument}
@@ -368,7 +383,7 @@ describe('VariableEditor', () => {
       // asked for the name alone, so `options` is not among the properties it
       // owns.
       expect(onSubmitDocument.mock.calls[0]?.[1]).not.toContain('options');
-      expect(submittedVariables(onSubmitDocument).gender).toEqual({
+      expect(submittedVariables(onSubmitDocument)[GENDER_ID]).toEqual({
         ...MANAGED,
         name: 'gender_identity',
       });
@@ -419,8 +434,8 @@ describe('VariableEditor', () => {
           openId="row-choice"
           mode="update"
           subject={SUBJECT}
-          authoritativeDocument={personDocument({ gender: GENDER })}
-          variableId="gender"
+          authoritativeDocument={personDocument({ [GENDER_ID]: GENDER })}
+          variableId={GENDER_ID}
           initialDraft={GENDER}
           managedByStages={managedByStages}
           optionRowChoice={ROW_CHOICE}
@@ -463,7 +478,7 @@ describe('VariableEditor', () => {
       await user.click(save);
 
       expect(onSubmitDocument).not.toHaveBeenCalled();
-      expect(onComplete).toHaveBeenCalledWith('gender', 'gender', [
+      expect(onComplete).toHaveBeenCalledWith(GENDER_ID, 'gender', [
         { value: 'woman', choice: 'feminine' },
         { value: 'man', choice: 'neutral' },
       ]);
@@ -493,14 +508,14 @@ describe('VariableEditor', () => {
       await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
       await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
-      expect(submittedVariables(onSubmitDocument).gender).toEqual({
+      expect(submittedVariables(onSubmitDocument)[GENDER_ID]).toEqual({
         ...GENDER,
         options: [
           { label: { en: 'Man' }, value: 'man' },
           { label: { en: 'Agender' }, value: 'agender' },
         ],
       });
-      expect(onComplete).toHaveBeenCalledWith('gender', 'gender', [
+      expect(onComplete).toHaveBeenCalledWith(GENDER_ID, 'gender', [
         { value: 'man', choice: 'masculine' },
         { value: 'agender', choice: 'neutral' },
       ]);
@@ -529,8 +544,8 @@ describe('VariableEditor', () => {
         openId="edit-unchanged"
         mode="update"
         subject={SUBJECT}
-        authoritativeDocument={personDocument({ comment: existing })}
-        variableId="comment"
+        authoritativeDocument={personDocument({ [COMMENT_ID]: existing })}
+        variableId={COMMENT_ID}
         initialDraft={partialSeed}
         onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
@@ -563,8 +578,8 @@ describe('VariableEditor', () => {
         openId="edit-type-change"
         mode="update"
         subject={SUBJECT}
-        authoritativeDocument={personDocument({ birthday: existing })}
-        variableId="birthday"
+        authoritativeDocument={personDocument({ [BIRTHDAY_ID]: existing })}
+        variableId={BIRTHDAY_ID}
         initialDraft={existing}
         onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
@@ -578,7 +593,7 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument).birthday).toEqual({
+    expect(submittedVariables(onSubmitDocument)[BIRTHDAY_ID]).toEqual({
       name: 'birthday',
       type: 'text',
       validation: { required: true },
@@ -601,8 +616,8 @@ describe('VariableEditor', () => {
         openId="edit-encrypted-type-change"
         mode="update"
         subject={SUBJECT}
-        authoritativeDocument={personDocument({ secret: existing })}
-        variableId="secret"
+        authoritativeDocument={personDocument({ [SECRET_ID]: existing })}
+        variableId={SECRET_ID}
         initialDraft={existing}
         onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
@@ -616,7 +631,7 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument).secret).toEqual({
+    expect(submittedVariables(onSubmitDocument)[SECRET_ID]).toEqual({
       name: 'secret',
       type: 'number',
       validation: { required: true },
@@ -642,14 +657,16 @@ describe('VariableEditor', () => {
       openId: 'edit-live-remote',
       mode: 'update' as const,
       subject: SUBJECT,
-      variableId: 'comment',
+      variableId: COMMENT_ID,
       onSubmitDocument,
       onComplete,
     };
     const { rerender } = render(
       <VariableEditor
         {...common}
-        authoritativeDocument={personDocument({ comment: initialVariable })}
+        authoritativeDocument={personDocument({
+          [COMMENT_ID]: initialVariable,
+        })}
         initialDraft={initialVariable}
       />,
     );
@@ -657,7 +674,7 @@ describe('VariableEditor', () => {
     const name = screen.getByRole('textbox', { name: /attribute name/i });
     await user.clear(name);
     await user.type(name, 'localComment');
-    const remoteDocument = personDocument({ comment: remoteVariable });
+    const remoteDocument = personDocument({ [COMMENT_ID]: remoteVariable });
     rerender(
       <VariableEditor
         {...common}
@@ -668,7 +685,7 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument).comment).toEqual({
+    expect(submittedVariables(onSubmitDocument)[COMMENT_ID]).toEqual({
       name: 'localComment',
       type: 'text',
       component: 'TextArea',
@@ -717,7 +734,7 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
+    expect(submittedVariables(onSubmitDocument)[NEW_VARIABLE_ID]).toEqual({
       name: 'sex',
       type: 'categorical',
       options: lockedOptions,
@@ -810,7 +827,7 @@ describe('VariableEditor', () => {
       <VariableEditor
         {...createProps({
           authoritativeDocument: personDocument({
-            age: { name: 'Age', type: 'number' },
+            [AGE]: { name: 'Age', type: 'number' },
           }),
           initialDraft: { name: 'Age', type: 'text' },
           onSubmitDocument,
@@ -972,7 +989,7 @@ describe('VariableEditor', () => {
       <VariableEditor
         {...createProps({
           openId: 'second-open',
-          variableId: 'second-variable',
+          variableId: SECOND_VARIABLE_ID,
           initialDraft: {
             name: 'fresh',
             type: 'boolean',
@@ -1011,8 +1028,8 @@ describe('the settings the chosen input control takes', () => {
     openId: 'parameters-open',
     mode: 'update',
     subject: SUBJECT,
-    authoritativeDocument: personDocument({ subject: variable }),
-    variableId: 'subject',
+    authoritativeDocument: personDocument({ [SUBJECT_ID]: variable }),
+    variableId: SUBJECT_ID,
     initialDraft: variable,
     onSubmitDocument,
     onComplete: () => undefined,
@@ -1021,7 +1038,7 @@ describe('the settings the chosen input control takes', () => {
   const savedVariable = (
     onSubmitDocument: ReturnType<typeof vi.fn<SubmitDocument>>,
   ): Record<string, unknown> => {
-    const variable = submittedVariables(onSubmitDocument).subject;
+    const variable = submittedVariables(onSubmitDocument)[SUBJECT_ID];
     if (!isRecord(variable)) throw new Error('the attribute was not submitted');
     return variable;
   };
@@ -1429,7 +1446,7 @@ describe('the settings the chosen input control takes', () => {
     render(
       <VariableEditor
         {...createProps({
-          variableId: 'met',
+          variableId: MET_ID,
           initialDraft: {
             name: 'met',
             type: 'datetime',
@@ -1577,7 +1594,7 @@ describe('the settings the chosen input control takes', () => {
     render(
       <VariableEditor
         {...createProps({
-          variableId: 'closeness',
+          variableId: CLOSENESS_ID,
           initialDraft: {
             name: '',
             type: 'scalar',
@@ -1603,7 +1620,7 @@ describe('the settings the chosen input control takes', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument).closeness).toEqual({
+    expect(submittedVariables(onSubmitDocument)[CLOSENESS_ID]).toEqual({
       name: 'closeness',
       type: 'scalar',
       component: 'VisualAnalogScale',
@@ -1668,8 +1685,8 @@ describe('the two answers a boolean offers', () => {
     openId: 'boolean-open',
     mode: 'update',
     subject: SUBJECT,
-    authoritativeDocument: personDocument({ flagged: variable }),
-    variableId: 'flagged',
+    authoritativeDocument: personDocument({ [FLAGGED_ID]: variable }),
+    variableId: FLAGGED_ID,
     initialDraft: variable,
     onSubmitDocument,
     onComplete: () => undefined,
@@ -1678,7 +1695,7 @@ describe('the two answers a boolean offers', () => {
   const savedVariable = (
     onSubmitDocument: ReturnType<typeof vi.fn<SubmitDocument>>,
   ): Record<string, unknown> => {
-    const variable = submittedVariables(onSubmitDocument).flagged;
+    const variable = submittedVariables(onSubmitDocument)[FLAGGED_ID];
     if (!isRecord(variable)) throw new Error('the attribute was not submitted');
     return variable;
   };
@@ -2342,7 +2359,7 @@ describe('the two answers a boolean offers', () => {
     render(
       <VariableEditor
         {...createProps({
-          variableId: 'flagged',
+          variableId: FLAGGED_ID,
           initialDraft: { name: '', type: 'boolean', component: 'Boolean' },
           onSubmitDocument,
         })}
@@ -2364,7 +2381,7 @@ describe('the two answers a boolean offers', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument).flagged).toEqual({
+    expect(submittedVariables(onSubmitDocument)[FLAGGED_ID]).toEqual({
       name: 'flagged',
       type: 'boolean',
       component: 'Boolean',
@@ -2392,7 +2409,7 @@ describe('the two answers a boolean offers', () => {
     render(
       <VariableEditor
         {...createProps({
-          variableId: 'flagged',
+          variableId: FLAGGED_ID,
           initialDraft: {
             name: 'flagged',
             type: 'boolean',
@@ -2413,7 +2430,7 @@ describe('the two answers a boolean offers', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    const created = submittedVariables(onSubmitDocument).flagged;
+    const created = submittedVariables(onSubmitDocument)[FLAGGED_ID];
     if (!isRecord(created)) throw new Error('the attribute was not submitted');
     expect(Object.hasOwn(created, 'options')).toBe(false);
     expect(created).toEqual({
@@ -2434,7 +2451,7 @@ describe('the two answers a boolean offers', () => {
     render(
       <VariableEditor
         {...createProps({
-          variableId: 'flagged',
+          variableId: FLAGGED_ID,
           initialDraft: {
             name: 'flagged',
             type: 'boolean',
@@ -2455,7 +2472,7 @@ describe('the two answers a boolean offers', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
-    expect(submittedVariables(onSubmitDocument).flagged).toEqual({
+    expect(submittedVariables(onSubmitDocument)[FLAGGED_ID]).toEqual({
       name: 'flagged',
       type: 'boolean',
       component: 'Boolean',

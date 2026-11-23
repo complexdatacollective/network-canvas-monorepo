@@ -12,12 +12,14 @@ import {
   loadFixtureStage,
   type FixtureStageId,
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { testId } from '../../testing/testId.ts';
+import { testId, testVariableId } from '../../testing/testId.ts';
 import { openStageWording } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
   addFamilyMemberVariables,
@@ -49,13 +51,24 @@ vi.mock('../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const knowsVariable = (name: string) =>
+  fixtureVariableId({ entity: 'edge', typeName: 'knows' }, name);
+const FM_OCCUPATION = testVariableId('fm_occupation');
+const RELATIVES_NOT_RECORDED = testVariableId('relativesNotRecorded');
+const HAS_HEART_DISEASE = testVariableId('has_heart_disease');
+const FM_RELATIONSHIP = testVariableId('fm_relationship');
+
 const nodeFilter = (name: string) => ({
   join: 'AND' as const,
   rules: [
     {
       type: 'node' as const,
       id: testId(`rule-${name}`),
-      options: { type: 'person', operator: 'EXISTS' as const },
+      options: { type: PERSON, operator: 'EXISTS' as const },
     },
   ],
 });
@@ -66,7 +79,7 @@ const edgeFilter = (name: string) => ({
     {
       type: 'edge' as const,
       id: testId(`rule-${name}`),
-      options: { type: 'knows', operator: 'EXISTS' as const },
+      options: { type: KNOWS, operator: 'EXISTS' as const },
     },
   ],
 });
@@ -161,7 +174,7 @@ const EVERY_STAGE = {
         {
           id: testId('consented-rule'),
           type: 'ego',
-          options: { attribute: 'consent', operator: 'EXISTS' },
+          options: { attribute: testVariableId('consent'), operator: 'EXISTS' },
         },
       ],
     },
@@ -207,7 +220,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
         fields: [
           {
             id: testId('field-1'),
-            variable: 'ego_name',
+            variable: fixtureVariableId('ego', 'ego_name'),
             prompt: { 'en-US': 'What is your name?' },
             hint: { 'en-US': 'Your full name.' },
             showValidationHints: true,
@@ -227,12 +240,12 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
       filter: nodeFilter('stage'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         fields: [
           {
             id: testId('field-1'),
-            variable: 'relationship_to_ego',
+            variable: personVariable('relationship_to_ego'),
             prompt: { 'en-US': 'Relationship?' },
             hint: { 'en-US': 'How you know them.' },
             showValidationHints: true,
@@ -252,12 +265,12 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
       filter: edgeFilter('stage'),
-      subject: { entity: 'edge', type: 'knows' },
+      subject: { entity: 'edge', type: KNOWS },
       form: {
         fields: [
           {
             id: testId('field-1'),
-            variable: 'edgeNotes',
+            variable: knowsVariable('edgeNotes'),
             prompt: { 'en-US': 'Any notes?' },
             hint: { 'en-US': 'Free text.' },
             showValidationHints: true,
@@ -276,13 +289,13 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         title: { 'en-US': 'Add a person' },
         fields: [
           {
             id: testId('field-1'),
-            variable: 'name',
+            variable: personVariable('name'),
             prompt: { 'en-US': 'What is their name?' },
             hint: { 'en-US': 'Their first name.' },
             showValidationHints: true,
@@ -296,7 +309,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
           additionalAttributes: [
             {
               id: testId('additional-attribute-1'),
-              variable: 'flagged',
+              variable: personVariable('flagged'),
               value: true,
             },
           ],
@@ -408,7 +421,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         fields: [
           {
             id: testId('composer-field-1'),
-            variable: 'relationship_to_ego',
+            variable: personVariable('relationship_to_ego'),
             component: 'Text',
             label: { 'en-US': 'How you know them' },
             hint: { 'en-US': 'In a word or two.' },
@@ -416,18 +429,18 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
           },
         ],
       },
-      convexHullVariable: 'contactType',
+      convexHullVariable: personVariable('contactType'),
       behaviours: { automaticLayout: true },
       edges: [
         {
           id: testId('composer-edge-1'),
-          subject: { entity: 'edge', type: 'knows' },
+          subject: { entity: 'edge', type: KNOWS },
           label: { en: 'Connection' },
           form: {
             fields: [
               {
                 id: testId('composer-edge-field-1'),
-                variable: 'closeness',
+                variable: knowsVariable('closeness'),
                 component: 'LikertScale',
                 label: { 'en-US': 'How close are you?' },
               },
@@ -517,13 +530,13 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       nodeConfiguration: {
         ...(loadFixtureStage('family-pedigree-1').fields
           .nodeConfiguration as SectionDoc),
-        relationshipToParticipantAttribute: 'fm_relationship',
+        relationshipToParticipantAttribute: FM_RELATIONSHIP,
       },
       form: {
         fields: [
           {
             id: testId('field-1'),
-            variable: 'fm_occupation',
+            variable: FM_OCCUPATION,
             prompt: { 'en-US': 'What do they do?' },
           },
         ],
@@ -531,7 +544,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       completeness: {
         scope: 'thirdDegree',
         enforcement: 'recommended',
-        relativesNotRecordedAttribute: 'relativesNotRecorded',
+        relativesNotRecordedAttribute: RELATIVES_NOT_RECORDED,
         ...RESEARCHER_TRACKER_TEXT,
       },
       framing: 'participantPreference',
@@ -540,7 +553,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         {
           id: testId('nomination-1'),
           text: { 'en-US': 'Who in your family has had heart disease?' },
-          attribute: 'has_heart_disease',
+          attribute: HAS_HEART_DISEASE,
           onlyForSexAssignedAtBirth: 'female',
         },
       ],
@@ -550,14 +563,14 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     // the way a collaborator's would.
     prepare: (harness) =>
       addFamilyMemberVariables(harness, {
-        fm_occupation: {
+        [FM_OCCUPATION]: {
           name: 'fm_occupation',
           type: 'text',
           component: 'Text',
         },
-        relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
-        has_heart_disease: { name: 'has_heart_disease', type: 'boolean' },
-        fm_relationship: {
+        [RELATIVES_NOT_RECORDED]: RELATIVES_NOT_RECORDED_VARIABLE,
+        [HAS_HEART_DISEASE]: { name: 'has_heart_disease', type: 'boolean' },
+        [FM_RELATIONSHIP]: {
           name: 'fm_relationship',
           type: 'categorical',
           options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({

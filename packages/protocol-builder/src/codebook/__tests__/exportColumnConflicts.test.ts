@@ -5,6 +5,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import {
   type CodebookSubject,
   DuplicateVariableNameError,
@@ -22,7 +23,7 @@ import {
  * together: every create, rename, option edit and change of type ends here, so
  * a control that offered a name the export cannot carry is still refused.
  */
-const NODE: CodebookSubject = { entity: 'node', type: 'person' };
+const NODE: CodebookSubject = { entity: 'node', type: testTypeId('person') };
 const EGO: CodebookSubject = { entity: 'ego' };
 
 const LOCALIZATION: ProtocolLocalization = {
@@ -49,14 +50,22 @@ const text = (name: string) => ({ name, type: 'text', component: 'Text' });
 
 const layout = (name: string) => ({ name, type: 'layout' });
 
-/** A section as the codebook stores it. */
+/**
+ * A section as the codebook stores it. Its variables are written here by a
+ * readable label and stored under that label's test id.
+ */
 const sectionOf = (
   variables: Record<string, Record<string, unknown>>,
 ): SectionDoc => ({
   name: 'Person',
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
-  variables,
+  variables: Object.fromEntries(
+    Object.entries(variables).map(([label, variable]) => [
+      testVariableId(label),
+      variable,
+    ]),
+  ),
 });
 
 /** What a write refused with, as the researcher would read it. */
@@ -83,29 +92,32 @@ const create = (
   documentWithCreatedVariable({
     subject,
     authoritativeDocument,
-    variableId: 'new-variable',
+    variableId: testVariableId('new-variable'),
     protocolContext: EMPTY_CONTEXT,
     draft,
   });
 
 const update = (
   authoritativeDocument: SectionDoc,
-  variableId: string,
+  variableLabel: string,
   draft: Record<string, unknown>,
   replaceProperties?: readonly string[],
 ) =>
   documentWithUpdatedVariable({
     subject: NODE,
     authoritativeDocument,
-    variableId,
+    variableId: testVariableId(variableLabel),
     draft,
     ...(replaceProperties === undefined ? {} : { replaceProperties }),
   });
 
-const storedVariable = (document: SectionDoc, variableId: string): unknown => {
+const storedVariable = (
+  document: SectionDoc,
+  variableLabel: string,
+): unknown => {
   const variables: unknown = document.variables;
   return typeof variables === 'object' && variables !== null
-    ? Reflect.get(variables, variableId)
+    ? Reflect.get(variables, testVariableId(variableLabel))
     : undefined;
 };
 
@@ -385,7 +397,7 @@ describe('saving a nested editor’s finished document', () => {
           submittedDocument: sectionOf({
             foo: categorical('foo', ['bar', 'qux']),
           }),
-          variableId: 'foo',
+          variableId: testVariableId('foo'),
         }),
       )?.path,
     ).toEqual(['options']);

@@ -13,7 +13,11 @@ import {
   personVariable,
 } from '../../../editors/anonymisation/__tests__/anonymisationFixtures.tsx';
 import { ruleSetIssues, ruleSetTargets } from '../../../rules/ruleSet.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -21,28 +25,38 @@ import {
 import { testId } from '../../../testing/testId.ts';
 import NetworkFilterSection from '../NetworkFilterSection.tsx';
 
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
+
 /** An `AlterForm` is the least-configured stage the schema gives a filter. */
 const ALTER_FORM = loadFixtureStage('alter-form-1');
 /** A stage whose prompts name an edge type, which a filter can then hide. */
 const SOCIOGRAM = loadFixtureStage('sociogram-1');
 const DYAD_CENSUS = loadFixtureStage('dyad-census-1');
 
-const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const personSection = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 /**
  * The edge type the fixture's prompts create and display, and one they never
  * mention: the difference between a filter that lets the stage work and one
  * that empties it.
  */
-const CONFIGURED_EDGE = 'knows';
-const OTHER_EDGE = 'family_edge';
+const CONFIGURED_EDGE = KNOWS;
+const OTHER_EDGE = FAMILY_EDGE;
 
 const nodeFilter = {
   rules: [
     {
       id: testId('rule-a'),
       type: 'node',
-      options: { type: 'person', operator: 'EXISTS' },
+      options: { type: PERSON, operator: 'EXISTS' },
     },
   ],
 };
@@ -148,7 +162,7 @@ describe('a codebook that changes underneath the filter', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        person: {
+        [PERSON]: {
           ...harness.protocolSections()[personSection],
           name: 'Participant',
         },
@@ -295,7 +309,7 @@ describe('rules that contradict the rest of the stage', () => {
           {
             id: testId('rule-a'),
             type: 'node',
-            options: { type: 'person', operator: 'EXISTS' },
+            options: { type: PERSON, operator: 'EXISTS' },
           },
           {
             id: testId('rule-b'),
@@ -375,7 +389,7 @@ describe('rules that contradict the rest of the stage', () => {
           {
             id: testId('rule-b'),
             type: 'node',
-            options: { type: 'person', operator: 'EXISTS' },
+            options: { type: PERSON, operator: 'EXISTS' },
           },
         ],
       }),
@@ -393,7 +407,7 @@ describe('rules that contradict the rest of the stage', () => {
         {
           id: testId('sociogram-prompt-1'),
           text: 'Who do you know?',
-          layout: { layoutVariable: 'layout' },
+          layout: { layoutVariable: LAYOUT },
           // Displayed rather than created, and still hidden by rules that
           // require a different edge type to exist.
           edges: { display: [OTHER_EDGE] },
@@ -447,7 +461,7 @@ describe('a rule this filter cannot be about', () => {
         id: testId('rule-a'),
         type: 'ego',
         options: {
-          attribute: 'ego_name',
+          attribute: EGO_NAME,
           operator: 'EXACTLY',
           value: 'Ada',
         },
@@ -486,7 +500,7 @@ describe('a rule this filter cannot be about', () => {
     const codebook: Codebook = {
       ego: {
         variables: {
-          ego_name: {
+          [EGO_NAME]: {
             name: 'ego_name',
             type: 'text',
           },
@@ -513,11 +527,11 @@ const ENCRYPTED_ROW_PROBLEM =
 
 describe('a rule on an encrypted attribute', () => {
   it('saves a rule that only asks whether it is answered', async () => {
-    const filter = { rules: [answeredRule(testId('rule-a'), 'name')] };
+    const filter = { rules: [answeredRule(testId('rule-a'), NAME)] };
     const harness = renderStageEditor({
       stage: alterForm({ filter }),
       sections: nodeFilterSection,
-      adapter: alreadyProtecting('name'),
+      adapter: alreadyProtecting(NAME),
     });
 
     await screen.findByRole('button', { name: /^Edit rule:/ });
@@ -534,15 +548,15 @@ describe('a rule on an encrypted attribute', () => {
   it('marks a rule it holds once the attribute is encrypted while it is open', async () => {
     const harness = renderStageEditor({
       stage: alterForm({
-        filter: { rules: [personRule(testId('rule-a'), 'name')] },
+        filter: { rules: [personRule(testId('rule-a'), NAME)] },
       }),
       sections: nodeFilterSection,
     });
     await screen.findByRole('button', { name: /^Edit rule:/ });
     expect(screen.queryByText(ENCRYPTED_ROW_PROBLEM)).toBeNull();
 
-    collaboratorSets(harness, 'person', 'name', {
-      ...personVariable(harness, 'name'),
+    collaboratorSets(harness, PERSON, NAME, {
+      ...personVariable(harness, NAME),
       encrypted: true,
     });
 
@@ -553,10 +567,10 @@ describe('a rule on an encrypted attribute', () => {
   it('marks the rule on its own row and refuses the stage', async () => {
     const harness = renderStageEditor({
       stage: alterForm({
-        filter: { rules: [personRule(testId('rule-a'), 'name')] },
+        filter: { rules: [personRule(testId('rule-a'), NAME)] },
       }),
       sections: nodeFilterSection,
-      adapter: alreadyProtecting('name'),
+      adapter: alreadyProtecting(NAME),
     });
 
     expect(await screen.findByText(ENCRYPTED_ROW_PROBLEM)).toBeInTheDocument();

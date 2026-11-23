@@ -9,9 +9,11 @@ import { ResourceClientProvider } from '../resources/client.tsx';
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
-import { fixtureStageId } from './protocolFixture.ts';
+import { fixtureStageId, fixtureVariableId } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
 import { exactlyText } from './text.ts';
+
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Story host',
@@ -174,7 +176,7 @@ export const ACollaboratorRevisesTheCodebook: Story = {
       section: sectionId({ kind: 'codebookEgo' }),
       document: {
         variables: {
-          ego_name: {
+          [EGO_NAME]: {
             name: 'given_name',
             type: 'text',
             component: 'TextArea',

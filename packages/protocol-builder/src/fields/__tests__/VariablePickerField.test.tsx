@@ -40,14 +40,29 @@ import {
   openAttributePicker,
   searchAttributes,
 } from '../../testing/attributePicker.ts';
-import { fixtureStageId } from '../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const ON_PERSON = { entity: 'node', typeName: 'person' } as const;
+const NAME = fixtureVariableId(ON_PERSON, 'name');
+const AGE = fixtureVariableId(ON_PERSON, 'age');
+const FLAGGED = fixtureVariableId(ON_PERSON, 'flagged');
+const LAYOUT = fixtureVariableId(ON_PERSON, 'layout');
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
+const THEIR_ATTRIBUTE = testVariableId('their-attribute');
+const A_DELETED_ONE = testVariableId('a_deleted_one');
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   default as VariablePickerField,
   type CreateOptionOutcome,
 } from '../VariablePickerField.tsx';
 
-const SUBJECT: CodebookSubject = { entity: 'node', type: 'person' };
+const SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 
 const catalogs = createCatalogSource(protocolBuilderCatalogLoaders);
 await catalogs.load('es');
@@ -211,10 +226,10 @@ function UnsortedPicker() {
         component={VariablePickerField}
         label={DIRECT_PICKER}
         options={[
-          { value: 'name', label: 'name', type: 'text' },
-          { value: 'flagged', label: 'flagged', type: 'boolean' },
+          { value: NAME, label: 'name', type: 'text' },
+          { value: FLAGGED, label: 'flagged', type: 'boolean' },
           {
-            value: 'age',
+            value: AGE,
             label: 'age',
             type: 'number',
           },
@@ -293,7 +308,7 @@ const createRow = (dialog: HTMLElement, name: string) =>
     name: `Create new attribute called “${name}”.`,
   });
 
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 /**
  * The person type's attributes as the PROTOCOL holds them, which is the only
@@ -309,7 +324,7 @@ const personVariables = (
 ) => {
   const variables = (
     codebook === 'host' ? harness.hostCodebook() : harness.editorCodebook()
-  ).node?.person?.variables;
+  ).node?.[PERSON]?.variables;
   if (variables === undefined) {
     throw new Error('the person type is gone, so it has no attributes to read');
   }
@@ -742,7 +757,7 @@ describe('inventing an attribute from the picker', () => {
               entity: 'node',
               variables: [
                 {
-                  id: 'age',
+                  id: AGE,
                   name: 'age',
                   type: 'number',
                 },
@@ -1178,7 +1193,7 @@ describe('the create row while the codebook write is in flight', () => {
  */
 describe('the window when the field turns read-only under it', () => {
   const OPTIONS = [
-    { value: 'flagged', label: 'flagged', type: 'boolean' as const },
+    { value: FLAGGED, label: 'flagged', type: 'boolean' as const },
   ];
 
   const openOver = async () => {
@@ -1410,7 +1425,7 @@ describe('the attribute picker, read in Spanish', () => {
    */
   it('says in Spanish that the type it would be added to has gone', async () => {
     const harness = renderInSpanish({
-      into: { entity: 'node', type: 'un-tipo-que-no-existe' },
+      into: { entity: 'node', type: testTypeId('un-tipo-que-no-existe') },
       draft: { type: 'boolean', component: 'Toggle' },
     });
 
@@ -1615,7 +1630,7 @@ describe('the picker’s blur boundary', () => {
           name={FIELD_NAME}
           component={VariablePickerField}
           label={DIRECT_PICKER}
-          options={[{ value: 'flagged', label: 'flagged', type: 'boolean' }]}
+          options={[{ value: FLAGGED, label: 'flagged', type: 'boolean' }]}
           required={REQUIRED}
         />
         <BlurredProbe />
@@ -1703,9 +1718,9 @@ describe('the picker’s blur boundary', () => {
  */
 describe('renaming the attribute a picker holds', () => {
   const PERSON_OPTIONS = [
-    { value: 'name', label: 'name', type: 'text' as VariableType },
+    { value: NAME, label: 'name', type: 'text' as VariableType },
     {
-      value: 'age',
+      value: AGE,
       label: 'age',
       type: 'number' as VariableType,
     },
@@ -1721,7 +1736,7 @@ describe('renaming the attribute a picker holds', () => {
   const HoldingPicker = ({
     readOnly = false,
     options = PERSON_OPTIONS,
-    initialValue = 'name',
+    initialValue = NAME,
     fieldName = 'nodeConfig.egoAttribute',
   }: Readonly<{
     fieldName?: string;
@@ -1788,15 +1803,15 @@ describe('renaming the attribute a picker holds', () => {
     // Held with the stage: the editor reads the new name at once, and the
     // protocol keeps the old one until the stage is saved.
     await waitFor(() =>
-      expect(harness.editorCodebook().node?.person?.variables?.name).toEqual(
-        expect.objectContaining({ name: 'full_name', type: 'text' }),
-      ),
+      expect(
+        harness.editorCodebook().node?.[PERSON]?.variables?.[NAME],
+      ).toEqual(expect.objectContaining({ name: 'full_name', type: 'text' })),
     );
-    expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+    expect(harness.hostCodebook().node?.[PERSON]?.variables?.[NAME]).toEqual(
       expect.objectContaining({ name: 'name' }),
     );
     await harness.submit();
-    expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+    expect(harness.hostCodebook().node?.[PERSON]?.variables?.[NAME]).toEqual(
       expect.objectContaining({ name: 'full_name', type: 'text' }),
     );
     // Nothing about the stage: every reference to an attribute is by record
@@ -1815,8 +1830,8 @@ describe('renaming the attribute a picker holds', () => {
       stageId: fixtureStageId('ego-form-1'),
       sections: (
         <HoldingPicker
-          options={[{ value: 'ego_name', label: 'ego_name', type: 'text' }]}
-          initialValue="ego_name"
+          options={[{ value: EGO_NAME, label: 'ego_name', type: 'text' }]}
+          initialValue={EGO_NAME}
           fieldName={SAVEABLE_PICKER}
         />
       ),
@@ -1829,12 +1844,12 @@ describe('renaming the attribute a picker holds', () => {
     );
 
     await waitFor(() =>
-      expect(harness.editorCodebook().ego?.variables?.ego_name).toEqual(
+      expect(harness.editorCodebook().ego?.variables?.[EGO_NAME]).toEqual(
         expect.objectContaining({ name: 'participant_name' }),
       ),
     );
     await harness.submit();
-    expect(harness.hostCodebook().ego?.variables?.ego_name).toEqual(
+    expect(harness.hostCodebook().ego?.variables?.[EGO_NAME]).toEqual(
       expect.objectContaining({ name: 'participant_name' }),
     );
   });
@@ -1978,7 +1993,7 @@ describe('renaming the attribute a picker holds', () => {
       stageId: fixtureStageId('name-generator-1'),
       heldSections: [
         {
-          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          sectionId: sectionId({ kind: 'codebookNode', typeId: PERSON }),
           displayName: 'Priya Raman',
         },
       ],
@@ -1991,9 +2006,9 @@ describe('renaming the attribute a picker holds', () => {
       screen.getByRole('button', { name: 'Save Changes' }),
     );
     await waitFor(() =>
-      expect(harness.editorCodebook().node?.person?.variables?.name).toEqual(
-        expect.objectContaining({ name: 'full_name' }),
-      ),
+      expect(
+        harness.editorCodebook().node?.[PERSON]?.variables?.[NAME],
+      ).toEqual(expect.objectContaining({ name: 'full_name' })),
     );
 
     expect(await harness.submit()).toBeNull();
@@ -2003,11 +2018,11 @@ describe('renaming the attribute a picker holds', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Priya Raman is currently editing a section needed for this change.',
     );
-    expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+    expect(harness.hostCodebook().node?.[PERSON]?.variables?.[NAME]).toEqual(
       expect.objectContaining({ name: 'name' }),
     );
     // The rename is still the stage's, for the retry.
-    expect(harness.editorCodebook().node?.person?.variables?.name).toEqual(
+    expect(harness.editorCodebook().node?.[PERSON]?.variables?.[NAME]).toEqual(
       expect.objectContaining({ name: 'full_name' }),
     );
   });
@@ -2032,12 +2047,12 @@ describe('renaming the attribute a picker holds', () => {
       screen.getByRole('button', { name: 'Save Changes' }),
     );
     await waitFor(() =>
-      expect(harness.editorCodebook().node?.person?.variables?.name).toEqual(
-        expect.objectContaining({ name: 'full_name' }),
-      ),
+      expect(
+        harness.editorCodebook().node?.[PERSON]?.variables?.[NAME],
+      ).toEqual(expect.objectContaining({ name: 'full_name' })),
     );
 
-    const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
+    const person = sectionId({ kind: 'codebookNode', typeId: PERSON });
     const held = harness.host.store.read(person).document;
     harness.host.store.disconnectWatchers();
     harness.host.store.applyAsCollaborator(person, {
@@ -2046,7 +2061,7 @@ describe('renaming the attribute a picker holds', () => {
         ...(typeof held.variables === 'object' && held.variables !== null
           ? held.variables
           : {}),
-        'their-attribute': { name: 'full_name', type: 'text' },
+        [THEIR_ATTRIBUTE]: { name: 'full_name', type: 'text' },
       },
     });
 
@@ -2055,12 +2070,12 @@ describe('renaming the attribute a picker holds', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'A change you made to the codebook while editing this stage no longer fits the protocol, so nothing was saved.',
     );
-    expect(harness.hostCodebook().node?.person?.variables?.name).toEqual(
+    expect(harness.hostCodebook().node?.[PERSON]?.variables?.[NAME]).toEqual(
       expect.objectContaining({ name: 'name' }),
     );
     // The rename is still the stage's, for the researcher to put right.
     expect(harness.stagedCodebook()[person]?.edited.variables).toMatchObject({
-      name: { name: 'full_name' },
+      [NAME]: { name: 'full_name' },
     });
   });
 
@@ -2163,10 +2178,10 @@ describe('renaming the attribute a picker holds', () => {
     render(
       <VariablePickerField
         name="variable"
-        value="age"
+        value={AGE}
         options={[
           {
-            value: 'age',
+            value: AGE,
             label: 'age',
             type: 'number',
           },
@@ -2183,11 +2198,11 @@ describe('renaming the attribute a picker holds', () => {
   it('leaves a reference the codebook has lost a statement', async () => {
     renderStageEditor({
       stageId: fixtureStageId('name-generator-1'),
-      sections: <HoldingPicker options={[]} initialValue="a_deleted_one" />,
+      sections: <HoldingPicker options={[]} initialValue={A_DELETED_ONE} />,
     });
 
     await screen.findByText(
-      'a_deleted_one — this attribute is not available here',
+      `${A_DELETED_ONE} — this attribute is not available here`,
     );
     expect(
       screen.queryAllByRole('button', { name: /^Edit attribute name: / }),
@@ -2201,7 +2216,7 @@ describe('renaming the attribute a picker holds', () => {
         <HoldingPicker
           options={[
             {
-              value: 'layout',
+              value: LAYOUT,
               label: 'layout',
               type: 'layout',
               usable: false,
@@ -2211,7 +2226,7 @@ describe('renaming the attribute a picker holds', () => {
               },
             },
           ]}
-          initialValue="layout"
+          initialValue={LAYOUT}
         />
       ),
     });

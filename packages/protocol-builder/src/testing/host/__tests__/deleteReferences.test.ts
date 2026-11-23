@@ -10,7 +10,7 @@ import {
 } from '@codaco/studio-sync/taxonomy';
 
 import { attempt } from '../../../state/attempt.ts';
-import { fixtureStageId } from '../../protocolFixture.ts';
+import { fixtureStageId, fixtureTypeId } from '../../protocolFixture.ts';
 import { testId } from '../../testId.ts';
 import {
   createInMemoryHost,
@@ -29,7 +29,7 @@ const ANY_PERSON = {
     {
       type: 'node',
       id: testId('rule-1'),
-      options: { type: 'person', operator: 'EXISTS' },
+      options: { type: fixtureTypeId('node', 'person'), operator: 'EXISTS' },
     },
   ],
 };

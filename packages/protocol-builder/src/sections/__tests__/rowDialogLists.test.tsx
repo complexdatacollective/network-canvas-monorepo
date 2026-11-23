@@ -15,6 +15,10 @@ import type { RowValues } from '../../form/rowDialog.tsx';
 import { translationText } from '../../localization/localizedText.ts';
 import { attributeField } from '../../testing/attributePicker.ts';
 import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type RenderStageEditorOptions,
   type StageEditorHarness,
@@ -24,6 +28,18 @@ import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import NodePanelsSection from '../panels/NodePanelsSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
+const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const en = (text: string) => ({ 'en-US': text });
 
@@ -146,13 +162,13 @@ const nameGeneratorWith = (
     type: 'NameGenerator',
     fields: {
       label: en('Name Generator'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         title: en('Add a person'),
         fields: [
           {
             id: testId('field-1'),
-            variable: 'name',
+            variable: NAME,
             prompt: en("What is this person's name?"),
           },
         ],
@@ -203,7 +219,7 @@ const lists: readonly ListCase[] = [
     // is what names a row here.
     row: (id, text, index) => ({
       id,
-      variable: index === 0 ? 'relationship_to_ego' : 'flagged',
+      variable: index === 0 ? RELATIONSHIP_TO_EGO : FLAGGED,
       prompt: en(text),
     }),
     label: (row) => englishOf(row.prompt),
@@ -211,7 +227,7 @@ const lists: readonly ListCase[] = [
     // The attribute is picked rather than typed, and a field that names none
     // cannot be saved at all.
     complete: async (harness, dialog) => {
-      await choosePickerOption(harness, dialog, 'age');
+      await choosePickerOption(harness, dialog, AGE);
     },
     open: (rows) => ({
       stage: {
@@ -219,7 +235,7 @@ const lists: readonly ListCase[] = [
         type: 'AlterForm',
         fields: {
           label: en('Alter form'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           form: { fields: rows },
         },
       },

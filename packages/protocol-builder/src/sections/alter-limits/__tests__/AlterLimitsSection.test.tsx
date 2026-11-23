@@ -3,11 +3,18 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { fixtureStageId } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
 import { nameGeneratorWording } from '../../name-generator-wording/nameGeneratorWording.tsx';
 import AlterLimitsSection from '../AlterLimitsSection.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const limits = <AlterLimitsSection />;
 
@@ -34,13 +41,13 @@ const unlimitedStage = {
     type: 'NameGenerator' as const,
     fields: {
       label: en('Name Generator'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         title: en('Add a person'),
         fields: [
           {
             id: testId('field-1'),
-            variable: 'name',
+            variable: NAME,
             prompt: en('Name?'),
           },
         ],

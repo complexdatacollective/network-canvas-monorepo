@@ -15,11 +15,18 @@ import {
   chooseAttributeById,
 } from '../../testing/attributePicker.ts';
 import { enIntl, esIntl } from '../../testing/i18n.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { describeRule } from '../ruleDescription.ts';
 import { ruleDraftRefusal } from '../RuleEditorDialog.tsx';
 import RulePreview from '../RulePreview.tsx';
 import { ruleSections, testCodebook } from './fixtures.ts';
 import { RuleEditorHost } from './ruleEditorHost.tsx';
+
+const PERSON = testTypeId('person');
+const AGE = testVariableId('age');
+const EGO_NAME = testVariableId('egoName');
+const GONE = testVariableId('gone');
+const MOOD = testVariableId('mood');
 
 /**
  * A rule reads back in the researcher's own language, through both routes the
@@ -40,8 +47,8 @@ const alterRule = {
   id: 'rule-1',
   type: 'node',
   options: {
-    type: 'person',
-    attribute: 'age',
+    type: PERSON,
+    attribute: AGE,
     operator: 'GREATER_THAN',
     value: 30,
   },
@@ -87,12 +94,12 @@ describe('a rule read in Spanish', () => {
       inSpanish({
         id: 'rule-2',
         type: 'node',
-        options: { type: 'person', attribute: 'gone', operator: 'EXISTS' },
+        options: { type: PERSON, attribute: GONE, operator: 'EXISTS' },
       }),
     );
 
     expect(
-      screen.getByLabelText('gone (attribute is no longer in the codebook)'),
+      screen.getByLabelText(`${GONE} (attribute is no longer in the codebook)`),
     ).toBeInTheDocument();
   });
 });
@@ -117,8 +124,8 @@ describe('a refusal that quotes a noun phrase of its own', () => {
     id: 'rule-3',
     type: 'node',
     options: {
-      type: 'person',
-      attribute: 'mood',
+      type: PERSON,
+      attribute: MOOD,
       operator: 'INCLUDES',
       value: [true],
     },
@@ -210,7 +217,7 @@ describe('a rule being written when the language changes', () => {
     await chooseAttributeById(
       user,
       await waitFor(() => attributeField('Ego attribute')),
-      'egoName',
+      EGO_NAME,
     );
 
     rerender(<LocaleSwitchingRuleList locale="es" />);

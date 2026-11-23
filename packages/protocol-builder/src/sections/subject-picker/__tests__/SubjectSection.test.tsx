@@ -6,9 +6,12 @@ import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { newEntityDraft } from '../../../codebook/components/CodebookEntityEditorDialog.tsx';
-import { fixtureStageId } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { testId } from '../../../testing/testId.ts';
+import { testId, testTypeId } from '../../../testing/testId.ts';
 import {
   TestPromptEditor,
   TestPromptPreview,
@@ -17,6 +20,10 @@ import NodeLayoutSection from '../../canvas-behaviours/NodeLayoutSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
+
+const PLACE = testTypeId('place');
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
 const en = (text: string) => ({ 'en-US': text });
@@ -115,7 +122,7 @@ describe('the section that says what a stage is about', () => {
 
     expect(
       screen.getAllByRole('radio').map((radio) => radio.getAttribute('value')),
-    ).toEqual(['person', 'family_member']);
+    ).toEqual([PERSON, FAMILY_MEMBER]);
     expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
   });
 
@@ -402,7 +409,7 @@ describe('creating the type a stage needs without leaving it', () => {
     expect(await screen.findByText('Change node type?')).toBeInTheDocument();
     // The type exists, and the stage has not moved.
     expect(editorNodeTypeNames(harness)).toContain('Place');
-    expect(pickedTypeBehindTheQuestion()).toBe('person');
+    expect(pickedTypeBehindTheQuestion()).toBe(PERSON);
     expect(
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
@@ -586,7 +593,7 @@ describe('a codebook that changes while the editor is open', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        place: {
+        [PLACE]: {
           name: 'Place',
           color: 'node-color-seq-3',
           shape: { default: 'circle' },
@@ -604,7 +611,7 @@ describe('a codebook that changes while the editor is open', () => {
         screen
           .getAllByRole('radio')
           .map((radio) => radio.getAttribute('value')),
-      ).toEqual(['person', 'family_member', 'place']),
+      ).toEqual([PERSON, FAMILY_MEMBER, PLACE]),
     );
     expect(screen.getByRole('radio', { name: 'Place' })).not.toBeChecked();
     // The researcher's own choice is untouched by someone else's addition.
@@ -617,14 +624,14 @@ describe('a codebook that changes while the editor is open', () => {
       sections: nodeSubjectAndPrompts,
     });
 
-    harness.receiveCodebookUpdate({ node: { family_member: null } });
+    harness.receiveCodebookUpdate({ node: { [FAMILY_MEMBER]: null } });
 
     await waitFor(() =>
       expect(
         screen
           .getAllByRole('radio')
           .map((radio) => radio.getAttribute('value')),
-      ).toEqual(['person']),
+      ).toEqual([PERSON]),
     );
     expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
   });
@@ -724,7 +731,7 @@ describe('changing a subject the stage is configured for', () => {
     expect(screen.getByText(CHANGE_DESCRIPTION)).toBeInTheDocument();
     // The pick has not been made: the stage still shows the type and the
     // configuration it opened with.
-    expect(pickedTypeBehindTheQuestion()).toBe('person');
+    expect(pickedTypeBehindTheQuestion()).toBe(PERSON);
     expect(
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
@@ -785,7 +792,7 @@ describe('changing a subject the stage is configured for', () => {
         type: 'NameGenerator' as const,
         fields: {
           label: en('Name Generator'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
         },
       },
       sections: nodeSubjectAndPrompts,
@@ -841,7 +848,7 @@ describe('choosing a type for a stage that has never had one', () => {
           {
             id: testId('rule-a'),
             type: 'node',
-            options: { type: 'person', operator: 'EXISTS' },
+            options: { type: PERSON, operator: 'EXISTS' },
           },
         ],
       },

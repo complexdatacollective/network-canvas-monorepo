@@ -5,7 +5,9 @@ import {
   attributeField,
   createRowIn,
 } from '../../../testing/attributePicker.ts';
+import { fixtureVariableId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../testing/testId.ts';
 import {
   narrativeEditor,
   narrativeHolding,
@@ -112,12 +114,15 @@ describe('the narrative sections, read in Spanish', () => {
    * spliced into the Spanish sentence rather than into the English one.
    */
   it('splices a lost highlight attribute’s id into the Spanish tick list', async () => {
-    const LOST_HIGHLIGHT = 'former_flag';
+    const LOST_HIGHLIGHT = testVariableId('former_flag');
     const harness = renderStageEditor({
       ...narrativeHolding({
         id: 'narrative-preset-1',
         label: { 'en-US': 'Vista por defecto' },
-        layoutVariable: 'layout',
+        layoutVariable: fixtureVariableId(
+          { entity: 'node', typeName: 'person' },
+          'layout',
+        ),
         highlight: [
           { variable: LOST_HIGHLIGHT, label: { 'en-US': 'Antes marcado' } },
         ],

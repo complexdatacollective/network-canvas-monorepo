@@ -190,6 +190,62 @@ export function fixtureProtocolSections(): Record<string, SectionDoc> {
   return sections;
 }
 
+const fixtureCodebook = (): Record<string, unknown> =>
+  isRecord(FIXTURE.codebook) ? FIXTURE.codebook : {};
+
+const keyNamed = (record: unknown, name: string): string | undefined =>
+  isRecord(record)
+    ? Object.keys(record).find((key) => {
+        const entry = record[key];
+        return isRecord(entry) && entry.name === name;
+      })
+    : undefined;
+
+/**
+ * The id the fixture keeps its node or edge type called `name` under.
+ *
+ * Codebook ids are UUIDs nobody can read, so a test names a type by its name.
+ * Throws for a name the fixture does not have, rather than handing a test an
+ * id that names nothing.
+ */
+export function fixtureTypeId(entity: 'node' | 'edge', name: string): string {
+  const key = keyNamed(fixtureCodebook()[entity], name);
+  if (key === undefined) {
+    throw new Error(
+      `The all-interfaces protocol has no ${entity} type "${name}".`,
+    );
+  }
+  return key;
+}
+
+/**
+ * The id the fixture keeps the variable called `name` under, on the ego or
+ * on the node or edge type called `typeName`.
+ */
+export function fixtureVariableId(
+  owner: 'ego' | Readonly<{ entity: 'node' | 'edge'; typeName: string }>,
+  name: string,
+): string {
+  const codebook = fixtureCodebook();
+  const definition =
+    owner === 'ego'
+      ? codebook.ego
+      : (() => {
+          const types = codebook[owner.entity];
+          return isRecord(types)
+            ? types[fixtureTypeId(owner.entity, owner.typeName)]
+            : undefined;
+        })();
+  const key = keyNamed(
+    isRecord(definition) ? definition.variables : undefined,
+    name,
+  );
+  if (key === undefined) {
+    throw new Error(`The all-interfaces protocol has no variable "${name}".`);
+  }
+  return key;
+}
+
 /** The languages the fixture protocol declares. */
 export function fixtureLocalization(): ProtocolLocalization {
   const localization = protocolLocalizationOf(

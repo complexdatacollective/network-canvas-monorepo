@@ -22,6 +22,7 @@ import type { CodebookRefusal } from '../../state/codebookRefusal.ts';
 import { beforeCall } from '../../testing/host/beforeCall.ts';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { fixtureTypeId } from '../../testing/protocolFixture.ts';
 import {
   useCodebookSectionWrite,
   useCreateCodebookEntity,
@@ -29,9 +30,11 @@ import {
   type CodebookWriteOutcome,
 } from '../writes.ts';
 
+const PERSON_TYPE = fixtureTypeId('node', 'person');
+
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
 
 /**
  * Every refusal the contract declares for a procedure, keyed by its tag.
@@ -135,7 +138,7 @@ describe('a codebook write the host refuses', () => {
         tag === 'AcquireLock' ? refusal() : undefined,
       );
       const outcome = await writes.rewrite(
-        { entity: 'node', type: 'person' },
+        { entity: 'node', type: PERSON_TYPE },
         (document) => document,
       );
       expect(kindOf(outcome)).toBe(EXPECTED[name]);
@@ -149,7 +152,7 @@ describe('a codebook write the host refuses', () => {
         tag === 'Submit' ? refusal() : undefined,
       );
       const outcome = await writes.rewrite(
-        { entity: 'node', type: 'person' },
+        { entity: 'node', type: PERSON_TYPE },
         (document) => document,
       );
       expect(kindOf(outcome)).toBe(EXPECTED[name]);
@@ -198,7 +201,7 @@ describe('a codebook write the host refuses', () => {
         tag === 'RefactorDeleteVariable' ? refusal() : undefined,
       );
       const outcome = await writes.deleteVariable(
-        { entity: 'node', type: 'person' },
+        { entity: 'node', type: PERSON_TYPE },
         'name',
       );
       expect(kindOf(outcome)).toBe(EXPECTED[name]);

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { testVariableId } from '../../testing/testId.ts';
 import { withoutUnusedBindings } from '../useDynamicValueSite';
 
+const CLOSENESS_ID = testVariableId('closeness');
+const AGE = testVariableId('age');
+
 const CLOSENESS = {
-  path: 'dyad.source.closeness',
+  path: `dyad.source.${CLOSENESS_ID}`,
   cases: { veryClose: 1, notClose: 'not close' },
 };
 
@@ -72,7 +76,7 @@ describe('the conditions the text of a stage tests', () => {
       {
         id: 'r',
         type: 'ego',
-        options: { attribute: 'age', operator: 'EXISTS' },
+        options: { attribute: AGE, operator: 'EXISTS' },
       },
     ],
   };

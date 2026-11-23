@@ -13,7 +13,7 @@ import {
   type HandlerOverrides,
   type InMemoryHost,
 } from '../../../testing/host/createInMemoryHost.ts';
-import { testId } from '../../../testing/testId.ts';
+import { testId, testTypeId } from '../../../testing/testId.ts';
 import type { ResourceKind } from '../../types.ts';
 
 const STAGE_ID = testId('resource-host-stage');
@@ -111,7 +111,7 @@ export function createResourceHost(seed: ResourceHostSeed = {}): InMemoryHost {
         ...(seed.fields ?? DEFAULT_INFORMATION_FIELDS),
       },
       [ASSETS_SECTION]: assets,
-      [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+      [sectionId({ kind: 'codebookNode', typeId: testTypeId('person') })]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },

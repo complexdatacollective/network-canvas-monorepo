@@ -31,8 +31,11 @@ import {
 import {
   fixtureStageIds,
   fixtureStageId,
+  fixtureTypeId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
 vi.mock('../../../fields/RichTextField.tsx', () => ({
@@ -684,7 +687,7 @@ describe('a categorical bin invents its attributes from the picker', () => {
     );
 
     const namedSomethingElse = (codebook: Codebook) =>
-      Object.values(codebook.node?.person?.variables ?? {}).some(
+      Object.values(codebook.node?.[PERSON]?.variables ?? {}).some(
         (variable) =>
           variable.name === 'somethingElse' && variable.type === 'text',
       );
@@ -736,7 +739,7 @@ describe('a categorical bin invents its attributes from the picker', () => {
     await closeRowDialog(harness);
 
     const names = (codebook: Codebook) =>
-      Object.values(codebook.node?.person?.variables ?? {}).map(
+      Object.values(codebook.node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       );
     expect(names(harness.editorCodebook())).not.toContain('somethingElse');

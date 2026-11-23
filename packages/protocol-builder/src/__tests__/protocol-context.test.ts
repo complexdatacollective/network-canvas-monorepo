@@ -10,7 +10,15 @@ import {
   variablesForSubject,
 } from '../protocol-context.ts';
 import { readMessage } from '../testing/i18n.ts';
-import { testId } from '../testing/testId.ts';
+import { testId, testTypeId, testVariableId } from '../testing/testId.ts';
+
+const PERSON = testTypeId('person');
+const KNOWS = testTypeId('knows');
+const AGE = testVariableId('age');
+const NICKNAME = testVariableId('nickname');
+const STRENGTH = testVariableId('strength');
+const CONSENTED = testVariableId('consented');
+const NAME = testVariableId('name');
 
 const FIRST_STAGE = testId('stage-first');
 const SECOND_STAGE = testId('stage-second');
@@ -41,25 +49,25 @@ const protocolSections = (): Record<string, SectionDoc> => ({
   [sectionId({ kind: 'stageOrder' })]: {
     stages: [SECOND_STAGE, FIRST_STAGE],
   },
-  [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+  [sectionId({ kind: 'codebookNode', typeId: PERSON })]: {
     name: 'Person',
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables: {
-      age: { name: 'Age', type: 'number' },
-      nickname: { name: 'Nickname', type: 'text' },
+      [AGE]: { name: 'Age', type: 'number' },
+      [NICKNAME]: { name: 'Nickname', type: 'text' },
     },
   },
-  [sectionId({ kind: 'codebookEdge', typeId: 'knows' })]: {
+  [sectionId({ kind: 'codebookEdge', typeId: KNOWS })]: {
     name: 'Knows',
     color: 'edge-color-seq-1',
     variables: {
-      strength: { name: 'Strength', type: 'number' },
+      [STRENGTH]: { name: 'Strength', type: 'number' },
     },
   },
   [sectionId({ kind: 'codebookEgo' })]: {
     variables: {
-      consented: {
+      [CONSENTED]: {
         name: 'Consented',
         type: 'boolean',
       },
@@ -81,37 +89,33 @@ describe('protocolContextFromSections', () => {
       FIRST_STAGE,
     ]);
     expect(
-      entityForSubject(context, { entity: 'node', type: 'person' }),
+      entityForSubject(context, { entity: 'node', type: PERSON }),
     ).toMatchObject({ name: 'Person' });
     expect(
-      variablesForSubject(context, { entity: 'edge', type: 'knows' }),
-    ).toHaveProperty('strength.name', 'Strength');
+      variablesForSubject(context, { entity: 'edge', type: KNOWS }),
+    ).toHaveProperty([STRENGTH, 'name'], 'Strength');
     expect(
-      variableForSubject(context, { entity: 'ego' }, 'consented'),
+      variableForSubject(context, { entity: 'ego' }, CONSENTED),
     ).toMatchObject({ type: 'boolean' });
   });
 
   it('keeps the read model available when a referenced variable is deleted', () => {
     const sections = protocolSections();
-    const nodeId = sectionId({ kind: 'codebookNode', typeId: 'person' });
+    const nodeId = sectionId({ kind: 'codebookNode', typeId: PERSON });
     sections[nodeId] = {
       ...sections[nodeId],
       variables: {
-        nickname: { name: 'Nickname', type: 'text' },
+        [NICKNAME]: { name: 'Nickname', type: 'text' },
       },
     };
 
     const context = protocolContextFromSections(sections);
 
     expect(
-      variableForSubject(context, { entity: 'node', type: 'person' }, 'age'),
+      variableForSubject(context, { entity: 'node', type: PERSON }, AGE),
     ).toBeUndefined();
     expect(
-      variableForSubject(
-        context,
-        { entity: 'node', type: 'person' },
-        'nickname',
-      ),
+      variableForSubject(context, { entity: 'node', type: PERSON }, NICKNAME),
     ).toMatchObject({ name: 'Nickname' });
     expect(context.orderedStages).toHaveLength(2);
     expect(context.issues).toEqual([]);
@@ -119,16 +123,16 @@ describe('protocolContextFromSections', () => {
 
   it('reports and omits one malformed section without hiding valid siblings', () => {
     const sections = protocolSections();
-    const nodeId = sectionId({ kind: 'codebookNode', typeId: 'person' });
+    const nodeId = sectionId({ kind: 'codebookNode', typeId: PERSON });
     sections[nodeId] = { name: 'Missing appearance' };
 
     const context = protocolContextFromSections(sections);
 
     expect(
-      entityForSubject(context, { entity: 'node', type: 'person' }),
+      entityForSubject(context, { entity: 'node', type: PERSON }),
     ).toBeUndefined();
     expect(
-      entityForSubject(context, { entity: 'edge', type: 'knows' }),
+      entityForSubject(context, { entity: 'edge', type: KNOWS }),
     ).toMatchObject({ name: 'Knows' });
     expect(context.orderedStages).toHaveLength(2);
     expect(context.issues).toEqual(
@@ -138,12 +142,12 @@ describe('protocolContextFromSections', () => {
 
   it('reports duplicate variable record ids without hiding either definition', () => {
     const sections = protocolSections();
-    const edgeId = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
+    const edgeId = sectionId({ kind: 'codebookEdge', typeId: KNOWS });
     const egoId = sectionId({ kind: 'codebookEgo' });
     sections[edgeId] = {
       ...sections[edgeId],
       variables: {
-        age: {
+        [AGE]: {
           name: 'RelationshipAge',
           type: 'number',
         },
@@ -151,37 +155,37 @@ describe('protocolContextFromSections', () => {
     };
     sections[egoId] = {
       variables: {
-        age: { name: 'EgoAge', type: 'number' },
+        [AGE]: { name: 'EgoAge', type: 'number' },
       },
     };
 
     const context = protocolContextFromSections(sections);
 
     expect(
-      variableForSubject(context, { entity: 'node', type: 'person' }, 'age'),
+      variableForSubject(context, { entity: 'node', type: PERSON }, AGE),
     ).toMatchObject({ name: 'Age' });
     expect(
-      variableForSubject(context, { entity: 'edge', type: 'knows' }, 'age'),
+      variableForSubject(context, { entity: 'edge', type: KNOWS }, AGE),
     ).toMatchObject({ name: 'RelationshipAge' });
-    expect(variableForSubject(context, { entity: 'ego' }, 'age')).toMatchObject(
-      { name: 'EgoAge' },
-    );
+    expect(variableForSubject(context, { entity: 'ego' }, AGE)).toMatchObject({
+      name: 'EgoAge',
+    });
     expect(
       context.issues.filter(({ message }) =>
-        readMessage(message).includes('Attribute record key "age"'),
+        readMessage(message).includes(`Attribute record key "${AGE}"`),
       ),
     ).toEqual([
       expect.objectContaining({
         sectionId: edgeId,
-        path: ['variables', 'age'],
+        path: ['variables', AGE],
       }),
-      expect.objectContaining({ sectionId: egoId, path: ['variables', 'age'] }),
+      expect.objectContaining({ sectionId: egoId, path: ['variables', AGE] }),
     ]);
   });
 
   it('reports duplicate entity names without hiding either valid definition', () => {
     const sections = protocolSections();
-    const edgeId = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
+    const edgeId = sectionId({ kind: 'codebookEdge', typeId: KNOWS });
     sections[edgeId] = {
       ...sections[edgeId],
       name: 'Person',
@@ -190,10 +194,10 @@ describe('protocolContextFromSections', () => {
     const context = protocolContextFromSections(sections);
 
     expect(
-      entityForSubject(context, { entity: 'node', type: 'person' }),
+      entityForSubject(context, { entity: 'node', type: PERSON }),
     ).toMatchObject({ name: 'Person' });
     expect(
-      entityForSubject(context, { entity: 'edge', type: 'knows' }),
+      entityForSubject(context, { entity: 'edge', type: KNOWS }),
     ).toMatchObject({ name: 'Person' });
     expect(
       context.issues.map((issue) => ({
@@ -223,13 +227,13 @@ describe('protocolContextFromSections', () => {
       id: FIRST_STAGE,
       type: 'NameGenerator',
       label: text('First'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         title: text('Add'),
         fields: [
           {
             id: testId('field-1'),
-            variable: 'name',
+            variable: NAME,
             prompt: text('Name'),
           },
         ],
@@ -246,7 +250,7 @@ describe('protocolContextFromSections', () => {
               {
                 id: testId('r1'),
                 type: 'edge',
-                options: { type: 'knows', operator: 'EXISTS' },
+                options: { type: KNOWS, operator: 'EXISTS' },
               },
             ],
           },

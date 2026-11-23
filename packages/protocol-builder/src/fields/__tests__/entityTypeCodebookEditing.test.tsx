@@ -14,8 +14,14 @@ import {
 } from '../../__tests__/packageSource.ts';
 import { familyPedigreeStageWithout } from '../../editors/family-pedigree/__tests__/pedigreeFixtures.ts';
 import SubjectSection from '../../sections/subject-picker/SubjectSection.tsx';
+import { fixtureTypeId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../testing/testId.ts';
 import EntityTypePickerField from '../EntityTypePickerField.tsx';
+
+const SHOE_SIZE = testVariableId('shoe_size');
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
 /**
  * A pedigree opened on a protocol that has no node types, which is what a
@@ -34,7 +40,7 @@ const pedigreeOnAProtocolWithNoNodeTypes = () => ({
 
 const FAMILY_MEMBER_SECTION = sectionId({
   kind: 'codebookNode',
-  typeId: 'family_member',
+  typeId: FAMILY_MEMBER,
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -65,7 +71,7 @@ const clearNodeTypes = (
   harness: ReturnType<typeof renderStageEditor>,
 ): void => {
   harness.receiveCodebookUpdate({
-    node: { person: null, family_member: null },
+    node: { [PERSON]: null, [FAMILY_MEMBER]: null },
   });
 };
 
@@ -252,19 +258,19 @@ describe('making and changing a codebook type from the control that names it', (
     ).toBeChecked();
     // Held with the stage: the protocol keeps the old name until it is saved,
     // and gets the new one with it.
-    expect(harness.hostCodebook().node?.family_member?.name).toBe(
+    expect(harness.hostCodebook().node?.[FAMILY_MEMBER]?.name).toBe(
       'family member',
     );
     await harness.submit();
-    expect(harness.hostCodebook().node?.family_member?.name).toBe('relative');
+    expect(harness.hostCodebook().node?.[FAMILY_MEMBER]?.name).toBe('relative');
   });
 
   /**
    * A rename is judged against the other map's names as firmly as its own.
    *
    * Node and edge types share ONE namespace, and a record key belongs to one
-   * map — `CodebookIdSchema`'s alphabet is the protocol author's, so an
-   * imported codebook may legally key a node type and an edge type the same.
+   * map — a type id (`EntityTypeIdSchema`) need only be unique within its own
+   * map, so a codebook may legally key a node type and an edge type the same.
    * A collision list that dropped the edited entry by id alone would drop the
    * OTHER map's entry with it, and the rename would be taken by the field and
    * refused by the schema, on a screen with no name field left to act on.
@@ -278,7 +284,7 @@ describe('making and changing a codebook type from the control that names it', (
     // The same record key in both maps, which is what a codebook may hold.
     harness.receiveCodebookUpdate({
       edge: {
-        family_member: {
+        [FAMILY_MEMBER]: {
           name: 'kinship',
           color: 'edge-color-seq-1',
           variables: {},
@@ -303,7 +309,7 @@ describe('making and changing a codebook type from the control that names it', (
       await editor.findByText('A type named "kinship" already exists.'),
     ).toBeVisible();
     // Refused here, so nothing reached the codebook to be refused there.
-    expect(harness.hostCodebook().node?.family_member?.name).toBe(
+    expect(harness.hostCodebook().node?.[FAMILY_MEMBER]?.name).toBe(
       'family member',
     );
   });
@@ -412,22 +418,24 @@ describe('making and changing a codebook type from the control that names it', (
       editor.getByRole('button', { name: 'Save entity' }),
     );
     await waitFor(() =>
-      expect(harness.editorCodebook().node?.family_member?.name).toBe(
+      expect(harness.editorCodebook().node?.[FAMILY_MEMBER]?.name).toBe(
         'relative',
       ),
     );
 
-    collaboratorAddsFamilyMemberVariable(harness, 'shoe_size', {
+    collaboratorAddsFamilyMemberVariable(harness, SHOE_SIZE, {
       name: 'shoe_size',
       type: 'number',
       component: 'Number',
     });
     await harness.submit();
 
-    expect(harness.hostCodebook().node?.family_member?.name).toBe('relative');
+    expect(harness.hostCodebook().node?.[FAMILY_MEMBER]?.name).toBe('relative');
     expect(
-      Object.keys(harness.hostCodebook().node?.family_member?.variables ?? {}),
-    ).toContain('shoe_size');
+      Object.keys(
+        harness.hostCodebook().node?.[FAMILY_MEMBER]?.variables ?? {},
+      ),
+    ).toContain(SHOE_SIZE);
   });
 
   it('leaves no section mounting a codebook entity editor of its own', () => {

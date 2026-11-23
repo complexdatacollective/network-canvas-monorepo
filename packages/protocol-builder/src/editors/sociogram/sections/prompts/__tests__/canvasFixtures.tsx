@@ -6,7 +6,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { background } from '../../../../../sections/background/background.tsx';
 import { nodeLayout } from '../../../../../sections/canvas-behaviours/nodeLayout.tsx';
 import { attributeField } from '../../../../../testing/attributePicker.ts';
-import { fixtureStageId } from '../../../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../../../testing/testId.ts';
 import { sociogramPrompts } from '../sociogramPrompts.tsx';
@@ -42,7 +45,7 @@ export const sociogramHolding = (prompt: Record<string, unknown>) => ({
     type: 'Sociogram' as const,
     fields: {
       label: { 'en-US': 'Sociogram' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
       prompts: [prompt],

@@ -21,11 +21,14 @@ import type {
   HandlerOverrides,
   InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
+import { testTypeId } from '../../testing/testId.ts';
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import { useCodebookSectionWrite } from '../writes.ts';
 
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const SUBJECT: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON_TYPE = testTypeId('person');
+
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
+const SUBJECT: CodebookSubject = { entity: 'node', type: PERSON_TYPE };
 
 const HOME_SVG =
   '<svg viewBox="0 0 100 100"><path d="M10 50 L50 10 L90 50 V90 H10 Z"/></svg>';

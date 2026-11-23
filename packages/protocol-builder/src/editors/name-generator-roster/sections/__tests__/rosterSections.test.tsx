@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { fixtureStageId } from '../../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../../testing/testId.ts';
 import CardDisplaySection from '../CardDisplaySection.tsx';
@@ -21,7 +24,7 @@ const rosterWith = (fields: SectionDoc) => ({
   type: 'NameGeneratorRoster' as const,
   fields: {
     label: { 'en-US': 'Name Generator Roster' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
     panelTitle: { 'en-US': 'Available to add' },
     allAddedNotice: {
       'en-US': 'There is nothing left to add from this list.',

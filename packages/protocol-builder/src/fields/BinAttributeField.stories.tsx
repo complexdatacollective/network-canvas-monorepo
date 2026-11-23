@@ -8,16 +8,26 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import { fixtureStageId } from '../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../testing/protocolFixture.ts';
 import BinAttributeField, {
   type BinAttributeSlot,
 } from './BinAttributeField.tsx';
 
+const PERSON = fixtureTypeId('node', 'person');
+const CONTACT_FREQ = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactFreq',
+);
+
 /** Whose attributes a bin prompt sorts, which the stage's subject decides. */
-const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON_SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 
 /** The codebook section a collaborator's edits below are written to. */
-const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 /** What an Ordinal Bin can draw before the bins stop being readable. */
 const ORDINAL_BIN_LIMIT = 6;
@@ -55,7 +65,7 @@ function TheScale({ committed }: Readonly<{ committed: string | undefined }>) {
   return (
     <BinAttributeField
       slot={SCALE_SLOT}
-      subject={PERSON}
+      subject={PERSON_SUBJECT}
       committed={committed}
       label="Attribute"
       hint="Each of this attribute's values becomes a bin, in the order the attribute lists them."
@@ -73,7 +83,7 @@ function TheBins({ committed }: Readonly<{ committed: string | undefined }>) {
   return (
     <BinAttributeField
       slot={BINS_SLOT}
-      subject={PERSON}
+      subject={PERSON_SUBJECT}
       committed={committed}
       label="Attribute"
       hint="Each of this attribute's values becomes a bin, and dropping someone into a bin records that value for them."
@@ -207,7 +217,7 @@ export const MoreBinsThanFit: Story = {
         ...document,
         variables: {
           ...variables,
-          contactFreq: {
+          [CONTACT_FREQ]: {
             name: 'contactFreq',
             type: 'ordinal',
             options: [

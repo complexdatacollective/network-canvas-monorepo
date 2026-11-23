@@ -9,11 +9,14 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { ProtocolBuilder } from '../../../ProtocolBuilder.tsx';
 import { createResourceHost } from '../../../resources/components/__tests__/resourceHost.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
+import { testTypeId } from '../../../testing/testId.ts';
 import CreateCodebookVariableDialog, {
   type CreateCodebookVariableSession,
 } from '../CreateCodebookVariableDialog.tsx';
 
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON_TYPE = testTypeId('person');
+
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
 
 function AddAttribute() {
   const { session, openSession, closeSession, onSessionExited } =
@@ -25,7 +28,7 @@ function AddAttribute() {
         onClick={() =>
           openSession({
             key: crypto.randomUUID(),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', type: PERSON_TYPE },
             variableId: crypto.randomUUID(),
           })
         }

@@ -13,11 +13,21 @@ import {
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import { fixtureStageId } from '../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../testing/protocolFixture.ts';
 import { variableNameScope } from './variableNameRules.ts';
 import VariablePickerField from './VariablePickerField.tsx';
 
-const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON = fixtureTypeId('node', 'person');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
+
+const PERSON_SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 
 const FIELD_LABEL = 'Attribute this question records';
 
@@ -58,13 +68,13 @@ function AttributePicker({
   canCreate = false,
   readOnly = false,
 }: Readonly<{ canCreate?: boolean; readOnly?: boolean }>) {
-  const options = useAttributeOptions(PERSON);
+  const options = useAttributeOptions(PERSON_SUBJECT);
   const protocolContext = useProtocolContext();
   const nameScope = useMemo(
     () =>
       variableNameScope(
-        PERSON.entity,
-        variablesForSubject(protocolContext, PERSON),
+        PERSON_SUBJECT.entity,
+        variablesForSubject(protocolContext, PERSON_SUBJECT),
       ),
     [protocolContext],
   );
@@ -339,7 +349,7 @@ export const AChoiceThatIsRuledOut: Story = {
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        nodeConfiguration: { ...nodeConfiguration, egoAttribute: 'layout' },
+        nodeConfiguration: { ...nodeConfiguration, egoAttribute: LAYOUT },
       });
     },
   },
