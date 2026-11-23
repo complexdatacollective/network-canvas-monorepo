@@ -12,7 +12,7 @@
 // protocol it is given. Keep it as short as accuracy allows: it is sent with
 // every review. Bump the version when the text changes.
 
-export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v3
+export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v4
 
 This is what you need to write fixes that leave the protocol valid. For anything not described here, copy the shape the protocol already uses.
 
@@ -39,7 +39,7 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 
 - NodeType: { "name", "color": "node-color-seq-1" … "node-color-seq-8", "shape": { "default": "circle" | "square" | "diamond" }, "icon"?, "variables"?: { <variableId>: Variable } }
 - EdgeType: { "name", "color"?: "edge-color-seq-1" … "edge-color-seq-8", "variables"? }
-- Type and variable ids are object keys matching [a-zA-Z0-9._:-]+; use a fresh UUID v4. A variable id must be unique across the whole codebook. A variable's name is its column name in exported data: unique within its entity, no leading or trailing spaces.
+- Every type id and every variable id is a UUID, used as the object key; a readable key such as "person" or "age" makes the protocol invalid. A new type or variable gets a fresh UUID v4. A type id must be unique among the node types or among the edge types, and a variable id must be unique across the whole codebook. A variable's name is its column name in exported data: unique within its entity, no leading or trailing spaces.
 - Variable: { "name", "type", "component"?, "options"?, "parameters"?, "validation"? }. A variable shown in a form field must have a component.
 
 | type | component | answer recorded | settings |
