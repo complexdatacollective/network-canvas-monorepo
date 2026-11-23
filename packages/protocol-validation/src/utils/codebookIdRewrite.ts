@@ -183,7 +183,9 @@ export const rewriteCodebookIds = (
   // Every new value is worked out before any is written, so that each
   // reference is resolved against the document as it was.
   const writes: { path: (string | number)[]; value: string }[] = [];
-  for (const hit of walkSchemaReferences(schema, root)) {
+  for (const hit of walkSchemaReferences(schema, root, {
+    readAssetBlocks: false,
+  })) {
     if (isTypeHit(hit)) {
       const renamed = typeRenames.get(hit.entity)?.get(hit.typeId);
       if (renamed !== undefined)

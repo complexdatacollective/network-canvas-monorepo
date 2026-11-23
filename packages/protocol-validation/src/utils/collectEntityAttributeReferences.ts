@@ -21,7 +21,7 @@ export const collectEntityAttributeReferencesFromSchema = (
   schema: z.ZodType,
   value: unknown,
 ): EntityAttributeReferenceHit[] =>
-  walkSchemaReferences(schema, value)
+  walkSchemaReferences(schema, value, { readAssetBlocks: false })
     .filter(isAttributeHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
@@ -50,7 +50,7 @@ export const collectEntityTypeReferencesFromSchema = (
   schema: z.ZodType,
   value: unknown,
 ): EntityTypeReferenceHit[] =>
-  walkSchemaReferences(schema, value)
+  walkSchemaReferences(schema, value, { readAssetBlocks: false })
     .filter(isTypeHit)
     .map(({ kind: _kind, ...hit }) => hit);
 
@@ -108,7 +108,9 @@ export const collectAssetReferences = (
 export const collectStageReferences = (
   protocol: unknown,
 ): StageReferenceHit[] =>
-  walkSchemaReferences(ProtocolStructureSchema, protocol)
+  walkSchemaReferences(ProtocolStructureSchema, protocol, {
+    readAssetBlocks: false,
+  })
     .filter(isStageHit)
     .map(({ kind: _kind, ...hit }) => hit);
 

@@ -106,7 +106,9 @@ export const rewriteStageReferences = (
   root: unknown,
   rename: (stageId: string) => string | undefined,
 ): void => {
-  for (const hit of walkSchemaReferences(schema, root).filter(isStageHit)) {
+  for (const hit of walkSchemaReferences(schema, root, {
+    readAssetBlocks: false,
+  }).filter(isStageHit)) {
     const renamed = rename(hit.stageId);
     if (renamed !== undefined) setValueAt(root, hit.path, renamed);
   }

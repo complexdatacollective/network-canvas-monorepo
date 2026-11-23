@@ -36,7 +36,7 @@ export const findMarkedObjects = (
   schema: z.ZodType,
   value: unknown,
 ): ProtocolObjectIdHit[] =>
-  walkSchemaReferences(schema, value)
+  walkSchemaReferences(schema, value, { readAssetBlocks: false })
     .filter(isObjectIdHit)
     .map(({ kind: _kind, ...hit }) => hit);
 

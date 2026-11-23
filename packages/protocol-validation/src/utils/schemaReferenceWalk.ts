@@ -101,6 +101,7 @@ type WalkContext = {
   // stage (NarrativePedigree). Empty when the walk was entered on a schema
   // fragment rather than a whole protocol.
   stages: readonly unknown[];
+  readAssetBlocks: boolean;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -403,7 +404,7 @@ const walk = (
   }
 
   if (holdsAssetBlocks(node)) {
-    if (!isRecord(value)) return [];
+    if (!ctx.readAssetBlocks || !isRecord(value)) return [];
     // Every translation is read: each is a text some participant is shown,
     // and a file only one language shows is still in use.
     return Object.entries(value).flatMap(([locale, message]) =>
@@ -431,6 +432,7 @@ const walk = (
       parent: value,
       filterRuleEntity: filterRuleEntityOf(value) ?? ctx.filterRuleEntity,
       stages: ctx.stages,
+      readAssetBlocks: ctx.readAssetBlocks,
     };
     const children = Object.keys(shape).flatMap((key) => {
       const child: unknown = shape[key];
@@ -553,11 +555,17 @@ export const isObjectIdHit = (
  * is seeded from the value so a stage whose subject lives on another stage
  * (NarrativePedigree) can resolve it; walking a schema fragment leaves it
  * empty.
+ *
+ * `readAssetBlocks: false` leaves out the files text shows as blocks, which
+ * are found by parsing the text's markdown: the costly part of a walk, and
+ * not needed by a caller that reads no asset hits.
  */
 export const walkSchemaReferences = (
   schema: z.ZodType,
   value: unknown,
+  { readAssetBlocks = true }: { readAssetBlocks?: boolean } = {},
 ): ReferenceHit[] =>
   walk(schema, value, [], {
     stages: isRecord(value) && Array.isArray(value.stages) ? value.stages : [],
+    readAssetBlocks,
   });
