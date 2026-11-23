@@ -22,6 +22,10 @@ import {
   resolveDynamicText,
 } from '../resolveDynamicText';
 
+/** The text a page shows for `html`, read from the parsed document. */
+const drawnText = (html: string): string =>
+  new DOMParser().parseFromString(html, 'text/html').body.textContent;
+
 const VARIABLES: Record<string, Variable> = {
   name: { name: 'name', type: 'text' },
   age: { name: 'age', type: 'number' },
@@ -351,7 +355,12 @@ const AUTOLINK_SPLITS: readonly (readonly [string, string, string])[] = [
 ];
 
 const hrefs = (html: string): string[] =>
-  [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? '');
+  Array.from(
+    new DOMParser()
+      .parseFromString(html, 'text/html')
+      .querySelectorAll('[href]'),
+    (link) => link.getAttribute('href') ?? '',
+  );
 
 /**
  * Markdown as text of several lines draws it, links included, so that a
@@ -496,11 +505,11 @@ describe('markdownSource', () => {
       'Ada',
       '',
       // The address as a link, its `&` as typed, then the value.
-      'See https://a.example/?a=1&amp;b=2Ada',
-      ['https://a.example/?a=1&amp;b=2'],
+      'See https://a.example/?a=1&b=2Ada',
+      ['https://a.example/?a=1&b=2'],
     ],
-    ['an `&` in code', 'Type `AT&T`', 'Ada', '', 'Type AT&amp;TAda', []],
-    ['a `<` in code around a value', '`<', 'Ada', '>`', '&lt;Ada&gt;', []],
+    ['an `&` in code', 'Type `AT&T`', 'Ada', '', 'Type AT&TAda', []],
+    ['a `<` in code around a value', '`<', 'Ada', '>`', '<Ada>', []],
     ['a `[` in code around a value', 'Type `[', 'Ada', ']`', 'Type [Ada]', []],
   ])('leaves %s as typed', (_case, before, value, after, shown, links) => {
     const source = markdownSource({
@@ -508,7 +517,7 @@ describe('markdownSource', () => {
       parts: [before, { name: 'name', text: value }, after],
     });
     const html = drawnWithLinks(source);
-    expect(html.replace(/<[^>]*>/g, '')).toBe(shown);
+    expect(drawnText(html)).toBe(shown);
     expect(hrefs(html)).toEqual(links);
   });
 
@@ -539,6 +548,33 @@ describe('markdownSource', () => {
       );
       expect(html).not.toContain(element);
       expect(getMarkdownLabelText(source)).toBe(`${marker} heading`);
+    }
+  });
+
+  it('shows a value that opens a line as typed, never as a block', () => {
+    for (const value of [
+      '~~~example~~~',
+      '```',
+      '+ item',
+      '1) one',
+      '#',
+      '===',
+      '***',
+      '    indented',
+    ]) {
+      const source = markdownSource({
+        text: '',
+        parts: ['Before\n', { name: 'name', text: value }, '\nAfter'],
+      });
+      const page = new DOMParser().parseFromString(
+        drawnWithLinks(source),
+        'text/html',
+      ).body;
+      expect(
+        Array.from(page.children, (child) => child.tagName),
+        value,
+      ).toEqual(['P']);
+      expect(page.textContent, value).toBe(`Before\n${value.trim()}\nAfter`);
     }
   });
 
