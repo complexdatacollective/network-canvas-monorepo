@@ -21,4 +21,20 @@ describe('FieldLabel', () => {
       'noopener,noreferrer',
     );
   });
+
+  it('shows an escaped character as the character', () => {
+    render(<FieldLabel>{'&gt; 5 years'}</FieldLabel>);
+
+    expect(screen.getByText('> 5 years')).toBeInTheDocument();
+  });
+
+  it('reads a label as markdown, with HTML shown as typed', () => {
+    const { container } = render(
+      <FieldLabel>{'**Age** in <em>years</em>'}</FieldLabel>,
+    );
+
+    expect(container.querySelector('strong')).toHaveTextContent('Age');
+    expect(container.querySelector('em')).toBeNull();
+    expect(container).toHaveTextContent('Age in <em>years</em>');
+  });
 });

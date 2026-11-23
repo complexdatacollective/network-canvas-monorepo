@@ -24,7 +24,6 @@ import { presentationalTextValue } from '@codaco/fresco-ui/PresentationalText';
 import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
   ALLOWED_MARKDOWN_SECTION_TAGS,
-  DEFAULT_MARKDOWN_REHYPE_PLUGINS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import {
@@ -1383,8 +1382,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 /**
  * Splits the text the markdown was read into at each character holding a
  * value's place, leaving an empty `span` that records which value it is. Runs
- * after sanitizing, so what it adds is not stripped, and nothing an author
- * wrote can claim to be a value.
+ * on the finished structure, where an author's words are text only, so
+ * nothing an author wrote can claim to be a value.
  */
 const splitValueMarks = (node: unknown): void => {
   if (!isRecord(node) || !Array.isArray(node.children)) return;
@@ -1420,10 +1419,7 @@ const splitValueMarks = (node: unknown): void => {
 };
 
 const valueMarkPlugin = () => splitValueMarks;
-const SUMMARY_REHYPE_PLUGINS = [
-  ...DEFAULT_MARKDOWN_REHYPE_PLUGINS,
-  valueMarkPlugin,
-];
+const SUMMARY_REHYPE_PLUGINS = [valueMarkPlugin];
 
 /**
  * How markdown spread over several lines is drawn: which elements it keeps

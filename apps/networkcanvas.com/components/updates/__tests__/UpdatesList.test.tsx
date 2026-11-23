@@ -77,7 +77,7 @@ describe('UpdatesList', () => {
     expect(screen.queryAllByRole('article', { hidden: true })).toHaveLength(0);
   });
 
-  it('matches words inside raw HTML the card displays', () => {
+  it('shows HTML in an update as typed, and matches words inside it', () => {
     renderWithIntl(
       <UpdatesList
         updates={[
@@ -89,7 +89,9 @@ describe('UpdatesList', () => {
       />,
     );
 
-    expect(screen.getByText('localisation')).toBeInTheDocument();
+    expect(
+      screen.getByText('<p>New <em>localisation</em> support</p>'),
+    ).toBeInTheDocument();
 
     search('localisation');
     expect(screen.getAllByRole('article', { hidden: true })).toHaveLength(1);

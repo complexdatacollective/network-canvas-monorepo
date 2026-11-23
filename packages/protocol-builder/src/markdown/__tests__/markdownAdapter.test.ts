@@ -125,12 +125,12 @@ describe('RichText markdown adapter', () => {
   /**
    * Text the researcher typed is text, whatever characters it contains.
    *
-   * The renderer every interview runs passes raw HTML through and then
-   * sanitises it, so an unescaped `<IRB OR ETHICS BOARD HERE>` reached the
-   * participant as an unknown element and was dropped outright: the consent
-   * form read "received ethics clearance through, today." Each case is read
-   * back by that renderer, so the assertion is about what the participant is
-   * shown rather than about one spelling of the escape.
+   * The interview's renderer once read raw HTML and sanitised it, so an
+   * unescaped `<IRB OR ETHICS BOARD HERE>` reached the participant as an
+   * unknown element and was dropped outright: the consent form read
+   * "received ethics clearance through, today." Each case is read back by
+   * the renderer, so the assertion is about what the participant is shown
+   * rather than about one spelling of the escape.
    */
   describe('characters the renderer would read as markup', () => {
     const paragraph = (text: string): RichTextContent => ({

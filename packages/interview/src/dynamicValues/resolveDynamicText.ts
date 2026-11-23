@@ -402,12 +402,7 @@ export const resolveDynamicText = (
 // Every ASCII punctuation character, each of which CommonMark lets a
 // backslash make literal.
 const MARKDOWN_PUNCTUATION = /[!-/:-@[-`{-~]/g;
-
-// GFM turns a bare `www.`, `http://` or email address into a link after
-// parsing, escapes or not. An invisible word joiner after `www`, a colon or
-// an `@` keeps each from matching without changing what is shown.
-const WORD_JOINER = '\u2060';
-const AUTOLINK_TRIGGERS = /www(?=\.)|[:@]/gi;
+const IS_MARKDOWN_PUNCTUATION = /^[!-/:-@[-`{-~]$/;
 
 /** A value as markdown that renders as exactly its text. */
 const literalMarkdown = (value: string): string =>
@@ -415,35 +410,70 @@ const literalMarkdown = (value: string): string =>
     // A value on a line of its own could start a block (a heading, a list,
     // indented code), so its whitespace is collapsed.
     .replace(/\s+/g, ' ')
-    .replace(AUTOLINK_TRIGGERS, `$&${WORD_JOINER}`)
     .replace(MARKDOWN_PUNCTUATION, '\\$&')
     // The space left at its start could still finish a marker the researcher
     // wrote at the start of a line (`#` or `1.` before the answer ` heading`).
     // A character reference shows the same space but never forms a block.
     .replace(/^ /, '&#32;');
 
-// Markdown can also find a token across the edge of a value: a bare link
-// (`https:` in the researcher's words and `//evil.example` in a participant's
-// answer, or the answer `ada` before `@example.com`), an entity (`&`, the
-// answer `copy`, then `;`) or an HTML tag (`<`, the answer `em`, then `>`).
+// Markdown can also find a token across the edge of a value. A `<` or `&`
+// in the researcher's words just before a value could open an autolink, an
+// HTML tag or a character reference that the value and the words after it
+// complete (`<https:`, the answer `//evil.example`, then `>`; or `&`, the
+// answer `copy`, then `;`). Such a `<` or `&`, one that nothing has closed
+// before the value, is escaped: it shows the same character and opens nothing.
+const RUN_BEFORE = /\S*$/;
+const CLOSES: Readonly<Record<string, string>> = { '<': '>', '&': ';' };
+
+const escapeOpenTokens = (markdown: string): string => {
+  const run = RUN_BEFORE.exec(markdown)?.[0] ?? '';
+  const start = markdown.length - run.length;
+  let escaped = '';
+  let backslashes = 0;
+  for (let offset = 0; offset < run.length; offset += 1) {
+    const character = run.charAt(offset);
+    const closer = CLOSES[character];
+    const open =
+      closer !== undefined &&
+      backslashes % 2 === 0 &&
+      !run.slice(offset + 1).includes(closer);
+    escaped += open ? `\\${character}` : character;
+    backslashes = character === '\\' ? backslashes + 1 : 0;
+  }
+  return markdown.slice(0, start) + escaped;
+};
+
 // A value before a `]` could also be, or end, a link label that matches one of
 // the researcher's reference definitions (`[details][{name}]` and the answer
-// `friend`, with `[friend]: https://…` defined), so one always follows it.
-// An empty HTML comment, which renders as nothing, ends the run of text such a token is found in. It goes only
-// where the words around a value could make one, so elsewhere nothing comes
-// between a value and the markdown around it.
-const VALUE_BOUNDARY = '<!---->';
-const TOKEN_TRIGGER = /www\\?\.|[:@&<]/i;
-const RUN_BEFORE = /\S*$/;
-const RUN_AFTER = /^\S*/;
+// `friend`, with `[friend]: https://…` defined). Labels are matched as
+// written, so the value's last character, written as a character reference,
+// shows the same and matches no definition the researcher wrote. A character
+// escaped with a backslash, or a value's marker, already matches none.
+const LAST_CHARACTER = /(\S)(\s*)$/u;
 // A `]` before the paragraph ends.
 const LABEL_END_AFTER = /^(?:(?!\n[^\S\n]*\n)[\s\S])*\]/;
+
+const unmatchableLabelEnd = (markdown: string): string => {
+  const found = LAST_CHARACTER.exec(markdown);
+  const character = found?.[1];
+  const codePoint = character?.codePointAt(0);
+  if (
+    found === null ||
+    character === undefined ||
+    codePoint === undefined ||
+    character === DYNAMIC_VALUE_MARKER ||
+    IS_MARKDOWN_PUNCTUATION.test(character)
+  ) {
+    return markdown;
+  }
+  return `${markdown.slice(0, found.index)}&#x${codePoint.toString(16)};${found[2] ?? ''}`;
+};
 
 /**
  * Markdown for resolved text: the researcher's words as written, and each
  * value as `valueMarkdown` writes it, kept apart from the words around it so
- * that together they can never form a bare link, entity, tag or link label. A value written as nothing
- * is left out.
+ * that together they can never form an autolink, HTML, a character reference
+ * or a link label. A value written as nothing is left out.
  */
 export const joinMarkdownParts = (
   parts: readonly DynamicTextPart[],
@@ -455,22 +485,22 @@ export const joinMarkdownParts = (
   const plain = parts.map((part) =>
     typeof part === 'string' ? part : part.text,
   );
-  return parts
-    .map((part, index) => {
-      if (typeof part === 'string') return part;
-      const markdown = valueMarkdown(part, index);
-      if (markdown === '') return '';
-      const following = plain.slice(index + 1).join('');
-      const inLabel = LABEL_END_AFTER.test(following);
-      const before = RUN_BEFORE.exec(plain.slice(0, index).join(''))?.[0] ?? '';
-      const after = RUN_AFTER.exec(following)?.[0] ?? '';
-      const joins = TOKEN_TRIGGER.test(`${before}${part.text}${after}`);
-      if (!joins && !inLabel) return markdown;
-      const open = joins && before !== '' && /^\S/.test(part.text);
-      const close = inLabel || (joins && after !== '' && /\S$/.test(part.text));
-      return `${open ? VALUE_BOUNDARY : ''}${markdown}${close ? VALUE_BOUNDARY : ''}`;
-    })
-    .join('');
+  let joined = '';
+  for (const [index, part] of parts.entries()) {
+    if (typeof part === 'string') {
+      joined += part;
+      continue;
+    }
+    const markdown = valueMarkdown(part, index);
+    if (markdown === '') continue;
+    const following = plain.slice(index + 1).join('');
+    joined =
+      escapeOpenTokens(joined) +
+      (LABEL_END_AFTER.test(following)
+        ? unmatchableLabelEnd(markdown)
+        : markdown);
+  }
+  return joined;
 };
 
 const MARKER = DYNAMIC_VALUE_MARKER;

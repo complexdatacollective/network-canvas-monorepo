@@ -6,9 +6,9 @@ import { textItemAsStandard } from '@codaco/protocol-validation/testing/informat
 // Schema 9 text holds no HTML that is read as HTML. The migration from
 // schema 8 reads every `<` and `>` in a text item as a typed character
 // (except `<br>`, a line break), and writes it escaped, so the page it
-// writes shows those characters. Whether the interview draws them as typed
-// is the renderer's to show (stage 2, which also stops it reading raw HTML
-// written in schema 9 text); these tests check what the migration writes.
+// writes shows those characters. The interview's renderer draws any HTML
+// left in schema 9 text as the characters typed (see fresco-ui's
+// `RenderMarkdown` tests); these tests check what the migration writes.
 
 type TreeNode = Readonly<{
   type: string;

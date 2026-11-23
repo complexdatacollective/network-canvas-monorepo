@@ -329,8 +329,16 @@ describe('resolveDynamicText', () => {
   });
 });
 
-/** Authored text and a value that, joined, would read as a bare link. */
+/**
+ * Authored text and a value that, joined, could read as a link: an autolink
+ * written in angle brackets, or a bare address, which standard markdown leaves
+ * as words.
+ */
 const AUTOLINK_SPLITS: readonly (readonly [string, string, string])[] = [
+  ['See <https:', '//evil.example', '>'],
+  ['See <', 'https://evil.example', '>'],
+  ['See <https://a.example/', 'evil', '>'],
+  ['Write to <ada', '@evil.example', '>'],
   ['See https:', '//evil.example', ''],
   ['See https://', 'evil.example', ''],
   ['See www.', 'evil.example', ''],
@@ -367,8 +375,7 @@ describe('markdownSource', () => {
     for (const element of ['<a', '<img', '<h1', '<pre', '<code']) {
       expect(html).not.toContain(element);
     }
-    // Word joiners keep autolinks from forming; they are not seen.
-    expect(getMarkdownLabelText(source).replaceAll('\u2060', '')).toBe(
+    expect(getMarkdownLabelText(source)).toBe(
       `Decline for ${HOSTILE.replace(/\s+/g, ' ')}.`,
     );
   });
@@ -421,7 +428,9 @@ describe('markdownSource', () => {
       const label = JSON.stringify([before, value, after]);
       expect(html, label).not.toContain('©');
       expect(html, label).not.toContain('<em>');
-      expect(html, label).toContain(value);
+      expect(getMarkdownLabelText(source), label).toBe(
+        `${before}${value}${after}`,
+      );
     }
   });
 
@@ -463,22 +472,20 @@ describe('markdownSource', () => {
       expect(hrefs(html), JSON.stringify([before, value, after])).toEqual(
         authoredHrefs(before, after),
       );
-      expect(getMarkdownLabelText(source).replaceAll('\u2060', '')).toBe(
-        `${before}${value}${after}`,
-      );
+      expect(getMarkdownLabelText(source)).toBe(`${before}${value}${after}`);
     }
   });
 
-  it('keeps the researcher’s emphasis around a value kept apart from a link', () => {
+  it('keeps the researcher’s emphasis around a value after an escaped `<`', () => {
     const source = markdownSource({
       text: '',
-      parts: ['Ask **', { name: 'name', text: 'Ada' }, '**: see a.example'],
+      parts: ['Ask **<', { name: 'name', text: 'Ada' }, '**'],
     });
     const html = renderToStaticMarkup(
       createElement(RenderMarkdown, null, source),
     );
-    expect(source).toContain('<!---->');
-    expect(html).toContain('<strong>Ada</strong>');
+    expect(source).toBe('Ask **\\<Ada**');
+    expect(html).toContain('<strong>&lt;Ada</strong>');
   });
 
   it('never lets a value finish a block marker the researcher wrote', () => {

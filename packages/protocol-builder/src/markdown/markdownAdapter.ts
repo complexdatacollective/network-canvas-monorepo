@@ -2,6 +2,7 @@ import type {
   RichTextAssetBlockAttributes,
   RichTextAssetBlockContent,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
+import { showHtmlAsTyped } from '@codaco/fresco-ui/markdownTypedHtml';
 import {
   assetBlockMarkdown,
   assetBlockSettings,
@@ -47,18 +48,6 @@ const cloneEmptyDocument = (): RichTextContent => ({
   type: 'doc',
   content: [{ type: 'paragraph' }],
 });
-
-/**
- * Raw HTML is not part of schema 9 text, and is shown as the characters
- * typed, each line of it on a line of its own.
- */
-const typedCharacters = (value: string): RichTextContent[] =>
-  value
-    .split('\n')
-    .flatMap((line, index) => [
-      ...(index === 0 ? [] : [{ type: 'hardBreak' }]),
-      ...(line === '' ? [] : [{ type: 'text', text: line }]),
-    ]);
 
 /** Where each link label a text defines leads (`[label]: address`). */
 type Definitions = ReadonlyMap<string, LinkTargetNode>;
@@ -181,9 +170,6 @@ const inlineFromMarkdown = (
   switch (node.type) {
     case 'text':
       return node.value ? [{ type: 'text', text: node.value }] : [];
-
-    case 'html':
-      return node.value ? typedCharacters(node.value) : [];
 
     case 'strong':
       return addMark(childrenAsInline(node, options), { type: 'bold' });
@@ -383,10 +369,8 @@ const blockFromMarkdown = (
         blockFromMarkdown(child, options),
       );
 
-    // Code, and raw HTML, are shown as their characters, in a paragraph of
-    // their own.
-    case 'code':
-    case 'html': {
+    // Code is shown as its characters, in a paragraph of its own.
+    case 'code': {
       const content = inlineFromMarkdown(node, inline);
       return content.length > 0 ? [paragraphFromInline(content)] : [];
     }
@@ -466,6 +450,9 @@ export const markdownToRichTextContent = (
   }
 
   const root: MarkdownNode = markdownTree(value);
+  // Raw HTML is not part of schema 9 text: it is shown as the characters
+  // typed, as the interview shows it.
+  showHtmlAsTyped(root);
   const definitions = definitionsIn(root);
 
   if (inline) {

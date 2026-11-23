@@ -2,6 +2,7 @@
 
 import { Check, LoaderCircle, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
+import remarkGfm from 'remark-gfm';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -30,6 +31,8 @@ import type {
   ReleaseNotes,
   UpdateStatus,
 } from './useAppUpdate';
+
+const RELEASE_NOTE_REMARK_PLUGINS = [remarkGfm];
 
 const messages = defineMessages({
   loadingReleaseNotes: {
@@ -215,6 +218,9 @@ export default function AppUpdateIndicator({
       <RenderMarkdown
         allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
         components={releaseNoteHeadingRenderers}
+        // Release notes are GitHub markdown, not protocol text: GitHub's
+        // additions make a bare web address in them a link.
+        remarkPlugins={RELEASE_NOTE_REMARK_PLUGINS}
       >
         {releaseNotes.body}
       </RenderMarkdown>
