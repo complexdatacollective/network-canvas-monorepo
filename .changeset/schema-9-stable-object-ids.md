@@ -25,15 +25,16 @@ The ids that node types, edge types and variables are stored under in a
 schema 9 codebook must be UUIDs too. Readable ids such as `person`, `knows` or
 `age` are refused. No two variables in the codebook may share an id, and no
 two node types or two edge types may share one. Upgrading a protocol from
-schema 8 gives every node type, edge type and variable a new, random UUID,
-including any whose id was already a UUID, and updates everything in the
-protocol that refers to them: stage subjects, edges that stages create or
-show, filter, skip logic and sort rules, form fields, prompt and layout
-variables, Narrative Pedigree attributes and piped text values. Names do not
-change, so exported data keeps the same column names, and a roster column still
-matches the variable that has the same name. A roster column whose heading is
-a variable's old id, rather than its name, no longer matches it. Interviews
-already collected are not changed.
+schema 8 keeps every node type, edge type and variable id that is already a
+UUID, as they are in protocols made in Architect. It gives each other id a new,
+random UUID and updates everything in the protocol that refers to it: stage
+subjects, edges that stages create or show, filter, skip logic and sort rules,
+form fields, prompt and layout variables, Narrative Pedigree attributes and
+piped text values. Names do not change, so exported data keeps the same column
+names. During the interview, a roster column is matched to the variable whose
+id or name is the same as its heading, so a heading that is an id that the
+upgrade replaced no longer matches, unless it is also the variable's name.
+Interviews already collected are not changed.
 
 For developers:
 
