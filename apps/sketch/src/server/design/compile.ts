@@ -1013,7 +1013,12 @@ export const compile = (
           );
         } else {
           const assetId = `${s.id}_roster`;
-          const cols = ['name', ...s.attributeIds]; // variable NAMES: the interview maps CSV headers by name, then key
+          // The card, sort and search settings name columns of this file,
+          // whose headings are the variables' names: the interview reads a
+          // heading or a setting as a variable id, else as a variable name.
+          // The codebook ids are only given once the protocol is built.
+          const nameColumn = 'name';
+          const cols = [nameColumn, ...s.attributeIds];
           // at least as many rows as the stage requires the participant to pick
           const rowCount = Math.max(12, s.minNodes);
           const rows = Array.from({ length: rowCount }, (_, i) => [
@@ -1060,20 +1065,24 @@ export const compile = (
                       additionalProperties: s.attributeIds.map((a) => ({
                         id: a,
                         label: localized(attrIn(scope, a)!.label),
-                        variable: key(scope, a),
+                        variable: a,
                       })),
                     },
                   }
                 : {}),
               sortOptions: {
                 sortOrder: [
-                  { id: 'name', property: nameKey, direction: 'asc' },
+                  { id: 'name', property: nameColumn, direction: 'asc' },
                 ],
                 sortableProperties: [
-                  { id: 'name', label: localized('Name'), variable: nameKey },
+                  {
+                    id: 'name',
+                    label: localized('Name'),
+                    variable: nameColumn,
+                  },
                 ],
               },
-              searchOptions: { fuzziness: 0.5, matchProperties: [nameKey] },
+              searchOptions: { fuzziness: 0.5, matchProperties: [nameColumn] },
             },
             src,
           );

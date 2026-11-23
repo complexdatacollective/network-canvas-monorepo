@@ -585,21 +585,21 @@
             "label": {
               "en": "year of study"
             },
-            "variable": "classmate_year_of_study"
+            "variable": "year_of_study"
           },
           {
             "id": "b5730882-afe1-5fa7-98fc-6329adfe391a",
             "label": {
               "en": "major"
             },
-            "variable": "classmate_major"
+            "variable": "major"
           },
           {
             "id": "f273f908-0dea-52d7-ada1-41e33b33fed2",
             "label": {
               "en": "commuter"
             },
-            "variable": "classmate_commuter"
+            "variable": "commuter"
           }
         ]
       },
@@ -607,7 +607,7 @@
         "sortOrder": [
           {
             "id": "9f7894fe-d0c4-5ac2-bb4c-cf1b7a131d67",
-            "property": "classmate_name",
+            "property": "name",
             "direction": "asc"
           }
         ],
@@ -617,13 +617,13 @@
             "label": {
               "en": "Name"
             },
-            "variable": "classmate_name"
+            "variable": "name"
           }
         ]
       },
       "searchOptions": {
         "fuzziness": 0.5,
-        "matchProperties": ["classmate_name"]
+        "matchProperties": ["name"]
       }
     },
     {
