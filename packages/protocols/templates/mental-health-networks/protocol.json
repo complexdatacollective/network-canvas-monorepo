@@ -11,7 +11,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "participant_consent": {
+        "1ee4f23b-a6a9-5b44-b3f1-bc9fcc11b407": {
           "name": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
@@ -35,7 +35,7 @@
             }
           ]
         },
-        "k6_1": {
+        "dacd6d55-fd79-52ba-8de5-2751d86b3efe": {
           "name": "k6_1",
           "type": "ordinal",
           "component": "LikertScale",
@@ -75,7 +75,7 @@
             "required": true
           }
         },
-        "k6_2": {
+        "497e2898-7282-54ff-b3f8-2a22af278867": {
           "name": "k6_2",
           "type": "ordinal",
           "component": "LikertScale",
@@ -115,7 +115,7 @@
             "required": true
           }
         },
-        "k6_3": {
+        "0b41bd1d-7854-5263-b159-31c72516e1f1": {
           "name": "k6_3",
           "type": "ordinal",
           "component": "LikertScale",
@@ -155,7 +155,7 @@
             "required": true
           }
         },
-        "k6_4": {
+        "1e0eedce-9c2b-5d3d-ae9f-ea7f2b1310e1": {
           "name": "k6_4",
           "type": "ordinal",
           "component": "LikertScale",
@@ -195,7 +195,7 @@
             "required": true
           }
         },
-        "k6_5": {
+        "09837fab-f818-59a0-aa1a-dbc2d88bdf00": {
           "name": "k6_5",
           "type": "ordinal",
           "component": "LikertScale",
@@ -235,7 +235,7 @@
             "required": true
           }
         },
-        "k6_6": {
+        "8e2accc1-1a0c-5e69-abdc-16257b32c083": {
           "name": "k6_6",
           "type": "ordinal",
           "component": "LikertScale",
@@ -275,7 +275,7 @@
             "required": true
           }
         },
-        "self_rated_mental_health": {
+        "abcb406c-2917-5e4f-b2f0-c455246808e1": {
           "name": "self_rated_mental_health",
           "type": "ordinal",
           "component": "LikertScale",
@@ -315,7 +315,7 @@
             "required": true
           }
         },
-        "in_treatment": {
+        "e58e1c6c-a91b-5ff4-9ee8-c73895f13131": {
           "name": "in_treatment",
           "type": "boolean",
           "component": "Boolean",
@@ -337,7 +337,7 @@
       }
     },
     "node": {
-      "person": {
+      "aac8cd80-ac51-5968-98a0-2dc480492dd5": {
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -345,7 +345,7 @@
           "default": "circle"
         },
         "variables": {
-          "alter_name": {
+          "8b0560d2-e5d6-5dfa-832e-8a7a1edfcde5": {
             "name": "alter_name",
             "type": "text",
             "component": "Text",
@@ -354,7 +354,7 @@
               "unique": true
             }
           },
-          "relationship": {
+          "263d1fdb-dd8b-57f4-8671-297adf044058": {
             "name": "relationship",
             "type": "categorical",
             "component": "CheckboxGroup",
@@ -427,7 +427,7 @@
               }
             ]
           },
-          "support_emotional": {
+          "3cb51567-5a21-52e3-a349-15b4c7fcb6de": {
             "name": "support_emotional",
             "type": "boolean",
             "component": "Boolean",
@@ -446,7 +446,7 @@
               }
             ]
           },
-          "support_practical": {
+          "fe6db65b-4854-514d-bc37-a3ee28c723b6": {
             "name": "support_practical",
             "type": "boolean",
             "component": "Boolean",
@@ -465,7 +465,7 @@
               }
             ]
           },
-          "support_informational": {
+          "bf56e961-df85-56d7-9394-a78c06d1dbb0": {
             "name": "support_informational",
             "type": "boolean",
             "component": "Boolean",
@@ -484,7 +484,7 @@
               }
             ]
           },
-          "is_clinical": {
+          "7eac5892-6c1e-5991-a566-92cf8f1fbb17": {
             "name": "is_clinical",
             "type": "boolean",
             "component": "Boolean",
@@ -503,7 +503,7 @@
               }
             ]
           },
-          "knows_about_mh": {
+          "b8f20dff-669a-5fe9-ab2d-0e24200c26a4": {
             "name": "knows_about_mh",
             "type": "boolean",
             "component": "Boolean",
@@ -522,7 +522,7 @@
               }
             ]
           },
-          "is_source_of_stress": {
+          "4e3903ad-45fb-5b63-b9f2-98cc4d38f0fe": {
             "name": "is_source_of_stress",
             "type": "boolean",
             "component": "Boolean",
@@ -541,7 +541,7 @@
               }
             ]
           },
-          "help_source_type": {
+          "ba732f73-6278-59fc-aa41-70315c456e5c": {
             "name": "help_source_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -564,7 +564,7 @@
               "maxSelected": 1
             }
           },
-          "contact_frequency": {
+          "e33f8827-f5d2-5ee5-b2ed-41906166aef9": {
             "name": "contact_frequency",
             "type": "ordinal",
             "component": "RadioGroup",
@@ -601,7 +601,7 @@
               }
             ]
           },
-          "closeness": {
+          "20734052-2b6b-5a26-bd7c-5b192c67913e": {
             "name": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
@@ -638,7 +638,7 @@
               }
             ]
           },
-          "layout": {
+          "75f6452d-9382-5004-ab8c-170b0ee38c07": {
             "name": "layout",
             "type": "layout"
           }
@@ -646,7 +646,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "22bd9e04-df49-53ab-86c3-f7a0f08273be": {
         "name": "Knows",
         "color": "edge-color-seq-1"
       }
@@ -681,7 +681,7 @@
         "fields": [
           {
             "id": "4b9b4531-79af-555a-9b1e-7f115f3cc7cf",
-            "variable": "participant_consent",
+            "variable": "1ee4f23b-a6a9-5b44-b3f1-bc9fcc11b407",
             "prompt": {
               "en": "Do you consent to participate in this study?"
             }
@@ -703,7 +703,7 @@
               "id": "fbbf3e37-d0d9-45c8-9974-5305b452e274",
               "type": "ego",
               "options": {
-                "attribute": "participant_consent",
+                "attribute": "1ee4f23b-a6a9-5b44-b3f1-bc9fcc11b407",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -727,56 +727,56 @@
         "fields": [
           {
             "id": "4e78326f-da60-574c-9a98-0b4a1769dae3",
-            "variable": "k6_1",
+            "variable": "dacd6d55-fd79-52ba-8de5-2751d86b3efe",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel nervous?"
             }
           },
           {
             "id": "f1a5e6f2-c49e-5b36-901d-1935431824ab",
-            "variable": "k6_2",
+            "variable": "497e2898-7282-54ff-b3f8-2a22af278867",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel hopeless?"
             }
           },
           {
             "id": "bab5b982-6f7a-5052-b39c-0ff8a0956e76",
-            "variable": "k6_3",
+            "variable": "0b41bd1d-7854-5263-b159-31c72516e1f1",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel restless or fidgety?"
             }
           },
           {
             "id": "525423f2-0045-540f-8755-30b06e3a495e",
-            "variable": "k6_4",
+            "variable": "1e0eedce-9c2b-5d3d-ae9f-ea7f2b1310e1",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel so depressed that nothing could cheer you up?"
             }
           },
           {
             "id": "16485a4c-c02d-5211-b7b4-114c006010a4",
-            "variable": "k6_5",
+            "variable": "09837fab-f818-59a0-aa1a-dbc2d88bdf00",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel that everything was an effort?"
             }
           },
           {
             "id": "d73e8545-da12-59dc-9b25-55b0dfa50d6f",
-            "variable": "k6_6",
+            "variable": "8e2accc1-1a0c-5e69-abdc-16257b32c083",
             "prompt": {
               "en": "During the **last 30 days**, about how often did you feel worthless?"
             }
           },
           {
             "id": "773668ac-b481-5a22-8351-ee27380fdbd6",
-            "variable": "self_rated_mental_health",
+            "variable": "abcb406c-2917-5e4f-b2f0-c455246808e1",
             "prompt": {
               "en": "In general, how would you rate your mental health these days?"
             }
           },
           {
             "id": "5f9ef3b0-b644-5e7f-b911-551b492d1411",
-            "variable": "in_treatment",
+            "variable": "e58e1c6c-a91b-5ff4-9ee8-c73895f13131",
             "prompt": {
               "en": "Are you currently receiving any treatment or support for your mental health?"
             },
@@ -805,7 +805,7 @@
       "interviewScript": "This generator elicits supportive ties. Encourage the participant to think broadly — these can be people they confide in, turn to for advice, or rely on for practical help. The same person may also be named later as a source of stress; that is expected.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
       },
       "form": {
         "title": {
@@ -814,7 +814,7 @@
         "fields": [
           {
             "id": "8116c406-847a-5cc1-9dd6-61e8dd508952",
-            "variable": "alter_name",
+            "variable": "8b0560d2-e5d6-5dfa-832e-8a7a1edfcde5",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
             }
@@ -833,7 +833,7 @@
           "additionalAttributes": [
             {
               "id": "d2e8849f-bbf7-5b86-b971-07d51dc64266",
-              "variable": "support_emotional",
+              "variable": "3cb51567-5a21-52e3-a349-15b4c7fcb6de",
               "value": true
             }
           ]
@@ -846,7 +846,7 @@
           "additionalAttributes": [
             {
               "id": "33090597-5480-5f81-a536-71d39728e96b",
-              "variable": "support_informational",
+              "variable": "bf56e961-df85-56d7-9394-a78c06d1dbb0",
               "value": true
             }
           ]
@@ -859,7 +859,7 @@
           "additionalAttributes": [
             {
               "id": "dbfcd377-7995-51b6-b78f-be428aed893b",
-              "variable": "support_practical",
+              "variable": "fe6db65b-4854-514d-bc37-a3ee28c723b6",
               "value": true
             }
           ]
@@ -884,7 +884,7 @@
       "interviewScript": "This generator elicits difficult or draining ties (negative and ambivalent relationships). Reassure the participant that almost everyone has people like this, and that naming someone here does not mean the relationship is all bad. If a person they already named as supportive is also a source of stress, they can add them again here — this captures ambivalent ties.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
       },
       "form": {
         "title": {
@@ -893,7 +893,7 @@
         "fields": [
           {
             "id": "9a208e52-4482-553f-b76d-21417f4785c0",
-            "variable": "alter_name",
+            "variable": "8b0560d2-e5d6-5dfa-832e-8a7a1edfcde5",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
             }
@@ -912,7 +912,7 @@
           "additionalAttributes": [
             {
               "id": "f5abfd76-ece3-54c2-8bd8-353365ac1bac",
-              "variable": "is_source_of_stress",
+              "variable": "4e3903ad-45fb-5b63-b9f2-98cc4d38f0fe",
               "value": true
             }
           ]
@@ -925,7 +925,7 @@
           "additionalAttributes": [
             {
               "id": "2b296fd1-8e12-5474-853a-b7469b5cda0f",
-              "variable": "is_source_of_stress",
+              "variable": "4e3903ad-45fb-5b63-b9f2-98cc4d38f0fe",
               "value": true
             }
           ]
@@ -955,20 +955,20 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
       },
       "form": {
         "fields": [
           {
             "id": "50271127-ce78-5c55-b985-686b22a47a38",
-            "variable": "relationship",
+            "variable": "263d1fdb-dd8b-57f4-8671-297adf044058",
             "prompt": {
               "en": "How is {nodeLabel} related to you?"
             }
           },
           {
             "id": "1b7e7aa8-6700-5725-a96b-4f3aa57972e9",
-            "variable": "knows_about_mh",
+            "variable": "b8f20dff-669a-5fe9-ab2d-0e24200c26a4",
             "prompt": {
               "en": "Does {nodeLabel} **know about your mental health**?"
             },
@@ -978,7 +978,7 @@
           },
           {
             "id": "21597d2f-d398-5ad4-9bee-e8205450ee53",
-            "variable": "is_clinical",
+            "variable": "7eac5892-6c1e-5991-a566-92cf8f1fbb17",
             "prompt": {
               "en": "Is {nodeLabel} a **formal or clinical source of help**?"
             },
@@ -997,7 +997,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
       },
       "prompts": [
         {
@@ -1005,7 +1005,7 @@
           "text": {
             "en": "Drag each person into the band that best describes **how close you feel to them**."
           },
-          "variable": "closeness",
+          "variable": "20734052-2b6b-5a26-bd7c-5b192c67913e",
           "color": "ord-color-seq-1"
         },
         {
@@ -1013,7 +1013,7 @@
           "text": {
             "en": "Now drag the same people into the band that best describes **how often you are usually in contact** with them."
           },
-          "variable": "contact_frequency",
+          "variable": "e33f8827-f5d2-5ee5-b2ed-41906166aef9",
           "color": "ord-color-seq-2"
         }
       ]
@@ -1026,7 +1026,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
       },
       "prompts": [
         {
@@ -1034,7 +1034,7 @@
           "text": {
             "en": "Sort the people you named by the kind of help they represent: **informal** help (family, friends, peers) or **formal/clinical** help (professionals and services)."
           },
-          "variable": "help_source_type"
+          "variable": "ba732f73-6278-59fc-aa41-70315c456e5c"
         }
       ]
     },
@@ -1047,7 +1047,7 @@
       "interviewScript": "This is a reflective, manual-positioning stage (no automatic layout): invite the participant to arrange the people meaningfully — for example supportive people on one side, difficult or draining people on the other, and those they feel closest to nearer the centre of the rings — then draw lines between people who know one another. The arrangement they build becomes the network map they talk through on the final review screen, so the positions are meaningful here rather than incidental.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
       },
       "background": {
         "concentricCircles": 3,
@@ -1060,11 +1060,11 @@
             "en": "Here are the people you named. Take a moment to **arrange them in a way that feels right to you** — for example, placing the people who **support you** on one side and those who are **difficult or draining** on the other, and the people you feel **closest to** nearer the centre. Then draw a line between any **two people who know one another**."
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "75f6452d-9382-5004-ab8c-170b0ee38c07"
           },
           "edges": {
-            "create": "knows",
-            "display": ["knows"]
+            "create": "22bd9e04-df49-53ab-86c3-f7a0f08273be",
+            "display": ["22bd9e04-df49-53ab-86c3-f7a0f08273be"]
           }
         }
       ]
@@ -1080,7 +1080,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
       },
       "behaviours": {
         "automaticLayout": true,
@@ -1093,18 +1093,18 @@
           "label": {
             "en": "Supportive vs difficult ties"
           },
-          "layoutVariable": "layout",
+          "layoutVariable": "75f6452d-9382-5004-ab8c-170b0ee38c07",
           "highlight": [
             {
               "id": "69476724-d32f-5cb7-81f9-ec634ac17d87",
-              "variable": "support_emotional",
+              "variable": "3cb51567-5a21-52e3-a349-15b4c7fcb6de",
               "label": {
                 "en": "Emotional support"
               }
             },
             {
               "id": "fbc24f4a-a001-550d-96e7-e03a1ecabbe3",
-              "variable": "is_source_of_stress",
+              "variable": "4e3903ad-45fb-5b63-b9f2-98cc4d38f0fe",
               "label": {
                 "en": "Source of stress"
               }
@@ -1116,18 +1116,18 @@
           "label": {
             "en": "Who knows about your mental health"
           },
-          "layoutVariable": "layout",
+          "layoutVariable": "75f6452d-9382-5004-ab8c-170b0ee38c07",
           "highlight": [
             {
               "id": "d5d5c3cc-625d-5d25-98dd-757f026c45b9",
-              "variable": "knows_about_mh",
+              "variable": "b8f20dff-669a-5fe9-ab2d-0e24200c26a4",
               "label": {
                 "en": "Knows about your mental health"
               }
             },
             {
               "id": "9066cdf4-d75c-500e-8eed-484307c912ba",
-              "variable": "is_clinical",
+              "variable": "7eac5892-6c1e-5991-a566-92cf8f1fbb17",
               "label": {
                 "en": "Formal or clinical help"
               }

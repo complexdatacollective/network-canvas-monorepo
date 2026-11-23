@@ -154,9 +154,9 @@
       "type": "NameGeneratorQuickAdd",
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
-      "quickAdd": "name_variable",
+      "quickAdd": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
       "prompts": [
         {
           "id": "80e4f6a3-f0f3-5457-a580-47fdee244c5f",
@@ -179,7 +179,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "prompts": [
         {
@@ -188,7 +188,7 @@
             "en": "Tap on all the people who would consider this person a friend",
             "es": "Toca a todas las personas que considerarían a esta persona un amigo"
           },
-          "createEdge": "friend_edge_type",
+          "createEdge": "70b691ec-912f-5207-a0ef-63c78d7d3df9",
           "bucketSortOrder": [
             {
               "id": "865e2c77-0079-5936-a3b8-e2e55f73179d",
@@ -199,7 +199,7 @@
           "binSortOrder": [
             {
               "id": "69be5a3b-8670-5738-9807-1b29c7b8f7b2",
-              "property": "name_variable",
+              "property": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
               "direction": "desc"
             }
           ]
@@ -210,7 +210,7 @@
             "en": "Tap on all the people who work with this person.",
             "es": "Toca a todas las personas que trabajan con esta persona."
           },
-          "createEdge": "professional_edge_type"
+          "createEdge": "01e58147-1429-5f19-93fc-52b08cd0685a"
         }
       ]
     },
@@ -263,7 +263,7 @@
         "fields": [
           {
             "id": "b037eb5e-71ef-5717-890d-fd961faff321",
-            "variable": "name_variable",
+            "variable": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
             "prompt": {
               "en": "What is this person's name?",
               "es": "¿Cómo se llama esta persona?"
@@ -289,7 +289,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "panels": [
         {
@@ -314,8 +314,8 @@
                 "type": "node",
                 "id": "2fec8402-8c7d-5911-a803-67734185fe87",
                 "options": {
-                  "type": "person_node_type",
-                  "attribute": "name_variable",
+                  "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
+                  "attribute": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
                   "operator": "EXACTLY",
                   "value": "Dee"
                 }
@@ -389,7 +389,7 @@
         "fields": [
           {
             "id": "1f31326b-e401-555d-bd4c-861d16b5fcae",
-            "variable": "name_variable",
+            "variable": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
             "prompt": {
               "en": "What is this person's name?",
               "es": "¿Cómo se llama esta persona?"
@@ -415,7 +415,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "panels": [
         {
@@ -444,10 +444,10 @@
         "en": "NG Quick add",
         "es": "GN de adición rápida"
       },
-      "quickAdd": "venue_name_variable",
+      "quickAdd": "1a9a393a-10c8-50e6-87ca-4b602fcebcff",
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "panels": [
         {
@@ -508,7 +508,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "prompts": [
         {
@@ -517,7 +517,7 @@
             "en": "Are these people friends?",
             "es": "¿Son amigas estas personas?"
           },
-          "createEdge": "friend_edge_type"
+          "createEdge": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
         },
         {
           "id": "f0681525-f8d8-5b10-bf07-0d7a652024de",
@@ -525,7 +525,7 @@
             "en": "Do these people work together?",
             "es": "¿Trabajan juntas estas personas?"
           },
-          "createEdge": "professional_edge_type"
+          "createEdge": "01e58147-1429-5f19-93fc-52b08cd0685a"
         }
       ]
     },
@@ -550,7 +550,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "prompts": [
         {
@@ -559,7 +559,7 @@
             "en": "Thinking about each pair of people, please choose the option that best describes **how close they are to one another**.",
             "es": "Pensando en cada par de personas, elige la opción que mejor describa **lo cercanas que son entre sí**."
           },
-          "createEdge": "friend_edge_type",
+          "createEdge": "70b691ec-912f-5207-a0ef-63c78d7d3df9",
           "edgeVariable": "e343a91f-628d-4175-870c-75429857399e",
           "negativeLabel": {
             "en": "Don't know each other",
@@ -572,8 +572,8 @@
             "en": "How often do these people work together on important projects?",
             "es": "¿Con qué frecuencia trabajan juntas estas personas en proyectos importantes?"
           },
-          "createEdge": "professional_edge_type",
-          "edgeVariable": "f984jk23-628d-4175-870c-ejd8e7al8vc3",
+          "createEdge": "01e58147-1429-5f19-93fc-52b08cd0685a",
+          "edgeVariable": "bceed163-c123-546a-8c27-675db28e6886",
           "negativeLabel": {
             "en": "Do not work together",
             "es": "No trabajan juntas"
@@ -590,7 +590,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "filter": {
         "join": "AND",
@@ -598,7 +598,7 @@
           {
             "type": "node",
             "options": {
-              "type": "person_node_type",
+              "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
               "operator": "EXACTLY",
               "attribute": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
               "value": true
@@ -656,7 +656,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "prompts": [
         {
@@ -665,7 +665,7 @@
             "en": "Showing an ordinalbin interface with a node type other than person.",
             "es": "Se muestra una interfaz de contenedores ordinales con un tipo de nodo distinto de persona."
           },
-          "variable": "venueVisitFreqVariable",
+          "variable": "682bdac0-3951-585f-9ec6-e8ea873f4d44",
           "color": "ord-color-seq-7"
         }
       ]
@@ -679,7 +679,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "behaviours": {
         "minNodes": 1,
@@ -705,7 +705,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "dataSource": "previousInterview-json",
       "cardOptions": {
@@ -835,7 +835,7 @@
           },
           {
             "id": "7310f72a-6db2-5591-9c66-3dc68b3ecde0",
-            "variable": "683ad529-66c6-4c84-8e31-a31452dsf74k",
+            "variable": "83d505ce-12a2-55ed-acf1-89705adf8864",
             "prompt": {
               "en": "This is a variable whose **value** you must choose!",
               "es": "¡Esta es una variable cuyo **valor** debes elegir!"
@@ -861,7 +861,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "dummy_node_type"
+        "type": "bdf1e3c5-8e25-5b1a-a185-1494b149a039"
       },
       "prompts": [
         {
@@ -882,7 +882,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "background": {
         "concentricCircles": 4,
@@ -906,11 +906,14 @@
             }
           ],
           "layout": {
-            "layoutVariable": "layout_variable"
+            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "edges": {
-            "display": ["professional_edge_type", "friend_edge_type"],
-            "create": "friend_edge_type"
+            "display": [
+              "01e58147-1429-5f19-93fc-52b08cd0685a",
+              "70b691ec-912f-5207-a0ef-63c78d7d3df9"
+            ],
+            "create": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
           },
           "highlight": {
             "allowHighlighting": false
@@ -923,7 +926,7 @@
             "es": "Crea un segundo tipo de vínculo"
           },
           "layout": {
-            "layoutVariable": "layout_variable"
+            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "sortOrder": [
             {
@@ -933,8 +936,11 @@
             }
           ],
           "edges": {
-            "display": ["friend_edge_type", "professional_edge_type"],
-            "create": "professional_edge_type"
+            "display": [
+              "70b691ec-912f-5207-a0ef-63c78d7d3df9",
+              "01e58147-1429-5f19-93fc-52b08cd0685a"
+            ],
+            "create": "01e58147-1429-5f19-93fc-52b08cd0685a"
           },
           "highlight": {
             "allowHighlighting": false
@@ -947,7 +953,7 @@
             "es": "Variable de interruptor"
           },
           "layout": {
-            "layoutVariable": "layout_variable"
+            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "sortOrder": [
             {
@@ -957,7 +963,10 @@
             }
           ],
           "edges": {
-            "display": ["friend_edge_type", "professional_edge_type"]
+            "display": [
+              "70b691ec-912f-5207-a0ef-63c78d7d3df9",
+              "01e58147-1429-5f19-93fc-52b08cd0685a"
+            ]
           },
           "highlight": {
             "allowHighlighting": true,
@@ -971,11 +980,14 @@
             "es": "Esta instrucción muestra 3 círculos concéntricos y crea vínculos de amistad."
           },
           "layout": {
-            "layoutVariable": "layout_variable"
+            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "edges": {
-            "display": ["friend_edge_type", "professional_edge_type"],
-            "create": "friend_edge_type"
+            "display": [
+              "70b691ec-912f-5207-a0ef-63c78d7d3df9",
+              "01e58147-1429-5f19-93fc-52b08cd0685a"
+            ],
+            "create": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
           }
         }
       ]
@@ -989,7 +1001,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "background": {
         "image": "quadrant-1",
@@ -1010,7 +1022,7 @@
             }
           ],
           "layout": {
-            "layoutVariable": "venue_layout_variable"
+            "layoutVariable": "28fec613-725c-5ef7-90ed-3d9c8d42f2d0"
           }
         }
       ]
@@ -1024,7 +1036,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "dataSource": "previousInterview-json",
       "cardOptions": {
@@ -1091,7 +1103,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "dataSource": "HIVServices",
       "cardOptions": {
@@ -1148,7 +1160,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "prompts": [
         {
@@ -1241,7 +1253,7 @@
             {
               "type": "node",
               "options": {
-                "type": "person_node_type",
+                "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
                 "operator": "INCLUDES",
                 "attribute": "e343a91f-628d-4175-870c-957beffa0153",
                 "value": "two"
@@ -1265,7 +1277,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "form": {
         "fields": [
@@ -1303,7 +1315,7 @@
             {
               "type": "node",
               "options": {
-                "type": "person_node_type",
+                "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
                 "operator": "INCLUDES",
                 "attribute": "e343a91f-628d-4175-870c-957beffa0153",
                 "value": "two"
@@ -1335,7 +1347,7 @@
       },
       "subject": {
         "entity": "edge",
-        "type": "friend_edge_type"
+        "type": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
       },
       "form": {
         "fields": [
@@ -1372,14 +1384,14 @@
             "type": "edge",
             "options": {
               "operator": "NOT_EXISTS",
-              "type": "professional_edge_type"
+              "type": "01e58147-1429-5f19-93fc-52b08cd0685a"
             },
             "id": "3a6fad4a-f175-492f-87d7-0747a4e4ffca"
           },
           {
             "type": "node",
             "options": {
-              "type": "person_node_type",
+              "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
               "operator": "EXCLUDES",
               "attribute": "1096204b-48fe-444c-b642-4ab211f7f57c",
               "value": [-1, 1]
@@ -1410,7 +1422,7 @@
       },
       "subject": {
         "entity": "edge",
-        "type": "professional_edge_type"
+        "type": "01e58147-1429-5f19-93fc-52b08cd0685a"
       },
       "form": {
         "fields": [
@@ -1434,7 +1446,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "presets": [
         {
@@ -1443,13 +1455,13 @@
             "en": "My preset",
             "es": "Mi ajuste predefinido"
           },
-          "layoutVariable": "layout_variable",
+          "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
             "display": [
               {
                 "id": "9188e4dd-3bf7-552f-94c6-09d24c94a177",
-                "type": "friend_edge_type",
+                "type": "70b691ec-912f-5207-a0ef-63c78d7d3df9",
                 "label": {
                   "en": "friend",
                   "es": "amigo"
@@ -1457,7 +1469,7 @@
               },
               {
                 "id": "0f9683b0-8415-5f3c-83f7-def630329670",
-                "type": "professional_edge_type",
+                "type": "01e58147-1429-5f19-93fc-52b08cd0685a",
                 "label": {
                   "en": "professional",
                   "es": "profesional"
@@ -1496,7 +1508,7 @@
             "display": [
               {
                 "id": "ed1496df-b73a-5ad6-afac-bfd1260f732b",
-                "type": "professional_edge_type",
+                "type": "01e58147-1429-5f19-93fc-52b08cd0685a",
                 "label": {
                   "en": "professional",
                   "es": "profesional"
@@ -1599,10 +1611,10 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
-      "quickAdd": "name_variable",
-      "layoutVariable": "layout_variable",
+      "quickAdd": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
+      "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801",
       "background": {
         "concentricCircles": 4
       }
@@ -1616,7 +1628,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
@@ -1725,16 +1737,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "family_member"
+        "type": "26ee7973-6f8c-5f79-a732-fce25931e0f2"
       },
       "prompt": {
         "en": "Who is in your family?",
         "es": "¿Quién forma parte de tu familia?"
       },
       "nodeConfiguration": {
-        "nameAttribute": "fm_name",
+        "nameAttribute": "ad3b1a5c-b92c-57c7-a6c6-6cbaa9ebfff2",
         "genderIdentity": {
-          "attribute": "genderIdentity",
+          "attribute": "119a3f66-ac6a-5a4f-9f89-2265d4231d3c",
           "terms": [
             {
               "value": "woman",
@@ -1762,14 +1774,14 @@
             }
           ]
         },
-        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
-        "egoAttribute": "is_ego"
+        "sexAssignedAtBirthAttribute": "583802f3-9ac0-57c8-86f3-b06ca01216c5",
+        "egoAttribute": "9758e3c0-1925-5962-88c9-bc00bde19835"
       },
       "edgeConfiguration": {
-        "type": "family_edge",
-        "kindAttribute": "relationshipKind",
-        "gestationalCarrierAttribute": "isGestationalCarrier",
-        "currentPartnerAttribute": "isCurrentPartner"
+        "type": "b9faffb1-d86d-5d78-86ee-0a92c9da4692",
+        "kindAttribute": "96ac838c-50ba-5a2e-a7ce-5038f570d67d",
+        "gestationalCarrierAttribute": "0244613a-1225-598d-8737-8ea900031588",
+        "currentPartnerAttribute": "96f1e2bf-77e8-511c-93cc-c056dd00dd34"
       },
       "nominationPrompts": [
         {
@@ -1778,7 +1790,7 @@
             "en": "Who in your family has been diagnosed with **condition X**?",
             "es": "¿Quién en tu familia ha recibido un diagnóstico de **la condición X**?"
           },
-          "attribute": "hasConditionX"
+          "attribute": "50630f43-1683-5c1f-a242-869e4399e7e8"
         }
       ]
     },
@@ -1798,7 +1810,7 @@
             "es": "Condición X"
           },
           "color": "node-color-seq-1",
-          "attribute": "hasConditionX",
+          "attribute": "50630f43-1683-5c1f-a242-869e4399e7e8",
           "inheritancePattern": "autosomalDominant"
         }
       ]
@@ -1824,7 +1836,7 @@
   ],
   "codebook": {
     "node": {
-      "person_node_type": {
+      "02f0c3a5-008e-58e9-91ce-0cd152fbe22a": {
         "name": "person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -1832,7 +1844,7 @@
           "default": "circle"
         },
         "variables": {
-          "name_variable": {
+          "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99": {
             "encrypted": true,
             "name": "name",
             "component": "Text",
@@ -1859,7 +1871,7 @@
             "component": "Text",
             "type": "text",
             "validation": {
-              "differentFrom": "name_variable"
+              "differentFrom": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99"
             }
           },
           "ae44b6ba-ad49-4ecf-bf38-b65decfce000": {
@@ -2145,11 +2157,11 @@
               }
             ]
           },
-          "layout_variable": {
+          "792400ec-4fd2-535d-bf18-65cb440ec801": {
             "name": "closenessLayout",
             "type": "layout"
           },
-          "layout_variable_manual": {
+          "15c24db9-8fb3-5dc9-b8e0-f29e7214f746": {
             "name": "manualLayout",
             "type": "layout"
           },
@@ -2216,7 +2228,7 @@
           }
         }
       },
-      "dummy_node_type": {
+      "bdf1e3c5-8e25-5b1a-a185-1494b149a039": {
         "name": "dummytype",
         "color": "node-color-seq-6",
         "shape": {
@@ -2238,7 +2250,7 @@
             "component": "Toggle",
             "type": "boolean"
           },
-          "683ad529-66c6-4c84-8e31-a31452dsf74k": {
+          "83d505ce-12a2-55ed-acf1-89705adf8864": {
             "name": "booleanVariable3",
             "type": "boolean",
             "component": "Boolean",
@@ -2506,7 +2518,7 @@
           }
         }
       },
-      "venue_node_type": {
+      "9d747cc7-dda5-5ac9-957d-52d3cbba197f": {
         "name": "venue",
         "color": "node-color-seq-4",
         "icon": "add-a-place",
@@ -2514,7 +2526,7 @@
           "default": "circle"
         },
         "variables": {
-          "venue_name_variable": {
+          "1a9a393a-10c8-50e6-87ca-4b602fcebcff": {
             "name": "name",
             "type": "text",
             "validation": {
@@ -2525,7 +2537,7 @@
             "name": "location",
             "type": "location"
           },
-          "venueVisitFreqVariable": {
+          "682bdac0-3951-585f-9ec6-e8ea873f4d44": {
             "name": "visitfreq",
             "type": "ordinal",
             "options": [
@@ -2602,17 +2614,17 @@
             "name": "rawaddr",
             "type": "text"
           },
-          "venue_layout_variable": {
+          "28fec613-725c-5ef7-90ed-3d9c8d42f2d0": {
             "name": "Layout",
             "type": "layout"
           },
-          "venue_layout_variable_manual": {
+          "fbd9661c-9de5-5cee-8492-c6bce2f7b238": {
             "name": "Layout_Manual",
             "type": "layout"
           }
         }
       },
-      "family_member": {
+      "26ee7973-6f8c-5f79-a732-fce25931e0f2": {
         "name": "family member",
         "color": "node-color-seq-2",
         "icon": "add-a-person",
@@ -2620,7 +2632,7 @@
           "default": "circle"
         },
         "variables": {
-          "fm_name": {
+          "ad3b1a5c-b92c-57c7-a6c6-6cbaa9ebfff2": {
             "name": "fm_name",
             "type": "text",
             "component": "Text",
@@ -2628,12 +2640,12 @@
               "unique": true
             }
           },
-          "is_ego": {
+          "9758e3c0-1925-5962-88c9-bc00bde19835": {
             "name": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
-          "genderIdentity": {
+          "119a3f66-ac6a-5a4f-9f89-2265d4231d3c": {
             "name": "genderIdentity",
             "type": "categorical",
             "options": [
@@ -2681,7 +2693,7 @@
               }
             ]
           },
-          "sexAssignedAtBirth": {
+          "583802f3-9ac0-57c8-86f3-b06ca01216c5": {
             "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
@@ -2722,7 +2734,7 @@
               }
             ]
           },
-          "hasConditionX": {
+          "50630f43-1683-5c1f-a242-869e4399e7e8": {
             "name": "hasConditionX",
             "type": "boolean",
             "component": "Toggle"
@@ -3017,7 +3029,7 @@
       }
     },
     "edge": {
-      "friend_edge_type": {
+      "70b691ec-912f-5207-a0ef-63c78d7d3df9": {
         "name": "friend",
         "color": "edge-color-seq-1",
         "variables": {
@@ -3137,11 +3149,11 @@
           }
         }
       },
-      "professional_edge_type": {
+      "01e58147-1429-5f19-93fc-52b08cd0685a": {
         "name": "professional",
         "color": "edge-color-seq-2",
         "variables": {
-          "f984jk23-628d-4175-870c-ejd8e7al8vc3": {
+          "bceed163-c123-546a-8c27-675db28e6886": {
             "name": "professional-strength",
             "type": "ordinal",
             "options": [
@@ -3205,15 +3217,15 @@
           }
         }
       },
-      "visits_edge_type": {
+      "4b1ca489-8201-5ba9-945d-488eecf1b722": {
         "name": "visits",
         "color": "edge-color-seq-3"
       },
-      "family_edge": {
+      "b9faffb1-d86d-5d78-86ee-0a92c9da4692": {
         "name": "family_edge",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipKind": {
+          "96ac838c-50ba-5a2e-a7ce-5038f570d67d": {
             "name": "relationshipKind",
             "type": "categorical",
             "options": [
@@ -3282,11 +3294,11 @@
               }
             ]
           },
-          "isGestationalCarrier": {
+          "0244613a-1225-598d-8737-8ea900031588": {
             "name": "isGestationalCarrier",
             "type": "boolean"
           },
-          "isCurrentPartner": {
+          "96f1e2bf-77e8-511c-93cc-c056dd00dd34": {
             "name": "isCurrentPartner",
             "type": "boolean"
           }

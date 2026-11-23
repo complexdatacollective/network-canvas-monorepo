@@ -9,14 +9,14 @@
   "lastModified": "2026-07-12T00:00:00.000Z",
   "codebook": {
     "node": {
-      "person": {
+      "6c139b87-6a3c-5590-819d-1fe9355f6863": {
         "name": "Person",
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
         },
         "variables": {
-          "name": {
+          "8247c57c-644d-5638-af6a-36765e0925a8": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -24,7 +24,7 @@
               "required": true
             }
           },
-          "close": {
+          "a6f25c5e-6f70-5963-8fdb-0596c5ec864e": {
             "name": "close",
             "type": "boolean",
             "component": "Boolean",
@@ -43,7 +43,7 @@
               }
             ]
           },
-          "layout": {
+          "38c54f1a-e9dd-50d7-926b-b50eefbe7b2b": {
             "name": "layout",
             "type": "layout"
           }
@@ -51,14 +51,14 @@
       }
     },
     "edge": {
-      "knows": {
+      "65c6495c-b0da-58f9-965c-a7ca10ad018e": {
         "name": "Knows",
         "color": "edge-color-seq-1"
       }
     },
     "ego": {
       "variables": {
-        "ego_name": {
+        "24e65450-80d5-5fa3-a557-05ed04e578ba": {
           "name": "ego_name",
           "type": "text",
           "component": "Text",
@@ -98,7 +98,7 @@
         "fields": [
           {
             "id": "6c796996-4804-5e39-a916-76c2f4b9125f",
-            "variable": "ego_name",
+            "variable": "24e65450-80d5-5fa3-a557-05ed04e578ba",
             "prompt": {
               "en-US": "What is your name?"
             }
@@ -120,9 +120,9 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "6c139b87-6a3c-5590-819d-1fe9355f6863"
       },
-      "quickAdd": "name",
+      "quickAdd": "8247c57c-644d-5638-af6a-36765e0925a8",
       "behaviours": {
         "minNodes": 1,
         "maxNodes": 8
@@ -147,7 +147,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "6c139b87-6a3c-5590-819d-1fe9355f6863"
       },
       "background": {
         "concentricCircles": 4,
@@ -160,11 +160,11 @@
             "en-US": "Drag to place; link people who know each other."
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "38c54f1a-e9dd-50d7-926b-b50eefbe7b2b"
           },
           "edges": {
-            "create": "knows",
-            "display": ["knows"]
+            "create": "65c6495c-b0da-58f9-965c-a7ca10ad018e",
+            "display": ["65c6495c-b0da-58f9-965c-a7ca10ad018e"]
           }
         }
       ]

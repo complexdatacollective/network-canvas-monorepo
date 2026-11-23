@@ -6,7 +6,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "participant_consent": {
+        "f81db039-7145-59a2-94f1-66e1c59984ef": {
           "name": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
@@ -30,12 +30,12 @@
             }
           ]
         },
-        "ego_age": {
+        "fd2d79c3-d9ef-5704-beee-b7ab7853154b": {
           "name": "ego_age",
           "type": "number",
           "component": "Number"
         },
-        "ego_education": {
+        "4388d706-4392-5e77-97bb-757d7a75da40": {
           "name": "ego_education",
           "type": "ordinal",
           "component": "RadioGroup",
@@ -69,7 +69,7 @@
       }
     },
     "node": {
-      "person": {
+      "3b8699d5-cc06-599c-b1d4-3fc09da1398b": {
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -77,7 +77,7 @@
           "default": "diamond",
           "dynamic": {
             "type": "discrete",
-            "variable": "genderIdentity",
+            "variable": "bb13f4ab-d580-5ded-905c-2d6aeb375299",
             "map": [
               {
                 "value": "man",
@@ -107,7 +107,7 @@
           }
         },
         "variables": {
-          "name": {
+          "d22b2968-c4e6-516f-8b0d-9089e9bd058d": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -116,21 +116,21 @@
               "unique": true
             }
           },
-          "is_ego": {
+          "85ecf5b7-e347-50de-84aa-82f97631a9a6": {
             "name": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
-          "non_kin": {
+          "2c9c4c4e-d6c2-59eb-a390-a79c3699dfc8": {
             "name": "non_kin",
             "type": "boolean",
             "component": "Toggle"
           },
-          "layout": {
+          "b1df922c-05fd-5e69-9514-02f6798664fc": {
             "name": "layout",
             "type": "layout"
           },
-          "tie_type": {
+          "4274a5f4-3a85-5a09-ad5c-c62feb516e42": {
             "name": "tie_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -173,7 +173,7 @@
               }
             ]
           },
-          "tie_type_other": {
+          "7da02acd-905b-5a5c-92d3-ceb35b0bd973": {
             "name": "tie_type_other",
             "type": "text",
             "component": "Text",
@@ -181,17 +181,17 @@
               "required": true
             }
           },
-          "has_condition": {
+          "dbfcc767-71d7-51b0-93a5-f95c3733bca8": {
             "name": "has_condition",
             "type": "boolean",
             "component": "Toggle"
           },
-          "had_testing": {
+          "f03c2a1f-f4bf-5932-865c-0a284c66ccd8": {
             "name": "had_testing",
             "type": "boolean",
             "component": "Toggle"
           },
-          "living_status": {
+          "a514cd54-540e-5f78-b0f1-5d4f7bf2c401": {
             "name": "living_status",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -216,12 +216,12 @@
               }
             ]
           },
-          "birth_year": {
+          "8b12abb5-ac11-5800-b6d7-315a2dab2536": {
             "name": "birth_year",
             "type": "number",
             "component": "Number"
           },
-          "closeness": {
+          "29c37fee-bded-5543-91a7-d6b49d3ce990": {
             "name": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
@@ -252,7 +252,7 @@
               }
             ]
           },
-          "contact_frequency": {
+          "dbcd8266-fef7-5c68-8061-2ab209185706": {
             "name": "contact_frequency",
             "type": "ordinal",
             "component": "LikertScale",
@@ -295,42 +295,42 @@
               }
             ]
           },
-          "exch_information": {
+          "f0a04c28-9d21-5eab-9a8b-d1fe83e9e096": {
             "name": "exch_information",
             "type": "boolean",
             "component": "Toggle"
           },
-          "exch_tangible": {
+          "ac30061c-f1d0-5f76-8e30-58d6331f57f3": {
             "name": "exch_tangible",
             "type": "boolean",
             "component": "Toggle"
           },
-          "exch_emotional": {
+          "ebed7466-4e07-5a01-8019-7b05fb13b463": {
             "name": "exch_emotional",
             "type": "boolean",
             "component": "Toggle"
           },
-          "exch_spiritual": {
+          "94a99940-7d07-542b-9780-4678d0814fe7": {
             "name": "exch_spiritual",
             "type": "boolean",
             "component": "Toggle"
           },
-          "role_gatherer": {
+          "daa3b5ec-b3a0-50fc-a73d-5a9db535e8c6": {
             "name": "role_gatherer",
             "type": "boolean",
             "component": "Toggle"
           },
-          "role_disseminator": {
+          "5609e618-49dd-5033-b64c-69ecd27f84c7": {
             "name": "role_disseminator",
             "type": "boolean",
             "component": "Toggle"
           },
-          "role_blocker": {
+          "c0b4f7ea-3258-5a38-b27c-9c0cfde63f7f": {
             "name": "role_blocker",
             "type": "boolean",
             "component": "Toggle"
           },
-          "genderIdentity": {
+          "bb13f4ab-d580-5ded-905c-2d6aeb375299": {
             "name": "genderIdentity",
             "type": "categorical",
             "options": [
@@ -372,7 +372,7 @@
               }
             ]
           },
-          "sexAssignedAtBirth": {
+          "8f931b44-63c5-5c58-8340-fa97fa236d7a": {
             "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
@@ -412,11 +412,11 @@
       }
     },
     "edge": {
-      "family_relationship": {
+      "ca615c89-8954-5655-bed4-3f5ff538b0ff": {
         "name": "Family relationship",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipKind": {
+          "178d38e7-bcba-5d5e-8ca0-41ab21134608": {
             "name": "relationshipKind",
             "type": "categorical",
             "options": [
@@ -476,17 +476,17 @@
               }
             ]
           },
-          "isGestationalCarrier": {
+          "a4936fec-d605-5e4b-8783-84f3f806b7d8": {
             "name": "isGestationalCarrier",
             "type": "boolean"
           },
-          "isCurrentPartner": {
+          "503d9c75-5a98-5b8e-a4c3-e85e010ecbe5": {
             "name": "isCurrentPartner",
             "type": "boolean"
           }
         }
       },
-      "knows": {
+      "a2c89998-4caa-569b-a761-41284575c7e0": {
         "name": "Knows",
         "color": "edge-color-seq-2"
       }
@@ -521,7 +521,7 @@
         "fields": [
           {
             "id": "727917e3-e0d2-5bff-a7bc-19e2c01b0c33",
-            "variable": "participant_consent",
+            "variable": "f81db039-7145-59a2-94f1-66e1c59984ef",
             "prompt": {
               "en": "Do you consent to participate in this study?"
             }
@@ -543,7 +543,7 @@
               "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d40",
               "type": "ego",
               "options": {
-                "attribute": "participant_consent",
+                "attribute": "f81db039-7145-59a2-94f1-66e1c59984ef",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -567,14 +567,14 @@
         "fields": [
           {
             "id": "7dd0a5a1-83b4-56bb-abf5-0bff96e4fc0f",
-            "variable": "ego_age",
+            "variable": "fd2d79c3-d9ef-5704-beee-b7ab7853154b",
             "prompt": {
               "en": "How old are you?"
             }
           },
           {
             "id": "6528ef79-06ee-5aab-9e99-b74b37ecd55d",
-            "variable": "ego_education",
+            "variable": "4388d706-4392-5e77-97bb-757d7a75da40",
             "prompt": {
               "en": "What is the highest level of education you have completed?"
             }
@@ -812,13 +812,13 @@
       "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status, birth year, whether the person has had the condition, and whether they have had genetic testing for it are all asked while each person is added. Take the condition and testing questions slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
       },
       "prompt": {
         "en": "Let's map out your family. Who is in it?"
       },
       "nodeConfiguration": {
-        "nameAttribute": "name",
+        "nameAttribute": "d22b2968-c4e6-516f-8b0d-9089e9bd058d",
         "nameField": {
           "prompt": {
             "en": "Name (optional)"
@@ -828,7 +828,7 @@
           }
         },
         "genderIdentity": {
-          "attribute": "genderIdentity",
+          "attribute": "bb13f4ab-d580-5ded-905c-2d6aeb375299",
           "terms": [
             {
               "value": "woman",
@@ -856,8 +856,8 @@
             }
           ]
         },
-        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
-        "egoAttribute": "is_ego"
+        "sexAssignedAtBirthAttribute": "8f931b44-63c5-5c58-8340-fa97fa236d7a",
+        "egoAttribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6"
       },
       "dynamicValues": {
         "nodeLabel": {
@@ -871,23 +871,23 @@
         }
       },
       "edgeConfiguration": {
-        "type": "family_relationship",
-        "kindAttribute": "relationshipKind",
-        "gestationalCarrierAttribute": "isGestationalCarrier",
-        "currentPartnerAttribute": "isCurrentPartner"
+        "type": "ca615c89-8954-5655-bed4-3f5ff538b0ff",
+        "kindAttribute": "178d38e7-bcba-5d5e-8ca0-41ab21134608",
+        "gestationalCarrierAttribute": "a4936fec-d605-5e4b-8783-84f3f806b7d8",
+        "currentPartnerAttribute": "503d9c75-5a98-5b8e-a4c3-e85e010ecbe5"
       },
       "form": {
         "fields": [
           {
             "id": "27b7efbb-fd25-5a14-8be1-11ec41ba1dd3",
-            "variable": "living_status",
+            "variable": "a514cd54-540e-5f78-b0f1-5d4f7bf2c401",
             "prompt": {
               "en": "{isParticipant, select, participant {Are you living or deceased?} other {Is {nodeLabel} living or deceased?}}"
             }
           },
           {
             "id": "130a76d8-352a-5458-a960-5faac4d8a1a5",
-            "variable": "birth_year",
+            "variable": "8b12abb5-ac11-5800-b6d7-315a2dab2536",
             "prompt": {
               "en": "{isParticipant, select, participant {What year were you born?} other {What year was {nodeLabel} born?}}"
             },
@@ -903,14 +903,14 @@
           "text": {
             "en": "Who in your family has had **this condition**?"
           },
-          "attribute": "has_condition"
+          "attribute": "dbfcc767-71d7-51b0-93a5-f95c3733bca8"
         },
         {
           "id": "299062cf-1ec1-5af1-8635-d13150921956",
           "text": {
             "en": "Who has had **genetic testing** for it?"
           },
-          "attribute": "had_testing"
+          "attribute": "f03c2a1f-f4bf-5932-865c-0a284c66ccd8"
         }
       ]
     },
@@ -933,9 +933,9 @@
       "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.\n\nEveryone added here is recorded as a non-kin member of the network (`non_kin`). That is how the next screens tell them apart from the family on the pedigree, so a relative who was missed in the pedigree should be added to the pedigree, not here.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
       },
-      "quickAdd": "name",
+      "quickAdd": "d22b2968-c4e6-516f-8b0d-9089e9bd058d",
       "panels": [
         {
           "id": "b48b9fb2-8912-5d0b-a26e-c41f0f5b612b",
@@ -950,8 +950,8 @@
                 "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d46",
                 "type": "node",
                 "options": {
-                  "type": "person",
-                  "attribute": "is_ego",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
                   "operator": "NOT",
                   "value": true
                 }
@@ -960,8 +960,8 @@
                 "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d47",
                 "type": "node",
                 "options": {
-                  "type": "person",
-                  "attribute": "non_kin",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "attribute": "2c9c4c4e-d6c2-59eb-a390-a79c3699dfc8",
                   "operator": "EXACTLY",
                   "value": true
                 }
@@ -979,7 +979,7 @@
           "additionalAttributes": [
             {
               "id": "0e30d8c2-33fe-5fb4-8163-d3f123964be5",
-              "variable": "non_kin",
+              "variable": "2c9c4c4e-d6c2-59eb-a390-a79c3699dfc8",
               "value": true
             }
           ]
@@ -992,7 +992,7 @@
           "additionalAttributes": [
             {
               "id": "6a58edf6-b44c-5d2f-9328-ca7fc8d9e0d0",
-              "variable": "non_kin",
+              "variable": "2c9c4c4e-d6c2-59eb-a390-a79c3699dfc8",
               "value": true
             }
           ]
@@ -1005,7 +1005,7 @@
           "additionalAttributes": [
             {
               "id": "27a2df6c-ab15-5eb1-a250-6037f7c1e9de",
-              "variable": "non_kin",
+              "variable": "2c9c4c4e-d6c2-59eb-a390-a79c3699dfc8",
               "value": true
             }
           ]
@@ -1018,7 +1018,7 @@
           "additionalAttributes": [
             {
               "id": "5ea7ea02-cb96-57b6-b6ac-42b415f44771",
-              "variable": "non_kin",
+              "variable": "2c9c4c4e-d6c2-59eb-a390-a79c3699dfc8",
               "value": true
             }
           ]
@@ -1041,7 +1041,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
       },
       "prompts": [
         {
@@ -1049,8 +1049,8 @@
           "text": {
             "en": "Sort the people you have just named by **how you know them**."
           },
-          "variable": "tie_type",
-          "otherVariable": "tie_type_other",
+          "variable": "4274a5f4-3a85-5a09-ad5c-c62feb516e42",
+          "otherVariable": "7da02acd-905b-5a5c-92d3-ceb35b0bd973",
           "otherVariablePrompt": {
             "en": "How would you describe how you know {nodeLabel}?"
           },
@@ -1066,8 +1066,8 @@
             "id": "13686464-a4c1-59f4-b864-a785db03dabe",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "is_ego",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
               "operator": "NOT",
               "value": true
             }
@@ -1076,8 +1076,8 @@
             "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d44",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "non_kin",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "attribute": "2c9c4c4e-d6c2-59eb-a390-a79c3699dfc8",
               "operator": "EXACTLY",
               "value": true
             }
@@ -1094,7 +1094,7 @@
       "interviewScript": "Closeness is a Network Canvas addition rather than a CEGRM symbol. It locates the support exchanges within the participant's perceived relationship structure and makes it possible to distinguish emotionally close ties from ties that perform a particular support function.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
       },
       "prompts": [
         {
@@ -1102,7 +1102,7 @@
           "text": {
             "en": "Sort each person by **how close you feel** to them now."
           },
-          "variable": "closeness",
+          "variable": "29c37fee-bded-5543-91a7-d6b49d3ce990",
           "color": "ord-color-seq-1"
         }
       ],
@@ -1112,8 +1112,8 @@
             "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d48",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "is_ego",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
               "operator": "NOT",
               "value": true
             }
@@ -1130,7 +1130,7 @@
       "interviewScript": "Contact frequency is a Network Canvas addition rather than a CEGRM symbol. Ask about contact by any channel during the past 12 months. People recorded as deceased are excluded because a current-frequency category would be inapplicable; people whose living status is unknown remain available.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
       },
       "prompts": [
         {
@@ -1138,7 +1138,7 @@
           "text": {
             "en": "Thinking about the past 12 months, sort each person by **how often you have been in contact** — in person, by phone, or online."
           },
-          "variable": "contact_frequency",
+          "variable": "dbcd8266-fef7-5c68-8061-2ab209185706",
           "color": "ord-color-seq-2"
         }
       ],
@@ -1149,8 +1149,8 @@
             "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d49",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "is_ego",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
               "operator": "NOT",
               "value": true
             }
@@ -1159,8 +1159,8 @@
             "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d50",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "living_status",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "attribute": "a514cd54-540e-5f78-b0f1-5d4f7bf2c401",
               "operator": "EXCLUDES",
               "value": "deceased"
             }
@@ -1177,7 +1177,7 @@
       "interviewScript": "These four questions are the coloured dots of the original paper instrument: information, practical help, feelings, and spiritual connection. Each is asked about every person on the map, family and non-family alike.\n\nAll the people are placed automatically so the participant reads the map rather than arranging it. Answer the first question about who knows whom before the four exchange questions — the connections make the later views legible.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
       },
       "background": {
         "concentricCircles": 0
@@ -1193,11 +1193,11 @@
             "en": "Connect any of these people who **know one another**."
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "edges": {
-            "create": "knows",
-            "display": ["knows"]
+            "create": "a2c89998-4caa-569b-a761-41284575c7e0",
+            "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
           }
         },
         {
@@ -1206,14 +1206,14 @@
             "en": "Who do you **share health or genetic information** with?"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "exch_information"
+            "variable": "f0a04c28-9d21-5eab-9a8b-d1fe83e9e096"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
           }
         },
         {
@@ -1222,14 +1222,14 @@
             "en": "Who gives you **practical help** — a lift to an appointment, a meal, looking after the children?"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "exch_tangible"
+            "variable": "ac30061c-f1d0-5f76-8e30-58d6331f57f3"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
           }
         },
         {
@@ -1238,14 +1238,14 @@
             "en": "Who do you **share your feelings** with about all of this?"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "exch_emotional"
+            "variable": "ebed7466-4e07-5a01-8019-7b05fb13b463"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
           }
         },
         {
@@ -1254,14 +1254,14 @@
             "en": "Who do you share a **spiritual or religious connection** with?"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "exch_spiritual"
+            "variable": "94a99940-7d07-542b-9780-4678d0814fe7"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
           }
         }
       ],
@@ -1271,8 +1271,8 @@
             "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d41",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "is_ego",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
               "operator": "NOT",
               "value": true
             }
@@ -1289,7 +1289,7 @@
       "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. They are configured for everyone who is not marked `non_kin`, which is the family from the pedigree, because the published roles describe communication within families at hereditary risk. Widen the filter only when non-family information brokerage is part of the research question.\n\nThis stage keeps the positions established on the preceding all-contact Sociogram. Do not enable automatic layout here: recomputing only the filtered family subset would make the relatives' coordinates incompatible with the non-family contacts when the completed map combines them again.\n\nThe third question names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
       },
       "background": {
         "concentricCircles": 0
@@ -1304,14 +1304,14 @@
             "en": "Who in your family **looks for information** about this condition — reads about it, asks questions, or keeps track of what is known?"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "role_gatherer"
+            "variable": "daa3b5ec-b3a0-50fc-a73d-5a9db535e8c6"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
           }
         },
         {
@@ -1320,14 +1320,14 @@
             "en": "Who in your family **helps people talk** about it and passes news on?"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "role_disseminator"
+            "variable": "5609e618-49dd-5033-b64c-69ecd27f84c7"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
           }
         },
         {
@@ -1336,14 +1336,14 @@
             "en": "Who in your family finds it **hard to talk** about it, or would rather not know?"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "role_blocker"
+            "variable": "c0b4f7ea-3258-5a38-b27c-9c0cfde63f7f"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["a2c89998-4caa-569b-a761-41284575c7e0"]
           }
         }
       ],
@@ -1354,8 +1354,8 @@
             "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d42",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "is_ego",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
               "operator": "NOT",
               "value": true
             }
@@ -1364,8 +1364,8 @@
             "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d45",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "non_kin",
+              "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+              "attribute": "2c9c4c4e-d6c2-59eb-a390-a79c3699dfc8",
               "operator": "NOT",
               "value": true
             }
@@ -1388,7 +1388,7 @@
       "interviewScript": "This is the payoff of the whole session, and the point at which the CEGRM stops being a questionnaire and becomes an elicitation device. Operate it yourself and use it to prompt the participant.\n\nBegin with everyone and their connections. Then use Forms of support to move through information, practical help, feelings and spiritual connection, followed by Family health communication for the gatherer, disseminator and blocker roles. Ask what the participant notices. Where do the colours cluster? Where are they absent? Absence is as informative as presence — a person with no one in the feelings overlay, or a family where practical help comes entirely from outside it, is the finding.\n\nMove between overlays at the participant's pace and let them ask to go back. The positions are kept fixed so comparisons remain meaningful. Nothing drawn on this screen is saved, so capture the conversation using your approved study procedure.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
       },
       "background": {
         "concentricCircles": 3,
@@ -1405,15 +1405,15 @@
           "label": {
             "en": "Everyone on your map"
           },
-          "layoutVariable": "layout",
+          "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc",
           "filter": {
             "rules": [
               {
                 "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d43",
                 "type": "node",
                 "options": {
-                  "type": "person",
-                  "attribute": "is_ego",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
                   "operator": "NOT",
                   "value": true
                 }
@@ -1424,7 +1424,7 @@
             "display": [
               {
                 "id": "51500dcc-0a89-53ea-888a-ed12f8cfae72",
-                "type": "knows",
+                "type": "a2c89998-4caa-569b-a761-41284575c7e0",
                 "label": {
                   "en": "Knows"
                 }
@@ -1437,15 +1437,15 @@
           "label": {
             "en": "Forms of support"
           },
-          "layoutVariable": "layout",
+          "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc",
           "filter": {
             "rules": [
               {
                 "id": "26f38874-adf2-57a7-b9b5-b2b1b8ef9c14",
                 "type": "node",
                 "options": {
-                  "type": "person",
-                  "attribute": "is_ego",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
                   "operator": "NOT",
                   "value": true
                 }
@@ -1456,7 +1456,7 @@
             "display": [
               {
                 "id": "7960c975-1775-517f-8e97-b0bc3620c258",
-                "type": "knows",
+                "type": "a2c89998-4caa-569b-a761-41284575c7e0",
                 "label": {
                   "en": "Knows"
                 }
@@ -1466,28 +1466,28 @@
           "highlight": [
             {
               "id": "a44d3208-a1d8-5043-a5c1-a5ec73320357",
-              "variable": "exch_information",
+              "variable": "f0a04c28-9d21-5eab-9a8b-d1fe83e9e096",
               "label": {
                 "en": "Shares health or genetic information"
               }
             },
             {
               "id": "26af3d91-c059-5137-85ea-59720f763c03",
-              "variable": "exch_tangible",
+              "variable": "ac30061c-f1d0-5f76-8e30-58d6331f57f3",
               "label": {
                 "en": "Gives practical help"
               }
             },
             {
               "id": "31624d69-01ed-5043-bd18-15a01e0454d2",
-              "variable": "exch_emotional",
+              "variable": "ebed7466-4e07-5a01-8019-7b05fb13b463",
               "label": {
                 "en": "Shares feelings"
               }
             },
             {
               "id": "da4f572a-2ab0-5c08-a971-64d9af82d299",
-              "variable": "exch_spiritual",
+              "variable": "94a99940-7d07-542b-9780-4678d0814fe7",
               "label": {
                 "en": "Spiritual or religious connection"
               }
@@ -1499,15 +1499,15 @@
           "label": {
             "en": "Family health communication"
           },
-          "layoutVariable": "layout",
+          "layoutVariable": "b1df922c-05fd-5e69-9514-02f6798664fc",
           "filter": {
             "rules": [
               {
                 "id": "046d132b-beb8-51f9-87ee-bcd41da749cb",
                 "type": "node",
                 "options": {
-                  "type": "person",
-                  "attribute": "is_ego",
+                  "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b",
+                  "attribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6",
                   "operator": "NOT",
                   "value": true
                 }
@@ -1518,7 +1518,7 @@
             "display": [
               {
                 "id": "4a8c997a-7b66-5d63-9071-cde7f7bd6fc4",
-                "type": "knows",
+                "type": "a2c89998-4caa-569b-a761-41284575c7e0",
                 "label": {
                   "en": "Knows"
                 }
@@ -1528,21 +1528,21 @@
           "highlight": [
             {
               "id": "6b1354b4-f632-54c0-b288-8b7da43910a4",
-              "variable": "role_gatherer",
+              "variable": "daa3b5ec-b3a0-50fc-a73d-5a9db535e8c6",
               "label": {
                 "en": "Looks for information"
               }
             },
             {
               "id": "2556ac10-4cdd-58f9-afab-5276c99a6e10",
-              "variable": "role_disseminator",
+              "variable": "5609e618-49dd-5033-b64c-69ecd27f84c7",
               "label": {
                 "en": "Helps people talk about it"
               }
             },
             {
               "id": "eb50e0f2-8aef-51e9-a3c9-e436afe7f51f",
-              "variable": "role_blocker",
+              "variable": "c0b4f7ea-3258-5a38-b27c-9c0cfde63f7f",
               "label": {
                 "en": "Finds it hard to talk about it"
               }
@@ -1581,7 +1581,7 @@
             "en": "This condition"
           },
           "color": "node-color-seq-1",
-          "attribute": "has_condition",
+          "attribute": "dbfcc767-71d7-51b0-93a5-f95c3733bca8",
           "inheritancePattern": "unknown"
         }
       ]

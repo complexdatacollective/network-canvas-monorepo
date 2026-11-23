@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "activity_minutes_week": {
+        "26a54711-14e5-5f6a-8aba-ddb27341373d": {
           "name": "activity_minutes_week",
           "type": "number",
           "component": "Number",
@@ -19,7 +19,7 @@
             "maxValue": 10080
           }
         },
-        "smoking_status": {
+        "87be40d1-ad8c-5b1b-8c50-be5b45a015b2": {
           "name": "smoking_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
@@ -47,7 +47,7 @@
             "required": true
           }
         },
-        "vaping_status": {
+        "0f9ec347-57ac-56fe-9b87-afda2e86d3de": {
           "name": "vaping_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
@@ -81,7 +81,7 @@
             "required": true
           }
         },
-        "diet_quality": {
+        "33ca8907-196c-580e-9fef-e79e726f3a6a": {
           "name": "diet_quality",
           "type": "ordinal",
           "component": "LikertScale",
@@ -121,7 +121,7 @@
             "required": true
           }
         },
-        "alcohol_frequency": {
+        "148afd23-aff5-5730-8e54-6abb6ed8a4e1": {
           "name": "alcohol_frequency",
           "type": "ordinal",
           "component": "LikertScale",
@@ -164,7 +164,7 @@
       }
     },
     "node": {
-      "person": {
+      "d2196845-950a-5f79-a394-618fcb5028bf": {
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -172,7 +172,7 @@
           "default": "circle"
         },
         "variables": {
-          "alter_name": {
+          "390bc406-34c9-59aa-a2dc-6f0a692a0e14": {
             "name": "alter_name",
             "type": "text",
             "component": "Text",
@@ -181,7 +181,7 @@
               "unique": true
             }
           },
-          "relationship": {
+          "5eedb669-ff63-5e0f-922f-60cdf213a616": {
             "name": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -224,7 +224,7 @@
               }
             ]
           },
-          "closeness": {
+          "0b46974e-4687-511f-9f48-22914b72ab7c": {
             "name": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
@@ -255,7 +255,7 @@
               }
             ]
           },
-          "alter_smokes": {
+          "2d97da18-ea10-5c8c-8135-5c6bea8dd5dc": {
             "name": "alter_smokes",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -280,7 +280,7 @@
               }
             ]
           },
-          "alter_activity": {
+          "a585234d-14b0-5b6c-bd92-02bf65c6f043": {
             "name": "alter_activity",
             "type": "ordinal",
             "component": "LikertScale",
@@ -311,7 +311,7 @@
               }
             ]
           },
-          "alter_diet": {
+          "566239d3-c1d6-5ca3-b58f-4941aed01ebe": {
             "name": "alter_diet",
             "type": "ordinal",
             "component": "LikertScale",
@@ -348,7 +348,7 @@
               }
             ]
           },
-          "alter_drinks": {
+          "859fa610-6c3e-5d45-95a1-97b800483da2": {
             "name": "alter_drinks",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -385,7 +385,7 @@
               }
             ]
           },
-          "shared_domains": {
+          "6c105aba-e793-5323-8d2a-0122aa1ab215": {
             "name": "shared_domains",
             "type": "categorical",
             "component": "CheckboxGroup",
@@ -419,7 +419,7 @@
               "minSelected": 1
             }
           },
-          "layout": {
+          "a08b8051-1e97-5445-89a0-be9d247dbc0a": {
             "name": "layout",
             "type": "layout"
           }
@@ -427,7 +427,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "14ae2a64-0021-538d-bfef-d756ba74cfbd": {
         "name": "Knows",
         "color": "edge-color-seq-1"
       }
@@ -472,7 +472,7 @@
         "fields": [
           {
             "id": "364925c2-479a-5ab7-abbf-c1dc6ba62f3b",
-            "variable": "activity_minutes_week",
+            "variable": "26a54711-14e5-5f6a-8aba-ddb27341373d",
             "prompt": {
               "en": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level?"
             },
@@ -482,28 +482,28 @@
           },
           {
             "id": "9681d8f2-498c-50d5-8d03-caa0129dfd53",
-            "variable": "smoking_status",
+            "variable": "87be40d1-ad8c-5b1b-8c50-be5b45a015b2",
             "prompt": {
               "en": "Which best describes your **cigarette smoking**?"
             }
           },
           {
             "id": "5864a1e8-5ee5-5053-940f-efbd7e375dfb",
-            "variable": "vaping_status",
+            "variable": "0f9ec347-57ac-56fe-9b87-afda2e86d3de",
             "prompt": {
               "en": "Which best describes your use of **e-cigarettes or vapes**?"
             }
           },
           {
             "id": "546badca-b86a-55ff-be8a-9a34653ae703",
-            "variable": "diet_quality",
+            "variable": "33ca8907-196c-580e-9fef-e79e726f3a6a",
             "prompt": {
               "en": "In general, how healthy would you say your **diet** is?"
             }
           },
           {
             "id": "84c017ac-232c-5d42-be03-4cb391119762",
-            "variable": "alcohol_frequency",
+            "variable": "148afd23-aff5-5730-8e54-6abb6ed8a4e1",
             "prompt": {
               "en": "How often do you have a drink containing **alcohol**?"
             }
@@ -520,7 +520,7 @@
       "interviewScript": "Each prompt asks about a different shared activity. The same person can take part in several of these activities; when they do, add them once and then select them from the panel of people already mentioned for the other prompts, rather than typing their name again.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "form": {
         "title": {
@@ -529,7 +529,7 @@
         "fields": [
           {
             "id": "fad41bcc-48ca-5887-8e32-ada70c701749",
-            "variable": "alter_name",
+            "variable": "390bc406-34c9-59aa-a2dc-6f0a692a0e14",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
             }
@@ -595,13 +595,13 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "form": {
         "fields": [
           {
             "id": "9a16ed3c-2a45-5090-a99d-f00beebf34d9",
-            "variable": "shared_domains",
+            "variable": "6c105aba-e793-5323-8d2a-0122aa1ab215",
             "prompt": {
               "en": "Which of these activities do you ever do **with {nodeLabel}**?"
             },
@@ -611,35 +611,35 @@
           },
           {
             "id": "73d056c9-61a2-5178-b9de-2b59bb861db0",
-            "variable": "relationship",
+            "variable": "5eedb669-ff63-5e0f-922f-60cdf213a616",
             "prompt": {
               "en": "What is your relationship to {nodeLabel}?"
             }
           },
           {
             "id": "4d770057-278b-529b-8942-67824f654d5c",
-            "variable": "alter_smokes",
+            "variable": "2d97da18-ea10-5c8c-8135-5c6bea8dd5dc",
             "prompt": {
               "en": "As far as you know, does {nodeLabel} **smoke**?"
             }
           },
           {
             "id": "289ca432-cec7-5f9e-b33e-42c69b514d8f",
-            "variable": "alter_activity",
+            "variable": "a585234d-14b0-5b6c-bd92-02bf65c6f043",
             "prompt": {
               "en": "How **physically active** would you say {nodeLabel} is?"
             }
           },
           {
             "id": "6c9a02b6-9346-5f61-a8a0-7c45fb4316c6",
-            "variable": "alter_diet",
+            "variable": "566239d3-c1d6-5ca3-b58f-4941aed01ebe",
             "prompt": {
               "en": "How **healthy** would you say {nodeLabel}'s diet is?"
             }
           },
           {
             "id": "85b9a830-a37f-54da-91cf-2e7dd3a32a87",
-            "variable": "alter_drinks",
+            "variable": "859fa610-6c3e-5d45-95a1-97b800483da2",
             "prompt": {
               "en": "How often does {nodeLabel} **drink alcohol**, as far as you know?"
             }
@@ -655,7 +655,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "prompts": [
         {
@@ -663,7 +663,7 @@
           "text": {
             "en": "Place each person by **how close you feel to them**. Closer ties tend to have a stronger influence on our behaviour."
           },
-          "variable": "closeness",
+          "variable": "0b46974e-4687-511f-9f48-22914b72ab7c",
           "color": "ord-color-seq-1"
         }
       ]
@@ -679,7 +679,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "behaviours": {
         "automaticLayout": true,
@@ -692,8 +692,8 @@
           "label": {
             "en": "Smoking"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "alter_smokes",
+          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
+          "groupVariable": "2d97da18-ea10-5c8c-8135-5c6bea8dd5dc",
           "highlight": []
         },
         {
@@ -701,8 +701,8 @@
           "label": {
             "en": "Physical activity"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "alter_activity",
+          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
+          "groupVariable": "a585234d-14b0-5b6c-bd92-02bf65c6f043",
           "highlight": []
         },
         {
@@ -710,8 +710,8 @@
           "label": {
             "en": "Drinking"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "alter_drinks",
+          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
+          "groupVariable": "859fa610-6c3e-5d45-95a1-97b800483da2",
           "highlight": []
         }
       ],

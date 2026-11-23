@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "care_stage": {
+        "a1eb0482-52ed-584a-bb7f-fb00de2fb832": {
           "name": "care_stage",
           "type": "categorical",
           "component": "ToggleButtonGroup",
@@ -33,7 +33,7 @@
             "maxSelected": 1
           }
         },
-        "weeks_since_birth": {
+        "92228518-106e-509f-82d6-64c77a8e97c7": {
           "name": "weeks_since_birth",
           "type": "number",
           "component": "Number",
@@ -42,7 +42,7 @@
             "maxValue": 104
           }
         },
-        "living_situation": {
+        "d6b59464-15ea-54df-acda-248e54d03958": {
           "name": "living_situation",
           "type": "categorical",
           "component": "ToggleButtonGroup",
@@ -73,7 +73,7 @@
             }
           ]
         },
-        "epds_1": {
+        "42e9816a-23d0-572a-b61a-56c64798e2cc": {
           "name": "epds_1",
           "type": "ordinal",
           "component": "LikertScale",
@@ -104,7 +104,7 @@
             }
           ]
         },
-        "epds_2": {
+        "2b75b25a-3237-5cd2-9307-6de9be5c8129": {
           "name": "epds_2",
           "type": "ordinal",
           "component": "LikertScale",
@@ -135,7 +135,7 @@
             }
           ]
         },
-        "epds_3": {
+        "95b281db-dc03-5869-b880-7f55bea7a4d0": {
           "name": "epds_3",
           "type": "ordinal",
           "component": "LikertScale",
@@ -166,7 +166,7 @@
             }
           ]
         },
-        "epds_4": {
+        "cd5ca918-5a37-5a78-912b-426a9d912be6": {
           "name": "epds_4",
           "type": "ordinal",
           "component": "LikertScale",
@@ -197,7 +197,7 @@
             }
           ]
         },
-        "epds_5": {
+        "c2238131-4709-54b1-a079-a315089894bf": {
           "name": "epds_5",
           "type": "ordinal",
           "component": "LikertScale",
@@ -228,7 +228,7 @@
             }
           ]
         },
-        "epds_6": {
+        "875deeb5-a145-50f9-8d65-3d427d2fde05": {
           "name": "epds_6",
           "type": "ordinal",
           "component": "LikertScale",
@@ -259,7 +259,7 @@
             }
           ]
         },
-        "epds_7": {
+        "76c2a678-d772-55f2-a0f3-5296cf7fdcb1": {
           "name": "epds_7",
           "type": "ordinal",
           "component": "LikertScale",
@@ -290,7 +290,7 @@
             }
           ]
         },
-        "epds_8": {
+        "1d06f99c-822d-5a45-82a3-2acc277f4b68": {
           "name": "epds_8",
           "type": "ordinal",
           "component": "LikertScale",
@@ -321,7 +321,7 @@
             }
           ]
         },
-        "epds_9": {
+        "d9b1334a-a41c-5d98-887a-06839baf0e3f": {
           "name": "epds_9",
           "type": "ordinal",
           "component": "LikertScale",
@@ -352,7 +352,7 @@
             }
           ]
         },
-        "epds_10": {
+        "b2c6ddc9-233f-5f96-af47-b841a9d4064e": {
           "name": "epds_10",
           "type": "ordinal",
           "component": "LikertScale",
@@ -386,7 +386,7 @@
       }
     },
     "node": {
-      "supporter": {
+      "55ab482e-6ed4-5905-bc48-37acdcc7871c": {
         "name": "Supporter",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -394,7 +394,7 @@
           "default": "circle"
         },
         "variables": {
-          "supporter_name": {
+          "093d3c72-807d-5075-b800-f47d2e6f3c2d": {
             "name": "supporter_name",
             "type": "text",
             "component": "Text",
@@ -403,7 +403,7 @@
               "unique": true
             }
           },
-          "relationship": {
+          "bd88db63-8775-5d29-9e26-b5b73147dbc2": {
             "name": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -452,7 +452,7 @@
               }
             ]
           },
-          "formal_informal": {
+          "eab06e13-a9d9-5d1e-b9ca-7fcb3e3e6465": {
             "name": "formal_informal",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -471,7 +471,7 @@
               }
             ]
           },
-          "support_functions": {
+          "7055e07d-6692-5537-8da3-40c7a2048da0": {
             "name": "support_functions",
             "type": "categorical",
             "component": "CheckboxGroup",
@@ -505,7 +505,7 @@
               "minSelected": 1
             }
           },
-          "proximity": {
+          "1dc7ab1f-5471-50e3-949f-abf3e18c6d7f": {
             "name": "proximity",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -536,7 +536,7 @@
               }
             ]
           },
-          "contact_frequency": {
+          "d39350b2-91ee-549a-a36e-d10f883c7dd0": {
             "name": "contact_frequency",
             "type": "ordinal",
             "component": "RadioGroup",
@@ -573,7 +573,7 @@
               }
             ]
           },
-          "reliance": {
+          "9b5bd23d-7323-5177-98d4-7de6202d57e4": {
             "name": "reliance",
             "type": "ordinal",
             "component": "LikertScale",
@@ -610,7 +610,7 @@
               }
             ]
           },
-          "layout": {
+          "353f0d07-aa7a-5ccb-a899-7e079cfa5ba8": {
             "name": "layout",
             "type": "layout"
           }
@@ -658,14 +658,14 @@
         "fields": [
           {
             "id": "376886b4-91e4-5667-9215-c50ef3e8f7ae",
-            "variable": "care_stage",
+            "variable": "a1eb0482-52ed-584a-bb7f-fb00de2fb832",
             "prompt": {
               "en": "Where are you in your care journey at the moment?"
             }
           },
           {
             "id": "a2396e10-ec8e-5e67-b99c-c2c236c1c815",
-            "variable": "weeks_since_birth",
+            "variable": "92228518-106e-509f-82d6-64c77a8e97c7",
             "prompt": {
               "en": "If your baby has already been born, how many weeks ago was that?"
             },
@@ -675,77 +675,77 @@
           },
           {
             "id": "6444a239-627e-5b63-88e4-b21722693332",
-            "variable": "living_situation",
+            "variable": "d6b59464-15ea-54df-acda-248e54d03958",
             "prompt": {
               "en": "Which best describes who you live with right now?"
             }
           },
           {
             "id": "2c70ccef-167a-5399-9b6f-c6b1c86e8580",
-            "variable": "epds_1",
+            "variable": "42e9816a-23d0-572a-b61a-56c64798e2cc",
             "prompt": {
               "en": "In the past 7 days: I have been able to laugh and see the funny side of things."
             }
           },
           {
             "id": "5efdc491-e382-50b5-b66f-35b18df716ac",
-            "variable": "epds_2",
+            "variable": "2b75b25a-3237-5cd2-9307-6de9be5c8129",
             "prompt": {
               "en": "In the past 7 days: I have looked forward with enjoyment to things."
             }
           },
           {
             "id": "4ca1f0e7-f4c7-5438-a89d-931238fff221",
-            "variable": "epds_3",
+            "variable": "95b281db-dc03-5869-b880-7f55bea7a4d0",
             "prompt": {
               "en": "In the past 7 days: I have blamed myself unnecessarily when things went wrong."
             }
           },
           {
             "id": "5b786fe2-e8a2-5282-aed2-44bd26487a8c",
-            "variable": "epds_4",
+            "variable": "cd5ca918-5a37-5a78-912b-426a9d912be6",
             "prompt": {
               "en": "In the past 7 days: I have been anxious or worried for no good reason."
             }
           },
           {
             "id": "18f03e8e-24e3-5f3e-b207-55f925c7a69a",
-            "variable": "epds_5",
+            "variable": "c2238131-4709-54b1-a079-a315089894bf",
             "prompt": {
               "en": "In the past 7 days: I have felt scared or panicky for no very good reason."
             }
           },
           {
             "id": "ee24859b-a979-50dc-aa6c-809bbb5b878a",
-            "variable": "epds_6",
+            "variable": "875deeb5-a145-50f9-8d65-3d427d2fde05",
             "prompt": {
               "en": "In the past 7 days: Things have been getting on top of me."
             }
           },
           {
             "id": "63f06349-fd26-5a9b-8c84-16aa1d13a509",
-            "variable": "epds_7",
+            "variable": "76c2a678-d772-55f2-a0f3-5296cf7fdcb1",
             "prompt": {
               "en": "In the past 7 days: I have been so unhappy that I have had difficulty sleeping."
             }
           },
           {
             "id": "3521f3fb-6966-55e4-8cf9-8f316a2aaeb9",
-            "variable": "epds_8",
+            "variable": "1d06f99c-822d-5a45-82a3-2acc277f4b68",
             "prompt": {
               "en": "In the past 7 days: I have felt sad or miserable."
             }
           },
           {
             "id": "9b2b86ff-2711-5daf-84a0-f0ee1160beb9",
-            "variable": "epds_9",
+            "variable": "d9b1334a-a41c-5d98-887a-06839baf0e3f",
             "prompt": {
               "en": "In the past 7 days: I have been so unhappy that I have been crying."
             }
           },
           {
             "id": "ecfdb264-5a3f-5805-a630-24d202968df7",
-            "variable": "epds_10",
+            "variable": "b2c6ddc9-233f-5f96-af47-b841a9d4064e",
             "prompt": {
               "en": "In the past 7 days: The thought of harming myself has occurred to me."
             }
@@ -757,7 +757,7 @@
       "id": "74f0c369-3d21-5171-847b-4c8c992cee2a",
       "dynamicValues": {
         "careStage": {
-          "path": "ego.care_stage",
+          "path": "ego.a1eb0482-52ed-584a-bb7f-fb00de2fb832",
           "cases": {
             "pregnant": "pregnant",
             "postpartum": "postpartum"
@@ -780,7 +780,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "supporter"
+        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
       },
       "form": {
         "title": {
@@ -789,7 +789,7 @@
         "fields": [
           {
             "id": "f45cf4ea-13d3-56f6-a332-6a33ff2323a5",
-            "variable": "supporter_name",
+            "variable": "093d3c72-807d-5075-b800-f47d2e6f3c2d",
             "prompt": {
               "en": "What is this person's name or initials?"
             },
@@ -834,7 +834,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "supporter"
+        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
       },
       "prompts": [
         {
@@ -842,7 +842,7 @@
           "text": {
             "en": "For each person, is their support **informal** (family, friends, other parents) or **formal / professional** (a clinician, doula, home-visiting nurse, or community health worker)?"
           },
-          "variable": "formal_informal"
+          "variable": "eab06e13-a9d9-5d1e-b9ca-7fcb3e3e6465"
         }
       ]
     },
@@ -869,34 +869,34 @@
       },
       "subject": {
         "entity": "node",
-        "type": "supporter"
+        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
       },
       "form": {
         "fields": [
           {
             "id": "fdfa96db-c2b9-573a-9652-a627f25a12fe",
-            "variable": "relationship",
+            "variable": "bd88db63-8775-5d29-9e26-b5b73147dbc2",
             "prompt": {
               "en": "What is {nodeLabel}'s relationship to you?"
             }
           },
           {
             "id": "72419354-c30b-5672-aedd-56a90fc7fb3e",
-            "variable": "proximity",
+            "variable": "1dc7ab1f-5471-50e3-949f-abf3e18c6d7f",
             "prompt": {
               "en": "Where is {nodeLabel}, relative to you, most of the time?"
             }
           },
           {
             "id": "c439a4cd-6369-555f-aac9-b1ab684b8f70",
-            "variable": "contact_frequency",
+            "variable": "d39350b2-91ee-549a-a36e-d10f883c7dd0",
             "prompt": {
               "en": "How often are you in contact with {nodeLabel} at the moment?"
             }
           },
           {
             "id": "334ddeb3-4244-5f64-806f-61e207a8487e",
-            "variable": "support_functions",
+            "variable": "7055e07d-6692-5537-8da3-40c7a2048da0",
             "prompt": {
               "en": "Which kinds of support does {nodeLabel} give you?"
             },
@@ -911,7 +911,7 @@
       "id": "67d1023d-b549-57d7-a996-3cca4770bf57",
       "dynamicValues": {
         "careStage": {
-          "path": "ego.care_stage",
+          "path": "ego.a1eb0482-52ed-584a-bb7f-fb00de2fb832",
           "cases": {
             "pregnant": "pregnant",
             "postpartum": "postpartum"
@@ -924,7 +924,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "supporter"
+        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
       },
       "prompts": [
         {
@@ -932,7 +932,7 @@
           "text": {
             "en": "Thinking about {careStage, select, missing {your care and the baby} pregnant {your pregnancy} postpartum {your care and the baby} other {your care and the baby}}, **how much do you rely on each person** for support overall? Drag each person into the band that fits best."
           },
-          "variable": "reliance",
+          "variable": "9b5bd23d-7323-5177-98d4-7de6202d57e4",
           "color": "ord-color-seq-1"
         }
       ]
@@ -948,7 +948,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "supporter"
+        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
       },
       "behaviours": {
         "automaticLayout": true,
@@ -961,8 +961,8 @@
           "label": {
             "en": "Support map by source (formal vs informal)"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "formal_informal",
+          "layoutVariable": "353f0d07-aa7a-5ccb-a899-7e079cfa5ba8",
+          "groupVariable": "eab06e13-a9d9-5d1e-b9ca-7fcb3e3e6465",
           "highlight": []
         }
       ],

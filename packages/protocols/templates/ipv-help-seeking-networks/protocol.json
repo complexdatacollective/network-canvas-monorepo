@@ -10,11 +10,11 @@
   "experiments": {},
   "codebook": {
     "node": {
-      "person": {
+      "c6e764fa-119f-5a78-bf0e-60f24de9f3c6": {
         "name": "Person",
         "icon": "add-a-person",
         "variables": {
-          "person_name": {
+          "cec698be-e42b-5c20-be0c-c9033d8f3c2b": {
             "name": "person_name",
             "encrypted": true,
             "type": "text",
@@ -24,7 +24,7 @@
               "unique": true
             }
           },
-          "private_note": {
+          "6cc2cc5f-63c6-57ae-a414-a016c473d5b6": {
             "name": "private_note",
             "encrypted": true,
             "type": "text",
@@ -33,19 +33,19 @@
               "maxLength": 500
             }
           },
-          "support_confidant": {
+          "78edaa0a-4c1e-5184-b7d4-a90749e95858": {
             "name": "support_confidant",
             "type": "boolean"
           },
-          "support_practical": {
+          "c9c7f76e-c362-545a-b849-a6490e9eaa05": {
             "name": "support_practical",
             "type": "boolean"
           },
-          "unhelpful": {
+          "eb19daef-6a4a-58cf-b541-6af077983f65": {
             "name": "unhelpful",
             "type": "boolean"
           },
-          "relationship": {
+          "75dc971f-d6d7-5309-97f5-1c3b835a2768": {
             "name": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -97,7 +97,7 @@
               "maxSelected": 1
             }
           },
-          "contact_frequency": {
+          "465a80a2-d32d-514b-9114-cbc9d6769ec8": {
             "name": "contact_frequency",
             "type": "ordinal",
             "component": "LikertScale",
@@ -128,7 +128,7 @@
               }
             ]
           },
-          "knows_about_abuse": {
+          "1fe0538f-f3b0-5b76-a941-008391eee924": {
             "name": "knows_about_abuse",
             "type": "boolean",
             "component": "Boolean",
@@ -147,7 +147,7 @@
               }
             ]
           },
-          "safe_to_tell": {
+          "981155f6-4477-5270-9a1f-af8fbb6fbd68": {
             "name": "safe_to_tell",
             "type": "ordinal",
             "component": "RadioGroup",
@@ -172,7 +172,7 @@
               }
             ]
           },
-          "reaction": {
+          "04b0fac5-4870-5f13-9d3b-4a48840eaa14": {
             "name": "reaction",
             "type": "categorical",
             "component": "CheckboxGroup",
@@ -209,17 +209,17 @@
               }
             ]
           },
-          "reaction_other": {
+          "69888343-5c8e-5e45-9550-b4134dca23bc": {
             "name": "reaction_other",
             "encrypted": true,
             "type": "text",
             "component": "Text"
           },
-          "close_to_partner": {
+          "818dc328-e9b4-5a52-b94d-6251c8e0f86b": {
             "name": "close_to_partner",
             "type": "boolean"
           },
-          "layout": {
+          "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b": {
             "name": "layout",
             "type": "layout"
           }
@@ -229,11 +229,11 @@
           "default": "circle"
         }
       },
-      "service": {
+      "50b335d5-6cb8-5482-912c-95dbaa53fa6b": {
         "name": "Service",
         "icon": "add-a-place",
         "variables": {
-          "service_name": {
+          "072a5a78-caaf-5843-9422-ccd31244c51e": {
             "name": "service_name",
             "type": "text",
             "component": "Text",
@@ -242,7 +242,7 @@
               "unique": true
             }
           },
-          "service_type": {
+          "cd80c8ef-2d30-59f9-b11b-13d967413cfc": {
             "name": "service_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -300,11 +300,11 @@
               "maxSelected": 1
             }
           },
-          "service_contacted": {
+          "2ecde05f-d442-56c2-a48c-0c79b1fa266f": {
             "name": "service_contacted",
             "type": "boolean"
           },
-          "service_helpful": {
+          "1da99059-e725-5b79-8a95-5ff7713875e8": {
             "name": "service_helpful",
             "type": "ordinal",
             "component": "LikertScale",
@@ -343,7 +343,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "7f9978de-5e31-5842-aa44-e480a089f7d3": {
         "name": "Know each other",
         "color": "edge-color-seq-1",
         "variables": {}
@@ -351,7 +351,7 @@
     },
     "ego": {
       "variables": {
-        "participant_consent": {
+        "64dec926-148d-59da-99c4-9001b3c9946e": {
           "name": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
@@ -375,7 +375,7 @@
             }
           ]
         },
-        "ego_age": {
+        "e1ee6d11-2f63-57ee-b868-88f46ea0bbb7": {
           "name": "ego_age",
           "type": "number",
           "component": "Number",
@@ -384,7 +384,7 @@
             "maxValue": 120
           }
         },
-        "relationship_status": {
+        "7985af49-4303-5fd0-8243-54bfced97cde": {
           "name": "relationship_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
@@ -424,7 +424,7 @@
             "maxSelected": 1
           }
         },
-        "children_in_home": {
+        "e0119621-8ab7-5549-8c6b-296e69300268": {
           "name": "children_in_home",
           "type": "boolean",
           "component": "Boolean",
@@ -476,7 +476,7 @@
         "fields": [
           {
             "id": "e42efd79-a3eb-5260-98a4-278affbc1d30",
-            "variable": "participant_consent",
+            "variable": "64dec926-148d-59da-99c4-9001b3c9946e",
             "prompt": {
               "en": "Do you consent to participate in this study?"
             }
@@ -498,7 +498,7 @@
               "type": "ego",
               "id": "6b0f3a52-1d64-4c2e-9a39-0d7f5c1e8a41",
               "options": {
-                "attribute": "participant_consent",
+                "attribute": "64dec926-148d-59da-99c4-9001b3c9946e",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -537,21 +537,21 @@
         "fields": [
           {
             "id": "3abf0ee9-ed32-52b6-bba7-8d3c697310f2",
-            "variable": "ego_age",
+            "variable": "e1ee6d11-2f63-57ee-b868-88f46ea0bbb7",
             "prompt": {
               "en": "How old are you, in years?"
             }
           },
           {
             "id": "2ac9f221-6ad4-52d9-b985-b42fe0b59ab3",
-            "variable": "relationship_status",
+            "variable": "7985af49-4303-5fd0-8243-54bfced97cde",
             "prompt": {
               "en": "Which of these best describes your relationship with the person who harmed you **now**?"
             }
           },
           {
             "id": "27fd32d4-8e4a-55d6-bd42-c49b55f0ea8c",
-            "variable": "children_in_home",
+            "variable": "e0119621-8ab7-5549-8c6b-296e69300268",
             "prompt": {
               "en": "Do any children live with you?"
             }
@@ -573,7 +573,7 @@
         "fields": [
           {
             "id": "599ec40c-9a29-5293-8a8f-8c62dad69e90",
-            "variable": "person_name",
+            "variable": "cec698be-e42b-5c20-be0c-c9033d8f3c2b",
             "prompt": {
               "en": "What is this person's name, nickname, or initials?"
             },
@@ -583,7 +583,7 @@
           },
           {
             "id": "73b1d75f-6667-5b79-8050-f84f784db064",
-            "variable": "private_note",
+            "variable": "6cc2cc5f-63c6-57ae-a414-a016c473d5b6",
             "prompt": {
               "en": "Is there anything you want to remember about this person?"
             },
@@ -595,7 +595,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
       },
       "panels": [
         {
@@ -615,7 +615,7 @@
           "additionalAttributes": [
             {
               "id": "d94295b6-da1b-5594-977e-1349e3373392",
-              "variable": "support_confidant",
+              "variable": "78edaa0a-4c1e-5184-b7d4-a90749e95858",
               "value": true
             }
           ]
@@ -628,7 +628,7 @@
           "additionalAttributes": [
             {
               "id": "345c5bc9-8e1b-5663-86ff-4693013ad95a",
-              "variable": "support_practical",
+              "variable": "c9c7f76e-c362-545a-b849-a6490e9eaa05",
               "value": true
             }
           ]
@@ -641,7 +641,7 @@
           "additionalAttributes": [
             {
               "id": "45106e19-570c-5d33-90fc-5cc7f681d69a",
-              "variable": "unhelpful",
+              "variable": "eb19daef-6a4a-58cf-b541-6af077983f65",
               "value": true
             }
           ]
@@ -665,7 +665,7 @@
         "fields": [
           {
             "id": "cb44ca23-e250-503c-bb02-db120ea543e7",
-            "variable": "service_name",
+            "variable": "072a5a78-caaf-5843-9422-ccd31244c51e",
             "prompt": {
               "en": "What is the name of this service or organisation?"
             },
@@ -675,7 +675,7 @@
           },
           {
             "id": "ebb092a4-4dc8-54f5-9cda-6efc44a00e93",
-            "variable": "service_type",
+            "variable": "cd80c8ef-2d30-59f9-b11b-13d967413cfc",
             "prompt": {
               "en": "What kind of service is it?"
             }
@@ -684,7 +684,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "service"
+        "type": "50b335d5-6cb8-5482-912c-95dbaa53fa6b"
       },
       "prompts": [
         {
@@ -695,7 +695,7 @@
           "additionalAttributes": [
             {
               "id": "08e269b0-46e6-5728-8910-95c568830b53",
-              "variable": "service_contacted",
+              "variable": "2ecde05f-d442-56c2-a48c-0c79b1fa266f",
               "value": true
             }
           ]
@@ -708,7 +708,7 @@
           "additionalAttributes": [
             {
               "id": "903f8b27-bf9d-5921-a375-a671b5dfc4e9",
-              "variable": "service_contacted",
+              "variable": "2ecde05f-d442-56c2-a48c-0c79b1fa266f",
               "value": false
             }
           ]
@@ -741,27 +741,27 @@
       "type": "AlterForm",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
       },
       "form": {
         "fields": [
           {
             "id": "bb705bbf-bd0c-5782-b003-708be221d4b0",
-            "variable": "relationship",
+            "variable": "75dc971f-d6d7-5309-97f5-1c3b835a2768",
             "prompt": {
               "en": "How do you know {nodeLabel}?"
             }
           },
           {
             "id": "47761e20-9fe9-5742-8586-9f044c8d58ac",
-            "variable": "contact_frequency",
+            "variable": "465a80a2-d32d-514b-9114-cbc9d6769ec8",
             "prompt": {
               "en": "How often are you usually in touch with {nodeLabel}?"
             }
           },
           {
             "id": "64e4270a-e011-5290-a295-0018fda07ee9",
-            "variable": "knows_about_abuse",
+            "variable": "1fe0538f-f3b0-5b76-a941-008391eee924",
             "prompt": {
               "en": "Does {nodeLabel} **know** about what has been happening in your relationship?"
             },
@@ -800,8 +800,8 @@
             "type": "node",
             "id": "c2e4d6a8-3b5f-4e71-9d0a-8f6b2c4e1a37",
             "options": {
-              "type": "service",
-              "attribute": "service_contacted",
+              "type": "50b335d5-6cb8-5482-912c-95dbaa53fa6b",
+              "attribute": "2ecde05f-d442-56c2-a48c-0c79b1fa266f",
               "operator": "EXACTLY",
               "value": true
             }
@@ -810,13 +810,13 @@
       },
       "subject": {
         "entity": "node",
-        "type": "service"
+        "type": "50b335d5-6cb8-5482-912c-95dbaa53fa6b"
       },
       "form": {
         "fields": [
           {
             "id": "62a51a89-6369-57ee-b1b6-f7dea2d23128",
-            "variable": "service_helpful",
+            "variable": "1da99059-e725-5b79-8a95-5ff7713875e8",
             "prompt": {
               "en": "Overall, how helpful was {nodeLabel}?"
             }
@@ -832,7 +832,7 @@
       "type": "OrdinalBin",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
       },
       "prompts": [
         {
@@ -840,7 +840,7 @@
           "text": {
             "en": "Drag each person into the band that best describes **how safe it would feel** to talk to them about what has been happening."
           },
-          "variable": "safe_to_tell",
+          "variable": "981155f6-4477-5270-9a1f-af8fbb6fbd68",
           "color": "ord-color-seq-1"
         }
       ]
@@ -859,7 +859,7 @@
       "type": "CategoricalBin",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
       },
       "filter": {
         "join": "AND",
@@ -868,8 +868,8 @@
             "type": "node",
             "id": "9a7c5e31-2f84-4b6d-a1c0-5e3d7b9f2c68",
             "options": {
-              "type": "person",
-              "attribute": "knows_about_abuse",
+              "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6",
+              "attribute": "1fe0538f-f3b0-5b76-a941-008391eee924",
               "operator": "EXACTLY",
               "value": true
             }
@@ -882,8 +882,8 @@
           "text": {
             "en": "These are the people who know about what has been happening. Drag each person into the box that best describes **how they reacted** when they found out."
           },
-          "variable": "reaction",
-          "otherVariable": "reaction_other",
+          "variable": "04b0fac5-4870-5f13-9d3b-4a48840eaa14",
+          "otherVariable": "69888343-5c8e-5e45-9550-b4134dca23bc",
           "otherVariablePrompt": {
             "en": "In your own words, how did {nodeLabel} react? (This is saved encrypted.)"
           },
@@ -902,7 +902,7 @@
       "type": "Sociogram",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
       },
       "background": {
         "concentricCircles": 3,
@@ -918,11 +918,11 @@
             "en": "The people you mentioned are arranged for you below. Draw a line between any **two people who know each other**."
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b"
           },
           "edges": {
-            "display": ["knows"],
-            "create": "knows"
+            "display": ["7f9978de-5e31-5842-aa44-e480a089f7d3"],
+            "create": "7f9978de-5e31-5842-aa44-e480a089f7d3"
           }
         },
         {
@@ -931,14 +931,14 @@
             "en": "Now tap anyone who is **close to, or regularly in touch with, the person who harmed you**."
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "185f7008-0c2e-5ae7-9a71-1eb48fa3e83b"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["7f9978de-5e31-5842-aa44-e480a089f7d3"]
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "close_to_partner"
+            "variable": "818dc328-e9b4-5a52-b94d-6251c8e0f86b"
           }
         }
       ]

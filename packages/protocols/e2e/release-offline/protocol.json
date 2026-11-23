@@ -9,19 +9,19 @@
   "lastModified": "2026-10-30T00:00:00.000Z",
   "codebook": {
     "node": {
-      "person": {
+      "6460163b-455b-5686-a58b-b4724aeb75d0": {
         "name": "Person",
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
         },
         "variables": {
-          "name": {
+          "f7b41887-de21-5d95-906a-80e8552e2219": {
             "name": "name",
             "type": "text",
             "component": "Text"
           },
-          "age": {
+          "7a8bb50f-40e0-561c-bba8-ae976a8ae252": {
             "name": "age",
             "type": "number"
           }
@@ -71,7 +71,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "6460163b-455b-5686-a58b-b4724aeb75d0"
       },
       "dataSource": "roster_data",
       "panelTitle": {

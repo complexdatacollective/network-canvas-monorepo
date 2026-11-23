@@ -11,7 +11,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "ego_hiv_status": {
+        "0d99c62b-a3e2-5e14-b9e7-6100c4662f8e": {
           "name": "ego_hiv_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
@@ -45,7 +45,7 @@
             }
           ]
         },
-        "on_prep": {
+        "4b7d04c5-9d1d-5797-be11-e17867a9a958": {
           "name": "on_prep",
           "type": "boolean",
           "component": "Boolean",
@@ -64,7 +64,7 @@
             }
           ]
         },
-        "on_art": {
+        "c6970d36-c080-53c0-b77b-425bf37a4623": {
           "name": "on_art",
           "type": "boolean",
           "component": "Boolean",
@@ -83,7 +83,7 @@
             }
           ]
         },
-        "last_hiv_test": {
+        "f007a0cc-edb7-5a38-9ac7-dd6a64b85ee7": {
           "name": "last_hiv_test",
           "type": "datetime",
           "component": "DatePicker",
@@ -91,7 +91,7 @@
             "type": "month"
           }
         },
-        "injects_drugs": {
+        "e09ea66a-d993-5939-a046-e0137b0957ac": {
           "name": "injects_drugs",
           "type": "boolean",
           "component": "Boolean",
@@ -113,7 +113,7 @@
       }
     },
     "node": {
-      "partner": {
+      "6f6d2842-f372-5fdb-969e-45df0c5a8143": {
         "name": "Partner",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -121,7 +121,7 @@
           "default": "circle"
         },
         "variables": {
-          "partner_label": {
+          "1bff42bf-328d-5308-9397-333337ba13af": {
             "name": "partner_label",
             "type": "text",
             "component": "Text",
@@ -131,7 +131,7 @@
               "unique": true
             }
           },
-          "partner_type": {
+          "b4c0ecf9-f966-5ac8-84b6-e25f763b6cb7": {
             "name": "partner_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -165,7 +165,7 @@
               }
             ]
           },
-          "partner_age": {
+          "d9e8d4c8-6f33-59d7-8fd1-098a0a280c82": {
             "name": "partner_age",
             "type": "number",
             "component": "Number",
@@ -174,7 +174,7 @@
               "maxValue": 120
             }
           },
-          "partner_gender": {
+          "fc98f709-1cf5-52f2-a7b7-5d0b6f21a0ee": {
             "name": "partner_gender",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -220,7 +220,7 @@
               }
             ]
           },
-          "partner_serostatus": {
+          "ef5cf096-ddfa-50de-9b80-7d740456cb8b": {
             "name": "partner_serostatus",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -248,7 +248,7 @@
               }
             ]
           },
-          "condom_use": {
+          "2059e762-380a-56cb-9228-dce0e22145cb": {
             "name": "condom_use",
             "type": "ordinal",
             "component": "LikertScale",
@@ -285,7 +285,7 @@
               }
             ]
           },
-          "shared_injection_equipment": {
+          "d7684a37-d4de-5540-bda6-57652fe92659": {
             "name": "shared_injection_equipment",
             "type": "boolean",
             "component": "Boolean",
@@ -304,7 +304,7 @@
               }
             ]
           },
-          "partnership_start": {
+          "388dfe6a-24b3-5b36-98bc-289e6ac08e92": {
             "name": "partnership_start",
             "type": "datetime",
             "component": "DatePicker",
@@ -312,7 +312,7 @@
               "type": "month"
             }
           },
-          "partnership_end": {
+          "c8be35e2-203c-5bfc-b831-bc4db01c40c4": {
             "name": "partnership_end",
             "type": "datetime",
             "component": "DatePicker",
@@ -320,7 +320,7 @@
               "type": "month"
             }
           },
-          "layout": {
+          "18908d60-bec8-5c71-aa87-60e8e725e06c": {
             "name": "layout",
             "type": "layout"
           }
@@ -328,7 +328,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "36005e0a-931e-5e15-ac5a-4f07c80ab47b": {
         "name": "Knows",
         "color": "edge-color-seq-1",
         "variables": {}
@@ -374,7 +374,7 @@
       "id": "3c5c3313-0f08-58f3-892e-81647d0ededa",
       "dynamicValues": {
         "egoHivStatus": {
-          "path": "ego.ego_hiv_status",
+          "path": "ego.0d99c62b-a3e2-5e14-b9e7-6100c4662f8e",
           "cases": {
             "positive": "positive"
           }
@@ -396,14 +396,14 @@
         "fields": [
           {
             "id": "e1e2a161-a14a-5e3d-8358-b81b6925258d",
-            "variable": "ego_hiv_status",
+            "variable": "0d99c62b-a3e2-5e14-b9e7-6100c4662f8e",
             "prompt": {
               "en": "What is your current HIV status?"
             }
           },
           {
             "id": "78125377-94fc-590a-a1b5-98251813a801",
-            "variable": "on_prep",
+            "variable": "4b7d04c5-9d1d-5797-be11-e17867a9a958",
             "prompt": {
               "en": "Are you currently taking PrEP to prevent HIV?"
             },
@@ -413,7 +413,7 @@
           },
           {
             "id": "3398c3a2-6f26-5e89-8e7d-7271d0a13763",
-            "variable": "on_art",
+            "variable": "c6970d36-c080-53c0-b77b-425bf37a4623",
             "prompt": {
               "en": "{egoHivStatus, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} positive {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
             },
@@ -423,7 +423,7 @@
           },
           {
             "id": "39ecac05-f8ba-558e-8bec-1add04c28a15",
-            "variable": "last_hiv_test",
+            "variable": "f007a0cc-edb7-5a38-9ac7-dd6a64b85ee7",
             "prompt": {
               "en": "When did you most recently take an HIV test?"
             },
@@ -433,7 +433,7 @@
           },
           {
             "id": "88c7107a-04de-537e-8acf-cdc5ee6ef12c",
-            "variable": "injects_drugs",
+            "variable": "e09ea66a-d993-5939-a046-e0137b0957ac",
             "prompt": {
               "en": "In the past 6 months, have you injected any drugs that were not prescribed to you?"
             }
@@ -458,7 +458,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "partner"
+        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "form": {
         "title": {
@@ -467,7 +467,7 @@
         "fields": [
           {
             "id": "2878c819-e8d1-56c1-8e7d-83637aa1e411",
-            "variable": "partner_label",
+            "variable": "1bff42bf-328d-5308-9397-333337ba13af",
             "prompt": {
               "en": "Enter initials or a code for this person."
             },
@@ -506,7 +506,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "partner"
+        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "form": {
         "title": {
@@ -515,7 +515,7 @@
         "fields": [
           {
             "id": "d31f2245-f9e1-5c5a-aea9-510971cc67ef",
-            "variable": "partner_label",
+            "variable": "1bff42bf-328d-5308-9397-333337ba13af",
             "prompt": {
               "en": "Enter initials or a code for this person."
             },
@@ -554,7 +554,7 @@
           "path": "node.$label"
         },
         "partnershipStart": {
-          "path": "node.partnership_start"
+          "path": "node.388dfe6a-24b3-5b36-98bc-289e6ac08e92"
         }
       },
       "type": "AlterForm",
@@ -563,48 +563,48 @@
       },
       "subject": {
         "entity": "node",
-        "type": "partner"
+        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "form": {
         "fields": [
           {
             "id": "61776abd-cf8c-538f-9402-4753f71cd5ce",
-            "variable": "partner_type",
+            "variable": "b4c0ecf9-f966-5ac8-84b6-e25f763b6cb7",
             "prompt": {
               "en": "How would you describe your relationship with {nodeLabel}?"
             }
           },
           {
             "id": "60e226df-90b9-55ab-8dc2-0be26ee503b6",
-            "variable": "partner_age",
+            "variable": "d9e8d4c8-6f33-59d7-8fd1-098a0a280c82",
             "prompt": {
               "en": "About how old is {nodeLabel}, in years?"
             }
           },
           {
             "id": "9af3d1fd-a7a8-5e46-9c31-c0e11d11e701",
-            "variable": "partner_gender",
+            "variable": "fc98f709-1cf5-52f2-a7b7-5d0b6f21a0ee",
             "prompt": {
               "en": "What is {nodeLabel}'s gender?"
             }
           },
           {
             "id": "c676dac1-fa39-5435-9643-401b0ff4a58f",
-            "variable": "partner_serostatus",
+            "variable": "ef5cf096-ddfa-50de-9b80-7d740456cb8b",
             "prompt": {
               "en": "As far as you know, what is {nodeLabel}'s HIV status?"
             }
           },
           {
             "id": "f0c72086-6e18-55f8-88d8-1e65039803ec",
-            "variable": "condom_use",
+            "variable": "2059e762-380a-56cb-9228-dce0e22145cb",
             "prompt": {
               "en": "When you had sex with {nodeLabel}, how often did you use a condom?"
             }
           },
           {
             "id": "5ea71954-3eff-589f-8545-02f6050f24c2",
-            "variable": "shared_injection_equipment",
+            "variable": "d7684a37-d4de-5540-bda6-57652fe92659",
             "prompt": {
               "en": "Did you ever share injection equipment with {nodeLabel}?"
             },
@@ -614,7 +614,7 @@
           },
           {
             "id": "96a703b7-0ad6-5945-a3d0-4d3cdd4fc5df",
-            "variable": "partnership_start",
+            "variable": "388dfe6a-24b3-5b36-98bc-289e6ac08e92",
             "prompt": {
               "en": "When did your sexual or injection relationship with {nodeLabel} begin?"
             },
@@ -624,7 +624,7 @@
           },
           {
             "id": "cab81d9d-0807-5c02-9920-83a4a51e1b05",
-            "variable": "partnership_end",
+            "variable": "c8be35e2-203c-5bfc-b831-bc4db01c40c4",
             "prompt": {
               "en": "When did it end?"
             },
@@ -643,7 +643,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "partner"
+        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "background": {
         "concentricCircles": 4
@@ -658,11 +658,11 @@
             "en": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected."
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "18908d60-bec8-5c71-aa87-60e8e725e06c"
           },
           "edges": {
-            "create": "knows",
-            "display": ["knows"]
+            "create": "36005e0a-931e-5e15-ac5a-4f07c80ab47b",
+            "display": ["36005e0a-931e-5e15-ac5a-4f07c80ab47b"]
           },
           "highlight": {
             "allowHighlighting": false

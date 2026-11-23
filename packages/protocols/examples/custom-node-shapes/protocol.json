@@ -10,7 +10,7 @@
   "experiments": {},
   "codebook": {
     "node": {
-      "world_illustrated": {
+      "4a31d1a4-c474-5343-8d68-43ac59eff8a3": {
         "name": "Part of my world",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -67,7 +67,7 @@
         "shape": {
           "default": "custom:other",
           "dynamic": {
-            "variable": "world_illustrated_type",
+            "variable": "410ab843-3b47-5a5e-b40c-caad9450fb87",
             "type": "discrete",
             "map": [
               {
@@ -122,7 +122,7 @@
           }
         },
         "variables": {
-          "world_illustrated_name": {
+          "c4c7b2fa-28ad-520b-8a14-4290131b90a4": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -130,7 +130,7 @@
               "required": true
             }
           },
-          "world_illustrated_type": {
+          "410ab843-3b47-5a5e-b40c-caad9450fb87": {
             "name": "type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -213,13 +213,13 @@
               "maxSelected": 1
             }
           },
-          "world_illustrated_layout": {
+          "7cc7af0b-0e6b-5304-b820-722005269399": {
             "name": "layout",
             "type": "layout"
           }
         }
       },
-      "world_accented": {
+      "a1403c8c-070e-5a3f-b201-dd1283371c86": {
         "name": "Part of my world (node colour)",
         "color": "node-color-seq-6",
         "icon": "add-a-person",
@@ -276,7 +276,7 @@
         "shape": {
           "default": "custom:other",
           "dynamic": {
-            "variable": "world_accented_type",
+            "variable": "2b034e63-5b7a-576d-befb-f51153e228b1",
             "type": "discrete",
             "map": [
               {
@@ -331,7 +331,7 @@
           }
         },
         "variables": {
-          "world_accented_name": {
+          "75ca71f7-a45e-5f14-9fa2-b65c43e64dab": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -339,7 +339,7 @@
               "required": true
             }
           },
-          "world_accented_type": {
+          "2b034e63-5b7a-576d-befb-f51153e228b1": {
             "name": "type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -422,7 +422,7 @@
               "maxSelected": 1
             }
           },
-          "world_accented_layout": {
+          "5d3e49be-a12b-5673-b0e3-3b8aaae36a38": {
             "name": "layout",
             "type": "layout"
           }
@@ -430,11 +430,11 @@
       }
     },
     "edge": {
-      "goes_with": {
+      "d1afb5e2-5112-5902-ba02-255ed7976153": {
         "name": "Goes with",
         "color": "edge-color-seq-1"
       },
-      "goes_with_accented": {
+      "3723a5c7-6898-5390-8451-23072d8f5be7": {
         "name": "Goes with (node colour)",
         "color": "edge-color-seq-3"
       }
@@ -605,7 +605,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "world_illustrated"
+        "type": "4a31d1a4-c474-5343-8d68-43ac59eff8a3"
       },
       "form": {
         "title": {
@@ -614,14 +614,14 @@
         "fields": [
           {
             "id": "b540ded0-fd58-5c0b-9c7b-8757d73eb56b",
-            "variable": "world_illustrated_name",
+            "variable": "c4c7b2fa-28ad-520b-8a14-4290131b90a4",
             "prompt": {
               "en": "What do you call them or it?"
             }
           },
           {
             "id": "9c9eda96-c4d5-5454-9e1d-23004abb3857",
-            "variable": "world_illustrated_type",
+            "variable": "410ab843-3b47-5a5e-b40c-caad9450fb87",
             "prompt": {
               "en": "What kind of thing is it?"
             }
@@ -645,7 +645,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "world_illustrated"
+        "type": "4a31d1a4-c474-5343-8d68-43ac59eff8a3"
       },
       "background": {
         "concentricCircles": 3,
@@ -658,11 +658,11 @@
             "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
           },
           "layout": {
-            "layoutVariable": "world_illustrated_layout"
+            "layoutVariable": "7cc7af0b-0e6b-5304-b820-722005269399"
           },
           "edges": {
-            "create": "goes_with",
-            "display": ["goes_with"]
+            "create": "d1afb5e2-5112-5902-ba02-255ed7976153",
+            "display": ["d1afb5e2-5112-5902-ba02-255ed7976153"]
           }
         }
       ]
@@ -685,7 +685,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "world_accented"
+        "type": "a1403c8c-070e-5a3f-b201-dd1283371c86"
       },
       "form": {
         "title": {
@@ -694,14 +694,14 @@
         "fields": [
           {
             "id": "e2efdcae-d80b-53f5-80bf-4a44849feb6b",
-            "variable": "world_accented_name",
+            "variable": "75ca71f7-a45e-5f14-9fa2-b65c43e64dab",
             "prompt": {
               "en": "What do you call them or it?"
             }
           },
           {
             "id": "f351137e-0b3a-5902-9e82-354752cf3d60",
-            "variable": "world_accented_type",
+            "variable": "2b034e63-5b7a-576d-befb-f51153e228b1",
             "prompt": {
               "en": "What kind of thing is it?"
             }
@@ -725,7 +725,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "world_accented"
+        "type": "a1403c8c-070e-5a3f-b201-dd1283371c86"
       },
       "background": {
         "concentricCircles": 3,
@@ -738,11 +738,11 @@
             "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
           },
           "layout": {
-            "layoutVariable": "world_accented_layout"
+            "layoutVariable": "5d3e49be-a12b-5673-b0e3-3b8aaae36a38"
           },
           "edges": {
-            "create": "goes_with_accented",
-            "display": ["goes_with_accented"]
+            "create": "3723a5c7-6898-5390-8451-23072d8f5be7",
+            "display": ["3723a5c7-6898-5390-8451-23072d8f5be7"]
           }
         }
       ]

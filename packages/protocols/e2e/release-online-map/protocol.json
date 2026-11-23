@@ -9,19 +9,19 @@
   "lastModified": "2026-10-30T00:00:00.000Z",
   "codebook": {
     "node": {
-      "person": {
+      "0474d37d-b048-53f9-b873-6fe06e02058d": {
         "name": "Person",
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
         },
         "variables": {
-          "name": {
+          "3892995f-46d2-599f-b622-45c3261f1759": {
             "name": "name",
             "type": "text",
             "component": "Text"
           },
-          "location": {
+          "0754214c-fd6a-53b8-918d-2e365db416bd": {
             "name": "location",
             "type": "location"
           }
@@ -67,9 +67,9 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0474d37d-b048-53f9-b873-6fe06e02058d"
       },
-      "quickAdd": "name",
+      "quickAdd": "3892995f-46d2-599f-b622-45c3261f1759",
       "behaviours": {
         "minNodes": 1,
         "maxNodes": 4
@@ -97,7 +97,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0474d37d-b048-53f9-b873-6fe06e02058d"
       },
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
@@ -114,7 +114,7 @@
           "text": {
             "en-US": "Where does {nodeLabel} live?"
           },
-          "variable": "location"
+          "variable": "0754214c-fd6a-53b8-918d-2e365db416bd"
         }
       ],
       "dynamicValues": {
