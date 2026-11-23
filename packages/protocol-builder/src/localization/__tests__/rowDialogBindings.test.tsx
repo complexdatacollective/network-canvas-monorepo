@@ -6,9 +6,26 @@ import { dyadCensusStageEditor } from '../../editors/dyad-census/DyadCensusStage
 import {
   loadFixtureStage,
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { testId } from '../../testing/testId.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
+const CONTACT_FREQ = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactFreq',
+);
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
 
 const openCensus = () => {
   const { id, type, fields } = loadFixtureStage('dyad-census-1');
@@ -22,7 +39,7 @@ const openCensus = () => {
           {
             id: testId('dyad-census-prompt-1'),
             text: { 'en-US': 'Who do you know?' },
-            createEdge: 'knows',
+            createEdge: KNOWS,
           },
         ],
       },
@@ -107,12 +124,12 @@ describe('a deleted row', () => {
             {
               id: testId('dated'),
               text: { 'en-US': 'Who did you see on {today}?' },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
             {
               id: testId('plain'),
               text: { 'en-US': 'Who do you know?' },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
           ],
         },
@@ -165,7 +182,7 @@ describe('a value with answers inserted in a row dialog', () => {
 
   it('is bound without cases when only the value itself is shown', async () => {
     expect(await insertAndSave(/First node: contactFreq.*Ordinal/)).toEqual([
-      { path: 'dyad.source.contactFreq' },
+      { path: 'dyad.source[CONTACT_FREQ]' },
     ]);
   });
 
@@ -174,7 +191,7 @@ describe('a value with answers inserted in a row dialog', () => {
       /First node: contactFreq.*Different wording for each answer/,
     );
     expect(binding).toEqual({
-      path: 'dyad.source.contactFreq',
+      path: 'dyad.source[CONTACT_FREQ]',
       cases: expect.any(Object),
     });
     expect(Object.keys(binding?.cases ?? {}).length).toBeGreaterThan(0);
@@ -201,17 +218,17 @@ describe('a value shown by answer in an open dialog', () => {
       await dialog.findByRole('textbox', { name: 'Weekly' }),
     ).toBeInTheDocument();
 
-    const person = harness.hostCodebook().node?.person;
+    const person = harness.hostCodebook().node?.[PERSON];
     if (person === undefined) throw new Error('No person type');
-    const contactFreq = person.variables?.contactFreq;
+    const contactFreq = person.variables?.[CONTACT_FREQ];
     if (contactFreq === undefined) throw new Error('No contactFreq');
     harness.receiveCodebookUpdate({
       node: {
-        person: {
+        [PERSON]: {
           ...person,
           variables: {
             ...person.variables,
-            contactFreq: {
+            [CONTACT_FREQ]: {
               ...contactFreq,
               options: [
                 { label: { 'en-US': '**Every** week' }, value: 3 },
@@ -264,7 +281,7 @@ describe('a yes-or-no value without labels for its answers', () => {
     await harness.user.click(asItself);
     expect(
       dialog.getByRole('textbox', { name: /^Prompt text/ }),
-    ).not.toHaveTextContent('flagged');
+    ).not.toHaveTextContent(FLAGGED);
 
     // By answer it needs no labels, and is offered with the logic.
     await harness.user.keyboard('{Escape}');
@@ -293,7 +310,7 @@ describe("a census prompt's preview", () => {
             {
               id: testId('dated'),
               text: { 'en-US': 'Who did you see on {today}?' },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
           ],
         },
@@ -335,7 +352,7 @@ describe('a form field saved before fields had ids', () => {
     );
     // The name comes from an earlier stage; the form asks for the other two,
     // the first field for relationship_to_ego itself.
-    for (const attribute of ['name', 'relationship_to_ego', 'flagged']) {
+    for (const attribute of ['name', RELATIONSHIP_TO_EGO, FLAGGED]) {
       expect(offered.some((label) => label.startsWith(attribute))).toBe(true);
     }
   });
@@ -392,7 +409,7 @@ describe('a value inserted in default-language text that is translated', () => {
                 'en-US': 'Who do you know?',
                 'fr': 'Qui connaissez-vous ?',
               },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
           ],
         },
@@ -446,7 +463,7 @@ describe('rules edited in a row dialog', () => {
               text: {
                 'en-US': 'Do they{linked, select, yes { still} other {}} talk?',
               },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
           ],
         },

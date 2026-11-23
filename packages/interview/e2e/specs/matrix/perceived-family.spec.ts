@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import { createInitialNetwork } from '../../../src/contract/network.js';
@@ -10,12 +12,40 @@ const protocolPath = path.resolve(
   '../../../../protocols/e2e/perceived-family/protocol.json',
 );
 
+// The codebook is keyed by UUIDs, so the test finds the Person type and its
+// variables by name.
+const codebook = CurrentProtocolSchema.parse(
+  JSON.parse(readFileSync(protocolPath, 'utf8')),
+).codebook;
+const [personTypeId, personType] =
+  Object.entries(codebook.node ?? {}).find(
+    ([, type]) => type.name === 'Person',
+  ) ?? [];
+if (!personTypeId || !personType) {
+  throw new Error('The perceived-family protocol has no Person node type');
+}
+const variableIdByName = new Map(
+  Object.entries(personType.variables ?? {}).map(([id, variable]) => [
+    variable.name,
+    id,
+  ]),
+);
+const variableId = (name: string) => {
+  const id = variableIdByName.get(name);
+  if (!id) {
+    throw new Error(`The Person node type has no "${name}" variable`);
+  }
+  return id;
+};
+const FAMILY_CATEGORIES = variableId('family_categories');
+const CATEGORY_WORDS = variableId('category_words');
+
 const person: NcNode = {
   _uid: 'jo',
-  type: 'person',
+  type: personTypeId,
   [entityAttributesProperty]: {
-    name: 'Jo',
-    family_layout: { x: 0.5, y: 0.5 },
+    [variableId('name')]: 'Jo',
+    [variableId('family_layout')]: { x: 0.5, y: 0.5 },
   },
 };
 
@@ -38,22 +68,19 @@ matrixTest(
     ).toBeVisible();
     await interview.next();
     await interview.waitForForm();
-    await stage.form.selectCheckbox('family_categories', 'Chosen family');
+    await stage.form.selectCheckbox(FAMILY_CATEGORIES, 'Chosen family');
     await stage.form.selectCheckbox(
-      'family_categories',
+      FAMILY_CATEGORIES,
       "Partner or partner's family",
     );
-    await stage.form.fillText(
-      'category_words',
-      'My chosen sibling and partner',
-    );
+    await stage.form.fillText(CATEGORY_WORDS, 'My chosen sibling and partner');
     await interview.next();
 
     const network = await protocol.getNetworkState(interview.interviewId);
     expect(network?.nodes).toHaveLength(1);
     expect(network?.nodes[0]?.[entityAttributesProperty]).toMatchObject({
-      family_categories: ['chosen', 'partner'],
-      category_words: 'My chosen sibling and partner',
+      [FAMILY_CATEGORIES]: ['chosen', 'partner'],
+      [CATEGORY_WORDS]: 'My chosen sibling and partner',
     });
 
     await page.getByRole('button', { name: 'Previous Step' }).click();
@@ -69,7 +96,7 @@ matrixTest(
       }),
     ).toBeChecked();
     await expect(
-      stage.form.field('category_words').getByRole('textbox'),
+      stage.form.field(CATEGORY_WORDS).getByRole('textbox'),
     ).toHaveValue('My chosen sibling and partner');
   },
 );
@@ -93,21 +120,21 @@ matrixTest(
 
     const nominations = [
       {
-        variable: 'feels_family',
+        variable: variableId('feels_family'),
         prompt: 'Who on this map feels like family to you right now?',
       },
       {
-        variable: 'emotional_support',
+        variable: variableId('emotional_support'),
         prompt:
           'Who can you turn to when you need to talk about something personal?',
       },
       {
-        variable: 'practical_support',
+        variable: variableId('practical_support'),
         prompt:
           'Who helps with everyday needs, such as a place to stay, transport or practical advice?',
       },
       {
-        variable: 'identity_affirming',
+        variable: variableId('identity_affirming'),
         prompt: 'Who helps you feel recognised and accepted as you are?',
       },
     ];
