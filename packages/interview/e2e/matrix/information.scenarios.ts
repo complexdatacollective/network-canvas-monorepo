@@ -82,7 +82,11 @@ export const informationScenarios: InterfaceScenarios = {
         await expect(page.locator('strong', { hasText: 'bold' })).toBeVisible();
         await expect(page.locator('em', { hasText: 'italic' })).toBeVisible();
         await expect(page.locator('main li')).toHaveCount(2);
-        // Sanitization: no script execution, no script element
+        // HTML is not part of protocol text: the tag is shown as the
+        // characters typed, and nothing runs.
+        await expect(
+          page.getByText('<script>window.__pwned=1</script> plain tail text'),
+        ).toBeVisible();
         await expect(page.locator('main script')).toHaveCount(0);
         const pwned = await page.evaluate(
           () => (window as { __pwned?: number }).__pwned,

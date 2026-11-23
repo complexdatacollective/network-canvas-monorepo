@@ -19,6 +19,16 @@ type Fields = Readonly<Record<string, unknown>>;
 export const textItemAsStandard = (text: string): string =>
   legacyMarkdownAsStandard(text, { lines: 'multiple' });
 
+/**
+ * Any schema 8 markdown text as the migration rewrites it for a field of one
+ * line or several, for tests that follow a text from schema 8 to what the
+ * interview and the editor show of it.
+ */
+export const schema8MarkdownAsStandard = (
+  text: string,
+  lines: 'single' | 'multiple',
+): string => legacyMarkdownAsStandard(text, { lines });
+
 /** The files the pages name: an image, a video and an audio recording. */
 export const INFORMATION_PAGE_ASSETS = {
   photo: { id: 'photo', type: 'image', name: 'photo.png', source: 'photo.png' },

@@ -49,10 +49,9 @@ be empty shows the name of its stage as its heading. A note written on a block
 of text, which participants never saw, is not kept. The migration notes
 describe this in English; the other languages follow.
 
-Three fixes to how typed text is stored as markdown, in every rich text field:
+Two fixes to how typed text is stored as markdown, in every rich text field:
 a run of `#` before a space (`Section ## 2`) keeps all its signs, where it was
-cut to one; tildes that would strike words through in an interview (`~~old~~`)
-are shown as typed, as they are in the editor; and a numbered list item keeps
+cut to one; and a numbered list item keeps
 what is written under its first line (a list inside it, a second paragraph),
 where saving the text again used to move it out of the item or run it into the
 line above. Two lists in a row stay two lists.
@@ -69,10 +68,9 @@ guards and the `AssetBlockAttributes` type).
 `readAssetBlockUrl`, `assetBlocksInMessage` and others) and how a block is
 shown (`assetBlockFile`, `assetBlockSettings`, `assetBlockAlignmentShows`), reports a block whose
 asset is missing or is not an image, audio or video, or that is written where
-none can be shown (inside a heading, a link, struck-through words, a table
-cell, a `select` or `plural` version, or with a dynamic value in its
-description or address), reading the text in the markdown the interview shows
-it in (CommonMark with GitHub's additions), and counts each block as
+none can be shown (inside a heading, a link, a `select` or `plural` version,
+or with a dynamic value in its description or address), reading the text as
+standard CommonMark, as the interview shows it, and counts each block as
 an asset reference. `RichTextEditor` takes `assetBlocks` (a block view and an
 optional picker); `@codaco/fresco-ui` adds `assetBlockLayout` (the classes a
 block is drawn with), `SegmentedSwitcherField` and `testing/assetBlock`, and

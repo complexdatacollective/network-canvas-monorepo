@@ -1521,8 +1521,8 @@
       },
       "type": "Information",
       "content": {
-        "en": "# Testing markdown\n\n# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n:blush: :heartpulse: :wave:",
-        "es": "# Prueba de markdown\n\n# Encabezado h1 8-)\n## Encabezado h2\n### Encabezado h3\n#### Encabezado h4\n##### Encabezado h5\n###### Encabezado h6\n\n## Énfasis\n\n**Este texto está en negrita**\n\n__Este texto está en negrita__\n\n*Este texto está en cursiva* \n\n_Este texto está en cursiva_ \n# Emoji \n:blush: :heartpulse: :wave:"
+        "en": "# Testing markdown\n\n# h1 Heading 8-)\n## h2 Heading\n### h3 Heading\n#### h4 Heading\n##### h5 Heading\n###### h6 Heading\n\n## Emphasis\n\n**This is bold text**\n\n__This is bold text__\n\n*This is italic text* \n\n_This is italic text_ \n# Emoji \n😊 💗 👋",
+        "es": "# Prueba de markdown\n\n# Encabezado h1 8-)\n## Encabezado h2\n### Encabezado h3\n#### Encabezado h4\n##### Encabezado h5\n###### Encabezado h6\n\n## Énfasis\n\n**Este texto está en negrita**\n\n__Este texto está en negrita__\n\n*Este texto está en cursiva* \n\n_Este texto está en cursiva_ \n# Emoji \n😊 💗 👋"
       }
     },
     {
