@@ -1,11 +1,10 @@
 /// <reference types="vitest" />
 
 import { existsSync, statSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig } from 'vite';
+import { defaultClientConditions, defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 import { appI18n } from '@codaco/app-i18n/vite';
@@ -74,26 +73,17 @@ const addJsExtensionsToDeclarationSpecifiers = (
         `${prefix}${appendJsExtension(filePath, specifier)}${suffix}`,
     );
 
-// The markdown parser reads character references (`&amp;`) through
-// `decode-named-character-reference`, whose `browser` entry asks the DOM to
-// decode them and creates an element as it loads. Vite builds a library for
-// the browser, so that entry was what the bundle inlined, and the bundle then
-// threw `document is not defined` wherever there is no DOM: the validation
-// CLI, a server, a worker. Its default entry is a table lookup that runs
-// anywhere, so the bundle is built from that one. Resolved through the parser,
-// since it is the parser's dependency and not this package's.
-const fromParser = createRequire(
-  createRequire(import.meta.url).resolve('mdast-util-from-markdown'),
-);
-const decodeNamedCharacterReference = fromParser.resolve(
-  'decode-named-character-reference',
-);
-
 export default defineConfig({
+  // No `browser` condition: the bundle also runs in the CLI and in workers,
+  // and a dependency's browser build may reach for `document` (the Markdown
+  // parser's character-reference decoder does). This covers the bundle only:
+  // a consumer of the source resolves that dependency with its own
+  // conditions, so a web worker that runs the message checks would need the
+  // same exclusion.
   resolve: {
-    alias: {
-      'decode-named-character-reference': decodeNamedCharacterReference,
-    },
+    conditions: defaultClientConditions.filter(
+      (condition) => condition !== 'browser',
+    ),
   },
   build: {
     // The optional UI subpaths externalize app-i18n; the root has no such imports.

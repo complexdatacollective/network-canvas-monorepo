@@ -161,3 +161,18 @@ export const messageTextAsMarkdown = (message: string): string =>
  */
 export const messageHeadingMarkdown = (message: string): string =>
   `# ${messageLine(message, headingEnd)}`;
+
+/**
+ * What stands at the start of a version while it is read as markdown. A
+ * version sits inside a line, so text at its start (`# means`, `1. `) is not
+ * the start of a heading or list; a private-use character authored text
+ * cannot hold keeps markdown from taking it as one.
+ */
+export const VERSION_LINE_LEAD = '\uE002';
+
+/**
+ * A version's markdown as the editor reads it (see `markdownAsEdited`): one
+ * line, without the spaces at its ends, behind `VERSION_LINE_LEAD`.
+ */
+export const versionLineMarkdown = (markdown: string): string =>
+  VERSION_LINE_LEAD + markdown.trim();

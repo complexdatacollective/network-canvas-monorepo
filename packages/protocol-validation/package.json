@@ -63,7 +63,7 @@
     "@types/mdast": "^4.0.4",
     "csvtojson": "catalog:",
     "jszip": "catalog:",
-    "mdast-util-from-markdown": "^2.0.2",
+    "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm": "^3.1.0",
     "mdast-util-to-markdown": "^2.1.2",
     "micromark-extension-gfm": "^3.0.0",

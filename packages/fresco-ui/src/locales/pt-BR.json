@@ -144,6 +144,8 @@
   "frescoUi.richTextEditor.emojiMenu": "Inserir emoji",
   "frescoUi.richTextEditor.emptyVersion": "Nada é exibido",
   "frescoUi.richTextEditor.insertMenuNoMatches": "Nada corresponde à sua busca.",
+  "frescoUi.richTextEditor.insertMenuRequired": "Necessário neste texto",
+  "frescoUi.richTextEditor.insertMenuRequiredMissing": "Ainda falta algo necessário neste texto",
   "frescoUi.richTextEditor.insertMenuSearch": "Buscar",
   "frescoUi.richTextEditor.linkUrlLabel": "URL do link",
   "frescoUi.richTextEditor.linkUrlPlaceholder": "https://example.com",

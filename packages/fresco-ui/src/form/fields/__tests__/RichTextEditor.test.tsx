@@ -3039,6 +3039,75 @@ describe('a RichTextEditorField with tokens', () => {
     ).toBeInTheDocument();
   });
 
+  it('marks a menu item the text requires and lacks, and its menu button', async () => {
+    const places: unknown[] = [];
+    const field = renderWithTokens({
+      value: lineOf({ type: 'text', text: 'Add ' }),
+      insertMenu: {
+        label: 'Insert a value',
+        items: [
+          {
+            id: 'name',
+            label: 'Name',
+            description: 'A person',
+            content: { type: 'token', attrs: { id: 'name' } },
+            required: (place) => {
+              places.push(place);
+              return true;
+            },
+          },
+          {
+            id: 'number',
+            label: 'Number',
+            content: { type: 'token', attrs: { id: '#' } },
+            required: () => false,
+          },
+        ],
+      },
+    });
+    await field.editor();
+
+    const button = screen.getByRole('button', { name: 'Insert a value' });
+    expect(button).toHaveAttribute('data-missing', 'true');
+    expect(button).toHaveAccessibleDescription(
+      'Something this text requires is not in it yet',
+    );
+    // The field's own line is in no version.
+    expect(places.at(-1)).toEqual([]);
+    await field.user.click(button);
+
+    const name = await screen.findByRole('option', {
+      name: 'Name, A person, Required in this text',
+    });
+    expect(name).toHaveAttribute('data-required', 'true');
+    expect(name.querySelector('[data-required-marker]')).toHaveTextContent(
+      'Required in this text',
+    );
+    const number = screen.getByRole('option', { name: 'Number' });
+    expect(number).not.toHaveAttribute('data-required');
+    expect(number.querySelector('[data-required-marker]')).toBeNull();
+  });
+
+  it('leaves the menu button unmarked while nothing required is missing', async () => {
+    renderWithTokens({
+      insertMenu: {
+        label: 'Insert a value',
+        items: [
+          {
+            id: 'name',
+            label: 'Name',
+            content: { type: 'token', attrs: { id: 'name' } },
+            required: () => false,
+          },
+        ],
+      },
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Insert a value' }),
+    ).not.toHaveAttribute('data-missing');
+  });
+
   it('says which required tokens the text does not include yet', async () => {
     const field = renderWithTokens({
       tokens: [

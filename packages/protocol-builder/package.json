@@ -99,8 +99,6 @@
     "intl-messageformat": "catalog:",
     "lucide-react": "catalog:",
     "mapbox-gl": "^3.33.0",
-    "remark-parse": "^11.0.0",
-    "unified": "^11.0.5",
     "uuid": "catalog:",
     "zod": "catalog:"
   },

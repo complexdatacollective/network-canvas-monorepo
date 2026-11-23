@@ -1,5 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 
+import { parseDynamicValuePath } from '@codaco/protocol-validation';
 import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import type { RootState } from '~/ducks/store';
 
@@ -71,10 +72,20 @@ export const getIsUsed = createSelector(
     const referencedVariables = new Set(Object.values(variableIndex));
 
     const liveStageData = liveValues ? JSON.stringify(liveValues) : '';
+    // A piped-text binding names its attribute inside a longer path
+    // (`ego.<id>`), which the string search cannot find.
+    const shownByLiveStage = new Set(
+      Object.values(liveValues?.dynamicValues ?? {}).flatMap(({ path }) => {
+        const parsed = parseDynamicValuePath(path);
+        return parsed?.kind === 'attribute' ? [parsed.variableId] : [];
+      }),
+    );
 
     return variableIds.reduce<IsUsedMap>((memo, variableId) => {
       const inProtocol = referencedVariables.has(variableId);
-      const inLiveStage = liveStageData.includes(`"${variableId}"`);
+      const inLiveStage =
+        liveStageData.includes(`"${variableId}"`) ||
+        shownByLiveStage.has(variableId);
 
       memo[variableId] = inProtocol || inLiveStage;
       return memo;

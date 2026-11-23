@@ -3096,12 +3096,6 @@ importers:
       mapbox-gl:
         specifier: ^3.33.0
         version: 3.33.0
-      remark-parse:
-        specifier: ^11.0.0
-        version: 11.0.0(supports-color@10.2.2)
-      unified:
-        specifier: ^11.0.5
-        version: 11.0.5
       uuid:
         specifier: 'catalog:'
         version: 14.0.3
@@ -3295,7 +3289,7 @@ importers:
         specifier: 'catalog:'
         version: 3.10.2
       mdast-util-from-markdown:
-        specifier: ^2.0.2
+        specifier: ^2.0.3
         version: 2.0.3(supports-color@10.2.2)
       mdast-util-gfm:
         specifier: ^3.1.0

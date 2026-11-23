@@ -20,3 +20,29 @@ export const markdownTree = (markdown: string): Root =>
     extensions: [gfm()],
     mdastExtensions: [gfmFromMarkdown()],
   });
+
+/**
+ * The legacy editor stored what was typed as it was typed: a line opening
+ * with `>` was a comparison ("> 5 years"), and `<...>` a placeholder ("<IRB
+ * OR ETHICS BOARD HERE>"), never a quotation or HTML. Architect's editor
+ * still reads them as those characters, so saving writes them escaped and
+ * the participant is shown them as they were written.
+ *
+ * That is done by the parser, with the constructs that would read them
+ * otherwise switched off, rather than by rewriting the text before it is
+ * read: the parser alone knows where a `>` or `<` is markdown's own syntax
+ * (an autolink, a bracketed address, a code span), and those are left to it.
+ */
+const TYPED_CHARACTERS = {
+  disable: { null: ['blockQuote', 'htmlFlow', 'htmlText'] },
+};
+
+/**
+ * Stored markdown as Architect's rich text editor reads it: CommonMark, with
+ * `>` and `<` read as typed characters (see `TYPED_CHARACTERS`). The editor
+ * reads every text through this, and the validator reads formatted text
+ * through it as well as as written (see `dynamicValueMessages`), so the two
+ * cannot disagree about where a link is.
+ */
+export const markdownAsEdited = (markdown: string): Root =>
+  fromMarkdown(markdown, { extensions: [TYPED_CHARACTERS] });

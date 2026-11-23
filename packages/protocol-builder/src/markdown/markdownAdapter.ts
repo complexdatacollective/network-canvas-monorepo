@@ -1,6 +1,3 @@
-import markdown from 'remark-parse';
-import { unified } from 'unified';
-
 import type {
   RichTextAssetBlockAttributes,
   RichTextAssetBlockContent,
@@ -11,6 +8,7 @@ import {
   escapeMarkdownText,
   isAssetBlockAlignment,
   isAssetBlockSize,
+  markdownAsEdited,
   readAssetBlockUrl,
 } from '@codaco/protocol-validation';
 
@@ -49,28 +47,6 @@ const cloneEmptyDocument = (): RichTextContent => ({
   type: 'doc',
   content: [{ type: 'paragraph' }],
 });
-
-/**
- * The legacy editor stored what was typed as it was typed: a line opening
- * with `>` was a comparison ("> 5 years"), and `<...>` a placeholder ("<IRB
- * OR ETHICS BOARD HERE>"), never a quotation or HTML. The editor still reads
- * them as those characters, so saving writes them escaped and the
- * participant is shown them as they were written.
- *
- * That is done by the parser, with the constructs that would read them
- * otherwise switched off, rather than by rewriting the text before it is
- * read: the parser alone knows where a `>` or `<` is markdown's own syntax
- * (an autolink, a bracketed address, a code span), and those are left to it.
- */
-const TYPED_CHARACTERS = {
-  disable: { null: ['blockQuote', 'htmlFlow', 'htmlText'] },
-};
-
-const parseMarkdown = (value: string): MarkdownNode => {
-  const processor = unified().use(markdown);
-  processor.data('micromarkExtensions', [TYPED_CHARACTERS]);
-  return processor.parse(value);
-};
 
 // The one tag the legacy editor wrote for a line break, which the interview
 // also reads as one. Read as typed characters, so found in the words.
@@ -477,7 +453,7 @@ export const markdownToRichTextContent = (
     return cloneEmptyDocument();
   }
 
-  const root = parseMarkdown(value);
+  const root: MarkdownNode = markdownAsEdited(value);
   const definitions = definitionsIn(root);
 
   if (inline) {

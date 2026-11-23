@@ -143,7 +143,8 @@ export default defineConfig({
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
             // The markdown parser that finds the files an Information page
-            // shows as blocks (`assetBlocksInMarkdown`).
+            // shows as blocks (`assetBlocksInMarkdown`) and reads formatted
+            // text for validation as the interview and the editor read it.
             '@codaco/protocol-validation > mdast-util-from-markdown',
             '@codaco/protocol-validation > mdast-util-gfm',
             '@codaco/protocol-validation > mdast-util-to-markdown',
@@ -151,8 +152,6 @@ export default defineConfig({
             'es-toolkit/compat',
             'lucide-react',
             'motion/react',
-            'remark-parse',
-            'unified',
             'uuid',
             'zod',
           ],

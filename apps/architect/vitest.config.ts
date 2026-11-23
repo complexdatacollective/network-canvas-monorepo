@@ -160,7 +160,8 @@ export default defineConfig({
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
             // The markdown parser that finds the files an Information page
-            // shows as blocks (`assetBlocksInMarkdown`).
+            // shows as blocks (`assetBlocksInMarkdown`) and reads formatted
+            // text for validation as the interview and the editor read it.
             '@codaco/protocol-validation > mdast-util-from-markdown',
             '@codaco/protocol-validation > mdast-util-gfm',
             '@codaco/protocol-validation > mdast-util-to-markdown',

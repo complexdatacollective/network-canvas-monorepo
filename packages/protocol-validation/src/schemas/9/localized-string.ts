@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { holdsLineBreak } from '@codaco/shared-consts';
 
 import { isBlankMessage } from '../../localization/blankText.ts';
-import { findDynamicMessageSyntaxProblem } from '../../localization/dynamicValueMessages.ts';
+import {
+  findDynamicMessageSyntaxProblem,
+  findFormattedMessageProblem,
+} from '../../localization/dynamicValueMessages.ts';
 import {
   canonicalizeLocale,
   isCanonicalLocale,
@@ -290,7 +293,11 @@ export const localizedString = (
     lines,
     dynamicValues === undefined
       ? findMessageSyntaxProblem
-      : findDynamicMessageSyntaxProblem,
+      : format === 'markdown'
+        ? (message) =>
+            findDynamicMessageSyntaxProblem(message) ??
+            findFormattedMessageProblem(message)
+        : findDynamicMessageSyntaxProblem,
   ).meta({
     [LOCALIZED_STRING]: {
       format,
@@ -310,13 +317,13 @@ const describeMissingPlacement = (
   const shown =
     declaration[argument]?.kind === 'plural'
       ? `the number "${argument}" (as "#")`
-      : `"{${argument}}"`;
-  const version = Object.entries(when)
-    .map(([name, key]) => `${name} "${key}"`)
+      : `the attribute "{${argument}}"`;
+  const scenario = Object.entries(when)
+    .map(([name, key]) => `${name}: ${key}`)
     .join(', ');
-  return version === ''
-    ? `This text must show ${shown}.`
-    : `The version of this text for ${version} must show ${shown}.`;
+  return scenario === ''
+    ? `This text must include ${shown}.`
+    : `This text must include ${shown} in the "${scenario}" scenario.`;
 };
 
 /**
