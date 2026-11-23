@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import {
+  testTypeId,
+  testVariableId,
+  withOriginalCodebookKeys,
+} from '../../../__tests__/testIds.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
@@ -60,7 +65,8 @@ const protocolWithNames = (renames: {
 };
 
 describe('Schema 9 attribute names', () => {
-  const namePath = 'codebook.node.person.variables.name.name';
+  const personVariables = `codebook.node.${testTypeId('person')}.variables`;
+  const namePath = `${personVariables}.${testVariableId('name')}.name`;
   const refused = (message: string) => ({
     path: namePath,
     code: 'custom',
@@ -126,41 +132,40 @@ describe('Schema 9 attribute names', () => {
     );
     expect(parseIssues(result)).toEqual([
       {
-        path: 'codebook.node.person.variables',
+        path: personVariables,
         code: 'custom',
         message: 'Duplicate attribute name "名前"',
       },
     ]);
   });
 
-  it('keeps attribute record keys to the id alphabet', () => {
-    const base = protocolWithNames({});
-    const { person } = base.codebook.node;
-    const result = ProtocolSchemaV9.safeParse(
-      withFinishStage({
-        ...base,
-        codebook: {
-          ...base.codebook,
-          node: {
-            ...base.codebook.node,
-            person: {
-              ...person,
-              variables: {
-                ...person.variables,
-                'nombre completo': {
-                  name: 'Nombre completo',
-                  type: 'text',
-                },
-              },
-            },
-          },
-        },
-      }),
-    );
-    expect(parseIssues(result)).toEqual([
+  it('refuses a variable id that is not a UUID', () => {
+    const protocol = withFinishStage(protocolWithNames({}));
+    const nodeTypes: Record<
+      string,
+      { variables: Record<string, unknown> } | undefined
+    > = protocol.codebook.node;
+    const person = nodeTypes[testTypeId('person')];
+    if (person === undefined) throw new Error('expected the person type');
+    person.variables['nombre completo'] = {
+      name: 'Nombre completo',
+      type: 'text',
+    };
+
+    const result = ProtocolSchemaV9.safeParse(protocol);
+
+    expect(
+      result.error?.issues.map(({ path, code, message }) => ({
+        path: path.join('.'),
+        code,
+        message,
+      })),
+    ).toEqual([
       {
-        path: 'codebook.node.person.variables.nombre completo',
+        path: `${personVariables}.nombre completo`,
         code: 'invalid_key',
+        message:
+          'The variable id "nombre completo" is not a UUID. Every variable id must be a UUID.',
       },
     ]);
   });
@@ -168,15 +173,18 @@ describe('Schema 9 attribute names', () => {
 
 describe('Schema 8 attribute names', () => {
   it('migrates a version 8 document holding names only schema 9 accepts, and the result validates', () => {
-    const migrated = migrateProtocol(
-      asSchema8Protocol(
-        protocolWithNames({
-          node: { name: '名前' },
-          edge: { duration: 'first name' },
-          ego: { egoName: 'Age (years)' },
-        }),
-      ),
+    const original = asSchema8Protocol(
+      protocolWithNames({
+        node: { name: '名前' },
+        edge: { duration: 'first name' },
+        ego: { egoName: 'Age (years)' },
+      }),
     );
+    const result = migrateProtocol(original);
+    expect(ProtocolSchemaV9.safeParse(withFinishStage(result)).success).toBe(
+      true,
+    );
+    const migrated = withOriginalCodebookKeys(result, original);
 
     expect(migrated.schemaVersion).toBe(9);
     expect(migrated.codebook.node?.person?.variables?.name?.name).toBe('名前');
@@ -184,9 +192,6 @@ describe('Schema 8 attribute names', () => {
       'first name',
     );
     expect(migrated.codebook.ego?.variables?.egoName?.name).toBe('Age (years)');
-    expect(ProtocolSchemaV9.safeParse(withFinishStage(migrated)).success).toBe(
-      true,
-    );
   });
 });
 

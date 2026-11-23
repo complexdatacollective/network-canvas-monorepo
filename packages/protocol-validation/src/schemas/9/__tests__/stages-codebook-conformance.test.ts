@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
-import { testId } from '../../../__tests__/testIds.ts';
+import {
+  testId,
+  testVariableId,
+  withTestCodebookIds,
+} from '../../../__tests__/testIds.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { assetSchema } from '../assets/index.ts';
 import { CodebookSchema } from '../codebook/codebook.ts';
@@ -506,9 +510,14 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
   });
 });
 
+// A codebook written with readable keys, with `testTypeId` and `testVariableId`
+// ids: one variable key on two entities becomes one id on both.
+const parseCodebook = (codebook: Record<string, unknown>) =>
+  CodebookSchema.safeParse(withTestCodebookIds({ codebook }).codebook);
+
 describe('Codebook cross-entity record-key collision (#663)', () => {
   it('accepts the same record key reused within compatible definitions across entities only when distinct keys', () => {
-    const result = CodebookSchema.safeParse({
+    const result = parseCodebook({
       node: {
         person: {
           name: 'Person',
@@ -535,7 +544,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
   });
 
   it('rejects a variable record key reused across a node and an edge type', () => {
-    const result = CodebookSchema.safeParse({
+    const result = parseCodebook({
       node: {
         person: {
           name: 'Person',
@@ -568,7 +577,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
   });
 
   it('rejects a variable record key reused across two node types', () => {
-    const result = CodebookSchema.safeParse({
+    const result = parseCodebook({
       node: {
         person: {
           name: 'Person',
@@ -592,13 +601,13 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
       {
         path: '',
         code: 'custom',
-        message: 'Attribute record key "shared" is reused across entity types',
+        message: `Attribute record key "${testVariableId('shared')}" is reused across entity types`,
       },
     ]);
   });
 
   it('rejects a variable record key reused across a node type and ego', () => {
-    const result = CodebookSchema.safeParse({
+    const result = parseCodebook({
       node: {
         person: {
           name: 'Person',
@@ -622,7 +631,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
       {
         path: '',
         code: 'custom',
-        message: 'Attribute record key "shared" is reused across entity types',
+        message: `Attribute record key "${testVariableId('shared')}" is reused across entity types`,
       },
     ]);
   });

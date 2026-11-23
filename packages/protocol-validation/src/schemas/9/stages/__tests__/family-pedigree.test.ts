@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
-import { testId } from '../../../../__tests__/testIds.ts';
+import { testId, testVariableId } from '../../../../__tests__/testIds.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import {
@@ -595,7 +595,7 @@ describe('FamilyPedigree in a whole protocol', () => {
       {
         path: 'stages.0.nominationPrompts.0.attribute',
         code: 'custom',
-        message: 'The attribute "relText" must be of type boolean',
+        message: `The attribute "${testVariableId('relText')}" must be of type boolean`,
       },
     ]);
     // Nor can it be the attribute marking the participant.
@@ -641,8 +641,7 @@ describe('FamilyPedigree in a whole protocol', () => {
       {
         path: 'stages.0.form.fields.0.variable',
         code: 'custom',
-        message:
-          'Form field attribute "hd" must define a component (input control) to be rendered as a form field.',
+        message: `Form field attribute "${testVariableId('hd')}" must define a component (input control) to be rendered as a form field.`,
       },
     ]);
   });
@@ -777,7 +776,7 @@ describe('FamilyPedigree in a whole protocol', () => {
         {
           path: 'stages.0.nodeConfiguration.relationshipToParticipantAttribute',
           code: 'custom',
-          message: 'The attribute "relText" must be of type categorical',
+          message: `The attribute "${testVariableId('relText')}" must be of type categorical`,
         },
       ]);
     });

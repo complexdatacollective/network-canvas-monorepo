@@ -42,17 +42,31 @@ const holdingAllText = (protocol: Document): Document => ({
 const baseProtocol = (): Document =>
   holdingAllText(withFinishStage(createBaseProtocol()));
 
-/** The protocol's name attribute required and at least two letters long. */
-const withNameRules = (protocol: Document): Document => {
-  const document = structuredClone(protocol);
-  const codebook = document.codebook as {
-    node: { person: { variables: { name: Record<string, unknown> } } };
-  };
-  codebook.node.person.variables.name.validation = {
-    required: true,
-    minLength: 2,
-  };
-  return holdingAllText(document);
+/** The base protocol with its name attribute required and at least two letters long. */
+const withNameRules = (): Document => {
+  const protocol = createBaseProtocol();
+  const { person } = protocol.codebook.node;
+  return holdingAllText(
+    withFinishStage({
+      ...protocol,
+      codebook: {
+        ...protocol.codebook,
+        node: {
+          ...protocol.codebook.node,
+          person: {
+            ...person,
+            variables: {
+              ...person.variables,
+              name: {
+                ...person.variables.name,
+                validation: { required: true, minLength: 2 },
+              },
+            },
+          },
+        },
+      },
+    }),
+  );
 };
 
 const interfaceTextIssues = async (
@@ -70,9 +84,7 @@ describe('the interface text a protocol may hold', () => {
     expect((await validateProtocol(baseProtocol())).error?.issues).toBe(
       undefined,
     );
-    expect(
-      (await validateProtocol(withNameRules(baseProtocol()))).success,
-    ).toBe(true);
+    expect((await validateProtocol(withNameRules())).success).toBe(true);
   });
 
   it('accepts a protocol with no interface text, in a default language Network Canvas supplies', async () => {
@@ -94,7 +106,7 @@ describe('the interface text a protocol may hold', () => {
   });
 
   it('accepts a protocol missing a group, an entry or a button it shows', async () => {
-    const protocol = withNameRules(baseProtocol());
+    const protocol = withNameRules();
     delete protocol.interfaceText?.navigation;
     delete protocol.interfaceText?.validation?.required;
     delete protocol.interfaceText?.buttons?.done;

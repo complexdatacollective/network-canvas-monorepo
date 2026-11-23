@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { testId } from '../../../__tests__/testIds.ts';
+import {
+  testId,
+  withOriginalCodebookKeys,
+} from '../../../__tests__/testIds.ts';
 import {
   escapeMessageText,
   messageText,
@@ -212,13 +215,23 @@ const schema8Protocol = (
   stages,
 });
 
-/** Runs the v8 to v9 step alone, without validating its result. */
+/**
+ * Runs the v8 to v9 step alone, without validating its result. Here and in
+ * `migrateValid`, each node type, edge type and variable is put back under the
+ * key the document gave it (see `withOriginalCodebookKeys`).
+ */
 const migrateStep = (document: Fields): Fields =>
-  migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {});
+  withOriginalCodebookKeys(
+    migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {}),
+    document,
+  );
 
 /** Runs the whole chain, which validates the result against schema 9. */
 const migrateValid = (document: Fields): Fields =>
-  migrateProtocol(document, 9) as unknown as Fields;
+  withOriginalCodebookKeys(
+    migrateProtocol(document, 9) as unknown as Fields,
+    document,
+  );
 
 const asRecord = (value: unknown): Fields => (isRecord(value) ? value : {});
 

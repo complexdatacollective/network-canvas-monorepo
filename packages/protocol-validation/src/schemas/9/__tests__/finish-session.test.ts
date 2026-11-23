@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { withInterfaceText } from '../../../__tests__/suppliedWording.ts';
-import { testId } from '../../../__tests__/testIds.ts';
+import { testId, withTestCodebookIds } from '../../../__tests__/testIds.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
@@ -60,10 +60,12 @@ const information = (id: string) => ({
 });
 
 const protocolWith = (stages: unknown[]) =>
-  withInterfaceText({
-    ...createBaseProtocol(),
-    stages,
-  });
+  withInterfaceText(
+    withTestCodebookIds({
+      ...createBaseProtocol(),
+      stages,
+    }),
+  );
 
 const issues = (stages: unknown[]) => {
   const result = ProtocolSchemaV9.safeParse(protocolWith(stages));
@@ -373,11 +375,13 @@ describe('supplied finish text', () => {
     });
     expect(
       ProtocolSchemaV9.safeParse(
-        withInterfaceText({
-          ...createBaseProtocol(),
-          localization: { defaultLocale: 'en', locales },
-          stages: [stage],
-        }),
+        withInterfaceText(
+          withTestCodebookIds({
+            ...createBaseProtocol(),
+            localization: { defaultLocale: 'en', locales },
+            stages: [stage],
+          }),
+        ),
       ).success,
     ).toBe(true);
   });

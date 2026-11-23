@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { testTypeId } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import {
   getCustomShapeId,
@@ -103,7 +104,7 @@ describe('custom node shapes in the schema', () => {
     [
       'the default',
       { default: 'custom:missing' },
-      ['codebook', 'node', 'person', 'shape', 'default'],
+      ['codebook', 'node', testTypeId('person'), 'shape', 'default'],
     ],
     [
       'a discrete map entry',
@@ -118,7 +119,16 @@ describe('custom node shapes in the schema', () => {
           ],
         },
       },
-      ['codebook', 'node', 'person', 'shape', 'dynamic', 'map', 1, 'shape'],
+      [
+        'codebook',
+        'node',
+        testTypeId('person'),
+        'shape',
+        'dynamic',
+        'map',
+        1,
+        'shape',
+      ],
     ],
     [
       'a threshold',
@@ -133,7 +143,7 @@ describe('custom node shapes in the schema', () => {
       [
         'codebook',
         'node',
-        'person',
+        testTypeId('person'),
         'shape',
         'dynamic',
         'thresholds',
@@ -158,7 +168,7 @@ describe('custom node shapes in the schema', () => {
     protocol.codebook.node.person.shape = { default: 'custom:home' };
     const issues = issuesFor(withFinishStage(protocol));
     expect(issues.map((issue) => issue.path)).toEqual([
-      ['codebook', 'node', 'person', 'shape', 'default'],
+      ['codebook', 'node', testTypeId('person'), 'shape', 'default'],
     ]);
   });
 
@@ -183,29 +193,31 @@ describe('custom node shapes in the schema', () => {
       },
     });
     expect(issuesFor(shared).map((issue) => issue.path)).toEqual([
-      ['codebook', 'node', 'person', 'shape', 'default'],
+      ['codebook', 'node', testTypeId('person'), 'shape', 'default'],
     ]);
   });
 
   it.each(['custom:', 'custom:has space', 'custom:a:b', 'hexagon'])(
     'rejects the malformed shape reference %j',
     (reference) => {
-      const protocol = withPerson(SHAPES);
-      const malformed = {
+      const protocol = createBaseProtocol();
+      const malformed = withFinishStage({
         ...protocol,
+        assetManifest: ASSET_MANIFEST,
         codebook: {
           ...protocol.codebook,
           node: {
             ...protocol.codebook.node,
             person: {
               ...protocol.codebook.node.person,
+              customShapes: SHAPES,
               shape: { default: reference },
             },
           },
         },
-      };
+      });
       expect(issuesFor(malformed).map((issue) => issue.path)).toEqual([
-        ['codebook', 'node', 'person', 'shape', 'default'],
+        ['codebook', 'node', testTypeId('person'), 'shape', 'default'],
       ]);
     },
   );
@@ -218,7 +230,7 @@ describe('custom node shapes in the schema', () => {
     expect(issues[0]?.path).toEqual([
       'codebook',
       'node',
-      'person',
+      testTypeId('person'),
       'customShapes',
       'home',
       'asset',
@@ -236,7 +248,7 @@ describe('custom node shapes in the schema', () => {
     expect(issues[0]?.path).toEqual([
       'codebook',
       'node',
-      'person',
+      testTypeId('person'),
       'customShapes',
       'home',
       'asset',
@@ -251,7 +263,7 @@ describe('custom node shapes in the schema', () => {
     expect(issues.map((issue) => issue.path)).toContainEqual([
       'codebook',
       'node',
-      'person',
+      testTypeId('person'),
       'customShapes',
       'home',
       'asset',
@@ -266,7 +278,7 @@ describe('custom node shapes in the schema', () => {
       expect(issues[0]?.path.slice(0, 5)).toEqual([
         'codebook',
         'node',
-        'person',
+        testTypeId('person'),
         'customShapes',
         id,
       ]);
@@ -288,7 +300,7 @@ describe('custom node shapes in the schema', () => {
     expect(issues[0]?.path).toEqual([
       'codebook',
       'node',
-      'person',
+      testTypeId('person'),
       'customShapes',
       'b',
       'name',
@@ -319,7 +331,14 @@ describe('custom node shapes in the schema', () => {
       withPerson({ home: { name, asset: 'home-image' } }),
     );
     expect(issues.map((issue) => issue.path)).toEqual([
-      ['codebook', 'node', 'person', 'customShapes', 'home', 'name'],
+      [
+        'codebook',
+        'node',
+        testTypeId('person'),
+        'customShapes',
+        'home',
+        'name',
+      ],
     ]);
   });
 

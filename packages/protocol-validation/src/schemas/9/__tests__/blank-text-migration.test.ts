@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   MigrationContentRefusedError,
@@ -7,6 +7,7 @@ import {
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { collectLocalizedStringSites } from '../../../utils/collectLocalizedStrings.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
+import { renameCodebookIds } from '../migration-codebook-ids.ts';
 import migrationV8toV9 from '../migration.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { suppliedStageSettingPaths } from '../supplied-stage-text.ts';
@@ -15,7 +16,54 @@ import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-
 import { migratedStageId } from './migrated-stage-ids.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
+/**
+ * The migration gives every node type, edge type and variable a new random
+ * id. The tests here blank the names a test could otherwise find them by, so
+ * the migration's renaming is recorded instead: each new id against the key
+ * the schema 8 document gave it, which `readablePath` and `withReadableKeys`
+ * put back.
+ */
+const { originalKeys } = vi.hoisted(() => ({
+  originalKeys: new Map<string, string>(),
+}));
+
+vi.mock('../migration-codebook-ids.ts', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../migration-codebook-ids.ts')>();
+  const { createEntityTypeId, createVariableId } =
+    await import('../codebook-ids.ts');
+  const recorded = (create: () => string) => (key: string) => {
+    const id = create();
+    originalKeys.set(id, key);
+    return id;
+  };
+  return {
+    ...actual,
+    assignCodebookIds: (document: Record<string, unknown>) => {
+      actual.renameCodebookIds(document, {
+        typeId: recorded(createEntityTypeId),
+        variableId: recorded(createVariableId),
+      });
+    },
+  };
+});
+
 type Path = readonly (string | number)[];
+
+const readablePath = (path: Path): Path =>
+  path.map((key) =>
+    typeof key === 'string' ? (originalKeys.get(key) ?? key) : key,
+  );
+
+const withReadableKeys = (migrated: unknown): unknown => {
+  const copy = structuredClone(migrated);
+  if (!isRecord(copy)) return copy;
+  renameCodebookIds(copy, {
+    typeId: (id) => originalKeys.get(id) ?? id,
+    variableId: (id) => originalKeys.get(id) ?? id,
+  });
+  return copy;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -230,7 +278,7 @@ const issuePathsOf = (run: () => unknown): Path[] => {
   expect(
     (refusal as MigrationContentRefusedError).problems.map(({ path }) => path),
   ).toEqual(refusal.issues.map(({ path }) => path));
-  return refusal.issues.map(({ path }) => path);
+  return refusal.issues.map(({ path }) => readablePath(path));
 };
 
 /**
@@ -556,7 +604,9 @@ describe('the text given to blank schema 8 text', () => {
       'options',
     ];
     const value = getAt(ecoGeneticTemplate, [...options, 1, 'value']);
-    const { migrated } = migrateWith([...options, 1, 'label'], blank);
+    const migrated = withReadableKeys(
+      migrateWith([...options, 1, 'label'], blank).migrated,
+    );
     expect(getAt(migrated, [...options, 1, 'label'])).toEqual({
       en: String(value),
     });
@@ -572,7 +622,7 @@ describe('option labels that show nothing', () => {
       name: 'blanks',
       ...variable,
     });
-    return migrateProtocol(document, 9);
+    return withReadableKeys(migrateProtocol(document, 9));
   };
 
   const labelsOf = (protocol: unknown) => {

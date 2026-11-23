@@ -4,6 +4,10 @@ import {
   parseIssues,
   unionBranchIssues,
 } from '../../../__tests__/schemaIssues.ts';
+import {
+  testVariableId,
+  withTestCodebookIds,
+} from '../../../__tests__/testIds.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import {
   EdgeVariablesSchema,
@@ -23,20 +27,27 @@ import {
  *   nor on ego/edge variables
  */
 
+// A variables record written with readable keys, keyed by `testVariableId`.
+const withVariableIds = <T>(variables: T): T =>
+  withTestCodebookIds({ codebook: { ego: { variables } } }).codebook.ego
+    .variables;
+
 describe('variable schema conformance', () => {
   describe('#667 ego variable unique validation', () => {
     it('rejects an ego variable declaring validation.unique', () => {
-      const result = EgoVariablesSchema.safeParse({
-        egoId: {
-          name: 'ego_id',
-          type: 'text',
-          component: 'Text',
-          validation: { unique: true },
-        },
-      });
+      const result = EgoVariablesSchema.safeParse(
+        withVariableIds({
+          egoId: {
+            name: 'ego_id',
+            type: 'text',
+            component: 'Text',
+            validation: { unique: true },
+          },
+        }),
+      );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'egoId.validation.unique',
+          path: `${testVariableId('egoId')}.validation.unique`,
           code: 'custom',
           message: 'Ego attributes cannot use the "unique" validation',
         },
@@ -44,14 +55,16 @@ describe('variable schema conformance', () => {
     });
 
     it('accepts an ego variable without unique', () => {
-      const result = EgoVariablesSchema.safeParse({
-        egoId: {
-          name: 'ego_id',
-          type: 'text',
-          component: 'Text',
-          validation: { required: true },
-        },
-      });
+      const result = EgoVariablesSchema.safeParse(
+        withVariableIds({
+          egoId: {
+            name: 'ego_id',
+            type: 'text',
+            component: 'Text',
+            validation: { required: true },
+          },
+        }),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -284,9 +297,11 @@ describe('variable schema conformance', () => {
     );
 
     it('rejects them within a codebook, on the options of the attribute', () => {
-      const result = VariablesSchema.safeParse({
-        colour: variableWithValues('categorical', ['red', 'blue', 'red']),
-      });
+      const result = VariablesSchema.safeParse(
+        withVariableIds({
+          colour: variableWithValues('categorical', ['red', 'blue', 'red']),
+        }),
+      );
 
       expect(result.success).toBe(false);
       expect(JSON.stringify(result.error?.issues)).toContain(
@@ -306,29 +321,33 @@ describe('variable schema conformance', () => {
 
   describe('#677 encrypted only on node text variable', () => {
     it('accepts encrypted on a node text variable', () => {
-      const result = VariablesSchema.safeParse({
-        secret: {
-          name: 'secret',
-          type: 'text',
-          component: 'Text',
-          encrypted: true,
-        },
-      });
+      const result = VariablesSchema.safeParse(
+        withVariableIds({
+          secret: {
+            name: 'secret',
+            type: 'text',
+            component: 'Text',
+            encrypted: true,
+          },
+        }),
+      );
       expect(result.success).toBe(true);
     });
 
     it('rejects encrypted on a node number variable', () => {
-      const result = VariablesSchema.safeParse({
-        count: {
-          name: 'count',
-          type: 'number',
-          component: 'Number',
-          encrypted: true,
-        },
-      });
+      const result = VariablesSchema.safeParse(
+        withVariableIds({
+          count: {
+            name: 'count',
+            type: 'number',
+            component: 'Number',
+            encrypted: true,
+          },
+        }),
+      );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'count.encrypted',
+          path: `${testVariableId('count')}.encrypted`,
           code: 'custom',
           message: 'Only text attributes can be encrypted',
         },
@@ -336,17 +355,19 @@ describe('variable schema conformance', () => {
     });
 
     it('rejects encrypted on a node datetime variable', () => {
-      const result = VariablesSchema.safeParse({
-        when: {
-          name: 'when',
-          type: 'datetime',
-          component: 'DatePicker',
-          encrypted: true,
-        },
-      });
+      const result = VariablesSchema.safeParse(
+        withVariableIds({
+          when: {
+            name: 'when',
+            type: 'datetime',
+            component: 'DatePicker',
+            encrypted: true,
+          },
+        }),
+      );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'when.encrypted',
+          path: `${testVariableId('when')}.encrypted`,
           code: 'custom',
           message: 'Only text attributes can be encrypted',
         },
@@ -354,17 +375,19 @@ describe('variable schema conformance', () => {
     });
 
     it('rejects encrypted on an ego text variable', () => {
-      const result = EgoVariablesSchema.safeParse({
-        egoSecret: {
-          name: 'ego_secret',
-          type: 'text',
-          component: 'Text',
-          encrypted: true,
-        },
-      });
+      const result = EgoVariablesSchema.safeParse(
+        withVariableIds({
+          egoSecret: {
+            name: 'ego_secret',
+            type: 'text',
+            component: 'Text',
+            encrypted: true,
+          },
+        }),
+      );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'egoSecret.encrypted',
+          path: `${testVariableId('egoSecret')}.encrypted`,
           code: 'custom',
           message: 'Ego attributes cannot be encrypted',
         },
@@ -372,17 +395,19 @@ describe('variable schema conformance', () => {
     });
 
     it('rejects encrypted on an edge text variable', () => {
-      const result = EdgeVariablesSchema.safeParse({
-        edgeSecret: {
-          name: 'edge_secret',
-          type: 'text',
-          component: 'Text',
-          encrypted: true,
-        },
-      });
+      const result = EdgeVariablesSchema.safeParse(
+        withVariableIds({
+          edgeSecret: {
+            name: 'edge_secret',
+            type: 'text',
+            component: 'Text',
+            encrypted: true,
+          },
+        }),
+      );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'edgeSecret.encrypted',
+          path: `${testVariableId('edgeSecret')}.encrypted`,
           code: 'custom',
           message: 'Edge attributes cannot be encrypted',
         },
@@ -390,14 +415,16 @@ describe('variable schema conformance', () => {
     });
 
     it('accepts an edge text variable without encrypted', () => {
-      const result = EdgeVariablesSchema.safeParse({
-        edgeNote: {
-          name: 'edge_note',
-          type: 'text',
-          component: 'Text',
-          validation: { unique: true },
-        },
-      });
+      const result = EdgeVariablesSchema.safeParse(
+        withVariableIds({
+          edgeNote: {
+            name: 'edge_note',
+            type: 'text',
+            component: 'Text',
+            validation: { unique: true },
+          },
+        }),
+      );
       expect(result.success).toBe(true);
     });
 
@@ -411,13 +438,15 @@ describe('variable schema conformance', () => {
     });
 
     it('accepts an ego text variable without encrypted', () => {
-      const result = EgoVariablesSchema.safeParse({
-        egoNote: {
-          name: 'ego_note',
-          type: 'text',
-          component: 'Text',
-        },
-      });
+      const result = EgoVariablesSchema.safeParse(
+        withVariableIds({
+          egoNote: {
+            name: 'ego_note',
+            type: 'text',
+            component: 'Text',
+          },
+        }),
+      );
       expect(result.success).toBe(true);
     });
   });
@@ -435,11 +464,13 @@ describe('variable schema conformance', () => {
     it('rejects a minValue', () => {
       expect(
         parseIssues(
-          VariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
+          VariablesSchema.safeParse(
+            withVariableIds(scalarVariables({ minValue: 10 })),
+          ),
         ),
       ).toEqual([
         {
-          path: 'closeness.validation',
+          path: `${testVariableId('closeness')}.validation`,
           code: 'unrecognized_keys',
           keys: ['minValue'],
         },
@@ -449,11 +480,13 @@ describe('variable schema conformance', () => {
     it('rejects a maxValue', () => {
       expect(
         parseIssues(
-          VariablesSchema.safeParse(scalarVariables({ maxValue: 10 })),
+          VariablesSchema.safeParse(
+            withVariableIds(scalarVariables({ maxValue: 10 })),
+          ),
         ),
       ).toEqual([
         {
-          path: 'closeness.validation',
+          path: `${testVariableId('closeness')}.validation`,
           code: 'unrecognized_keys',
           keys: ['maxValue'],
         },
@@ -464,12 +497,12 @@ describe('variable schema conformance', () => {
       expect(
         parseIssues(
           VariablesSchema.safeParse(
-            scalarVariables({ minValue: 2, maxValue: 10 }),
+            withVariableIds(scalarVariables({ minValue: 2, maxValue: 10 })),
           ),
         ),
       ).toEqual([
         {
-          path: 'closeness.validation',
+          path: `${testVariableId('closeness')}.validation`,
           code: 'unrecognized_keys',
           keys: ['minValue', 'maxValue'],
         },
@@ -477,53 +510,61 @@ describe('variable schema conformance', () => {
     });
 
     it('accepts requiredness and comparisons against another scalar', () => {
-      const result = VariablesSchema.safeParse({
-        closeness: {
-          name: 'closeness',
-          type: 'scalar',
-          component: 'VisualAnalogScale',
-          validation: { required: true, greaterThanVariable: 'trust' },
-        },
-        trust: {
-          name: 'trust',
-          type: 'scalar',
-          component: 'VisualAnalogScale',
-        },
-      });
+      const result = VariablesSchema.safeParse(
+        withVariableIds({
+          closeness: {
+            name: 'closeness',
+            type: 'scalar',
+            component: 'VisualAnalogScale',
+            validation: { required: true, greaterThanVariable: 'trust' },
+          },
+          trust: {
+            name: 'trust',
+            type: 'scalar',
+            component: 'VisualAnalogScale',
+          },
+        }),
+      );
       expect(result.success).toBe(true);
     });
 
     it('leaves number variable bounds untouched', () => {
-      const result = VariablesSchema.safeParse({
-        age: {
-          name: 'age',
-          type: 'number',
-          component: 'Number',
-          validation: { minValue: 18 },
-        },
-      });
+      const result = VariablesSchema.safeParse(
+        withVariableIds({
+          age: {
+            name: 'age',
+            type: 'number',
+            component: 'Number',
+            validation: { minValue: 18 },
+          },
+        }),
+      );
       expect(result.success).toBe(true);
     });
 
     it('applies to edge and ego variables too', () => {
       expect(
         parseIssues(
-          EdgeVariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
+          EdgeVariablesSchema.safeParse(
+            withVariableIds(scalarVariables({ minValue: 10 })),
+          ),
         ),
       ).toEqual([
         {
-          path: 'closeness.validation',
+          path: `${testVariableId('closeness')}.validation`,
           code: 'unrecognized_keys',
           keys: ['minValue'],
         },
       ]);
       expect(
         parseIssues(
-          EgoVariablesSchema.safeParse(scalarVariables({ minValue: 10 })),
+          EgoVariablesSchema.safeParse(
+            withVariableIds(scalarVariables({ minValue: 10 })),
+          ),
         ),
       ).toEqual([
         {
-          path: 'closeness.validation',
+          path: `${testVariableId('closeness')}.validation`,
           code: 'unrecognized_keys',
           keys: ['minValue'],
         },
@@ -546,7 +587,9 @@ describe('variable schema conformance', () => {
     });
 
     it('rejects an explicitly empty options array', () => {
-      const result = VariablesSchema.safeParse(booleanVariable([]));
+      const result = VariablesSchema.safeParse(
+        withVariableIds(booleanVariable([])),
+      );
       expect(result.success).toBe(false);
       if (result.success) return;
       expect(
@@ -555,13 +598,17 @@ describe('variable schema conformance', () => {
     });
 
     it('accepts a boolean variable with no options at all', () => {
-      expect(VariablesSchema.safeParse(booleanVariable()).success).toBe(true);
+      expect(
+        VariablesSchema.safeParse(withVariableIds(booleanVariable())).success,
+      ).toBe(true);
     });
 
     it('accepts a single-option (singleton-domain) boolean', () => {
       expect(
         VariablesSchema.safeParse(
-          booleanVariable([{ label: localized('Yes'), value: true }]),
+          withVariableIds(
+            booleanVariable([{ label: localized('Yes'), value: true }]),
+          ),
         ).success,
       ).toBe(true);
     });
@@ -569,30 +616,36 @@ describe('variable schema conformance', () => {
     it('accepts a two-option boolean', () => {
       expect(
         VariablesSchema.safeParse(
-          booleanVariable([
-            { label: localized('Yes'), value: true },
-            { label: localized('No'), value: false },
-          ]),
+          withVariableIds(
+            booleanVariable([
+              { label: localized('Yes'), value: true },
+              { label: localized('No'), value: false },
+            ]),
+          ),
         ).success,
       ).toBe(true);
     });
 
     it('applies to edge and ego variables too', () => {
       expect(
-        parseIssues(EdgeVariablesSchema.safeParse(booleanVariable([]))),
+        parseIssues(
+          EdgeVariablesSchema.safeParse(withVariableIds(booleanVariable([]))),
+        ),
       ).toEqual([
         {
-          path: 'isClose.options',
+          path: `${testVariableId('isClose')}.options`,
           code: 'custom',
           message:
             'Boolean options must offer at least one choice when component is "Boolean"',
         },
       ]);
       expect(
-        parseIssues(EgoVariablesSchema.safeParse(booleanVariable([]))),
+        parseIssues(
+          EgoVariablesSchema.safeParse(withVariableIds(booleanVariable([]))),
+        ),
       ).toEqual([
         {
-          path: 'isClose.options',
+          path: `${testVariableId('isClose')}.options`,
           code: 'custom',
           message:
             'Boolean options must offer at least one choice when component is "Boolean"',
@@ -617,7 +670,7 @@ describe('variable schema conformance', () => {
 
     it('accepts a componentless boolean variable with an explicitly empty options array', () => {
       const result = VariablesSchema.safeParse(
-        componentlessBooleanVariable([]),
+        withVariableIds(componentlessBooleanVariable([])),
       );
       expect(
         result.success,
@@ -627,10 +680,14 @@ describe('variable schema conformance', () => {
 
     it('accepts a componentless empty-options boolean on edge and ego variables too', () => {
       expect(
-        EdgeVariablesSchema.safeParse(componentlessBooleanVariable([])).success,
+        EdgeVariablesSchema.safeParse(
+          withVariableIds(componentlessBooleanVariable([])),
+        ).success,
       ).toBe(true);
       expect(
-        EgoVariablesSchema.safeParse(componentlessBooleanVariable([])).success,
+        EgoVariablesSchema.safeParse(
+          withVariableIds(componentlessBooleanVariable([])),
+        ).success,
       ).toBe(true);
     });
   });

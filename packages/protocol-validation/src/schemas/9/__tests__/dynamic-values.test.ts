@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { interfaceTextFor } from '../../../__tests__/suppliedWording.ts';
-import { testId, withTestIds } from '../../../__tests__/testIds.ts';
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+  withTestIds,
+} from '../../../__tests__/testIds.ts';
 import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
@@ -321,8 +326,9 @@ describe('dynamic values in stage text', () => {
   describe('yes/no attributes', () => {
     type Variables = Record<string, Record<string, unknown>>;
     const personVariables = (protocol: Protocol): Variables =>
-      (protocol.codebook.node as Record<string, { variables: Variables }>)
-        .person!.variables;
+      (protocol.codebook.node as Record<string, { variables: Variables }>)[
+        testTypeId('person')
+      ]!.variables;
     const showingFlag = (message: string, cases?: Record<string, boolean>) =>
       editing('alterForm', (stage) => {
         stage.dynamicValues = {
@@ -366,7 +372,7 @@ describe('dynamic values in stage text', () => {
 
     it('refuses to show a yes/no attribute without labels as words', () => {
       const protocol = showingFlag(guarded('flag'));
-      delete personVariables(protocol).flag!.options;
+      delete personVariables(protocol)[testVariableId('flag')]!.options;
       const index = stageIndex(protocol, 'alterForm');
       expect(issuesOf(protocol)).toEqual([
         {
@@ -378,7 +384,7 @@ describe('dynamic values in stage text', () => {
 
     it('refuses a yes/no attribute with a label for only one answer', () => {
       const protocol = showingFlag(guarded('flag'));
-      const flag = personVariables(protocol).flag!;
+      const flag = personVariables(protocol)[testVariableId('flag')]!;
       flag.options = (flag.options as { value: boolean }[]).filter(
         (option) => option.value,
       );
@@ -391,13 +397,13 @@ describe('dynamic values in stage text', () => {
       const wording =
         '{flag, select, missing {Anything else?} yes {Tell us why.} other {Anything else?}}';
       const byAnswer = showingFlag(wording, { yes: true });
-      const flag = personVariables(byAnswer).flag!;
+      const flag = personVariables(byAnswer)[testVariableId('flag')]!;
       flag.component = 'Toggle';
       delete flag.options;
       expect(issuesOf(byAnswer)).toEqual([]);
 
       const shown = showingFlag(guarded('flag'));
-      const toggle = personVariables(shown).flag!;
+      const toggle = personVariables(shown)[testVariableId('flag')]!;
       toggle.component = 'Toggle';
       delete toggle.options;
       expect(issuesOf(shown)).toEqual([
@@ -926,8 +932,8 @@ describe('dynamic values in stage text', () => {
           string,
           { variables: Record<string, Record<string, unknown>> }
         >
-      ).person!;
-      person.variables.name!.encrypted = true;
+      )[testTypeId('person')]!;
+      person.variables[testVariableId('name')]!.encrypted = true;
       expect(issuesOf(protocol)).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -1076,13 +1082,15 @@ describe('dynamic values in stage text', () => {
       expect(hits).toEqual([
         {
           path: ['stages', index, 'dynamicValues', 'you', 'path'],
-          variableId: 'egoName',
+          variableId: testVariableId('egoName'),
           subject: { entity: 'ego' },
+          inDynamicValuePath: true,
         },
         {
           path: ['stages', index, 'dynamicValues', 'them', 'path'],
-          variableId: 'nickname',
-          subject: { entity: 'node', type: 'person' },
+          variableId: testVariableId('nickname'),
+          subject: { entity: 'node', type: testTypeId('person') },
+          inDynamicValuePath: true,
         },
       ]);
     });

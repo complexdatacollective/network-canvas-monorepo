@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
-import { testId } from '../../../__tests__/testIds.ts';
-import { MigrationResultInvalidError } from '../../../migration/errors.ts';
+import {
+  testId,
+  withOriginalCodebookKeys,
+  withTestCodebookIds,
+} from '../../../__tests__/testIds.ts';
+import {
+  MigrationContentRefusedError,
+  MigrationResultInvalidError,
+} from '../../../migration/errors.ts';
 import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import {
   collectProtocolObjectIds,
@@ -17,12 +24,26 @@ import { ProtocolSchemaV9 } from '../schema.ts';
 import { migratedStageId } from './migrated-stage-ids.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// A migration to schema 9, with each node type, edge type and variable
+// under the key the document gave it (see `withOriginalCodebookKeys`).
+const migrateReadable = (
+  document: unknown,
+  targetVersion?: 9,
+  dependencies?: Record<string, unknown>,
+) =>
+  withOriginalCodebookKeys(
+    migrateProtocol(document, targetVersion, dependencies),
+    document,
+  );
+
 // The stage of `document`, migrated to schema 9, that was its schema 8 stage
 // `id`.
 const findMigratedStage = (
   document: unknown,
   id: string,
-  migrated = migrateProtocol(document, 9),
+  migrated = migrateReadable(document, 9),
 ) => {
   const newId = migratedStageId(document, migrated, id);
   return migrated.stages.find((stage) => stage.id === newId);
@@ -61,11 +82,11 @@ const schema8WithEncryptedName = (
 
 // The base protocol, never encrypted, as the migration leaves it.
 const migratedBase = () =>
-  migrateProtocol(asSchema8Protocol(createBaseProtocol()), 9);
+  migrateReadable(asSchema8Protocol(createBaseProtocol()), 9);
 
 describe('Migrating encrypted attributes from schema 8 to 9', () => {
   it('keeps them encrypted when the experiment was on, and drops the experiment', () => {
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       schema8WithEncryptedName({ encryptedVariables: true }),
       9,
     );
@@ -74,13 +95,15 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
       encrypted: true,
     });
     expect(migrated.experiments).toStrictEqual({});
-    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+    expect(
+      ProtocolSchemaV9.safeParse(withTestCodebookIds(migrated)).success,
+    ).toBe(true);
   });
 
   // The schema 8 alpha named the experiment `encryptNames`, and its runtime
   // encrypted marked attributes while it was on.
   it('keeps them encrypted when the alpha flag was on, and drops the flag', () => {
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       schema8WithEncryptedName({ encryptNames: true }),
       9,
     );
@@ -89,7 +112,9 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
       encrypted: true,
     });
     expect(migrated.experiments).toStrictEqual({});
-    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+    expect(
+      ProtocolSchemaV9.safeParse(withTestCodebookIds(migrated)).success,
+    ).toBe(true);
   });
 
   it.each([
@@ -103,7 +128,7 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
   ])(
     'unmarks them when the experiment was %s, since they were never encrypted',
     (_description, experiments) => {
-      const migrated = migrateProtocol(
+      const migrated = migrateReadable(
         schema8WithEncryptedName(experiments),
         9,
       );
@@ -112,22 +137,26 @@ describe('Migrating encrypted attributes from schema 8 to 9', () => {
         migratedBase().codebook.node?.person?.variables?.name,
       );
       expect(migrated.experiments).toStrictEqual({});
-      expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+      expect(
+        ProtocolSchemaV9.safeParse(withTestCodebookIds(migrated)).success,
+      ).toBe(true);
     },
   );
 
   it('unmarks them when the protocol had no experiments, and adds none', () => {
-    const migrated = migrateProtocol(schema8WithEncryptedName(undefined), 9);
+    const migrated = migrateReadable(schema8WithEncryptedName(undefined), 9);
 
     expect(migrated.codebook.node?.person?.variables?.name).toEqual(
       migratedBase().codebook.node?.person?.variables?.name,
     );
     expect(Object.hasOwn(migrated, 'experiments')).toBe(false);
-    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+    expect(
+      ProtocolSchemaV9.safeParse(withTestCodebookIds(migrated)).success,
+    ).toBe(true);
   });
 
   it('changes nothing else in the codebook', () => {
-    const migrated = migrateProtocol(schema8WithEncryptedName(undefined), 9);
+    const migrated = migrateReadable(schema8WithEncryptedName(undefined), 9);
 
     expect(migrated.codebook).toEqual(migratedBase().codebook);
   });
@@ -220,7 +249,7 @@ const schema8WithPassphraseRules = (
 
 describe('Migrating passphrase length rules from schema 8 to 9', () => {
   it('removes both lengths when the minimum is longer than the maximum', () => {
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       schema8WithPassphraseRules({ minLength: 9, maxLength: 6 }),
       9,
     );
@@ -230,7 +259,7 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
     // Every migration gives new ids, so they differ between the two.
     expect(withoutIds(migrated.stages)).toEqual(
       withoutIds(
-        migrateProtocol(schema8WithPassphraseRules(undefined), 9).stages,
+        migrateReadable(schema8WithPassphraseRules(undefined), 9).stages,
       ),
     );
   });
@@ -241,7 +270,7 @@ describe('Migrating passphrase length rules from schema 8 to 9', () => {
     { maxLength: 6 },
     { minLength: 10 },
   ])('keeps %j, which a passphrase can meet', (validation) => {
-    const migrated = migrateProtocol(schema8WithPassphraseRules(validation), 9);
+    const migrated = migrateReadable(schema8WithPassphraseRules(validation), 9);
 
     expect(
       migrated.stages.find(({ type }) => type === 'Anonymisation'),
@@ -315,7 +344,7 @@ const protocolWithRulesOnEncryptedName = (
 
 describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
   it('removes them while the attribute stays encrypted, with any filter or skip logic left empty', () => {
-    const [nameGenerator, sociogram] = migrateProtocol(
+    const [nameGenerator, sociogram] = migrateReadable(
       asSchema8Protocol(
         protocolWithRulesOnEncryptedName({ encryptedVariables: true }),
       ),
@@ -336,7 +365,7 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
   });
 
   it('keeps them when the experiment was off, because the attribute is no longer encrypted', () => {
-    const [nameGenerator, sociogram] = migrateProtocol(
+    const [nameGenerator, sociogram] = migrateReadable(
       asSchema8Protocol(protocolWithRulesOnEncryptedName(undefined)),
       9,
     ).stages;
@@ -366,7 +395,7 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
     const answered = presenceRule('EXISTS');
     const unanswered = presenceRule('NOT_EXISTS');
 
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       asSchema8Protocol({
         ...protocol,
         stages: [
@@ -432,7 +461,7 @@ describe('Migrating rules on encrypted attributes from schema 8 to 9', () => {
           { type: 'FinishSession' },
         ],
       });
-      expect(() => migrateProtocol(document, 9)).toThrow(
+      expect(() => migrateReadable(document, 9)).toThrow(
         MigrationResultInvalidError,
       );
     },
@@ -475,7 +504,7 @@ const protocolWithCategoryValues = (
 };
 
 const migratedCategory = (protocol: unknown) => {
-  const migrated = migrateProtocol(asSchema8Protocol(protocol), 9);
+  const migrated = migrateReadable(asSchema8Protocol(protocol), 9);
   return migrated.codebook.node?.person?.variables?.category;
 };
 
@@ -525,7 +554,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
       type: 'ordinal' as const,
       options: values.map((value) => ({ label: localized(`${value}`), value })),
     });
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       asSchema8Protocol({
         ...base,
         codebook: {
@@ -596,7 +625,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
       },
     };
     const [nameGenerator, ...rest] = protocol.stages;
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       asSchema8Protocol({
         ...protocol,
         stages: [
@@ -613,7 +642,9 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     expect(withoutIds(migrated.stages[0])).toMatchObject(
       objectWithoutIds({ skipLogic: { filter: { rules: [rule] } } }),
     );
-    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+    expect(
+      ProtocolSchemaV9.safeParse(withTestCodebookIds(migrated)).success,
+    ).toBe(true);
   });
 
   it('rewrites a rule that names a value merged into one of another type', () => {
@@ -629,7 +660,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
       },
     });
     const [nameGenerator, ...rest] = protocol.stages;
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       asSchema8Protocol({
         ...protocol,
         stages: [
@@ -651,7 +682,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
   it('rewrites a shape mapping keyed by a value merged into one of another type', () => {
     const protocol = protocolWithCategoryValues([1, 'work', '1']);
     const { person } = protocol.codebook.node;
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       asSchema8Protocol({
         ...protocol,
         codebook: {
@@ -689,7 +720,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
   it('keeps the first shape when two mapped values merge', () => {
     const protocol = protocolWithCategoryValues([1, 'work', '1']);
     const { person } = protocol.codebook.node;
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       asSchema8Protocol({
         ...protocol,
         codebook: {
@@ -730,7 +761,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
   ])(
     'makes a value with %s a valid name, so the protocol still opens',
     (_description, value, name) => {
-      const migrated = migrateProtocol(
+      const migrated = migrateReadable(
         asSchema8Protocol(protocolWithCategoryValues([value, 'family'])),
         9,
       );
@@ -748,20 +779,38 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     ['only spaces', '  '],
     ['only a tab and a line break', '\t\n'],
   ])('refuses a value that is %s at that value', (_description, value) => {
-    const paths = migrationIssuePaths(
-      asSchema8Protocol(protocolWithCategoryValues(['friend', value])),
+    const document = asSchema8Protocol(
+      protocolWithCategoryValues(['friend', value]),
     );
+    let refusal: unknown;
+    try {
+      migrateProtocol(document, 9);
+    } catch (error) {
+      refusal = error;
+    }
 
-    expect(paths).toContainEqual([
-      'codebook',
-      'node',
-      'person',
-      'variables',
-      'category',
-      'options',
-      1,
-      'value',
-    ]);
+    // The migration gives the type and the attribute new ids, so the place
+    // names them by their names.
+    expect(refusal).toBeInstanceOf(MigrationContentRefusedError);
+    expect(
+      refusal instanceof MigrationContentRefusedError ? refusal.problems : [],
+    ).toContainEqual(
+      expect.objectContaining({
+        place: expect.stringMatching(
+          /^Node type “Person”, attribute “Category”, the value of option 2 /,
+        ),
+        path: [
+          'codebook',
+          'node',
+          expect.stringMatching(UUID),
+          'variables',
+          expect.stringMatching(UUID),
+          'options',
+          1,
+          'value',
+        ],
+      }),
+    );
   });
 
   it('merges a value that, once repaired, repeats an earlier one', () => {
@@ -795,7 +844,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
         ...rest,
       ],
     });
-    const migrated = migrateProtocol(schema8, 9);
+    const migrated = migrateReadable(schema8, 9);
 
     expect(withoutIds(migrated.stages[0])).toMatchObject(
       objectWithoutIds({
@@ -808,7 +857,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
   // second, so validation refuses it as it refuses a single option.
   it('leaves an attribute whose only two options share a value for validation to refuse', () => {
     expect(() =>
-      migrateProtocol(
+      migrateReadable(
         asSchema8Protocol(protocolWithCategoryValues(['friend', 'friend'])),
         9,
       ),
@@ -928,7 +977,7 @@ const alterFormWithPanel = (
 const migratedStageBefore = (
   document: unknown,
   id: string,
-  migrated = migrateProtocol(document, 9),
+  migrated = migrateReadable(document, 9),
 ) => {
   const newId = migratedStageId(document, migrated, id);
   const { stages } = migrated;
@@ -937,9 +986,9 @@ const migratedStageBefore = (
 
 // The stages the migration step itself gives, before validation.
 const stagesMigratedFrom = (document: unknown): unknown[] => {
-  const { stages } = migrationV8toV9.migrate(
-    ProtocolSchemaV8.parse(document),
-    {},
+  const { stages } = withOriginalCodebookKeys(
+    migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {}),
+    document,
   );
   return Array.isArray(stages) ? stages : [];
 };
@@ -1018,9 +1067,11 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         type,
         ...settings,
       });
-      const migrated = migrateProtocol(document, 9);
+      const migrated = migrateReadable(document, 9);
 
-      expect((await validateProtocol(migrated)).success).toBe(true);
+      expect(
+        (await validateProtocol(withTestCodebookIds(migrated))).success,
+      ).toBe(true);
       expect(stageTypes(migrated.stages)).toEqual([
         'NameGenerator',
         'Sociogram',
@@ -1067,7 +1118,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
       alterFormWithPanel({ title: 'Welcome' }, { skipLogic }),
     );
 
-    const migrated = migrateProtocol(document, 9);
+    const migrated = migrateReadable(document, 9);
     const information = migratedStageBefore(
       document,
       testId('alter-form'),
@@ -1119,7 +1170,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
       alterFormWithPanel({ title: 'Welcome' }),
     );
 
-    const migrated = migrateProtocol(document, 9);
+    const migrated = migrateReadable(document, 9);
 
     expect(
       findMigratedStage(document, testId('info'), migrated),
@@ -1150,12 +1201,14 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
   });
 
   it("keeps an Ego Form's panel where it is, above its questions", async () => {
-    const migrated = migrateProtocol(
+    const migrated = migrateReadable(
       schema8WithStages(egoFormWithPanel({ title: 'Welcome', text: 'Hello' })),
       9,
     );
 
-    expect((await validateProtocol(migrated)).success).toBe(true);
+    expect(
+      (await validateProtocol(withTestCodebookIds(migrated))).success,
+    ).toBe(true);
     expect(stageTypes(migrated.stages)).toEqual([
       'NameGenerator',
       'Sociogram',
@@ -1304,8 +1357,8 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
       ],
     };
 
-    const migrated = migrateProtocol(v5Protocol, 9, { name: 'Blank panels' });
-    const result = await validateProtocol(migrated);
+    const migrated = migrateReadable(v5Protocol, 9, { name: 'Blank panels' });
+    const result = await validateProtocol(withTestCodebookIds(migrated));
 
     expect(result.success).toBe(true);
     expect(migrated.stages.slice(0, 4)).toMatchObject([
@@ -1375,7 +1428,7 @@ const migratedOtherBin = (other: {
 // The places schema 9 reports when migrating the document fails.
 const migrationIssuePaths = (document: unknown) => {
   try {
-    migrateProtocol(document, 9);
+    migrateReadable(document, 9);
   } catch (error) {
     if (error instanceof MigrationResultInvalidError) {
       return error.issues.map(({ path }) => path);
@@ -1829,7 +1882,7 @@ describe('Migrating optional text that shows nothing from schema 8 to 9', () => 
       };
     };
     codebook.ego.variables.egoCloseness.parameters.maxLabel = '  ';
-    const migrated = migrateProtocol(document, 9);
+    const migrated = migrateReadable(document, 9);
 
     expect(migrated.codebook.ego?.variables?.egoCloseness).toMatchObject({
       parameters: { minLabel: localized('Not close') },
@@ -1911,7 +1964,7 @@ describe('Migrating protocol object ids from schema 8 to 9', () => {
   ];
 
   const migrated = (document: unknown = schema8WithStages(...formStages())) =>
-    migrateProtocol(document, 9);
+    migrateReadable(document, 9);
 
   const fieldIds = (stage: unknown): unknown[] => {
     const { form } = stage as { form?: { fields?: unknown } };

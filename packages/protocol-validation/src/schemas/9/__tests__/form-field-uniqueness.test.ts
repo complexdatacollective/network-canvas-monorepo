@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
-import { testId } from '../../../__tests__/testIds.ts';
+import { testId, testVariableId } from '../../../__tests__/testIds.ts';
 import { DUPLICATE_OBJECT_ID } from '../../../utils/protocolObjectIds.ts';
 import {
   createBaseProtocol,
@@ -177,7 +177,8 @@ describe('form field variable uniqueness', () => {
     expect(
       result.error?.issues.some(
         (issue) =>
-          issue.message === 'Form fields contain duplicate attribute "age"',
+          issue.message ===
+          `Form fields contain duplicate attribute "${testVariableId('age')}"`,
       ),
     ).toBe(true);
   });
@@ -215,7 +216,8 @@ describe('form field variable uniqueness', () => {
     const flaggedBySchema = (result.error?.issues ?? [])
       .filter(
         (issue) =>
-          issue.message === 'Form fields contain duplicate attribute "age"',
+          issue.message ===
+          `Form fields contain duplicate attribute "${testVariableId('age')}"`,
       )
       .map((issue) => issue.path[issue.path.length - 2]);
     expect(flaggedBySchema).toEqual([2, 3]);
@@ -242,7 +244,7 @@ describe('form field variable uniqueness', () => {
       {
         path: 'stages.2.form.fields.1.variable',
         code: 'custom',
-        message: 'Form fields contain duplicate attribute "name"',
+        message: `Form fields contain duplicate attribute "${testVariableId('name')}"`,
       },
     ]);
   });

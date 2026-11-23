@@ -5,6 +5,7 @@ import {
   parseIssues,
   unionBranchIssues,
 } from '../../../__tests__/schemaIssues.ts';
+import { testTypeId } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import { asEntityAttributeReference } from '../entity-attribute-reference.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
@@ -35,7 +36,10 @@ describe('Shape Mapping Validation', () => {
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(parseIssues(result)).toEqual([
-      { path: 'codebook.node.person.shape.default', code: 'invalid_union' },
+      {
+        path: `codebook.node.${testTypeId('person')}.shape.default`,
+        code: 'invalid_union',
+      },
     ]);
   });
 
@@ -127,7 +131,7 @@ describe('Shape Mapping Validation', () => {
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(parseIssues(result)).toEqual([
       {
-        path: 'codebook.node.person.shape.dynamic.thresholds',
+        path: `codebook.node.${testTypeId('person')}.shape.dynamic.thresholds`,
         code: 'too_small',
       },
     ]);
@@ -150,7 +154,10 @@ describe('Shape Mapping Validation', () => {
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(parseIssues(result)).toEqual([
-      { path: 'codebook.node.person.shape.dynamic', code: 'invalid_union' },
+      {
+        path: `codebook.node.${testTypeId('person')}.shape.dynamic`,
+        code: 'invalid_union',
+      },
     ]);
     expect(unionBranchIssues(result)).toContainEqual([
       { path: 'thresholds', code: 'too_big' },
@@ -164,7 +171,10 @@ describe('Shape Mapping Validation', () => {
 
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(parseIssues(result)).toEqual([
-      { path: 'codebook.node.person.shape', code: 'invalid_type' },
+      {
+        path: `codebook.node.${testTypeId('person')}.shape`,
+        code: 'invalid_type',
+      },
     ]);
   });
 
@@ -185,7 +195,7 @@ describe('Shape Mapping Validation', () => {
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(parseIssues(result)).toEqual([
       {
-        path: 'codebook.node.person.shape.dynamic.map',
+        path: `codebook.node.${testTypeId('person')}.shape.dynamic.map`,
         code: 'custom',
         message: 'Discrete shape mapping values must be unique',
       },
@@ -209,7 +219,7 @@ describe('Shape Mapping Validation', () => {
     const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
     expect(parseIssues(result)).toEqual([
       {
-        path: 'codebook.node.person.shape.dynamic.thresholds',
+        path: `codebook.node.${testTypeId('person')}.shape.dynamic.thresholds`,
         code: 'custom',
         message:
           'Breakpoint thresholds must be sorted ascending with no duplicates',

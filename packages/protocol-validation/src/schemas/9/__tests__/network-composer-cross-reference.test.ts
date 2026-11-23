@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testVariableId } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { ComponentTypes } from '../variables/types.ts';
@@ -93,13 +94,15 @@ describe('NetworkComposer cross-reference validation', () => {
     'rejects a layoutVariable naming the non-layout variable "%s"',
     (variable) => {
       const result = ProtocolSchemaV9.safeParse(
-        composerProtocol({ ...baseStage, layoutVariable: variable }),
+        withFinishStage(
+          composerProtocol({ ...baseStage, layoutVariable: variable }),
+        ),
       );
       expect(result.success).toBe(false);
       expect(result.error?.issues).toContainEqual(
         expect.objectContaining({
           path: ['stages', 0, 'layoutVariable'],
-          message: `The attribute "${variable}" must be of type layout`,
+          message: `The attribute "${testVariableId(variable)}" must be of type layout`,
         }),
       );
     },
@@ -123,13 +126,15 @@ describe('NetworkComposer cross-reference validation', () => {
     'rejects a convexHullVariable naming the non-categorical variable "%s"',
     (variable) => {
       const result = ProtocolSchemaV9.safeParse(
-        composerProtocol({ ...baseStage, convexHullVariable: variable }),
+        withFinishStage(
+          composerProtocol({ ...baseStage, convexHullVariable: variable }),
+        ),
       );
       expect(result.success).toBe(false);
       expect(result.error?.issues).toContainEqual(
         expect.objectContaining({
           path: ['stages', 0, 'convexHullVariable'],
-          message: `The attribute "${variable}" must be of type categorical`,
+          message: `The attribute "${testVariableId(variable)}" must be of type categorical`,
         }),
       );
     },

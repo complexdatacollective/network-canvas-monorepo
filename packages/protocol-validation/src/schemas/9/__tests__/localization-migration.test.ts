@@ -10,6 +10,7 @@ import {
   stageWithoutSuppliedText,
   withoutSuppliedWording,
 } from '../../../__tests__/suppliedWording.ts';
+import { withOriginalCodebookKeys } from '../../../__tests__/testIds.ts';
 import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
 import {
   escapeMessageText,
@@ -81,8 +82,17 @@ const stagePath = (document: unknown, id: string): (string | number)[] => {
 const schema8Protocol = (rewrite?: (text: string) => string) =>
   asSchema8Protocol(completeProtocol(), rewrite);
 
+// The v8 to v9 step alone, and the whole chain to schema 9, each with every
+// node type, edge type and variable under the key the document gave it (see
+// `withOriginalCodebookKeys`).
 const migrateStep = (document: unknown) =>
-  migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {});
+  withOriginalCodebookKeys(
+    migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {}),
+    document,
+  );
+
+const migrateReadable = (document: unknown) =>
+  withOriginalCodebookKeys(migrateProtocol(document, 9), document);
 
 /**
  * Schema 8 held no label for a Narrative highlight or legend edge, so the
@@ -366,7 +376,7 @@ describe('v8 to v9 localization migration', () => {
   });
 
   it('migrates to a protocol schema 9 accepts', () => {
-    expect(() => migrateProtocol(schema8Protocol(), 9)).not.toThrow();
+    expect(() => migrateReadable(schema8Protocol())).not.toThrow();
   });
 
   it('does not change the document it is given', () => {
@@ -380,7 +390,7 @@ describe('v8 to v9 localization migration', () => {
     const special = (text: string) =>
       `${text}: {braces} it's 'quoted' '{both}' don't }{`;
     const document = schema8Protocol(special);
-    const migrated = migrateProtocol(document, 9);
+    const migrated = migrateReadable(document);
 
     // The interface text is the migration's own, not the document's, and
     // text with placeholders is new in schema 9 (see `asSchema8Protocol`).
@@ -409,7 +419,7 @@ describe('v8 to v9 localization migration', () => {
   it('joins the lines of text declared one line, and leaves text of several lines as it was', () => {
     const broken = (text: string) => `${text} \n\n second\r\nthird\u2028\n`;
     const document = schema8Protocol(broken);
-    const migrated = migrateProtocol(document, 9);
+    const migrated = migrateReadable(document);
     const hits = collectLocalizedStrings(migrated).filter(
       ({ path: at, arguments: declared }) =>
         at[0] !== 'interfaceText' &&
@@ -454,7 +464,7 @@ describe('v8 to v9 localization migration', () => {
       [...stagePath(document, 'nameGenerator'), 'prompts', 0, 'text'],
       '\n  \n',
     );
-    expect(() => migrateProtocol(document, 9)).toThrow(
+    expect(() => migrateReadable(document)).toThrow(
       MigrationContentRefusedError,
     );
   });
@@ -463,7 +473,7 @@ describe('v8 to v9 localization migration', () => {
     const document = schema8Protocol(
       (text) => `${text} {{fieldName}} {name} {name, select, other {x}}`,
     );
-    const migrated = migrateProtocol(document, 9);
+    const migrated = migrateReadable(document);
     const sites = collectLocalizedStrings(migrated).filter(
       ({ dynamicValues }) => dynamicValues !== undefined,
     );
@@ -483,8 +493,8 @@ describe('v8 to v9 localization migration', () => {
   it('drops the reserved marker from text that may now show values, and keeps the rest of it', () => {
     const marked = (text: string) => `${text}\uE000`;
     const document = schema8Protocol(marked);
-    const plain = migrateProtocol(schema8Protocol(), 9);
-    const migrated = migrateProtocol(document, 9);
+    const plain = migrateReadable(schema8Protocol());
+    const migrated = migrateReadable(document);
     const sites = collectLocalizedStrings(migrated);
     const dynamicSites = sites.filter(
       ({ dynamicValues }) => dynamicValues !== undefined,
@@ -522,7 +532,7 @@ describe('v8 to v9 localization migration', () => {
 
   describe('codebook labels', () => {
     it('gives no type or attribute a label', () => {
-      const migrated = migrateProtocol(schema8Protocol(), 9);
+      const migrated = migrateReadable(schema8Protocol());
       for (const definition of [
         ...codebookTypes(migrated),
         ...codebookVariables(migrated),
@@ -549,7 +559,7 @@ describe('v8 to v9 localization migration', () => {
         "Friend's {nickname}",
       );
 
-      const migrated = migrateProtocol(document, 9);
+      const migrated = migrateReadable(document);
       expect(
         rowsWithMintedIds(getAt(migrated, [...preset, 'highlight'])),
       ).toEqual([
@@ -589,7 +599,7 @@ describe('v8 to v9 localization migration', () => {
 
       expect(
         rowsWithMintedIds(
-          getAt(migrateProtocol(document, 9), [...preset, 'edges', 'display']),
+          getAt(migrateReadable(document), [...preset, 'edges', 'display']),
         ),
       ).toEqual([
         { type: 'knows', label: { en: escapeMessageText('Knows {who}') } },
@@ -620,7 +630,7 @@ describe('v8 to v9 localization migration', () => {
       if (!isRecord(presetDocument)) throw new Error('Fixture has no preset');
       delete presetDocument.highlight;
 
-      const migrated = migrateProtocol(document, 9);
+      const migrated = migrateReadable(document);
       expect(getAt(migrated, preset)).not.toHaveProperty('highlight');
     });
   });
@@ -652,7 +662,7 @@ describe('v8 to v9 localization migration', () => {
       const field = nodeFieldPath(document, 1);
       removeCaption(document, field);
 
-      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+      expect(getAt(migrateReadable(document), [...field, 'label'])).toEqual({
         en: 'Nickname',
       });
     });
@@ -662,7 +672,7 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, ['codebook', 'edge', 'knows', 'name'], 'Knows {who}');
 
       expect(
-        getAt(migrateProtocol(document, 9), [
+        getAt(migrateReadable(document), [
           ...composerPath(document),
           'edges',
           0,
@@ -676,7 +686,7 @@ describe('v8 to v9 localization migration', () => {
       const field = edgeFieldPath(document);
       removeCaption(document, field);
 
-      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+      expect(getAt(migrateReadable(document), [...field, 'label'])).toEqual({
         en: 'Note',
       });
     });
@@ -685,7 +695,7 @@ describe('v8 to v9 localization migration', () => {
     // as nothing is the researcher's own blank content, and is refused.
     const refusalOf = (document: unknown) => {
       try {
-        migrateProtocol(document, 9);
+        migrateReadable(document);
       } catch (error) {
         if (error instanceof MigrationContentRefusedError) return error;
         throw error;
@@ -727,7 +737,7 @@ describe('v8 to v9 localization migration', () => {
       const document = schema8Protocol();
       const field = nodeFieldPath(document, 1);
 
-      expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
+      expect(getAt(migrateReadable(document), [...field, 'label'])).toEqual({
         en: 'Nickname?',
       });
     });
@@ -779,14 +789,14 @@ describe('v8 to v9 localization migration', () => {
     const alterField = (document: unknown) =>
       fieldPath(document, 'alterForm', ['form']);
     const promptOf = (document: unknown, at: Path) =>
-      getAt(migrateProtocol(document, 9), [...at, 'prompt']);
+      getAt(migrateReadable(document), [...at, 'prompt']);
 
     // The places schema 9 reports. The migration may add stages before the
     // field's, so its stage index is not compared.
     const refusedAt = (document: unknown, field: Path) => {
       let paths: Path[] = [];
       try {
-        migrateProtocol(document, 9);
+        migrateReadable(document);
       } catch (error) {
         if (!(error instanceof MigrationResultInvalidError)) throw error;
         paths = error.issues.map((issue) => issue.path);
@@ -855,7 +865,7 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, [...field, 'label'], '   ');
 
-      expect(() => migrateProtocol(document, 9)).toThrow(
+      expect(() => migrateReadable(document)).toThrow(
         MigrationContentRefusedError,
       );
     });
@@ -869,7 +879,7 @@ describe('v8 to v9 localization migration', () => {
       const field = [...stagePath(document, 'egoForm'), 'form', 'fields', 0];
       setAt(document, [...field, 'hint'], '');
 
-      const migrated = migrateProtocol(document, 9);
+      const migrated = migrateReadable(document);
       expect(getAt(migrated, field)).not.toHaveProperty('hint');
     });
 
@@ -889,7 +899,7 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, option, '');
 
-      expect(getAt(migrateProtocol(document, 9), option)).toEqual({
+      expect(getAt(migrateReadable(document), option)).toEqual({
         en: 'friend',
       });
     });
@@ -901,7 +911,7 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, [...prompt, 'otherOptionLabel'], undefined);
       setAt(document, [...prompt, 'otherVariablePrompt'], '');
 
-      const migrated = migrateProtocol(document, 9);
+      const migrated = migrateReadable(document);
       expect(getAt(migrated, prompt)).not.toHaveProperty('otherVariablePrompt');
     });
 
@@ -911,7 +921,7 @@ describe('v8 to v9 localization migration', () => {
       const label = [...stage, 'label'];
       setAt(document, label, '');
 
-      expect(getAt(migrateProtocol(document, 9), label)).toEqual({
+      expect(getAt(migrateReadable(document), label)).toEqual({
         en: `Stage ${Number(stage.at(-1)) + 1}`,
       });
     });
@@ -929,7 +939,7 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, parameters, { minLabel: 5, maxLabel: null, step: 5 });
 
-      expect(getAt(migrateProtocol(document, 9), parameters)).toEqual({
+      expect(getAt(migrateReadable(document), parameters)).toEqual({
         step: 5,
       });
     });
@@ -945,7 +955,7 @@ describe('v8 to v9 localization migration', () => {
       ];
       setAt(document, parameters, { minLabel: 'Low', maxLabel: 3 });
 
-      expect(getAt(migrateProtocol(document, 9), parameters)).toEqual({
+      expect(getAt(migrateReadable(document), parameters)).toEqual({
         minLabel: 'Low',
         maxLabel: 3,
       });
@@ -957,7 +967,7 @@ describe('v8 to v9 localization migration', () => {
       setAt(document, text, 5);
 
       expect(getAt(migrateStep(document), text)).toBe(5);
-      expect(() => migrateProtocol(document, 9)).toThrow(
+      expect(() => migrateReadable(document)).toThrow(
         MigrationResultInvalidError,
       );
     });
@@ -1057,10 +1067,10 @@ describe('committed schema 8 protocols', () => {
       const schema8 = migrateProtocol(protocol, 8, {
         name: path.basename(file, '.netcanvas'),
       });
-      const migrated = migrateProtocol(schema8, 9);
+      const result = await validateProtocol(migrateProtocol(schema8, 9));
+      const migrated = migrateReadable(schema8);
       const renames = migratedStageIds(schema8, migrated);
 
-      const result = await validateProtocol(migrated);
       expect(
         result.success,
         JSON.stringify(result.error?.issues, null, 2),

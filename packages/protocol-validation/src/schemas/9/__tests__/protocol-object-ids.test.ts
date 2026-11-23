@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
-import { testId } from '../../../__tests__/testIds.ts';
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+} from '../../../__tests__/testIds.ts';
 import {
   collectProtocolObjectIds,
   findDuplicateProtocolObjectIds,
@@ -37,7 +41,11 @@ const validProtocol = () => {
       {
         id: testId('kinds/rule'),
         type: 'node',
-        options: { type: 'person', attribute: 'nickname', operator: 'EXISTS' },
+        options: {
+          type: testTypeId('person'),
+          attribute: testVariableId('nickname'),
+          operator: 'EXISTS',
+        },
       },
     ],
   });
@@ -47,7 +55,7 @@ const validProtocol = () => {
     [
       {
         id: testId('kinds/additionalAttribute'),
-        variable: 'flag',
+        variable: testVariableId('flag'),
         value: true,
       },
     ],

@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
-import { testId } from '../../../__tests__/testIds.ts';
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+} from '../../../__tests__/testIds.ts';
 import {
   createBaseProtocol,
   localized,
@@ -656,7 +660,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const issue = result.error.issues.find((candidate) =>
           candidate.message.includes(
-            'The attribute "category" must be of type text',
+            `The attribute "${testVariableId('category')}" must be of type text`,
           ),
         );
         expect(issue?.path).toEqual([
@@ -1023,7 +1027,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       if (!result.success) {
         const typeError = result.error.issues.find((issue) =>
           issue.message.includes(
-            'The attribute "duration" must be of type ordinal',
+            `The attribute "${testVariableId('duration')}" must be of type ordinal`,
           ),
         );
         expect(typeError).toBeDefined();
@@ -1174,7 +1178,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           const typeError = result.error.issues.find(
             (issue) =>
               issue.message ===
-              `The attribute "${variable}" must be of type boolean`,
+              `The attribute "${testVariableId(variable)}" must be of type boolean`,
           );
           expect(typeError?.path).toEqual([
             'stages',
@@ -2136,9 +2140,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(crossRefError?.path).toEqual([
           'codebook',
           'node',
-          'person',
+          testTypeId('person'),
           'variables',
-          'confirmAge',
+          testVariableId('confirmAge'),
           'validation',
           'sameAs',
         ]);
@@ -2211,9 +2215,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(crossRefError?.path).toEqual([
           'codebook',
           'node',
-          'person',
+          testTypeId('person'),
           'variables',
-          'uniqueId',
+          testVariableId('uniqueId'),
           'validation',
           'differentFrom',
         ]);
@@ -2344,9 +2348,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(crossRefError?.path).toEqual([
           'codebook',
           'node',
-          'person',
+          testTypeId('person'),
           'variables',
-          'minAge',
+          testVariableId('minAge'),
           'validation',
           'greaterThanOrEqualToVariable',
         ]);
@@ -2419,9 +2423,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(crossRefError?.path).toEqual([
           'codebook',
           'node',
-          'person',
+          testTypeId('person'),
           'variables',
-          'maxAge',
+          testVariableId('maxAge'),
           'validation',
           'lessThanOrEqualToVariable',
         ]);
@@ -2518,7 +2522,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           'codebook',
           'ego',
           'variables',
-          'invalidRef',
+          testVariableId('invalidRef'),
           'validation',
           'sameAs',
         ]);
@@ -2908,9 +2912,9 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         expect(refError?.path).toEqual([
           'codebook',
           'node',
-          'person',
+          testTypeId('person'),
           'variables',
-          'minAge',
+          testVariableId('minAge'),
           'validation',
           'greaterThanOrEqualToVariable',
         ]);

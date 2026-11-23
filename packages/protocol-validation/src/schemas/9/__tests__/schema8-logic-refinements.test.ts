@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
-import { withStageTestIds } from '../../../__tests__/testIds.ts';
+import {
+  testTypeId,
+  testVariableId,
+  withStageTestIds,
+} from '../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
@@ -483,7 +487,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.before',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.before`,
           code: 'custom',
           message: 'RelativeDatePicker "before" must not be negative',
         },
@@ -517,7 +521,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.anchor',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.anchor`,
           code: 'custom',
           message:
             'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
@@ -539,7 +543,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.anchor',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.anchor`,
           code: 'custom',
           message:
             'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
@@ -610,7 +614,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(parseIssues(belowFloor)).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.anchor',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.anchor`,
           code: 'custom',
           message:
             'RelativeDatePicker anchor must use a year of 0001 or later — the native date input starts at year 0001',
@@ -631,7 +635,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ),
       ).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.anchor',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.anchor`,
           code: 'custom',
           message:
             'RelativeDatePicker anchor must use a year of 0001 or later — the native date input starts at year 0001',
@@ -709,7 +713,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(parseIssues(result)).toEqual([
         {
-          path: 'codebook.node.person.variables.rank.options',
+          path: `codebook.node.${testTypeId('person')}.variables.${testVariableId('rank')}.options`,
           code: 'too_small',
         },
       ]);
