@@ -298,6 +298,23 @@ protocol's localization — invoke the `verifying-translations` skill before
 committing it.** Every translation must pass adversarial reverse translation
 before it is accepted; stamping a catalog is not verification.
 
+**Before writing or editing English text that a person will read —
+documentation, website content, interface copy and messages, release notes, or
+a README, in any app, package or website — invoke the
+`writing-user-facing-text` skill.** Its rules always apply:
+
+- Keep the words that standard written English uses, in the usual order and an
+  ordinary tense. Write "Problems reported by Architect" (or "Problems that
+  Architect reports"), not "Problems Architect reports".
+- Use the standard term and never coin a phrase. Write "Wording for singular or
+  plural numbers", not "Wording that agrees with a number".
+- Say the concrete thing. Write "during the interview", not "in the
+  interview's own wording".
+- Call a string that can be translated a "translatable string" or a "localized
+  string". Never call it "a text", and do not use "text" as its name.
+- Do not use "holds" for "contains". Write "the protocol contains the wording",
+  not "the protocol holds the wording".
+
 ### Code Standards
 
 - **NO `any` types** - explicitly forbidden, always use proper TypeScript typing
