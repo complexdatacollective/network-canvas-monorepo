@@ -6,12 +6,16 @@ import {
   awaitOfferedAttributes,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageId } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testId } from '../../../testing/testId.ts';
+import { testId, testVariableId } from '../../../testing/testId.ts';
 import { narrativePedigreeStageEditor } from '../NarrativePedigreeStageEditor.ts';
 import {
   addDisease,
@@ -25,6 +29,15 @@ import {
   SOURCE_STAGE_SECTION,
   stageOrder,
 } from './narrativePedigreeFixtures.tsx';
+
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const familyMemberVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'family member' }, name);
+const IS_EGO = familyMemberVariable('is_ego');
+const HAS_CONDITION_X = familyMemberVariable('hasConditionX');
+/** Attributes the tests add to the family member type. */
+const HAS_CONDITION_Z = testVariableId('hasConditionZ');
+const CONDITION_NOTES = testVariableId('conditionNotes');
 
 /**
  * What the attribute picker says when it can offer nothing.
@@ -102,7 +115,7 @@ const pedigreeRecordingNothing = () => {
  * with, and every exclusion below would read as vacuously true.
  *
  * `added` names attributes the codebook does not carry yet, by the type each
- * one records. `alsoPrompted` names attributes it already carries: a prompt
+ * one records; each is given the id `testVariableId` gives its name. `alsoPrompted` names attributes it already carries: a prompt
  * writing one of those is how an exclusion that is NOT about being recorded —
  * the type, the pedigree's own slots — is asked a question it can fail.
  */
@@ -119,20 +132,22 @@ const alsoRecording = (
     ...pedigree,
     nominationPrompts: [
       ...prompts,
-      ...[...Object.keys(added), ...alsoPrompted].map((variableId) => ({
-        id: testId(`nomination-${variableId}`),
-        text: { 'en-US': 'Who?' },
-        attribute: variableId,
-      })),
+      ...[...Object.keys(added).map(testVariableId), ...alsoPrompted].map(
+        (variableId) => ({
+          id: testId(`nomination-${variableId}`),
+          text: { 'en-US': 'Who?' },
+          attribute: variableId,
+        }),
+      ),
     ],
   });
   harness.receiveCodebookUpdate({
     node: {
-      family_member: familyMemberCodebook({
+      [FAMILY_MEMBER]: familyMemberCodebook({
         add: Object.fromEntries(
-          Object.entries(added).map(([variableId, type]) => [
-            variableId,
-            { name: variableId, type },
+          Object.entries(added).map(([name, type]) => [
+            testVariableId(name),
+            { name, type },
           ]),
         ),
       }),
@@ -288,20 +303,20 @@ describe('the diseases a narrative pedigree defines', () => {
    */
   it('never offers an attribute the source pedigree derives for itself', async () => {
     const harness = openFixture();
-    alsoRecording(harness, { hasConditionZ: 'boolean' }, ['is_ego']);
+    alsoRecording(harness, { hasConditionZ: 'boolean' }, [IS_EGO]);
 
     await addDisease(harness);
     // The prompt and the codebook both arrive over the protocol's own channel,
     // so the window is read until it has been told about the attribute this
     // case turns on rather than once, before either landed.
     const offered = await awaitOfferedAttributesOf(harness, (list) =>
-      expect(list).toContain('hasConditionZ'),
+      expect(list).toContain(HAS_CONDITION_Z),
     );
     // `is_ego` is the pedigree's participant marker, so a disease mapped to it
     // would paint the participant as affected in every interview;
     // `hasConditionX` is already mapped by the disease this stage holds.
-    expect(offered).not.toContain('is_ego');
-    expect(offered).not.toContain('hasConditionX');
+    expect(offered).not.toContain(IS_EGO);
+    expect(offered).not.toContain(HAS_CONDITION_X);
   });
 
   /**
@@ -318,9 +333,9 @@ describe('the diseases a narrative pedigree defines', () => {
 
     await addDisease(harness);
     const offered = await awaitOfferedAttributesOf(harness, (list) =>
-      expect(list).toContain('hasConditionZ'),
+      expect(list).toContain(HAS_CONDITION_Z),
     );
-    expect(offered).not.toContain('conditionNotes');
+    expect(offered).not.toContain(CONDITION_NOTES);
   });
 
   /**
@@ -366,7 +381,7 @@ describe('the diseases a narrative pedigree defines', () => {
 
     const dialog = await openDisease(harness);
     await dialog.findByText('Node attribute', { selector: 'label' });
-    expect(await offeredAttributesOf(harness)).toContain('hasConditionX');
+    expect(await offeredAttributesOf(harness)).toContain(HAS_CONDITION_X);
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     expect(await harness.submit()).not.toBeNull();
@@ -388,7 +403,7 @@ describe('the diseases a narrative pedigree defines', () => {
             id: testId('disease-2'),
             label: { 'en-US': 'Condition X, again' },
             color: 'node-color-seq-2',
-            attribute: 'hasConditionX',
+            attribute: HAS_CONDITION_X,
             inheritancePattern: 'unknown',
           },
         ],
@@ -414,7 +429,7 @@ describe('the diseases a narrative pedigree defines', () => {
             id: testId('disease-2'),
             label: { 'en-US': 'Condition Z' },
             color: 'node-color-seq-2',
-            attribute: 'hasConditionZ',
+            attribute: HAS_CONDITION_Z,
             inheritancePattern: 'unknown',
           },
         ],
@@ -507,7 +522,7 @@ describe('a disease the source pedigree stopped recording', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        family_member: familyMemberCodebook({ remove: 'hasConditionX' }),
+        [FAMILY_MEMBER]: familyMemberCodebook({ remove: HAS_CONDITION_X }),
       },
     });
 
@@ -525,9 +540,9 @@ describe('a disease the source pedigree stopped recording', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        family_member: familyMemberCodebook({
+        [FAMILY_MEMBER]: familyMemberCodebook({
           add: {
-            hasConditionX: {
+            [HAS_CONDITION_X]: {
               name: 'hasConditionX',
               type: 'text',
             },
@@ -582,7 +597,7 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        family_member: familyMemberCodebook({ remove: 'hasConditionX' }),
+        [FAMILY_MEMBER]: familyMemberCodebook({ remove: HAS_CONDITION_X }),
       },
     });
 
@@ -604,9 +619,9 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        family_member: familyMemberCodebook({
+        [FAMILY_MEMBER]: familyMemberCodebook({
           add: {
-            hasConditionX: {
+            [HAS_CONDITION_X]: {
               name: 'hasConditionX',
               type: 'text',
             },
@@ -641,13 +656,13 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
    * afterwards is the slot rule alone.
    */
   it('reports an attribute the pedigree derives for itself, and saves the stage', async () => {
-    const mappedToEgo = { ...fixtureDisease(), attribute: 'is_ego' };
+    const mappedToEgo = { ...fixtureDisease(), attribute: IS_EGO };
     const harness = renderStageEditor(
       narrativePedigreeHolding({ diseases: [mappedToEgo] }),
     );
     await screen.findByText('Condition X');
 
-    alsoRecording(harness, {}, ['is_ego']);
+    alsoRecording(harness, {}, [IS_EGO]);
     await waitFor(() =>
       expect(screen.queryByText('Nothing records this attribute')).toBeNull(),
     );

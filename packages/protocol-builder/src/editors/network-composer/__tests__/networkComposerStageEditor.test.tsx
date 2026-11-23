@@ -6,7 +6,11 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
 import {
@@ -14,6 +18,10 @@ import {
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { composerEditor } from './composerFixtures.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
 
 const openFixture = () =>
   renderStageEditor({ stageId: 'network-composer-1', editor: composerEditor });
@@ -135,12 +143,12 @@ describe('the network composer stage editor', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Create or select an attribute for the quick-add form'),
-      'composerName',
+      personVariable('composerName'),
     );
     await chooseAttributeById(
       harness.user,
       attributeField('Create or select an attribute to store node coordinates'),
-      'layout',
+      personVariable('layout'),
     );
     expect(
       screen.getByRole('spinbutton', { name: 'Number of concentric circles' }),
@@ -149,9 +157,9 @@ describe('the network composer stage editor', () => {
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
       label: { 'en-US': 'Build' },
-      subject: { entity: 'node', type: 'person' },
-      quickAdd: 'composerName',
-      layoutVariable: 'layout',
+      subject: { entity: 'node', type: PERSON },
+      quickAdd: personVariable('composerName'),
+      layoutVariable: personVariable('layout'),
       background: { concentricCircles: 4 },
       behaviours: { automaticLayout: true },
     });

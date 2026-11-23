@@ -9,7 +9,10 @@ import {
 import {
   fixtureProtocolSections,
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../../../testing/protocolFixture.ts';
+import { testVariableId } from '../../../../testing/testId.ts';
 import {
   diseaseMarksNobody,
   resolveSourceStages,
@@ -33,6 +36,12 @@ function contextInOrder(
     [sectionId({ kind: 'stageOrder' })]: { stages: [...order] },
   });
 }
+
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const HAS_CONDITION_X = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'hasConditionX',
+);
 
 const FIXTURE_ORDER = [
   fixtureStageId('ego-form-1'),
@@ -216,7 +225,7 @@ describe('the node type a narrative pedigree describes', () => {
         contextInOrder(FIXTURE_ORDER),
         fixtureStageId('family-pedigree-1'),
       ),
-    ).toBe('family_member');
+    ).toBe(FAMILY_MEMBER);
   });
 
   it('is nothing at all when the source cannot be resolved', () => {
@@ -241,7 +250,7 @@ describe('the attributes the source pedigree records', () => {
         contextInOrder(FIXTURE_ORDER),
         fixtureStageId('family-pedigree-1'),
       ),
-    ]).toEqual(['hasConditionX']);
+    ]).toEqual([HAS_CONDITION_X]);
   });
 
   it('is nothing at all when the source cannot be resolved', () => {
@@ -256,16 +265,19 @@ describe('the attributes the source pedigree records', () => {
 });
 
 describe('a disease that would mark nobody', () => {
-  const recorded = new Set(['hasConditionX']);
+  const recorded = new Set([HAS_CONDITION_X]);
 
   it('is one mapping an attribute nothing records', () => {
-    expect(diseaseMarksNobody({ attribute: 'biologicalSex' }, recorded)).toBe(
-      true,
-    );
+    expect(
+      diseaseMarksNobody(
+        { attribute: testVariableId('biologicalSex') },
+        recorded,
+      ),
+    ).toBe(true);
   });
 
   it('is not one mapping an attribute a nomination prompt writes', () => {
-    expect(diseaseMarksNobody({ attribute: 'hasConditionX' }, recorded)).toBe(
+    expect(diseaseMarksNobody({ attribute: HAS_CONDITION_X }, recorded)).toBe(
       false,
     );
   });
@@ -278,6 +290,8 @@ describe('a disease that would mark nobody', () => {
     expect(diseaseMarksNobody({ attribute: '' }, recorded)).toBe(false);
     expect(diseaseMarksNobody({}, recorded)).toBe(false);
     expect(diseaseMarksNobody(null, recorded)).toBe(false);
-    expect(diseaseMarksNobody(['hasConditionZ'], recorded)).toBe(false);
+    expect(
+      diseaseMarksNobody([testVariableId('hasConditionZ')], recorded),
+    ).toBe(false);
   });
 });

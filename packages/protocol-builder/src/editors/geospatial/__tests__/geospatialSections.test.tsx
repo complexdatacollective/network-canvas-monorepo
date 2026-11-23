@@ -19,12 +19,14 @@ import {
 import {
   loadFixtureStage,
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testId } from '../../../testing/testId.ts';
+import { testId, testVariableId } from '../../../testing/testId.ts';
 import {
   awaitLayerRead,
   enterCoordinate,
@@ -75,7 +77,17 @@ const ALTER_FORM = sectionId({
 });
 
 /** The node type both of them are about. */
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON_TYPE = fixtureTypeId('node', 'person');
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
+
+/** The fixture's location attribute, which the stage's own prompt records. */
+const LOCATION = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'location',
+);
+/** Attributes a collaborator adds to the person type. */
+const WORKPLACE = testVariableId('workplace');
+const NICKNAME = testVariableId('nickname');
 
 /**
  * Rewrites one section of the protocol as somebody else's change.
@@ -94,10 +106,13 @@ const asCollaborator = (
   });
 };
 
-/** One more attribute this stage's prompts could record a place in. */
+/**
+ * One more attribute this stage's prompts could record a place in, called
+ * `name` and filed under `testVariableId(name)`.
+ */
 const addLocationAttribute = (
   harness: ReturnType<typeof openEditor>,
-  id: string,
+  name: string,
 ): void => {
   asCollaborator(harness, PERSON, (person) => ({
     ...person,
@@ -105,7 +120,7 @@ const addLocationAttribute = (
       ...(typeof person.variables === 'object' && person.variables !== null
         ? person.variables
         : {}),
-      [id]: { name: id, type: 'location' },
+      [testVariableId(name)]: { name, type: 'location' },
     },
   }));
 };
@@ -130,12 +145,12 @@ const openTwoPromptsOnOneAttribute = () => {
           {
             id: testId('geospatial-prompt-1'),
             text: { 'en-US': 'Where do you live?' },
-            variable: 'location',
+            variable: LOCATION,
           },
           {
             id: testId('geospatial-prompt-2'),
             text: { 'en-US': 'Where do you work?' },
-            variable: 'location',
+            variable: LOCATION,
           },
         ],
       },
@@ -451,10 +466,8 @@ describe('the places a geospatial stage asks about', () => {
     // The attribute the stage's own prompt already records is not among them:
     // this list is what is left.
     const picker = attributeField('Location attribute');
-    expect(await offeredAttributes(harness.user, picker)).toEqual([
-      'workplace',
-    ]);
-    await chooseAttributeById(harness.user, picker, 'workplace');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([WORKPLACE]);
+    await chooseAttributeById(harness.user, picker, WORKPLACE);
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -465,7 +478,7 @@ describe('the places a geospatial stage asks about', () => {
     expect(Array.isArray(prompts) ? prompts : []).toHaveLength(2);
     expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
       text: { 'en-US': 'Work?' },
-      variable: 'workplace',
+      variable: WORKPLACE,
     });
   });
 
@@ -551,12 +564,12 @@ describe('the places a geospatial stage asks about', () => {
         ...(typeof person.variables === 'object' && person.variables !== null
           ? person.variables
           : {}),
-        nickname: {
+        [NICKNAME]: {
           name: 'nickname',
           type: 'text',
           component: 'Text',
         },
-        workplace: {
+        [WORKPLACE]: {
           name: 'workplace',
           type: 'location',
         },
@@ -569,7 +582,7 @@ describe('the places a geospatial stage asks about', () => {
         harness.user,
         attributeField('Location attribute'),
       ),
-    ).toEqual(['workplace']);
+    ).toEqual([WORKPLACE]);
   });
 
   /**
@@ -597,7 +610,7 @@ describe('the places a geospatial stage asks about', () => {
         harness.user,
         attributeField('Location attribute'),
       ),
-    ).toEqual(['workplace']);
+    ).toEqual([WORKPLACE]);
     await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -614,7 +627,7 @@ describe('the places a geospatial stage asks about', () => {
             : []),
           {
             id: testId('field-added-1'),
-            variable: 'workplace',
+            variable: WORKPLACE,
             prompt: { 'en-US': 'Where do they work?' },
           },
         ],
@@ -657,10 +670,8 @@ describe('the places a geospatial stage asks about', () => {
       'Work?',
     );
     const picker = attributeField('Location attribute');
-    expect(await offeredAttributes(harness.user, picker)).toEqual([
-      'workplace',
-    ]);
-    await chooseAttributeById(harness.user, picker, 'workplace');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([WORKPLACE]);
+    await chooseAttributeById(harness.user, picker, WORKPLACE);
 
     // Somebody else's form field, arriving after the pick was made. The
     // picker takes the attribute off its own list as the revision arrives,
@@ -677,7 +688,7 @@ describe('the places a geospatial stage asks about', () => {
             : []),
           {
             id: testId('field-added-1'),
-            variable: 'workplace',
+            variable: WORKPLACE,
             prompt: { 'en-US': 'Where do they work?' },
           },
         ],
@@ -716,8 +727,8 @@ describe('the places a geospatial stage asks about', () => {
     const dialog = await openPrompt(harness, 'Edit prompt');
     const picker = attributeField('Location attribute');
     expect(await offeredAttributes(harness.user, picker)).toEqual([
-      'location',
-      'workplace',
+      LOCATION,
+      WORKPLACE,
     ]);
 
     // The form starts collecting BOTH: the free attribute leaving the picker
@@ -735,18 +746,18 @@ describe('the places a geospatial stage asks about', () => {
             : []),
           {
             id: testId('field-added-1'),
-            variable: 'workplace',
+            variable: WORKPLACE,
             prompt: { 'en-US': 'Where do they work?' },
           },
           {
             id: testId('field-added-2'),
-            variable: 'location',
+            variable: LOCATION,
             prompt: { 'en-US': 'Where do they live?' },
           },
         ],
       },
     }));
-    expect(await offeredAttributes(harness.user, picker)).toEqual(['location']);
+    expect(await offeredAttributes(harness.user, picker)).toEqual([LOCATION]);
 
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
@@ -795,20 +806,20 @@ describe('the places a geospatial stage asks about', () => {
     const isBorn = (variable: { name: string; type: string }) =>
       variable.name === 'born' && variable.type === 'location';
     const created = Object.entries(
-      harness.editorCodebook().node?.person?.variables ?? {},
+      harness.editorCodebook().node?.[PERSON_TYPE]?.variables ?? {},
     ).find(([, variable]) => isBorn(variable))?.[0];
     expect(created).toBeDefined();
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        isBorn,
-      ),
+      Object.values(
+        harness.hostCodebook().node?.[PERSON_TYPE]?.variables ?? {},
+      ).some(isBorn),
     ).toBe(false);
 
     const request = await harness.submit();
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        isBorn,
-      ),
+      Object.values(
+        harness.hostCodebook().node?.[PERSON_TYPE]?.variables ?? {},
+      ).some(isBorn),
     ).toBe(true);
     const prompts = request?.stageDocument.prompts;
     expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
@@ -854,7 +865,7 @@ describe('a prompt written in more than one language', () => {
             {
               id: testId('geospatial-prompt-1'),
               text,
-              variable: 'location',
+              variable: LOCATION,
             },
           ],
         },
@@ -901,7 +912,7 @@ describe('a prompt written in more than one language', () => {
       {
         id: testId('geospatial-prompt-1'),
         text: { 'en-US': 'Where do you live?', 'es': '¿Dónde trabajas?' },
-        variable: 'location',
+        variable: LOCATION,
       },
     ]);
   });

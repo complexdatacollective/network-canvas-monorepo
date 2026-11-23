@@ -5,9 +5,13 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { sharedWording } from '../../../sections/supplied-wording/sharedWording.tsx';
-import { fixtureStageId } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
-import { testId } from '../../../testing/testId.ts';
+import { testId, testTypeId } from '../../../testing/testId.ts';
 import { mountedAs } from '../../__tests__/formEditorHarness.tsx';
 import { networkComposerStageEditor } from '../NetworkComposerStageEditor.ts';
 import { composerConnections } from '../sections/composerConnections.tsx';
@@ -37,9 +41,16 @@ const composerSections = (
   </>
 );
 
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
 
-const KNOWS_SECTION = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
+
+const KNOWS_SECTION = sectionId({
+  kind: 'codebookEdge',
+  typeId: fixtureTypeId('edge', 'knows'),
+});
 
 const COMPOSER_SECTION = sectionId({
   kind: 'stage',
@@ -88,9 +99,9 @@ export const composerHolding = (fields: SectionDoc) => ({
     type: 'NetworkComposer' as const,
     fields: {
       label: { 'en-US': 'Network Composer' },
-      subject: { entity: 'node', type: 'person' },
-      quickAdd: 'composerName',
-      layoutVariable: 'layout',
+      subject: { entity: 'node', type: PERSON },
+      quickAdd: personVariable('composerName'),
+      layoutVariable: personVariable('layout'),
       background: { concentricCircles: 4 },
       ...fields,
     },
@@ -166,7 +177,7 @@ export const addPersonVariable = (
   }
   harness.receiveCodebookUpdate({
     node: {
-      person: {
+      [PERSON]: {
         ...section,
         variables: { ...variables, [variableId]: variable },
       },
@@ -203,7 +214,7 @@ export const retypePersonVariable = (
   }
   harness.receiveCodebookUpdate({
     node: {
-      person: {
+      [PERSON]: {
         ...section,
         variables: { ...variables, [variableId]: { ...held, type } },
       },
@@ -301,8 +312,8 @@ export const collectInAnAlterForm = (
 };
 
 /**
- * One more kind of connection in the codebook, put there from outside this
- * editor.
+ * One more kind of connection in the codebook, called `name` and filed under
+ * `testTypeId(name)`, put there from outside this editor.
  *
  * Cloned from the fixture's own `knows` definition rather than written out, so
  * it carries whatever a connection type is currently required to have and the
@@ -310,14 +321,14 @@ export const collectInAnAlterForm = (
  */
 export const addEdgeType = (
   harness: StageEditorHarness,
-  typeId: string,
+  name: string,
 ): void => {
   const knows = harness.protocolSections()[KNOWS_SECTION];
   if (knows === undefined) {
     throw new Error('the fixture protocol has no "knows" connection type');
   }
   harness.receiveCodebookUpdate({
-    edge: { [typeId]: { ...knows, name: typeId, variables: {} } },
+    edge: { [testTypeId(name)]: { ...knows, name, variables: {} } },
   });
 };
 

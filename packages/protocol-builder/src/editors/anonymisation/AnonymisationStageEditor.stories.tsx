@@ -7,10 +7,15 @@ import StageEditor from '../../StageEditor.tsx';
 import {
   loadFixtureStage,
   fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { testId } from '../../testing/testId.ts';
 import { anonymisationStageEditor } from './AnonymisationStageEditor.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Anonymisation',
@@ -121,8 +126,8 @@ export const AttributeARuleReads: Story = {
                 id: testId('rule-1'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'name',
+                  type: PERSON,
+                  attribute: NAME,
                   operator: 'EXACTLY',
                   value: 'Ada',
                 },
@@ -176,8 +181,8 @@ export const AttributeARuleAsksAbout: Story = {
                 id: testId('rule-1'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'name',
+                  type: PERSON,
+                  attribute: NAME,
                   operator: 'NOT_EXISTS',
                 },
               },

@@ -13,7 +13,11 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageId } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -31,6 +35,13 @@ import {
   switchOnType,
   withStageFields,
 } from './anonymisationFixtures.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
 
 /**
  * Mounts a section on a form the test can make read-only without taking it
@@ -71,7 +82,7 @@ const editorVariable = (
   variableId: string,
 ): Readonly<Record<string, unknown>> => {
   const variable =
-    harness.editorCodebook().node?.person?.variables?.[variableId];
+    harness.editorCodebook().node?.[PERSON]?.variables?.[variableId];
   if (variable === undefined) {
     throw new Error(`the person type has no "${variableId}" attribute`);
   }
@@ -83,7 +94,8 @@ const hostVariable = (
   harness: StageEditorHarness,
   variableId: string,
 ): Readonly<Record<string, unknown>> => {
-  const variable = harness.hostCodebook().node?.person?.variables?.[variableId];
+  const variable =
+    harness.hostCodebook().node?.[PERSON]?.variables?.[variableId];
   if (variable === undefined) {
     throw new Error(`the person type has no "${variableId}" attribute`);
   }
@@ -517,15 +529,13 @@ describe('the attributes a passphrase protects', () => {
     await harness.user.click(attributeCheckbox('person', 'name'));
 
     await waitFor(() =>
-      expect(editorVariable(harness, 'name').encrypted).toBe(true),
+      expect(editorVariable(harness, NAME).encrypted).toBe(true),
     );
-    expect(Object.hasOwn(hostVariable(harness, 'name'), 'encrypted')).toBe(
-      false,
-    );
+    expect(Object.hasOwn(hostVariable(harness, NAME), 'encrypted')).toBe(false);
     // The flag is not a stage field, so the stage still saves as the stage it
     // opened — and the same save is what writes the flag.
     await harness.roundTrip();
-    expect(hostVariable(harness, 'name').encrypted).toBe(true);
+    expect(hostVariable(harness, NAME).encrypted).toBe(true);
   });
 
   it('discards the flag when the stage is cancelled', async () => {
@@ -534,14 +544,12 @@ describe('the attributes a passphrase protects', () => {
 
     await harness.user.click(attributeCheckbox('person', 'name'));
     await waitFor(() =>
-      expect(editorVariable(harness, 'name').encrypted).toBe(true),
+      expect(editorVariable(harness, NAME).encrypted).toBe(true),
     );
 
     await harness.cancel();
 
-    expect(Object.hasOwn(hostVariable(harness, 'name'), 'encrypted')).toBe(
-      false,
-    );
+    expect(Object.hasOwn(hostVariable(harness, NAME), 'encrypted')).toBe(false);
   });
 
   /** Absence is how the schema spells "not encrypted". */
@@ -551,12 +559,12 @@ describe('the attributes a passphrase protects', () => {
 
     await harness.user.click(attributeCheckbox('person', 'name'));
     await waitFor(() =>
-      expect(editorVariable(harness, 'name').encrypted).toBe(true),
+      expect(editorVariable(harness, NAME).encrypted).toBe(true),
     );
 
     await harness.user.click(attributeCheckbox('person', 'name'));
     await waitFor(() =>
-      expect(Object.hasOwn(editorVariable(harness, 'name'), 'encrypted')).toBe(
+      expect(Object.hasOwn(editorVariable(harness, NAME), 'encrypted')).toBe(
         false,
       ),
     );
@@ -616,11 +624,11 @@ describe('the attributes a passphrase protects', () => {
     const person = personDocument(harness);
     const variables = {
       ...(person.variables as Record<string, unknown>),
-      name: { name: 'name', type: 'number' },
+      [NAME]: { name: 'name', type: 'number' },
     };
 
     harness.receiveCodebookUpdate({
-      node: { person: { ...person, variables } },
+      node: { [PERSON]: { ...person, variables } },
     });
 
     await waitFor(() =>
@@ -635,7 +643,7 @@ describe('the attributes a passphrase protects', () => {
     const person = personDocument(harness);
 
     harness.receiveCodebookUpdate({
-      node: { person: { ...person, variables: {} } },
+      node: { [PERSON]: { ...person, variables: {} } },
     });
 
     expect(
@@ -662,7 +670,7 @@ describe('the attributes a passphrase protects', () => {
           [fixtureStageId('name-generator-1')]: {
             skipLogic: {
               action: 'SHOW',
-              filter: { rules: [answeredRule(testId('skip-a'), 'name')] },
+              filter: { rules: [answeredRule(testId('skip-a'), NAME)] },
             },
           },
         }),
@@ -672,7 +680,7 @@ describe('the attributes a passphrase protects', () => {
       await harness.user.click(attributeCheckbox('person', 'name'));
 
       await waitFor(() =>
-        expect(editorVariable(harness, 'name').encrypted).toBe(true),
+        expect(editorVariable(harness, NAME).encrypted).toBe(true),
       );
       expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
     });
@@ -688,14 +696,14 @@ describe('the attributes a passphrase protects', () => {
               filter: {
                 join: 'OR',
                 rules: [
-                  answeredRule(testId('skip-a'), 'name'),
-                  personRule(testId('skip-b'), 'name'),
+                  answeredRule(testId('skip-a'), NAME),
+                  personRule(testId('skip-b'), NAME),
                 ],
               },
             },
           },
           [fixtureStageId('sociogram-1')]: {
-            filter: { rules: [answeredRule(testId('filter-a'), 'name')] },
+            filter: { rules: [answeredRule(testId('filter-a'), NAME)] },
           },
         }),
       });
@@ -719,11 +727,11 @@ describe('the attributes a passphrase protects', () => {
           [fixtureStageId('name-generator-1')]: {
             skipLogic: {
               action: 'SKIP',
-              filter: { rules: [personRule(testId('skip-a'), 'name')] },
+              filter: { rules: [personRule(testId('skip-a'), NAME)] },
             },
           },
           [fixtureStageId('sociogram-1')]: {
-            filter: { rules: [personRule(testId('filter-a'), 'name')] },
+            filter: { rules: [personRule(testId('filter-a'), NAME)] },
           },
         }),
       });
@@ -738,7 +746,7 @@ describe('the attributes a passphrase protects', () => {
       // the tick is fine once the rules are gone.
       expect(refusal.closest('[role]')).toHaveAttribute('role', 'status');
       expect(attributeCheckbox('person', 'name')).not.toBeChecked();
-      expect(Object.hasOwn(editorVariable(harness, 'name'), 'encrypted')).toBe(
+      expect(Object.hasOwn(editorVariable(harness, NAME), 'encrypted')).toBe(
         false,
       );
     });
@@ -759,7 +767,7 @@ describe('the attributes a passphrase protects', () => {
                 label: { 'en-US': 'Default layout' },
                 layoutVariable: 'layout',
                 filter: {
-                  rules: [personRule(testId('preset-a'), 'name')],
+                  rules: [personRule(testId('preset-a'), NAME)],
                 },
               },
             ],
@@ -795,7 +803,7 @@ describe('the attributes a passphrase protects', () => {
                 title: { 'en-US': 'People already named' },
                 dataSource: 'existing',
                 filter: {
-                  rules: [personRule(testId('panel-a'), 'name')],
+                  rules: [personRule(testId('panel-a'), NAME)],
                 },
               },
               {
@@ -803,7 +811,7 @@ describe('the attributes a passphrase protects', () => {
                 title: { 'en-US': 'Roster' },
                 dataSource: 'roster_data',
                 filter: {
-                  rules: [personRule(testId('panel-b'), 'relationship_to_ego')],
+                  rules: [personRule(testId('panel-b'), RELATIONSHIP_TO_EGO)],
                 },
               },
             ],
@@ -823,7 +831,7 @@ describe('the attributes a passphrase protects', () => {
         attributeCheckbox('person', 'relationship_to_ego'),
       );
       await waitFor(() =>
-        expect(editorVariable(harness, 'relationship_to_ego').encrypted).toBe(
+        expect(editorVariable(harness, RELATIONSHIP_TO_EGO).encrypted).toBe(
           true,
         ),
       );
@@ -845,7 +853,7 @@ describe('the attributes a passphrase protects', () => {
             skipLogic: {
               action: 'SKIP',
               filter: {
-                rules: [personRule(testId('skip-a'), 'relationship_to_ego')],
+                rules: [personRule(testId('skip-a'), RELATIONSHIP_TO_EGO)],
               },
             },
           },
@@ -859,7 +867,7 @@ describe('the attributes a passphrase protects', () => {
       await chooseAttributeById(
         harness.user,
         await waitFor(() => attributeField('Node attribute')),
-        'name',
+        NAME,
       );
       await harness.user.selectOptions(
         await screen.findByRole('combobox', { name: /Operator/ }),
@@ -881,7 +889,7 @@ describe('the attributes a passphrase protects', () => {
       await switchOnType(harness, 'person');
       await harness.user.click(attributeCheckbox('person', 'name'));
       await waitFor(() =>
-        expect(editorVariable(harness, 'name').encrypted).toBe(true),
+        expect(editorVariable(harness, NAME).encrypted).toBe(true),
       );
 
       expect(
@@ -902,11 +910,11 @@ describe('the attributes a passphrase protects', () => {
             [fixtureStageId('name-generator-1')]: {
               skipLogic: {
                 action: 'SKIP',
-                filter: { rules: [personRule(testId('skip-a'), 'name')] },
+                filter: { rules: [personRule(testId('skip-a'), NAME)] },
               },
             },
           },
-          alreadyProtecting('name'),
+          alreadyProtecting(NAME),
         ),
       });
       await screen.findByRole('group', {
@@ -917,9 +925,9 @@ describe('the attributes a passphrase protects', () => {
       await harness.user.click(attributeCheckbox('person', 'name'));
 
       await waitFor(() =>
-        expect(
-          Object.hasOwn(editorVariable(harness, 'name'), 'encrypted'),
-        ).toBe(false),
+        expect(Object.hasOwn(editorVariable(harness, NAME), 'encrypted')).toBe(
+          false,
+        ),
       );
       expect(screen.queryByText(/cannot be encrypted/)).toBeNull();
     });
@@ -937,7 +945,7 @@ describe('the attributes a passphrase protects', () => {
       registry: anonymisationStageEditor,
       heldSections: [
         {
-          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          sectionId: sectionId({ kind: 'codebookNode', typeId: PERSON }),
           displayName: 'Robin',
         },
       ],
@@ -950,10 +958,8 @@ describe('the attributes a passphrase protects', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(await screen.findByText(/Robin/)).toBeInTheDocument();
-    expect(Object.hasOwn(hostVariable(harness, 'name'), 'encrypted')).toBe(
-      false,
-    );
-    expect(editorVariable(harness, 'name').encrypted).toBe(true);
+    expect(Object.hasOwn(hostVariable(harness, NAME), 'encrypted')).toBe(false);
+    expect(editorVariable(harness, NAME).encrypted).toBe(true);
   });
 
   /**
@@ -970,7 +976,7 @@ describe('the attributes a passphrase protects', () => {
       renderStageEditor({
         stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
-        adapter: alreadyProtecting('name'),
+        adapter: alreadyProtecting(NAME),
       });
 
     /** The confirmation this loss is worth, answered. */
@@ -1001,7 +1007,7 @@ describe('the attributes a passphrase protects', () => {
         attributeCheckbox('person', 'relationship_to_ego'),
       );
       await waitFor(() =>
-        expect(editorVariable(harness, 'relationship_to_ego').encrypted).toBe(
+        expect(editorVariable(harness, RELATIONSHIP_TO_EGO).encrypted).toBe(
           true,
         ),
       );
@@ -1010,13 +1016,13 @@ describe('the attributes a passphrase protects', () => {
       await confirmClear(harness);
 
       await waitFor(() =>
-        expect(
-          Object.hasOwn(editorVariable(harness, 'name'), 'encrypted'),
-        ).toBe(false),
+        expect(Object.hasOwn(editorVariable(harness, NAME), 'encrypted')).toBe(
+          false,
+        ),
       );
       expect(
         Object.hasOwn(
-          editorVariable(harness, 'relationship_to_ego'),
+          editorVariable(harness, RELATIONSHIP_TO_EGO),
           'encrypted',
         ),
       ).toBe(false);
@@ -1048,7 +1054,7 @@ describe('the attributes a passphrase protects', () => {
           }),
         ).toBeNull(),
       );
-      expect(editorVariable(harness, 'name').encrypted).toBe(true);
+      expect(editorVariable(harness, NAME).encrypted).toBe(true);
       expect(attributeCheckbox('person', 'name')).toBeChecked();
     });
 
@@ -1075,11 +1081,11 @@ describe('the attributes a passphrase protects', () => {
       const person = personDocument(harness);
       harness.receiveCodebookUpdate({
         node: {
-          person: {
+          [PERSON]: {
             ...person,
             variables: {
               ...(person.variables as Record<string, unknown>),
-              relationship_to_ego: {
+              [RELATIONSHIP_TO_EGO]: {
                 name: 'relationship_to_ego',
                 type: 'text',
                 encrypted: true,
@@ -1093,12 +1099,12 @@ describe('the attributes a passphrase protects', () => {
       await waitFor(() =>
         expect(
           Object.hasOwn(
-            editorVariable(harness, 'relationship_to_ego'),
+            editorVariable(harness, RELATIONSHIP_TO_EGO),
             'encrypted',
           ),
         ).toBe(false),
       );
-      expect(Object.hasOwn(editorVariable(harness, 'name'), 'encrypted')).toBe(
+      expect(Object.hasOwn(editorVariable(harness, NAME), 'encrypted')).toBe(
         false,
       );
     });
@@ -1120,7 +1126,7 @@ describe('the attributes a passphrase protects', () => {
       const stopWriting = { now: () => undefined as void };
       const harness = renderStageEditor({
         stageId: fixtureStageId('anonymisation-1'),
-        adapter: alreadyProtecting('name'),
+        adapter: alreadyProtecting(NAME),
         sections: (
           <UntilTheEditorIsReadOnly
             onStop={(now) => {
@@ -1153,7 +1159,7 @@ describe('the attributes a passphrase protects', () => {
           }),
         ).toBeNull(),
       );
-      expect(editorVariable(harness, 'name').encrypted).toBe(true);
+      expect(editorVariable(harness, NAME).encrypted).toBe(true);
       expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
       // And the researcher is told why, as every other refusal here tells
       // them: a switch that sprang back with nothing said is the one decline
@@ -1170,7 +1176,7 @@ describe('the attributes a passphrase protects', () => {
       const harness = openEditor();
       await switchOnType(harness, 'person');
 
-      expect(Object.hasOwn(editorVariable(harness, 'name'), 'encrypted')).toBe(
+      expect(Object.hasOwn(editorVariable(harness, NAME), 'encrypted')).toBe(
         false,
       );
       expect(
@@ -1196,7 +1202,7 @@ describe('the attributes a passphrase protects', () => {
       await harness.opened();
       expect(screen.getByRole('switch', { name: 'person' })).not.toBeChecked();
 
-      collaboratorSets(harness, 'person', 'name', {
+      collaboratorSets(harness, PERSON, NAME, {
         name: 'name',
         type: 'text',
         encrypted: true,
@@ -1214,13 +1220,13 @@ describe('the attributes a passphrase protects', () => {
       const harness = renderStageEditor({
         stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
-        adapter: alreadyProtecting('name'),
+        adapter: alreadyProtecting(NAME),
       });
       await waitFor(() =>
         expect(attributeCheckbox('person', 'name')).toBeChecked(),
       );
 
-      collaboratorSets(harness, 'person', 'name', {
+      collaboratorSets(harness, PERSON, NAME, {
         name: 'name',
         type: 'text',
       });
@@ -1241,14 +1247,14 @@ describe('the attributes a passphrase protects', () => {
       const harness = openEditor();
       await switchOnType(harness, 'person');
 
-      collaboratorSets(harness, 'person', 'relationship_to_ego', {
+      collaboratorSets(harness, PERSON, RELATIONSHIP_TO_EGO, {
         name: 'relationship_to_ego',
         type: 'text',
       });
       await waitFor(() =>
         expect(
           personDocument(harness).variables as Record<string, unknown>,
-        ).toHaveProperty('relationship_to_ego'),
+        ).toHaveProperty(RELATIONSHIP_TO_EGO),
       );
 
       expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
@@ -1266,7 +1272,7 @@ describe('the attributes a passphrase protects', () => {
       const harness = renderStageEditor({
         stageId: fixtureStageId('anonymisation-1'),
         registry: anonymisationStageEditor,
-        adapter: alreadyProtecting('name'),
+        adapter: alreadyProtecting(NAME),
       });
       await waitFor(() =>
         expect(attributeCheckbox('person', 'name')).toBeChecked(),
@@ -1275,9 +1281,9 @@ describe('the attributes a passphrase protects', () => {
       await harness.user.click(attributeCheckbox('person', 'name'));
 
       await waitFor(() =>
-        expect(
-          Object.hasOwn(editorVariable(harness, 'name'), 'encrypted'),
-        ).toBe(false),
+        expect(Object.hasOwn(editorVariable(harness, NAME), 'encrypted')).toBe(
+          false,
+        ),
       );
       expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
       expect(attributeCheckbox('person', 'name')).not.toBeChecked();
@@ -1292,7 +1298,7 @@ describe('the attributes a passphrase protects', () => {
       stageId: fixtureStageId('anonymisation-1'),
       registry: anonymisationStageEditor,
       readOnly: true,
-      adapter: alreadyProtecting('name'),
+      adapter: alreadyProtecting(NAME),
     });
 
     await waitFor(() =>

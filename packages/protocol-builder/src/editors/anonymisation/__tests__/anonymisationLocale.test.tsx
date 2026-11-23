@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { fixtureStageId } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId } from '../../../testing/testId.ts';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
@@ -10,6 +13,8 @@ import {
   personRule,
   withStageFields,
 } from './anonymisationFixtures.tsx';
+
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const openEditor = () =>
   renderStageEditor({
@@ -115,7 +120,7 @@ describe('the anonymisation sections, read in Spanish', () => {
       stageId: fixtureStageId('anonymisation-1'),
       locale: 'es',
       registry: anonymisationStageEditor,
-      adapter: alreadyProtecting('name'),
+      adapter: alreadyProtecting(NAME),
     });
     await waitFor(() =>
       expect(
@@ -161,11 +166,11 @@ describe('the anonymisation sections, read in Spanish', () => {
         [fixtureStageId('name-generator-1')]: {
           skipLogic: {
             action: 'SKIP',
-            filter: { rules: [personRule(testId('skip-a'), 'name')] },
+            filter: { rules: [personRule(testId('skip-a'), NAME)] },
           },
         },
         [fixtureStageId('sociogram-1')]: {
-          filter: { rules: [personRule(testId('filter-a'), 'name')] },
+          filter: { rules: [personRule(testId('filter-a'), NAME)] },
         },
       }),
     });
