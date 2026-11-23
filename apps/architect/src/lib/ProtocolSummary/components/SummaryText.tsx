@@ -1,6 +1,7 @@
 import {
   type ComponentProps,
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
 } from 'react';
@@ -13,6 +14,7 @@ import {
   type MarkdownBlockImages,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   type BlockMarkdown,
   type DynamicMessageSite,
@@ -168,6 +170,15 @@ const showsValues = (text: string) => {
 };
 
 /**
+ * Markdown of one line, drawn in a paragraph as each paragraph of several
+ * lines is, so that protocol text has one typeface in the summary whatever
+ * lines its field holds. Its markdown draws no paragraph of its own (see
+ * `markdownElementsFor`).
+ */
+const inParagraph = (format: Format, drawn: ReactNode) =>
+  format === 'markdown-line' ? <Paragraph>{drawn}</Paragraph> : drawn;
+
+/**
  * One translation. A message whose setting declares arguments reads as its
  * versions, one for each case it distinguishes, with its placeholders named;
  * text that shows values reads with each value as a pill.
@@ -198,7 +209,8 @@ const TranslationText = ({
     );
   }
   if (dynamicSite !== undefined && showsValues(text)) {
-    return (
+    return inParagraph(
+      format,
       <DynamicMessageSummary
         message={text}
         markdown={format !== 'plain'}
@@ -206,7 +218,7 @@ const TranslationText = ({
         blockMarkdown={blockMarkdownWith(blockImages)}
         locale={locale}
         site={dynamicSite}
-      />
+      />,
     );
   }
   const literal = messageText(text);
@@ -215,17 +227,18 @@ const TranslationText = ({
   // is already escaped by whatever wrote it, so rewriting it here could only
   // make the summary read differently from the participant's screen (a file
   // whose address is written between angle brackets read as its source).
-  return format !== 'plain' ? (
-    <RenderMarkdown
-      allowedElements={markdownElementsFor(format !== 'markdown-lines')}
-      blockImages={blockImages}
-      render={<span />}
-    >
-      {literal}
-    </RenderMarkdown>
-  ) : (
-    literal
-  );
+  return format !== 'plain'
+    ? inParagraph(
+        format,
+        <RenderMarkdown
+          allowedElements={markdownElementsFor(format !== 'markdown-lines')}
+          blockImages={blockImages}
+          render={<span />}
+        >
+          {literal}
+        </RenderMarkdown>,
+      )
+    : literal;
 };
 
 /** One translation, its language known to what is drawn inside it. */
