@@ -290,13 +290,13 @@ const describeMissingPlacement = (
   const shown =
     declaration[argument]?.kind === 'plural'
       ? `the number "${argument}" (as "#")`
-      : `"{${argument}}"`;
-  const version = Object.entries(when)
-    .map(([name, key]) => `${name} "${key}"`)
+      : `the attribute "{${argument}}"`;
+  const scenario = Object.entries(when)
+    .map(([name, key]) => `${name}: ${key}`)
     .join(', ');
-  return version === ''
-    ? `This text must show ${shown}.`
-    : `The version of this text for ${version} must show ${shown}.`;
+  return scenario === ''
+    ? `This text must include ${shown}.`
+    : `This text must include ${shown} in the "${scenario}" scenario.`;
 };
 
 /**

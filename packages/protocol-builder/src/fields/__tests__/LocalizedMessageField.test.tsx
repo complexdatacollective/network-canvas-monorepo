@@ -430,7 +430,7 @@ describe('LocalizedMessageField', () => {
 
       expect(
         await screen.findByText(
-          /^Include “Name” in this version: About someone else · When “Parents missing” is .+\.$/,
+          /^This text must include the attribute “Name” in the “About someone else · When “Parents missing” is .+” scenario\.$/,
         ),
       ).toBeVisible();
       expect(saved.current).toBeUndefined();

@@ -334,7 +334,7 @@ describe('familyPedigreeStage', () => {
       );
       expect(result.success).toBe(false);
       expect(result.error?.issues[0]?.message).toBe(
-        'The version of this text for isYou "other" must show "{name}".',
+        'This text must include the attribute "{name}" in the "isYou: other" scenario.',
       );
     });
 
@@ -358,7 +358,7 @@ describe('familyPedigreeStage', () => {
       expect(result.error?.issues).toHaveLength(1);
       expect(result.error?.issues[0]?.path.at(-1)).toBe('es');
       expect(result.error?.issues[0]?.message).toBe(
-        'The version of this text for isYou "other" must show "{name}".',
+        'This text must include the attribute "{name}" in the "isYou: other" scenario.',
       );
     });
 

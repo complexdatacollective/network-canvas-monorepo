@@ -79,15 +79,16 @@ const messages = defineMessages({
   },
   placementMissing: {
     id: 'protocolBuilder.localizedMessage.placementMissing',
-    defaultMessage: 'Include “{placeholder}” in this text.',
+    defaultMessage: 'This text must include the attribute “{placeholder}”.',
     description:
-      'Refusal shown under a text that leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”.',
+      'Refusal shown to a researcher under a text in a protocol that leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”.',
   },
   placementMissingIn: {
     id: 'protocolBuilder.localizedMessage.placementMissingIn',
-    defaultMessage: 'Include “{placeholder}” in this version: {version}.',
+    defaultMessage:
+      'This text must include the attribute “{placeholder}” in the “{version}” scenario.',
     description:
-      'Refusal shown under a text written in several versions when one version leaves out a placeholder it must show, such as a person’s name or a number. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”.',
+      'Refusal shown to a researcher under a text in a protocol that is worded differently for different scenarios (for example, one wording about the participant and another about someone else), when the wording for one scenario leaves out an attribute it must show, such as a person’s name or a number. placeholder is the attribute’s name, such as “Name”; version is the label of the scenario, such as “About someone else”.',
   },
   unreadable: {
     id: 'protocolBuilder.localizedMessage.unreadable',
