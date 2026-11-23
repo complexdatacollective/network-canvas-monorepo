@@ -300,6 +300,15 @@ const blockOpenerAt = (words: string, from: number): number | undefined => {
   return at === -1 ? undefined : from + at;
 };
 
+/**
+ * A bare address in one line, which stays words, written as the editor
+ * writes words (`escapeMarkdownText`) where it holds a character markdown
+ * may read as something else inside a line: `www.example.org/*a*` would
+ * otherwise show emphasis. Undefined for an address with none.
+ */
+const addressAsTyped = (words: string): string | undefined =>
+  /[*_`[\]\\&<>]/.test(words) ? escapeMarkdownText(words) : undefined;
+
 type Edit = Readonly<{ start: number; end: number; text: string }>;
 
 const leavesOf = (node: Nodes): Nodes[] =>
@@ -342,11 +351,21 @@ const editWords = (
 
   // Several lines hold links, which a bare address becomes. In one line an
   // address stays words, as typed.
-  const addresses = multiline && !inLink ? bareAddressesIn(value) : [];
+  // In one line an address is written so that its characters still read as
+  // typed (see `addressAsTyped`), and is left alone where they already do.
+  const addresses = (inLink ? [] : bareAddressesIn(value)).filter(
+    (address) =>
+      multiline ||
+      (writtenAsTyped(spans, address.from, address.to) &&
+        addressAsTyped(value.slice(address.from, address.to)) !== undefined),
+  );
   for (const address of addresses) {
+    const words = value.slice(address.from, address.to);
     edits.push({
       ...sourceOf(address),
-      text: linkMarkdown(value.slice(address.from, address.to), address.href),
+      text: multiline
+        ? linkMarkdown(words, address.href)
+        : (addressAsTyped(words) ?? words),
     });
   }
 
@@ -444,18 +463,19 @@ const collectEdits = (
     editWords(node, ancestors, context);
     return;
   }
-  if (
-    context.multiline &&
-    isAddressFoundByParser(node, context.source) &&
-    node.type === 'link'
-  ) {
+  if (isAddressFoundByParser(node, context.source) && node.type === 'link') {
     const start = node.position?.start.offset;
     const end = node.position?.end.offset;
-    if (start !== undefined && end !== undefined) {
-      const words = node.children
-        .map((child) => (child.type === 'text' ? child.value : ''))
-        .join('');
-      context.edits.push({ start, end, text: linkMarkdown(words, node.url) });
+    const words = node.children
+      .map((child) => (child.type === 'text' ? child.value : ''))
+      .join('');
+    const text = context.multiline
+      ? linkMarkdown(words, node.url)
+      : context.source.slice(start, end) === words
+        ? addressAsTyped(words)
+        : undefined;
+    if (start !== undefined && end !== undefined && text !== undefined) {
+      context.edits.push({ start, end, text });
       return;
     }
   }
@@ -495,13 +515,16 @@ const applyEdits = (source: string, edits: readonly Edit[]): string => {
  * - in text of several lines, which can hold links, a bare address becomes
  *   a link written as the editor writes one
  *   (`[www.example.org](http://www.example.org)`); in one line it stays as
- *   typed, and is no longer a link;
+ *   typed, and is no longer a link, with any character markdown would read
+ *   otherwise escaped;
  * - a shortcode `remark-gemoji` drew as an emoji is written as the emoji.
  *
  * Markdown's own syntax (code, links and their addresses, addresses in angle
  * brackets) is left as written, as is everything GitHub's reading added that
  * the standard parser reads as words (`~~struck~~`, `- [ ] task`, tables).
- * Text rewritten once is left as it is if rewritten again.
+ * Text rewritten once is left as it is if rewritten again, but for an
+ * address in one line whose characters were escaped: GitHub's reading
+ * takes a backslash in an address as part of it.
  *
  * `lines` is the shape the field declares: whether it holds one line or
  * several. Only markdown of several lines can hold links and line breaks.

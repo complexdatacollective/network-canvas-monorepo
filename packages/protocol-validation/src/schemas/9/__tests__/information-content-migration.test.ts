@@ -8,7 +8,6 @@ import {
   assetItem,
   INFORMATION_PAGE_ASSETS,
   TEXT_PIECES,
-  TEXTS_LEAVING_HTML_OPEN,
   TEXTS_LEFT_OPEN,
   textItem,
 } from '../../../testing/informationPages.ts';
@@ -156,9 +155,9 @@ describe('combineInformationContent', () => {
   describe('a text item that leaves something open', () => {
     // Schema 8 drew each item alone, so what one left open ended with it.
     // Each case is what the item is closed with; without it the image below
-    // is read as part of the item, and is no block.
-    // Raw HTML is read only in an item already in schema 9 form: schema 8
-    // read a typed `<` as a character, so a string item holds none.
+    // is read as part of the item, and is no block. Raw HTML is only ever in
+    // an item already in schema 9 form: schema 8 read a typed `<` as a
+    // character, so a string item holds none.
     it.each(TEXTS_LEFT_OPEN)(
       'closes %s, so the items below it are still shown',
       (_what, open, close) => {
@@ -220,35 +219,22 @@ describe('combineInformationContent', () => {
       });
     });
 
-    // The interview reads a page's raw HTML and its markdown as one HTML
-    // document, where an element left open holds what follows, and a link
-    // or emphasis left open is opened again in every block below. Each item
-    // is ended where the parser read it as it read alone; the interview
-    // package checks the pages these give are drawn as the items were.
-    describe('raw HTML', () => {
-      const page = (...items: string[]): unknown =>
-        (
-          combined({
-            items: items.map((content, index) =>
-              text(`t${index}`, { en: content }),
-            ),
-          }).content as Record<string, string>
-        ).en;
-
-      it.each(TEXTS_LEAVING_HTML_OPEN)('ends %s', (_what, open, ended) => {
-        expect(page(open, 'Second')).toBe(`${ended}\n\nSecond`);
-      });
-
-      it.each([
-        ['an element its paragraph ends', '<span>Inline'],
-        [
-          'what it closes itself',
-          'Some <em>words</em> and <a href="x">a link</a>',
-        ],
-        ['a void element', 'A<br>break'],
-      ])('leaves %s as written', (_what, written) => {
-        expect(page(written, 'Second')).toBe(`${written}\n\nSecond`);
-      });
+    // Raw HTML is shown as the characters typed, so an element it opens
+    // holds nothing: no end is written for it.
+    it.each([
+      ['an element left open', '<a href="https://example.com">First'],
+      ['elements left open across blocks', '<strong>a <em>b\n\nc'],
+      ['a block element left open', '<div>\n\nInside'],
+      [
+        'elements it closes itself',
+        'Some <em>words</em> and <a href="x">a link</a>',
+      ],
+    ])('leaves raw HTML with %s as written', (_what, written) => {
+      expect(
+        combined({
+          items: [text('a', { en: written }), text('b', { en: 'Second' })],
+        }).content,
+      ).toEqual({ en: `${written}\n\nSecond` });
     });
 
     it('drops the spaces an item opens with, which below a list would make it part of the last item', () => {
@@ -405,8 +391,12 @@ describe('combineInformationContent', () => {
           lines.push(
             `${'  '.repeat(depth)}${kind} ${JSON.stringify({
               address,
-              // HTML left open is closed, and shows nothing either way.
-              value: type === 'html' ? undefined : value,
+              // Raw HTML is shown as typed. An item that left it open is
+              // closed with the end it lacked, the one thing joining adds.
+              value:
+                type === 'html' && typeof value === 'string'
+                  ? value.replace(/\n(?:-->|\?>|\]\]>|>|<\/[a-z]+>)$/i, '')
+                  : value,
               ordered,
               start,
             })}`,
@@ -441,6 +431,22 @@ describe('combineInformationContent', () => {
             ...outline(page(first) === undefined ? '' : standard(first)),
             ...outline(standard(second)),
           ]);
+        }
+      }
+    });
+
+    it('reads every item in schema 9 form that leaves a block open, joined to any other, as each read alone', () => {
+      for (const [, first] of TEXTS_LEFT_OPEN) {
+        for (const second of PIECES) {
+          const { content } = combined({
+            title: 'T',
+            items: [text('a', { en: first }), text('b', { en: second })],
+          });
+          const { en } = content as Record<string, string>;
+          expect(
+            outline(en ?? ''),
+            `${JSON.stringify(first)} then ${JSON.stringify(second)} gave ${JSON.stringify(en)}`,
+          ).toEqual([...outline('# T'), ...outline(first), ...outline(second)]);
         }
       }
     });
