@@ -171,6 +171,18 @@ describe('getIsUsed', () => {
     });
   });
 
+  it('returns true for a variable only the live stage’s piped text shows', () => {
+    openStageDraft({
+      title: { en: 'Welcome, {you}' },
+      dynamicValues: { you: { path: `ego.${variable5}` } },
+    });
+
+    const result = getIsUsed(asState(mockStateWithoutUse));
+
+    expect(result[variable5]).toBe(true);
+    expect(result[variable6]).toBe(false);
+  });
+
   it('checks codebook for variable validation use', () => {
     // variable1 has sameAs: variable2, so variable2 should be detected as used.
     // The variable must have a type field for the schema to validate it.

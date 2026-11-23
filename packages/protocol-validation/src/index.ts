@@ -86,6 +86,7 @@ export {
   composeMessage,
   findMessageArgumentProblem,
   findMissingPlacement,
+  missingPlacementsOf,
   type MessageArgument,
   type MessageArguments,
   type MessagePart,
@@ -94,7 +95,6 @@ export {
   type MissingPlacement,
   pluralCategoriesOf,
   pluralCountExamples,
-  requiredArgumentsOf,
 } from './localization/messageArguments.ts';
 // Values from the interview that a stage's text shows (see
 // `schemas/9/dynamic-values.ts`): the one message checker and the versions a
@@ -111,7 +111,11 @@ export {
   MISSING_CASE,
   pluralValueExamples,
 } from './localization/dynamicValueMessages.ts';
-export { escapeMarkdownText } from './localization/markdownText.ts';
+export {
+  escapeMarkdownText,
+  markdownAsEdited,
+  VERSION_LINE_LEAD,
+} from './localization/markdownText.ts';
 export {
   escapeMessageText,
   messageText,

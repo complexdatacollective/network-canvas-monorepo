@@ -250,6 +250,130 @@ describe('LocalizedMessageField', () => {
     ).toBeInTheDocument();
   });
 
+  describe('inserting a switch from the insert menu', () => {
+    /** The keys of the versions the field shows, in order. */
+    const versionKeys = () =>
+      screen
+        .getAllByRole('textbox')
+        .flatMap((row) => row.getAttribute('data-version') ?? []);
+
+    const insert = async (locale: string, option: RegExp) => {
+      const user = userEvent.setup();
+      renderItem(
+        { [locale]: 'Add parents' },
+        { defaultLocale: locale, locales: [locale] },
+        {
+          kin: { kind: 'select', cases: ['aunt', 'uncle'] },
+          missing: { kind: 'plural' },
+        },
+      );
+      const line = await findLine();
+      await user.click(line);
+      await user.click(
+        screen.getByRole('button', {
+          name: 'Inject piped text from this stage',
+        }),
+      );
+      const [choice] = await screen.findAllByRole('option', { name: option });
+      if (choice === undefined) throw new Error('Nothing offered');
+      await user.click(choice);
+      await waitFor(() => expect(versionKeys().length).toBeGreaterThan(0));
+    };
+
+    it.each([
+      ['en', ['one', 'other']],
+      ['ru', ['one', 'few', 'many', 'other']],
+      ['ar', ['zero', 'one', 'two', 'few', 'many', 'other']],
+    ])(
+      'offers a version for each plural category of %s, and no other',
+      async (locale, categories) => {
+        await insert(locale, /^Parents missing/);
+        expect(versionKeys()).toEqual(categories);
+      },
+    );
+
+    it('offers a version for each declared case, then other', async () => {
+      await insert('en', /^kin/);
+      expect(versionKeys()).toEqual(['aunt', 'uncle', 'other']);
+    });
+  });
+
+  describe('marking a required placeholder the text leaves out', () => {
+    const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(
+        screen.getByRole('button', {
+          name: /^Inject piped text from this stage/,
+        }),
+      );
+      return screen.findByRole('listbox');
+    };
+
+    it('marks it in the menu and on its button until it is inserted', async () => {
+      const user = userEvent.setup();
+      renderItem({ en: 'Add parents for ' }, ENGLISH, {
+        name: { kind: 'text', required: [{}] },
+      });
+      const line = await findLine();
+      await user.click(line);
+
+      const missing = screen.getByRole('button', {
+        name: 'Inject piped text from this stage',
+      });
+      expect(missing).toHaveAttribute('data-missing', 'true');
+      expect(missing).toHaveAccessibleDescription(
+        'Something this text requires is not in it yet',
+      );
+      const list = await openMenu(user);
+      const option = within(list).getByRole('option', {
+        name: 'Name, Required in this text',
+      });
+      expect(option).toHaveTextContent('NameRequired in this text');
+      await user.click(option);
+
+      await waitFor(() =>
+        expect(line.querySelector('[data-token="name"]')).not.toBeNull(),
+      );
+      const button = screen.getByRole('button', {
+        name: 'Inject piped text from this stage',
+      });
+      expect(button).not.toHaveAttribute('data-missing');
+      expect(button).not.toHaveAccessibleDescription();
+      await user.click(button);
+      const name = await screen.findByRole('option', { name: 'Name' });
+      expect(name).not.toHaveAttribute('data-required');
+      expect(name).toHaveTextContent(/^Name$/);
+    });
+
+    it('marks it only in a version that requires it', async () => {
+      const user = userEvent.setup();
+      renderItem(
+        { en: '{isYou, select, true {Your parents} other {Their parents}}' },
+        ENGLISH,
+        {
+          isYou: { kind: 'select', cases: ['true'] },
+          name: { kind: 'text', required: [{ isYou: 'other' }] },
+        },
+      );
+
+      await user.click(
+        await screen.findByRole('textbox', { name: 'About the participant' }),
+      );
+      expect(
+        within(await openMenu(user)).getByRole('option', { name: 'Name' }),
+      ).not.toHaveAttribute('data-required');
+      await user.keyboard('{Escape}');
+
+      await user.click(
+        screen.getByRole('textbox', { name: 'About someone else' }),
+      );
+      expect(
+        within(await openMenu(user)).getByRole('option', {
+          name: 'Name, Required in this text',
+        }),
+      ).toHaveAttribute('data-required', 'true');
+    });
+  });
+
   it('refuses a version left empty', async () => {
     const user = userEvent.setup();
     const saved = renderItem({
@@ -306,7 +430,7 @@ describe('LocalizedMessageField', () => {
 
       expect(
         await screen.findByText(
-          /^Include “Name” in this version: About someone else · When “Parents missing” is .+\.$/,
+          /^This text must include the attribute “Name” in the “About someone else · When “Parents missing” is .+” scenario\.$/,
         ),
       ).toBeVisible();
       expect(saved.current).toBeUndefined();

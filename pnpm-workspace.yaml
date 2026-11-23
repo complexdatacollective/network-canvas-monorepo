@@ -43,9 +43,13 @@ catalog:
   '@chromatic-com/storybook': ^5.6.0
   # Every `@effect/*` entry must be the exact version `effect` is pinned to
   # below; the ecosystem ships one version number for all of them.
-  '@effect/sql-pg': 4.0.6
-  '@effect/platform-node': 4.0.6
-  '@effect/vitest': 4.0.6
+  '@effect/sql-pg': 4.0.7
+  '@effect/platform-node': 4.0.7
+  # Not a direct dependency: the override below holds @effect/platform-node's
+  # `^` range on it here, since a fresh resolution otherwise takes the newest
+  # minor, which asks for a newer `effect` than the catalog pins.
+  '@effect/platform-node-shared': 4.0.7
+  '@effect/vitest': 4.0.7
   # Tilde, not caret: a faker minor can reorder its locale data (10.6 did), which
   # moves every seeded SyntheticInterview value that protocol-utilities
   # publishes. Take each minor deliberately, with the pinned expectations and
@@ -133,7 +137,7 @@ catalog:
   drizzle-kit: 1.0.0-rc.5
   drizzle-orm: 1.0.0-rc.5
   # Pinned exactly, in lock-step with every `@effect/*` entry above.
-  effect: 4.0.6
+  effect: 4.0.7
   electron: ^45.0.0
   electron-builder: ^26.18.0
   electron-vite: ^6.0.0
@@ -204,6 +208,7 @@ overrides:
   # this the snapshot lingers as a second copy beside the catalog's.
   drizzle-kit: 'catalog:'
   drizzle-orm: 'catalog:'
+  '@effect/platform-node-shared': 'catalog:'
   # `@storybook/addon-docs` takes React as an ordinary dependency ranged
   # ^16.8 || … || ^19, so a fresh resolution can bind it to the classic apps'
   # React 16 and run the docs blocks' hooks against a second React inside the

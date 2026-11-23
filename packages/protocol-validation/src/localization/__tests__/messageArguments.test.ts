@@ -7,9 +7,9 @@ import {
   findMissingPlacement,
   type MessageArguments,
   messageVariants,
+  missingPlacementsOf,
   pluralCategoriesOf,
   pluralCountExamples,
-  requiredArgumentsOf,
 } from '../messageArguments.ts';
 
 /** What the Family Pedigree tracker's parents entry may use. */
@@ -311,19 +311,13 @@ describe('what a message must show', () => {
   });
 
   it('lists what a version must show', () => {
-    const variants = messageVariants('', notice, 'ar');
     expect(
-      variants.map((variant) => [
-        variant.when.count,
-        requiredArgumentsOf(variant, notice, 'ar'),
-      ]),
-    ).toEqual([
-      ['zero', []],
-      ['one', []],
-      ['two', []],
-      ['few', ['count']],
-      ['many', ['count']],
-      ['other', ['count']],
+      messageVariants('', notice, 'ar').map((variant) => variant.when.count),
+    ).toEqual(['zero', 'one', 'two', 'few', 'many', 'other']);
+    expect(missingPlacementsOf('', notice, 'ar')).toEqual([
+      { argument: 'count', when: { count: 'few' } },
+      { argument: 'count', when: { count: 'many' } },
+      { argument: 'count', when: { count: 'other' } },
     ]);
   });
 });

@@ -476,7 +476,7 @@ export type MissingPlacement = Readonly<{
  * already say the number (English "one person"; Russian "one" also covers 21
  * and must show it).
  */
-export const requiredArgumentsOf = (
+const requiredArgumentsOf = (
   variant: MessageVariant,
   declaration: MessageArguments,
   locale: LocaleTag,
@@ -502,22 +502,29 @@ export const requiredArgumentsOf = (
 };
 
 /**
- * The first required argument (see `RequiredPlacements`) some version of
- * `message`, written in `locale`, does not show, or undefined when every
- * version shows what it must. Meant for messages `findMessageArgumentProblem`
- * accepts.
+ * Each required argument (see `RequiredPlacements`) a version of `message`,
+ * written in `locale`, does not show, version by version. Meant for messages
+ * `findMessageArgumentProblem` accepts.
+ */
+export const missingPlacementsOf = (
+  message: string,
+  declaration: MessageArguments,
+  locale: LocaleTag,
+): readonly MissingPlacement[] =>
+  messageVariants(message, declaration, locale).flatMap((variant) => {
+    const placed = placedIn(variant);
+    return requiredArgumentsOf(variant, declaration, locale)
+      .filter((name) => !placed.has(name))
+      .map((argument) => ({ argument, when: variant.when }));
+  });
+
+/**
+ * The first of `missingPlacementsOf`, or undefined when every version shows
+ * what it must.
  */
 export const findMissingPlacement = (
   message: string,
   declaration: MessageArguments,
   locale: LocaleTag,
-): MissingPlacement | undefined => {
-  for (const variant of messageVariants(message, declaration, locale)) {
-    const placed = placedIn(variant);
-    const argument = requiredArgumentsOf(variant, declaration, locale).find(
-      (name) => !placed.has(name),
-    );
-    if (argument !== undefined) return { argument, when: variant.when };
-  }
-  return undefined;
-};
+): MissingPlacement | undefined =>
+  missingPlacementsOf(message, declaration, locale)[0];

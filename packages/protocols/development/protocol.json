@@ -228,12 +228,17 @@
         {
           "id": "08964cf2-4c7b-4ecd-a6ef-9d68c2b13bf4",
           "content": {
-            "en": "Hello fellow Josh!\n",
-            "es": "¡Hola, colega Josh!\n"
+            "en": "{egoName, select, missing {Hello fellow Josh!} other {Hello fellow {egoName}!}}\n",
+            "es": "{egoName, select, missing {¡Hola, colega Josh!} other {¡Hola, colega {egoName}!}}\n"
           },
           "type": "text"
         }
       ],
+      "dynamicValues": {
+        "egoName": {
+          "path": "ego.3377af3f-3c79-41da-9b0b-6570fb519b93"
+        }
+      },
       "skipLogic": {
         "action": "SHOW",
         "filter": {

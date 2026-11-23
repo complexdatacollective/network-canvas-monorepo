@@ -684,7 +684,17 @@ function StageEditorFormBody({
       // Both halves: the element, because an item dialog over the editor
       // renders the same field names; the store's identity, because the
       // stage's NAME is drawn outside this element and is still ours.
-      focusFirstError(errors, formRef.current, fieldScope);
+      //
+      // A refusal the schema anchored at a path has no field error of its
+      // own, so the first field that answers for one takes focus instead.
+      const fieldName = outline
+        .getSnapshot()
+        .flatMap((section) => section.issues)[0]?.fieldName;
+      const answering =
+        Object.keys(errors.fieldErrors).length === 0 && fieldName !== undefined
+          ? { formErrors: [], fieldErrors: { [fieldName]: [] } }
+          : errors;
+      focusFirstError(answering, formRef.current, fieldScope);
       // A refusal about one row of a list goes to that row. Where the row is
       // not on screen, focus stays where the refusal left it.
       const objectId = refusedObjectId.current;

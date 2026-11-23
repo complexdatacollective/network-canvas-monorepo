@@ -142,6 +142,7 @@ export default defineConfig({
             '@codaco/fresco-ui > usehooks-ts',
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
+            '@codaco/protocol-validation > mdast-util-from-markdown',
             'es-toolkit/compat',
             'lucide-react',
             'motion/react',

@@ -1,7 +1,10 @@
 import markdown from 'remark-parse';
 import { unified } from 'unified';
 
-import { escapeMarkdownText } from '@codaco/protocol-validation';
+import {
+  escapeMarkdownText,
+  markdownAsEdited,
+} from '@codaco/protocol-validation';
 
 export type RichTextMark = {
   type: string;
@@ -37,13 +40,6 @@ const cloneEmptyDocument = (): RichTextContent => ({
   type: 'doc',
   content: [{ type: 'paragraph' }],
 });
-
-/**
- * Matches the legacy Slate editor: literal ">" characters should remain text
- * instead of turning existing protocol content into block quotes on first edit.
- */
-const escapeAngleBracket = (value = ''): string =>
-  value.replace(/>/g, '&gt;').replace(/<br&gt;/g, '<br>');
 
 const escapeLinkDestination = (value: string): string =>
   value
@@ -292,7 +288,7 @@ export const markdownToRichTextContent = (
 
   const root: MarkdownNode = unified()
     .use(markdown)
-    .parse(escapeAngleBracket(value));
+    .parse(markdownAsEdited(value));
 
   if (inline) {
     return inlineDocumentFromMarkdown(root, links);

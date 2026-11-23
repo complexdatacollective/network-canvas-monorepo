@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 
+import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { DynamicMarkdown, DynamicTextParts } from './DynamicText';
@@ -51,6 +52,9 @@ export const MissingValue: Story = {
   render: () => <DynamicMarkdown parts={['Thanks for **joining**.']} />,
 };
 
+const LONG_PLACE =
+  'the community garden behind the old library on Maple Street';
+
 /** A long value wraps with the sentence, its outline broken at each line. */
 export const LongValue: Story = {
   render: () => (
@@ -60,13 +64,21 @@ export const LongValue: Story = {
           'You named ',
           {
             name: 'place',
-            text: 'the community garden behind the old library on Maple Street',
+            text: LONG_PLACE,
           },
           ' as a place you meet people.',
         ]}
       />
     </div>
   ),
+  play: async ({ canvasElement }) => {
+    const value = canvasElement.querySelector('[data-dynamic-value]');
+    await expect(value).not.toBeNull();
+    await expect(value?.querySelector('bdi')).toHaveTextContent(LONG_PLACE);
+    await expect(canvasElement).toHaveTextContent(
+      `You named ${LONG_PLACE} as a place you meet people.`,
+    );
+  },
 };
 
 /** Text that looks like markdown or HTML stays text inside a value. */
@@ -97,14 +109,61 @@ export const MarkupInAValue: Story = {
 export const MixedDirection: Story = {
   render: () => (
     <div className="flex flex-col gap-4">
-      <DynamicMarkdown
-        parts={['You named ', { name: 'name', text: 'מרים כהן' }, ' first.']}
-      />
-      <div dir="rtl" lang="ar">
+      <div data-testid="ltr">
+        <DynamicMarkdown
+          parts={['You named ', { name: 'name', text: 'מרים כהן' }, ' first.']}
+        />
+      </div>
+      <div dir="rtl" lang="ar" data-testid="rtl">
         <DynamicMarkdown
           parts={['شكرًا لك، ', { name: 'name', text: 'Ada Lovelace' }, '.']}
         />
       </div>
     </div>
   ),
+  play: async ({ canvas, canvasElement }) => {
+    const values = canvasElement.querySelectorAll('[data-dynamic-value]');
+    await expect(values).toHaveLength(2);
+    await expect(values[0]?.querySelector('bdi')).toHaveTextContent('מרים כהן');
+    await expect(values[1]?.querySelector('bdi')).toHaveTextContent(
+      'Ada Lovelace',
+    );
+    await expect(canvas.getByTestId('ltr')).toHaveTextContent(
+      'You named מרים כהן first.',
+    );
+    await expect(canvas.getByTestId('rtl')).toHaveTextContent(
+      'شكرًا لك، Ada Lovelace.',
+    );
+  },
+};
+
+/**
+ * The resolved state in each theme region a story here can render in. The
+ * interview theme is also the one every story already runs in.
+ */
+const THEMES = ['interview', 'studio'] as const;
+
+export const ResolvedInEachTheme: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4">
+      {THEMES.map((theme) => (
+        <ThemedRegion
+          key={theme}
+          theme={theme}
+          data-testid={`theme-${theme}`}
+          className="bg-background text-text rounded p-4"
+        >
+          <DynamicMarkdown parts={greeting} />
+        </ThemedRegion>
+      ))}
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    for (const theme of THEMES) {
+      const region = canvas.getByTestId(`theme-${theme}`);
+      const value = region.querySelector('[data-dynamic-value]');
+      await expect(value).not.toBeNull();
+      await expect(value?.querySelector('bdi')).toHaveTextContent('Ada');
+    }
+  },
 };
