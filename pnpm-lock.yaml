@@ -3285,21 +3285,24 @@ importers:
       csvtojson:
         specifier: 'catalog:'
         version: 2.0.14
+      gemoji:
+        specifier: ^8.1.0
+        version: 8.1.0
       jszip:
         specifier: 'catalog:'
         version: 3.10.2
       mdast-util-from-markdown:
         specifier: ^2.0.3
         version: 2.0.3(supports-color@10.2.2)
-      mdast-util-gfm:
-        specifier: ^3.1.0
-        version: 3.1.0(supports-color@10.2.2)
+      mdast-util-gfm-autolink-literal:
+        specifier: ^2.0.1
+        version: 2.0.1
       mdast-util-to-markdown:
         specifier: ^2.1.2
         version: 2.1.2
-      micromark-extension-gfm:
-        specifier: ^3.0.0
-        version: 3.0.0
+      micromark-extension-gfm-autolink-literal:
+        specifier: ^2.1.0
+        version: 2.1.0
       ohash:
         specifier: ^2.0.12
         version: 2.0.12
@@ -3325,6 +3328,9 @@ importers:
       gunzip-maybe:
         specifier: ^1.4.2
         version: 1.4.2
+      mdast-util-find-and-replace:
+        specifier: ^3.0.2
+        version: 3.0.2
       tar-stream:
         specifier: ^3.2.2
         version: 3.2.2

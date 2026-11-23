@@ -36,6 +36,11 @@ import {
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { combineInformationContent } from './information-content-migration.ts';
+import {
+  legacyMarkdownAsStandard,
+  type TextsWrittenAsStandard,
+  textsWrittenAsStandard,
+} from './legacy-markdown.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
@@ -129,9 +134,15 @@ const removeContradictoryPassphraseRules = (protocol: unknown) => {
  * schema 8 had a title the interview showed as a heading above it. The title
  * becomes the text's first line, written as a heading and escaped to show as
  * written. A part that showed nothing is left out; when neither shows
- * anything, the explanation is left for validation to report.
+ * anything, the explanation is left for validation to report. The text,
+ * markdown of several lines, was read the legacy way, and is written as
+ * standard markdown here, before the heading joins it (see
+ * `legacyMarkdownAsStandard`).
  */
-const moveAnonymisationTitlesIntoText = (protocol: unknown) => {
+const moveAnonymisationTitlesIntoText = (
+  protocol: unknown,
+  written: TextsWrittenAsStandard,
+) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   for (const stage of protocol.stages) {
     if (!isRecord(stage) || stage.type !== 'Anonymisation') continue;
@@ -143,10 +154,14 @@ const moveAnonymisationTitlesIntoText = (protocol: unknown) => {
         ? headingMarkdown(title)
         : undefined;
     const text =
-      typeof body === 'string' && !isBlankText(body) ? body : undefined;
+      typeof body === 'string' && !isBlankText(body)
+        ? legacyMarkdownAsStandard(body, { lines: 'multiple' })
+        : undefined;
     const parts = [heading, text].filter((part) => part !== undefined);
-    if (parts.length > 0) stage.explanationText = parts.join('\n\n');
-    else if (typeof body === 'string') stage.explanationText = body;
+    if (parts.length > 0) {
+      stage.explanationText = parts.join('\n\n');
+      written.add(stage, 'explanationText');
+    } else if (typeof body === 'string') stage.explanationText = body;
   }
 };
 
@@ -825,6 +840,7 @@ const addLegendLabels = (protocol: unknown) => {
 const addFieldCaptions = (
   form: unknown,
   variables: Record<string, unknown>,
+  written: TextsWrittenAsStandard,
 ) => {
   if (!isRecord(form) || !Array.isArray(form.fields)) return;
   for (const field of form.fields) {
@@ -833,6 +849,7 @@ const addFieldCaptions = (
     field.label = escapeMarkdownText(
       nameOrKey(variables[field.variable], field.variable),
     );
+    written.add(field, 'label');
   }
 };
 
@@ -854,7 +871,10 @@ const addFieldCaptions = (
  * copied as written and schema 9 refuses it, so the protocol is corrected in
  * the Architect that made it (see `findRefusedContent`).
  */
-const addComposerCaptions = (protocol: unknown) => {
+const addComposerCaptions = (
+  protocol: unknown,
+  written: TextsWrittenAsStandard,
+) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   const { codebook } = protocol;
   for (const stage of protocol.stages) {
@@ -862,6 +882,7 @@ const addComposerCaptions = (protocol: unknown) => {
     addFieldCaptions(
       stage.nodeForm,
       subjectVariables(codebook, 'node', stage.subject),
+      written,
     );
     if (!Array.isArray(stage.edges)) continue;
     for (const edge of stage.edges) {
@@ -869,6 +890,7 @@ const addComposerCaptions = (protocol: unknown) => {
       addFieldCaptions(
         edge.form,
         subjectVariables(codebook, 'edge', edge.subject),
+        written,
       );
       // A schema 8 toolbar named each edge type by its name, so each edge
       // keeps that name as its label.
@@ -989,7 +1011,10 @@ const optionLabelFor = (value: unknown): string | undefined => {
  * Text already localized loses only its translations that show nothing, which
  * then fall back to another.
  */
-const repairOptionLabels = (codebook: unknown) => {
+const repairOptionLabels = (
+  codebook: unknown,
+  written: TextsWrittenAsStandard,
+) => {
   for (const variables of variableRecordsOf(codebook)) {
     for (const variable of Object.values(variables)) {
       if (!isRecord(variable) || !Array.isArray(variable.options)) continue;
@@ -1007,6 +1032,7 @@ const repairOptionLabels = (codebook: unknown) => {
         if (shown !== undefined) option.label = shown;
         else if (fallback !== undefined) {
           option.label = escapeMarkdownText(fallback);
+          written.add(option, 'label');
         }
       }
     }
@@ -1230,17 +1256,26 @@ const withoutReservedMarker = (site: LocalizedStringSite): unknown => {
  * translation of an optional text that shows nothing. A string in
  * such a document is recorded in its default language. Either loses the
  * reserved marker first (see `withoutReservedMarker`).
+ *
+ * A string in a markdown field was read the legacy way, and is written as
+ * standard markdown first (see `legacyMarkdownAsStandard`), before it is
+ * escaped as a message, unless the migration wrote it itself (`standard`).
  */
 const localizeSite = (
   original: LocalizedStringSite,
   defaultLocale: string,
+  standard: boolean,
 ): SiteChange => {
   const value = withoutReservedMarker(original);
   // Stripped text must be written back even where it would otherwise be kept.
   const changed = value !== original.value;
   const site = changed ? { ...original, value } : original;
   if (typeof site.value === 'string') {
-    const localized = { [defaultLocale]: escapeMessageText(site.value) };
+    const markdown =
+      site.format === 'markdown' && !standard
+        ? legacyMarkdownAsStandard(site.value, { lines: site.lines })
+        : site.value;
+    const localized = { [defaultLocale]: escapeMessageText(markdown) };
     if (site.schema.safeParse(localized).success || !site.optional) {
       return { kind: 'set', value: localized };
     }
@@ -1356,11 +1391,14 @@ const migrationV8toV9 = createMigration({
     // each item where the researcher will find it.
     recordOriginalPositions(migrated);
     const localization = localizationOf(migrated);
+    // Text the migration writes as standard markdown itself, which is not
+    // read the legacy way again when it is localized.
+    const written = textsWrittenAsStandard();
     // Before any stage is added, and before anything reads a stage's name.
     repairStageLabels(migrated);
     if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
     removeContradictoryPassphraseRules(migrated);
-    moveAnonymisationTitlesIntoText(migrated);
+    moveAnonymisationTitlesIntoText(migrated, written);
     removeEncryptedAttributeComparisons(migrated);
     // Before the pedigree conversion, which reads the options it keeps.
     remapMergedOptionValues(migrated, mergedOptionValuesOf(migrated.codebook));
@@ -1374,14 +1412,14 @@ const migrationV8toV9 = createMigration({
     addLegendLabels(migrated);
     // After the filters are rewritten above, which read each stage's own.
     moveNarrativeFiltersIntoPresets(migrated);
-    addComposerCaptions(migrated);
+    addComposerCaptions(migrated, written);
     moveIntroductionPanelsToInformationStages(migrated, localization);
-    combineInformationContent(migrated, localization);
+    combineInformationContent(migrated, localization, written);
     repairNarrativeLabels(migrated);
     repairFormTitles(migrated);
     // After the option values are normalized and the pedigree conversion has
     // given its options their labels.
-    repairOptionLabels(migrated.codebook);
+    repairOptionLabels(migrated.codebook, written);
     repairPanelTitles(migrated);
     repairRosterPropertyLabels(migrated);
     repairDiseaseLabels(migrated);
@@ -1397,9 +1435,13 @@ const migrationV8toV9 = createMigration({
     )) {
       const key = site.path.at(-1);
       if (key === undefined) continue;
-      const change = localizeSite(site, localization.defaultLocale);
-      if (change.kind === 'keep') continue;
       const container = containerAt(migrated, site.path.slice(0, -1));
+      const change = localizeSite(
+        site,
+        localization.defaultLocale,
+        written.has(container, key),
+      );
+      if (change.kind === 'keep') continue;
       if (change.kind === 'set') Reflect.set(container, key, change.value);
       else Reflect.deleteProperty(container, key);
     }

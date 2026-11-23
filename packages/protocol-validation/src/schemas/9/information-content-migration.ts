@@ -1,4 +1,3 @@
-import { gfmToMarkdown } from 'mdast-util-gfm';
 import { toMarkdown } from 'mdast-util-to-markdown';
 
 import {
@@ -18,6 +17,10 @@ import {
 import { markdownTree } from '../../localization/markdownTree.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import { resolveTextsInEachLocale } from '../../localization/resolveLocalizedString.ts';
+import {
+  legacyMarkdownAsStandard,
+  type TextsWrittenAsStandard,
+} from './legacy-markdown.ts';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -250,7 +253,6 @@ const MARKDOWN_ENDS_PARAGRAPH = new Set([
   'heading',
   'list',
   'paragraph',
-  'table',
   'thematicBreak',
 ]);
 
@@ -297,7 +299,7 @@ const openElementsOf = (tree: Tree): OpenElement[] => {
   };
   // Whether the HTML opened an element that ends the markdown block it is
   // written in, so that the block's own end no longer ends what follows.
-  const readHtml = (html: string, block: number, inCell: boolean): boolean => {
+  const readHtml = (html: string, block: number): boolean => {
     let escapes = false;
     HTML_TOKEN.lastIndex = 0;
     for (
@@ -315,8 +317,6 @@ const openElementsOf = (tree: Tree): OpenElement[] => {
       if (VOID_ELEMENTS.has(name)) continue;
       if (ENDS_PARAGRAPH.has(name)) endParagraph();
       if (ENDS_PARAGRAPH.has(name) || OUTLIVES_BLOCK.has(name)) escapes = true;
-      // A table cell forgets the formatting opened in it when it ends.
-      if (inCell && FORMATTING_ELEMENTS.has(name)) continue;
       open.push({ name, block });
       if (name === 'plaintext') return escapes;
       if (TEXT_ELEMENTS.has(name)) {
@@ -330,16 +330,14 @@ const openElementsOf = (tree: Tree): OpenElement[] => {
     return escapes;
   };
   // Whether HTML in the node ended it early (see `readHtml`).
-  const visit = (node: TreeNode, block: number, inCell: boolean): boolean => {
-    // A footnote is drawn at the end of the page, apart from the blocks.
-    if (node.type === 'footnoteDefinition') return false;
+  const visit = (node: TreeNode, block: number): boolean => {
     if (MARKDOWN_ENDS_PARAGRAPH.has(node.type)) endParagraph();
-    if (node.type === 'html') return readHtml(node.value, block, inCell);
+    if (node.type === 'html') return readHtml(node.value, block);
     if (!('children' in node)) return false;
     const before = open.length;
     let escapes = false;
     for (const child of node.children) {
-      if (visit(child, block, inCell || node.type === 'tableCell')) {
+      if (visit(child, block)) {
         escapes = true;
       }
     }
@@ -352,7 +350,7 @@ const openElementsOf = (tree: Tree): OpenElement[] => {
     return escapes;
   };
   for (const [block, node] of tree.children.entries()) {
-    visit(node, block, false);
+    visit(node, block);
   }
   return open;
 };
@@ -415,9 +413,7 @@ const htmlEnded = (markdown: string): string => {
   const insert = (at: number, text: string) =>
     `${markdown.slice(0, at)}${text}${markdown.slice(at)}`;
 
-  const rendered = tree.children.filter(
-    (node) => node.type !== 'definition' && node.type !== 'footnoteDefinition',
-  );
+  const rendered = tree.children.filter((node) => node.type !== 'definition');
   const lastBlock = rendered.at(-1);
   const lastIndex =
     lastBlock === undefined ? -1 : tree.children.indexOf(lastBlock);
@@ -554,12 +550,25 @@ const filePart = (
   };
 };
 
+/**
+ * A text item's text as standard markdown. Schema 8 read a string the legacy
+ * way, so it is rewritten (see `legacyMarkdownAsStandard`); the page holds
+ * several lines. Text already localized is a document in schema 9 form, and
+ * standard markdown already.
+ */
+const standardItemText = (content: unknown): unknown =>
+  typeof content === 'string'
+    ? legacyMarkdownAsStandard(content, { lines: 'multiple' })
+    : content;
+
 const itemPart = (
   item: unknown,
   assetManifest: unknown,
 ): InformationPagePart | undefined => {
   if (!isRecord(item)) return undefined;
-  if (item.type === 'text') return { kind: 'text', text: item.content };
+  if (item.type === 'text') {
+    return { kind: 'text', text: standardItemText(item.content) };
+  }
   if (item.type === 'asset') return itemFile(item, assetManifest);
   return undefined;
 };
@@ -628,52 +637,19 @@ const shapeOf = (blocks: readonly TreeNode[]): string =>
     key === 'position' ? undefined : value,
   );
 
-const footnotesOf = (blocks: TreeNode[]): Set<string> => {
-  const identifiers = new Set<string>();
-  eachNode(blocks, (node) => {
-    if (node.type === 'footnoteDefinition') identifiers.add(node.identifier);
-  });
-  return identifiers;
-};
-
 /**
  * Whether the pieces, written one after another with a blank line between,
  * read as each of them read alone. Schema 8 drew each item by itself, so
  * this is whether a participant is shown the page they were shown before.
  * Two lists of one kind, one ending an item and one opening the next, read
  * joined as one list numbered straight through; a link's label defined in
- * one item is defined for them all; a footnote numbered 1 in two items is
- * one footnote.
+ * one item is defined for them all.
  */
 const readsAsItsPieces = (pieces: readonly string[]): boolean => {
   const alone = pieces.map(blocksOf);
-  const footnotes = new Set<string>();
-  for (const blocks of alone) {
-    for (const identifier of footnotesOf(blocks)) {
-      if (footnotes.has(identifier)) return false;
-      footnotes.add(identifier);
-    }
-  }
   return (
     shapeOf(blocksOf(pieces.join(BETWEEN_BLOCKS))) === shapeOf(alone.flat())
   );
-};
-
-// A footnote's label belongs to the whole text, as a link's does, and cannot
-// be written into the text in its place: each item's are given labels of
-// their own. A participant sees a footnote's number, never its label.
-const withFootnotesOf = (blocks: TreeNode[], item: number): TreeNode[] => {
-  eachNode(blocks, (node) => {
-    if (
-      node.type !== 'footnoteDefinition' &&
-      node.type !== 'footnoteReference'
-    ) {
-      return;
-    }
-    node.label = `${item}-${node.label ?? node.identifier}`;
-    node.identifier = `${item}-${node.identifier}`;
-  });
-  return blocks;
 };
 
 /**
@@ -688,11 +664,7 @@ const withFootnotesOf = (blocks: TreeNode[], item: number): TreeNode[] => {
 const writtenAgain = (items: readonly TreeNode[][]): string =>
   toMarkdown(
     { type: 'root', children: items.flat() },
-    {
-      extensions: [gfmToMarkdown()],
-      bullet: '-',
-      rule: '-',
-    },
+    { bullet: '-', rule: '-' },
   ).trimEnd();
 
 /**
@@ -715,9 +687,9 @@ const joinPlainParts = (
     if (text !== '') written.push(text);
     items = [];
   };
-  for (const [index, part] of parts.entries()) {
+  for (const part of parts) {
     if (part.authored) {
-      items.push(withFootnotesOf(blocksOf(part.markdown), index + 1));
+      items.push(blocksOf(part.markdown));
       continue;
     }
     endItems();
@@ -816,10 +788,16 @@ export const informationPageContent = (
  *
  * A stage already written as one text is left as it is, so migrating one
  * document twice gives one result.
+ *
+ * Each text item is rewritten as standard markdown before the page is joined
+ * (see `legacyMarkdownAsStandard`), so the page is read as the participant
+ * was shown it; the page is recorded in `written`, when given, as written
+ * that way.
  */
 export const combineInformationContent = (
   protocol: unknown,
   { defaultLocale }: LocalizationDeclaration,
+  written?: TextsWrittenAsStandard,
 ) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   for (const stage of protocol.stages) {
@@ -845,5 +823,6 @@ export const combineInformationContent = (
       // validation to report.
       content !== undefined && { content },
     );
+    if (content !== undefined) written?.add(stage, 'content');
   }
 };

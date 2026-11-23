@@ -7,6 +7,7 @@ import {
 } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   isAssetBlockUrl,
+  markdownTree,
   readAssetBlockUrl,
 } from '@codaco/protocol-validation';
 
@@ -158,8 +159,7 @@ describe('a text saved unchanged reads as it did to the interview', () => {
     ],
     ['a ">" already written as a reference', 'Ages &gt; 65', PROMPT],
     ['an ampersand reference written as text', 'Write &amp;gt; for it', PROMPT],
-    ['a break written as HTML', 'Line one<br>line two', PROMPT],
-    ['a self-closing break', 'Line one<br/>line two<BR />line three', PROMPT],
+    ['a line break', 'Line one\\\nline two  \nline three', PROMPT],
     [
       'a comparison beside a file',
       'a < b\n\n![Map](<asset:map>)\n\nc > d',
@@ -180,23 +180,40 @@ describe('a text saved unchanged reads as it did to the interview', () => {
 });
 
 /**
- * Text the editor has always read as typed characters, whatever the
- * interview makes of it: a line opening with ">", which the legacy editor
- * wrote for a comparison, and raw HTML, such as a bracketed placeholder.
- * Saved, it is stored escaped, so the participant is shown it as written.
+ * Schema 9 text means what standard CommonMark says it means; what an older
+ * protocol typed as characters was escaped by the migration from schema 8.
+ * A quotation, which the editor cannot write, is shown as its words, as the
+ * interview shows it; raw HTML is shown as the characters typed, and saved
+ * so that it reads as those characters.
  */
-describe('text the editor reads as typed characters', () => {
+describe('text the editor cannot write', () => {
   it.each([
-    ['> 5 years', PROMPT],
-    ['> 5 years\n\n![Map](<asset:map>)', PAGE],
-    ['Through <IRB OR ETHICS BOARD HERE> today.', PROMPT],
-    ['<strong>x</strong> and <!-- c -->', PROMPT],
-  ])('reads %j as written, and saves it to show as written', (text, field) => {
-    const words = text.replace(/\s*!\[Map\]\(<asset:map>\)/, '');
-    expect(editorWords(text, field)).toBe(words.replace(/\s+/g, ' '));
+    ['> 5 years', '5 years', PROMPT],
+    ['> 5 years\n\n![Map](<asset:map>)', '5 years', PAGE],
+    ['> A quotation\n> of two lines', 'A quotation of two lines', PROMPT],
+  ])('shows the quotation %j as its words', (text, words, field) => {
+    expect(editorWords(text, field)).toBe(words);
     const saved = roundTrip(text, field);
-    expect(shown(saved, PROMPT).replace(/ <file map "Map">/, '')).toBe(
-      words.replace(/\s+/g, ' '),
+    expect(shown(saved, field)).toBe(shown(text, field));
+    expect(roundTrip(saved, field)).toBe(saved);
+  });
+
+  it.each([
+    'Through <IRB OR ETHICS BOARD HERE> today.',
+    '<strong>x</strong> and <!-- c -->',
+    'Line one<br>line two',
+  ])('shows the raw HTML in %j as the characters typed', (text) => {
+    // The editor holds the tags and the words between them as pieces of
+    // text, which `editorWords` parts with spaces.
+    expect(editorWords(text, PROMPT).replace(/\s+/g, '')).toBe(
+      text.replace(/\s+/g, ''),
     );
+    const saved = roundTrip(text, PROMPT);
+    const [paragraph] = markdownTree(saved).children;
+    expect(paragraph).toMatchObject({
+      type: 'paragraph',
+      children: [{ type: 'text', value: text }],
+    });
+    expect(roundTrip(saved, PROMPT)).toBe(saved);
   });
 });

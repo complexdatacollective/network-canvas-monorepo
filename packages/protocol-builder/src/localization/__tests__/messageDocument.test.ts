@@ -152,12 +152,10 @@ describe('messageToDocument', () => {
     '[Your page](https://example.com "For {name}")',
     '{kind, select, a {[you](https://example.com/{name})} other {none}}',
     '[Your page](https://example.com/{kind, select, a {one} other {two}})',
-    // Read as the editor reads it: a version without the spaces at its ends,
-    // and a `>` as text, so neither an indent nor a tag hides the link.
+    // A version is read without the spaces at its ends, so an indent does
+    // not hide the link.
     '{kind, select, a {    [you](https://example.com/{name})} other {none}}',
     '{kind, select, a {\t[you](https://example.com/{name})} other {none}}',
-    '<span title="[you](https://example.com/{name})">',
-    '<div>\n[you](https://example.com/{name})\n</div>',
   ])(
     'refuses a value inside a link address, as validation does: %s',
     (message) => {
@@ -175,6 +173,10 @@ describe('messageToDocument', () => {
   it.each([
     '[Page for {name}](https://example.com) and {name}',
     'Hello\n\n{kind, select, a {**one**} other {[two](https://example.com)}}',
+    // Raw HTML is shown as the characters typed, so what looks like a link
+    // inside it is words.
+    '<span title="[you](https://example.com/{name})">',
+    '<div>\n[you](https://example.com/{name})\n</div>',
   ])('holds a text validation accepts: %s', (message) => {
     const structure = messageStructure(message);
     if (!('nodes' in structure)) throw new Error('unreadable');

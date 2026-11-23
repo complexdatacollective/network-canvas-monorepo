@@ -8,7 +8,7 @@ import {
   escapeMarkdownText,
   isAssetBlockAlignment,
   isAssetBlockSize,
-  markdownAsEdited,
+  markdownTree,
   readAssetBlockUrl,
 } from '@codaco/protocol-validation';
 
@@ -48,16 +48,16 @@ const cloneEmptyDocument = (): RichTextContent => ({
   content: [{ type: 'paragraph' }],
 });
 
-// The one tag the legacy editor wrote for a line break, which the interview
-// also reads as one. Read as typed characters, so found in the words.
-const BREAK_TAG = /<br\s*\/?>/gi;
-
-const textWithBreaks = (value: string): RichTextContent[] =>
+/**
+ * Raw HTML is not part of schema 9 text, and is shown as the characters
+ * typed, each line of it on a line of its own.
+ */
+const typedCharacters = (value: string): RichTextContent[] =>
   value
-    .split(BREAK_TAG)
-    .flatMap((words, index) => [
+    .split('\n')
+    .flatMap((line, index) => [
       ...(index === 0 ? [] : [{ type: 'hardBreak' }]),
-      ...(words === '' ? [] : [{ type: 'text', text: words }]),
+      ...(line === '' ? [] : [{ type: 'text', text: line }]),
     ]);
 
 /** Where each link label a text defines leads (`[label]: address`). */
@@ -180,7 +180,10 @@ const inlineFromMarkdown = (
 ): RichTextContent[] => {
   switch (node.type) {
     case 'text':
-      return node.value ? textWithBreaks(node.value) : [];
+      return node.value ? [{ type: 'text', text: node.value }] : [];
+
+    case 'html':
+      return node.value ? typedCharacters(node.value) : [];
 
     case 'strong':
       return addMark(childrenAsInline(node, options), { type: 'bold' });
@@ -373,8 +376,17 @@ const blockFromMarkdown = (
     case 'thematicBreak':
       return [{ type: 'horizontalRule' }];
 
-    // Code is shown as its characters, in a paragraph of its own.
-    case 'code': {
+    // A quotation is shown as the interview shows it: its content, without
+    // a quotation, which the editor has no way to write.
+    case 'blockquote':
+      return (node.children ?? []).flatMap((child) =>
+        blockFromMarkdown(child, options),
+      );
+
+    // Code, and raw HTML, are shown as their characters, in a paragraph of
+    // their own.
+    case 'code':
+    case 'html': {
       const content = inlineFromMarkdown(node, inline);
       return content.length > 0 ? [paragraphFromInline(content)] : [];
     }
@@ -453,7 +465,7 @@ export const markdownToRichTextContent = (
     return cloneEmptyDocument();
   }
 
-  const root: MarkdownNode = markdownAsEdited(value);
+  const root: MarkdownNode = markdownTree(value);
   const definitions = definitionsIn(root);
 
   if (inline) {

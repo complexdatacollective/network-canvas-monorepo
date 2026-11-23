@@ -140,7 +140,7 @@ export {
   headingMarkdown,
   VERSION_LINE_LEAD,
 } from './localization/markdownText.ts';
-export { markdownAsEdited } from './localization/markdownTree.ts';
+export { markdownTree } from './localization/markdownTree.ts';
 export {
   escapeMessageText,
   messageText,
