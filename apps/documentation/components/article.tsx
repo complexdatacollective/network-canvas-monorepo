@@ -1,13 +1,13 @@
 'use client';
 import { ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useParams } from 'next/navigation';
 import type { JSX } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import ArticleFeedback from '~/components/ArticleFeedback';
 import WorkInProgress from '~/components/customComponents/WorkInProgress';
 import type { HeadingNode } from '~/lib/tableOfContents';
-import { usePathname } from '~/navigation';
 
 import FancyHeading from './FancyHeading';
 import TableOfContents from './TableOfContents';
@@ -25,16 +25,16 @@ export default function Article({
   showToc: boolean;
   wip?: boolean;
 }) {
-  const pathname = usePathname();
+  const { section: sectionSlug, docPath } = useParams<{
+    section: string;
+    docPath?: string[];
+  }>();
   const t = useTranslations('SectionSwitcher');
 
-  // Todo: nextjs has hooks specifically for this: useSelectedLayoutSegment
-  const sectionSlug = pathname.split('/')[1];
-  const sectionLabel =
-    sectionSlug && t.has(`${sectionSlug}.label`)
-      ? t(`${sectionSlug}.label`)
-      : sectionSlug?.replace(/-/g, ' ');
-  const subsection = pathname.split('/')[2]?.replace(/-/g, ' '); // replace hyphens with spaces
+  const sectionLabel = t.has(`${sectionSlug}.label`)
+    ? t(`${sectionSlug}.label`)
+    : sectionSlug.replace(/-/g, ' ');
+  const subsection = docPath?.[0]?.replace(/-/g, ' ');
 
   return (
     <>
@@ -68,7 +68,7 @@ export default function Article({
         {wip && <WorkInProgress />}
         {showToc && <TableOfContents headings={headings} />}
         {content}
-        <ArticleFeedback key={pathname} docPath={pathname} />
+        <ArticleFeedback />
       </article>
       {showToc && <TableOfContents headings={headings} sideBar />}
     </>

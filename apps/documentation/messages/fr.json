@@ -229,14 +229,13 @@
     "returnHome": "Retour à l’accueil"
   },
   "ArticleFeedback": {
-    "question": "Cet article vous a-t-il été utile ?",
+    "question": "Avez-vous trouvé ce dont vous aviez besoin dans cet article ?",
     "yes": "Oui",
     "no": "Non",
     "commentLabel": "Comment pourrions-nous améliorer cet article ?",
     "forumNote": "Vous avez une question ? Posez-la sur le <link>forum de la communauté</link>.",
     "send": "Envoyer",
-    "ratingSent": "Merci. Votre réponse a été envoyée.",
-    "ratingRemoved": "Votre réponse a été retirée.",
+    "ratingSent": "Merci, réponse envoyée.",
     "thanks": "Merci pour votre commentaire."
   }
 }

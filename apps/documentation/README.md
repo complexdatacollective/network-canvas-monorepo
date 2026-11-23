@@ -84,7 +84,7 @@ Choose between dark and light modes to suit your preferences and reduce eye stra
 
 The documentation site records pageviews, page leaves, exceptions, autocaptured clicks and session recordings with PostHog (`posthog-js`), initialized in `instrumentation-client.ts` when client-side JS loads.
 
-Each article ends with "Did this article help?" (`components/ArticleFeedback.tsx`). The reader's Yes or No, and anything they write in the optional box (up to 2,000 characters), are sent as responses to the PostHog survey "Documentation article feedback", along with the article's path, section and language. The survey and question ids are in `lib/analytics/articleFeedback.ts`.
+Each article ends with "Did you get what you needed from this article?" (`components/ArticleFeedback.tsx`). The reader's Yes or No is sent as soon as they press it, and is a complete response on its own. Anything they then write in the optional box (up to 2,000 characters) is added to the same response. Both go to the PostHog survey "Documentation article feedback", along with the article's path, section and language. A `survey shown` event with the same article properties is sent once per visit when the prompt scrolls into view, so the survey can report a response rate. The survey and question ids are in `lib/analytics/articleFeedback.ts`.
 
 The site is a static export, so the same bundle is served in production, on Netlify deploy previews and locally. Analytics therefore start only when the page was loaded from the live site's hostname (`lib/analytics/isProductionHost.ts`); every other origin records nothing.
 

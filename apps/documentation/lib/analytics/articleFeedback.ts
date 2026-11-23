@@ -1,8 +1,9 @@
 /**
- * The "Did this article help?" prompt answers a PostHog survey of type API,
- * "Documentation article feedback". The ids are the survey's and its
- * questions' in PostHog, and each rating is sent as the English choice text
- * the survey holds, so a change to either in PostHog must change here too.
+ * The "Did you get what you needed from this article?" prompt answers a
+ * PostHog survey of type API, "Documentation article feedback". The ids are
+ * the survey's and its questions' in PostHog, and each rating is sent as the
+ * English choice text the survey holds, so a change to either in PostHog must
+ * change here too.
  */
 const ARTICLE_SURVEY = {
   id: '01a1fa2f-5595-0000-a91f-b16efc12bc06',
@@ -21,38 +22,46 @@ export const ARTICLE_COMMENT_MAX_LENGTH = 2000;
 
 export type ArticleFeedback = {
   submissionId: string;
-  rating: ArticleRating | null;
+  rating: ArticleRating;
   comment: string;
 };
 
-type ArticleContext = {
+export type ArticleContext = {
   /** The article's path without the language, so translations group together. */
   docPath: string;
+  section: string;
   locale: string;
 };
 
+const articleProperties = ({ docPath, section, locale }: ArticleContext) => ({
+  $survey_id: ARTICLE_SURVEY.id,
+  doc_path: docPath,
+  section,
+  locale,
+});
+
+/** Sent once per visit, when the prompt scrolls into view. */
+export function articleFeedbackShownEvent(article: ArticleContext) {
+  return articleProperties(article);
+}
+
 /**
- * One response per visit to an article. Changing the rating or adding a
- * comment sends the same submission again, so PostHog keeps the latest answer; one
- * without a rating is an incomplete response.
+ * One response per visit to an article. A rating alone is a complete
+ * response. Changing the rating or adding a comment sends the same submission
+ * again with the latest answers.
  */
 export function articleFeedbackEvent(
   { submissionId, rating, comment }: ArticleFeedback,
-  { docPath, locale }: ArticleContext,
+  article: ArticleContext,
 ) {
   return {
-    $survey_id: ARTICLE_SURVEY.id,
+    ...articleProperties(article),
     $survey_submission_id: submissionId,
-    $survey_completed: rating !== null,
-    ...(rating !== null && {
-      [`$survey_response_${ARTICLE_SURVEY.ratingQuestion}`]:
-        RATING_CHOICES[rating],
-    }),
+    $survey_completed: true,
+    [`$survey_response_${ARTICLE_SURVEY.ratingQuestion}`]:
+      RATING_CHOICES[rating],
     ...(comment !== '' && {
       [`$survey_response_${ARTICLE_SURVEY.commentQuestion}`]: comment,
     }),
-    doc_path: docPath,
-    section: docPath.split('/')[1] ?? '',
-    locale,
   };
 }
