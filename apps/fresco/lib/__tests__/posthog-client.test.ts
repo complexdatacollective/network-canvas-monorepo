@@ -282,6 +282,50 @@ describe('Fresco PostHog client', () => {
     });
   });
 
+  describe('isAnalyticsEnabled', () => {
+    it('is false until the server says analytics are on', async () => {
+      const { isAnalyticsEnabled, startPostHog } = await loadModule();
+
+      expect(isAnalyticsEnabled()).toBe(false);
+      await startPostHog('install-123');
+
+      expect(isAnalyticsEnabled()).toBe(true);
+    });
+
+    it('tells subscribers when analytics are turned on and off', async () => {
+      const {
+        isAnalyticsEnabled,
+        subscribeToAnalyticsEnabled,
+        startPostHog,
+        stopPostHog,
+      } = await loadModule();
+      const heard: boolean[] = [];
+      const unsubscribe = subscribeToAnalyticsEnabled(() =>
+        heard.push(isAnalyticsEnabled()),
+      );
+
+      await startPostHog('install-123');
+      await stopPostHog();
+      unsubscribe();
+      await startPostHog('install-123');
+
+      expect(heard).toEqual([true, false]);
+    });
+
+    // posthog-js cannot be revived after shutdown, so nothing sent from this
+    // tab would arrive until the next page load.
+    it('stays false in a tab that was shut down, even once re-enabled', async () => {
+      const { isAnalyticsEnabled, startPostHog, stopPostHog } =
+        await loadModule();
+
+      await startPostHog('install-123');
+      await stopPostHog();
+      await startPostHog('install-123');
+
+      expect(isAnalyticsEnabled()).toBe(false);
+    });
+  });
+
   describe('captureClientException', () => {
     // The error boundaries render before analytics start, and posthog-js
     // treats capture before init() as a silent no-op.

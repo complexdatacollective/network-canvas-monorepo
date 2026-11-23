@@ -299,6 +299,22 @@
     "defaultMessage": "Select All",
     "description": "Button selecting every option in a faceted filter."
   },
+  "frescoUi.feedbackPopover.question": {
+    "defaultMessage": "How could we improve this app?",
+    "description": "Heading of the feedback form, above an empty text box where the user writes an answer for the Network Canvas team. \"We\" is the team that makes the application."
+  },
+  "frescoUi.feedbackPopover.send": {
+    "defaultMessage": "Send",
+    "description": "Button under the feedback text box that sends what the user wrote to the Network Canvas team."
+  },
+  "frescoUi.feedbackPopover.thanks": {
+    "defaultMessage": "Thanks for your feedback.",
+    "description": "Replaces the feedback form once the user has sent their feedback."
+  },
+  "frescoUi.feedbackPopover.trigger": {
+    "defaultMessage": "Feedback",
+    "description": "Label of the button in an application’s top bar that opens a small form for sending feedback about the application to the Network Canvas team. A noun."
+  },
   "frescoUi.form.submitFailed": {
     "defaultMessage": "An error occurred while submitting the form.",
     "description": "Form-level error shown when the submit handler itself throws, so it produced no message of its own."

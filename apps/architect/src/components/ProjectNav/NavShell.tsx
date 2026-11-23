@@ -17,6 +17,7 @@ import ArchitectLocaleSwitcher from '~/i18n/ArchitectLocaleSwitcher';
 import { cx } from '~/utils/cva';
 import { NAV_BAR_REACH_VARIABLE, NAV_HEIGHT_VARIABLE } from '~/utils/navHeight';
 
+import NavFeedback from './NavFeedback';
 import { NAV_ITEM_CLASS_NAME } from './NavLink';
 // `publish-colors`: dynamic-color controls on the bar derive their hover
 // from the bar's published background.
@@ -57,8 +58,8 @@ type NavShellProps = {
   leading?: React.ReactNode;
   /**
    * The navigation list's entries, each a `NavLink` (or, for a state the bar
-   * reports instead of a destination, plain content), keyed. The language
-   * switcher closes the list. On a narrow bar they move into the drawer.
+   * reports instead of a destination, plain content), keyed. The feedback
+   * control and the language switcher close the list. On a narrow bar they move into the drawer.
    */
   items?: React.ReactElement[];
   /**
@@ -192,6 +193,14 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
                       </NavigationMenu.Item>
                     ))}
                     <NavigationMenu.Item className="w-full">
+                      <NavFeedback
+                        className={cx(
+                          DRAWER_ROW_CLASS_NAME,
+                          '[&>.lucide]:size-4',
+                        )}
+                      />
+                    </NavigationMenu.Item>
+                    <NavigationMenu.Item className="w-full">
                       <ArchitectLocaleSwitcher
                         className={cx(
                           DRAWER_ROW_CLASS_NAME,
@@ -220,6 +229,15 @@ const NavShell = ({ leading, items, end }: NavShellProps) => {
                   {item}
                 </NavigationMenu.Item>
               ))}
+              <NavigationMenu.Item className="flex items-center">
+                <NavFeedback
+                  display="icon"
+                  className={cx(
+                    NAV_ITEM_CLASS_NAME,
+                    'hover:text-action [&>.lucide]:size-4',
+                  )}
+                />
+              </NavigationMenu.Item>
               <NavigationMenu.Item className="flex items-center">
                 <ArchitectLocaleSwitcher
                   className={cx(
