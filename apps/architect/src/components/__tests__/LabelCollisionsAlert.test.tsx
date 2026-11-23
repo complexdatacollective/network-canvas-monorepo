@@ -18,6 +18,10 @@ import { rootReducer } from '~/ducks/modules/root';
 import { getLabelCollisions } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 import { BUNDLED_TEMPLATES } from '~/templates';
+import {
+  templateTypeId,
+  templateVariableId,
+} from '~/templates/__tests__/templateCodebookIds';
 import { bundleProtocol, DownloadRefusedError } from '~/utils/bundleProtocol';
 import { findDownloadRefusal } from '~/utils/downloadRefusal';
 
@@ -31,12 +35,20 @@ const template = BUNDLED_TEMPLATES.find(
   ({ id }) => id === 'eco-genetic-relationship-maps',
 )?.protocol;
 
+if (!template) throw new Error('Missing the eco-genetic template');
+const PERSON = templateTypeId(template, 'node', 'Person');
+const LIVING_STATUS = templateVariableId(
+  template,
+  { entity: 'node', typeName: 'Person' },
+  'living_status',
+);
+
 const OPTIONS_PATH = [
   'codebook',
   'node',
-  'person',
+  PERSON,
   'variables',
-  'living_status',
+  LIVING_STATUS,
   'options',
 ] as const;
 
@@ -48,7 +60,6 @@ const OPTIONS_PATH = [
  * first option's French label "B", which is the second option's Spanish one.
  */
 const trilingual = (): CurrentProtocol => {
-  if (!template) throw new Error('Missing the eco-genetic template');
   const protocol = structuredClone(template);
   protocol.localization = { defaultLocale: 'en', locales: ['en', 'fr', 'es'] };
   // Every text with an English translation has a French one, so French can
@@ -73,7 +84,8 @@ const trilingual = (): CurrentProtocol => {
   fill(protocol.stages);
   fill(protocol.codebook);
   fill(protocol.interfaceText);
-  const livingStatus = protocol.codebook.node?.person?.variables?.living_status;
+  const livingStatus =
+    protocol.codebook.node?.[PERSON]?.variables?.[LIVING_STATUS];
   if (livingStatus?.type !== 'categorical') throw new Error('No options');
   livingStatus.options = [
     { value: 'living', label: { en: 'A', fr: 'B' } },

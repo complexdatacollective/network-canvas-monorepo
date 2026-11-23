@@ -7,6 +7,10 @@ import {
   familyPedigreeWordingIn,
 } from '@codaco/interview/supplied-wording';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   collectLocalizedStrings,
   createDefaultFinishSessionStage,
   type CurrentProtocol,
@@ -47,8 +51,12 @@ const FAMILY_PEDIGREE_STAGE_ID = ProtocolObjectIdSchema.parse(
   'b5d4c50b-95b7-43cc-8a2e-7d1b0f19fcde',
 );
 
-const NODE_TYPE = 'person';
-const VARIABLE = 'closeness';
+const NODE_TYPE = testTypeId('person');
+const VARIABLE = testVariableId('closeness');
+const RELATIVE = testTypeId('relative');
+const FAMILY = testTypeId('family');
+const SEX = testVariableId('sex');
+const REL_TYPE = testVariableId('relType');
 
 // Every declared locale gets the same text, so no settings string exists
 // in one language only.
@@ -188,12 +196,12 @@ const withPedigree = (
     ...monolingual(),
     codebook: {
       node: {
-        relative: {
+        [RELATIVE]: {
           name: 'relative',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            sex: {
+            [SEX]: {
               name: 'sex',
               type: 'categorical',
               options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
@@ -205,11 +213,11 @@ const withPedigree = (
         },
       },
       edge: {
-        family: {
+        [FAMILY]: {
           name: 'family',
           color: 'edge-color-seq-1',
           variables: {
-            relType: {
+            [REL_TYPE]: {
               name: 'relType',
               type: 'categorical',
               options: PEDIGREE_RELATIONSHIP_KINDS.map((value) => ({
@@ -230,9 +238,9 @@ const withPedigree = (
         type: 'FamilyPedigree',
         wording: familyPedigreeWordingIn(),
         label: { en: 'Family' },
-        subject: { entity: 'node', type: 'relative' },
-        nodeConfiguration: { sexAssignedAtBirthAttribute: 'sex' },
-        edgeConfiguration: { type: 'family', kindAttribute: 'relType' },
+        subject: { entity: 'node', type: RELATIVE },
+        nodeConfiguration: { sexAssignedAtBirthAttribute: SEX },
+        edgeConfiguration: { type: FAMILY, kindAttribute: REL_TYPE },
       },
     ],
   }) as unknown as CurrentProtocol;
@@ -327,13 +335,13 @@ describe('addLocales', () => {
   describe('the answers a Family Pedigree asks for', () => {
     it('get their supplied labels in each new language that has them', () => {
       const protocol = protocolOf(addLocales(withPedigree(), ['es', 'ja']));
-      expect(labelsOf(protocol, 'node', 'relative', 'sex')).toEqual(
+      expect(labelsOf(protocol, 'node', RELATIVE, SEX)).toEqual(
         PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
           en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
           es: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'es'),
         })),
       );
-      expect(labelsOf(protocol, 'edge', 'family', 'relType')).toEqual(
+      expect(labelsOf(protocol, 'edge', FAMILY, REL_TYPE)).toEqual(
         PEDIGREE_RELATIONSHIP_KINDS.map((value) => ({
           en: suppliedOptionLabel('pedigreeRelationship', value, 'en'),
           es: suppliedOptionLabel('pedigreeRelationship', value, 'es'),
@@ -351,7 +359,7 @@ describe('addLocales', () => {
             }),
       );
       const protocol = protocolOf(addLocales(reworded, ['es']));
-      expect(labelsOf(protocol, 'node', 'relative', 'sex')).toEqual(
+      expect(labelsOf(protocol, 'node', RELATIVE, SEX)).toEqual(
         PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
           en:
             value === 'intersex'
@@ -812,12 +820,12 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
       finishedContent: { de: DEFAULT_FINISH_SESSION_TEXT.de.finishedContent },
     });
     const pedigree = protocolOf(changeLocale(withPedigree(), 'en', 'de'));
-    expect(labelsOf(pedigree, 'node', 'relative', 'sex')).toEqual(
+    expect(labelsOf(pedigree, 'node', RELATIVE, SEX)).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         de: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
       })),
     );
-    expect(labelsOf(pedigree, 'edge', 'family', 'relType')).toEqual(
+    expect(labelsOf(pedigree, 'edge', FAMILY, REL_TYPE)).toEqual(
       PEDIGREE_RELATIONSHIP_KINDS.map((value) => ({
         de: suppliedOptionLabel('pedigreeRelationship', value, 'de'),
       })),
@@ -835,7 +843,7 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
           }),
     );
     const protocol = protocolOf(changeLocale(reworded, 'en', 'de'));
-    expect(labelsOf(protocol, 'node', 'relative', 'sex')).toEqual(
+    expect(labelsOf(protocol, 'node', RELATIVE, SEX)).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         de:
           value === 'intersex'
@@ -867,13 +875,13 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
   it('leaves a new default language with no built-in labels without them, and still fills in a language added later', () => {
     const withHungarian = protocolOf(addLocales(withPedigree(), ['hu']));
     const huDefault = protocolOf(setDefaultLocale(withHungarian, 'hu'));
-    expect(labelsOf(huDefault, 'node', 'relative', 'sex')).toEqual(
+    expect(labelsOf(huDefault, 'node', RELATIVE, SEX)).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
       })),
     );
     const withGerman = protocolOf(addLocales(huDefault, ['de']));
-    expect(labelsOf(withGerman, 'node', 'relative', 'sex')).toEqual(
+    expect(labelsOf(withGerman, 'node', RELATIVE, SEX)).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
         en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
         de: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
@@ -891,7 +899,7 @@ describe('a roster stage’s supplied panel title', () => {
           id: createProtocolObjectId(),
           type: 'NameGeneratorRoster',
           label: { en: 'Services' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: NODE_TYPE },
           dataSource: 'roster',
           ...(panelTitle === undefined ? {} : { panelTitle }),
           prompts: [

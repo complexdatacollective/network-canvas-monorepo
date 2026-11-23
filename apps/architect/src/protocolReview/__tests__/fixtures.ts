@@ -1,4 +1,8 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type {
   Finding,
   FixOperation,
@@ -9,6 +13,10 @@ import {
   ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import type { StudyContext } from '@codaco/shared-consts';
+
+export const PERSON = testTypeId('person');
+export const NAME_VAR = testVariableId('name_var');
+export const FREQ = testVariableId('freq');
 
 export const STUDY_CONTEXT: StudyContext = {
   synopsis: 'A cross-sectional study of advice networks in later life.',
@@ -46,13 +54,13 @@ export const makeProtocol = (
     assetManifest: {},
     codebook: {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name_var: { name: 'name', type: 'text' },
-            freq: {
+            [NAME_VAR]: { name: 'name', type: 'text' },
+            [FREQ]: {
               name: 'freq',
               type: 'ordinal',
               options: [
@@ -77,8 +85,8 @@ export const makeProtocol = (
         id: NAMES_STAGE_ID,
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Names', fr: 'Noms' },
-        subject: { entity: 'node', type: 'person' },
-        quickAdd: asEntityAttributeReference('name_var'),
+        subject: { entity: 'node', type: PERSON },
+        quickAdd: asEntityAttributeReference(NAME_VAR),
         prompts: [
           { id: NAMES_PROMPT_ID, text: { en: 'Name people', fr: 'Nommez' } },
         ],

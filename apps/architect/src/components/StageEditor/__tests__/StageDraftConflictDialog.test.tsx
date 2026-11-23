@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { testTypeId } from '@codaco/protocol-builder/testing/testId';
 import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
@@ -53,7 +54,7 @@ const closeDialogMock = globalThis.__architectDialogMocks.closeDialog;
 // carries is this protocol plus the stage the editor is still holding.
 const savedCodebook: CurrentProtocol['codebook'] = {
   node: {
-    person: {
+    [testTypeId('person')]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },

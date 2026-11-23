@@ -1,3 +1,4 @@
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import {
   type CurrentProtocol,
   ProtocolObjectIdSchema,
@@ -22,7 +23,11 @@ export const dynamicValuesProtocol = (
   codebook: {
     node: {},
     edge: {},
-    ego: { variables: { firstName: { name: 'first_name', type: 'text' } } },
+    ego: {
+      variables: {
+        [testVariableId('firstName')]: { name: 'first_name', type: 'text' },
+      },
+    },
   },
   stages: [
     {

@@ -57,6 +57,7 @@ import {
   NAMES_STAGE_ID,
   NAMES_PROMPT_ID,
   FINISH_STAGE_ID,
+  PERSON,
 } from '~/protocolReview/__tests__/fixtures';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
 import {
@@ -105,7 +106,7 @@ const FINDINGS: Finding[] = [
     [op('set', `/stages/${WELCOME_STAGE_ID}/type`, 'NotAStage')],
     {
       codebookEntity: 'node',
-      codebookTypeId: 'person',
+      codebookTypeId: PERSON,
       category: 'structure',
     },
   ),

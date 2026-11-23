@@ -1,6 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -19,6 +23,9 @@ const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
 const INTRO_STAGE_ID = ProtocolObjectIdSchema.parse(
   'f88ffddb-1b3c-480e-8ed1-08162c3b3024',
 );
+
+const PERSON = testTypeId('person');
+const CLOSENESS = testVariableId('closeness');
 
 const stateWith = (protocol: CurrentProtocol) => {
   const store = configureStore({
@@ -39,12 +46,12 @@ const protocolIn = (
   assetManifest: {},
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          closeness: {
+          [CLOSENESS]: {
             name: 'closeness',
             type: 'categorical',
             component: 'CheckboxGroup',
@@ -137,21 +144,21 @@ describe('getTranslationGroups()', () => {
         ],
       },
       {
-        key: 'node:person',
-        place: { kind: 'codebook', entity: 'node', entityType: 'person' },
+        key: `node:${PERSON}`,
+        place: { kind: 'codebook', entity: 'node', entityType: PERSON },
         rows: [
           {
             path: [
               'codebook',
               'node',
-              'person',
+              PERSON,
               'variables',
-              'closeness',
+              CLOSENESS,
               'options',
               0,
               'label',
             ],
-            field: ['variables', 'closeness', 'options', 0, 'label'],
+            field: ['variables', CLOSENESS, 'options', 0, 'label'],
             format: 'markdown',
             lines: 'single',
             value: { en: 'Close' },

@@ -6,6 +6,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   createProtocolObjectId,
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
@@ -27,7 +31,7 @@ const protocol = testProtocol({
   },
   codebook: {
     node: {
-      person: {
+      [testTypeId('person')]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
@@ -47,12 +51,12 @@ const protocol = testProtocol({
       id: createProtocolObjectId(),
       type: 'DyadCensus',
       label: { en: 'Names', fr: 'Noms' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: testTypeId('person') },
       prompts: [
         {
           id: createProtocolObjectId(),
           text: { en: 'Name people ![x](asset:map)' },
-          createEdge: 'knows',
+          createEdge: testTypeId('knows'),
         },
       ],
     },
@@ -104,13 +108,19 @@ describe('TranslationTable: files placed in the text of an Information stage', (
       ...protocol,
       codebook: {
         ...protocol.codebook,
-        ego: { variables: { firstName: { name: 'first_name', type: 'text' } } },
+        ego: {
+          variables: {
+            [testVariableId('firstName')]: { name: 'first_name', type: 'text' },
+          },
+        },
       },
       stages: [
         {
           ...information,
           content: { en: BLOCK, fr: BLOCK },
-          dynamicValues: { name: { path: 'ego.firstName' } },
+          dynamicValues: {
+            name: { path: `ego.${testVariableId('firstName')}` },
+          },
         },
         ...rest,
       ],

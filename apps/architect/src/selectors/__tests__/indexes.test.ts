@@ -61,29 +61,11 @@ const loadDevelopmentProtocolState = (): RootState =>
   stateFor(loadDevelopmentProtocol());
 
 /**
- * Paths whose value is an external data source's OWN property name, which the
- * enumeration below cannot tell apart from a codebook reference when the two
- * happen to share a spelling. Each entry is a deliberate non-reference, not a
- * gap:
- *
- * - `mapOptions.targetFeatureProperty` names a property of the Geospatial
- *   stage's GeoJSON features (a region's name), not an attribute of any
- *   network entity. The value the participant's selection writes is the
- *   prompt's own `variable`, which IS a tagged reference. The all-interfaces
- *   fixture only trips this because its `person` type has a variable whose id
- *   is literally `name`.
- *
- * Roster columns are NOT on this list: they legitimately key a
- * Network Canvas-format roster by codebook variable id, so they are tagged
- * (existence-unchecked) and must appear in the index.
- */
-const NON_REFERENCE_PATH_SUFFIXES = ['mapOptions.targetFeatureProperty'];
-
-/**
  * Every dotted path under `stages` whose value is a string equal to some
  * codebook variable id — derived from the protocol JSON alone, with no
  * knowledge of which fields the schema tags. This is deliberately independent
- * of the thing it is used to test.
+ * of the thing it is used to test. Variable ids are UUIDs, so a string that
+ * names something else, such as a GeoJSON feature property, cannot equal one.
  */
 const enumerateVariableIdOccurrences = (
   protocol: ShippedProtocol,
@@ -114,10 +96,7 @@ const enumerateVariableIdOccurrences = (
     }
   };
   walk(protocol.stages, ['stages']);
-  return found.filter(
-    (path) =>
-      !NON_REFERENCE_PATH_SUFFIXES.some((suffix) => path.endsWith(suffix)),
-  );
+  return found;
 };
 
 const buildStateWithValidationRef = (
@@ -334,8 +313,10 @@ describe('indexes selectors', () => {
   });
 
   describe('getVariableUsageHits()', () => {
-    // A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
-    // (`CodebookIdSchema`), so these ids are legal protocol content.
+    // A schema 9 codebook record key is a UUID (`VariableIdSchema`,
+    // `EntityTypeIdSchema`), so a valid protocol has no dotted ids. These
+    // dotted ids show that the hits keep a segment boundary whatever the key
+    // contains.
     const dottedIdState = (): RootState =>
       getMockState({
         activeProtocol: {

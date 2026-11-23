@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId } from '@codaco/protocol-builder/testing/testId';
 import {
   createProtocolObjectId,
   type CurrentProtocol,
@@ -101,12 +102,12 @@ describe('assets shown as blocks in the text of an Information stage', () => {
         id: createProtocolObjectId(),
         type: 'DyadCensus',
         label: { en: 'Names' },
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: testTypeId('person') },
         prompts: [
           {
             id: createProtocolObjectId(),
             text: { en: '![](asset:a)' },
-            createEdge: 'knows',
+            createEdge: testTypeId('knows'),
           },
         ],
       },

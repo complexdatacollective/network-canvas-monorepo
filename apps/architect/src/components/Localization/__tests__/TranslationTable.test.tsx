@@ -5,6 +5,10 @@ import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
@@ -17,6 +21,9 @@ import TranslationTable from '../TranslationTable';
 // French is missing the welcome name and content, both thanks texts and the
 // person type's one answer option; Spanish is missing only the thanks texts,
 // which exist only in English.
+const PERSON = testTypeId('person');
+const KNOWS = testTypeId('knows');
+
 const trilingual: CurrentProtocol = {
   name: 'Study',
   schemaVersion: 9,
@@ -24,12 +31,12 @@ const trilingual: CurrentProtocol = {
   assetManifest: {},
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          closeness: {
+          [testVariableId('closeness')]: {
             name: 'closeness',
             type: 'categorical',
             component: 'CheckboxGroup',
@@ -781,19 +788,19 @@ describe('TranslationTable', () => {
         ...structuredClone(trilingual),
         codebook: {
           ...structuredClone(trilingual.codebook),
-          edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
+          edge: { [KNOWS]: { name: 'Knows', color: 'edge-color-seq-1' } },
         },
         stages: [
           {
             id: createProtocolObjectId(),
             type: 'DyadCensus',
             label: { en: 'Census' },
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', type: PERSON },
             prompts: [
               {
                 id: createProtocolObjectId(),
                 text: { en: 'Who knows\neach other?' },
-                createEdge: 'knows',
+                createEdge: KNOWS,
               },
             ],
           },

@@ -5,6 +5,7 @@ import {
   withInterfaceText,
   withSuppliedWording,
 } from '@codaco/interview/supplied-wording';
+import { testTypeId } from '@codaco/protocol-builder/testing/testId';
 import {
   type CurrentProtocol,
   ProtocolObjectIdSchema,
@@ -48,7 +49,7 @@ const englishProtocol = (): CurrentProtocol =>
     assetManifest: {},
     codebook: {
       node: {
-        person: {
+        [testTypeId('person')]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },

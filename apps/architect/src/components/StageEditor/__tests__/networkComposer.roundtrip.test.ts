@@ -1,23 +1,29 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   networkComposerStage,
   createProtocolObjectId,
 } from '@codaco/protocol-validation';
+
+const KNOWS = testTypeId('knows');
 
 const stage = {
   id: createProtocolObjectId(),
   label: { en: 'Compose' },
   type: 'NetworkComposer',
-  subject: { entity: 'node', type: 'person' },
-  quickAdd: 'name',
-  layoutVariable: 'layoutPosition',
+  subject: { entity: 'node', type: testTypeId('person') },
+  quickAdd: testVariableId('name'),
+  layoutVariable: testVariableId('layoutPosition'),
   background: { concentricCircles: 4 },
   nodeForm: {
     fields: [
       {
         id: createProtocolObjectId(),
-        variable: 'age',
+        variable: testVariableId('age'),
         component: 'Number',
         label: { en: 'Age?' },
       },
@@ -26,13 +32,13 @@ const stage = {
   edges: [
     {
       id: createProtocolObjectId(),
-      subject: { entity: 'edge', type: 'knows' },
+      subject: { entity: 'edge', type: KNOWS },
       label: { en: 'Connection' },
       form: {
         fields: [
           {
             id: createProtocolObjectId(),
-            variable: 'closeness',
+            variable: testVariableId('closeness'),
             component: 'VisualAnalogScale',
             label: { en: 'How close?' },
           },
@@ -60,12 +66,12 @@ describe('NetworkComposer editor output validates', () => {
         edges: [
           {
             id: createProtocolObjectId(),
-            subject: { entity: 'edge', type: 'knows' },
+            subject: { entity: 'edge', type: KNOWS },
             label: { en: 'Connection' },
           },
           {
             id: createProtocolObjectId(),
-            subject: { entity: 'edge', type: 'knows' },
+            subject: { entity: 'edge', type: KNOWS },
             label: { en: 'Connection' },
           },
         ],

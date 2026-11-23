@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import {
   type CurrentProtocol,
   validateProtocol,
@@ -29,6 +30,8 @@ import {
   NAMES_STAGE_ID,
   NAMES_PROMPT_ID,
   FINISH_STAGE_ID,
+  FREQ,
+  PERSON,
 } from './fixtures';
 
 const promptText = (protocol: unknown) => {
@@ -86,7 +89,7 @@ describe('translations, as Architect’s editors treat them', () => {
         `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/fr`,
         'Nommez tout le monde',
       ),
-      op('set', '/codebook/node/person/name', 'Friend'),
+      op('set', `/codebook/node/${PERSON}/name`, 'Friend'),
     ];
     expect(normalizeOperations(protocol, operations)).toEqual(operations);
   });
@@ -94,7 +97,7 @@ describe('translations, as Architect’s editors treat them', () => {
 
 describe('a fix that replaces more than one text', () => {
   const variable = (protocol: unknown) =>
-    (protocol as CurrentProtocol).codebook.node?.person?.variables?.freq;
+    (protocol as CurrentProtocol).codebook.node?.[PERSON]?.variables?.[FREQ];
 
   it('keeps the other translations of a prompt it replaces whole', () => {
     const protocol = makeProtocol();
@@ -114,7 +117,7 @@ describe('a fix that replaces more than one text', () => {
   it('keeps each option’s translations when the list is rewritten, matching options by value', () => {
     const protocol = makeProtocol();
     const normalized = normalizeOperations(protocol, [
-      op('set', '/codebook/node/person/variables/freq/options', [
+      op('set', `/codebook/node/${PERSON}/variables/${FREQ}/options`, [
         { label: { en: 'Seldom' }, value: 2 },
         { label: { en: 'Sometimes' }, value: 3 },
         { label: { en: 'Frequently' }, value: 1 },
@@ -159,7 +162,11 @@ describe('a fix that replaces more than one text', () => {
     const applied = applyOperations(
       protocol,
       normalizeOperations(protocol, [
-        op('set', '/codebook/node/person/variables/freq/options', options),
+        op(
+          'set',
+          `/codebook/node/${PERSON}/variables/${FREQ}/options`,
+          options,
+        ),
       ]),
     );
     return applied.ok && variable(applied.result);
@@ -425,7 +432,7 @@ describe('a fix that reaches outside the interview and its data model', () => {
         `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
         'Name people you know',
       ),
-      op('set', '/codebook/node/person/name', 'Friend'),
+      op('set', `/codebook/node/${PERSON}/name`, 'Friend'),
     ];
     expect(fixStaysInBounds(operations)).toBe(true);
     expect(recordFix(makeProtocol(), operations).targets).not.toBeNull();
@@ -625,7 +632,7 @@ describe('editProtocol', () => {
 
   it('refuses edits that remove a type a stage refers to', async () => {
     const edit = await editProtocol(makeProtocol(), [
-      op('remove', '/codebook/node/person'),
+      op('remove', `/codebook/node/${PERSON}`),
     ]);
     expect(edit).toEqual({ ok: false, reason: 'invalid' });
   });
@@ -681,10 +688,10 @@ describe('applyFixEdits', () => {
 
   it('leaves a text the researcher cannot change here as suggested', () => {
     const protocol = makeProtocol();
-    const operations = [op('set', '/codebook/node/person/name', 'Friend')];
+    const operations = [op('set', `/codebook/node/${PERSON}/name`, 'Friend')];
     expect(
       applyFixEdits(protocol, operations, {
-        '/codebook/node/person/name': 'Someone',
+        [`/codebook/node/${PERSON}/name`]: 'Someone',
       }),
     ).toEqual(operations);
   });
@@ -696,7 +703,7 @@ describe('describeFixTextEdits', () => {
     const edits = describeFixTextEdits(protocol, [
       op(
         'set',
-        '/codebook/node/person/variables/freq/validation/maxSelected',
+        `/codebook/node/${PERSON}/variables/${FREQ}/validation/maxSelected`,
         1,
       ),
       op('set', `/stages/${NAMES_STAGE_ID}/behaviours/maxNodes`, 20),
@@ -722,7 +729,7 @@ describe('describeFixTextEdits', () => {
         `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
         'Name everyone',
       ),
-      op('set', '/codebook/node/person/name', 'Friend'),
+      op('set', `/codebook/node/${PERSON}/name`, 'Friend'),
       op('remove', `/stages/${WELCOME_STAGE_ID}`),
       op(
         'set',
@@ -744,7 +751,7 @@ describe('describeFixTextEdits', () => {
         editable: true,
       },
       {
-        path: '/codebook/node/person/name',
+        path: `/codebook/node/${PERSON}/name`,
         now: 'Person',
         after: 'Friend',
         locale: null,
@@ -800,7 +807,7 @@ describe('resolveFixPlace', () => {
   const problemAt = resolveFindingLocation(protocol, {
     stageId: null,
     codebookEntity: 'node',
-    codebookTypeId: 'person',
+    codebookTypeId: PERSON,
   });
   const placeOf = (...operations: ReturnType<typeof op>[]) =>
     resolveFixPlace(protocol, operations, problemAt);
@@ -837,7 +844,13 @@ describe('resolveFixPlace', () => {
   it('sends a fix that edits one stage, even with the codebook, to that stage', () => {
     expect(
       placeOf(
-        op('set', '/codebook/node/person/variables/extra', { name: 'extra' }),
+        op(
+          'set',
+          `/codebook/node/${PERSON}/variables/${testVariableId('extra')}`,
+          {
+            name: 'extra',
+          },
+        ),
         op(
           'set',
           `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
@@ -862,10 +875,14 @@ describe('resolveFixPlace', () => {
 
   it('sends a fix to one type, or to the ego, to that part of the codebook', () => {
     expect(
-      placeOf(op('set', '/codebook/node/person/name', 'Friend')),
-    ).toMatchObject({ kind: 'codebook', entity: 'node', typeId: 'person' });
+      placeOf(op('set', `/codebook/node/${PERSON}/name`, 'Friend')),
+    ).toMatchObject({ kind: 'codebook', entity: 'node', typeId: PERSON });
     expect(
-      placeOf(op('set', '/codebook/ego/variables/age', { name: 'age' })),
+      placeOf(
+        op('set', `/codebook/ego/variables/${testVariableId('age')}`, {
+          name: 'age',
+        }),
+      ),
     ).toMatchObject({ kind: 'codebook', entity: 'ego', typeId: null });
   });
 
@@ -898,15 +915,15 @@ describe('resolveFindingLocation', () => {
         protocol,
         makeFinding('f', [], {
           codebookEntity: 'node',
-          codebookTypeId: 'person',
+          codebookTypeId: PERSON,
         }),
       ),
     ).toEqual({
       kind: 'codebook',
       entity: 'node',
-      typeId: 'person',
+      typeId: PERSON,
       typeName: 'Person',
-      href: '/protocol/codebook?entity=node&type=person',
+      href: `/protocol/codebook?entity=node&type=${PERSON}`,
     });
   });
 

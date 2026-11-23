@@ -1,6 +1,10 @@
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { Codebook, CurrentProtocol } from '@codaco/protocol-validation';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 
@@ -9,16 +13,25 @@ import SummaryContext from '../SummaryContext';
 
 afterEach(cleanup);
 
+const PERSON = testTypeId('person');
+const FRIEND = testTypeId('friend');
+const GONE = testTypeId('gone');
+const AGE = testVariableId('age');
+const GROUPS = testVariableId('groups');
+const SINCE = testVariableId('since');
+const EGO_NAME = testVariableId('egoName');
+const EGO_AGE = testVariableId('egoAge');
+
 const codebook = {
   node: {
-    person: {
+    [PERSON]: {
       name: 'Person',
       color: 'node-color-seq-1',
       iconVariant: 'add-a-person',
       shape: { default: 'circle' },
       variables: {
-        age: { name: 'Age', type: 'number' },
-        groups: {
+        [AGE]: { name: 'Age', type: 'number' },
+        [GROUPS]: {
           name: 'Groups',
           type: 'categorical',
           options: [
@@ -30,16 +43,16 @@ const codebook = {
     },
   },
   edge: {
-    friend: {
+    [FRIEND]: {
       name: 'Friend',
       color: 'edge-color-seq-1',
-      variables: { since: { name: 'Since', type: 'datetime' } },
+      variables: { [SINCE]: { name: 'Since', type: 'datetime' } },
     },
   },
   ego: {
     variables: {
-      egoName: { name: 'EgoName', type: 'text' },
-      egoAge: { name: 'EgoAge', type: 'number' },
+      [EGO_NAME]: { name: 'EgoName', type: 'text' },
+      [EGO_AGE]: { name: 'EgoAge', type: 'number' },
     },
   },
   // The fixture is written as a codebook and read as one; nothing here is
@@ -85,37 +98,37 @@ it.each([
   // "has", and the summary now says what the list says.
   [
     'ego attribute presence',
-    { type: 'ego', options: { attribute: 'egoName', operator: 'EXISTS' } },
+    { type: 'ego', options: { attribute: EGO_NAME, operator: 'EXISTS' } },
     'Ego has EgoName',
   ],
   [
     'ego attribute absence',
-    { type: 'ego', options: { attribute: 'egoName', operator: 'NOT_EXISTS' } },
+    { type: 'ego', options: { attribute: EGO_NAME, operator: 'NOT_EXISTS' } },
     'Ego without EgoName',
   ],
   [
     'ego attribute comparison',
     {
       type: 'ego',
-      options: { attribute: 'egoAge', operator: 'GREATER_THAN', value: 30 },
+      options: { attribute: EGO_AGE, operator: 'GREATER_THAN', value: 30 },
     },
     'Ego has EgoAge that is greater than 30',
   ],
   [
     'node type presence',
-    { type: 'node', options: { type: 'person', operator: 'EXISTS' } },
+    { type: 'node', options: { type: PERSON, operator: 'EXISTS' } },
     'Person exists',
   ],
   [
     'node type absence',
-    { type: 'node', options: { type: 'person', operator: 'NOT_EXISTS' } },
+    { type: 'node', options: { type: PERSON, operator: 'NOT_EXISTS' } },
     'Person does not exist',
   ],
   [
     'node attribute presence',
     {
       type: 'node',
-      options: { type: 'person', attribute: 'age', operator: 'EXISTS' },
+      options: { type: PERSON, attribute: AGE, operator: 'EXISTS' },
     },
     'Person where Age',
   ],
@@ -123,7 +136,7 @@ it.each([
     'node attribute absence',
     {
       type: 'node',
-      options: { type: 'person', attribute: 'age', operator: 'NOT_EXISTS' },
+      options: { type: PERSON, attribute: AGE, operator: 'NOT_EXISTS' },
     },
     'Person without Age',
   ],
@@ -132,8 +145,8 @@ it.each([
     {
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'age',
+        type: PERSON,
+        attribute: AGE,
         operator: 'GREATER_THAN',
         value: 30,
       },
@@ -145,8 +158,8 @@ it.each([
     {
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'groups',
+        type: PERSON,
+        attribute: GROUPS,
         operator: 'INCLUDES',
         value: ['a', 'b'],
       },
@@ -158,8 +171,8 @@ it.each([
     {
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'groups',
+        type: PERSON,
+        attribute: GROUPS,
         operator: 'OPTIONS_EQUALS',
         value: 2,
       },
@@ -168,7 +181,7 @@ it.each([
   ],
   [
     'edge type presence',
-    { type: 'edge', options: { type: 'friend', operator: 'EXISTS' } },
+    { type: 'edge', options: { type: FRIEND, operator: 'EXISTS' } },
     'Friend exists',
   ],
   [
@@ -176,8 +189,8 @@ it.each([
     {
       type: 'edge',
       options: {
-        type: 'friend',
-        attribute: 'since',
+        type: FRIEND,
+        attribute: SINCE,
         operator: 'LESS_THAN',
         value: '2020-01-01',
       },
@@ -193,13 +206,13 @@ it('names an entity type the codebook no longer has rather than printing nothing
     sentence({
       type: 'node',
       options: {
-        type: 'gone',
-        attribute: 'age',
+        type: GONE,
+        attribute: AGE,
         operator: 'EXACTLY',
         value: '1',
       },
     }),
-  ).toBe('gone where age is exactly equal to 1');
+  ).toBe(`${GONE} where ${AGE} is exactly equal to 1`);
 });
 
 // A rule is one sentence, so it names each option once: in the protocol's
@@ -222,8 +235,8 @@ it('reads option labels in the default language, falling back as the interview d
           rule={{
             type: 'node',
             options: {
-              type: 'person',
-              attribute: 'groups',
+              type: PERSON,
+              attribute: GROUPS,
               operator: 'INCLUDES',
               value: ['a', 'b'],
             },

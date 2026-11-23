@@ -5,6 +5,10 @@ import {
   withInterfaceText,
 } from '@codaco/interview/supplied-wording';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   type CurrentProtocol,
   type LocalizedString,
   type Stage,
@@ -23,12 +27,16 @@ const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
 );
 
 // A minimal, valid current-schema protocol containing a single name generator
-// stage whose codebook subject ("person") exists. Tests insert/replace panels
+// stage whose codebook subject type exists. Tests insert/replace panels
 // onto this stage to exercise how `buildProtocolWithStage` normalises wip stage
 // edits before they are validated/previewed.
 const STAGE_ID = ProtocolObjectIdSchema.parse(
   '2d7c1e9a-4b3f-4a8e-9d6c-0b5a7e3f1c28',
 );
+
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
+const NAME = testVariableId('name');
 
 const localized = (text: string): LocalizedString => ({ en: text });
 
@@ -37,13 +45,13 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     id: STAGE_ID,
     type: 'NameGenerator',
     label: localized('Name some people'),
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     form: {
       title: localized('Add person'),
       fields: [
         {
           id: createProtocolObjectId(),
-          variable: 'name',
+          variable: NAME,
           prompt: localized('Name'),
         },
       ],
@@ -61,12 +69,12 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: {
+            [NAME]: {
               name: 'Name',
               type: 'text',
               component: 'Text',
@@ -276,12 +284,15 @@ describe('buildProtocolWithStage', () => {
     const protocol = makeProtocol();
     const stage = protocol.stages[0];
     if (stage === undefined) throw new Error('No stage');
-    const person = protocol.codebook.node?.person;
+    const person = protocol.codebook.node?.[PERSON];
     if (person === undefined) throw new Error('No person type');
     const held = {
       ...person,
       variables: {
-        name: { ...person.variables?.name, validation: { required: true } },
+        [NAME]: {
+          ...person.variables?.[NAME],
+          validation: { required: true },
+        },
       },
     };
     const place = {
@@ -298,25 +309,25 @@ describe('buildProtocolWithStage', () => {
       undefined,
       [],
       {
-        [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+        [sectionId({ kind: 'codebookNode', typeId: PERSON })]: {
           base: person,
           edited: held,
         },
-        [sectionId({ kind: 'codebookNode', typeId: 'place' })]: {
+        [sectionId({ kind: 'codebookNode', typeId: PLACE })]: {
           base: null,
           edited: place,
         },
       },
     );
 
-    expect(built.codebook.node?.person?.variables?.name).toMatchObject({
+    expect(built.codebook.node?.[PERSON]?.variables?.[NAME]).toMatchObject({
       validation: { required: true },
     });
-    expect(built.codebook.node?.place).toEqual(place);
+    expect(built.codebook.node?.[PLACE]).toEqual(place);
     // The protocol itself is left as it was: the changes are the editor's.
-    expect(protocol.codebook.node?.person?.variables?.name).not.toHaveProperty(
-      'validation',
-    );
+    expect(
+      protocol.codebook.node?.[PERSON]?.variables?.[NAME],
+    ).not.toHaveProperty('validation');
     const result = await validateProtocol(built, { draft: true });
     expect(result.error?.issues).toBeUndefined();
   });

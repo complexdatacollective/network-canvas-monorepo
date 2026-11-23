@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { testTypeId } from '@codaco/protocol-builder/testing/testId';
 import {
   createProtocolObjectId,
   ProtocolObjectIdSchema,
@@ -9,6 +10,8 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import activeProtocolReducer, { actionCreators } from '../activeProtocol';
 import { test as stagesTest } from '../protocol/stages';
+
+const PERSON = testTypeId('person');
 
 const ANON_STAGE_ID = ProtocolObjectIdSchema.parse(
   '89f2ab4e-316b-486c-83cc-cdeee9847f3b',
@@ -47,7 +50,7 @@ const mockProtocol2: CurrentProtocol = {
       },
       subject: {
         entity: 'node',
-        type: 'person',
+        type: PERSON,
       },
       prompts: [
         {
@@ -59,7 +62,7 @@ const mockProtocol2: CurrentProtocol = {
   ],
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
@@ -280,7 +283,7 @@ describe('activeProtocol', () => {
       if (!state) return;
       expect(state.description).toBe('another description');
       expect(state.stages).toHaveLength(1);
-      expect(state.codebook.node?.person).toBeDefined();
+      expect(state.codebook.node?.[PERSON]).toBeDefined();
     });
 
     // Network Canvas words the Back button "Back" and the finish button

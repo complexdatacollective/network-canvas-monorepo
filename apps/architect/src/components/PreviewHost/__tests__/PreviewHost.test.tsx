@@ -27,6 +27,10 @@ import {
   ProtocolLocalizationProvider,
 } from '@codaco/interview';
 import {
+  testVariableId,
+  withTestCodebookIds,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   DEFAULT_SYNTHETIC_SEED,
   generateNetwork,
 } from '@codaco/protocol-utilities';
@@ -158,7 +162,7 @@ function lastShellProps(): ShellProps {
 // maxLength, so no value exists and generateNetwork throws
 // SyntheticDataConstraintError.
 function makeUnsatisfiableProtocol() {
-  return {
+  return withTestCodebookIds({
     name: 'T',
     description: '',
     schemaVersion: 9,
@@ -196,7 +200,7 @@ function makeUnsatisfiableProtocol() {
       ego: {},
     },
     assetManifest: {},
-  };
+  });
 }
 
 // An unsupported stage type makes generateNetwork throw an ordinary error
@@ -214,7 +218,7 @@ function makeUnbuildableProtocol() {
 }
 
 function makeConsentRouteProtocol(): CurrentProtocol {
-  return {
+  return withTestCodebookIds<CurrentProtocol>({
     name: 'Consent route',
     description: '',
     schemaVersion: 9,
@@ -345,7 +349,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       },
     },
     assetManifest: {},
-  };
+  });
 }
 
 type TestPreviewPayload = Omit<PreviewPayload, 'protocol'> & {
@@ -508,7 +512,7 @@ describe('PreviewHost', () => {
 
   it('leaves the previewed stage partially complete in synthetic data', async () => {
     render(<PreviewHost />);
-    const protocol = {
+    const protocol = withTestCodebookIds({
       name: 'T',
       description: '',
       schemaVersion: 9,
@@ -558,7 +562,7 @@ describe('PreviewHost', () => {
         ego: {},
       },
       assetManifest: {},
-    };
+    });
     postPayload(
       openerStub,
       makePayload({ protocol, startStage: 1, useSyntheticData: true }),
@@ -569,10 +573,11 @@ describe('PreviewHost', () => {
     const nodes = call.payload.session.network.nodes;
     expect(nodes.length).toBeGreaterThan(0);
     const unplaced = nodes.filter(
-      (n) => !Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
+      (n) =>
+        !Object.hasOwn(n[entityAttributesProperty], testVariableId('var-ord')),
     );
     const placed = nodes.filter((n) =>
-      Object.hasOwn(n[entityAttributesProperty], 'var-ord'),
+      Object.hasOwn(n[entityAttributesProperty], testVariableId('var-ord')),
     );
     expect(unplaced.length).toBeGreaterThan(0);
     expect(placed.length).toBeGreaterThan(0);
@@ -586,7 +591,9 @@ describe('PreviewHost', () => {
       seed: DEFAULT_SYNTHETIC_SEED,
       inProgressStageIndex: 3,
     });
-    expect(initial.network.ego[entityAttributesProperty].consent).toBe(false);
+    expect(
+      initial.network.ego[entityAttributesProperty][testVariableId('consent')],
+    ).toBe(false);
 
     const randomSpy = vi
       .spyOn(Math, 'random')
@@ -608,7 +615,9 @@ describe('PreviewHost', () => {
 
       expect(call.currentStep).toBe(3);
       expect(
-        call.payload.session.network.ego[entityAttributesProperty].consent,
+        call.payload.session.network.ego[entityAttributesProperty][
+          testVariableId('consent')
+        ],
       ).toBe(false);
       expect(
         call.payload.protocol.stages.every(
@@ -649,7 +658,9 @@ describe('PreviewHost', () => {
       const call = lastShellProps();
 
       expect(
-        call.payload.session.network.ego[entityAttributesProperty].consent,
+        call.payload.session.network.ego[entityAttributesProperty][
+          testVariableId('consent')
+        ],
       ).toBe(false);
       expect(call.payload.protocol.stages[1]).toHaveProperty('skipLogic');
       expect(

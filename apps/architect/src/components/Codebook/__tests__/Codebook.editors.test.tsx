@@ -6,23 +6,24 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import developmentProtocol from '@codaco/protocols/development';
 import { hasOpenNestedEditor } from '~/components/DialogForm/nestedDraftRegistry';
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
 import { setActiveProtocolId } from '~/ducks/modules/app';
 import { rootReducer } from '~/ducks/modules/root';
 import { getCodebook } from '~/selectors/protocol';
+import { templateTypeId } from '~/templates/__tests__/templateCodebookIds';
+import { developmentProtocol } from '~/templates/development-protocol';
 
 import Codebook from '../Codebook';
 import type { CodebookLink } from '../codebookLinks';
+
+const PERSON = templateTypeId(developmentProtocol, 'node', 'person');
 
 const renderCodebook = (
   props: { link?: CodebookLink; onLinkClosed?: () => void } = {},
   prepare: (protocol: CurrentProtocol) => void = () => {},
 ) => {
-  const protocol = structuredClone(
-    developmentProtocol,
-  ) as unknown as CurrentProtocol;
+  const protocol = structuredClone(developmentProtocol);
   prepare(protocol);
   const store = configureStore({
     reducer: rootReducer,
@@ -109,7 +110,7 @@ describe('the codebook’s editors', () => {
   it('opens the linked type for editing and reports when it closes', async () => {
     const onLinkClosed = vi.fn();
     const { user } = renderCodebook({
-      link: { entity: 'node', type: 'person_node_type' },
+      link: { entity: 'node', type: PERSON },
       onLinkClosed,
     });
 
@@ -126,9 +127,9 @@ describe('the codebook’s editors', () => {
 
   it('saves a change to a node type that was stored without an icon', async () => {
     const { store, user } = renderCodebook(
-      { link: { entity: 'node', type: 'person_node_type' } },
+      { link: { entity: 'node', type: PERSON } },
       (protocol) => {
-        delete protocol.codebook.node?.person_node_type?.icon;
+        delete protocol.codebook.node?.[PERSON]?.icon;
       },
     );
 

@@ -37,6 +37,8 @@ import {
   NAMES_STAGE_ID,
   NAMES_PROMPT_ID,
   FINISH_STAGE_ID,
+  FREQ,
+  PERSON,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
@@ -243,23 +245,23 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
   it('withdraws Undo once the researcher re-creates what the fix removed', async () => {
     await reviewed(store, [
       makeFinding('drop', [
-        op('remove', '/codebook/node/person/variables/freq'),
+        op('remove', `/codebook/node/${PERSON}/variables/${FREQ}`),
       ]),
     ]);
     await store.dispatch(checkFixAvailability());
     await store.dispatch(decideFinding('drop', 'fix'));
-    const person = protocolOf(store).codebook.node?.person;
+    const person = protocolOf(store).codebook.node?.[PERSON];
     if (!person) throw new Error('fixture changed');
     store.dispatch(
       actionCreators.updateProtocol({
         codebook: {
           ...protocolOf(store).codebook,
           node: {
-            person: {
+            [PERSON]: {
               ...person,
               variables: {
                 ...person.variables,
-                freq: { name: 'freq', type: 'text' },
+                [FREQ]: { name: 'freq', type: 'text' },
               },
             },
           },
@@ -521,18 +523,18 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     /** The fixture with `freq` offering `list`. */
     const offering = (list: typeof options): CurrentProtocol => {
       const protocol = makeProtocol();
-      const person = protocol.codebook.node?.person;
+      const person = protocol.codebook.node?.[PERSON];
       if (!person) throw new Error('fixture changed');
       return {
         ...protocol,
         codebook: {
           ...protocol.codebook,
           node: {
-            person: {
+            [PERSON]: {
               ...person,
               variables: {
                 ...person.variables,
-                freq: { name: 'freq', type: 'ordinal', options: list },
+                [FREQ]: { name: 'freq', type: 'ordinal', options: list },
               },
             },
           },
@@ -543,7 +545,7 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
       store,
       [
         makeFinding('drop', [
-          op('remove', '/codebook/node/person/variables/freq/options/2'),
+          op('remove', `/codebook/node/${PERSON}/variables/${FREQ}/options/2`),
         ]),
       ],
       offering(options),

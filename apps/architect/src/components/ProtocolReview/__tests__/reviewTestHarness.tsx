@@ -30,6 +30,7 @@ import {
   WELCOME_STAGE_ID,
   NAMES_STAGE_ID,
   NAMES_PROMPT_ID,
+  PERSON,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
@@ -85,7 +86,7 @@ const FINDINGS: Finding[] = [
     [op('set', `/stages/${WELCOME_STAGE_ID}/type`, 'NotAStage')],
     {
       codebookEntity: 'node',
-      codebookTypeId: 'person',
+      codebookTypeId: PERSON,
       category: 'structure',
       severity: 'worth_fixing',
       title: 'The person type is misused',

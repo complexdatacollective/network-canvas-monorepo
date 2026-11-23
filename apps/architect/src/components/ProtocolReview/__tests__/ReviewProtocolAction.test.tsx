@@ -26,6 +26,7 @@ import {
   WELCOME_STAGE_ID,
   NAMES_STAGE_ID,
   NAMES_PROMPT_ID,
+  PERSON,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 
@@ -46,10 +47,10 @@ import {
 /** A problem whose fix is made in the codebook's Person type. */
 const PERSON_FINDING = makeFinding(
   'person',
-  [op('set', '/codebook/node/person/name', 'Friend')],
+  [op('set', `/codebook/node/${PERSON}/name`, 'Friend')],
   {
     codebookEntity: 'node',
-    codebookTypeId: 'person',
+    codebookTypeId: PERSON,
     title: 'The person type is too broad',
   },
 );

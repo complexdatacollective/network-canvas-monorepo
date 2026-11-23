@@ -46,7 +46,15 @@ import {
   ASSETS_SECTION,
   STAGE_ORDER_SECTION,
 } from '@codaco/protocol-builder/host/protocolSections';
-import { fixtureStageId } from '@codaco/protocol-builder/testing/protocolFixture';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '@codaco/protocol-builder/testing/protocolFixture';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import {
   createProtocolObjectId,
   CurrentProtocolSchema,
@@ -113,7 +121,14 @@ let writes = 0;
 const nextRequestId = (): string => `write-${++writes}`;
 const INFORMATION = sectionId({ kind: 'stage', stageId: INFORMATION_STAGE_ID });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: EGO_FORM_STAGE_ID });
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON_TYPE = fixtureTypeId('node', 'person');
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
+const NAME_VARIABLE = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'name',
+);
+const SPARE = testVariableId('spare');
+const INVENTED_TYPE = testTypeId('invented-type');
 const SETTINGS = sectionId({ kind: 'settings' });
 
 /** The language the all-interfaces protocol is written in. */
@@ -199,7 +214,7 @@ const stageIds = (store: ArchitectStore): string[] =>
   (getProtocol(store.getState())?.stages ?? []).map((stage) => stage.id);
 
 const personVariables = (store: ArchitectStore): Record<string, unknown> =>
-  getProtocol(store.getState())?.codebook.node?.person?.variables ?? {};
+  getProtocol(store.getState())?.codebook.node?.[PERSON_TYPE]?.variables ?? {};
 
 const undoDepth = (store: ArchitectStore): number =>
   store.getState().activeProtocol.past.length;
@@ -539,7 +554,9 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       sectionId: PERSON,
     });
-    const committed = getProtocol(store.getState())?.codebook.node?.person;
+    const committed = getProtocol(store.getState())?.codebook.node?.[
+      PERSON_TYPE
+    ];
     await client.call('Submit', {
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
@@ -548,7 +565,7 @@ describe("Architect's in-process protocol-builder host", () => {
         ...committed,
         variables: {
           ...committed?.variables,
-          spare: {
+          [SPARE]: {
             name: 'spare',
             type: 'text',
             component: 'Text',
@@ -557,17 +574,17 @@ describe("Architect's in-process protocol-builder host", () => {
       }),
       revision: held.revision,
     });
-    expect(personVariables(store).spare).toBeDefined();
+    expect(personVariables(store)[SPARE]).toBeDefined();
 
     const result = await client.call('RefactorDeleteVariable', {
       protocolId: PROTOCOL_ID,
-      subject: { entity: 'node', type: 'person' },
-      variableId: 'spare',
+      subject: { entity: 'node', type: PERSON_TYPE },
+      variableId: SPARE,
     });
 
     expect(result.changedSections).toEqual([PERSON]);
-    expect(personVariables(store).spare).toBeUndefined();
-    expect(personVariables(store).name).toBeDefined();
+    expect(personVariables(store)[SPARE]).toBeUndefined();
+    expect(personVariables(store)[NAME_VARIABLE]).toBeDefined();
   });
 
   it('keeps the experiments setting through a settings write, and clears it when the write leaves it out', async () => {
@@ -619,8 +636,8 @@ describe("Architect's in-process protocol-builder host", () => {
     const { error } = await safe(
       client.call('RefactorDeleteVariable', {
         protocolId: PROTOCOL_ID,
-        subject: { entity: 'node', type: 'person' },
-        variableId: 'name',
+        subject: { entity: 'node', type: PERSON_TYPE },
+        variableId: NAME_VARIABLE,
       }),
     );
 
@@ -633,7 +650,7 @@ describe("Architect's in-process protocol-builder host", () => {
     // A section and a path inside it: "somewhere in this stage" is not
     // something a dialog can point at.
     expect(remaining.every((entry) => entry.path.length > 0)).toBe(true);
-    expect(personVariables(store).name).toBeDefined();
+    expect(personVariables(store)[NAME_VARIABLE]).toBeDefined();
   });
 
   it('holds the lock table on the handlers rather than on a client', async () => {
@@ -1651,7 +1668,7 @@ describe("Architect's in-process protocol-builder host", () => {
       kind: 'codebookEgo',
       document: Redacted.make({
         variables: {
-          ego_age: {
+          [testVariableId('ego_age')]: {
             name: 'ego_age',
             type: 'number',
             component: 'Number',
@@ -1665,7 +1682,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(created.sectionId).toBe(sectionId({ kind: 'codebookEgo' }));
     expect(
       getProtocol(store.getState())?.codebook.ego?.variables,
-    ).toMatchObject({ ego_age: { name: 'ego_age' } });
+    ).toMatchObject({ [testVariableId('ego_age')]: { name: 'ego_age' } });
   });
 
   it('writes an attribute onto a connection type created moments earlier, and names a list of values too short to hold', async () => {
@@ -1688,7 +1705,7 @@ describe("Architect's in-process protocol-builder host", () => {
       Redacted.make({
         ...Redacted.value(held.document),
         variables: {
-          f: {
+          [testVariableId('f')]: {
             name: 'f',
             type: 'ordinal',
             options,
@@ -1722,7 +1739,9 @@ describe("Architect's in-process protocol-builder host", () => {
       Object.values(getProtocol(store.getState())?.codebook.edge ?? {}).find(
         (definition) => definition.name === 'Edge',
       )?.variables,
-    ).toMatchObject({ f: { name: 'f', type: 'ordinal' } });
+    ).toMatchObject({
+      [testVariableId('f')]: { name: 'f', type: 'ordinal' },
+    });
   });
 
   it('refuses to create an ego codebook the protocol already has', async () => {
@@ -2118,14 +2137,14 @@ describe("Architect's in-process protocol-builder host", () => {
       const { error, isSuccess } = await safe(
         client.call('RefactorDeleteVariable', {
           protocolId: PROTOCOL_ID,
-          subject: { entity: 'node', type: 'person' },
-          variableId: 'unused-by-any-stage',
+          subject: { entity: 'node', type: PERSON_TYPE },
+          variableId: testVariableId('unused-by-any-stage'),
         }),
       );
 
       expect(isSuccess).toBe(false);
       expect(error).toBeInstanceOf(SectionsLocked);
-      expect(personVariables(store).name).toBeDefined();
+      expect(personVariables(store)[NAME_VARIABLE]).toBeDefined();
     });
 
     it('refuses an import, so no bytes are left behind for a save that cannot happen', async () => {
@@ -2215,7 +2234,7 @@ describe("Architect's in-process protocol-builder host", () => {
         'Schema validation failed',
       );
       expect(
-        getProtocol(store.getState())?.codebook.node?.person,
+        getProtocol(store.getState())?.codebook.node?.[PERSON_TYPE],
       ).toBeDefined();
     });
 
@@ -2270,7 +2289,7 @@ describe("Architect's in-process protocol-builder host", () => {
         host('RefactorDeleteEntityType', {
           protocolId: PROTOCOL_ID,
           entity: 'node',
-          typeId: 'no-such-type',
+          typeId: testTypeId('no-such-type'),
         }),
       );
       expect(Exit.isFailure(exit) && Cause.hasDies(exit.cause)).toBe(true);
@@ -2462,7 +2481,7 @@ describe('shared words saved with a stage', () => {
 });
 
 describe('codebook sections saved with a stage', () => {
-  const NEW_TYPE = sectionId({ kind: 'codebookNode', typeId: 'invented-type' });
+  const NEW_TYPE = sectionId({ kind: 'codebookNode', typeId: INVENTED_TYPE });
   const INVENTED = {
     name: 'Invented',
     color: 'node-color-seq-2',
@@ -2472,7 +2491,7 @@ describe('codebook sections saved with a stage', () => {
   };
 
   const personColor = (store: ArchitectStore): unknown =>
-    getProtocol(store.getState())?.codebook.node?.person?.color;
+    getProtocol(store.getState())?.codebook.node?.[PERSON_TYPE]?.color;
 
   /** The person type with its colour changed, as a stage editor leaves it. */
   const recoloured = async (client: TestClient) => {
@@ -2536,7 +2555,7 @@ describe('codebook sections saved with a stage', () => {
     });
 
     expect(
-      getProtocol(store.getState())?.codebook.node?.['invented-type']?.name,
+      getProtocol(store.getState())?.codebook.node?.[INVENTED_TYPE]?.name,
     ).toBe('Invented');
     const created = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
@@ -2563,7 +2582,7 @@ describe('codebook sections saved with a stage', () => {
     });
 
     expect(
-      getProtocol(store.getState())?.codebook.node?.['invented-type'],
+      getProtocol(store.getState())?.codebook.node?.[INVENTED_TYPE],
     ).toBeDefined();
     const type = await client.call('GetSection', {
       protocolId: PROTOCOL_ID,
@@ -2604,7 +2623,7 @@ describe('codebook sections saved with a stage', () => {
     expect(error instanceof InvalidShape && error.sectionId).toBe(NEW_TYPE);
     expect(stageLabel(store, INFORMATION_STAGE_ID)).not.toBe('Relabelled');
     expect(
-      getProtocol(store.getState())?.codebook.node?.['invented-type'],
+      getProtocol(store.getState())?.codebook.node?.[INVENTED_TYPE],
     ).toBeUndefined();
     expect(undoDepth(store)).toBe(0);
   });
@@ -2629,7 +2648,7 @@ describe('codebook sections saved with a stage', () => {
 
     expect(error).toBeInstanceOf(InvalidShape);
     expect(
-      getProtocol(store.getState())?.codebook.node?.['invented-type'],
+      getProtocol(store.getState())?.codebook.node?.[INVENTED_TYPE],
     ).toBeUndefined();
   });
 
@@ -2654,7 +2673,7 @@ describe('codebook sections saved with a stage', () => {
 
     expect(error).toBeInstanceOf(NotLockHolder);
     expect(
-      getProtocol(store.getState())?.codebook.node?.['invented-type'],
+      getProtocol(store.getState())?.codebook.node?.[INVENTED_TYPE],
     ).toBeUndefined();
   });
 
@@ -2759,7 +2778,7 @@ describe('codebook sections saved with a stage', () => {
     expect(error).toBeInstanceOf(InvalidShape);
     expect(error instanceof InvalidShape && error.sectionId).toBe(NEW_TYPE);
     expect(
-      getProtocol(store.getState())?.codebook.node?.['invented-type']?.name,
+      getProtocol(store.getState())?.codebook.node?.[INVENTED_TYPE]?.name,
     ).toBe('Invented');
     expect(stageLabel(store, INFORMATION_STAGE_ID)).not.toBe('Relabelled');
   });
@@ -2825,7 +2844,7 @@ describe('codebook sections saved with a stage', () => {
         .unwrap();
       const carriedId = sectionId({
         kind: 'codebookEdge',
-        typeId: 'carried-edge',
+        typeId: testTypeId('carried-edge'),
       });
 
       await carry(client, [
@@ -2835,7 +2854,7 @@ describe('codebook sections saved with a stage', () => {
         },
       ]);
 
-      const stored = edges()['carried-edge'];
+      const stored = edges()[testTypeId('carried-edge')];
       expect(stored?.name).toBe(edges()[direct.type]?.name);
       expect(stored?.color).toBe(
         EdgeColorSequence[(before + 1) % EdgeColorSequence.length],
@@ -2849,7 +2868,10 @@ describe('codebook sections saved with a stage', () => {
       const { store, client } = openProtocol();
       await carry(client, [
         {
-          sectionId: sectionId({ kind: 'codebookEdge', typeId: 'named-color' }),
+          sectionId: sectionId({
+            kind: 'codebookEdge',
+            typeId: testTypeId('named-color'),
+          }),
           document: {
             name: 'Coloured',
             color: 'edge-color-seq-1',
@@ -2859,7 +2881,9 @@ describe('codebook sections saved with a stage', () => {
       ]);
 
       expect(
-        getProtocol(store.getState())?.codebook.edge?.['named-color']?.color,
+        getProtocol(store.getState())?.codebook.edge?.[
+          testTypeId('named-color')
+        ]?.color,
       ).toBe('edge-color-seq-1');
     });
   });

@@ -10,6 +10,8 @@ import {
   WELCOME_STAGE_ID,
   NAMES_STAGE_ID,
   NAMES_PROMPT_ID,
+  FREQ,
+  PERSON,
 } from './fixtures';
 
 /**
@@ -207,13 +209,13 @@ describe('F: the preview shows every text change a fix makes', () => {
       },
     ]);
     const label = recordFix(protocol, [
-      op('set', '/codebook/node/person/variables/freq/options/0/label', {
+      op('set', `/codebook/node/${PERSON}/variables/${FREQ}/options/0/label`, {
         en: 'Very often',
       }),
     ]);
     expect(describeFixTextEdits(protocol, label.operations)).toEqual([
       {
-        path: '/codebook/node/person/variables/freq/options/0/label/en',
+        path: `/codebook/node/${PERSON}/variables/${FREQ}/options/0/label/en`,
         now: 'Often',
         after: 'Very often',
         locale: 'en',
@@ -223,9 +225,9 @@ describe('F: the preview shows every text change a fix makes', () => {
         textPath: [
           'codebook',
           'node',
-          'person',
+          PERSON,
           'variables',
-          'freq',
+          FREQ,
           'options',
           0,
           'label',
@@ -239,7 +241,7 @@ describe('F: the preview shows every text change a fix makes', () => {
 
 describe('B on a real protocol (the family is in fixFamily.test.ts)', () => {
   it('sees an edit to the first of two options inserted at one index', async () => {
-    const options = '/codebook/node/person/variables/freq/options';
+    const options = `/codebook/node/${PERSON}/variables/${FREQ}/options`;
     const edit = await editProtocol(makeProtocol(), [
       op('insert', `${options}/0`, { label: { en: 'A', fr: 'A' }, value: 3 }),
       op('insert', `${options}/0`, { label: { en: 'B', fr: 'B' }, value: 4 }),

@@ -16,14 +16,20 @@ const PERSON = testTypeId('person');
 const codebook = {
   ego: {
     variables: {
-      [testVariableId(testVariableId('ego-subject'))]: { name: 'subject_var', type: 'text' },
+      [testVariableId('ego-subject')]: {
+        name: 'subject_var',
+        type: 'text',
+      },
       [testVariableId('ego-taken')]: { name: 'taken_var', type: 'text' },
     },
   },
   node: {
     [PERSON]: {
       variables: {
-        [testVariableId(testVariableId('node-subject'))]: { name: 'subject_var', type: 'text' },
+        [testVariableId('node-subject')]: {
+          name: 'subject_var',
+          type: 'text',
+        },
         [testVariableId('node-taken')]: { name: 'taken_var', type: 'text' },
         [testVariableId('node-colour')]: {
           name: 'colour',
@@ -45,15 +51,15 @@ const codebook = {
 } as unknown as Codebook;
 
 const variableFixtures = {
-  [testVariableId(testVariableId('ego-subject'))]: {
-    uuid: testVariableId(testVariableId('ego-subject')),
+  [testVariableId('ego-subject')]: {
+    uuid: testVariableId('ego-subject'),
     name: 'subject_var',
     entity: 'ego' as const,
     entityType: null,
     type: 'text',
   },
-  [testVariableId(testVariableId('node-subject'))]: {
-    uuid: testVariableId(testVariableId('node-subject')),
+  [testVariableId('node-subject')]: {
+    uuid: testVariableId('node-subject'),
     name: 'subject_var',
     entity: 'node' as const,
     entityType: PERSON,
@@ -108,10 +114,12 @@ const { ConnectedVariablePill, VariablePill } = await import('../VariablePill');
 const { updateVariableByUUID } =
   await import('~/ducks/modules/protocol/codebook');
 
-const startEditing = async (uuid: keyof typeof variableFixtures) => {
+const startEditing = async (uuid: string) => {
+  const fixture = variableFixtures[uuid];
+  if (!fixture) throw new Error(`No variable fixture ${uuid}`);
   render(<ConnectedVariablePill animated editable uuid={uuid} />);
   const pill = screen.getByRole('button', {
-    name: `Edit attribute name: ${variableFixtures[uuid].name}`,
+    name: `Edit attribute name: ${fixture.name}`,
   });
   fireEvent.click(pill);
 
@@ -128,7 +136,7 @@ describe('ConnectedVariablePill', () => {
       <ConnectedVariablePill
         animated
         editable
-        uuid={testVariableId(testVariableId('node-subject'))}
+        uuid={testVariableId('node-subject')}
       />,
     );
     const pill = screen.getByRole('button', {
@@ -147,7 +155,7 @@ describe('ConnectedVariablePill', () => {
     const { container } = render(
       <ConnectedVariablePill
         className="max-w-64"
-        uuid={testVariableId(testVariableId('node-subject'))}
+        uuid={testVariableId('node-subject')}
       />,
     );
 
@@ -159,7 +167,7 @@ describe('ConnectedVariablePill', () => {
       <ConnectedVariablePill
         animated
         editable
-        uuid={testVariableId(testVariableId('node-subject'))}
+        uuid={testVariableId('node-subject')}
       />,
     );
     const pill = screen.getByRole('button', {
@@ -266,9 +274,12 @@ describe('ConnectedVariablePill', () => {
       expect(screen.queryByTestId('variable-name-field-error')).toBeNull();
       fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
-      expect(updateVariableByUUID).toHaveBeenLastCalledWith(testVariableId('node-subject'), {
-        name: saved,
-      });
+      expect(updateVariableByUUID).toHaveBeenLastCalledWith(
+        testVariableId('node-subject'),
+        {
+          name: saved,
+        },
+      );
     });
 
     it('refuses a name with a control character', async () => {
@@ -311,7 +322,7 @@ describe('ConnectedVariablePill', () => {
 
   describe('export columns', () => {
     const expectRefused = async (
-      uuid: keyof typeof variableFixtures,
+      uuid: string,
       name: string,
       message: string,
     ) => {
@@ -326,7 +337,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name that is a column of a sibling categorical attribute’s option', async () => {
       await expectRefused(
-        testVariableId(testVariableId('node-subject')),
+        testVariableId('node-subject'),
         'colour_red',
         'The export already has a column called “colour_red” for option “red” of the attribute “colour”. Choose a different name.',
       );
@@ -334,7 +345,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name that is a column of a sibling layout attribute', async () => {
       await expectRefused(
-        testVariableId(testVariableId('node-subject')),
+        testVariableId('node-subject'),
         'pos_x',
         'The export already has a column called “pos_x” for the position of the layout attribute “pos”. Choose a different name.',
       );
@@ -358,7 +369,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name that is a built-in column of the exported file', async () => {
       await expectRefused(
-        testVariableId(testVariableId('node-subject')),
+        testVariableId('node-subject'),
         'networkCanvasEgoUUID',
         'The export already has a built-in column called “networkCanvasEgoUUID”, so an attribute cannot be named “networkCanvasEgoUUID”. Choose a different name.',
       );
@@ -366,7 +377,7 @@ describe('ConnectedVariablePill', () => {
 
     it('refuses a name that an export writes as a sibling’s column', async () => {
       await expectRefused(
-        testVariableId(testVariableId('node-subject')),
+        testVariableId('node-subject'),
         'colour red',
         'In the export, the name “colour red” and the column “colour_red” of the attribute “colour” would become the same column, “colour_red”. Choose a different name.',
       );
