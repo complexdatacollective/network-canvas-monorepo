@@ -368,6 +368,13 @@ const containerOfOnly = (
 const lineBreaks = (count: number, lineEndsAfter: boolean): string =>
   '\\\n'.repeat(count - (lineEndsAfter ? 1 : 0)) + (lineEndsAfter ? '\\' : '');
 
+type CodeSpan = Readonly<{
+  start: number;
+  end: number;
+  words: string;
+  block: Readonly<{ start: number; end: number }>;
+}>;
+
 type Context = Readonly<{
   source: string;
   multiline: boolean;
@@ -378,9 +385,11 @@ type Context = Readonly<{
   linked: Set<number>;
   /**
    * Where in the source a line or a paragraph may begin, or its words
-   * change, once the edits are made (see `guardedLineStarts`).
+   * change, once the edits are made (see `lineStartGuard`).
    */
   lineStarts: number[];
+  /** Each code span, with the paragraph or heading it is in. */
+  codeSpans: CodeSpan[];
 }>;
 
 /**
@@ -622,6 +631,26 @@ const collectEdits = (
     editWords(node, ancestors, context);
     return;
   }
+  if (node.type === 'inlineCode') {
+    const block = ancestors.findLast(
+      (ancestor) =>
+        ancestor.type === 'paragraph' || ancestor.type === 'heading',
+    );
+    const start = node.position?.start.offset;
+    const end = node.position?.end.offset;
+    if (start !== undefined && end !== undefined) {
+      context.codeSpans.push({
+        start,
+        end,
+        words: node.value,
+        block: {
+          start: block?.position?.start.offset ?? start,
+          end: block?.position?.end.offset ?? end,
+        },
+      });
+    }
+    return;
+  }
   if (isAddressFoundByParser(node, context.source) && node.type === 'link') {
     const start = node.position?.start.offset;
     const end = node.position?.end.offset;
@@ -739,6 +768,86 @@ const lineStartGuard = (
 };
 
 /**
+ * What `legacyMarkdownAsStandard` writes, and whether any code span had to be
+ * written as its words to keep the old reading's blocks.
+ */
+export const legacyMarkdownWritten = (
+  markdown: string,
+  { lines }: Readonly<{ lines: LocalizedTextLines }>,
+): Readonly<{ written: string; codeSpansAsWords: boolean }> => {
+  const tree = legacyTree(markdown);
+  const context: Context = {
+    source: markdown,
+    multiline: lines === 'multiple',
+    edits: [],
+    typed: new Set(),
+    linked: new Set(),
+    lineStarts: [],
+    codeSpans: [],
+  };
+  collectEdits(tree, [], context);
+  const writtenWith = (extra: readonly Edit[]) =>
+    applyEdits(markdown, [...context.edits, ...extra]);
+  const blocksIn = (written: string) =>
+    blocksOf(markdownTree(written), written);
+  const expected = blocksOf(tree, markdown);
+
+  // Removing or rewriting a line break can leave characters at the start of
+  // a line, or of a paragraph, where standard markdown reads a block the old
+  // reading did not: a list item, a heading, a definition, a rule. Rather
+  // than list that syntax, the result is read back: where its blocks differ
+  // from the old reading's, the start of each line the breaks opened,
+  // uncovered or rewrote is guarded (see `lineStartGuard`).
+  const written = writtenWith([]);
+  if (blocksIn(written) === expected) {
+    return { written, codeSpansAsWords: false };
+  }
+  const guards = [
+    ...new Map(
+      context.lineStarts
+        .map((at) => lineStartGuard(markdown, at, context))
+        .filter((guard) => guard !== undefined)
+        .map((guard) => [guard.start, guard]),
+    ).values(),
+  ];
+  // A line that opens with a code span has no typed character to guard: a
+  // span of three or more backticks that runs onto the next line would open
+  // a code block there. Where the guards are not enough, each code span in
+  // a paragraph or heading whose lines the breaks changed is written as its
+  // words, which loses its code formatting; the interview never drew code
+  // formatting (`code` is not among `ALLOWED_MARKDOWN_SECTION_TAGS` or
+  // `ALLOWED_MARKDOWN_LABEL_TAGS`), so participants see the same words.
+  const codeAsWords =
+    blocksIn(writtenWith(guards)) === expected
+      ? []
+      : context.codeSpans
+          .filter(({ block }) =>
+            context.lineStarts.some(
+              (at) => block.start <= at && at <= block.end,
+            ),
+          )
+          .map(({ start, end, words }) => ({
+            start,
+            end,
+            // A line ending in a code span is shown as a space.
+            text: escapeMarkdownText(words.replace(/\r\n|\r|\n/g, ' ')),
+          }));
+  // Then each edit that changes nothing is left out again, so that only the
+  // lines and spans that need one keep it.
+  const all = [...guards, ...codeAsWords];
+  const target = blocksIn(writtenWith(all));
+  let kept = all;
+  for (const edit of all) {
+    const without = kept.filter((other) => other !== edit);
+    if (blocksIn(writtenWith(without)) === target) kept = without;
+  }
+  return {
+    written: writtenWith(kept),
+    codeSpansAsWords: kept.some((edit) => codeAsWords.includes(edit)),
+  };
+};
+
+/**
  * Schema 8 markdown as standard CommonMark (see `markdownTree`) that shows a
  * participant what the legacy reading of it showed. The legacy reading is
  * CommonMark in which a typed `>` or `<` is a character, never a quotation or
@@ -760,9 +869,12 @@ const lineStartGuard = (
  * - a shortcode `remark-gemoji` drew as an emoji is written as the emoji;
  * - where a line a break opened, uncovered or rewrote would otherwise open a
  *   block the legacy reading did not have, its first character is written
- *   as a numeric character reference (see `lineStartGuard`).
+ *   as a numeric character reference (see `lineStartGuard`), and where a
+ *   code span opens such a line, which has no character that can be written
+ *   so, each code span in that paragraph is written as its words instead,
+ *   losing its code formatting (see `legacyMarkdownWritten`).
  *
- * Markdown's own syntax (code, links and their addresses, addresses in angle
+ * Markdown's own syntax (code, but as above, links and their addresses, addresses in angle
  * brackets) is left as written, as is everything GitHub's reading added that
  * the standard parser reads as words (`~~struck~~`, `- [ ] task`, tables).
  * Text rewritten once is left as it is if rewritten again, but for an
@@ -774,49 +886,8 @@ const lineStartGuard = (
  */
 export const legacyMarkdownAsStandard = (
   markdown: string,
-  { lines }: Readonly<{ lines: LocalizedTextLines }>,
-): string => {
-  const tree = legacyTree(markdown);
-  const context: Context = {
-    source: markdown,
-    multiline: lines === 'multiple',
-    edits: [],
-    typed: new Set(),
-    linked: new Set(),
-    lineStarts: [],
-  };
-  collectEdits(tree, [], context);
-  const writtenWith = (guards: readonly Edit[]) =>
-    applyEdits(markdown, [...context.edits, ...guards]);
-  const blocksIn = (written: string) =>
-    blocksOf(markdownTree(written), written);
-
-  // Removing or rewriting a line break can leave characters at the start of
-  // a line, or of a paragraph, where standard markdown reads a block the old
-  // reading did not: a list item, a heading, a definition, a rule. Rather
-  // than list that syntax, the result is read back: where its blocks differ
-  // from the old reading's, the start of each line the breaks opened,
-  // uncovered or rewrote is guarded (see `lineStartGuard`), and then each
-  // guard that changes nothing is left out again, so that only the lines
-  // that need one keep it.
-  const written = writtenWith([]);
-  if (blocksIn(written) === blocksOf(tree, markdown)) return written;
-  const guards = [
-    ...new Map(
-      context.lineStarts
-        .map((at) => lineStartGuard(markdown, at, context))
-        .filter((guard) => guard !== undefined)
-        .map((guard) => [guard.start, guard]),
-    ).values(),
-  ];
-  const guarded = blocksIn(writtenWith(guards));
-  let kept = guards;
-  for (const guard of guards) {
-    const without = kept.filter((other) => other !== guard);
-    if (blocksIn(writtenWith(without)) === guarded) kept = without;
-  }
-  return writtenWith(kept);
-};
+  options: Readonly<{ lines: LocalizedTextLines }>,
+): string => legacyMarkdownWritten(markdown, options).written;
 
 /**
  * The texts the migration writes as standard markdown itself, such as a

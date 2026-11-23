@@ -23,7 +23,10 @@ import {
 } from '../../../testing/informationPages.ts';
 import { collectLocalizedStringSites } from '../../../utils/collectLocalizedStrings.ts';
 import { extractProtocol } from '../../../utils/extractProtocol.ts';
-import { legacyMarkdownAsStandard } from '../legacy-markdown.ts';
+import {
+  legacyMarkdownAsStandard,
+  legacyMarkdownWritten,
+} from '../legacy-markdown.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 
 type Lines = 'single' | 'multiple';
@@ -147,6 +150,9 @@ const shown = (tree: Root): unknown => {
     return [...before, ...kept, ...after];
   };
   const tidy = (node: Nodes): Nodes => {
+    // The interview draws a code span as its words (`code` is not an
+    // element it draws).
+    if (node.type === 'inlineCode') return { type: 'text', value: node.value };
     if (!('children' in node)) return node;
     const merged: Nodes[] = [];
     for (const child of node.children.map(tidy).flatMap(breakOutOfEmphasis)) {
@@ -389,6 +395,20 @@ const LINES_AFTER_RUNS: readonly string[] = [
   '| a |<br>| --- |',
 ];
 
+/**
+ * Code spans of three to five backticks, on one line or running onto the
+ * next, after a leading run and after emphasis that held only breaks, with
+ * and without words after them.
+ */
+const CODE_SPANS_AFTER_RUNS: readonly string[] = [3, 4, 5].flatMap((count) => {
+  const ticks = '`'.repeat(count);
+  return [`${ticks}a${ticks}`, `${ticks}a\nb${ticks}`].flatMap((span) =>
+    ['<br>', '**<br>**'].flatMap((run) =>
+      ['', ' c'].map((after) => `${run}${span}${after}`),
+    ),
+  );
+});
+
 /** The generated texts, grouped by what is first on the line a run opens. */
 const LINE_START_CASES: readonly (readonly [string, Generated])[] =
   SHAPES.flatMap(([shape, lines, lead]) => [
@@ -411,6 +431,10 @@ const LINE_START_CASES: readonly (readonly [string, Generated])[] =
     [
       `an underline or a table row after a run, in ${shape}`,
       LINES_AFTER_RUNS.map((text) => [`${lead}${text}`, lines] as const),
+    ] as const,
+    [
+      `a code span after a run, in ${shape}`,
+      CODE_SPANS_AFTER_RUNS.map((text) => [`${lead}${text}`, lines] as const),
     ] as const,
   ]);
 
@@ -510,6 +534,8 @@ const CASES: readonly (readonly [string, string, string])[] = [
     '[Contact]: https://example.net\n\n[Contact]&#58; https://example.org',
   ],
   ['<br>**bold**', '**bold**', '**bold**'],
+  // A code span that would open a code block is written as its words.
+  ['<br>```a\nb``` c', 'a b c', 'a b c'],
   ['#<br>a', '#\\\na', '&#35; a'],
   ['# a<br>#', '# a &#35;', '# a &#35;'],
   ['** <br> **', '** \\\n **', '**  &#42;&#42;'],
@@ -695,6 +721,27 @@ describe('legacyMarkdownAsStandard', () => {
       ).toEqual([]);
     },
   );
+
+  // Writing code spans as words is the last resort, taken only where the
+  // read-back check finds that guarding line starts was not enough: a code
+  // span running onto a second line, uncovered at the start of a paragraph,
+  // which would open a code block. Anything else taking it would be a gap in
+  // the guards.
+  it('writes code spans as words only where a code span would open a code block', () => {
+    const fellBack = GENERATED_CASES.flatMap(([, cases]) => cases).filter(
+      ([input, lines]) =>
+        legacyMarkdownWritten(input, { lines }).codeSpansAsWords,
+    );
+    const expected = SHAPES.filter(([, , lead]) => lead === '').flatMap(
+      ([, lines]) =>
+        CODE_SPANS_AFTER_RUNS.filter((text) => text.includes('\n')).map(
+          (text) => [text, lines] as const,
+        ),
+    );
+    const order = (a: readonly string[], b: readonly string[]) =>
+      a.join('\0').localeCompare(b.join('\0'));
+    expect(fellBack.toSorted(order)).toEqual(expected.toSorted(order));
+  });
 
   it.each(SOURCE_FOLLOWING)(
     'follows the source of %j character by character',
