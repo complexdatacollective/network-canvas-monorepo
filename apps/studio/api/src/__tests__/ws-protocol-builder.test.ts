@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { request as httpRequest } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
-import { NodeWS } from '@effect/platform-node/NodeSocket';
+import * as NodeWS from '@effect/platform-node/NodeWS';
 import {
   Cause,
   Context,
