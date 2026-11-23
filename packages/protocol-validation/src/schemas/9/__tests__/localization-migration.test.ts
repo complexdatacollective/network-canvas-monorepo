@@ -410,6 +410,55 @@ describe('v8 to v9 localization migration', () => {
     );
   });
 
+  // The migration writes some markdown itself from plain text: a heading
+  // from a title, a caption from an attribute's name, an option label from
+  // its value, a page's heading from its stage's name. It records each as
+  // standard markdown (`textsWrittenAsStandard`), so that it is not read
+  // again the way schema 8 markdown was. A writer that did not record its
+  // text would turn the shortcode below into its emoji or the address into
+  // a link.
+  it('never reads text it wrote from plain text as schema 8 markdown', () => {
+    const plain = 'Plain :smile: www.example.org';
+    const document = schema8Protocol();
+    const stages = getAt(document, ['stages']);
+    if (!Array.isArray(stages)) throw new Error('Fixture has no stages');
+    const kinds = new Set<unknown>();
+    for (const stage of stages) {
+      if (!isRecord(stage)) continue;
+      kinds.add(stage.type);
+      stage.label = plain;
+      if (typeof stage.title === 'string') stage.title = plain;
+      for (const titled of [stage.introductionPanel, stage.explanationText]) {
+        if (isRecord(titled)) titled.title = plain;
+      }
+    }
+    expect(kinds).toContain('Information');
+    expect(kinds).toContain('Anonymisation');
+    stages.push({
+      id: 'empty-page',
+      type: 'Information',
+      label: plain,
+      items: [],
+    });
+    const composer = stagePath(document, 'composer');
+    const field = getAt(document, [...composer, 'nodeForm', 'fields', 1]);
+    if (!isRecord(field)) throw new Error('Fixture has no composer field');
+    delete field.label;
+    setAt(
+      document,
+      ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+      plain,
+    );
+    const option = ['codebook', 'node', 'person', 'variables', 'category'];
+    setAt(document, [...option, 'options', 0, 'label'], '');
+    setAt(document, [...option, 'options', 0, 'value'], plain);
+
+    const migrated = JSON.stringify(migrateStep(document));
+    expect(migrated).toContain(':smile: www.example.org');
+    expect(migrated).not.toContain('😄');
+    expect(migrated).not.toContain('(http://www.example.org)');
+  });
+
   it('joins the lines of text declared one line, and leaves text of several lines as it was', () => {
     const broken = (text: string) => `${text} \n\n second\r\nthird\u2028\n`;
     const document = schema8Protocol(broken);

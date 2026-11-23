@@ -2,9 +2,10 @@
  * Schema 8 Information pages, for tests: what the 8 to 9 migration joins
  * into one text, and what any other writer of an Information page (a
  * synthetic interview) must join the same way once the text is in schema 9
- * form. The migration first rewrites a schema 8 text item as standard
- * markdown (`textItemAsStandard`); from there the two join a page alike.
- * One table, so the two are checked against the same pages.
+ * form. The migration first rewrites each schema 8 text item as standard
+ * markdown with `legacyMarkdownAsStandard`, as `schema8MarkdownAsStandard`
+ * does here; from there the two join a page alike. One table, so the two are
+ * checked against the same pages.
  */
 
 import { legacyMarkdownAsStandard } from '../schemas/9/legacy-markdown.ts';
@@ -12,17 +13,9 @@ import { legacyMarkdownAsStandard } from '../schemas/9/legacy-markdown.ts';
 type Fields = Readonly<Record<string, unknown>>;
 
 /**
- * A schema 8 text item's text as the migration reads it: rewritten as
- * standard markdown (see `legacyMarkdownAsStandard`), the form any other
- * writer of an Information page is given text in.
- */
-export const textItemAsStandard = (text: string): string =>
-  legacyMarkdownAsStandard(text, { lines: 'multiple' });
-
-/**
- * Any schema 8 markdown text as the migration rewrites it for a field of one
- * line or several, for tests that follow a text from schema 8 to what the
- * interview and the editor show of it.
+ * Schema 8 markdown as the migration rewrites it for a field of one line or
+ * several (see `legacyMarkdownAsStandard`): an Information page's text item
+ * is text of several lines.
  */
 export const schema8MarkdownAsStandard = (
   text: string,

@@ -8,7 +8,7 @@ import {
   INFORMATION_PAGE_ASSETS,
   INFORMATION_PAGES,
   type InformationPageFixture,
-  textItemAsStandard,
+  schema8MarkdownAsStandard,
 } from '@codaco/protocol-validation/testing/information-pages';
 
 import { SyntheticInterview } from '../SyntheticInterview.ts';
@@ -27,7 +27,7 @@ const isTextInput = (value: unknown): value is TextInput =>
  * A schema 8 page as an Information stage's parts: its title, its text
  * item, and each file as a block. A synthetic interview is given schema 9
  * text, so a text item written as a string is given as the migration reads
- * it, rewritten as standard markdown (`textItemAsStandard`); one already in
+ * it, rewritten as standard markdown (`schema8MarkdownAsStandard`); one already in
  * schema 9 form is given as it is. The other difference is the block's
  * settings: a block takes the settings it is given, where the migration
  * gives each item those it was shown with (an audio recording at the start
@@ -55,7 +55,7 @@ const stageInput = (page: InformationPageFixture) => {
   return {
     title: isTextInput(page.title) ? page.title : '',
     ...(typeof text === 'string'
-      ? { text: textItemAsStandard(text) }
+      ? { text: schema8MarkdownAsStandard(text, 'multiple') }
       : isTextInput(text) && { text }),
     blocks,
     label: page.label ?? 'Intro',

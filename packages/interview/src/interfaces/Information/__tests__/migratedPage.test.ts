@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { markdownTree, migrateProtocol } from '@codaco/protocol-validation';
-import { textItemAsStandard } from '@codaco/protocol-validation/testing/information-pages';
+import { schema8MarkdownAsStandard } from '@codaco/protocol-validation/testing/information-pages';
 
 // Schema 9 text holds no HTML that is read as HTML. The migration from
 // schema 8 reads every `<` and `>` in a text item as a typed character
@@ -117,8 +117,8 @@ describe('a migrated Information page', () => {
           wordsOf(page),
           `${JSON.stringify(item)} then ${JSON.stringify(follower)} became ${JSON.stringify(page)}`,
         ).toBe(
-          wordsOf(textItemAsStandard(item)) +
-            wordsOf(textItemAsStandard(follower)),
+          wordsOf(schema8MarkdownAsStandard(item, 'multiple')) +
+            wordsOf(schema8MarkdownAsStandard(follower, 'multiple')),
         );
       }
     }
