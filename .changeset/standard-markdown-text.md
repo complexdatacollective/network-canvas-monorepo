@@ -45,8 +45,8 @@ Bold and italic words written directly beside a letter, a digit or an emoji,
 such as part of a word, now stay bold or italic when participants see them.
 This includes words that begin or end with punctuation, such as a bracket. In
 a few of these places, Architect stores the letter beside the bold or italic
-words as a character reference, such as `&#97;` for `a`. Participants and the
-editor still show the letter.
+words as a character reference, such as `&#97;` for `a`. Participants still
+see the letter, and the editor still shows it.
 
 For developers:
 
