@@ -2103,7 +2103,9 @@ describe('addInformationStage content', () => {
         "# Rock 'n' roll {live}",
       );
       expect(shown(page({ title: 'Item #3 *x*' }))).toBe('# Item #3 \\*x\\*');
-      expect(shown(page({ title: '##' }))).toBe('# \\##');
+      // Each `#` of a run that opens a line is escaped, as a run that a
+      // space follows is anywhere.
+      expect(shown(page({ title: '##' }))).toBe('# \\#\\#');
     });
 
     it('keeps the text as the markdown it is written in', () => {
