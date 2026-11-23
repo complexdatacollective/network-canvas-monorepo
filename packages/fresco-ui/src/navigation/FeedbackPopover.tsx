@@ -131,11 +131,14 @@ export default function FeedbackPopover({
       defaultOpen={defaultOpen}
       onOpenChange={(open) => {
         if (!open) return;
-        // Reset on opening, so the thanks does not turn back into the form
-        // while the popup is still closing.
-        setDraft('');
-        setStatus('idle');
         onShown?.();
+        // Only a sent form starts again, and on opening, so the thanks does
+        // not turn back into the form while the popup is still closing. A
+        // draft, a send still under way and a failed send are all kept.
+        if (status === 'sent') {
+          setDraft('');
+          setStatus('idle');
+        }
       }}
     >
       {iconOnly ? (

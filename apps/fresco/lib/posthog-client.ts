@@ -16,28 +16,6 @@ let shutDown = false;
 // analytics are turned off, and an error boundary can report while the answer
 // is still unknown. Both consult this rather than assuming.
 let analyticsEnabled: boolean | undefined;
-const analyticsEnabledListeners = new Set<() => void>();
-
-function setAnalyticsEnabled(enabled: boolean) {
-  analyticsEnabled = enabled;
-  for (const listener of analyticsEnabledListeners) listener();
-}
-
-/**
- * Whether this tab reports to PostHog, for a control that has to deliver what
- * a researcher sends some other way when it does not. An external store:
- * `subscribeToAnalyticsEnabled` hears every change of the server's decision.
- */
-export function isAnalyticsEnabled() {
-  return analyticsEnabled === true && !shutDown;
-}
-
-export function subscribeToAnalyticsEnabled(listener: () => void) {
-  analyticsEnabledListeners.add(listener);
-  return () => {
-    analyticsEnabledListeners.delete(listener);
-  };
-}
 
 // True once an enabled start has finished opting in and identifying. Until
 // then posthog-js may exist but treat capture as a no-op, or capture under the
@@ -175,7 +153,7 @@ async function getClient(): Promise<PostHog> {
  * installation ID so events group by deployment rather than by person.
  */
 export async function startPostHog(installationId?: string) {
-  setAnalyticsEnabled(true);
+  analyticsEnabled = true;
 
   if (shutDown) {
     return;
@@ -234,7 +212,7 @@ export async function startPostHog(installationId?: string) {
  * under them to apply a setting.
  */
 export async function stopPostHog() {
-  setAnalyticsEnabled(false);
+  analyticsEnabled = false;
   started = false;
 
   // Anything reported while the server's decision was still in flight was

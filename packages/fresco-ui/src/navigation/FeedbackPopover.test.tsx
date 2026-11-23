@@ -89,6 +89,36 @@ describe('FeedbackPopover', () => {
     expect(await screen.findByText('Thanks for your feedback.')).toBeVisible();
   });
 
+  // A send that outlives the popup must not land on a form the user has
+  // since reopened and started again.
+  it('keeps a send under way, and the draft, when closed and reopened', async () => {
+    let finish = () => {};
+    const onSubmit = vi.fn(
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    );
+    render(<FeedbackPopover onSubmit={onSubmit} />);
+
+    await userEvent.type(await openForm(), 'Add a dark theme.');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await userEvent.keyboard('{Escape}');
+
+    expect(await openForm()).toHaveValue('Add a dark theme.');
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+
+    finish();
+    expect(await screen.findByText('Thanks for your feedback.')).toBeVisible();
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it('keeps an unsent draft when closed and reopened', async () => {
+    render(<FeedbackPopover onSubmit={vi.fn()} />);
+
+    await userEvent.type(await openForm(), 'Half a thought');
+    await userEvent.keyboard('{Escape}');
+
+    expect(await openForm()).toHaveValue('Half a thought');
+  });
+
   it('starts again with an empty form the next time it opens', async () => {
     const onShown = vi.fn();
     render(<FeedbackPopover onSubmit={vi.fn()} onShown={onShown} />);

@@ -15,8 +15,9 @@ const send = sendAnonymousPostHogEvent(
 );
 
 /**
- * Delivers feedback written while analytics are off, anonymously. Rejects if
- * the relay does not accept it, as it will while the device is offline.
+ * Delivers feedback the user wrote and sent, anonymously and whether or not
+ * analytics are on. Rejects if the relay does not accept it, as it will while
+ * the device is offline.
  */
 export async function sendFeedbackEvent(
   event: string,

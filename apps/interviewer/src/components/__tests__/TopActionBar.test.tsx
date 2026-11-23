@@ -57,35 +57,30 @@ describe('TopActionBar feedback', () => {
   });
 
   // Writing feedback is the user's own choice to send something, so it does
-  // not depend on the analytics preference.
-  it('sends feedback anonymously while analytics are off', async () => {
-    const body = await sendFeedback('Show the case ID on the resume pill.');
+  // not depend on the analytics preference, and never goes through `track`,
+  // which drops events while analytics are off or the client failed to load.
+  it.each([false, true])(
+    'sends feedback anonymously with analytics enabled: %s',
+    async (enabled) => {
+      analytics.enabled = enabled;
+      const body = await sendFeedback('Show the case ID on the resume pill.');
 
-    expect(body.event).toBe('survey sent');
-    expect(body.properties).toMatchObject({
-      $survey_id: SURVEY_ID,
-      $survey_completed: true,
-      [ANSWER]: 'Show the case ID on the resume pill.',
-      app: 'interviewer',
-      $process_person_profile: false,
-      $geoip_disable: true,
-    });
-    expect(body.properties).not.toHaveProperty('installation_id');
-  });
-
-  it('sends feedback through analytics while they are on', async () => {
-    analytics.enabled = true;
-    render(<TopActionBar onOpenSettings={vi.fn()} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Feedback' }));
-    await userEvent.type(await screen.findByRole('textbox'), 'More themes.');
-    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
-
-    expect(analytics.track).toHaveBeenLastCalledWith(
-      'survey sent',
-      expect.objectContaining({ [ANSWER]: 'More themes.' }),
-    );
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
+      expect(body.event).toBe('survey sent');
+      expect(body.properties).toMatchObject({
+        $survey_id: SURVEY_ID,
+        $survey_completed: true,
+        [ANSWER]: 'Show the case ID on the resume pill.',
+        app: 'interviewer',
+        $process_person_profile: false,
+        $geoip_disable: true,
+      });
+      expect(body.properties).not.toHaveProperty('installation_id');
+      expect(analytics.track).not.toHaveBeenCalledWith(
+        'survey sent',
+        expect.anything(),
+      );
+    },
+  );
 
   // `track` is the provider's own gate: it sends nothing while analytics are
   // off, so opening the form stays a usage event.

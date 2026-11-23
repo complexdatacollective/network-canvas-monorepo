@@ -124,13 +124,14 @@ type TopActionBarProps = {
 
 export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
   const { mode, lock } = useAuth();
-  const { enabled, track } = useAnalytics();
+  const { track } = useAnalytics();
   const showLock = mode !== undefined && mode !== 'none';
 
   return (
     <TopActionBarView
-      // What the user writes and sends goes out even with analytics off.
-      feedback={appFeedbackSurvey(track, enabled ? track : sendFeedbackEvent)}
+      // Opening the form is usage, which `track` reports only with analytics
+      // on. What the user writes and sends always goes out, anonymously.
+      feedback={appFeedbackSurvey(track, sendFeedbackEvent)}
       showLock={showLock}
       onLock={() => {
         void lock();

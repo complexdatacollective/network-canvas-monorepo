@@ -1,20 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const analytics = vi.hoisted(() => ({
-  enabled: false,
-  listeners: new Set<() => void>(),
-  captureClientEvent: vi.fn(),
-}));
+const captureClientEvent = vi.hoisted(() => vi.fn());
 
-vi.mock('~/lib/posthog-client', () => ({
-  captureClientEvent: analytics.captureClientEvent,
-  isAnalyticsEnabled: () => analytics.enabled,
-  subscribeToAnalyticsEnabled: (listener: () => void) => {
-    analytics.listeners.add(listener);
-    return () => analytics.listeners.delete(listener);
-  },
-}));
+vi.mock('~/lib/posthog-client', () => ({ captureClientEvent }));
 
 vi.mock('~/fresco.config', () => ({
   POSTHOG_APP_PROPERTIES: { app: 'Fresco', $app_name: 'Fresco' },
@@ -40,8 +29,6 @@ async function sendFeedback(text: string) {
 describe('FrescoFeedback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    analytics.enabled = false;
-    analytics.listeners.clear();
     vi.stubGlobal('fetch', fetchMock);
   });
 
@@ -49,34 +36,23 @@ describe('FrescoFeedback', () => {
     vi.unstubAllGlobals();
   });
 
-  it('sends feedback through analytics while they are on', async () => {
-    analytics.enabled = true;
-    await sendFeedback('Let me duplicate a protocol.');
+  // `captureClientEvent` is what a deployment with analytics off silences, so
+  // opening the form is reported only through it and never directly.
+  it('reports the form opening through analytics only', async () => {
+    render(<FrescoFeedback />);
+    fireEvent.click(screen.getByRole('button', { name: 'Feedback' }));
+    await screen.findByRole('textbox');
 
-    expect(analytics.captureClientEvent).toHaveBeenCalledWith('survey shown', {
+    expect(captureClientEvent).toHaveBeenCalledExactlyOnceWith('survey shown', {
       $survey_id: '01a20a16-0382-0000-64b9-70293a6eed37',
     });
-    expect(analytics.captureClientEvent).toHaveBeenLastCalledWith(
-      'survey sent',
-      expect.objectContaining({
-        $survey_completed: true,
-        [ANSWER]: 'Let me duplicate a protocol.',
-      }),
-    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  // A deployment with analytics off still lets a researcher send what they
-  // wrote. Nothing reaches the relay until they press Send.
-  it('sends feedback anonymously on a deployment with analytics off', async () => {
-    render(<FrescoFeedback />);
-    fireEvent.click(screen.getByRole('button', { name: 'Feedback' }));
-    fireEvent.change(await screen.findByRole('textbox'), {
-      target: { value: 'Let me duplicate a protocol.' },
-    });
-    expect(fetchMock).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  // Whatever the deployment's analytics setting, what a researcher writes and
+  // sends goes straight to the relay, anonymously.
+  it('sends feedback anonymously, without going through analytics', async () => {
+    await sendFeedback('Let me duplicate a protocol.');
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0]!;
@@ -95,7 +71,7 @@ describe('FrescoFeedback', () => {
       [ANSWER]: 'Let me duplicate a protocol.',
     });
     expect(body.properties).not.toHaveProperty('installation_id');
-    expect(analytics.captureClientEvent).not.toHaveBeenCalledWith(
+    expect(captureClientEvent).not.toHaveBeenCalledWith(
       'survey sent',
       expect.anything(),
     );
