@@ -1,6 +1,7 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import createTimeline, { timelineActions } from '~/ducks/middleware/timeline';
 import activeProtocol, {
@@ -204,7 +205,7 @@ describe('clearing the active protocol and undo history', () => {
     localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [
       {
-        id: 's1',
+        id: createProtocolObjectId(),
         type: 'Information',
         label: { en: 'Sensitive prompt text' },
         content: { en: '# Sensitive prompt text' },

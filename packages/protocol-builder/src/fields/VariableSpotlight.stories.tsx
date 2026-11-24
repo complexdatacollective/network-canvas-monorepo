@@ -7,20 +7,29 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import { testVariableId } from '../testing/testId.ts';
 import type { VariableNameScope } from './variableNameRules.ts';
 import type { VariablePickerOption } from './VariablePickerField.tsx';
 import type { CreateRowOutcome } from './VariableSpotlight.tsx';
 import VariableSpotlight from './VariableSpotlight.tsx';
 
 const ATTRIBUTES: readonly VariablePickerOption[] = [
-  { value: 'name', label: 'name', type: 'text' },
-  { value: 'age', label: 'age', type: 'number' },
-  { value: 'contactFreq', label: 'contactFreq', type: 'ordinal' },
-  { value: 'contactType', label: 'contactType', type: 'categorical' },
-  { value: 'flagged', label: 'flagged', type: 'boolean' },
-  { value: 'closeness', label: 'closeness', type: 'scalar' },
-  { value: 'metOn', label: 'metOn', type: 'datetime' },
-  { value: 'homeTown', label: 'homeTown', type: 'location' },
+  { value: testVariableId('name'), label: 'name', type: 'text' },
+  { value: testVariableId('age'), label: 'age', type: 'number' },
+  {
+    value: testVariableId('contactFreq'),
+    label: 'contactFreq',
+    type: 'ordinal',
+  },
+  {
+    value: testVariableId('contactType'),
+    label: 'contactType',
+    type: 'categorical',
+  },
+  { value: testVariableId('flagged'), label: 'flagged', type: 'boolean' },
+  { value: testVariableId('closeness'), label: 'closeness', type: 'scalar' },
+  { value: testVariableId('metOn'), label: 'metOn', type: 'datetime' },
+  { value: testVariableId('homeTown'), label: 'homeTown', type: 'location' },
 ];
 
 type HostProps = Readonly<{
@@ -195,7 +204,7 @@ export const TakenWithTheKeyboard: Story = {
 
     await expect(
       canvas.getByRole('status', { name: 'Chosen attribute' }),
-    ).toHaveTextContent('contactType');
+    ).toHaveTextContent(testVariableId('contactType'));
   },
 };
 
@@ -234,10 +243,14 @@ export const ANameThatCannotBeUsed: Story = {
     nameScope: {
       entity: 'node',
       variables: [
-        { id: 'age', name: 'age', type: 'number' },
-        { id: 'nominated_early', name: 'nominated_early', type: 'boolean' },
+        { id: testVariableId('age'), name: 'age', type: 'number' },
         {
-          id: 'contactType',
+          id: testVariableId('nominated_early'),
+          name: 'nominated_early',
+          type: 'boolean',
+        },
+        {
+          id: testVariableId('contactType'),
           name: 'contactType',
           type: 'categorical',
           options: [{ value: 'call' }],

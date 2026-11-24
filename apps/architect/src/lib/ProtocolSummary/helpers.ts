@@ -1,9 +1,7 @@
 import { flatMap, get, reduce } from 'es-toolkit/compat';
 
-import {
-  collectEntityAttributeReferences,
-  type LocalizedString,
-} from '@codaco/protocol-validation';
+import type { LocalizedString } from '@codaco/protocol-validation';
+import { collectVariableReferences } from '~/utils/collectVariableReferences';
 
 type VariableConfiguration = {
   name: string;
@@ -101,7 +99,7 @@ export const getCodebookIndex = (protocol: Protocol | null | undefined) => {
     return [];
   }
 
-  const hits = collectEntityAttributeReferences(protocol);
+  const hits = collectVariableReferences(protocol);
   const variablePaths: Record<string, unknown> = {};
   for (const hit of hits) {
     variablePaths[hit.path.join('.')] = hit.variableId;

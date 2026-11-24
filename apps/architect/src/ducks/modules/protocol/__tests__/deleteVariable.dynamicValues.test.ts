@@ -34,7 +34,9 @@ const makeStore = ({ bound }: { bound: boolean }) => {
       getDefault({ serializableCheck: false, immutableCheck: false }),
   });
 
-  const protocol = structuredClone(developmentProtocol) as CurrentProtocol;
+  const protocol = structuredClone(
+    developmentProtocol,
+  ) as unknown as CurrentProtocol;
   protocol.codebook.ego = {
     ...protocol.codebook.ego,
     variables: {

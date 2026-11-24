@@ -5,8 +5,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import developmentProtocol from '@codaco/protocols/development';
+import { testTypeId } from '@codaco/protocol-builder/testing/testId';
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
@@ -14,6 +13,9 @@ import { getProtocol } from '~/selectors/protocol';
 // The architect test setup mocks `useDialog` globally; this suite is about
 // what the REAL dialog does with a rejected `onConfirm`.
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
+
+import { templateTypeId } from '~/templates/__tests__/templateCodebookIds';
+import { developmentProtocol } from '~/templates/development-protocol';
 
 import EntityType from '../EntityType';
 
@@ -34,7 +36,7 @@ import EntityType from '../EntityType';
 
 // person — the development protocol's main node type, referenced by its name
 // generators and sociograms.
-const PERSON = 'person_node_type';
+const PERSON = templateTypeId(developmentProtocol, 'node', 'person');
 
 const makeStore = () => {
   const store = configureStore({
@@ -43,9 +45,7 @@ const makeStore = () => {
       getDefault({ serializableCheck: false, immutableCheck: false }),
   });
   store.dispatch(
-    protocolActions.setActiveProtocol(
-      structuredClone(developmentProtocol) as unknown as CurrentProtocol,
-    ),
+    protocolActions.setActiveProtocol(structuredClone(developmentProtocol)),
   );
   return store;
 };
@@ -89,10 +89,8 @@ describe('Codebook delete type confirmation', () => {
 
   it('deletes a type nothing references', async () => {
     const store = makeStore();
-    const unusedType = 'unused_node_type';
-    const withUnusedType = structuredClone(
-      developmentProtocol,
-    ) as unknown as CurrentProtocol;
+    const unusedType = testTypeId('unused-node-type');
+    const withUnusedType = structuredClone(developmentProtocol);
     withUnusedType.codebook.node = {
       ...withUnusedType.codebook.node,
       [unusedType]: {

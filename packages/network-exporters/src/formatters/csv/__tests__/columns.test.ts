@@ -8,6 +8,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { FormattedSession } from '../../../input';
 import type { ExportWarning } from '../../../output';
 import {
@@ -26,7 +27,7 @@ type Variables = NonNullable<
 
 const personCodebook = (variables: Variables): Codebook => ({
   node: {
-    person: {
+    [testTypeId('person')]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
@@ -43,7 +44,7 @@ const withNodes = (...nodes: NcNode[]): FormattedSession => ({
 
 const person = (attributes: NcNode[typeof entityAttributesProperty]) => ({
   [entityPrimaryKeyProperty]: `node-${Object.keys(attributes).join('-')}`,
-  type: 'person',
+  type: testTypeId('person'),
   [entityAttributesProperty]: attributes,
 });
 
@@ -89,7 +90,7 @@ const renamed = (
 describe('the cells of categorical columns', () => {
   const rating = (...values: (string | number)[]) =>
     personCodebook({
-      rating: {
+      [testVariableId('rating')]: {
         name: 'rating',
         type: 'categorical',
         options: values.map((value) => ({
@@ -102,7 +103,7 @@ describe('the cells of categorical columns', () => {
   it('marks the selected options and only those, without matching substrings', () => {
     const { rows } = exportAttributeList(
       rating('male', 'female', 'non-binary'),
-      withNodes(person({ rating: ['female'] })),
+      withNodes(person({ [testVariableId('rating')]: ['female'] })),
     );
 
     expect(rows[0]?.get('rating_male')).toBe('false');
@@ -113,7 +114,7 @@ describe('the cells of categorical columns', () => {
   it('tells numbers apart from numbers that contain them', () => {
     const { rows } = exportAttributeList(
       rating(1, 10, 100),
-      withNodes(person({ rating: [10] })),
+      withNodes(person({ [testVariableId('rating')]: [10] })),
     );
 
     expect(rows[0]?.get('rating_1')).toBe('false');
@@ -124,7 +125,7 @@ describe('the cells of categorical columns', () => {
   it('marks nothing when nothing is selected', () => {
     const { rows } = exportAttributeList(
       rating('a', 'b'),
-      withNodes(person({ rating: [] })),
+      withNodes(person({ [testVariableId('rating')]: [] })),
     );
 
     expect(rows[0]?.get('rating_a')).toBe('false');
@@ -136,14 +137,20 @@ describe('a variable column with the name of a built-in column', () => {
   it('is renamed, keeps its values, and is reported once', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        id: { name: 'nodeID', type: 'text' },
-        uid: { name: '_uid', type: 'text' },
-        ego: {
+        [testVariableId('id')]: { name: 'nodeID', type: 'text' },
+        [testVariableId('uid')]: { name: '_uid', type: 'text' },
+        [testVariableId('ego')]: {
           name: 'networkCanvasUUID',
           type: 'text',
         },
       }),
-      withNodes(person({ id: 'A1', uid: 'U1', ego: 'E1' })),
+      withNodes(
+        person({
+          [testVariableId('id')]: 'A1',
+          [testVariableId('uid')]: 'U1',
+          [testVariableId('ego')]: 'E1',
+        }),
+      ),
     );
 
     expect(headers).toEqual([
@@ -155,7 +162,9 @@ describe('a variable column with the name of a built-in column', () => {
       'networkCanvasUUID_2',
     ]);
     expect(rows[0]?.get('nodeID')).toBe('1');
-    expect(rows[0]?.get('networkCanvasUUID')).toBe('node-id-uid-ego');
+    expect(rows[0]?.get('networkCanvasUUID')).toBe(
+      `node-${testVariableId('id')}-${testVariableId('uid')}-${testVariableId('ego')}`,
+    );
     expect(rows[0]?.get('nodeID_2')).toBe('A1');
     expect(rows[0]?.get('_uid_2')).toBe('U1');
     expect(rows[0]?.get('networkCanvasUUID_2')).toBe('E1');
@@ -171,8 +180,8 @@ describe('variable columns with the same name', () => {
   it('leaves the first in codebook order, and renames the later one', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        text: { name: 'colour_red', type: 'text' },
-        choice: {
+        [testVariableId('text')]: { name: 'colour_red', type: 'text' },
+        [testVariableId('choice')]: {
           name: 'colour',
           type: 'categorical',
           options: [
@@ -181,7 +190,12 @@ describe('variable columns with the same name', () => {
           ],
         },
       }),
-      withNodes(person({ text: 'crimson', choice: ['red'] })),
+      withNodes(
+        person({
+          [testVariableId('text')]: 'crimson',
+          [testVariableId('choice')]: ['red'],
+        }),
+      ),
     );
 
     expect(headers.slice(3)).toEqual([
@@ -198,10 +212,15 @@ describe('variable columns with the same name', () => {
   it('never gives a renamed column the name of another column', () => {
     const { headers, rows } = exportAttributeList(
       personCodebook({
-        first: { name: 'nodeID', type: 'text' },
-        second: { name: 'nodeID_2', type: 'text' },
+        [testVariableId('first')]: { name: 'nodeID', type: 'text' },
+        [testVariableId('second')]: { name: 'nodeID_2', type: 'text' },
       }),
-      withNodes(person({ first: 'one', second: 'two' })),
+      withNodes(
+        person({
+          [testVariableId('first')]: 'one',
+          [testVariableId('second')]: 'two',
+        }),
+      ),
     );
 
     expect(headers.slice(3)).toEqual(['nodeID_3', 'nodeID_2']);
@@ -214,14 +233,19 @@ describe('variable columns with the same name', () => {
     const decomposed = 'x_Cafe\u0301';
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        first: { name: composed, type: 'text' },
-        second: {
+        [testVariableId('first')]: { name: composed, type: 'text' },
+        [testVariableId('second')]: {
           name: 'x',
           type: 'categorical',
           options: [{ label: { en: 'Café' }, value: 'Cafe\u0301' }],
         },
       }),
-      withNodes(person({ first: 'one', second: ['Cafe\u0301'] })),
+      withNodes(
+        person({
+          [testVariableId('first')]: 'one',
+          [testVariableId('second')]: ['Cafe\u0301'],
+        }),
+      ),
     );
 
     expect(headers.slice(3)).toEqual([composed, `${decomposed}_2`]);
@@ -233,10 +257,15 @@ describe('variable columns with the same name', () => {
   it('compares headers as written, with the formula guard', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        formula: { name: '=total', type: 'text' },
-        guarded: { name: "'=total", type: 'text' },
+        [testVariableId('formula')]: { name: '=total', type: 'text' },
+        [testVariableId('guarded')]: { name: "'=total", type: 'text' },
       }),
-      withNodes(person({ formula: 'one', guarded: 'two' })),
+      withNodes(
+        person({
+          [testVariableId('formula')]: 'one',
+          [testVariableId('guarded')]: 'two',
+        }),
+      ),
     );
 
     expect(headers.slice(3)).toEqual(["'=total", "'=total_2"]);
@@ -248,10 +277,12 @@ describe('variable columns with the same name', () => {
   it('does not rename names that differ only in case', () => {
     const { headers, warnings } = exportAttributeList(
       personCodebook({
-        lower: { name: 'age', type: 'number' },
-        upper: { name: 'Age', type: 'number' },
+        [testVariableId('lower')]: { name: 'age', type: 'number' },
+        [testVariableId('upper')]: { name: 'Age', type: 'number' },
       }),
-      withNodes(person({ lower: 1, upper: 2 })),
+      withNodes(
+        person({ [testVariableId('lower')]: 1, [testVariableId('upper')]: 2 }),
+      ),
     );
 
     expect(headers.slice(3)).toEqual(['age', 'Age']);
@@ -261,7 +292,7 @@ describe('variable columns with the same name', () => {
   it('tells apart two options of one variable that write the same column', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        rating: {
+        [testVariableId('rating')]: {
           name: 'rating',
           type: 'categorical',
           options: [
@@ -270,7 +301,7 @@ describe('variable columns with the same name', () => {
           ],
         },
       }),
-      withNodes(person({ rating: ['1'] })),
+      withNodes(person({ [testVariableId('rating')]: ['1'] })),
     );
 
     expect(headers.slice(3)).toEqual(['rating_1', 'rating_1_2']);
@@ -282,9 +313,11 @@ describe('variable columns with the same name', () => {
   it('renames an attribute the codebook does not declare after every variable', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        name: { name: 'name', type: 'text' },
+        [testVariableId('name')]: { name: 'name', type: 'text' },
       }),
-      withNodes(person({ nickname: 'Dee', name: 'Deirdre' })),
+      withNodes(
+        person({ nickname: 'Dee', [testVariableId('name')]: 'Deirdre' }),
+      ),
     );
 
     expect(headers.slice(3)).toEqual(['name', 'nickname']);
@@ -292,9 +325,11 @@ describe('variable columns with the same name', () => {
 
     const clash = exportAttributeList(
       personCodebook({
-        name: { name: 'nickname', type: 'text' },
+        [testVariableId('name')]: { name: 'nickname', type: 'text' },
       }),
-      withNodes(person({ nickname: 'Dee', name: 'Deirdre' })),
+      withNodes(
+        person({ nickname: 'Dee', [testVariableId('name')]: 'Deirdre' }),
+      ),
     );
 
     expect(clash.headers.slice(3)).toEqual(['nickname', 'nickname_2']);
@@ -310,13 +345,18 @@ describe('variable columns with the same name', () => {
   it('renames layout columns too, when the screen-space columns are written', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        text: {
+        [testVariableId('text')]: {
           name: 'pos_screenSpaceX',
           type: 'text',
         },
-        layout: { name: 'pos', type: 'layout' },
+        [testVariableId('layout')]: { name: 'pos', type: 'layout' },
       }),
-      withNodes(person({ text: 'note', layout: { x: 0.5, y: 0.25 } })),
+      withNodes(
+        person({
+          [testVariableId('text')]: 'note',
+          [testVariableId('layout')]: { x: 0.5, y: 0.25 },
+        }),
+      ),
       true,
     );
 
@@ -339,21 +379,21 @@ describe('a file with no nodes', () => {
   it('lists the columns of every node type, renamed as each type would be', () => {
     const codebook: Codebook = {
       node: {
-        person: {
+        [testTypeId('person')]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            id: { name: 'nodeID', type: 'text' },
-            name: { name: 'name', type: 'text' },
+            [testVariableId('id')]: { name: 'nodeID', type: 'text' },
+            [testVariableId('name')]: { name: 'name', type: 'text' },
           },
         },
-        place: {
+        [testTypeId('place')]: {
           name: 'Place',
           color: 'node-color-seq-2',
           shape: { default: 'square' },
           variables: {
-            name: { name: 'name', type: 'text' },
+            [testVariableId('name')]: { name: 'name', type: 'text' },
           },
         },
       },
@@ -374,11 +414,11 @@ describe('the edge list', () => {
     const warnings: ExportWarning[] = [];
     const codebook: Codebook = {
       edge: {
-        knows: {
+        [testTypeId('knows')]: {
           name: 'Knows',
           color: 'edge-color-seq-1',
           variables: {
-            from: { name: 'from', type: 'text' },
+            [testVariableId('from')]: { name: 'from', type: 'text' },
           },
         },
       },
@@ -391,8 +431,8 @@ describe('the edge list', () => {
             [entityPrimaryKeyProperty]: 'edge-a',
             from: 'node-',
             to: 'node-b',
-            type: 'knows',
-            [entityAttributesProperty]: { from: 'school' },
+            type: testTypeId('knows'),
+            [entityAttributesProperty]: { [testVariableId('from')]: 'school' },
           },
         ],
       }),
@@ -427,8 +467,8 @@ describe('the ego list', () => {
     const codebook: Codebook = {
       ego: {
         variables: {
-          internal: { name: 'caseId', type: 'text' },
-          printed: {
+          [testVariableId('internal')]: { name: 'caseId', type: 'text' },
+          [testVariableId('printed')]: {
             name: 'networkCanvasCaseID',
             type: 'text',
           },
@@ -441,7 +481,10 @@ describe('the ego list', () => {
         ...session,
         ego: {
           [entityPrimaryKeyProperty]: 'ego-1',
-          [entityAttributesProperty]: { internal: 'mine', printed: 'theirs' },
+          [entityAttributesProperty]: {
+            [testVariableId('internal')]: 'mine',
+            [testVariableId('printed')]: 'theirs',
+          },
         },
       }),
       codebook,

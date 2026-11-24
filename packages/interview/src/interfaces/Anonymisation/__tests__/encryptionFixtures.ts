@@ -13,6 +13,7 @@ import {
   type StageMetadata,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { createInitialNetwork } from '../../../contract/network';
 import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import { store as createStore } from '../../../store/store';
@@ -20,22 +21,27 @@ import { deriveInterviewKey } from '../encryptionFormat';
 import { installEncryptionKey } from '../unlockEncryption';
 import { generateSecureAttributes } from '../utils';
 
-export const NODE_TYPE = 'person';
+export const NODE_TYPE = testTypeId('person');
+
+/** The ids of the person's variables. */
+export const NAME_VARIABLE = testVariableId('name');
+export const NICKNAME_VARIABLE = testVariableId('nickname');
+export const AGE_VARIABLE = testVariableId('age');
 
 export const encryptedVariables: Record<string, Variable> = {
-  name: {
+  [NAME_VARIABLE]: {
     name: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  nickname: {
+  [NICKNAME_VARIABLE]: {
     name: 'nickname',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  age: { name: 'age', type: 'number', component: 'Number' },
+  [AGE_VARIABLE]: { name: 'age', type: 'number', component: 'Number' },
 };
 
 const personDefinition = {
@@ -92,7 +98,7 @@ export async function makeEncryptedPerson(
   const { key } = await encryptionFor(passphrase);
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
-      { name, age: 40 },
+      { [NAME_VARIABLE]: name, [AGE_VARIABLE]: 40 },
       encryptedVariables,
       key,
       id,
@@ -110,7 +116,7 @@ type Stages = InterviewPayload['protocol']['stages'];
 
 const nameGeneratorStages: Stages = [
   {
-    id: 'stage-1',
+    id: testId('stage-1'),
     type: 'NameGenerator',
     label: { en: 'Name generator' },
     subject: { entity: 'node', type: NODE_TYPE },
@@ -118,45 +124,45 @@ const nameGeneratorStages: Stages = [
       title: { en: 'Add a person' },
       fields: [
         {
-          id: 'field-1',
-          variable: asEntityAttributeReference('name'),
+          id: testId('field-1'),
+          variable: asEntityAttributeReference(NAME_VARIABLE),
           prompt: { en: 'Name' },
         },
         {
-          id: 'field-2',
-          variable: asEntityAttributeReference('age'),
+          id: testId('field-2'),
+          variable: asEntityAttributeReference(AGE_VARIABLE),
           prompt: { en: 'Age' },
         },
       ],
     },
-    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
+    prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
   },
 ];
 
 /** An alter form asking for an encrypted and an unencrypted answer. */
 export const alterFormStages: Stages = [
   {
-    id: 'alter-form',
+    id: testId('alter-form'),
     type: 'AlterForm',
     label: { en: 'Alter form' },
     subject: { entity: 'node', type: NODE_TYPE },
     form: {
       fields: [
         {
-          id: 'field-1',
-          variable: asEntityAttributeReference('name'),
+          id: testId('field-1'),
+          variable: asEntityAttributeReference(NAME_VARIABLE),
           prompt: { en: 'Name' },
         },
         {
-          id: 'field-2',
-          variable: asEntityAttributeReference('age'),
+          id: testId('field-2'),
+          variable: asEntityAttributeReference(AGE_VARIABLE),
           prompt: { en: 'Age' },
         },
       ],
     },
   },
   {
-    id: 'next-screen',
+    id: testId('next-screen'),
     type: 'Information',
     label: { en: 'Next screen' },
     content: { en: '# Next screen' },

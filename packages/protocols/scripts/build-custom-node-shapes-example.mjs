@@ -11,6 +11,12 @@ import {
   parseNodeShapeSvg,
   serializeNodeShapeSvg,
 } from '../../fresco-ui/src/node/nodeShapeSvg.ts';
+import {
+  deterministicEntityTypeId,
+  deterministicVariableId,
+} from '../../protocol-validation/src/schemas/9/codebook-ids.ts';
+import { renameCodebookIds } from '../../protocol-validation/src/schemas/9/migration-codebook-ids.ts';
+import { deterministicProtocolObjectId } from '../../protocol-validation/src/schemas/9/protocol-object-id.ts';
 
 const exampleDir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -37,6 +43,13 @@ const kinds = [
 ];
 
 const en = (text) => ({ en: text });
+
+// The namespace of the example's protocol object ids. It must never change:
+// a different namespace gives every rebuild of the example different ids.
+const ID_NAMESPACE = '7e2dcd4e-cd48-4335-b1a0-fc083f6e175f';
+const objectId = deterministicProtocolObjectId(ID_NAMESPACE);
+const typeId = deterministicEntityTypeId(ID_NAMESPACE);
+const variableId = deterministicVariableId(ID_NAMESPACE);
 
 const assetManifest = {};
 
@@ -104,9 +117,9 @@ function nodeType({ key, name, color, customShapes }) {
   };
 }
 
-function nameGenerator({ id, type, label, prompt }) {
+function nameGenerator({ name, type, label, prompt }) {
   return {
-    id,
+    id: objectId(name),
     type: 'NameGenerator',
     label: en(label),
     subject: { entity: 'node', type },
@@ -114,31 +127,31 @@ function nameGenerator({ id, type, label, prompt }) {
       title: en('Add to my world'),
       fields: [
         {
-          id: `field-${type}_name`,
+          id: objectId(`${name}/field-${type}_name`),
           variable: `${type}_name`,
           prompt: en('What do you call them or it?'),
         },
         {
-          id: `field-${type}_type`,
+          id: objectId(`${name}/field-${type}_type`),
           variable: `${type}_type`,
           prompt: en('What kind of thing is it?'),
         },
       ],
     },
-    prompts: [{ id: `${id}-prompt`, text: en(prompt) }],
+    prompts: [{ id: objectId(`${name}/prompt`), text: en(prompt) }],
   };
 }
 
-function sociogram({ id, type, edge, label }) {
+function sociogram({ name, type, edge, label }) {
   return {
-    id,
+    id: objectId(name),
     type: 'Sociogram',
     label: en(label),
     subject: { entity: 'node', type },
     background: { concentricCircles: 3, skewedTowardCenter: true },
     prompts: [
       {
-        id: `${id}-prompt`,
+        id: objectId(`${name}/prompt`),
         text: en(
           'Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**.',
         ),
@@ -206,7 +219,7 @@ async function buildProtocol() {
     assetManifest,
     stages: [
       {
-        id: 'welcome',
+        id: objectId('welcome'),
         type: 'Information',
         label: en('Welcome'),
         content: en(
@@ -214,20 +227,20 @@ async function buildProtocol() {
         ),
       },
       nameGenerator({
-        id: 'name-illustrated',
+        name: 'name-illustrated',
         type: 'world_illustrated',
         label: 'Who and what is in your world?',
         prompt:
           'Who and what is **important to you**? Add each one, and choose what kind of thing it is.',
       }),
       sociogram({
-        id: 'map-illustrated',
+        name: 'map-illustrated',
         type: 'world_illustrated',
         edge: 'goes_with',
         label: 'Make your map',
       }),
       {
-        id: 'accented-introduction',
+        id: objectId('accented-introduction'),
         type: 'Information',
         label: en('Node-coloured shapes'),
         content: en(
@@ -235,25 +248,31 @@ async function buildProtocol() {
         ),
       },
       nameGenerator({
-        id: 'name-accented',
+        name: 'name-accented',
         type: 'world_accented',
         label: 'Add some more',
         prompt:
           'Add a few more things from your world, and choose what kind of thing each one is.',
       }),
       sociogram({
-        id: 'map-accented',
+        name: 'map-accented',
         type: 'world_accented',
         edge: 'goes_with_accented',
         label: 'Make another map',
       }),
-      finish,
+      { ...finish, id: objectId('finish') },
     ],
     interfaceText: template.interfaceText,
   };
 }
 
-await writeFile(
-  protocolPath,
-  `${JSON.stringify(await buildProtocol(), null, 2)}\n`,
-);
+// The protocol is written with readable codebook keys, which are then given
+// the UUID ids schema 9 requires.
+const protocol = await buildProtocol();
+renameCodebookIds(protocol, {
+  typeId: (key, entity) => typeId(`${entity}/${key}`),
+  variableId: (key, owner) =>
+    variableId(`${owner.entity}/${owner.type}/${key}`),
+});
+
+await writeFile(protocolPath, `${JSON.stringify(protocol, null, 2)}\n`);

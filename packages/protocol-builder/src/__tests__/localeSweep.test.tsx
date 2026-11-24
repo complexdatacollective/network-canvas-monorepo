@@ -29,6 +29,12 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../testing/renderStageEditor.tsx';
+import { testTypeId, testVariableId } from '../testing/testId.ts';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
+const RELATIONSHIP_TO_EGO = testVariableId('relationship_to_ego');
+const ALIVE = testVariableId('alive');
 
 /**
  * The labels the row-editor stand-ins put on screen.
@@ -516,22 +522,20 @@ describe('the sweep itself', () => {
 describe('what the sweep treats as protocol content', () => {
   const alterForm = {
     title: 'Add a person',
-    fields: [
-      { id: 'field-1', variable: 'name', prompt: 'What is their name?' },
-    ],
+    fields: [{ id: 'field-1', variable: NAME, prompt: 'What is their name?' }],
     items: [{ id: 'block-1', type: 'text', content: 'Read this.' }],
   };
   const codebook = {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         variables: {
-          relationship_to_ego: {
+          [RELATIONSHIP_TO_EGO]: {
             name: 'Relationship to ego',
             type: 'text',
             component: 'Text',
           },
-          alive: { name: 'Alive', type: 'boolean', component: 'Boolean' },
+          [ALIVE]: { name: 'Alive', type: 'boolean', component: 'Boolean' },
         },
       },
     },
@@ -543,8 +547,8 @@ describe('what the sweep treats as protocol content', () => {
     expect(content.has('Person')).toBe(true);
     expect(content.has('Relationship to ego')).toBe(true);
     // The keys the codebook indexes by are ids the editors show as well.
-    expect(content.has('relationship_to_ego')).toBe(true);
-    expect(content.has('person')).toBe(true);
+    expect(content.has(RELATIONSHIP_TO_EGO)).toBe(true);
+    expect(content.has(PERSON)).toBe(true);
     // And the sentences they wrote.
     expect(content.has('What is their name?')).toBe(true);
     expect(content.has('Add a person')).toBe(true);

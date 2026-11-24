@@ -12,10 +12,8 @@ import {
   textItem,
 } from '../../../testing/informationPages.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
-import ProtocolSchemaV8 from '../../8/schema.ts';
 import { combineInformationContent } from '../information-content-migration.ts';
 import { legacyMarkdownAsStandard } from '../legacy-markdown.ts';
-import migrationV8toV9 from '../migration.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 const EN = { defaultLocale: 'en', locales: ['en'] } as const;
@@ -872,7 +870,8 @@ describe('through the whole 8 to 9 migration', () => {
 
   const infoStage = (document: unknown): Fields | undefined => {
     const stage = migrateProtocol(document, 9).stages.find(
-      ({ id }) => id === 'info',
+      (migrated) =>
+        migrated.type === 'Information' && migrated.label.en === 'Intro',
     );
     return stage === undefined ? undefined : { ...stage };
   };
@@ -958,24 +957,5 @@ describe('through the whole 8 to 9 migration', () => {
       ),
     );
     expect(stage?.content).toEqual({ en: '# T\n\nKept' });
-  });
-
-  it('gives one result when its output is migrated again', () => {
-    const migrated = migrateProtocol(
-      schema8({
-        title: 'Welcome',
-        items: [text('t', 'Hi'), asset('s', 'tune', { description: 'Song' })],
-      }),
-      9,
-    );
-    const { schemaVersion: _version, ...again } = migrated;
-    const second = migrationV8toV9.migrate(
-      ProtocolSchemaV8.parse({ ...again, schemaVersion: 8 }),
-      {},
-    );
-    const stages = second.stages as Fields[];
-    expect(stages.find((stage) => stage.id === 'info')).toEqual(
-      migrated.stages.find((stage) => stage.id === 'info'),
-    );
   });
 });

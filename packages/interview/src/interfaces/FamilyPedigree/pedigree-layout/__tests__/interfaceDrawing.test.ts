@@ -55,7 +55,7 @@ const SHAPE_SETS: [string, PedigreeSymbolShape | undefined][] = [
 const SHAPE: NodeDefinition['shape'] = {
   default: 'diamond',
   dynamic: {
-    variable: asEntityAttributeReference('sex'),
+    variable: asEntityAttributeReference(config.sexAssignedAtBirthAttribute),
     type: 'discrete',
     map: [
       { value: 'female', shape: 'circle' },

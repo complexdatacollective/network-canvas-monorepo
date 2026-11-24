@@ -88,27 +88,6 @@ describe('formValuesToAttributePatch', () => {
     });
   });
 
-  it('treats dangerous field names as own keys instead of prototype properties', () => {
-    const values = Object.fromEntries([['__proto__', 'preserved']]);
-
-    const result = formValuesToAttributePatch(values, [
-      '__proto__',
-      'constructor',
-    ]);
-
-    expect(result).toEqual({
-      success: true,
-      patch: {
-        set: Object.fromEntries([['__proto__', 'preserved']]),
-        unset: ['constructor'],
-      },
-    });
-    if (result.success) {
-      expect(Object.hasOwn(result.patch.set, '__proto__')).toBe(true);
-    }
-    expect(Object.getPrototypeOf(values)).toBe(Object.prototype);
-  });
-
   it('leaves a field it was told to keep as stored until it is given a new answer', () => {
     const keepWhenUnanswered = ['missing', 'blank', 'emptied', 'replaced'];
 

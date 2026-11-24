@@ -19,10 +19,13 @@ import {
   type RowPreviewProps,
   type RowValues,
 } from '../../../form/rowDialog.tsx';
+import { testTypeId } from '../../../testing/testId.ts';
 import { useStageResourceUsage } from '../useStageResourceUsage.ts';
 import { flushPendingWork } from './asyncControls.ts';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 import type { CommittedResource } from './resourceHost.ts';
+
+const PERSON = testTypeId('person');
 
 const STILL_IN_USE =
   'This resource is still used elsewhere on this stage, so it was not discarded.';
@@ -53,7 +56,7 @@ const rosterFile = () =>
  */
 const panelsNaming = (first: string, second: string): SectionDoc => ({
   label: { 'en-US': 'People' },
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: PERSON },
   panels: [
     { id: 'panel-1', title: { 'en-US': 'One' }, dataSource: first },
     { id: 'panel-2', title: { 'en-US': 'Two' }, dataSource: second },

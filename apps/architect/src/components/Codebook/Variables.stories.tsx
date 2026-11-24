@@ -3,13 +3,19 @@ import { Provider } from 'react-redux';
 import { createStore } from 'redux';
 import { expect, within } from 'storybook/test';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+
 import Variables from './Variables';
 
 const LONG_NAME =
   'participant_neighbourhood_social_support_contact_frequency_last_twelve_months';
 
-const LONG_NAME_ID = 'long-name';
-const SHORT_NAME_ID = 'short-name';
+const PERSON = testTypeId('person');
+const LONG_NAME_ID = testVariableId('long-name');
+const SHORT_NAME_ID = testVariableId('short-name');
 
 const createStoryStore = () =>
   createStore(() => ({
@@ -18,7 +24,7 @@ const createStoryStore = () =>
         stages: [],
         codebook: {
           node: {
-            person: {
+            [PERSON]: {
               variables: {
                 [LONG_NAME_ID]: { name: LONG_NAME, type: 'text' },
                 [SHORT_NAME_ID]: { name: 'age', type: 'number' },
@@ -63,7 +69,7 @@ const meta = {
       </Provider>
     ),
   ],
-  args: { entity: 'node' as const, type: 'person', variables },
+  args: { entity: 'node' as const, type: PERSON, variables },
 } satisfies Meta<typeof Variables>;
 
 /** The orbiting border marks a picker's held value; a table row holds none. */

@@ -18,7 +18,9 @@ import {
   createEncryptionStore,
   encryptedVariables,
   encryptionFor,
+  AGE_VARIABLE,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from './__tests__/encryptionFixtures';
@@ -74,7 +76,9 @@ function readyNodes(result: { current: DecryptedNodes }) {
 function names(results: DecryptedNodes[]) {
   return results.flatMap((result) =>
     result.status === 'ready'
-      ? result.nodes.map((node) => node[entityAttributesProperty].name)
+      ? result.nodes.map(
+          (node) => node[entityAttributesProperty][NAME_VARIABLE],
+        )
       : [],
   );
 }
@@ -93,9 +97,15 @@ async function personWithMovedName(id: string): Promise<NcNode> {
 const legacyPerson: NcNode = {
   [entityPrimaryKeyProperty]: 'legacy-1',
   type: NODE_TYPE,
-  [entityAttributesProperty]: { name: [9, 8, 7, 6], age: 40 },
+  [entityAttributesProperty]: {
+    [NAME_VARIABLE]: [9, 8, 7, 6],
+    [AGE_VARIABLE]: 40,
+  },
   [entitySecureAttributesMeta]: {
-    name: { iv: Array.from({ length: 12 }, () => 1), salt: [2, 3, 4] },
+    [NAME_VARIABLE]: {
+      iv: Array.from({ length: 12 }, () => 1),
+      salt: [2, 3, 4],
+    },
   },
 };
 
@@ -104,8 +114,8 @@ describe('useDecryptedNodes', () => {
     const nodes: NcNode[] = [
       {
         [entityPrimaryKeyProperty]: 'n1',
-        type: 'person',
-        [entityAttributesProperty]: { age: 40 },
+        type: NODE_TYPE,
+        [entityAttributesProperty]: { [AGE_VARIABLE]: 40 },
       },
     ];
     const store = createEncryptionStore(nodes);
@@ -139,8 +149,8 @@ describe('useDecryptedNodes', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'));
     const [decrypted] = readyNodes(result);
     expect(decrypted?.[entityAttributesProperty]).toEqual({
-      name: 'Alice',
-      age: 40,
+      [NAME_VARIABLE]: 'Alice',
+      [AGE_VARIABLE]: 40,
     });
     expect(decrypted?.[entitySecureAttributesMeta]).toBeUndefined();
   });
@@ -156,7 +166,7 @@ describe('useDecryptedNodes', () => {
       await store.dispatch(
         updateNode({
           nodeId: 'n1',
-          attributePatch: { set: { name: 'Alicia' }, unset: [] },
+          attributePatch: { set: { [NAME_VARIABLE]: 'Alicia' }, unset: [] },
           currentStep: 0,
         }),
       );
@@ -164,9 +174,9 @@ describe('useDecryptedNodes', () => {
     const decrypt = vi.spyOn(crypto.subtle, 'decrypt');
     rerender({ nodes: store.getState().session.network.nodes });
 
-    expect(readyNodes(result)[0]?.[entityAttributesProperty].name).toBe(
-      'Alicia',
-    );
+    expect(
+      readyNodes(result)[0]?.[entityAttributesProperty][NAME_VARIABLE],
+    ).toBe('Alicia');
     expect(decrypt).not.toHaveBeenCalled();
   });
 
@@ -183,15 +193,15 @@ describe('useDecryptedNodes', () => {
           ...person,
           [entityAttributesProperty]: {
             ...person[entityAttributesProperty],
-            age: 41,
+            [AGE_VARIABLE]: 41,
           },
         },
       ],
     });
 
     expect(readyNodes(result)[0]?.[entityAttributesProperty]).toEqual({
-      name: 'Alice',
-      age: 41,
+      [NAME_VARIABLE]: 'Alice',
+      [AGE_VARIABLE]: 41,
     });
   });
 
@@ -220,7 +230,7 @@ describe('useDecryptedNodes', () => {
     ]);
 
     expect(readyNodes(result)[0]?.[entityAttributesProperty]).toEqual({
-      age: 40,
+      [AGE_VARIABLE]: 40,
     });
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
     expect(reportedReasons(captureException)).toEqual([
@@ -235,7 +245,7 @@ describe('useDecryptedNodes', () => {
     ]);
 
     const [node] = readyNodes(result);
-    expect(node?.[entityAttributesProperty]).toEqual({ age: 40 });
+    expect(node?.[entityAttributesProperty]).toEqual({ [AGE_VARIABLE]: 40 });
     expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
 
@@ -246,6 +256,7 @@ describe('useDecryptedNodes', () => {
     // Only the reason is reported: never the value, its person or question.
     const error = captureException.mock.calls[0]?.[0];
     expect(error?.message).not.toContain('legacy-1');
+    expect(error?.message).not.toContain(NAME_VARIABLE);
     expect(error?.message).not.toContain('name');
   });
 
@@ -265,10 +276,10 @@ describe('useDecryptedNodes', () => {
 
     const [first, second] = readyNodes(result);
     expect(first?.[entityAttributesProperty]).toEqual({
-      name: 'Alice',
-      age: 40,
+      [NAME_VARIABLE]: 'Alice',
+      [AGE_VARIABLE]: 40,
     });
-    expect(second?.[entityAttributesProperty]).toEqual({ age: 40 });
+    expect(second?.[entityAttributesProperty]).toEqual({ [AGE_VARIABLE]: 40 });
     expect(store.getState().ui.encryptionKeyId).toBe(keyId);
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
     await waitFor(() =>
@@ -305,8 +316,8 @@ describe('decryptNodes', () => {
     );
 
     expect(node?.[entityAttributesProperty]).toEqual({
-      name: 'Alice',
-      age: 40,
+      [NAME_VARIABLE]: 'Alice',
+      [AGE_VARIABLE]: 40,
     });
     expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
   });
@@ -323,9 +334,9 @@ describe('decryptNodes', () => {
     );
 
     expect(nodes.map((node) => node[entityAttributesProperty])).toEqual([
-      { name: 'Alice', age: 40 },
-      { age: 40 },
-      { age: 40 },
+      { [NAME_VARIABLE]: 'Alice', [AGE_VARIABLE]: 40 },
+      { [AGE_VARIABLE]: 40 },
+      { [AGE_VARIABLE]: 40 },
     ]);
   });
 });

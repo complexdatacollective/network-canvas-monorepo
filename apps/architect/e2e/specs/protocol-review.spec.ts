@@ -10,12 +10,15 @@ import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import {
   FINDINGS,
   mockReviewService,
+  NAMES_PROMPT_ID,
+  NAMES_STAGE_ID,
   NEW_P1_TEXT,
   NEW_P2_TEXT,
   OLD_P1_TEXT,
   OLD_P2_TEXT,
   REVIEW_ID,
   reviewProtocol,
+  SECOND_NAMES_PROMPT_ID,
   reviewProtocolWithDetails,
   SAVED_POPULATION,
   SAVED_QUESTION,
@@ -156,7 +159,9 @@ function promptText(protocol: CurrentProtocol, promptId: string) {
 }
 
 function namesStage(protocol: CurrentProtocol) {
-  const stage = protocol.stages.find((candidate) => candidate.id === 'names');
+  const stage = protocol.stages.find(
+    (candidate) => candidate.id === NAMES_STAGE_ID,
+  );
   if (!stage) throw new Error('no names stage in the saved protocol');
   return stage;
 }
@@ -801,10 +806,13 @@ test.describe('results', () => {
 
     const fixed = await readProtocolJson(
       page,
-      (protocol) => promptText(protocol, 'p1')?.en === NEW_P1_TEXT,
+      (protocol) => promptText(protocol, NAMES_PROMPT_ID)?.en === NEW_P1_TEXT,
     );
     // Only the default language's entry changes.
-    expect(promptText(fixed, 'p1')).toEqual({ en: NEW_P1_TEXT, fr: 'Nommez' });
+    expect(promptText(fixed, NAMES_PROMPT_ID)).toEqual({
+      en: NEW_P1_TEXT,
+      fr: 'Nommez',
+    });
     await expect(reviewButton(page)).toHaveAccessibleName(countName(3));
 
     await backToList(page, nextView, next);
@@ -815,9 +823,12 @@ test.describe('results', () => {
     await expect(row.getByText('Fixed for you')).toHaveCount(0);
     const undone = await readProtocolJson(
       page,
-      (protocol) => promptText(protocol, 'p1')?.en === OLD_P1_TEXT,
+      (protocol) => promptText(protocol, NAMES_PROMPT_ID)?.en === OLD_P1_TEXT,
     );
-    expect(promptText(undone, 'p1')).toEqual({ en: OLD_P1_TEXT, fr: 'Nommez' });
+    expect(promptText(undone, NAMES_PROMPT_ID)).toEqual({
+      en: OLD_P1_TEXT,
+      fr: 'Nommez',
+    });
     await expect(reviewButton(page)).toHaveAccessibleName(countName(4));
   });
 
@@ -852,7 +863,7 @@ test.describe('results', () => {
     await view.getByRole('button', { name: 'Undo' }).click();
     await readProtocolJson(
       page,
-      (protocol) => promptText(protocol, 'p1')?.en === OLD_P1_TEXT,
+      (protocol) => promptText(protocol, NAMES_PROMPT_ID)?.en === OLD_P1_TEXT,
     );
     // Undone, it is undecided again and stays on screen to decide.
     await expect(fixForMe(view)).toBeVisible();
@@ -887,11 +898,12 @@ test.describe('results', () => {
 
     const fixed = await readProtocolJson(
       page,
-      (protocol) => promptText(protocol, 'p2')?.en === NEW_P2_TEXT,
+      (protocol) =>
+        promptText(protocol, SECOND_NAMES_PROMPT_ID)?.en === NEW_P2_TEXT,
     );
     const stage = namesStage(fixed);
     expect('behaviours' in stage && stage.behaviours).toEqual({ minNodes: 2 });
-    expect(promptText(fixed, 'p2')).toEqual({
+    expect(promptText(fixed, SECOND_NAMES_PROMPT_ID)).toEqual({
       en: NEW_P2_TEXT,
       fr: 'Nommez plus',
     });
@@ -904,7 +916,8 @@ test.describe('results', () => {
       .click();
     const undone = await readProtocolJson(
       page,
-      (protocol) => promptText(protocol, 'p2')?.en === OLD_P2_TEXT,
+      (protocol) =>
+        promptText(protocol, SECOND_NAMES_PROMPT_ID)?.en === OLD_P2_TEXT,
     );
     expect('behaviours' in namesStage(undone)).toBe(false);
     expect('minNodesNotice' in namesStage(undone)).toBe(false);
@@ -1036,7 +1049,7 @@ test.describe('results', () => {
     await fixForMe(view).click();
     await readProtocolJson(
       page,
-      (protocol) => promptText(protocol, 'p1')?.en === NEW_P1_TEXT,
+      (protocol) => promptText(protocol, NAMES_PROMPT_ID)?.en === NEW_P1_TEXT,
     );
     await view.getByRole('button', { name: 'Next problem' }).click();
     const next = problemView(
@@ -1054,9 +1067,12 @@ test.describe('results', () => {
 
     const undone = await readProtocolJson(
       page,
-      (protocol) => promptText(protocol, 'p1')?.en === OLD_P1_TEXT,
+      (protocol) => promptText(protocol, NAMES_PROMPT_ID)?.en === OLD_P1_TEXT,
     );
-    expect(promptText(undone, 'p1')).toEqual({ en: OLD_P1_TEXT, fr: 'Nommez' });
+    expect(promptText(undone, NAMES_PROMPT_ID)).toEqual({
+      en: OLD_P1_TEXT,
+      fr: 'Nommez',
+    });
     await expect(reviewButton(page)).toHaveAccessibleName(countName(4));
     await reviewButton(page).click();
     await expect(problemList(popover)).toBeVisible();
@@ -1080,7 +1096,10 @@ test.describe('results', () => {
     await expect(reviewButton(page)).toHaveAccessibleName('Review protocol');
     // The fix is the protocol's now; only the review went.
     const kept = await readProtocolJson(page);
-    expect(promptText(kept, 'p1')).toEqual({ en: NEW_P1_TEXT, fr: 'Nommez' });
+    expect(promptText(kept, NAMES_PROMPT_ID)).toEqual({
+      en: NEW_P1_TEXT,
+      fr: 'Nommez',
+    });
 
     // Back to the start, after a reload too: the button opens the dialog.
     await gotoProtocol(page);
@@ -1416,7 +1435,7 @@ test.describe('persistence', () => {
     await fixForMe(view).click();
     await readProtocolJson(
       page,
-      (protocol) => promptText(protocol, 'p1')?.en === NEW_P1_TEXT,
+      (protocol) => promptText(protocol, NAMES_PROMPT_ID)?.en === NEW_P1_TEXT,
     );
     await view.getByRole('button', { name: 'Next problem' }).click();
     const next = 'The second prompt has no limit on how many to name';

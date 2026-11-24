@@ -6,17 +6,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
 
+import { testTypeId } from '../../__tests__/testIds';
 import { AnalyticsContext } from '../../analytics/AnalyticsContext';
 import { InterviewQueryClientProvider } from '../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../contract/context';
 import { useCustomShapeSvgs } from '../useCustomShapeSvgs';
+
+const PLACE = testTypeId('place');
+const VENUE = testTypeId('venue');
 
 const homeSvg = '<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>';
 const treeSvg = '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></svg>';
 
 const codebook: Codebook = {
   node: {
-    place: {
+    [PLACE]: {
       name: 'Place',
       color: 'node-color-seq-1',
       shape: { default: 'custom:home' },
@@ -25,7 +29,7 @@ const codebook: Codebook = {
         tree: { name: 'Tree', asset: 'tree-asset' },
       },
     },
-    venue: {
+    [VENUE]: {
       name: 'Venue',
       color: 'node-color-seq-2',
       shape: { default: 'custom:house' },
@@ -221,7 +225,7 @@ describe('useCustomShapeSvgs', () => {
     const { result } = renderHook(() => useCustomShapeSvgs(), {
       wrapper: makeWrapper(onRequestAsset, {
         node: {
-          person: {
+          [testTypeId('person')]: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
@@ -247,7 +251,7 @@ describe('useCustomShapeSvgs', () => {
     const { unmount } = renderHook(() => useCustomShapeSvgs(), {
       wrapper: makeWrapper(onRequestAsset, {
         node: {
-          place: {
+          [PLACE]: {
             name: 'Place',
             color: 'node-color-seq-1',
             shape: { default: 'custom:home' },

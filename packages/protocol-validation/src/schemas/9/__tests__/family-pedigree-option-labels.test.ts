@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import {
+  testTypeId,
+  testVariableId,
+  withTestIds,
+} from '../../../__tests__/testIds.ts';
 import type { LocalizationDeclaration } from '../../../localization/localeTag.ts';
 import {
   SUPPLIED_PEDIGREE_OPTION_LABELS,
@@ -269,7 +274,7 @@ describe('a Family Pedigree answer label', () => {
   const withSexLabel = (label: Record<string, string>) => {
     const protocol = completeProtocol();
     const sex = protocol.codebook.node.relative.variables.sex;
-    return {
+    return withTestIds({
       ...protocol,
       codebook: {
         ...protocol.codebook,
@@ -289,7 +294,7 @@ describe('a Family Pedigree answer label', () => {
           },
         },
       },
-    };
+    });
   };
 
   it('may be reworded', () => {
@@ -305,9 +310,9 @@ describe('a Family Pedigree answer label', () => {
     expect(result.error?.issues.map((issue) => issue.path)).toContainEqual([
       'codebook',
       'node',
-      'relative',
+      testTypeId('relative'),
       'variables',
-      'sex',
+      testVariableId('sex'),
       'options',
       2,
       'label',

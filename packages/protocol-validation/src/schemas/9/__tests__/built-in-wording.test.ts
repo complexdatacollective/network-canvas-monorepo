@@ -6,6 +6,7 @@ import {
   interfaceTextWithUpdates,
   withInterfaceText,
 } from '../../../__tests__/suppliedWording.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
   BUILT_IN_WORDING_MISSING,
@@ -23,7 +24,9 @@ const protocolIn = (localization: Localization) =>
     ...createBaseProtocol(),
     codebook: { node: {}, edge: {}, ego: {} },
     localization,
-    stages: [createDefaultFinishSessionStage({ id: 'end', localization })],
+    stages: [
+      createDefaultFinishSessionStage({ id: testId('end'), localization }),
+    ],
   });
 
 // `withInterfaceText` returns the document it was given, typed without the
@@ -113,7 +116,10 @@ describe('built-in wording in a default language Network Canvas has none in', ()
 
 /** A protocol whose finish stage holds none of the wording supplied for it. */
 const holdingNothing = (localization: Localization) => {
-  const bare = createDefaultFinishSessionStage({ id: 'end', localization });
+  const bare = createDefaultFinishSessionStage({
+    id: testId('end'),
+    localization,
+  });
   return {
     ...createBaseProtocol(),
     codebook: { node: {}, edge: {}, ego: {} },

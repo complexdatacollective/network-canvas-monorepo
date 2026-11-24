@@ -7947,6 +7947,10 @@
     "defaultMessage": "This stage could not be added. Wait a moment and try again.",
     "description": "Shown above a stage editor’s fields when adding a new stage failed for a reason that carried no explanation of its own. A stage is one step of an interview."
   },
+  "protocolBuilder.stageEdit.addInvalidShape": {
+    "defaultMessage": "This stage could not be added because part of it is not valid. Your changes are still here. Correct the problem, then try adding the stage again.",
+    "description": "Shown above the editor of a new stage when the host refused to add it because part of the stage was the wrong shape. Nothing was added, and the researcher’s unsaved work is still on screen. Where the host named the list item at fault, focus moves to it. A stage is one step of an interview."
+  },
   "protocolBuilder.stageEdit.blockedBy": {
     "defaultMessage": "{holder} is editing another part of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
     "description": "Shown above a stage editor’s fields when the save was refused because a named collaborator is editing another part of the protocol the save has to write. holder is that person’s display name, which the host supplies. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
@@ -7965,7 +7969,7 @@
   },
   "protocolBuilder.stageEdit.invalidShape": {
     "defaultMessage": "This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.",
-    "description": "Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview."
+    "description": "Shown above a stage editor’s fields when the host refused to save changes to an existing stage because the stage was the wrong shape. The editor then reloads the stage as the protocol holds it, so the researcher’s unsaved work is gone. A stage is one step of an interview."
   },
   "protocolBuilder.stageEdit.lockLost": {
     "defaultMessage": "Somebody else is editing this stage now, so nothing was saved and your unsaved changes have been discarded. Reopen the stage to see their version.",

@@ -30,6 +30,9 @@ export const canvasImageAssets: Readonly<Record<string, SectionDoc>> =
 /**
  * A fixture stage of `stageId`'s interface whose background is that image.
  *
+ * It keeps the fixture stage's own id, so it stands in for that stage rather
+ * than sitting beside a copy that holds the same object ids.
+ *
  * Derived from the fixture rather than written out, so it keeps every other
  * key that interface requires: what is under test is the background, and a
  * hand-written stage missing a required key would fail its save for an
@@ -38,9 +41,9 @@ export const canvasImageAssets: Readonly<Record<string, SectionDoc>> =
 export function stageWithImageBackground(
   stageId: string,
 ): Readonly<{ id: string; type: StageType; fields: SectionDoc }> {
-  const { type, fields } = loadFixtureStage(stageId);
+  const { id, type, fields } = loadFixtureStage(stageId);
   return {
-    id: `${stageId}-image-background`,
+    id,
     type,
     fields: { ...fields, background: { image: CANVAS_IMAGE_ID } },
   };

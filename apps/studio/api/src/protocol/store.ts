@@ -16,7 +16,6 @@ import { Effect, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
 import {
-  CURRENT_SCHEMA_VERSION,
   type CurrentProtocol,
   type ProtocolValidationIssue,
   validateProtocol,
@@ -55,7 +54,6 @@ import {
 import { type ProtocolChange, diffProtocolSections } from './diff.ts';
 import { insertDraftRows } from './draft-rows.ts';
 import { failOnSectionValidation } from './draft-structure.ts';
-import { migrateStoredVersionToDraft } from './migrate.ts';
 import { PROTOCOL_TABLES } from './schema.ts';
 import { sectionizeProtocol } from './sectionize.ts';
 import { versionContentHash } from './version-hash.ts';
@@ -96,7 +94,6 @@ export type VersionRow = {
   label: string | null;
   versionHash: string;
   schemaVersion: number;
-  migratedFromVersionId: string | null;
   publishedAt: Date;
 };
 
@@ -336,10 +333,7 @@ export const createDraftFromVersion: (
   const draftId = params.draftId ?? randomUUID();
   const { tx } = yield* Transaction;
   const version = yield* tx
-    .select({
-      protocolId: protocolVersions.protocolId,
-      schemaVersion: protocolVersions.schemaVersion,
-    })
+    .select({ protocolId: protocolVersions.protocolId })
     .from(protocolVersions)
     .where(
       and(
@@ -352,20 +346,6 @@ export const createDraftFromVersion: (
     return yield* new ProtocolStoreError({
       reason: `no version ${params.versionId}`,
     });
-  }
-  // Write-time validation admits only current-schema sections, so a draft
-  // holding an older version's sections verbatim could never be edited.
-  if (versionRow.schemaVersion < CURRENT_SCHEMA_VERSION) {
-    const migrated = yield* migrateStoredVersionToDraft(teamId, {
-      versionId: params.versionId,
-      draftId,
-    }).pipe(
-      Effect.catchTag(
-        'MigrationTargetError',
-        (error) => new ProtocolStoreError({ reason: error.reason }),
-      ),
-    );
-    return { draftId: migrated.draftId, protocolId: migrated.protocolId };
   }
   const pins = yield* tx
     .select({ sectionId: versionSections.sectionId, doc: sections.doc })
@@ -594,7 +574,6 @@ const insertVersion = Effect.fn('protocol.store.insertVersion')(
     headSeq: bigint;
     schemaVersion: number;
     headManifestHash: string;
-    migratedFrom: string | null;
     teamId: string;
     publishedAt: Date | null;
   }) {
@@ -605,15 +584,15 @@ const insertVersion = Effect.fn('protocol.store.insertVersion')(
         `INSERT INTO protocol_versions
            (id, protocol_id, team_id, version_number, label, version_hash,
             manifest, schema_version, source_draft_id, source_manifest_hash,
-            migrated_from_version_id, published_at)
-         SELECT $1, $2, $10,
+            published_at)
+         SELECT $1, $2, $9,
                 COALESCE(MAX(v.version_number), 0) + 1,
                 $3, $4,
                 (SELECT to_jsonb(m) FROM manifests m
-                  WHERE m.draft_id = $5 AND m.team_id = $10 AND m.seq = $6),
-                $7, $5, $8, $9, COALESCE($11, now())
+                  WHERE m.draft_id = $5 AND m.team_id = $9 AND m.seq = $6),
+                $7, $5, $8, COALESCE($10, now())
          FROM protocol_versions v
-         WHERE v.protocol_id = $2 AND v.team_id = $10
+         WHERE v.protocol_id = $2 AND v.team_id = $9
          RETURNING version_number`,
         [
           params.versionId,
@@ -624,7 +603,6 @@ const insertVersion = Effect.fn('protocol.store.insertVersion')(
           String(params.headSeq),
           params.schemaVersion,
           params.headManifestHash,
-          params.migratedFrom,
           params.teamId,
           params.publishedAt,
         ],
@@ -705,10 +683,7 @@ export const publishDraft: (
 
   const { tx } = yield* Transaction;
   const draftRows = yield* tx
-    .select({
-      protocolId: protocolDrafts.protocolId,
-      basedOnVersionId: protocolDrafts.basedOnVersionId,
-    })
+    .select({ protocolId: protocolDrafts.protocolId })
     .from(protocolDrafts)
     .where(
       and(
@@ -778,23 +753,6 @@ export const publishDraft: (
     } satisfies PublishResult;
   }
 
-  let migratedFrom: string | null = null;
-  if (draft.basedOnVersionId !== null) {
-    const basis = yield* tx
-      .select({ schemaVersion: protocolVersions.schemaVersion })
-      .from(protocolVersions)
-      .where(
-        and(
-          eq(protocolVersions.id, draft.basedOnVersionId),
-          eq(protocolVersions.teamId, teamId),
-        ),
-      );
-    const basisRow = basis[0];
-    if (basisRow !== undefined && basisRow.schemaVersion < schemaVersion) {
-      migratedFrom = draft.basedOnVersionId;
-    }
-  }
-
   const versionId = params.versionId ?? randomUUID();
   const inserted = yield* insertVersion({
     versionId,
@@ -805,7 +763,6 @@ export const publishDraft: (
     headSeq: head.headSeq,
     schemaVersion,
     headManifestHash: head.headManifestHash,
-    migratedFrom,
     teamId,
     publishedAt: params.publishedAt ?? null,
   });
@@ -939,7 +896,6 @@ export const listVersions: (
       label: protocolVersions.label,
       versionHash: protocolVersions.versionHash,
       schemaVersion: protocolVersions.schemaVersion,
-      migratedFromVersionId: protocolVersions.migratedFromVersionId,
       publishedAt: protocolVersions.publishedAt,
     })
     .from(protocolVersions)

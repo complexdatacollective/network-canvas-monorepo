@@ -4,6 +4,8 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
+
 vi.mock('../../../hooks/useAssetUrl', () => ({
   useAssetUrl: vi.fn(),
 }));
@@ -54,10 +56,10 @@ beforeEach(() => {
   });
 });
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'knows';
-const LAYOUT_VAR = 'xy_position';
-const QUICK_ADD_VAR = 'var-quick-add';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('knows');
+const LAYOUT_VAR = testVariableId('xy_position');
+const QUICK_ADD_VAR = testVariableId('var-quick-add');
 
 // Typed independently of the (currently narrower) protocol-validation schema
 // so tests can exercise background.image ahead of the schema restoring it.
@@ -73,7 +75,7 @@ const defaultBackground: TestBackground = {
 };
 
 const stage = {
-  id: 'nc1',
+  id: testId('nc1'),
   type: 'NetworkComposer' as const,
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
@@ -81,7 +83,7 @@ const stage = {
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
   edges: [
     {
-      id: 'edge-config',
+      id: testId('edge-config'),
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
       label: { en: 'Knows' },
     },

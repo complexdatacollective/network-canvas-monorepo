@@ -6,13 +6,25 @@ import {
   chooseAttributeById,
   inventAttribute,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { ordinalBinStageEditor } from '../OrdinalBinStageEditor.ts';
 
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const CONTACT_FREQ = personVariable('contactFreq');
+
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const ORDINAL_BIN_INDEX = fixtureStageIds().indexOf('ordinal-bin-1');
+const ORDINAL_BIN_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('ordinal-bin-1'),
+);
 
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
@@ -72,7 +84,7 @@ describe('creating an ordinal bin stage', () => {
     await chooseAttributeById(
       harness.user,
       await findAttributePicker(),
-      'contactFreq',
+      CONTACT_FREQ,
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
@@ -83,13 +95,13 @@ describe('creating an ordinal bin stage', () => {
     expect(request?.stageDocument).toMatchObject({
       type: 'OrdinalBin',
       label: { 'en-US': 'Person Ordinal Bin' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         text: { 'en-US': 'How often do you see them?' },
-        variable: 'contactFreq',
+        variable: CONTACT_FREQ,
         color: 'ord-color-seq-1',
       },
     ]);
@@ -166,15 +178,15 @@ describe('creating an ordinal bin stage', () => {
     // stage's: the editor has it, the protocol does not until the stage is
     // saved.
     const created = Object.entries(
-      harness.editorCodebook().node?.person?.variables ?? {},
+      harness.editorCodebook().node?.[PERSON]?.variables ?? {},
     ).find(([, variable]) => variable.name === 'closenessBand')?.[0];
     if (created === undefined) throw new Error('the attribute was not created');
-    expect(harness.hostCodebook().node?.person?.variables).not.toHaveProperty(
+    expect(harness.hostCodebook().node?.[PERSON]?.variables).not.toHaveProperty(
       created,
     );
 
     const request = await harness.submit();
-    expect(harness.hostCodebook().node?.person?.variables).toHaveProperty(
+    expect(harness.hostCodebook().node?.[PERSON]?.variables).toHaveProperty(
       created,
     );
     expect(prompts(request?.stageDocument ?? {})[0]?.variable).toBe(created);

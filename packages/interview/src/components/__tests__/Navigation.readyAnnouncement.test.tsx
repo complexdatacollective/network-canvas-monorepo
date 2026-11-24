@@ -15,11 +15,15 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import type { InterviewPayload } from '../../contract/types';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { createEncryptionStore } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import Shell from '../../Shell';
 import Navigation from '../Navigation';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
 
 // Only the two stage types the Shell test below walks through, so jsdom does
 // not load the WebGL stages.
@@ -149,12 +153,15 @@ describe('Navigation ready-to-continue announcement', () => {
 });
 
 const quickAddStage = (id: string, prompts: string[], minNodes?: number) => ({
-  id,
+  id: testId(id),
   type: 'NameGeneratorQuickAdd' as const,
   label: { en: id },
-  subject: { entity: 'node' as const, type: 'person' },
-  quickAdd: asEntityAttributeReference('name'),
-  prompts: prompts.map((text) => ({ id: `${id}-${text}`, text: { en: text } })),
+  subject: { entity: 'node' as const, type: PERSON },
+  quickAdd: asEntityAttributeReference(NAME),
+  prompts: prompts.map((text) => ({
+    id: testId(`${id}-${text}`),
+    text: { en: text },
+  })),
   ...(minNodes === undefined
     ? {}
     : {
@@ -192,12 +199,12 @@ const walkPayload = (): InterviewPayload => ({
     codebook: {
       ego: { variables: {} },
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           icon: 'add-a-person',
-          variables: { name: { name: 'Name', type: 'text' } },
+          variables: { [NAME]: { name: 'Name', type: 'text' } },
         },
       },
       edge: {},
@@ -205,7 +212,7 @@ const walkPayload = (): InterviewPayload => ({
     assets: [],
     stages: [
       {
-        id: 'intro',
+        id: testId('intro'),
         type: 'Information',
         label: { en: 'Intro' },
         content: { en: '# Introduction' },
@@ -215,7 +222,7 @@ const walkPayload = (): InterviewPayload => ({
       quickAddStage('clubs', ['Name your club members']),
       quickAddStage('colleagues', ['Name your colleagues'], 1),
       {
-        id: 'finish',
+        id: testId('finish'),
         type: 'FinishSession',
         mode: 'confirmation',
         label: { en: 'Finish' },

@@ -19,7 +19,7 @@ import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
-import { fixtureStageIds } from '../testing/protocolFixture.ts';
+import { fixtureStageIds, fixtureStageId } from '../testing/protocolFixture.ts';
 import SourcePedigreePickerField, {
   type SourceChangeQuestion,
   type SourcePedigreeOption,
@@ -30,8 +30,14 @@ const SOURCE_FIELD = 'sourceStageId';
 /** The paths a change of source pedigree throws away, which is what it costs. */
 const DISEASES_FIELD = 'diseases';
 
-const STAGE = sectionId({ kind: 'stage', stageId: 'narrative-pedigree-1' });
-const PEDIGREE = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+const STAGE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('narrative-pedigree-1'),
+});
+const PEDIGREE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('family-pedigree-1'),
+});
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
 /**
@@ -146,7 +152,9 @@ const sourceDeleted = (host: InMemoryHost) => {
   // a collaborator's deletion actually leaves rather than an order naming a
   // stage that is not there.
   host.store.applyAsCollaborator(STAGE_ORDER, {
-    stages: fixtureStageIds().filter((id) => id !== 'family-pedigree-1'),
+    stages: fixtureStageIds().filter(
+      (id) => id !== fixtureStageId('family-pedigree-1'),
+    ),
   });
 };
 
@@ -167,7 +175,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'narrative-pedigree-1',
+    stageId: fixtureStageId('narrative-pedigree-1'),
     sectionTitle: 'Pedigree source',
     children: <SourcePedigreePicker />,
   },
@@ -249,7 +257,7 @@ export const AgreeingToWhatTheChangeCosts: Story = {
 
     await userEvent.selectOptions(
       await canvas.findByRole('combobox', { name: SOURCE_LABEL }),
-      'family-pedigree-1',
+      fixtureStageId('family-pedigree-1'),
     );
 
     // The question is portalled out of the story root and makes the page
@@ -268,7 +276,9 @@ export const AgreeingToWhatTheChangeCosts: Story = {
     await waitFor(async () => {
       await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('"sourceStageId":"family-pedigree-1"');
+      ).toHaveTextContent(
+        `"sourceStageId":"${fixtureStageId('family-pedigree-1')}"`,
+      );
     });
   },
 };
@@ -286,7 +296,7 @@ export const TheChangeCanBeDeclined: Story = {
 
     await userEvent.selectOptions(
       await canvas.findByRole('combobox', { name: SOURCE_LABEL }),
-      'family-pedigree-1',
+      fixtureStageId('family-pedigree-1'),
     );
     await confirmButton();
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -318,7 +328,7 @@ export const APedigreeThatIsGone: Story = {
     await awaitPassiveEffects();
 
     const picker = await canvas.findByRole('combobox', { name: SOURCE_LABEL });
-    await expect(picker).toHaveValue('family-pedigree-1');
+    await expect(picker).toHaveValue(fixtureStageId('family-pedigree-1'));
     await expect(
       within(picker).getByRole('option', { name: /can no longer be used/ }),
     ).toBeDisabled();

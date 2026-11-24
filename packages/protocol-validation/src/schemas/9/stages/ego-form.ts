@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import {
   IntroductionPanelSchema,
   TitlelessFormSchema,
@@ -12,10 +13,12 @@ import { baseStageSchema } from './base.ts';
 // `subject` to resolve against. Its introduction panel is the heading and
 // text shown above the questions, so the form itself has no title.
 export const egoFormStage = withStageSubjectResolution(
-  baseStageSchema.extend({
-    type: z.literal('EgoForm'),
-    form: TitlelessFormSchema,
-    introductionPanel: IntroductionPanelSchema,
-  }),
+  withUniqueObjectIds(
+    baseStageSchema.extend({
+      type: z.literal('EgoForm'),
+      form: TitlelessFormSchema,
+      introductionPanel: IntroductionPanelSchema,
+    }),
+  ),
   { from: 'ego' },
 );

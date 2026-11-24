@@ -97,8 +97,6 @@ export type InformationPageFixture = Readonly<{
   title?: unknown;
   items: readonly Fields[];
   label?: string;
-  /** The languages a page written per language is in. */
-  locales?: readonly string[];
 }>;
 
 const MAP = assetItem('f', 'photo', { description: 'Map' });
@@ -181,56 +179,11 @@ export const INFORMATION_PAGES: readonly InformationPageFixture[] = [
     label: '*Big* news',
   },
   {
-    name: 'a page written per language',
-    title: { en: 'Welcome', fr: 'Bienvenue' },
-    items: [
-      textItem('t', { en: 'Hello', fr: 'Bonjour' }),
-      assetItem('f', 'photo', {
-        description: { en: 'A map', fr: 'Une carte' },
-      }),
-    ],
-    locales: ['en', 'fr'],
-  },
-  {
-    name: 'a part missing a language',
-    title: { en: 'Welcome', fr: 'Bienvenue' },
-    items: [textItem('t', { en: 'Hello' })],
-    locales: ['en', 'fr'],
-  },
-  {
-    name: 'a part written only in a language other than the default',
-    title: 'Welcome',
-    items: [textItem('t', { fr: 'Bonjour' })],
-    locales: ['en', 'fr'],
-  },
-  {
-    name: 'a blank translation',
-    title: { en: 'Welcome', fr: '  ' },
-    items: [textItem('t', 'Hello')],
-    locales: ['en', 'fr'],
-  },
-  {
-    name: 'a part written once among parts written per language',
-    title: 'Plain {braces}',
-    items: [textItem('t', { en: 'Hello', fr: 'Bonjour' })],
-    locales: ['en', 'fr'],
-  },
-  {
-    name: 'a translated text left open',
-    title: { en: 'T', fr: 'T' },
-    items: [
-      textItem('t', { en: '<!-- note', fr: 'Bonjour' }),
-      assetItem('f', 'photo'),
-    ],
-    locales: ['en', 'fr'],
-  },
-  {
     name: 'messages quoting their words',
     title: { en: "'<'tag> and ''quote'' ~a~ ~b~ ##" },
     items: [
       textItem('t', { en: "It''s '{'here'}'" }),
       assetItem('f', 'photo', { description: { en: "'<'b> [c] *d*" } }),
     ],
-    locales: ['en'],
   },
 ];

@@ -7,6 +7,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import {
   changeBetween,
   type FamilyHistoryPoint,
@@ -15,13 +16,14 @@ import {
 
 const person = (id: string, name?: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
-  type: 'person',
-  [entityAttributesProperty]: name === undefined ? {} : { name },
+  type: testTypeId('person'),
+  [entityAttributesProperty]:
+    name === undefined ? {} : { [testVariableId('name')]: name },
 });
 
 const link = (from: string, to: string): NcEdge => ({
   [entityPrimaryKeyProperty]: `${from}-${to}`,
-  type: 'family',
+  type: testTypeId('family'),
   from,
   to,
   [entityAttributesProperty]: {},

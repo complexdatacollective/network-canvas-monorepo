@@ -4,6 +4,10 @@ import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { describeRule } from '@codaco/protocol-builder/rules/ruleDescription';
 import RulePreview from '@codaco/protocol-builder/rules/RulePreview';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { Codebook } from '@codaco/protocol-validation';
 import { architectCatalogSource } from '~/locales/catalogs';
 
@@ -66,6 +70,9 @@ function RuleSentence({
 
 // The fixtures below are written as codebooks and read as ones; nothing is
 // narrowed from a wider type, so each cast is the shape's own declaration.
+const PERSON = testTypeId('person');
+const GROUPS = testVariableId('groups');
+
 const asCodebook = (value: object): Codebook =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   value as unknown as Codebook;
@@ -77,20 +84,20 @@ it.each(['default', 'summary'] as const)(
       id: 'authored-rule',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'groups',
+        type: PERSON,
+        attribute: GROUPS,
         operator: 'INCLUDES',
         value: ['first', 'second', 'third'],
       },
     };
     const codebook = asCodebook({
       node: {
-        person: {
+        [PERSON]: {
           name: 'Authored_Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            groups: {
+            [GROUPS]: {
               name: 'Authored_Groups',
               type: 'categorical',
               options: [
@@ -154,7 +161,7 @@ it('retains literal numeric option operands while formatting their surrounding l
           id: 'authored-rule',
           type: 'ego',
           options: {
-            attribute: 'groups',
+            attribute: GROUPS,
             operator: 'INCLUDES',
             value: values,
           },
@@ -162,7 +169,7 @@ it('retains literal numeric option operands while formatting their surrounding l
         codebook={asCodebook({
           ego: {
             variables: {
-              groups: {
+              [GROUPS]: {
                 name: 'Authored_Groups',
                 type: 'categorical',
                 // Numeric option values with no label of their own: the
@@ -232,7 +239,7 @@ it.each([
       id: 'authored-rule',
       type: 'ego',
       options: {
-        attribute: 'groups',
+        attribute: GROUPS,
         operator: 'INCLUDES',
         value: values,
       },
@@ -240,7 +247,7 @@ it.each([
     const codebook = asCodebook({
       ego: {
         variables: {
-          groups: {
+          [GROUPS]: {
             name: 'Authored_Groups',
             type: 'categorical',
             options: [

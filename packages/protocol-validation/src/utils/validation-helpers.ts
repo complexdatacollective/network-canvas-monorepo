@@ -1,5 +1,3 @@
-import type { z } from 'zod';
-
 import type {
   Codebook,
   EntityDefinition,
@@ -77,41 +75,6 @@ export const variableHasType = (
   const variable = variables[variableName];
   return variable?.type === expectedType;
 };
-
-/**
- * Check for duplicate IDs in array of objects with id property
- */
-export const findDuplicateId = (
-  items: readonly { id: string }[],
-): string | null => {
-  const seen = new Set<string>();
-  for (const item of items) {
-    if (seen.has(item.id)) {
-      return item.id;
-    }
-    seen.add(item.id);
-  }
-  return null;
-};
-
-/**
- * A `superRefine` callback that flags duplicate `id`s in an array of content
- * items. Shared by every content-item collection that validates its own item
- * schema with the same rule.
- * `label` names the collection in the error message.
- */
-export const duplicateIdRefinement =
-  (label: string) =>
-  (items: { id: string }[], ctx: z.RefinementCtx): void => {
-    const duplicateItemId = findDuplicateId(items);
-    if (duplicateItemId) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: `${label} contain duplicate ID "${duplicateItemId}"`,
-        path: [],
-      });
-    }
-  };
 
 const findDuplicate = (
   values: string[],

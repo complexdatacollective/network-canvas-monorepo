@@ -9,8 +9,14 @@ import {
   awaitOfferedAttributes,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../testing/testId.ts';
 import { nameGeneratorQuickAddStageEditor } from '../NameGeneratorQuickAddStageEditor.ts';
 
 /**
@@ -39,7 +45,12 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON = fixtureTypeId('node', 'person');
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const NAME = personVariable('name');
+const NICKNAME = testVariableId('nickname');
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -54,8 +65,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  */
 const addFreeTextVariable = (
   harness: StageEditorHarness,
-  variableId: string,
+  variableName: string,
 ): void => {
+  const variableId = testVariableId(variableName);
   const section = harness.protocolSections()[PERSON_SECTION];
   if (section === undefined) {
     throw new Error('the fixture protocol has no person node type');
@@ -63,7 +75,7 @@ const addFreeTextVariable = (
   const variables = isRecord(section.variables) ? section.variables : {};
   if (Object.hasOwn(variables, variableId)) {
     throw new Error(
-      `"person" already has a "${variableId}" attribute, so adding one proves nothing.`,
+      `"person" already has a "${variableName}" attribute, so adding one proves nothing.`,
     );
   }
   const updated: SectionDoc = {
@@ -71,13 +83,13 @@ const addFreeTextVariable = (
     variables: {
       ...variables,
       [variableId]: {
-        name: variableId,
+        name: variableName,
         type: 'text',
         component: 'Text',
       },
     },
   };
-  harness.receiveCodebookUpdate({ node: { person: updated } });
+  harness.receiveCodebookUpdate({ node: { [PERSON]: updated } });
 };
 
 const QUICK_ADD_LABEL = 'Select an attribute';
@@ -104,11 +116,11 @@ const quickAddPicker = async (): Promise<HTMLElement> => {
 const quickAddHolding = (fields: SectionDoc) => ({
   registry: nameGeneratorQuickAddStageEditor,
   stage: {
-    id: 'name-generator-quick-add-1',
+    id: fixtureStageId('name-generator-quick-add-1'),
     type: 'NameGeneratorQuickAdd' as const,
     fields: {
       label: { 'en-US': 'Name Generator Quick Add' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       ...fields,
     },
   },
@@ -131,12 +143,12 @@ describe('what a quick-add generator and its own prompts may not share', () => {
   it('does not offer an attribute this stage’s own prompts stamp', async () => {
     const harness = renderStageEditor(
       quickAddHolding({
-        quickAdd: 'name',
+        quickAdd: NAME,
         prompts: [
           {
             id: 'name-generator-quick-add-prompt-1',
             text: { 'en-US': 'Quickly add people you know' },
-            additionalAttributes: [{ variable: 'nickname', value: true }],
+            additionalAttributes: [{ variable: NICKNAME, value: true }],
           },
         ],
       }),
@@ -147,10 +159,10 @@ describe('what a quick-add generator and its own prompts may not share', () => {
     // absence below is the stamp's doing and not the type filter's.
     const picker = await quickAddPicker();
     await awaitOfferedAttributes(harness.user, picker, (offered) =>
-      expect(offered).toContain('name'),
+      expect(offered).toContain(NAME),
     );
     expect(await offeredAttributes(harness.user, picker)).not.toContain(
-      'nickname',
+      NICKNAME,
     );
   });
 
@@ -168,7 +180,7 @@ describe('what a quick-add generator and its own prompts may not share', () => {
   it('does not offer the quick-add attribute to its own prompt stamps', async () => {
     const harness = renderStageEditor(
       quickAddHolding({
-        quickAdd: 'nickname',
+        quickAdd: NICKNAME,
         prompts: [
           {
             id: 'name-generator-quick-add-prompt-1',
@@ -181,7 +193,7 @@ describe('what a quick-add generator and its own prompts may not share', () => {
     // Held by the picker, so the conflict this is about is the live one.
     const picker = await quickAddPicker();
     await awaitOfferedAttributes(harness.user, picker, (offered) =>
-      expect(offered).toContain('nickname'),
+      expect(offered).toContain(NICKNAME),
     );
 
     const prompt = await screen.findByRole('button', { name: 'Edit prompt' });
@@ -211,7 +223,7 @@ describe('what a quick-add generator and its own prompts may not share', () => {
     const offered = offeredIds(window);
     // A boolean the fixture leaves free is offered, so an empty list is not
     // what is being read.
-    expect(offered).toContain('highlighted');
-    expect(offered).not.toContain('nickname');
+    expect(offered).toContain(personVariable('highlighted'));
+    expect(offered).not.toContain(NICKNAME);
   });
 });

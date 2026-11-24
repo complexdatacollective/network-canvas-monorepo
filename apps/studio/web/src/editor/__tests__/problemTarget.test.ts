@@ -20,6 +20,25 @@ describe('where a validation problem is', () => {
     });
   });
 
+  it('keeps the object inside the screen the problem is about', () => {
+    expect(
+      locateProblem(['stages', 1, 'prompts', 0, 'text'], stages, 'prompt-1'),
+    ).toEqual({
+      kind: 'stage',
+      stageId: 'second',
+      fieldNames: ['prompts[0].text', 'prompts[0]', 'prompts'],
+      objectId: 'prompt-1',
+    });
+  });
+
+  it('names no object when the one a problem is about is the screen itself', () => {
+    expect(locateProblem(['stages', 0, 'label'], stages, 'first')).toEqual({
+      kind: 'stage',
+      stageId: 'first',
+      fieldNames: ['label'],
+    });
+  });
+
   it('has no field to name for a problem about the screen as a whole', () => {
     expect(locateProblem(['stages', 0], stages)).toEqual({
       kind: 'stage',

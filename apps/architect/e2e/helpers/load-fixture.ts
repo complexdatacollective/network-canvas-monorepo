@@ -51,3 +51,10 @@ export function loadAllInterfacesFixture(): {
   ];
   return { protocol, assets };
 }
+
+/** The id of the first stage of `type` in `protocol`. */
+export function stageIdOfType(protocol: CurrentProtocol, type: string): string {
+  const stage = protocol.stages.find((candidate) => candidate.type === type);
+  if (!stage) throw new Error(`Expected a ${type} stage in the fixture`);
+  return stage.id;
+}

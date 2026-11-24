@@ -2,14 +2,21 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { oneToManyDyadCensusStageEditor } from '../OneToManyDyadCensusStageEditor.ts';
 
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const ONE_TO_MANY_INDEX = fixtureStageIds().indexOf(
-  'one-to-many-dyad-census-1',
+  fixtureStageId('one-to-many-dyad-census-1'),
 );
 
 const stageNameInput = (): HTMLInputElement =>
@@ -90,14 +97,14 @@ describe('creating a one-to-many dyad census stage', () => {
     expect(request?.stageDocument).toMatchObject({
       type: 'OneToManyDyadCensus',
       label: { 'en-US': 'Person One to Many Dyad Census' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       behaviours: { removeAfterConsideration: false },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         text: { 'en-US': 'Who does this person know?' },
-        createEdge: 'knows',
+        createEdge: KNOWS,
       },
     ]);
   });

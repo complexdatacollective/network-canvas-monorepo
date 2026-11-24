@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
-import { CodebookIdSchema, CodebookNameSchema } from '@codaco/shared-consts';
+import { CodebookNameSchema } from '@codaco/shared-consts';
 
 import {
   findDuplicateName,
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
+import { codebookRecord, VariableIdSchema } from '../codebook-ids.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import {
   DATE_RESOLUTION,
@@ -592,20 +593,20 @@ const checkDuplicateVariableNames = (
     });
   }
 };
-export const VariablesSchema = z
-  .record(CodebookIdSchema, VariableSchema)
+const variableRecord = () =>
+  codebookRecord(VariableIdSchema, VariableSchema, 'variable');
+
+export const VariablesSchema = variableRecord()
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncryptedOnNonTextNode)
   .superRefine(rejectValidationContradictions);
 
-export const EdgeVariablesSchema = z
-  .record(CodebookIdSchema, VariableSchema)
+export const EdgeVariablesSchema = variableRecord()
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Edge'))
   .superRefine(rejectValidationContradictions);
 
-export const EgoVariablesSchema = z
-  .record(CodebookIdSchema, VariableSchema)
+export const EgoVariablesSchema = variableRecord()
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Ego'))
   .superRefine(rejectEgoUnique)

@@ -6,7 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { Toaster } from '@codaco/fresco-ui/Toast';
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
-import { createDefaultFinishSessionStage } from '@codaco/protocol-validation';
+import {
+  createDefaultFinishSessionStage,
+  createProtocolObjectId,
+} from '@codaco/protocol-validation';
 import { useProtocolImport } from '~/hooks/useProtocolImport';
 import { frescoLocales } from '~/i18n/locales';
 import {
@@ -96,7 +99,7 @@ describe('truthful protocol import failure messages', () => {
             // A schema-9 protocol ends at a finish stage.
             stages: [
               createDefaultFinishSessionStage({
-                id: 'finish',
+                id: createProtocolObjectId(),
                 localization: { defaultLocale: 'en', locales: ['en'] },
               }),
             ],
@@ -269,7 +272,7 @@ describe('truthful protocol import failure messages', () => {
           lastModified: '2026-09-05T00:00:00.000Z',
           stages: [
             createDefaultFinishSessionStage({
-              id: 'finish',
+              id: createProtocolObjectId(),
               localization: { defaultLocale: 'en', locales: ['en'] },
             }),
           ],

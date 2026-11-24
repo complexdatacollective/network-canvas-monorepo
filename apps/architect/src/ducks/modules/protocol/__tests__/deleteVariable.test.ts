@@ -1,13 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import developmentProtocol from '@codaco/protocols/development';
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
 import { deleteVariableAsync } from '~/ducks/modules/protocol/codebook';
 import { rootReducer } from '~/ducks/modules/root';
 import { getIsUsed } from '~/selectors/codebook/isUsed';
 import { getProtocol } from '~/selectors/protocol';
+import {
+  templateTypeId,
+  templateVariableId,
+} from '~/templates/__tests__/templateCodebookIds';
+import { developmentProtocol } from '~/templates/development-protocol';
 
 /**
  * Regression coverage for #1392's silent no-op: `deleteVariableAsync` used to
@@ -17,13 +20,21 @@ import { getProtocol } from '~/selectors/protocol';
  * still in the codebook.
  */
 
-const PERSON = 'person_node_type';
+const PERSON = templateTypeId(developmentProtocol, 'node', 'person');
 // person.last_name, referenced by prompt sort keys only. Before the usage-index
 // fix it read as in-use with nothing to show for it; it is still in use, and
 // deleting it must still be refused — out loud.
-const LAST_NAME = '0ff25001-a2b8-46de-82a9-53143aa00d10';
+const LAST_NAME = templateVariableId(
+  developmentProtocol,
+  { entity: 'node', typeName: 'person' },
+  'last_name',
+);
 // person.talk_friend, referenced nowhere in the development protocol.
-const UNUSED = 'd2d8091e-8170-42c1-9dc0-c0d54553b3e6';
+const UNUSED = templateVariableId(
+  developmentProtocol,
+  { entity: 'node', typeName: 'person' },
+  'talk_friend',
+);
 
 const makeStore = () => {
   const store = configureStore({
@@ -33,9 +44,7 @@ const makeStore = () => {
   });
 
   store.dispatch(
-    protocolActions.setActiveProtocol(
-      structuredClone(developmentProtocol) as unknown as CurrentProtocol,
-    ),
+    protocolActions.setActiveProtocol(structuredClone(developmentProtocol)),
   );
 
   return store;

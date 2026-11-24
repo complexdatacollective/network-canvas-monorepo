@@ -24,6 +24,7 @@ import {
 } from '@codaco/shared-consts';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
@@ -35,18 +36,19 @@ import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import TieStrengthCensus from '../TieStrengthCensus';
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'friendship';
-const EDGE_VAR = 'strength';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('friendship');
+const EDGE_VAR = testVariableId('strength');
+const NAME_VAR = testVariableId('name');
 
 const stage: StageProps<'TieStrengthCensus'>['stage'] = {
-  id: 'tsc1',
+  id: testId('tsc1'),
   type: 'TieStrengthCensus',
   label: { en: 'Tie Strength' },
   subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
     {
-      id: 'p1',
+      id: testId('p1'),
       text: { en: 'How strong is the tie?' },
       createEdge: EDGE_TYPE,
       edgeVariable: asEntityAttributeReference(EDGE_VAR),
@@ -68,7 +70,7 @@ const makeCodebook = (
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
-      variables: {},
+      variables: { [NAME_VAR]: { name: 'name', type: 'text' } },
     },
   },
   edge: {
@@ -77,7 +79,7 @@ const makeCodebook = (
       color: 'edge-color-seq-1',
       variables: {
         [EDGE_VAR]: {
-          name: EDGE_VAR,
+          name: 'strength',
           type: 'ordinal',
           component: 'RadioGroup',
           options,
@@ -367,8 +369,8 @@ describe('TieStrengthCensus dynamic values', () => {
       stage: {
         ...stage,
         dynamicValues: {
-          first: { path: 'dyad.source.name' },
-          second: { path: 'dyad.target.name' },
+          first: { path: `dyad.source.${NAME_VAR}` },
+          second: { path: `dyad.target.${NAME_VAR}` },
         },
         prompts: stage.prompts.map((prompt) => ({
           ...prompt,
@@ -378,8 +380,8 @@ describe('TieStrengthCensus dynamic values', () => {
         })),
       } as StageProps<'TieStrengthCensus'>['stage'],
       nodes: [
-        { ...first!, [entityAttributesProperty]: { name: 'Ada' } },
-        { ...second!, [entityAttributesProperty]: { name: 'Grace' } },
+        { ...first!, [entityAttributesProperty]: { [NAME_VAR]: 'Ada' } },
+        { ...second!, [entityAttributesProperty]: { [NAME_VAR]: 'Grace' } },
       ],
     });
 
@@ -406,7 +408,7 @@ describe('TieStrengthCensus dynamic values', () => {
       } as StageProps<'TieStrengthCensus'>['stage'],
       // The second has no name, so it is unnamed.
       nodes: [
-        { ...first!, [entityAttributesProperty]: { name: 'Ada' } },
+        { ...first!, [entityAttributesProperty]: { [NAME_VAR]: 'Ada' } },
         second!,
       ],
     });

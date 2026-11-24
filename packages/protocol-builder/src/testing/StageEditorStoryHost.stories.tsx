@@ -9,14 +9,17 @@ import { ResourceClientProvider } from '../resources/client.tsx';
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
+import { fixtureStageId, fixtureVariableId } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
 import { exactlyText } from './text.ts';
+
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Story host',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'information-1',
+    stageId: fixtureStageId('information-1'),
     renderEditor: ({ target, formId, onSaved, actions }) => (
       <ResourceClientProvider>
         <StageEditSession target={target} formId={formId} onSaved={onSaved}>
@@ -162,7 +165,7 @@ export const Spectating: Story = {
  */
 export const ACollaboratorRevisesTheCodebook: Story = {
   args: {
-    stageId: 'ego-form-1',
+    stageId: fixtureStageId('ego-form-1'),
     // Through the package's own dispatcher, with no registry passed, so the
     // editor is the one a host would get for this interface.
     renderEditor: ({ actions, ...editor }) => (
@@ -173,7 +176,7 @@ export const ACollaboratorRevisesTheCodebook: Story = {
       section: sectionId({ kind: 'codebookEgo' }),
       document: {
         variables: {
-          ego_name: {
+          [EGO_NAME]: {
             name: 'given_name',
             type: 'text',
             component: 'TextArea',

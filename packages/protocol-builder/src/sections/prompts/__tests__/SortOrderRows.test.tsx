@@ -17,13 +17,30 @@ import { useLocalizedText } from '../../../localization/ProtocolLocalization.tsx
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
+  fixtureStageId,
+  loadFixtureStage,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type SavedStage,
 } from '../../../testing/renderStageEditor.tsx';
+import { testId, testVariableId } from '../../../testing/testId.ts';
 import PromptsSection from '../../PromptsSection.tsx';
 import SortOrderRows from '../SortOrderRows.tsx';
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const NICKNAME = testVariableId('nickname');
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
+
+const SUBJECT = { entity: 'node', type: PERSON } as const;
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
 const en = (text: string) => ({ 'en-US': text });
@@ -39,7 +56,7 @@ const personWithout = (dropped: readonly string[]): SectionDoc => {
         >;
       };
     }
-  ).codebook.node.person!;
+  ).codebook.node[PERSON]!;
   return {
     ...person,
     variables: Object.fromEntries(
@@ -61,9 +78,9 @@ const personWithout = (dropped: readonly string[]): SectionDoc => {
  * than a shorter list.
  */
 const PERSON_PROPERTIES: readonly SortableProperty[] = [
-  { value: 'name', label: 'name', type: 'text' },
-  { value: 'age', label: 'age', type: 'number' },
-  { value: 'layout', label: 'layout', type: 'layout' },
+  { value: NAME, label: 'name', type: 'text' },
+  { value: AGE, label: 'age', type: 'number' },
+  { value: LAYOUT, label: 'layout', type: 'layout' },
 ];
 
 const SORT_SWITCH = 'Sort unplaced nodes';
@@ -197,7 +214,28 @@ const sectionsFor = (
 
 const sections = sectionsFor(SortOrderPromptEditor);
 
-const RULE = { property: 'age', direction: 'desc' };
+/** The id the fixture's sociogram holds its first prompt under. */
+const FIXTURE_PROMPT_ID = (() => {
+  const { prompts } = loadFixtureStage('sociogram-1').fields;
+  const first: unknown = Array.isArray(prompts) ? prompts[0] : undefined;
+  const id: unknown =
+    typeof first === 'object' && first !== null
+      ? Reflect.get(first, 'id')
+      : undefined;
+  if (typeof id !== 'string') {
+    throw new Error('The fixture sociogram has no prompt id.');
+  }
+  return id;
+})();
+
+/** A sort rule a prompt already holds, under an id of its own. */
+const sortRule = (property: string, direction: 'asc' | 'desc') => ({
+  id: testId(`sort-rule-${property}`),
+  property,
+  direction,
+});
+
+const RULE = sortRule(AGE, 'desc');
 
 /**
  * A sociogram whose first prompt already has a sort order.
@@ -215,18 +253,18 @@ const seededWith = (
   >[0]['PromptEditor'] = SortOrderPromptEditor,
 ) => ({
   stage: {
-    id: 'sociogram-1',
+    id: fixtureStageId('sociogram-1'),
     type: 'Sociogram' as const,
     fields: {
       label: en('Sociogram'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
       prompts: [
         {
-          id: 'sociogram-prompt-1',
+          id: testId('sociogram-prompt-1'),
           text: en('Place the people who know each other close together'),
-          layout: { layoutVariable: 'layout' },
+          layout: { layoutVariable: LAYOUT },
           sortOrder: rules,
         },
       ],
@@ -246,7 +284,7 @@ const seededWithARule = () => seededWith([RULE]);
  * has to say the reference is dangling, and it is `SortOrderRows` that has to
  * say it, so that every family holding a sort order says the same thing.
  */
-const ORPHANED_PROPERTY = 'nickname';
+const ORPHANED_PROPERTY = NICKNAME;
 
 const ORPHANED_OPTION_LABEL = `${ORPHANED_PROPERTY} — this attribute is no longer in the codebook`;
 
@@ -254,7 +292,7 @@ const MISSING_ATTRIBUTE_MESSAGE =
   'This rule points at an attribute no longer in the codebook. Choose another or delete the rule.';
 
 const seededWithAnOrphanedRule = () =>
-  seededWith([{ property: ORPHANED_PROPERTY, direction: 'asc' }]);
+  seededWith([sortRule(ORPHANED_PROPERTY, 'asc')]);
 
 /**
  * The prompt a save actually committed.
@@ -296,9 +334,7 @@ describe('the sort order a prompt carries', () => {
     await waitFor(() =>
       expect(screen.getByRole('switch', { name: SORT_SWITCH })).toBeChecked(),
     );
-    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(
-      'age',
-    );
+    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(AGE);
     expect(screen.getByRole('combobox', { name: 'Direction' })).toHaveValue(
       'desc',
     );
@@ -318,18 +354,21 @@ describe('the sort order a prompt carries', () => {
         .filter((value) => value !== ''),
       // `layout` holds a node's position on the canvas, which is not a value
       // one node can be ordered ahead of another by.
-    ).toEqual(['*', 'name', 'age']);
+    ).toEqual(['*', NAME, AGE]);
     // The property this rule already uses stays on offer, disabled, so a
     // second rule cannot repeat it.
     expect(
       [...property.querySelectorAll('option')].find(
-        (option) => option.value === 'age',
+        (option) => option.value === AGE,
       ),
     ).toBeDisabled();
   });
 
   it('saves a rule the researcher switched the group on to write', async () => {
-    const harness = renderStageEditor({ stageId: 'sociogram-1', sections });
+    const harness = renderStageEditor({
+      stageId: fixtureStageId('sociogram-1'),
+      sections,
+    });
 
     await harness.user.click(
       screen.getAllByRole('button', { name: 'Edit prompt' })[0]!,
@@ -345,7 +384,7 @@ describe('the sort order a prompt carries', () => {
     );
     await harness.user.selectOptions(
       await screen.findByRole('combobox', { name: 'Property' }),
-      'name',
+      NAME,
     );
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Direction' }),
@@ -357,11 +396,17 @@ describe('the sort order a prompt carries', () => {
     );
 
     const saved = savedPrompt(await harness.submit());
-    expect(saved.sortOrder).toEqual([{ property: 'name', direction: 'asc' }]);
+    expect(saved.sortOrder).toEqual([
+      {
+        id: expect.stringMatching(/^[0-9a-f-]{36}$/u),
+        property: NAME,
+        direction: 'asc',
+      },
+    ]);
     // The rule went into the prompt it was written in, and changed nothing
     // else the prompt was holding.
-    expect(saved.edges).toEqual({ display: ['knows'], create: 'knows' });
-    expect(saved.id).toBe('sociogram-prompt-1');
+    expect(saved.edges).toEqual({ display: [KNOWS], create: KNOWS });
+    expect(saved.id).toBe(FIXTURE_PROMPT_ID);
   });
 
   it('drops the key when the researcher switches the group off', async () => {
@@ -512,7 +557,7 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
     await openPrompt(harness);
     await harness.user.selectOptions(
       await screen.findByRole('combobox', { name: 'Property' }),
-      'name',
+      NAME,
     );
 
     expect(
@@ -556,7 +601,7 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
     // no rule can be pointed at.
     await harness.user.selectOptions(
       await screen.findByRole('combobox', { name: 'Property' }),
-      'name',
+      NAME,
     );
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Direction' }),
@@ -566,7 +611,7 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
     // `*`, `name` and `age` are everything a rule may be pointed at here —
     // `layout` is filtered out, and the deleted attribute is disabled — so
     // three rules is the whole prompt.
-    await addSortRule(harness, 'age', 'desc');
+    await addSortRule(harness, AGE, 'desc');
     await addSortRule(harness, '*', 'asc');
 
     expect(screen.getAllByRole('combobox', { name: 'Property' })).toHaveLength(
@@ -581,7 +626,7 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
     await openPrompt(harness);
     await harness.user.selectOptions(
       await screen.findByRole('combobox', { name: 'Property' }),
-      'name',
+      NAME,
     );
     // Choosing a property clears the direction behind it, because each column
     // narrows the next one's options.
@@ -595,7 +640,9 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
     );
 
     const saved = savedPrompt(await harness.submit());
-    expect(saved.sortOrder).toEqual([{ property: 'name', direction: 'asc' }]);
+    expect(saved.sortOrder).toEqual([
+      { ...sortRule(ORPHANED_PROPERTY, 'asc'), property: NAME },
+    ]);
   });
 });
 
@@ -610,10 +657,7 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
  */
 describe('a subject with nothing to sort by', () => {
   const seeded = () =>
-    seededWith(
-      [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
-      makeEditor([]),
-    );
+    seededWith([sortRule(ORPHANED_PROPERTY, 'asc')], makeEditor([]));
 
   it('still shows what the rule points at', async () => {
     const harness = renderStageEditor(seeded());
@@ -644,10 +688,7 @@ describe('a subject with nothing to sort by', () => {
    */
   it('judges nothing while the family does not know its properties yet', async () => {
     const harness = renderStageEditor(
-      seededWith(
-        [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
-        makeEditor(undefined),
-      ),
+      seededWith([sortRule(ORPHANED_PROPERTY, 'asc')], makeEditor(undefined)),
     );
 
     await openPrompt(harness);
@@ -675,10 +716,7 @@ describe('a subject with nothing to sort by', () => {
  */
 describe('a collaborator deletes the attribute while the dialog is open', () => {
   const seeded = () => {
-    const opened = seededWith(
-      [{ property: 'age', direction: 'desc' }],
-      CodebookPromptEditor,
-    );
+    const opened = seededWith([sortRule(AGE, 'desc')], CodebookPromptEditor);
     return {
       ...opened,
       sections: (
@@ -696,7 +734,7 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
         within(screen.getByRole('combobox', { name: 'Property' })).getByRole(
           'option',
           {
-            name: 'age — this attribute is no longer in the codebook',
+            name: `${AGE} — this attribute is no longer in the codebook`,
           },
         ),
       ).toBeDisabled(),
@@ -709,9 +747,9 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
     await openPrompt(harness);
     expect(
       await screen.findByRole('combobox', { name: 'Property' }),
-    ).toHaveValue('age');
+    ).toHaveValue(AGE);
 
-    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    harness.receiveCodebookUpdate({ node: { [PERSON]: personWithout([AGE]) } });
     await expectDeletedOption();
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -728,14 +766,14 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
   it('stops refusing once the attribute is back', async () => {
     const harness = renderStageEditor(seeded());
 
-    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
-    await attributeGone('age');
+    harness.receiveCodebookUpdate({ node: { [PERSON]: personWithout([AGE]) } });
+    await attributeGone(AGE);
     await openPrompt(harness);
     // Armed: the rule is dangling and the editor says so.
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
 
-    harness.receiveCodebookUpdate({ node: { person: personWithout([]) } });
+    harness.receiveCodebookUpdate({ node: { [PERSON]: personWithout([]) } });
     await waitFor(() =>
       expect(
         within(screen.getByRole('combobox', { name: 'Property' })).getByRole(
@@ -750,7 +788,7 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
     expect(savedPrompt(await harness.submit()).sortOrder).toEqual([
-      { property: 'age', direction: 'desc' },
+      sortRule(AGE, 'desc'),
     ]);
   });
 
@@ -767,23 +805,20 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
    */
   it('refuses the rule the researcher pointed at an attribute deleted after', async () => {
     const harness = renderStageEditor(
-      seededWith(
-        [{ property: 'name', direction: 'desc' }],
-        CodebookPromptEditor,
-      ),
+      seededWith([sortRule(NAME, 'desc')], CodebookPromptEditor),
     );
 
     await openPrompt(harness);
     await harness.user.selectOptions(
       await screen.findByRole('combobox', { name: 'Property' }),
-      'age',
+      AGE,
     );
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Direction' }),
       'asc',
     );
 
-    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    harness.receiveCodebookUpdate({ node: { [PERSON]: personWithout([AGE]) } });
     await expectDeletedOption();
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -792,9 +827,7 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
     // And the cell still says what it points at, which is the other half of
     // the same rule: a blank required cell the researcher cannot read is what
     // sends the dangling reference back into the protocol.
-    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(
-      'age',
-    );
+    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(AGE);
   });
 
   /**
@@ -805,8 +838,8 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
   it('control: the same deletion before the dialog opens is refused', async () => {
     const harness = renderStageEditor(seeded());
 
-    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
-    await attributeGone('age');
+    harness.receiveCodebookUpdate({ node: { [PERSON]: personWithout([AGE]) } });
+    await attributeGone(AGE);
     await openPrompt(harness);
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -832,7 +865,7 @@ describe('a sort rule pointing at an attribute nothing can be ordered by', () =>
   const UNSORTABLE_ATTRIBUTE_MESSAGE =
     'This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.';
 
-  const seeded = () => seededWith([{ property: 'layout', direction: 'asc' }]);
+  const seeded = () => seededWith([sortRule(LAYOUT, 'asc')]);
 
   it('shows the rule, naming the attribute it cannot sort by', async () => {
     const harness = renderStageEditor(seeded());
@@ -840,7 +873,7 @@ describe('a sort rule pointing at an attribute nothing can be ordered by', () =>
     await openPrompt(harness);
 
     const property = await screen.findByRole('combobox', { name: 'Property' });
-    expect(property).toHaveValue('layout');
+    expect(property).toHaveValue(LAYOUT);
     expect(
       within(property).getByRole('option', { name: UNSORTABLE_OPTION_LABEL }),
     ).toBeDisabled();
@@ -866,7 +899,7 @@ describe('a sort rule pointing at an attribute nothing can be ordered by', () =>
     await openPrompt(harness);
     await harness.user.selectOptions(
       await screen.findByRole('combobox', { name: 'Property' }),
-      'name',
+      NAME,
     );
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Direction' }),
@@ -878,7 +911,7 @@ describe('a sort rule pointing at an attribute nothing can be ordered by', () =>
     );
 
     expect(savedPrompt(await harness.submit()).sortOrder).toEqual([
-      { property: 'name', direction: 'asc' },
+      { ...sortRule(LAYOUT, 'asc'), property: NAME },
     ]);
   });
 
@@ -894,7 +927,7 @@ describe('a sort rule pointing at an attribute nothing can be ordered by', () =>
     await openPrompt(harness);
     await harness.user.selectOptions(
       await screen.findByRole('combobox', { name: 'Property' }),
-      'name',
+      NAME,
     );
 
     expect(

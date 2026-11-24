@@ -18,7 +18,6 @@ import {
   entityExists,
   filterRuleAttributeExists,
   filterRuleEntityExists,
-  findDuplicateId,
   getFilterRuleVariable,
   getFilterRuleVariableType,
   getVariablesForSubject,
@@ -214,13 +213,6 @@ const validateConditions = (
   for (const [conditionId, condition] of Object.entries(conditions ?? {})) {
     const conditionPath = [...basePath, conditionId];
     const rulesPath = [...conditionPath, 'rules'];
-    const duplicateRuleId = findDuplicateId(condition.rules);
-    if (duplicateRuleId) {
-      addIssue({
-        message: `Rules contain duplicate ID "${duplicateRuleId}"`,
-        path: rulesPath,
-      });
-    }
     const aboutEdge = condition.about === 'edge';
     if (
       condition.about !== undefined &&
@@ -1258,7 +1250,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       });
     }
 
-    // 3c. Comprehensive prompt validation (duplicate ID validation moved to individual stage schemas)
+    // 3c. Comprehensive prompt validation
     if ('prompts' in stage && stage.prompts) {
       stage.prompts.forEach((prompt: Prompt, promptIndex: number) => {
         // createEdge references validation (entity-type reference, not attribute)
@@ -1578,22 +1570,8 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       });
     }
 
-    // Note: external-data panel edge rules and panels duplicate ID
-    // validation moved to the stage schemas (`common/panels.ts`)
-
-    // Note: Items duplicate ID validation moved to individual stage schemas
-
     // Filter rules validation (comprehensive)
     if ('filter' in stage && stage.filter?.rules) {
-      const duplicateRuleId = findDuplicateId(stage.filter.rules);
-      if (duplicateRuleId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Rules contain duplicate ID "${duplicateRuleId}"`,
-          path: ['stages', stageIndex, 'filter', 'rules'],
-        });
-      }
-
       // A stage NODE/EDGE filter cannot use ego rules (degenerate at
       // runtime); ego rules remain valid in skipLogic/panel/query filters.
       validateFilterRules(
@@ -1650,35 +1628,6 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         }
       });
     }
-
-    // 3h. Check any nested filter rules recursively for duplicate IDs (for
-    // skipLogic, panels, etc.)
-    const validateNestedFilters = (
-      obj: unknown,
-      basePath: (string | number)[],
-    ) => {
-      if (typeof obj === 'object' && obj !== null) {
-        if ('rules' in obj && Array.isArray(obj.rules)) {
-          const rules = obj.rules as unknown[];
-          const duplicateNestedRuleId = findDuplicateId(
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every `rules` array reached here is a filter rule list, which the filter schema requires to carry string ids
-            rules as { id: string }[],
-          );
-          if (duplicateNestedRuleId) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `Rules contain duplicate ID "${duplicateNestedRuleId}"`,
-              path: [...basePath, 'rules'],
-            });
-          }
-        }
-        // Recursively check nested objects
-        for (const [key, value] of Object.entries(obj)) {
-          validateNestedFilters(value, [...basePath, key]);
-        }
-      }
-    };
-    validateNestedFilters(stage, ['stages', stageIndex]);
   });
 
   // Validate node shape mappings

@@ -18,6 +18,7 @@ import { exportPipeline } from '../pipeline';
 import { InterviewRepository } from '../services/InterviewRepository';
 import { Output } from '../services/Output';
 import { ProtocolRepository } from '../services/ProtocolRepository';
+import { testVariableId } from './testIds';
 
 const options: ExportOptions = {
   exportGraphML: true,
@@ -58,7 +59,7 @@ const codebook: Codebook = {
         color: 'node-color-seq-1' as const,
         shape: { default: 'circle' as const },
         variables: {
-          [`${id}-label`]: {
+          [testVariableId(`${id}-label`)]: {
             name: 'Label',
             type: 'text' as const,
           },
@@ -88,7 +89,9 @@ const interview: InterviewExportInput = {
     nodes: nodeIds.map((id) => ({
       [entityPrimaryKeyProperty]: `node-${id}`,
       type: id,
-      [entityAttributesProperty]: { [`${id}-label`]: `a ${id} node` },
+      [entityAttributesProperty]: {
+        [testVariableId(`${id}-label`)]: `a ${id} node`,
+      },
     })),
     edges: edgeIds.map((id, index) => ({
       [entityPrimaryKeyProperty]: `edge-${id}`,

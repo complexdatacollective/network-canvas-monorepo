@@ -29,6 +29,7 @@ import {
   HARNESS_PRINCIPAL,
   SeedProtocolCache,
 } from '../../testing/seedProtocolCache.tsx';
+import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
 import type { StageLabelPanel } from '../proposeStageLabel.ts';
 import { type StageName, useStageName } from '../useStageName.ts';
 import { useStageNameField } from '../useStageNameField.ts';
@@ -36,6 +37,11 @@ import {
   type StandingStageNameProposal,
   useStandingStageNameProposal,
 } from '../useStandingStageNameProposal.ts';
+
+const PERSON = testTypeId('person');
+const FRIENDSHIP = testTypeId('friendship');
+const DIABETES = testVariableId('diabetes');
+const ASTHMA = testVariableId('asthma');
 
 const EDITED_STAGE_ID = 'stage-edited';
 const EDITED_SECTION = sectionId({ kind: 'stage', stageId: EDITED_STAGE_ID });
@@ -45,8 +51,8 @@ const personNode = (name: string): SectionDoc => ({
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {
-    diabetes: { name: 'Diabetes', type: 'boolean' },
-    asthma: { name: 'Asthma', type: 'boolean' },
+    [DIABETES]: { name: 'Diabetes', type: 'boolean' },
+    [ASTHMA]: { name: 'Asthma', type: 'boolean' },
   },
 });
 
@@ -64,13 +70,13 @@ type SectionMap = Record<string, SectionDoc>;
 
 const protocolSections = (extra: SectionMap = {}): SectionMap => ({
   [sectionId({ kind: 'settings' })]: { localization: ENGLISH },
-  [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-other'] },
-  [sectionId({ kind: 'stage', stageId: 'stage-other' })]: informationStage(
-    'stage-other',
-    'An existing stage',
-  ),
-  [sectionId({ kind: 'codebookNode', typeId: 'person' })]: personNode('Person'),
-  [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
+  [sectionId({ kind: 'stageOrder' })]: {
+    stages: [testId('stage-other')],
+  },
+  [sectionId({ kind: 'stage', stageId: testId('stage-other') })]:
+    informationStage(testId('stage-other'), 'An existing stage'),
+  [sectionId({ kind: 'codebookNode', typeId: PERSON })]: personNode('Person'),
+  [sectionId({ kind: 'codebookEdge', typeId: FRIENDSHIP })]: {
     name: 'Friendship',
     variables: {},
   },
@@ -295,7 +301,7 @@ describe('useStageName', () => {
 
     await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
 
-    setValue('subject', { entity: 'node', type: 'person' });
+    setValue('subject', { entity: 'node', type: PERSON });
     await waitFor(() =>
       expect(input).toHaveValue('Person Form Name Generator'),
     );
@@ -316,7 +322,7 @@ describe('useStageName', () => {
   it('reads the subject from the committed draft when no field holds it', async () => {
     const { input } = renderEditor({
       type: 'Sociogram',
-      fields: { subject: { entity: 'edge', type: 'friendship' } },
+      fields: { subject: { entity: 'edge', type: FRIENDSHIP } },
     });
 
     await waitFor(() => expect(input).toHaveValue('Friendship Sociogram'));
@@ -444,12 +450,12 @@ describe('useStageName', () => {
 
   it('re-proposes when the codebook changes underneath the editor', async () => {
     const { input, renameNodeType, setValue } = renderEditor();
-    setValue('subject', { entity: 'node', type: 'person' });
+    setValue('subject', { entity: 'node', type: PERSON });
     await waitFor(() =>
       expect(input).toHaveValue('Person Form Name Generator'),
     );
 
-    renameNodeType('person', personNode('Participant'));
+    renameNodeType(PERSON, personNode('Participant'));
 
     await waitFor(() =>
       expect(input).toHaveValue('Participant Form Name Generator'),
@@ -467,8 +473,8 @@ describe('useStageName', () => {
     // Two different reasons the proposal would be recomputed: the draft
     // changing, and the codebook changing under the editor. Neither is licence
     // to replace what the researcher typed.
-    setValue('subject', { entity: 'node', type: 'person' });
-    renameNodeType('person', personNode('Participant'));
+    setValue('subject', { entity: 'node', type: PERSON });
+    renameNodeType(PERSON, personNode('Participant'));
 
     await settle();
     expect(input).toHaveValue('My custom stage');
@@ -494,7 +500,7 @@ describe('useStageName', () => {
       existing: true,
     });
 
-    setValue('subject', { entity: 'node', type: 'person' });
+    setValue('subject', { entity: 'node', type: PERSON });
     await settle();
     expect(input).toHaveValue('Hand named');
   });
@@ -508,7 +514,7 @@ describe('useStageName', () => {
   it('names an existing stage when a host accepts the proposal', async () => {
     const { name, liveDraft } = renderEditor({
       type: 'Sociogram',
-      fields: { subject: { entity: 'node', type: 'person' } },
+      fields: { subject: { entity: 'node', type: PERSON } },
       existing: true,
       headless: true,
     });
@@ -615,7 +621,7 @@ describe('a name written in more than one language', () => {
       type: 'Sociogram',
       fields: {
         label: { es: 'Sociograma' },
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
       },
       existing: true,
       headless: true,
@@ -640,8 +646,8 @@ describe('a name written in more than one language', () => {
     const { input } = renderEditor({
       type: 'Information',
       sections: bilingual({
-        [sectionId({ kind: 'stage', stageId: 'stage-other' })]: {
-          ...informationStage('stage-other', 'About the study'),
+        [sectionId({ kind: 'stage', stageId: testId('stage-other') })]: {
+          ...informationStage(testId('stage-other'), 'About the study'),
           label: { en: 'About the study', es: 'Information' },
         },
       }),
@@ -672,7 +678,7 @@ describe('a name in the protocol’s default language', () => {
     );
     expect(input.closest('[lang]')).toHaveAttribute('lang', 'es');
 
-    setValue('subject', { entity: 'node', type: 'person' });
+    setValue('subject', { entity: 'node', type: PERSON });
     await waitFor(() =>
       expect(input).toHaveValue(
         'Generador de nombres (con formularios): Person',
@@ -809,7 +815,7 @@ describe('a name in the protocol’s default language', () => {
       await settle();
       fireEvent.change(input, { target: { value: 'Marafiki' } });
 
-      setValue('subject', { entity: 'node', type: 'person' });
+      setValue('subject', { entity: 'node', type: PERSON });
       await settle();
 
       expect(input).toHaveValue('Marafiki');
@@ -943,7 +949,7 @@ describe('a proposed name nobody has touched', () => {
   it('never stands on a stage the interview already contains', async () => {
     const { name, liveDraft, standing } = renderEditor({
       type: 'Sociogram',
-      fields: { subject: { entity: 'node', type: 'person' } },
+      fields: { subject: { entity: 'node', type: PERSON } },
       existing: true,
       headless: true,
     });
@@ -985,7 +991,7 @@ describe('useStageName parity with Architect', () => {
     {
       name: 'a name generator with a node subject',
       type: 'NameGenerator',
-      fields: { subject: { entity: 'node', type: 'person' } },
+      fields: { subject: { entity: 'node', type: PERSON } },
       expected: 'Person Form Name Generator',
     },
     {
@@ -1005,7 +1011,7 @@ describe('useStageName parity with Architect', () => {
     {
       name: 'a stage type with no qualifier',
       type: 'Sociogram',
-      fields: { subject: { entity: 'edge', type: 'friendship' } },
+      fields: { subject: { entity: 'edge', type: FRIENDSHIP } },
       expected: 'Friendship Sociogram',
     },
   ];

@@ -7,6 +7,7 @@ import {
   stageDocument,
   stageFieldsForEditing,
 } from '../stageDocument.ts';
+import { testVariableId } from '../testing/testId.ts';
 
 const ENGLISH = { defaultLocale: 'en', locales: ['en'] } as const;
 const ENGLISH_AND_FRENCH = { defaultLocale: 'en', locales: ['en', 'fr'] };
@@ -123,7 +124,9 @@ describe('the stage document an editor saves', () => {
 
   it('shows a Family Pedigree’s gated wording only once its configuration is on, and stores none of it', () => {
     const fields = {
-      nodeConfiguration: { genderIdentity: { variable: 'gender' } },
+      nodeConfiguration: {
+        genderIdentity: { variable: testVariableId('gender') },
+      },
       wording: {},
     };
     const filled = stageFieldsForEditing('FamilyPedigree', fields, ENGLISH);

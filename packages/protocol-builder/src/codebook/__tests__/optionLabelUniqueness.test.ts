@@ -3,19 +3,23 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { readMessage } from '../../testing/i18n.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import {
   documentWithUpdatedVariable,
   InvalidCodebookDraftError,
 } from '../editing.ts';
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const PERSON = testTypeId('person');
+const CLOSENESS = testVariableId('closeness');
+
+const SUBJECT = { entity: 'node', type: PERSON } as const;
 
 const personDocument = (options: readonly unknown[]): SectionDoc => ({
   name: 'Person',
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {
-    closeness: {
+    [CLOSENESS]: {
       name: 'closeness',
       type: 'ordinal',
       options,
@@ -43,7 +47,7 @@ const refusal = (options: readonly unknown[]): string | undefined => {
     documentWithUpdatedVariable({
       subject: SUBJECT,
       authoritativeDocument: personDocument(SOUND),
-      variableId: 'closeness',
+      variableId: CLOSENESS,
       draft: { options },
       replaceProperties: ['options'],
     });

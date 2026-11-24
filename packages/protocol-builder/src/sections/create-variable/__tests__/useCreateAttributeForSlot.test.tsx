@@ -22,10 +22,13 @@ import {
   attributeField,
   openAttributePicker,
 } from '../../../testing/attributePicker.ts';
+import { fixtureTypeId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { useCreateAttributeForSlot } from '../useCreateAttributeForSlot.ts';
 
-const SUBJECT: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON = fixtureTypeId('node', 'person');
+
+const SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 const SLOT = 'highlight';
 const LABEL = 'Attribute that marks a person';
 
@@ -155,7 +158,7 @@ const createdAttribute = (
   harness: ReturnType<typeof renderStageEditor>,
   name: string,
 ) =>
-  Object.entries(harness.editorCodebook().node?.person?.variables ?? {}).find(
+  Object.entries(harness.editorCodebook().node?.[PERSON]?.variables ?? {}).find(
     ([, variable]) => variable.name === name,
   );
 
@@ -191,18 +194,18 @@ describe('a slot whose attribute a name finishes', () => {
     ).toBeInTheDocument();
     // Kept in the stage's draft rather than written to the protocol...
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        (variable) => variable.name === 'is_participant',
-      ),
+      Object.values(
+        harness.hostCodebook().node?.[PERSON]?.variables ?? {},
+      ).some((variable) => variable.name === 'is_participant'),
     ).toBe(false);
     // ...so cancelling the stage drops it. (Saving it with the stage is
     // proved where a whole stage is mounted: this slot's `highlight` key is no
     // part of a name generator, so this form cannot be saved.)
     await harness.cancel();
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        (variable) => variable.name === 'is_participant',
-      ),
+      Object.values(
+        harness.hostCodebook().node?.[PERSON]?.variables ?? {},
+      ).some((variable) => variable.name === 'is_participant'),
     ).toBe(false);
   });
 

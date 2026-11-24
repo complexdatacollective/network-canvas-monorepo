@@ -24,6 +24,7 @@ import {
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { testVariableId } from '../../testing/testId.ts';
 import { useCodebookSectionWrite } from '../writes.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
@@ -37,10 +38,13 @@ await catalogs.load('es');
 const EGO = sectionId({ kind: 'codebookEgo' });
 const SUBJECT = { entity: 'ego' } as const;
 
+const AGE_ID = testVariableId('age');
+const PRONOUNS = testVariableId('pronouns');
+
 const ANA = { sessionId: 'session-ana', userId: 'ana', displayName: 'Ana' };
 
 const AGE = {
-  age: { name: 'age', type: 'number' },
+  [AGE_ID]: { name: 'age', type: 'number' },
 } as const;
 
 /** The protocol as it is before the researcher has asked the participant anything. */
@@ -151,7 +155,7 @@ describe('the first attribute asked of the participant', () => {
     );
 
     await waitFor(() => expect(said).toHaveTextContent('added'));
-    expect(participantAttributes(host)).toEqual(['age']);
+    expect(participantAttributes(host)).toEqual([AGE_ID]);
   });
 
   it('is refused, not overwritten, when a collaborator added theirs first', async () => {
@@ -173,7 +177,7 @@ describe('the first attribute asked of the participant', () => {
     );
     // Theirs, whole: a create that overwrote would have left the section
     // holding this editor's attribute and not the one already committed.
-    expect(participantAttributes(host)).toEqual(['pronouns']);
+    expect(participantAttributes(host)).toEqual([PRONOUNS]);
   });
 
   it('says it in Spanish too', async () => {
@@ -211,7 +215,7 @@ function racedByACollaborator(host: InMemoryHost): ProtocolBuilderAdapter {
       kind: 'codebookEgo',
       document: Redacted.make({
         variables: {
-          pronouns: {
+          [PRONOUNS]: {
             name: 'pronouns',
             type: 'text',
           },

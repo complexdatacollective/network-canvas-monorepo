@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -56,6 +57,9 @@ beforeAll(() => {
   Element.prototype.scrollTo = () => {};
 });
 
+const NICKNAME_VARIABLE = testVariableId('nickname');
+const BORN_ON_VARIABLE = testVariableId('born_on');
+
 const stage = {
   id: 'ego-form',
   type: 'EgoForm',
@@ -63,10 +67,14 @@ const stage = {
   introductionPanel: { title: { en: 'About you' } },
   form: {
     fields: [
-      { id: 'field-1', variable: 'nickname', prompt: { en: 'Your nickname' } },
+      {
+        id: 'field-1',
+        variable: NICKNAME_VARIABLE,
+        prompt: { en: 'Your nickname' },
+      },
       {
         id: 'field-2',
-        variable: 'born_on',
+        variable: BORN_ON_VARIABLE,
         prompt: { en: 'Your date of birth' },
       },
     ],
@@ -78,12 +86,12 @@ const codebook = {
   edge: {},
   ego: {
     variables: {
-      nickname: {
+      [NICKNAME_VARIABLE]: {
         name: 'Nickname',
         type: 'text',
         component: 'Text',
       },
-      born_on: {
+      [BORN_ON_VARIABLE]: {
         name: 'Born on',
         type: 'datetime',
         component: 'DatePicker',
@@ -98,7 +106,7 @@ const requiredNicknameCodebook = {
   ego: {
     variables: {
       ...codebook.ego.variables,
-      nickname: {
+      [NICKNAME_VARIABLE]: {
         name: 'Nickname',
         type: 'text',
         component: 'Text',

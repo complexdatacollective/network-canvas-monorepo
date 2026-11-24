@@ -19,6 +19,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
@@ -39,10 +40,10 @@ vi.mock('../ProtocolFormField', async (importOriginal) => {
   };
 });
 
-const NODE_TYPE = 'person';
-const NAME_VAR = 'name';
-const DISPLAY_NAME_VAR = 'displayName';
-const ALIAS_VAR = 'alias';
+const NODE_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const DISPLAY_NAME_VAR = testVariableId('displayName');
+const ALIAS_VAR = testVariableId('alias');
 const DOTTED_VAR = 'favorite.color';
 const DANGEROUS_VARS = ['__proto__', 'constructor', 'prototype'];
 
@@ -69,21 +70,21 @@ function makeWrapper() {
         codebook: {
           node: {
             [NODE_TYPE]: {
-              name: NODE_TYPE,
+              name: 'person',
               variables: {
                 [NAME_VAR]: {
-                  name: NAME_VAR,
+                  name: 'name',
                   type: 'text',
                   component: 'Text',
                   validation: { unique: true },
                 },
                 [DISPLAY_NAME_VAR]: {
-                  name: DISPLAY_NAME_VAR,
+                  name: 'displayName',
                   type: 'text',
                   component: 'Text',
                 },
                 [ALIAS_VAR]: {
-                  name: ALIAS_VAR,
+                  name: 'alias',
                   type: 'text',
                   component: 'Text',
                   validation: { sameAs: DISPLAY_NAME_VAR },
@@ -133,7 +134,7 @@ function makeWrapper() {
 
 const fields: FormField[] = [
   {
-    id: 'field-L135',
+    id: testId('field-L135'),
     variable: asEntityAttributeReference(NAME_VAR),
     prompt: { en: 'Name' },
   },
@@ -197,7 +198,7 @@ describe('useProtocolForm stageSubject', () => {
   it('aliases live form values without changing validation references', () => {
     const comparisonFields: FormField[] = [
       {
-        id: 'field-L195',
+        id: testId('field-L195'),
         variable: asEntityAttributeReference(ALIAS_VAR),
         prompt: { en: 'Alias' },
       },
@@ -228,7 +229,7 @@ describe('useProtocolForm stageSubject', () => {
     const onSubmit = vi.fn();
     const dottedFields: FormField[] = [
       {
-        id: 'field-L225',
+        id: testId('field-L225'),
         variable: asEntityAttributeReference(DOTTED_VAR),
         prompt: { en: 'Favorite color' },
       },
@@ -277,7 +278,7 @@ describe('useProtocolForm stageSubject', () => {
       );
       const dangerousFields: FormField[] = [
         {
-          id: 'field-L273',
+          id: testId('field-L273'),
           variable: asEntityAttributeReference(variable),
           prompt: { en: 'Legacy variable' },
         },
@@ -332,7 +333,7 @@ describe('useProtocolForm variableLabels', () => {
     // A NetworkComposer field whose caption is blank: the codebook variable's
     // name must NOT stand in for one.
     const blankCaptionField: ComposerFormField = {
-      id: 'field-L334',
+      id: testId('field-L334'),
       variable: asEntityAttributeReference(DISPLAY_NAME_VAR),
       label: { en: '   ' },
       component: 'Text',
@@ -342,7 +343,7 @@ describe('useProtocolForm variableLabels', () => {
         useProtocolForm({
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: asEntityAttributeReference(NAME_VAR),
               prompt: { en: 'What is your name?' },
             },

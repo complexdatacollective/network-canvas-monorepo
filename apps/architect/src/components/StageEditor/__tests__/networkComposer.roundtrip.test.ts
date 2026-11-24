@@ -1,20 +1,29 @@
 import { describe, expect, it } from 'vitest';
 
-import { networkComposerStage } from '@codaco/protocol-validation';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
+  networkComposerStage,
+  createProtocolObjectId,
+} from '@codaco/protocol-validation';
+
+const KNOWS = testTypeId('knows');
 
 const stage = {
-  id: 's1',
+  id: createProtocolObjectId(),
   label: { en: 'Compose' },
   type: 'NetworkComposer',
-  subject: { entity: 'node', type: 'person' },
-  quickAdd: 'name',
-  layoutVariable: 'layoutPosition',
+  subject: { entity: 'node', type: testTypeId('person') },
+  quickAdd: testVariableId('name'),
+  layoutVariable: testVariableId('layoutPosition'),
   background: { concentricCircles: 4 },
   nodeForm: {
     fields: [
       {
-        id: 'field-1',
-        variable: 'age',
+        id: createProtocolObjectId(),
+        variable: testVariableId('age'),
         component: 'Number',
         label: { en: 'Age?' },
       },
@@ -22,14 +31,14 @@ const stage = {
   },
   edges: [
     {
-      id: 'edge-1',
-      subject: { entity: 'edge', type: 'knows' },
+      id: createProtocolObjectId(),
+      subject: { entity: 'edge', type: KNOWS },
       label: { en: 'Connection' },
       form: {
         fields: [
           {
-            id: 'field-1',
-            variable: 'closeness',
+            id: createProtocolObjectId(),
+            variable: testVariableId('closeness'),
             component: 'VisualAnalogScale',
             label: { en: 'How close?' },
           },
@@ -56,13 +65,13 @@ describe('NetworkComposer editor output validates', () => {
         ...stage,
         edges: [
           {
-            id: 'edge-1',
-            subject: { entity: 'edge', type: 'knows' },
+            id: createProtocolObjectId(),
+            subject: { entity: 'edge', type: KNOWS },
             label: { en: 'Connection' },
           },
           {
-            id: 'edge-2',
-            subject: { entity: 'edge', type: 'knows' },
+            id: createProtocolObjectId(),
+            subject: { entity: 'edge', type: KNOWS },
             label: { en: 'Connection' },
           },
         ],

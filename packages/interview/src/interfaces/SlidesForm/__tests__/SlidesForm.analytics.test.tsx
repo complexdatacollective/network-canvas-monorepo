@@ -4,13 +4,17 @@ import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type { TitlelessForm } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type TitlelessForm,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -60,12 +64,20 @@ beforeAll(() => {
   Element.prototype.scrollTo = () => {};
 });
 
+const PERSON_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const MET_ON_VAR = testVariableId('met_on');
+
 const form: TitlelessForm = {
   fields: [
-    { id: 'field-1', variable: 'name' as never, prompt: { en: 'Person name' } },
     {
-      id: 'field-2',
-      variable: 'met_on' as never,
+      id: testId('field-1'),
+      variable: asEntityAttributeReference(NAME_VAR),
+      prompt: { en: 'Person name' },
+    },
+    {
+      id: testId('field-2'),
+      variable: asEntityAttributeReference(MET_ON_VAR),
       prompt: { en: 'When you met' },
     },
   ],
@@ -73,31 +85,33 @@ const form: TitlelessForm = {
 
 const person: NcNode = {
   [entityPrimaryKeyProperty]: 'person-1',
-  type: 'person',
-  [entityAttributesProperty]: { name: 'Ada' },
+  type: PERSON_TYPE,
+  [entityAttributesProperty]: { [NAME_VAR]: 'Ada' },
+};
+
+const personVariables = {
+  [NAME_VAR]: {
+    name: 'Name',
+    type: 'text',
+    component: 'Text',
+  },
+  [MET_ON_VAR]: {
+    name: 'Met on',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full' },
+  },
+};
+
+const personType = {
+  name: 'Person',
+  color: 'node-color-seq-1',
+  shape: { default: 'circle' },
+  variables: personVariables,
 };
 
 const codebook = {
-  node: {
-    person: {
-      name: 'Person',
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' },
-      variables: {
-        name: {
-          name: 'Name',
-          type: 'text',
-          component: 'Text',
-        },
-        met_on: {
-          name: 'Met on',
-          type: 'datetime',
-          component: 'DatePicker',
-          parameters: { type: 'full' },
-        },
-      },
-    },
-  },
+  node: { [PERSON_TYPE]: personType },
   edge: {},
   ego: { variables: {} },
 };
@@ -105,11 +119,11 @@ const codebook = {
 const requiredNameCodebook = {
   ...codebook,
   node: {
-    person: {
-      ...codebook.node.person,
+    [PERSON_TYPE]: {
+      ...personType,
       variables: {
-        ...codebook.node.person.variables,
-        name: {
+        ...personVariables,
+        [NAME_VAR]: {
           name: 'Name',
           type: 'text',
           component: 'Text',
@@ -122,8 +136,8 @@ const requiredNameCodebook = {
 
 const namelessPerson: NcNode = {
   [entityPrimaryKeyProperty]: 'person-2',
-  type: 'person',
-  [entityAttributesProperty]: { name: '' },
+  type: PERSON_TYPE,
+  [entityAttributesProperty]: { [NAME_VAR]: '' },
 };
 
 const renderSlidesForm = () => {
@@ -149,7 +163,7 @@ const renderSlidesForm = () => {
             id: 'alter-form',
             type: 'AlterForm',
             label: { en: 'Alter form' },
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', type: PERSON_TYPE },
             form,
           },
         ],
@@ -172,7 +186,7 @@ const renderSlidesForm = () => {
                 <SlidesForm
                   form={form}
                   items={[person]}
-                  subject={{ entity: 'node', type: 'person' }}
+                  subject={{ entity: 'node', type: PERSON_TYPE }}
                   updateItem={vi.fn().mockResolvedValue({ success: true })}
                   moveForward={vi.fn()}
                   renderHeader={() => <span>Person header</span>}
@@ -233,7 +247,7 @@ describe('SlidesForm analytics', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON_TYPE },
               form,
             },
             {
@@ -262,7 +276,7 @@ describe('SlidesForm analytics', () => {
           <SlidesForm
             form={form}
             items={[namelessPerson]}
-            subject={{ entity: 'node', type: 'person' }}
+            subject={{ entity: 'node', type: PERSON_TYPE }}
             updateItem={vi.fn().mockResolvedValue({ success: true })}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}

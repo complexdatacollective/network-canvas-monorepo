@@ -1,7 +1,12 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
 import {
@@ -13,6 +18,12 @@ import {
   stageNameInput,
 } from '../../__tests__/formEditorHarness.tsx';
 import { alterEdgeFormStageEditor } from '../AlterEdgeFormStageEditor.ts';
+
+const KNOWS = fixtureTypeId('edge', 'knows');
+const CLOSENESS = fixtureVariableId(
+  { entity: 'edge', typeName: 'knows' },
+  'closeness',
+);
 
 /** See `formEditorHarness.tsx` for why the rich-text editor is stood in for. */
 vi.mock('../../../fields/RichTextField.tsx', () => ({
@@ -42,7 +53,9 @@ const openFixture = () => ({
 });
 
 /** Where a host would insert a new one: over the form the fixture holds. */
-const ALTER_EDGE_FORM_INDEX = fixtureStageIds().indexOf('alter-edge-form-1');
+const ALTER_EDGE_FORM_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('alter-edge-form-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'AlterEdgeForm' as const, position: ALTER_EDGE_FORM_INDEX },
@@ -105,8 +118,8 @@ describe('the editor for a form about each relationship', () => {
 
     harness.receiveCodebookUpdate({
       edge: {
-        knows: knowsDefinition({
-          closeness: {
+        [KNOWS]: knowsDefinition({
+          [CLOSENESS]: {
             name: 'closeness',
             type: 'ordinal',
             options: [
@@ -140,7 +153,7 @@ describe('the editor for a form about each relationship', () => {
 
     await authorsValuesFromField(harness, {
       kind: 'codebookEdge',
-      typeId: 'knows',
+      typeId: KNOWS,
     });
   });
 
@@ -149,7 +162,7 @@ describe('the editor for a form about each relationship', () => {
 
     await authorsDateSettingsFromField(harness, {
       kind: 'codebookEdge',
-      typeId: 'knows',
+      typeId: KNOWS,
     });
   });
 });

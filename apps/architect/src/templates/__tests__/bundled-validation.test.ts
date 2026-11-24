@@ -10,6 +10,8 @@ import { BUNDLED_TEMPLATES } from '~/templates';
 import { developmentProtocol } from '~/templates/development-protocol';
 import { sampleProtocol } from '~/templates/sample-protocol';
 
+import { templateVariableId } from './templateCodebookIds';
+
 // Architect opens these via `openBundledTemplate`, which deliberately skips the
 // migration step (bundled protocols are assumed to already be at the current
 // schema version). A protocol that drifts from the schema therefore fails the
@@ -47,30 +49,46 @@ const consentFlows = [
   {
     name: 'Mental Health Networks',
     protocol: getBundledTemplateProtocol('mental-health-networks'),
-    consentStageId: 'information-intro',
-    consentVariableId: 'participant_consent',
-    postConsentStageId: 'ego-form-background',
+    consentStageId: 'd05688a9-df55-5776-8349-36fc5bf5b17f',
+    consentVariableId: templateVariableId(
+      getBundledTemplateProtocol('mental-health-networks'),
+      'ego',
+      'participant_consent',
+    ),
+    postConsentStageId: 'fd9f5be8-b2b3-5726-85de-07389d271295',
   },
   {
     name: 'Transnational Networks',
     protocol: getBundledTemplateProtocol('transnational-networks'),
-    consentStageId: 'information-intro',
-    consentVariableId: 'participant_consent',
-    postConsentStageId: 'ego-form-background',
+    consentStageId: '119d6fac-a86e-5d29-8cec-f45706c7dfab',
+    consentVariableId: templateVariableId(
+      getBundledTemplateProtocol('transnational-networks'),
+      'ego',
+      'participant_consent',
+    ),
+    postConsentStageId: 'fd4859da-00a0-539b-9859-e7d38390c7fd',
   },
   {
     name: 'Colored Eco-Genetic Relationship Map (CEGRM)',
     protocol: getBundledTemplateProtocol('eco-genetic-relationship-maps'),
-    consentStageId: 'information-intro',
-    consentVariableId: 'participant_consent',
-    postConsentStageId: 'ego-form-background',
+    consentStageId: '26e4299a-7c2b-5c20-99ef-487a1df48ee6',
+    consentVariableId: templateVariableId(
+      getBundledTemplateProtocol('eco-genetic-relationship-maps'),
+      'ego',
+      'participant_consent',
+    ),
+    postConsentStageId: 'cc153ac8-ff58-512b-bc51-92d3d88cc215',
   },
   {
     name: 'Help-Seeking After Intimate Partner Violence',
     protocol: getBundledTemplateProtocol('ipv-help-seeking-networks'),
-    consentStageId: 'information-intro',
-    consentVariableId: 'participant_consent',
-    postConsentStageId: 'anonymisation',
+    consentStageId: 'a71bf3f6-c9e0-58bd-bec3-33bb206b3849',
+    consentVariableId: templateVariableId(
+      getBundledTemplateProtocol('ipv-help-seeking-networks'),
+      'ego',
+      'participant_consent',
+    ),
+    postConsentStageId: 'bafe8137-e019-52e7-afe5-219001d4c55b',
   },
 ] satisfies {
   name: string;

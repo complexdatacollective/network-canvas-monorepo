@@ -151,8 +151,8 @@ const resolveDynamicValue = (
       ...(matched !== undefined && { case: matched }),
     };
   }
-  // Attribute ids come from the protocol and may name a member every object
-  // inherits (`constructor`, `__proto__`), so only an own value counts.
+  // An entity's attributes can be keyed by a roster column's heading as well
+  // as by variable ids, so only an own value counts.
   const attributes = sources.attributes[parsed.role];
   const value =
     attributes === undefined

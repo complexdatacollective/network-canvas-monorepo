@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { protocolAuthoringLinks } from '../../../interfaces/documentation.ts';
+import { fixtureStageId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
 import { background } from '../background.tsx';
@@ -24,7 +25,7 @@ const Background = background();
 describe('the guidance under the background image', () => {
   it('sends the researcher to the documentation about responsive SVG backgrounds', async () => {
     renderStageEditor({
-      stage: stageWithImageBackground('sociogram-1'),
+      stage: stageWithImageBackground(fixtureStageId('sociogram-1')),
       sections: <Background />,
       assets: canvasImageAssets,
     });

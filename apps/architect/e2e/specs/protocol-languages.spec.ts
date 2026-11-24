@@ -2,6 +2,11 @@ import type { Locator, Page } from '@playwright/test';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testVariableId,
+  withTestCodebookIds,
+} from '@codaco/protocol-builder/testing/testId';
+import {
+  createProtocolObjectId,
   type CurrentProtocol,
   CurrentProtocolSchema,
   DEFAULT_FINISH_SESSION_TEXT,
@@ -98,19 +103,21 @@ const FINISHING_WORDS_FR = {
     'L’entretien n’a pas pu être terminé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.',
 };
 
+const WELCOME_STAGE_ID = createProtocolObjectId();
+
 function englishProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse(
     withInterfaceText({
       ...emptyProtocol(),
       stages: [
         {
-          id: 'welcome',
+          id: WELCOME_STAGE_ID,
           type: 'Information',
           label: { en: STAGE_NAME },
           content: { en: WELCOME_TEXT_EN },
         },
         {
-          id: 'finish',
+          id: createProtocolObjectId(),
           type: 'FinishSession',
           label: { en: 'End' },
           mode: 'confirmation',
@@ -401,7 +408,7 @@ test('adds a language, keeps the default language from being removed, translates
   ).toBeVisible();
   await expect(
     table.getByRole('link', { name: STAGE_NAME, exact: true }),
-  ).toHaveAttribute('href', '/protocol/stage/welcome');
+  ).toHaveAttribute('href', `/protocol/stage/${WELCOME_STAGE_ID}`);
   // An empty cell shows the English text participants see in place of French.
   await expect(
     translationCell(page, 'Stage name', 'French'),
@@ -503,6 +510,8 @@ const CHOOSER_LABEL = {
   es: 'Elige un idioma',
 };
 
+const CHOOSER_STAGE_ID = createProtocolObjectId();
+
 function chooserProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse(
     withInterfaceText({
@@ -510,7 +519,7 @@ function chooserProtocol(): CurrentProtocol {
       localization: { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
       stages: [
         {
-          id: 'choose-language',
+          id: CHOOSER_STAGE_ID,
           type: 'LanguageChooser',
           label: CHOOSER_LABEL,
           title: CHOOSER_LABEL,
@@ -544,7 +553,7 @@ test('changes the protocol’s languages from the language chooser stage, and th
 }) => {
   await seed(chooserProtocol());
   await gotoProtocol(page);
-  await page.goto('/protocol/stage/choose-language');
+  await page.goto(`/protocol/stage/${CHOOSER_STAGE_ID}`);
   const name = page.getByRole('textbox', { name: 'Stage name' });
   await expect(name).toHaveValue(CHOOSER_LABEL.en);
 
@@ -587,7 +596,7 @@ test('changes the protocol’s languages from the language chooser stage, and th
   await page.waitForURL(/\/protocol$/);
 
   // A stage with unsaved changes keeps them, and saves without the language.
-  await page.goto('/protocol/stage/choose-language');
+  await page.goto(`/protocol/stage/${CHOOSER_STAGE_ID}`);
   await expect(name).toHaveValue(CHOOSER_LABEL.en);
   await name.fill('Pick a language');
   await expect(
@@ -682,29 +691,31 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
   const english = bilingualProtocol();
   await seed(
     CurrentProtocolSchema.parse(
-      withInterfaceText({
-        ...english,
-        codebook: {
-          ...english.codebook,
-          ego: {
-            variables: {
-              lastName: { name: 'last_name', type: 'text' },
+      withInterfaceText(
+        withTestCodebookIds({
+          ...english,
+          codebook: {
+            ...english.codebook,
+            ego: {
+              variables: {
+                lastName: { name: 'last_name', type: 'text' },
+              },
             },
           },
-        },
-        stages: english.stages.map((stage) =>
-          stage.type === 'Information'
-            ? {
-                ...stage,
-                content: {
-                  en: 'Hello{name, select, missing {} other {, {name}}}',
-                  fr: 'Bonjour{name, select, missing {} other {, {name}}}',
-                },
-                dynamicValues: { name: { path: 'ego.lastName' } },
-              }
-            : stage,
-        ),
-      }),
+          stages: english.stages.map((stage) =>
+            stage.type === 'Information'
+              ? {
+                  ...stage,
+                  content: {
+                    en: 'Hello{name, select, missing {} other {, {name}}}',
+                    fr: 'Bonjour{name, select, missing {} other {, {name}}}',
+                  },
+                  dynamicValues: { name: { path: 'ego.lastName' } },
+                }
+              : stage,
+          ),
+        }),
+      ),
     ),
   );
   await page.goto('/protocol/localization?table=open');
@@ -753,19 +764,26 @@ for (const withValues of [false, true]) {
             ? {
                 ego: {
                   variables: {
-                    firstName: { name: 'first_name', type: 'text' },
+                    [testVariableId('firstName')]: {
+                      name: 'first_name',
+                      type: 'text',
+                    },
                   },
                 },
               }
             : {},
           stages: [
             {
-              id: 'welcome',
+              id: createProtocolObjectId(),
               type: 'Information',
               label: { en: STAGE_NAME, fr: 'Bienvenue' },
               content: { en: block, fr: block },
               ...(withValues
-                ? { dynamicValues: { name: { path: 'ego.firstName' } } }
+                ? {
+                    dynamicValues: {
+                      name: { path: `ego.${testVariableId('firstName')}` },
+                    },
+                  }
                 : {}),
             },
             ...emptyProtocol({ defaultLocale: 'en', locales: ['en', 'fr'] })

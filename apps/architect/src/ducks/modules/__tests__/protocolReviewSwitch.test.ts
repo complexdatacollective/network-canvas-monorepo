@@ -27,6 +27,7 @@ import {
   makeFinding,
   makeProtocol,
   op,
+  WELCOME_STAGE_ID,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
@@ -125,7 +126,7 @@ const makeStore = () => {
 type Store = ReturnType<typeof makeStore>;
 
 const TITLE: Finding = makeFinding('title', [
-  op('set', '/stages/welcome/label/en', 'Welcome to our study'),
+  op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Welcome to our study'),
 ]);
 
 const RESULT: ReviewResult = {

@@ -1,4 +1,8 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type {
   Finding,
   FixOperation,
@@ -6,8 +10,13 @@ import type {
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import type { StudyContext } from '@codaco/shared-consts';
+
+export const PERSON = testTypeId('person');
+const NAME_VAR = testVariableId('name_var');
+export const FREQ = testVariableId('freq');
 
 export const STUDY_CONTEXT: StudyContext = {
   synopsis: 'A cross-sectional study of advice networks in later life.',
@@ -15,6 +24,19 @@ export const STUDY_CONTEXT: StudyContext = {
   administration: 'face_to_face',
   researchQuestions: ['Who do older adults turn to for advice?'],
 };
+
+export const WELCOME_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e01',
+);
+export const NAMES_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e03',
+);
+export const NAMES_PROMPT_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e04',
+);
+export const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e05',
+);
 
 /**
  * A small, valid schema 9 protocol in two languages: an Information stage, a
@@ -32,13 +54,13 @@ export const makeProtocol = (
     assetManifest: {},
     codebook: {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name_var: { name: 'name', type: 'text' },
-            freq: {
+            [NAME_VAR]: { name: 'name', type: 'text' },
+            [FREQ]: {
               name: 'freq',
               type: 'ordinal',
               options: [
@@ -54,22 +76,24 @@ export const makeProtocol = (
     },
     stages: [
       {
-        id: 'welcome',
+        id: WELCOME_STAGE_ID,
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
         content: { en: '# Hello\n\nHi', fr: '# Bonjour\n\nSalut' },
       },
       {
-        id: 'names',
+        id: NAMES_STAGE_ID,
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Names', fr: 'Noms' },
-        subject: { entity: 'node', type: 'person' },
-        quickAdd: asEntityAttributeReference('name_var'),
-        prompts: [{ id: 'p1', text: { en: 'Name people', fr: 'Nommez' } }],
+        subject: { entity: 'node', type: PERSON },
+        quickAdd: asEntityAttributeReference(NAME_VAR),
+        prompts: [
+          { id: NAMES_PROMPT_ID, text: { en: 'Name people', fr: 'Nommez' } },
+        ],
         addNamePlaceholder: { en: 'Type a name', fr: 'Tapez un nom' },
       },
       {
-        id: 'finish',
+        id: FINISH_STAGE_ID,
         type: 'FinishSession',
         mode: 'confirmation',
         outcome: 'completed',

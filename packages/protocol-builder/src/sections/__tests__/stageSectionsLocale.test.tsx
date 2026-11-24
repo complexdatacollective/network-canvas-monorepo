@@ -11,9 +11,14 @@ import {
   protocolStrings,
 } from '../../testing/localeSweep.ts';
 import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../testing/testId.ts';
 import IntroductionSection from '../introduction/IntroductionSection.tsx';
 import { pageContent } from '../page-content/pageContent.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
@@ -21,6 +26,14 @@ import SortOrderRows from '../prompts/SortOrderRows.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import SubjectSection from '../subject-picker/SubjectSection.tsx';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
+
+const NICKNAME = testVariableId('nickname');
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
 
 /**
  * Copy in the fixture protocol's only language, as schema 9 holds it. The
@@ -274,7 +287,7 @@ describe('the prompts section, read in Spanish', () => {
         type: 'NameGenerator' as const,
         fields: {
           label: inProtocolLanguage('Name Generator'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           prompts: [],
         },
       },
@@ -314,11 +327,11 @@ describe('a prompt’s sort rules, read in Spanish', () => {
    * the shared rows SAY, not which properties a family offers.
    */
   const PERSON_PROPERTIES: readonly SortableProperty[] = [
-    { value: 'name', label: 'name', type: 'text' },
+    { value: NAME, label: 'name', type: 'text' },
   ];
 
   /** A rule naming an attribute this subject does not have. */
-  const ORPHANED_PROPERTY = 'nickname';
+  const ORPHANED_PROPERTY = NICKNAME;
 
   function SortOrderPromptEditor({ item }: RowEditorProps) {
     return (
@@ -349,7 +362,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
       type: 'Sociogram' as const,
       fields: {
         label: inProtocolLanguage('Sociograma'),
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { automaticLayout: true },
         prompts: [
@@ -358,7 +371,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
             text: inProtocolLanguage(
               'Coloca juntas a las personas que se conocen',
             ),
-            layout: { layoutVariable: 'layout' },
+            layout: { layoutVariable: LAYOUT },
             sortOrder: [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
           },
         ],

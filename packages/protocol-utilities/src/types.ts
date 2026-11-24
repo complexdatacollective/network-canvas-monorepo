@@ -17,6 +17,7 @@ import type {
   OrdinalColorReference,
   PedigreeCompletenessScope,
   PedigreeGenderWords,
+  ProtocolObjectId,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -322,7 +323,7 @@ export type AssetBlockInput = {
 };
 
 export type StageEntry = {
-  id: string;
+  id: ProtocolObjectId;
   type: StageType;
   label: TextInput;
   interviewScript?: string;
@@ -533,6 +534,11 @@ export type AddEdgeTypeInput = {
 };
 
 export type AddVariableInput = {
+  /**
+   * A label the variable's id is derived from, so that it stays the same
+   * however many variables were added before it. The id is a UUID (one given
+   * here is kept); read it from what the add call returns.
+   */
   id?: string;
   name?: string;
   type?: VariableType;

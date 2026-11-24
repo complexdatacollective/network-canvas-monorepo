@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
+import { testVariableId } from '../../testing/testId.ts';
 import { usableBindings } from '../useDynamicValueSite.ts';
 
+const PARTNER_NAME = testVariableId('partner_name');
+const GENDER = testVariableId('gender');
+const AGE = testVariableId('age');
+
 describe('usableBindings', () => {
-  const partnerName = { path: 'ego.partner_name' };
+  const partnerName = { path: `ego.${PARTNER_NAME}` };
   const pronoun = {
-    path: 'ego.gender',
+    path: `ego.${GENDER}`,
     cases: { woman: 'she', man: 'he', nonbinary: 'they' },
   };
 
@@ -23,8 +28,8 @@ describe('usableBindings', () => {
       usableBindings({
         partnerName,
         noPath: { cases: { yes: 'a' } },
-        badCase: { path: 'ego.age', cases: { old: null } },
-        notARecord: 'ego.age',
+        badCase: { path: `ego.${AGE}`, cases: { old: null } },
+        notARecord: `ego.${AGE}`,
         pronoun,
       }),
     ).toEqual({ partnerName, pronoun });

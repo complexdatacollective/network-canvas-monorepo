@@ -2,9 +2,15 @@ import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
   ProtocolValidationError,
+  createProtocolObjectId,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import { takeProtocolValidationDialogEvents } from '~/utils/protocolValidationDialogQueue';
 
@@ -53,6 +59,14 @@ import type { AppDispatch } from '../../store';
 import { protocolLibraryListenerMiddleware } from '../protocolLibraryListener';
 import { protocolValidationListenerMiddleware } from '../protocolValidationListener';
 import createTimeline, { timelineActions } from '../timeline';
+
+const PERSON = testTypeId('person');
+const FIRST = testVariableId('first');
+const SECOND = testVariableId('second');
+
+const ANON_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'e7fbe3c4-2759-4a36-8604-1a7973f1236f',
+);
 
 const makeProtocol = (description?: string): CurrentProtocol => ({
   name: 'Study',
@@ -174,7 +188,12 @@ describe('validated protocol commit persistence', () => {
       setActiveProtocol({
         ...makeProtocol(),
         localization,
-        stages: [createDefaultFinishSessionStage({ id: 'end', localization })],
+        stages: [
+          createDefaultFinishSessionStage({
+            id: createProtocolObjectId(),
+            localization,
+          }),
+        ],
       }),
     );
     await waitForEffects();
@@ -302,7 +321,7 @@ describe('validated protocol commit persistence', () => {
     const protocol = makeProtocol();
     protocol.stages = [
       {
-        id: 'anon',
+        id: ANON_STAGE_ID,
         type: 'Anonymisation',
         label: { en: 'Anonymisation' },
         explanationText: { en: '# Privacy\n\nChoose a passphrase.' },
@@ -310,17 +329,17 @@ describe('validated protocol commit persistence', () => {
     ];
     protocol.codebook = {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            first: {
+            [FIRST]: {
               name: 'first',
               type: 'text',
               encrypted: true,
             },
-            second: {
+            [SECOND]: {
               name: 'second',
               type: 'text',
               encrypted: true,
@@ -341,7 +360,7 @@ describe('validated protocol commit persistence', () => {
     putStoredProtocol.mockClear();
 
     await (store.dispatch as unknown as AppDispatch)(
-      stageActions.deleteStage('anon'),
+      stageActions.deleteStage(ANON_STAGE_ID),
     );
     await waitForEffects();
 
@@ -351,10 +370,10 @@ describe('validated protocol commit persistence', () => {
       ?.protocol as CurrentProtocol;
     expect(persisted.stages).toEqual([]);
     expect(
-      persisted.codebook.node?.person?.variables?.first,
+      persisted.codebook.node?.[PERSON]?.variables?.[FIRST],
     ).not.toHaveProperty('encrypted');
     expect(
-      persisted.codebook.node?.person?.variables?.second,
+      persisted.codebook.node?.[PERSON]?.variables?.[SECOND],
     ).not.toHaveProperty('encrypted');
     expect(store.getState().activeProtocol.timeline).toHaveLength(2);
 
@@ -363,12 +382,12 @@ describe('validated protocol commit persistence', () => {
       protocol.stages,
     );
     expect(
-      store.getState().activeProtocol.present?.codebook.node?.person?.variables
-        ?.first,
+      store.getState().activeProtocol.present?.codebook.node?.[PERSON]
+        ?.variables?.[FIRST],
     ).toHaveProperty('encrypted', true);
     expect(
-      store.getState().activeProtocol.present?.codebook.node?.person?.variables
-        ?.second,
+      store.getState().activeProtocol.present?.codebook.node?.[PERSON]
+        ?.variables?.[SECOND],
     ).toHaveProperty('encrypted', true);
   });
 

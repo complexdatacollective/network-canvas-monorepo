@@ -21,6 +21,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { ContractProvider } from '../../../contract/context';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
@@ -129,16 +130,16 @@ afterEach(() => {
 });
 
 // --- The Family Pedigree's configuration, as the source stage records it ---
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'family';
-const NAME_VAR = 'name';
-const EGO_VAR = 'isEgo';
-const SEX_VAR = 'sex';
-const KIND_VAR = 'kind';
-const CARRIER_VAR = 'carrier';
-const CURRENT_VAR = 'current';
-const DISEASE_A_VAR = 'diseaseA';
-const DISEASE_B_VAR = 'diseaseB';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('family');
+const NAME_VAR = testVariableId('name');
+const EGO_VAR = testVariableId('isEgo');
+const SEX_VAR = testVariableId('sex');
+const KIND_VAR = testVariableId('kind');
+const CARRIER_VAR = testVariableId('carrier');
+const CURRENT_VAR = testVariableId('current');
+const DISEASE_A_VAR = testVariableId('diseaseA');
+const DISEASE_B_VAR = testVariableId('diseaseB');
 
 const SOURCE_STAGE_ID = 'source-fp';
 
@@ -182,7 +183,7 @@ function link(
 function friendship(from: string, to: string): NcEdge {
   return {
     [entityPrimaryKeyProperty]: `${from}->${to}-friend`,
-    type: 'friendship',
+    type: testTypeId('friendship'),
     from,
     to,
     [entityAttributesProperty]: {},
@@ -242,7 +243,7 @@ type SourceFraming = StageProps<'FamilyPedigree'>['stage']['framing'];
 
 function makeNarrativeStage(): NarrativeStage {
   return {
-    id: 'np-1',
+    id: testId('np-1'),
     type: 'NarrativePedigree',
     label: { en: 'Disease Pedigree' },
     sourceStageId: SOURCE_STAGE_ID,
@@ -250,14 +251,14 @@ function makeNarrativeStage(): NarrativeStage {
     ...narrativePedigreeWords(),
     diseases: [
       {
-        id: 'da',
+        id: testId('da'),
         label: { en: 'Disease A' },
         color: 'node-color-seq-1',
         attribute: asEntityAttributeReference(DISEASE_A_VAR),
         inheritancePattern: 'autosomalDominant',
       },
       {
-        id: 'db',
+        id: testId('db'),
         label: { en: 'Disease B' },
         color: 'node-color-seq-5',
         attribute: asEntityAttributeReference(DISEASE_B_VAR),
@@ -308,7 +309,7 @@ function makeCodebook(encryptNames = false, customShape = false) {
           ? {
               [NAME_VAR]: {
                 type: 'text',
-                name: NAME_VAR,
+                name: 'name',
                 encrypted: true,
               },
             }
@@ -947,7 +948,7 @@ describe('NarrativePedigreeView — snapshot', () => {
 // AR engine marks childA/childB as obligateCarrier and cousin1/cousin2 as
 // atRiskCarrier (1 carrier parent each), so the fixture exercises the at-risk
 // display gate (whether the probabilistic "?" markers are drawn).
-const AR_DISEASE_VAR = 'arDisease';
+const AR_DISEASE_VAR = testVariableId('arDisease');
 
 const cousinNodes: NcNode[] = [
   person('ggp', 'male', { [AR_DISEASE_VAR]: true }),
@@ -981,7 +982,7 @@ const cousinEdges: NcEdge[] = [
 function renderCousinView(showAtRiskStatuses = true) {
   return renderView({
     narrativeStage: {
-      id: 'np-cousin',
+      id: testId('np-cousin'),
       type: 'NarrativePedigree',
       label: { en: 'Cousin Union Disease Pedigree' },
       sourceStageId: SOURCE_STAGE_ID,
@@ -989,7 +990,7 @@ function renderCousinView(showAtRiskStatuses = true) {
       ...narrativePedigreeWords(),
       diseases: [
         {
-          id: 'ar',
+          id: testId('ar'),
           label: { en: 'AR Disease' },
           color: 'node-color-seq-1',
           attribute: asEntityAttributeReference(AR_DISEASE_VAR),
@@ -1153,7 +1154,7 @@ describe('NarrativePedigreeView — sex assigned at birth', () => {
         ...makeNarrativeStage(),
         diseases: [
           {
-            id: 'xl',
+            id: testId('xl'),
             label: { en: 'X-linked' },
             color: 'node-color-seq-2',
             attribute: asEntityAttributeReference(DISEASE_A_VAR),

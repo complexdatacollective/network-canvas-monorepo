@@ -25,6 +25,7 @@ import {
   chooseAttributeById,
   offeredAttributes,
 } from '../../testing/attributePicker.ts';
+import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
 import type { RuleDraft } from '../rule.ts';
 import { EdgeCountRulesProvider } from '../ruleCodebookSource.ts';
 import {
@@ -43,6 +44,22 @@ import {
 } from '../ruleSet.ts';
 import { nodeRule, ruleSections, testCodebook } from './fixtures.ts';
 import { RuleEditorHost } from './ruleEditorHost.tsx';
+
+const PERSON = testTypeId('person');
+const FRIEND = testTypeId('friend');
+const GHOST = testTypeId('ghost');
+const AGE = testVariableId('age');
+const BORN = testVariableId('born');
+const CLOSENESS = testVariableId('closeness');
+const EGO_NAME = testVariableId('egoName');
+const FAVOURITE_COLOUR = testVariableId('favouriteColour');
+const HOME = testVariableId('home');
+const MOOD = testVariableId('mood');
+const NOTE = testVariableId('note');
+const SECRET = testVariableId('secret');
+const STRENGTH = testVariableId('strength');
+const HEIGHT = testVariableId('height');
+const FLAG = testVariableId('flag');
 
 /**
  * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what the rule
@@ -233,7 +250,7 @@ const buildEgoRuleUpTo = async (
   await chooseAttributeById(
     user,
     await waitFor(() => attributeField('Ego attribute')),
-    'egoName',
+    EGO_NAME,
   );
   await user.selectOptions(
     await screen.findByRole('combobox', { name: /Operator/ }),
@@ -247,7 +264,7 @@ const finishAndClose = async (user: ReturnType<typeof userEvent.setup>) =>
 describe('the shared-element morph out of a rule row', () => {
   it('pairs an edited row with the dialog that replaces it', async () => {
     const user = userEvent.setup();
-    renderRuleList([nodeRule('rule-a')]);
+    renderRuleList([nodeRule(testId('rule-a'))]);
 
     await openExistingRule(user);
 
@@ -255,7 +272,7 @@ describe('the shared-element morph out of a rule row', () => {
     // rule it edits rather than out of whatever was at that index.
     await waitFor(() =>
       expect(dialogRenders).toHaveBeenCalledWith(
-        expect.objectContaining({ layoutId: 'rule-a' }),
+        expect.objectContaining({ layoutId: testId('rule-a') }),
       ),
     );
   });
@@ -265,7 +282,7 @@ describe('the shared-element morph out of a rule row', () => {
     // Two rules that say exactly the same thing: their ids are the only thing
     // that tells the rows apart, so a list identifying rows by anything else
     // cannot say which of them this dialog belongs to.
-    renderRuleList([nodeRule('rule-a'), nodeRule('rule-b')]);
+    renderRuleList([nodeRule(testId('rule-a')), nodeRule(testId('rule-b'))]);
 
     const [, secondEdit] = screen.getAllByRole('button', {
       name: /^Edit rule:/,
@@ -276,7 +293,7 @@ describe('the shared-element morph out of a rule row', () => {
 
     await waitFor(() =>
       expect(dialogRenders).toHaveBeenCalledWith(
-        expect.objectContaining({ layoutId: 'rule-b' }),
+        expect.objectContaining({ layoutId: testId('rule-b') }),
       ),
     );
   });
@@ -358,7 +375,7 @@ describe('dismissing the rule editor', () => {
 
   it('closes a rule opened for editing and left alone, without asking', async () => {
     const user = userEvent.setup();
-    renderRuleList([nodeRule('rule-a')]);
+    renderRuleList([nodeRule(testId('rule-a'))]);
 
     await openExistingRule(user);
     // The rule the editor opened on is on screen, so the values the fields
@@ -439,7 +456,7 @@ describe('a rule the editor refuses to save', () => {
     expect(probedRuleSet()?.rules?.[0]).toMatchObject({
       type: 'ego',
       options: {
-        attribute: 'egoName',
+        attribute: EGO_NAME,
         operator: 'CONTAINS',
         value: '[unclosed]',
       },
@@ -460,11 +477,11 @@ describe('a rule the editor refuses to save', () => {
    * committing it unchanged would write the unmatchable rule straight back.
    */
   const staleOptionRule = (value: unknown): RuleDraft => ({
-    id: 'rule-a',
+    id: testId('rule-a'),
     type: 'node',
     options: {
-      type: 'person',
-      attribute: 'mood',
+      type: PERSON,
+      attribute: MOOD,
       operator: 'INCLUDES',
       value,
     },
@@ -515,11 +532,11 @@ describe('a rule the editor refuses to save', () => {
     // the option whose value is 1.
     renderRuleList([
       {
-        id: 'rule-a',
+        id: testId('rule-a'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'strength',
+          type: PERSON,
+          attribute: STRENGTH,
           operator: 'EXACTLY',
           value: '1',
         },
@@ -543,11 +560,11 @@ describe('a rule the editor refuses to save', () => {
     const user = userEvent.setup();
     renderRuleList([
       {
-        id: 'rule-a',
+        id: testId('rule-a'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'strength',
+          type: PERSON,
+          attribute: STRENGTH,
           operator: 'EXACTLY',
           value: 1,
         },
@@ -561,7 +578,7 @@ describe('a rule the editor refuses to save', () => {
       expect(screen.queryByRole('dialog', { name: RULE_EDITOR })).toBeNull(),
     );
     expect(probedRuleSet()?.rules?.[0]).toMatchObject({
-      options: { attribute: 'strength', operator: 'EXACTLY', value: 1 },
+      options: { attribute: STRENGTH, operator: 'EXACTLY', value: 1 },
     });
   });
 });
@@ -577,7 +594,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'age', 'GREATER_THAN');
+    await buildNodeAttributeRuleUpTo(user, AGE, 'GREATER_THAN');
     await finishAndClose(user);
 
     const operand = await screen.findByRole('spinbutton', {
@@ -597,7 +614,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'age', 'GREATER_THAN');
+    await buildNodeAttributeRuleUpTo(user, AGE, 'GREATER_THAN');
     await user.type(
       await screen.findByRole('spinbutton', { name: /Attribute value/ }),
       '30',
@@ -614,7 +631,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'closeness', 'GREATER_THAN');
+    await buildNodeAttributeRuleUpTo(user, CLOSENESS, 'GREATER_THAN');
     // A scalar is offered the numeric operators, so its operand has to be
     // entered — and committed — as a number: the runtime's relational
     // comparison and its deep equality both read a scalar answer as one.
@@ -632,7 +649,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'mood', 'OPTIONS_GREATER_THAN');
+    await buildNodeAttributeRuleUpTo(user, MOOD, 'OPTIONS_GREATER_THAN');
     const count = await screen.findByRole('spinbutton', {
       name: /Selected option count/,
     });
@@ -662,7 +679,7 @@ describe('the operand a rule compares against', () => {
         <SpiedEditor
           seed={{
             type: 'edge',
-            options: { type: 'friend', count: 'GREATER_THAN', value: 2 },
+            options: { type: FRIEND, count: 'GREATER_THAN', value: 2 },
           }}
           onSave={onSave}
           onCancel={() => undefined}
@@ -690,7 +707,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'mood', 'OPTIONS_GREATER_THAN');
+    await buildNodeAttributeRuleUpTo(user, MOOD, 'OPTIONS_GREATER_THAN');
     const count = await screen.findByRole('spinbutton', {
       name: /Selected option count/,
     });
@@ -711,7 +728,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'mood', 'OPTIONS_GREATER_THAN');
+    await buildNodeAttributeRuleUpTo(user, MOOD, 'OPTIONS_GREATER_THAN');
     fireEvent.change(
       await screen.findByRole('spinbutton', { name: /Selected option count/ }),
       { target: { value: '2' } },
@@ -734,7 +751,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'flag', 'EXACTLY');
+    await buildNodeAttributeRuleUpTo(user, FLAG, 'EXACTLY');
 
     // Choosing an operator is not choosing an operand. A control that opened
     // on "No" would both put an answer nobody gave into the rule and satisfy
@@ -756,7 +773,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'flag', 'EXACTLY');
+    await buildNodeAttributeRuleUpTo(user, FLAG, 'EXACTLY');
     await user.click(await screen.findByRole('radio', { name: 'No' }));
     await finishAndClose(user);
 
@@ -770,7 +787,7 @@ describe('the operand a rule compares against', () => {
     const user = userEvent.setup();
     renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'born', 'EXACTLY');
+    await buildNodeAttributeRuleUpTo(user, BORN, 'EXACTLY');
 
     // The operand is compared against the stored answer, so the dates it can
     // take are the dates the attribute's own picker can record — bounds
@@ -810,9 +827,9 @@ describe('the operand a rule compares against', () => {
  */
 describe('a choice a stored rule holds that the editor does not offer', () => {
   const attributeRule = (operator: string): RuleDraft => ({
-    id: 'rule-a',
+    id: testId('rule-a'),
     type: 'node',
-    options: { type: 'person', attribute: 'age', operator },
+    options: { type: PERSON, attribute: AGE, operator },
   });
 
   it('shows a stored presence operator instead of an empty select', async () => {
@@ -844,7 +861,7 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
       expect(screen.queryByRole('dialog', { name: RULE_EDITOR })).toBeNull(),
     );
     expect(probedRuleSet()?.rules?.[0]).toMatchObject({
-      options: { attribute: 'age', operator: 'EXISTS' },
+      options: { attribute: AGE, operator: 'EXISTS' },
     });
   });
 
@@ -855,9 +872,9 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
     // would not build — and the target group then showed nothing chosen at all
     // over a rule that is pointed somewhere.
     renderSpiedEditor({
-      id: 'rule-a',
+      id: testId('rule-a'),
       type: 'edge',
-      options: { type: 'friend', operator: 'EXISTS' },
+      options: { type: FRIEND, operator: 'EXISTS' },
     });
 
     const target = await screen.findByRole('radio', {
@@ -871,10 +888,10 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
     const user = userEvent.setup();
     renderRuleList([
       {
-        id: 'rule-a',
+        id: testId('rule-a'),
         type: 'node',
         // A collaborator deleted the node type this rule is pointed at.
-        options: { type: 'ghost', operator: 'EXISTS' },
+        options: { type: GHOST, operator: 'EXISTS' },
       },
     ]);
 
@@ -884,7 +901,7 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
     // control that offers only what the codebook still has shows nothing
     // chosen over a rule that is still pointed somewhere, and saves it back.
     const missing = await screen.findByRole('radio', {
-      name: 'ghost — this type is no longer in the codebook',
+      name: `${GHOST} — this type is no longer in the codebook`,
     });
     expect(missing).toBeChecked();
     expect(missing).toBeDisabled();
@@ -899,7 +916,7 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
     const user = userEvent.setup();
     renderRuleList([
       {
-        id: 'rule-a',
+        id: testId('rule-a'),
         type: 'node',
         // `home` is a layout attribute: still in the codebook, and answered
         // with a point no rule can compare against. The picker is given the
@@ -908,8 +925,8 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
         // the researcher was sent to the codebook to look for something that
         // is still sitting there.
         options: {
-          type: 'person',
-          attribute: 'home',
+          type: PERSON,
+          attribute: HOME,
           operator: 'EXACTLY',
           value: 'somewhere',
         },
@@ -940,13 +957,13 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
     const user = userEvent.setup();
     renderRuleList([
       {
-        id: 'rule-a',
+        id: testId('rule-a'),
         type: 'node',
         // A collaborator retyped the attribute under this rule: `note` is
         // text, and the schema does not allow a relational comparison there.
         options: {
-          type: 'person',
-          attribute: 'note',
+          type: PERSON,
+          attribute: NOTE,
           operator: 'GREATER_THAN',
           value: 30,
         },
@@ -1053,7 +1070,7 @@ describe('an encrypted attribute', () => {
     renderRuleSetOf(variant);
     expect(
       await offeredAttributes(user, await startNodeRule(user, variant)),
-    ).toContain('secret');
+    ).toContain(SECRET);
   });
 
   it.each<RuleSetVariant>(['query', 'filter', 'interviewNetworkPanel'])(
@@ -1064,7 +1081,7 @@ describe('an encrypted attribute', () => {
       await chooseAttributeById(
         user,
         await startNodeRule(user, variant),
-        'secret',
+        SECRET,
       );
 
       expect(await offeredOperators()).toEqual(['EXISTS', 'NOT_EXISTS']);
@@ -1078,7 +1095,7 @@ describe('an encrypted attribute', () => {
     await chooseAttributeById(
       user,
       await startNodeRule(user, 'externalDataPanel'),
-      'secret',
+      SECRET,
     );
 
     expect(await offeredOperators()).toEqual([
@@ -1093,11 +1110,7 @@ describe('an encrypted attribute', () => {
   it('saves a rule asking whether it is answered', async () => {
     const user = userEvent.setup();
     renderRuleSetOf('query');
-    await chooseAttributeById(
-      user,
-      await startNodeRule(user, 'query'),
-      'secret',
-    );
+    await chooseAttributeById(user, await startNodeRule(user, 'query'), SECRET);
     await user.selectOptions(
       await screen.findByRole('combobox', { name: /Operator/ }),
       'EXISTS',
@@ -1114,11 +1127,11 @@ describe('an encrypted attribute', () => {
   });
 
   const storedRule: RuleDraft = {
-    id: 'rule-a',
+    id: testId('rule-a'),
     type: 'node',
     options: {
-      type: 'person',
-      attribute: 'secret',
+      type: PERSON,
+      attribute: SECRET,
       operator: 'EXACTLY',
       value: 'Ada',
     },
@@ -1194,7 +1207,7 @@ describe('the codebook controls the rule builder does not offer', () => {
    */
   it('offers neither making a node type nor changing the one a rule names', async () => {
     const user = userEvent.setup();
-    renderRuleList([nodeRule('rule-a')]);
+    renderRuleList([nodeRule(testId('rule-a'))]);
 
     await openExistingRule(user);
 
@@ -1216,9 +1229,9 @@ describe('a rule the codebook has moved out from under', () => {
   it('refuses to finish a rule pointed at a type the codebook has lost', async () => {
     const user = userEvent.setup();
     const stored: RuleDraft = {
-      id: 'rule-a',
+      id: testId('rule-a'),
       type: 'node',
-      options: { type: 'ghost', operator: 'EXISTS' },
+      options: { type: GHOST, operator: 'EXISTS' },
     };
     renderRuleList([stored]);
 
@@ -1229,7 +1242,7 @@ describe('a rule the codebook has moved out from under', () => {
     // a rule set for which one.
     expect(
       await screen.findByText(
-        'This rule is pointed at "ghost", which is no longer in the codebook. Choose another type.',
+        `This rule is pointed at "${GHOST}", which is no longer in the codebook. Choose another type.`,
       ),
     ).toBeInTheDocument();
     expect(
@@ -1242,10 +1255,10 @@ describe('a rule the codebook has moved out from under', () => {
   it('refuses to finish a presence rule holding an operator it cannot use', async () => {
     const user = userEvent.setup();
     const stored: RuleDraft = {
-      id: 'rule-a',
+      id: testId('rule-a'),
       type: 'node',
       // No attribute, so the schema allows only EXISTS/NOT_EXISTS here.
-      options: { type: 'person', operator: 'EXACTLY', value: 3 },
+      options: { type: PERSON, operator: 'EXACTLY', value: 3 },
     };
     renderRuleList([stored]);
 
@@ -1270,7 +1283,7 @@ describe('a rule the codebook has moved out from under', () => {
   it('gives a rule that arrived without an identifier one, and finishes', async () => {
     const user = userEvent.setup();
     renderRuleList([
-      { type: 'node', options: { type: 'person', operator: 'EXISTS' } },
+      { type: 'node', options: { type: PERSON, operator: 'EXISTS' } },
     ]);
 
     await openExistingRule(user);
@@ -1284,7 +1297,7 @@ describe('a rule the codebook has moved out from under', () => {
     const [saved] = probedRuleSet()?.rules ?? [];
     expect(typeof saved?.id).toBe('string');
     expect(saved?.id).not.toBe('');
-    expect(saved?.options).toEqual({ type: 'person', operator: 'EXISTS' });
+    expect(saved?.options).toEqual({ type: PERSON, operator: 'EXISTS' });
   });
 
   /**
@@ -1314,18 +1327,22 @@ describe('a rule the codebook has moved out from under', () => {
     );
 
     const DRAFTS: Readonly<Record<DraftProblemCode, RuleDraft>> = {
-      unknownTarget: { id: 'rule-1', type: 'chimera', options: {} },
+      unknownTarget: {
+        id: testId('rule-1'),
+        type: 'chimera',
+        options: {},
+      },
       missingEntityType: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
-        options: { type: 'ghost', operator: 'EXISTS' },
+        options: { type: GHOST, operator: 'EXISTS' },
       },
       missingAttribute: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'favouriteColour',
+          type: PERSON,
+          attribute: FAVOURITE_COLOUR,
           operator: 'EXACTLY',
           value: 1,
         },
@@ -1333,93 +1350,93 @@ describe('a rule the codebook has moved out from under', () => {
       // Finished, and about an attribute the codebook still has — which is
       // encrypted, so no filter over interview answers can compare it.
       encryptedAttribute: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'secret',
+          type: PERSON,
+          attribute: SECRET,
           operator: 'EXACTLY',
           value: 'blue',
         },
       },
       invalidOperator: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         // A pattern comparison against an option-bearing attribute: the schema
         // does not allow it, while the operand it was given is still a
         // perfectly good pattern — so this is the code on its own.
         options: {
-          type: 'person',
-          attribute: 'mood',
+          type: PERSON,
+          attribute: MOOD,
           operator: 'CONTAINS',
           value: 'happy',
         },
       },
       invalidOperand: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         // A multi-select is answered with the list of options that were
         // selected, so a lone option value is not a shape it can be compared
         // against — but `happy` is still one of the options, so nothing else
         // is wrong with it.
         options: {
-          type: 'person',
-          attribute: 'mood',
+          type: PERSON,
+          attribute: MOOD,
           operator: 'EXACTLY',
           value: 'happy',
         },
       },
       missingOption: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'mood',
+          type: PERSON,
+          attribute: MOOD,
           operator: 'INCLUDES',
           value: ['retired'],
         },
       },
       unusableOption: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'mood',
+          type: PERSON,
+          attribute: MOOD,
           operator: 'INCLUDES',
           value: [true],
         },
       },
       incomplete: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
-        options: { type: 'person', attribute: 'age', operator: 'GREATER_THAN' },
+        options: { type: PERSON, attribute: AGE, operator: 'GREATER_THAN' },
       },
       // Nothing about this rule is wrong; the rule set it is sitting in is
       // one the schema does not let it sit in.
       targetNotOffered: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'ego',
-        options: { attribute: 'egoName', operator: 'EXACTLY', value: 'Ada' },
+        options: { attribute: EGO_NAME, operator: 'EXACTLY', value: 'Ada' },
       },
       // A comparison pattern that will not compile. The interview swallows
       // the compile error on purpose, so nothing downstream reports it.
       invalidPattern: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'note',
+          type: PERSON,
+          attribute: NOTE,
           operator: 'CONTAINS',
           value: '(unclosed',
         },
       },
       // A full date against an attribute whose picker now records years.
       unusableDate: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'born',
+          type: PERSON,
+          attribute: BORN,
           operator: 'EXACTLY',
           value: '2020-05-14',
         },
@@ -1427,11 +1444,11 @@ describe('a rule the codebook has moved out from under', () => {
       // A count of selected options the attribute's own option list puts out
       // of reach: `mood` offers two, so three can never be selected.
       unusableNumber: {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'node',
         options: {
-          type: 'person',
-          attribute: 'mood',
+          type: PERSON,
+          attribute: MOOD,
           operator: 'OPTIONS_EQUALS',
           value: 3,
         },
@@ -1440,7 +1457,7 @@ describe('a rule the codebook has moved out from under', () => {
       // the protocol schema requires of every rule in both of its shapes.
       missingId: {
         type: 'node',
-        options: { type: 'person', operator: 'EXISTS' },
+        options: { type: PERSON, operator: 'EXISTS' },
       },
     };
 
@@ -1478,11 +1495,11 @@ describe('one editing session per row', () => {
   it('opens the second rule on its own values, not the first rule’s', async () => {
     const user = userEvent.setup();
     renderRuleList([
-      nodeRule('rule-a'),
+      nodeRule(testId('rule-a')),
       {
-        id: 'rule-b',
+        id: testId('rule-b'),
         type: 'node',
-        options: { type: 'person', operator: 'NOT_EXISTS' },
+        options: { type: PERSON, operator: 'NOT_EXISTS' },
       },
     ]);
 
@@ -1520,13 +1537,13 @@ describe('a choice that invalidates the choices below it', () => {
     renderRuleList();
 
     await openNewRule(user);
-    await buildNodeAttributeRuleUpTo(user, 'age', 'GREATER_THAN');
+    await buildNodeAttributeRuleUpTo(user, AGE, 'GREATER_THAN');
     await user.type(
       await screen.findByRole('spinbutton', { name: /Attribute value/ }),
       '30',
     );
 
-    await chooseAttributeById(user, attributeField('Node attribute'), 'height');
+    await chooseAttributeById(user, attributeField('Node attribute'), HEIGHT);
 
     // The new attribute still offers "is greater than", so an operator left
     // standing here would be one carried over rather than one chosen — and the
@@ -1545,7 +1562,7 @@ describe('a choice that invalidates the choices below it', () => {
     const user = userEvent.setup();
     const { onSave } = renderSpiedEditor();
 
-    await buildNodeAttributeRuleUpTo(user, 'age', 'GREATER_THAN');
+    await buildNodeAttributeRuleUpTo(user, AGE, 'GREATER_THAN');
     await user.click(await screen.findByRole('option', { name: /Presence/ }));
     await user.click(await screen.findByRole('radio', { name: 'exists' }));
     await finishAndClose(user);
@@ -1557,7 +1574,7 @@ describe('a choice that invalidates the choices below it', () => {
     // attribute rule.
     expect(Object.hasOwn(savedOptions(onSave), 'attribute')).toBe(false);
     expect(savedOptions(onSave)).toEqual({
-      type: 'person',
+      type: PERSON,
       operator: 'EXISTS',
     });
   });
@@ -1607,7 +1624,7 @@ describe('saving a rule', () => {
 
   it('keeps the rule the row was edited into, rather than discarding the row', async () => {
     const user = userEvent.setup();
-    renderRuleList([nodeRule('rule-a')]);
+    renderRuleList([nodeRule(testId('rule-a'))]);
 
     await openExistingRule(user);
     await user.click(
@@ -1622,9 +1639,9 @@ describe('saving a rule', () => {
     // and the row it was edited from is still in the list.
     expect(probedRuleSet()?.rules).toEqual([
       {
-        id: 'rule-a',
+        id: testId('rule-a'),
         type: 'node',
-        options: { type: 'person', operator: 'NOT_EXISTS' },
+        options: { type: PERSON, operator: 'NOT_EXISTS' },
       },
     ]);
   });

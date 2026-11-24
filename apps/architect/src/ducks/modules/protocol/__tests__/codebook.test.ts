@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId } from '@codaco/protocol-builder/testing/testId';
 import type { Codebook, Variable } from '@codaco/protocol-validation';
 
 import reducer, { test } from '../codebook';
 
+const PERSON = testTypeId('person');
 const AGE = 'c5fee926-855d-4419-b5bb-54e89010cea6';
 
 const ageVariable = {
@@ -15,12 +17,12 @@ const ageVariable = {
 
 const codebookWith = (variable: Variable): Codebook =>
   ({
-    node: { person: { name: 'person', variables: { [AGE]: variable } } },
+    node: { [PERSON]: { name: 'person', variables: { [AGE]: variable } } },
     edge: {},
   }) as unknown as Codebook;
 
 const getAge = (state: Codebook) =>
-  (state.node!.person!.variables as Record<string, Variable>)[
+  (state.node![PERSON]!.variables as Record<string, Variable>)[
     AGE
   ] as unknown as Record<string, unknown> | undefined;
 

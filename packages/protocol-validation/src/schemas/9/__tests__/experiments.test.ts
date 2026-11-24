@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { withTestIds } from '../../../__tests__/testIds.ts';
 import { hashProtocol } from '../../../utils/hashProtocol.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import { ExperimentsSchema } from '../common/experiments.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
+
+const validProtocol = () => withTestIds(completeProtocol());
 
 const studyContext = {
   researchQuestions: ['How do people find support?'],
@@ -52,13 +55,13 @@ describe('ExperimentsSchema', () => {
 
 describe('experiments in a whole protocol', () => {
   it('validates the protocol the tests start from', async () => {
-    expect((await validateProtocol(completeProtocol())).success).toBe(true);
+    expect((await validateProtocol(validProtocol())).success).toBe(true);
   });
 
   it('validates a protocol with the protocol review turned on', async () => {
     for (const protocolReview of [{}, { studyContext }, { studyContext: 5 }]) {
       const result = await validateProtocol({
-        ...completeProtocol(),
+        ...validProtocol(),
         experiments: { protocolReview },
       });
       expect(result.success).toBe(true);
@@ -67,14 +70,14 @@ describe('experiments in a whole protocol', () => {
 
   it('refuses a protocol with an unknown experiment', async () => {
     const result = await validateProtocol({
-      ...completeProtocol(),
+      ...validProtocol(),
       experiments: { unknownExperiment: {} },
     });
     expect(result.success).toBe(false);
   });
 
   it('does not let experiments change the protocol hash', () => {
-    const base = completeProtocol();
+    const base = validProtocol();
     const withExperiment = {
       ...base,
       experiments: { protocolReview: { studyContext } },

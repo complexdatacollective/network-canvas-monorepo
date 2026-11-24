@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { alterFormStageEditor } from './AlterFormStageEditor.ts';
 
@@ -11,7 +12,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Per alter form',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'alter-form-1',
+    stageId: fixtureStageId('alter-form-1'),
     renderEditor: ({ actions, ...editor }) => (
       <StageEditor
         {...editor}

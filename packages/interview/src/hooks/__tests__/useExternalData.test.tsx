@@ -50,8 +50,11 @@ vi.mock('react-redux', () => ({
     selector === 'getAssetManifest' ? assetManifest : codebook,
 }));
 
+import { testTypeId } from '../../__tests__/testIds';
 import { InterviewQueryClientProvider } from '../../contexts/InterviewQueryClientProvider';
 import useExternalData, { type ExternalDataStatus } from '../useExternalData';
+
+const PERSON = testTypeId('person');
 
 function withQueryClient(children: ReactNode) {
   return (
@@ -61,12 +64,12 @@ function withQueryClient(children: ReactNode) {
   );
 }
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const SUBJECT = { entity: 'node', type: PERSON } as const;
 
 const makeNode = (id: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   [entityAttributesProperty]: {},
-  type: 'person',
+  type: PERSON,
 });
 
 type Observation = { state: ExternalDataStatus['state']; hasData: boolean };

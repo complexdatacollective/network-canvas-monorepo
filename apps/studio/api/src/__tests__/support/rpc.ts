@@ -6,6 +6,7 @@ import {
   ManagedRuntime,
   Option,
   Predicate,
+  Redacted,
   Result,
   SchemaIssue,
   Scope,
@@ -125,4 +126,22 @@ export function expectPayloadRejected(
       .join('.'),
   );
   expect(named).toContain(field);
+}
+
+/**
+ * The id of a draft's first finish stage. A new protocol starts with one,
+ * under an id minted when the protocol is created.
+ */
+export function finishStageIdOf(
+  sections: Readonly<
+    Record<string, Redacted.Redacted<Record<string, unknown>>>
+  >,
+): string {
+  for (const section of Object.values(sections)) {
+    const document = Redacted.value(section);
+    if (document.type === 'FinishSession' && Predicate.isString(document.id)) {
+      return document.id;
+    }
+  }
+  return expect.unreachable('the draft has no finish stage');
 }

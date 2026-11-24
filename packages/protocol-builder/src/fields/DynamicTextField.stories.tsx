@@ -7,6 +7,7 @@ import { withMod } from '@codaco/fresco-ui/testing/modKey';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import DynamicTextField from './DynamicTextField.tsx';
 
 /** The heading a roster stage shows over the people it offers. */
@@ -38,7 +39,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'name-generator-roster-1',
+    stageId: fixtureStageId('name-generator-roster-1'),
     sectionTitle: 'What the participant is told',
     children: title,
   },

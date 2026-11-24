@@ -14,6 +14,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { StageProps } from '../../../types';
 import {
   createEncryptionStore,
@@ -26,9 +27,9 @@ import { generateSecureAttributes } from '../../Anonymisation/utils';
 import { useComposerActions } from '../useComposerActions';
 import { createUndoStore } from '../useUndoStore';
 
-const QUICK_ADD_VAR = 'var-quick-add';
-const LAYOUT_VAR = 'var-layout';
-const NODE_TYPE = 'person';
+const QUICK_ADD_VAR = testVariableId('var-quick-add');
+const LAYOUT_VAR = testVariableId('var-layout');
+const NODE_TYPE = testTypeId('person');
 const PASSPHRASE = 'composer passphrase';
 
 const variables: Record<string, Variable> = {
@@ -42,7 +43,7 @@ const variables: Record<string, Variable> = {
 };
 
 const stage: StageProps<'NetworkComposer'>['stage'] = {
-  id: 'nc1',
+  id: testId('nc1'),
   type: 'NetworkComposer',
   label: { en: 'Network Composer' },
   subject: { entity: 'node', type: NODE_TYPE },

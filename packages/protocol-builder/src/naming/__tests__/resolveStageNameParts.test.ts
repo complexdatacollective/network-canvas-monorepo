@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId } from '../../testing/testId.ts';
 import {
   resolveStageQualifier,
   resolveStageSubjectName,
 } from '../resolveStageNameParts.ts';
 import { stageNameLanguageOf } from '../stageNameLanguage.ts';
+
+const PERSON = testTypeId('person');
+const FRIENDSHIP = testTypeId('friendship');
+const GHOST = testTypeId('ghost');
 
 const languageOf = (defaultLocale: string) => {
   const language = stageNameLanguageOf({
@@ -18,8 +23,8 @@ const languageOf = (defaultLocale: string) => {
 const english = languageOf('en');
 
 const nameByType: Record<string, string> = {
-  person: 'Person',
-  friendship: 'Friendship',
+  [PERSON]: 'Person',
+  [FRIENDSHIP]: 'Friendship',
 };
 const resolveEntityName = (_entity: 'node' | 'edge', type: string) =>
   nameByType[type] ?? null;
@@ -28,7 +33,7 @@ describe('resolveStageSubjectName', () => {
   it('resolves a node subject', () => {
     expect(
       resolveStageSubjectName(
-        { entity: 'node', type: 'person' },
+        { entity: 'node', type: PERSON },
         resolveEntityName,
       ),
     ).toBe('Person');
@@ -36,7 +41,7 @@ describe('resolveStageSubjectName', () => {
   it('resolves an edge subject', () => {
     expect(
       resolveStageSubjectName(
-        { entity: 'edge', type: 'friendship' },
+        { entity: 'edge', type: FRIENDSHIP },
         resolveEntityName,
       ),
     ).toBe('Friendship');
@@ -48,7 +53,7 @@ describe('resolveStageSubjectName', () => {
     expect(resolveStageSubjectName(undefined, resolveEntityName)).toBeNull();
     expect(
       resolveStageSubjectName(
-        { entity: 'node', type: 'ghost' },
+        { entity: 'node', type: GHOST },
         resolveEntityName,
       ),
     ).toBeNull();

@@ -487,3 +487,69 @@ describe('schema issues in the outline', () => {
     expect(store.getSnapshot()).toBe(snapshot);
   });
 });
+
+describe('a problem inside a protocol object', () => {
+  const FIRST = '0b6f9c2e-3c55-4f43-9d7e-4f1b2a6c8d01';
+  const SECOND = '7d1e5a90-2b8c-4e6f-a1d3-5c9b0e7f4a02';
+
+  const inside = (
+    id: string,
+    objectPath: readonly (string | number)[],
+    rest: readonly (string | number)[],
+    message: string,
+  ): SectionValidationIssue => ({
+    ...said([...objectPath, ...rest], message),
+    object: { id, path: objectPath },
+  });
+
+  it('follows its object to where a reorder put it', () => {
+    const store = storeWith({
+      top: ['prompts[0].text'],
+      bottom: ['prompts[1].text'],
+    });
+    let where: Record<string, readonly (string | number)[]> = {
+      [FIRST]: ['prompts', 0],
+      [SECOND]: ['prompts', 1],
+    };
+    store.setObjectLocator((id) => where[id]);
+    store.setValidationIssues([
+      inside(SECOND, ['prompts', 1], ['text'], 'a prompt with no words'),
+    ]);
+    expect(sentences(sectionNamed(store, 'bottom'))).toEqual([
+      'a prompt with no words',
+    ]);
+
+    where = { [FIRST]: ['prompts', 1], [SECOND]: ['prompts', 0] };
+    store.revalidate();
+
+    expect(sentences(sectionNamed(store, 'top'))).toEqual([
+      'a prompt with no words',
+    ]);
+    expect(sentences(sectionNamed(store, 'bottom'))).toEqual([]);
+    expect(store.getValidationIssues()[0]?.path).toEqual([
+      'prompts',
+      0,
+      'text',
+    ]);
+  });
+
+  it('goes with its object when the object is deleted', () => {
+    const store = storeWith({ prompts: ['prompts'] });
+    let where: Record<string, readonly (string | number)[]> = {
+      [FIRST]: ['prompts', 0],
+    };
+    store.setObjectLocator((id) => where[id]);
+    store.setValidationIssues([
+      inside(FIRST, ['prompts', 0], ['text'], 'a prompt with no words'),
+    ]);
+    expect(sentences(sectionNamed(store, 'prompts'))).toEqual([
+      'a prompt with no words',
+    ]);
+
+    where = {};
+    store.revalidate();
+
+    expect(sentences(sectionNamed(store, 'prompts'))).toEqual([]);
+    expect(store.getValidationIssues()).toEqual([]);
+  });
+});

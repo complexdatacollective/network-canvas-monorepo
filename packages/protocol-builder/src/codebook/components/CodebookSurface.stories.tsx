@@ -9,30 +9,39 @@ import type {
   ProtocolBuilderProtocolContext,
 } from '../../protocol-context.ts';
 import { buttonPaint, TRANSPARENT } from '../../testing/buttonPaint.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import CodebookSurface from './CodebookSurface.tsx';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
+const PLACE = testTypeId('place');
+const KNOWS = testTypeId('knows');
+const AGE = testVariableId('age');
+const CLOSENESS = testVariableId('closeness');
+const CONSENT = testVariableId('consent');
 
 const CONTEXT: ProtocolBuilderProtocolContext = {
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          name: {
+          [NAME]: {
             name: 'Name',
             type: 'text',
             component: 'Text',
           },
-          age: {
+          [AGE]: {
             name: 'Age',
             type: 'number',
             component: 'Number',
           },
         },
       },
-      place: {
+      [PLACE]: {
         name: 'Place',
         color: 'node-color-seq-2',
         icon: 'add-a-place',
@@ -40,11 +49,11 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
       },
     },
     edge: {
-      knows: {
+      [KNOWS]: {
         name: 'Knows',
         color: 'edge-color-seq-1',
         variables: {
-          closeness: {
+          [CLOSENESS]: {
             name: 'Closeness',
             type: 'number',
           },
@@ -53,7 +62,7 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
     },
     ego: {
       variables: {
-        consent: { name: 'Consent', type: 'boolean' },
+        [CONSENT]: { name: 'Consent', type: 'boolean' },
       },
     },
   },

@@ -92,7 +92,7 @@
   "protocolValidation.migrationNotes.schema9.informationContent": "資訊階段的頁面標題、文字與媒體現在合併為同一份文字內容，您會將其當作單一文件編輯。原本的頁面標題現在成為文字頂端的標題，而每張圖片、每段錄音或每部影片都是文字中的一個區塊，位於其先前顯示的位置。只含空格的頁面標題會被省略，已不在協定資源中的檔案也是如此；若該頁面因此沒有任何內容可顯示，則會以階段名稱作為文字頂端的標題。您先前為頁面中的文字項目撰寫的描述（參與者從未看過）不會保留。",
   "protocolValidation.migrationNotes.schema9.introductionPanels": "除「自我表單」外，其他介面的介紹面板均已移除，因此這些階段中給參與者的說明改用資訊介面。「逐一他者表單」、「逐一他者關係表單」、「二元組普查」或「關係強度普查」階段的介紹面板內容，會移至緊接在原階段之前的一個新資訊階段。每當原階段被略過時，新階段也會一併略過；先前跳至原階段的略過邏輯，現在會改為跳至新階段。",
   "protocolValidation.migrationNotes.schema9.narrativePresetFilters": "敘事階段的篩選條件現在屬於該階段的每個預設檢視，因此每個預設檢視可以顯示網絡的不同部分。現有敘事階段的篩選條件會複製到該階段的每個預設檢視，因此該階段顯示的人員與之前相同。",
-  "protocolValidation.migrationNotes.schema9.optionValueNames": "順序與類別選項值的規則現在更加嚴格。值開頭與結尾的空格會被移除，值中的每個 Tab 字元或換行字元都會變成空格，值中的字元會以同一種標準 Unicode 形式儲存。經上述處理後值相同的選項會依前述方式合併，已記錄的回答、略過邏輯、篩選條件與節點形狀都會更新為新值。",
+  "protocolValidation.migrationNotes.schema9.optionValueNames": "順序與類別選項值的規則現在更加嚴格。值開頭與結尾的空格會被移除，值中的每個 Tab 字元或換行字元都會變成空格，值中的字元會以同一種標準 Unicode 形式儲存。經上述處理後值相同的選項會依前述方式合併，略過邏輯、篩選條件與節點形狀都會更新為新值。先前使用原始協定收集的資料不會變更，因此其中的回答仍保留舊的選項值。",
   "protocolValidation.migrationNotes.schema9.otherBinText": "在「類別分箱」階段中，用於未列出之回答的分箱標籤現在必須包含文字。若該標籤只含空格，現在會顯示為「Other」。",
   "protocolValidation.migrationNotes.schema9.pedigreeWording": "「家族譜系」階段本身的文字現在屬於該階段，因此您可以變更它，並像協定的其他內容一樣翻譯它：詢問每個人姓名的問題及其提示，以及在家庭必須完整時列出仍缺少內容的清單。它一開始就是訪談一直顯示的文字。",
   "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "「名冊資料名字產生器」階段現在有一個面板標題，顯示在參與者從中選擇人員的清單上方，因此您可以變更它，並像協定的其他內容一樣進行翻譯。其初始內容就是訪談一直以來在此處顯示的標題：「Available to add」。",

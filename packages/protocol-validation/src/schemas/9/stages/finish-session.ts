@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { baseStageSchema, stageLabelText } from './base.ts';
 
@@ -55,69 +56,71 @@ export type FinishMode = z.infer<typeof FinishModeSchema>;
  * never present, rather than left out, so code reading `skipLogic` from any
  * stage reads it from this one as absent.
  */
-export const finishSessionStage = baseStageSchema.extend({
-  type: z.literal('FinishSession'),
-  skipLogic: z
-    .never({
-      error:
-        'A finish stage cannot have skip logic: every route through the interview ends at one.',
-    })
-    .optional(),
-  mode: FinishModeSchema,
-  // A new protocol in a language Network Canvas supplies no closing text for
-  // starts with none of these, rather than with text in another language
-  // recorded under its own. The label may stay empty: the interview's stages
-  // menu leaves the finish stage out, so no participant reads it. The screens'
-  // text may be empty only while the protocol is being written: it cannot
-  // leave its editor until the text its mode shows is written in its default
-  // language (`findFinishStageTextProblems`, checked by `validateProtocol`).
-  //
-  // A translation that is there is never blank: the interview would choose
-  // it over falling back, and show a participant nothing. It is held to the
-  // length every stage name is (`STAGE_LABEL_MAX_LENGTH`).
-  label: localizedString(
-    stageLabelText(),
-    { format: 'plain', lines: 'single' },
-    { mayBeEmpty: true },
-  ),
-  // The closing screen, shown in confirmation mode. Its heading is part of
-  // the text. An automatic stage shows none, so its text may be absent
-  // altogether: one set to finish automatically after its text was cleared
-  // has nowhere left to write it.
-  content: localizedString(
-    nonBlankText(),
-    { format: 'markdown', lines: 'multiple' },
-    {
-      mayBeEmpty: true,
-      dynamicValues: 'stageText',
-    },
-  ).optional(),
-  // The finished screen, shown once the interview has ended.
-  finishedContent: localizedString(
-    nonBlankText(),
-    { format: 'markdown', lines: 'multiple' },
-    {
-      mayBeEmpty: true,
-      dynamicValues: 'stageText',
-    },
-  ),
-  // The interview's own words on this screen, which Network Canvas supplies
-  // (`stage-wording/finish-session.ts`): the Finish button, the question it
-  // asks, and what the interview says when it could not be ended. A stage
-  // that omits one shows Network Canvas's wording.
-  finishLabel: localizedString(nonBlankText(), {
-    format: 'plain',
-    lines: 'single',
-  }).optional(),
-  finishConfirmation: localizedString(nonBlankText(), {
-    format: 'plain',
-    lines: 'single',
-  }).optional(),
-  finishFailed: localizedString(nonBlankText(), {
-    format: 'plain',
-    lines: 'single',
-  }).optional(),
-  outcome: FinishOutcomeSchema,
-});
+export const finishSessionStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('FinishSession'),
+    skipLogic: z
+      .never({
+        error:
+          'A finish stage cannot have skip logic: every route through the interview ends at one.',
+      })
+      .optional(),
+    mode: FinishModeSchema,
+    // A new protocol in a language Network Canvas supplies no closing text for
+    // starts with none of these, rather than with text in another language
+    // recorded under its own. The label may stay empty: the interview's stages
+    // menu leaves the finish stage out, so no participant reads it. The screens'
+    // text may be empty only while the protocol is being written: it cannot
+    // leave its editor until the text its mode shows is written in its default
+    // language (`findFinishStageTextProblems`, checked by `validateProtocol`).
+    //
+    // A translation that is there is never blank: the interview would choose
+    // it over falling back, and show a participant nothing. It is held to the
+    // length every stage name is (`STAGE_LABEL_MAX_LENGTH`).
+    label: localizedString(
+      stageLabelText(),
+      { format: 'plain', lines: 'single' },
+      { mayBeEmpty: true },
+    ),
+    // The closing screen, shown in confirmation mode. Its heading is part of
+    // the text. An automatic stage shows none, so its text may be absent
+    // altogether: one set to finish automatically after its text was cleared
+    // has nowhere left to write it.
+    content: localizedString(
+      nonBlankText(),
+      { format: 'markdown', lines: 'multiple' },
+      {
+        mayBeEmpty: true,
+        dynamicValues: 'stageText',
+      },
+    ).optional(),
+    // The finished screen, shown once the interview has ended.
+    finishedContent: localizedString(
+      nonBlankText(),
+      { format: 'markdown', lines: 'multiple' },
+      {
+        mayBeEmpty: true,
+        dynamicValues: 'stageText',
+      },
+    ),
+    // The interview's own words on this screen, which Network Canvas supplies
+    // (`stage-wording/finish-session.ts`): the Finish button, the question it
+    // asks, and what the interview says when it could not be ended. A stage
+    // that omits one shows Network Canvas's wording.
+    finishLabel: localizedString(nonBlankText(), {
+      format: 'plain',
+      lines: 'single',
+    }).optional(),
+    finishConfirmation: localizedString(nonBlankText(), {
+      format: 'plain',
+      lines: 'single',
+    }).optional(),
+    finishFailed: localizedString(nonBlankText(), {
+      format: 'plain',
+      lines: 'single',
+    }).optional(),
+    outcome: FinishOutcomeSchema,
+  }),
+);
 
 export type FinishSessionStage = z.infer<typeof finishSessionStage>;

@@ -146,6 +146,78 @@ if (protocolSource.endsWith('.json')) {
   }
 }
 
+// The fixture's codebook ids are UUIDs, so the stored network is read by the
+// ids its codebook gives each type and variable, found by name.
+const entryNamed = (entries, name, what) => {
+  const found = Object.entries(entries ?? {}).find(
+    ([, entry]) => entry.name === name,
+  );
+  if (!found) throw new Error(`the protocol has no ${what} named ${name}`);
+  return found;
+};
+let ids;
+try {
+  const document = JSON.parse(
+    protocolSource.endsWith('.json')
+      ? fs.readFileSync(protocolSource, 'utf8')
+      : await (
+          await require('jszip').loadAsync(fs.readFileSync(protocolSource))
+        )
+          .file('protocol.json')
+          .async('string'),
+  );
+  const typeOf = (entity, name, variableNames) => {
+    const [id, type] = entryNamed(
+      document.codebook[entity],
+      name,
+      `${entity} type`,
+    );
+    return {
+      id,
+      ...Object.fromEntries(
+        variableNames.map((variable) => [
+          variable,
+          entryNamed(type.variables, variable, `${name} variable`)[0],
+        ]),
+      ),
+    };
+  };
+  ids = {
+    person: typeOf('node', 'Person', [
+      'name',
+      'layout',
+      'context',
+      'closeness',
+    ]),
+    familyMember: typeOf('node', 'family member', [
+      'fm_name',
+      'is_ego',
+      'genderIdentity',
+      'sexAssignedAtBirth',
+    ]),
+    knows: typeOf('edge', 'Knows', []).id,
+    friends: typeOf('edge', 'Friends', []).id,
+    familyEdge: typeOf('edge', 'family_edge', [
+      'relationshipKind',
+      'isGestationalCarrier',
+    ]),
+    ego: Object.fromEntries(
+      ['ego_name', 'consent'].map((variable) => [
+        variable,
+        entryNamed(
+          document.codebook.ego?.variables,
+          variable,
+          'ego variable',
+        )[0],
+      ]),
+    ),
+  };
+} catch (err) {
+  setupFailure(
+    `codebook ids unreadable: ${err instanceof Error ? err.message : String(err)}`,
+  );
+}
+
 // --- browser --------------------------------------------------------------
 // Setup failures (missing/corrupt Chromium) must honour the documented
 // contract — exit 3 with a result.json — not escape as a bare rejection.
@@ -938,90 +1010,97 @@ try {
   // raw (this profile is 'none' mode, so fields are plaintext; only the
   // protocol's encrypted attribute is ciphertext) and assert every write
   // path the walk exercised is present.
-  const payload = await page.evaluate(async (dbName) => {
-    // List before opening: a bare open of a missing name CREATES an empty
-    // database, which would both hide the missing data and leave a stray
-    // database behind for the app to find.
-    const listed = (await indexedDB.databases()).some((d) => d.name === dbName);
-    if (!listed) return { found: false, missingDatabase: dbName };
-    const db = await new Promise((res, rej) => {
-      const req = indexedDB.open(dbName);
-      req.onsuccess = () => res(req.result);
-      req.addEventListener('error', () => rej(req.error));
-    });
-    const sessions = await new Promise((res, rej) => {
-      const tx = db.transaction('sessions', 'readonly');
-      const rq = tx.objectStore('sessions').getAll();
-      rq.onsuccess = () => res(rq.result);
-      rq.addEventListener('error', () => rej(rq.error));
-    });
-    db.close();
-    const s = sessions[0];
-    if (!s?.network) return { found: false };
-    const nodes = s.network.nodes ?? [];
-    return {
-      found: true,
-      sessionCount: sessions.length,
-      // The interview's id: with the passphrase, all it takes to derive the
-      // key its encrypted answers are stored under.
-      sessionId: s.id ?? null,
-      finishStageId: s.finishStageId ?? null,
-      finishOutcome: s.finishOutcome ?? null,
-      finishedAt: s.finishedAt ?? null,
-      // People, in creation order (the walk added Alex, Blair, Casey).
-      people: nodes
-        .filter((n) => n.type === 'person')
-        .map((n) => {
-          const a = n.attributes ?? {};
-          const [nameData, nameIv] = [
-            a.name,
-            n._secureAttributes?.name?.iv,
-          ].map((v) =>
-            Array.isArray(v) &&
-            v.every((b) => Number.isInteger(b) && b >= 0 && b <= 255)
-              ? v
-              : null,
-          );
-          return {
-            uid: n._uid,
-            nameIsCiphertext: nameData !== null && nameData.length === 48,
-            nameIv12: nameIv !== null && nameIv.length === 12,
-            // The raw stored ciphertext and IV, decrypted below.
-            nameData,
-            nameIv,
-            secureKeys: Object.keys(n._secureAttributes ?? {}),
-            layout:
-              a.layout &&
-              typeof a.layout.x === 'number' &&
-              typeof a.layout.y === 'number'
-                ? { x: a.layout.x, y: a.layout.y }
+  const payload = await page.evaluate(
+    async ({ dbName, ids: keys }) => {
+      // List before opening: a bare open of a missing name CREATES an empty
+      // database, which would both hide the missing data and leave a stray
+      // database behind for the app to find.
+      const listed = (await indexedDB.databases()).some(
+        (d) => d.name === dbName,
+      );
+      if (!listed) return { found: false, missingDatabase: dbName };
+      const db = await new Promise((res, rej) => {
+        const req = indexedDB.open(dbName);
+        req.onsuccess = () => res(req.result);
+        req.addEventListener('error', () => rej(req.error));
+      });
+      const sessions = await new Promise((res, rej) => {
+        const tx = db.transaction('sessions', 'readonly');
+        const rq = tx.objectStore('sessions').getAll();
+        rq.onsuccess = () => res(rq.result);
+        rq.addEventListener('error', () => rej(rq.error));
+      });
+      db.close();
+      const s = sessions[0];
+      if (!s?.network) return { found: false };
+      const nodes = s.network.nodes ?? [];
+      return {
+        found: true,
+        sessionCount: sessions.length,
+        // The interview's id: with the passphrase, all it takes to derive the
+        // key its encrypted answers are stored under.
+        sessionId: s.id ?? null,
+        finishStageId: s.finishStageId ?? null,
+        finishOutcome: s.finishOutcome ?? null,
+        finishedAt: s.finishedAt ?? null,
+        // People, in creation order (the walk added Alex, Blair, Casey).
+        people: nodes
+          .filter((n) => n.type === keys.person.id)
+          .map((n) => {
+            const a = n.attributes ?? {};
+            const [nameData, nameIv] = [
+              a[keys.person.name],
+              n._secureAttributes?.[keys.person.name]?.iv,
+            ].map((v) =>
+              Array.isArray(v) &&
+              v.every((b) => Number.isInteger(b) && b >= 0 && b <= 255)
+                ? v
                 : null,
-            context: Array.isArray(a.context) ? a.context : null,
-            closeness: a.closeness ?? null,
-          };
-        }),
-      family: nodes
-        .filter((n) => n.type === 'family_member')
-        .map((n) => ({
-          uid: n._uid,
-          isEgo: n.attributes?.is_ego === true,
-          name: n.attributes?.fm_name ?? null,
-          gender: n.attributes?.genderIdentity ?? null,
-          sex: n.attributes?.sexAssignedAtBirth ?? null,
+            );
+            return {
+              uid: n._uid,
+              nameIsCiphertext: nameData !== null && nameData.length === 48,
+              nameIv12: nameIv !== null && nameIv.length === 12,
+              // The raw stored ciphertext and IV, decrypted below.
+              nameData,
+              nameIv,
+              secureKeys: Object.keys(n._secureAttributes ?? {}),
+              layout:
+                a[keys.person.layout] &&
+                typeof a[keys.person.layout].x === 'number' &&
+                typeof a[keys.person.layout].y === 'number'
+                  ? { x: a[keys.person.layout].x, y: a[keys.person.layout].y }
+                  : null,
+              context: Array.isArray(a[keys.person.context])
+                ? a[keys.person.context]
+                : null,
+              closeness: a[keys.person.closeness] ?? null,
+            };
+          }),
+        family: nodes
+          .filter((n) => n.type === keys.familyMember.id)
+          .map((n) => ({
+            uid: n._uid,
+            isEgo: n.attributes?.[keys.familyMember.is_ego] === true,
+            name: n.attributes?.[keys.familyMember.fm_name] ?? null,
+            gender: n.attributes?.[keys.familyMember.genderIdentity] ?? null,
+            sex: n.attributes?.[keys.familyMember.sexAssignedAtBirth] ?? null,
+          })),
+        edges: (s.network.edges ?? []).map((e) => ({
+          type: e.type,
+          from: e.from,
+          to: e.to,
+          kind: e.attributes?.[keys.familyEdge.relationshipKind] ?? null,
+          carrier: e.attributes?.[keys.familyEdge.isGestationalCarrier] ?? null,
         })),
-      edges: (s.network.edges ?? []).map((e) => ({
-        type: e.type,
-        from: e.from,
-        to: e.to,
-        kind: e.attributes?.relationshipKind ?? null,
-        carrier: e.attributes?.isGestationalCarrier ?? null,
-      })),
-      egoName: (s.network.ego?.attributes ?? {}).ego_name ?? null,
-      consent: (s.network.ego?.attributes ?? {}).consent ?? null,
-      // Every stored string, to prove no plaintext person name survived.
-      serialized: JSON.stringify(s.network),
-    };
-  }, DB_NAME);
+        egoName: (s.network.ego?.attributes ?? {})[keys.ego.ego_name] ?? null,
+        consent: (s.network.ego?.attributes ?? {})[keys.ego.consent] ?? null,
+        // Every stored string, to prove no plaintext person name survived.
+        serialized: JSON.stringify(s.network),
+      };
+    },
+    { dbName: DB_NAME, ids },
+  );
   const people = payload.people ?? [];
   const nameOf = Object.fromEntries(
     people.map((p, i) => [p.uid, PEOPLE[i] ?? `?${i}`]),
@@ -1047,10 +1126,10 @@ try {
   // knows edge between Alex and Blair (the sociogram link), and exactly one
   // friends edge between the pair the walk answered Yes for.
   const personEdges = (payload.edges ?? [])
-    .filter((e) => e.type === 'knows' || e.type === 'friends')
+    .filter((e) => e.type === ids.knows || e.type === ids.friends)
     .map((e) => ({ type: e.type, ends: [nameOf[e.from], nameOf[e.to]] }));
-  const knowsEdges = personEdges.filter((e) => e.type === 'knows');
-  const friendsEdges = personEdges.filter((e) => e.type === 'friends');
+  const knowsEdges = personEdges.filter((e) => e.type === ids.knows);
+  const friendsEdges = personEdges.filter((e) => e.type === ids.friends);
   const edgesExact =
     personEdges.length === 2 &&
     knowsEdges.length === 1 &&
@@ -1067,7 +1146,7 @@ try {
   const linda = family.find((f) => f.name === 'Linda');
   const standIn = family.find((f) => f.name === 'Biological father');
   const familyEdges = (payload.edges ?? []).filter(
-    (e) => e.type === 'family_edge',
+    (e) => e.type === ids.familyEdge.id,
   );
   const parentEdge = (parent) =>
     familyEdges.filter((e) => e.from === parent?.uid && e.to === famEgo?.uid);
@@ -1117,7 +1196,7 @@ try {
           ? await decryptValue(
               key,
               { iv: p.nameIv, data: p.nameData },
-              { nodeId: p.uid, variableId: 'name' },
+              { nodeId: p.uid, variableId: ids.person.name },
             ).catch((err) => `<refused: ${err?.name ?? err}>`)
           : '<no ciphertext>',
       );
@@ -1135,7 +1214,7 @@ try {
       (p) =>
         p.nameIsCiphertext &&
         p.nameIv12 &&
-        JSON.stringify(p.secureKeys) === '["name"]',
+        JSON.stringify(p.secureKeys) === JSON.stringify([ids.person.name]),
     ) &&
     namesDecrypt &&
     plaintextLeaks.length === 0;
@@ -1147,14 +1226,29 @@ try {
   // The finish stage the walk ended on, recorded with the session: the
   // normal finish stage and its outcome — not the declined-consent finish
   // stage the walk visited and left.
+  const walkedProtocol = JSON.parse(
+    protocolSource.endsWith('.json')
+      ? fs.readFileSync(protocolSource, 'utf8')
+      : await (
+          await require('jszip').loadAsync(fs.readFileSync(protocolSource))
+        )
+          .file('protocol.json')
+          .async('string'),
+  );
+  const completedFinishStageId =
+    walkedProtocol.stages.find(
+      (stage) =>
+        stage.type === 'FinishSession' && stage.outcome === 'completed',
+    )?.id ?? null;
   const finishOk =
-    payload.finishStageId === 'finish' &&
+    completedFinishStageId !== null &&
+    payload.finishStageId === completedFinishStageId &&
     payload.finishOutcome === 'completed' &&
     typeof payload.finishedAt === 'string';
   record(
     'persisted-finish',
     finishOk,
-    `finishStageId=${JSON.stringify(payload.finishStageId ?? null)} finishOutcome=${JSON.stringify(payload.finishOutcome ?? null)} finishedAt=${JSON.stringify(payload.finishedAt ?? null)} (expected "finish"/"completed")`,
+    `finishStageId=${JSON.stringify(payload.finishStageId ?? null)} finishOutcome=${JSON.stringify(payload.finishOutcome ?? null)} finishedAt=${JSON.stringify(payload.finishedAt ?? null)} (expected ${JSON.stringify(completedFinishStageId)}/"completed")`,
   );
 
   // Cross-cutting: every non-whitelisted console error collected across the

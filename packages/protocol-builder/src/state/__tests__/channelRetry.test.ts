@@ -8,6 +8,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { streamProtocolEvents } from '../channel.ts';
 import type { ProtocolBuilderAdapter } from '../context.ts';
 
@@ -85,7 +86,10 @@ describe('the protocol channel reconnecting', () => {
   });
 });
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 
 const isEnglishLabel = Schema.is(Schema.Struct({ 'en-US': Schema.String }));
 

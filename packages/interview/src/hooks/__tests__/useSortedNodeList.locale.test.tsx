@@ -13,6 +13,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import {
@@ -21,20 +22,26 @@ import {
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import useSortedNodeList from '../useSortedNodeList';
 
+const NAME = testVariableId('name');
+
 const variables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text' },
+  [NAME]: { name: 'name', type: 'text', component: 'Text' },
 };
 
 const named = (name: string): NcNode => ({
   [entityPrimaryKeyProperty]: name,
   type: NODE_TYPE,
-  [entityAttributesProperty]: { name },
+  [entityAttributesProperty]: { [NAME]: name },
 });
 
 const nodes = [named('z'), named('ö'), named('a')];
 const store = createEncryptionStore(nodes, undefined, variables);
 const sortOrder = [
-  { property: asEntityAttributeReference('name'), direction: 'asc' as const },
+  {
+    id: testId('sort-name'),
+    property: asEntityAttributeReference(NAME),
+    direction: 'asc' as const,
+  },
 ];
 
 const wrapperFor =
@@ -55,7 +62,7 @@ const wrapperFor =
   );
 
 const names = (sorted: NcNode[]) =>
-  sorted.map((node) => node[entityAttributesProperty].name);
+  sorted.map((node) => node[entityAttributesProperty][NAME]);
 
 describe('useSortedNodeList', () => {
   it('alphabetises in the language the protocol is read in', () => {

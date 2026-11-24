@@ -1,5 +1,10 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testVariableId,
+  withTestCodebookIds,
+} from '@codaco/protocol-builder/testing/testId';
+import {
+  createProtocolObjectId,
   CurrentProtocolSchema,
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
@@ -34,8 +39,9 @@ const categoricalOptions = [
 // — no need to disambiguate rows by index or preview text.
 // Variable "name"s are what the alert/picker render as the visible label, so
 // they are kept short and plain here. A name may be any text a
-// `CodebookNameSchema` accepts, spaces and any script included; only the
-// codebook keys are held to `CodebookIdSchema`'s `/^[a-zA-Z0-9._:-]+$/`.
+// `CodebookNameSchema` accepts, spaces and any script included. Codebook keys
+// must be UUIDs, so the fixture is written with readable keys and given UUIDs
+// by `withTestCodebookIds`.
 // Passed through CurrentProtocolSchema.parse (like
 // helpers/load-fixture.ts's loadAllInterfacesFixture) rather than typed
 // directly as CurrentProtocol: entityAttributeReference's branded string
@@ -45,107 +51,109 @@ const categoricalOptions = [
 // real-shape at the same time.
 function conflictProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse(
-    withInterfaceText({
-      name: 'Variable Role Conflicts E2E',
-      schemaVersion: 9,
-      localization: { defaultLocale: 'en', locales: ['en'] },
-      codebook: {
-        node: {
-          person: {
-            name: 'Person',
-            color: 'node-color-seq-1',
-            shape: { default: 'circle' },
-            variables: {
-              sharedVar: {
-                name: 'sharedVar',
-                type: 'categorical',
-                // Referenced by an AlterForm field below — schema.ts's
-                // logic refinements reject a form-field variable with no
-                // `component` ("must define a component ... to be rendered
-                // as a form field").
-                component: 'CheckboxGroup',
-                options: categoricalOptions,
-              },
-              formOnlyVar: {
-                name: 'formOnlyVar',
-                type: 'categorical',
-                component: 'CheckboxGroup',
-                options: categoricalOptions,
-              },
-              binOnlyVar: {
-                name: 'binOnlyVar',
-                type: 'categorical',
-                options: categoricalOptions,
-              },
-              cleanVar: {
-                name: 'cleanVar',
-                type: 'categorical',
-                options: categoricalOptions,
+    withInterfaceText(
+      withTestCodebookIds({
+        name: 'Variable Role Conflicts E2E',
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              shape: { default: 'circle' },
+              variables: {
+                sharedVar: {
+                  name: 'sharedVar',
+                  type: 'categorical',
+                  // Referenced by an AlterForm field below — schema.ts's
+                  // logic refinements reject a form-field variable with no
+                  // `component` ("must define a component ... to be rendered
+                  // as a form field").
+                  component: 'CheckboxGroup',
+                  options: categoricalOptions,
+                },
+                formOnlyVar: {
+                  name: 'formOnlyVar',
+                  type: 'categorical',
+                  component: 'CheckboxGroup',
+                  options: categoricalOptions,
+                },
+                binOnlyVar: {
+                  name: 'binOnlyVar',
+                  type: 'categorical',
+                  options: categoricalOptions,
+                },
+                cleanVar: {
+                  name: 'cleanVar',
+                  type: 'categorical',
+                  options: categoricalOptions,
+                },
               },
             },
           },
         },
-      },
-      stages: [
-        {
-          id: 'shared-field-form',
-          type: 'AlterForm',
-          label: { en: 'Person Details' },
-          subject: { entity: 'node', type: 'person' },
-          form: {
-            fields: [
+        stages: [
+          {
+            id: createProtocolObjectId(),
+            type: 'AlterForm',
+            label: { en: 'Person Details' },
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              fields: [
+                {
+                  id: createProtocolObjectId(),
+                  variable: 'sharedVar',
+                  prompt: { en: 'Shared field prompt' },
+                },
+              ],
+            },
+          },
+          {
+            id: createProtocolObjectId(),
+            type: 'AlterForm',
+            label: { en: 'Extra Person Form' },
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              fields: [
+                {
+                  id: createProtocolObjectId(),
+                  variable: 'formOnlyVar',
+                  prompt: { en: 'Form only field prompt' },
+                },
+              ],
+            },
+          },
+          {
+            id: createProtocolObjectId(),
+            type: 'CategoricalBin',
+            label: { en: 'Contact Category' },
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
               {
-                id: 'field-1',
+                id: createProtocolObjectId(),
+                text: { en: 'Shared bin prompt' },
                 variable: 'sharedVar',
-                prompt: { en: 'Shared field prompt' },
               },
             ],
           },
-        },
-        {
-          id: 'form-only-form',
-          type: 'AlterForm',
-          label: { en: 'Extra Person Form' },
-          subject: { entity: 'node', type: 'person' },
-          form: {
-            fields: [
+          {
+            id: createProtocolObjectId(),
+            type: 'CategoricalBin',
+            label: { en: 'Extra Category Bin' },
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
               {
-                id: 'field-1',
-                variable: 'formOnlyVar',
-                prompt: { en: 'Form only field prompt' },
+                id: createProtocolObjectId(),
+                text: { en: 'Bin only prompt' },
+                variable: 'binOnlyVar',
               },
             ],
           },
-        },
-        {
-          id: 'shared-bin',
-          type: 'CategoricalBin',
-          label: { en: 'Contact Category' },
-          subject: { entity: 'node', type: 'person' },
-          prompts: [
-            {
-              id: 'shared-bin-prompt',
-              text: { en: 'Shared bin prompt' },
-              variable: 'sharedVar',
-            },
-          ],
-        },
-        {
-          id: 'bin-only-bin',
-          type: 'CategoricalBin',
-          label: { en: 'Extra Category Bin' },
-          subject: { entity: 'node', type: 'person' },
-          prompts: [
-            {
-              id: 'bin-only-prompt',
-              text: { en: 'Bin only prompt' },
-              variable: 'binOnlyVar',
-            },
-          ],
-        },
-        ...emptyProtocol().stages,
-      ],
-    }),
+          ...emptyProtocol().stages,
+        ],
+      }),
+    ),
   );
 }
 
@@ -272,11 +280,15 @@ test("excludes each writer's picker from offering the other class's variable, wh
   if (alterFormStage.type !== 'AlterForm') {
     throw new Error('expected stage 0 to still be an AlterForm');
   }
-  expect(alterFormStage.form.fields[0]?.variable).toBe('sharedVar');
+  expect(alterFormStage.form.fields[0]?.variable).toBe(
+    testVariableId('sharedVar'),
+  );
 
   const categoricalBinStage = await readStageJson(architectPage, 2);
   if (categoricalBinStage.type !== 'CategoricalBin') {
     throw new Error('expected stage 2 to still be a CategoricalBin');
   }
-  expect(categoricalBinStage.prompts[0]?.variable).toBe('sharedVar');
+  expect(categoricalBinStage.prompts[0]?.variable).toBe(
+    testVariableId('sharedVar'),
+  );
 });

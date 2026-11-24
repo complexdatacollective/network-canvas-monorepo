@@ -7,20 +7,22 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId } from '../../__tests__/testIds';
 import { buildConnectivityIndex } from '../connectivity';
 
-const node = (id: string, type = 'person'): NcNode => ({
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
+const KNOWS = testTypeId('knows');
+const LIKES = testTypeId('likes');
+const VISITS = testTypeId('visits');
+
+const node = (id: string, type = PERSON): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   [entityAttributesProperty]: {},
   type,
 });
 
-const edge = (
-  id: string,
-  from: string,
-  to: string,
-  type = 'knows',
-): NcEdge => ({
+const edge = (id: string, from: string, to: string, type = KNOWS): NcEdge => ({
   [entityPrimaryKeyProperty]: id,
   [entityAttributesProperty]: {},
   type,
@@ -29,12 +31,12 @@ const edge = (
 });
 
 describe('buildConnectivityIndex', () => {
-  const nodes = [node('a'), node('b'), node('c'), node('p', 'place')];
+  const nodes = [node('a'), node('b'), node('c'), node('p', PLACE)];
   const edges = [
     edge('1', 'a', 'b'),
-    edge('2', 'a', 'c', 'likes'),
+    edge('2', 'a', 'c', LIKES),
     edge('3', 'a', 'a'),
-    edge('4', 'a', 'p', 'visits'),
+    edge('4', 'a', 'p', VISITS),
   ];
   const index = buildConnectivityIndex(nodes, edges);
 
@@ -45,20 +47,20 @@ describe('buildConnectivityIndex', () => {
   });
 
   it('counts the edges of one type', () => {
-    expect(index.degree('a', 'knows')).toBe(2);
-    expect(index.degree('c', 'knows')).toBe(0);
-    expect(index.degree('c', 'likes')).toBe(1);
+    expect(index.degree('a', KNOWS)).toBe(2);
+    expect(index.degree('c', KNOWS)).toBe(0);
+    expect(index.degree('c', LIKES)).toBe(1);
   });
 
   it('gives the fewest and the most among the nodes of one type', () => {
-    expect(index.extremes('person')).toEqual({ min: 1, max: 4 });
-    expect(index.extremes('person', 'likes')).toEqual({ min: 0, max: 1 });
-    expect(index.extremes('place')).toEqual({ min: 1, max: 1 });
-    expect(index.extremes('nothing')).toEqual({ min: 0, max: 0 });
+    expect(index.extremes(PERSON)).toEqual({ min: 1, max: 4 });
+    expect(index.extremes(PERSON, LIKES)).toEqual({ min: 0, max: 1 });
+    expect(index.extremes(PLACE)).toEqual({ min: 1, max: 1 });
+    expect(index.extremes(testTypeId('nothing'))).toEqual({ min: 0, max: 0 });
   });
 
   it('lists the edges that join a node to another', () => {
-    expect(index.edgesOf('c').map((each) => each.type)).toEqual(['likes']);
+    expect(index.edgesOf('c').map((each) => each.type)).toEqual([LIKES]);
     expect(index.edgesOf('nobody')).toEqual([]);
   });
 });

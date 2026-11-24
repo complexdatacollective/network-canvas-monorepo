@@ -1,4 +1,4 @@
-import { Exit, Redacted, Schema } from 'effect';
+import { Exit, Predicate, Redacted, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
@@ -12,12 +12,33 @@ import { attempt } from '../../../state/attempt.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import type { ResourcePromotion } from '../../../state/hooks.ts';
 import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../protocolFixture.ts';
+import { testId, testTypeId, testVariableId } from '../../testId.ts';
+import {
   createInMemoryHost,
   type InMemoryHost,
 } from '../createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
 import { committedSource } from './committedSource.ts';
 import { revealed } from './revealed.ts';
+
+const SPARE = testTypeId('spare');
+const GHOST = testTypeId('ghost');
+const INVENTED_TYPE = testTypeId('invented-type');
+const EGO_AGE = testVariableId('ego_age');
+const PERSON_TYPE = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
 
 /** The edit these calls are made from: one editor, open throughout. */
 const EDIT = 'edit-1';
@@ -28,17 +49,28 @@ const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const ALTER_FORM = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
+const ALTER_FORM = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('alter-form-1'),
+});
 const QUICK_ADD = sectionId({
   kind: 'stage',
-  stageId: 'name-generator-quick-add-1',
+  stageId: fixtureStageId('name-generator-quick-add-1'),
 });
 const NAME_GENERATOR = sectionId({
   kind: 'stage',
-  stageId: 'name-generator-1',
+  stageId: fixtureStageId('name-generator-1'),
+});
+
+const SOCIOGRAM = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('sociogram-1'),
 });
 
 const EGO = sectionId({ kind: 'codebookEgo' });
@@ -53,7 +85,7 @@ function host(): InMemoryHost {
   let minted = 0;
   return createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
-    nextId: () => `minted-${++minted}`,
+    nextId: () => testId(`minted-${++minted}`),
   });
 }
 
@@ -367,12 +399,58 @@ describe('the in-memory host', () => {
       protocolId: subject.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: Redacted.make({ id: 'information-1', type: 'NotAnInterface' }),
+      document: Redacted.make({
+        id: fixtureStageId('information-1'),
+        type: 'NotAnInterface',
+      }),
       revision: subject.store.read(INFORMATION).revision,
     });
 
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('InvalidShape');
+  });
+
+  it('names the row inside the stage that a refused submit is about', async () => {
+    const subject = host();
+    await subject.adapter.rpcCall('AcquireLock', {
+      protocolId: subject.protocolId,
+      sectionId: SOCIOGRAM,
+    });
+    const held = subject.store.read(SOCIOGRAM);
+    const prompts: unknown = held.document.prompts;
+    if (!Array.isArray(prompts) || !Predicate.isObject(prompts[0])) {
+      throw new Error('the fixture sociogram has no prompt');
+    }
+    const sortRule = testId('refused-sort-rule');
+    const document = {
+      ...held.document,
+      prompts: [
+        {
+          ...prompts[0],
+          sortOrder: [{ id: sortRule, property: '*', direction: 'sideways' }],
+        },
+        ...prompts.slice(1),
+      ],
+    };
+
+    const { refusal } = await attempt(subject.adapter, 'Submit', {
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: SOCIOGRAM,
+      document: Redacted.make(document),
+      revision: held.revision,
+    });
+
+    expect(refusal?._tag).toBe('InvalidShape');
+    expect(revealed(refusalData(refusal))).toEqual({
+      sectionId: SOCIOGRAM,
+      issues: [
+        expect.objectContaining({
+          path: ['prompts', 0, 'sortOrder', 0, 'direction'],
+          objectId: sortRule,
+        }),
+      ],
+    });
   });
 
   it('registers a created stage in the stage order in the same revision', async () => {
@@ -391,15 +469,17 @@ describe('the in-memory host', () => {
 
     const stageIdOfCreated = sectionId({
       kind: 'stage',
-      stageId: 'minted-1',
+      stageId: testId('minted-1'),
     });
     expect(created.sectionId).toBe(stageIdOfCreated);
     expect(subject.store.has(stageIdOfCreated)).toBe(true);
-    expect(subject.store.read(stageIdOfCreated).document.id).toBe('minted-1');
+    expect(subject.store.read(stageIdOfCreated).document.id).toBe(
+      testId('minted-1'),
+    );
 
     const after = stageOrder(subject);
     expect(after).toHaveLength(before.length + 1);
-    expect(after[1]).toBe('minted-1');
+    expect(after[1]).toBe(testId('minted-1'));
     // Both writes carry the protocol revision the create advanced to, which is
     // what "atomic" means for a watcher reading the stream in order.
     expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
@@ -473,7 +553,9 @@ describe('the in-memory host', () => {
       assetsBefore,
     );
     expect(
-      subject.store.has(sectionId({ kind: 'stage', stageId: 'minted-1' })),
+      subject.store.has(
+        sectionId({ kind: 'stage', stageId: testId('minted-1') }),
+      ),
     ).toBe(false);
   });
 
@@ -531,8 +613,8 @@ describe('the in-memory host', () => {
       'RefactorDeleteVariable',
       {
         protocolId: subject.protocolId,
-        subject: { entity: 'node', type: 'person' },
-        variableId: 'relationship_to_ego',
+        subject: { entity: 'node', type: PERSON_TYPE },
+        variableId: RELATIONSHIP_TO_EGO,
       },
     );
 
@@ -548,27 +630,27 @@ describe('the in-memory host', () => {
     });
     const applied = await subject.adapter.rpcCall('RefactorDeleteVariable', {
       protocolId: subject.protocolId,
-      subject: { entity: 'node', type: 'person' },
-      variableId: 'relationship_to_ego',
+      subject: { entity: 'node', type: PERSON_TYPE },
+      variableId: RELATIONSHIP_TO_EGO,
     });
     expect(applied.changedSections).toContain(PERSON);
     const variables = subject.store.read(PERSON).document.variables;
     expect(
       typeof variables === 'object' &&
         variables !== null &&
-        Object.hasOwn(variables, 'relationship_to_ego'),
+        Object.hasOwn(variables, RELATIONSHIP_TO_EGO),
     ).toBe(false);
   });
 
   it('strips a reference the schema declares outside a prompt', async () => {
     const subject = host();
     const before = fieldVariables(subject.store.read(ALTER_FORM).document);
-    expect(before).toContain('relationship_to_ego');
+    expect(before).toContain(RELATIONSHIP_TO_EGO);
 
     const applied = await subject.adapter.rpcCall('RefactorDeleteVariable', {
       protocolId: subject.protocolId,
-      subject: { entity: 'node', type: 'person' },
-      variableId: 'relationship_to_ego',
+      subject: { entity: 'node', type: PERSON_TYPE },
+      variableId: RELATIONSHIP_TO_EGO,
     });
 
     // The only reference to it in the fixture is a form field on the alter
@@ -576,9 +658,9 @@ describe('the in-memory host', () => {
     expect(applied.changedSections).toContain(ALTER_FORM);
     expect(
       fieldVariables(subject.store.read(ALTER_FORM).document),
-    ).not.toContain('relationship_to_ego');
+    ).not.toContain(RELATIONSHIP_TO_EGO);
     expect(fieldVariables(subject.store.read(ALTER_FORM).document)).toContain(
-      'flagged',
+      FLAGGED,
     );
   });
 
@@ -589,8 +671,8 @@ describe('the in-memory host', () => {
       'RefactorDeleteVariable',
       {
         protocolId: subject.protocolId,
-        subject: { entity: 'node', type: 'person' },
-        variableId: 'name',
+        subject: { entity: 'node', type: PERSON_TYPE },
+        variableId: NAME,
       },
     );
 
@@ -610,7 +692,7 @@ describe('the in-memory host', () => {
     expect(
       typeof variables === 'object' &&
         variables !== null &&
-        Object.hasOwn(variables, 'name'),
+        Object.hasOwn(variables, NAME),
     ).toBe(true);
   });
 
@@ -622,7 +704,7 @@ describe('the in-memory host', () => {
       {
         protocolId: subject.protocolId,
         entity: 'node',
-        typeId: 'person',
+        typeId: PERSON_TYPE,
       },
     );
 
@@ -637,7 +719,7 @@ describe('the in-memory host', () => {
   });
 
   it('deletes an entity type nothing refers to', async () => {
-    const spare = sectionId({ kind: 'codebookNode', typeId: 'spare' });
+    const spare = sectionId({ kind: 'codebookNode', typeId: SPARE });
     const subject = createInMemoryHost({
       sections: {
         ...sectionsFromProtocol(FIXTURE),
@@ -653,7 +735,7 @@ describe('the in-memory host', () => {
     const applied = await subject.adapter.rpcCall('RefactorDeleteEntityType', {
       protocolId: subject.protocolId,
       entity: 'node',
-      typeId: 'spare',
+      typeId: SPARE,
     });
 
     expect(applied.changedSections).toEqual([spare]);
@@ -953,7 +1035,7 @@ describe('the in-memory host', () => {
 
     expect(subject.store.has(INFORMATION)).toBe(false);
     expect(stageOrder(subject)).toHaveLength(before.length - 1);
-    expect(stageOrder(subject)).not.toContain('information-1');
+    expect(stageOrder(subject)).not.toContain(fixtureStageId('information-1'));
     expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER]);
     expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
       deleted.revision.sequence,
@@ -981,7 +1063,7 @@ describe('the in-memory host', () => {
       blocked: [{ sectionId: INFORMATION, holder: { displayName: 'Grace' } }],
     });
     expect(subject.store.has(INFORMATION)).toBe(true);
-    expect(stageOrder(subject)).toContain('information-1');
+    expect(stageOrder(subject)).toContain(fixtureStageId('information-1'));
   });
 
   it('refuses to delete a stage while the stage order is held', async () => {
@@ -1014,7 +1096,7 @@ describe('the in-memory host', () => {
       kind: 'codebookEgo',
       document: Redacted.make({
         variables: {
-          ego_age: {
+          [EGO_AGE]: {
             name: 'ego_age',
             type: 'number',
             component: 'Number',
@@ -1029,7 +1111,7 @@ describe('the in-memory host', () => {
     expect(subject.store.has(EGO)).toBe(true);
     expect(
       assembleProtocolSections(sectionsOf(subject)).codebook,
-    ).toMatchObject({ ego: { variables: { ego_age: { name: 'ego_age' } } } });
+    ).toMatchObject({ ego: { variables: { [EGO_AGE]: { name: 'ego_age' } } } });
   });
 
   it('refuses to create an ego codebook the protocol already has', async () => {
@@ -1065,8 +1147,8 @@ describe('the in-memory host', () => {
       'RefactorDeleteVariable',
       {
         protocolId: subject.protocolId,
-        subject: { entity: 'node', type: 'person' },
-        variableId: 'relationship_to_ego',
+        subject: { entity: 'node', type: PERSON_TYPE },
+        variableId: RELATIONSHIP_TO_EGO,
       },
     );
 
@@ -1081,7 +1163,7 @@ describe('the in-memory host', () => {
     expect(fieldVariables(subject.store.read(ALTER_FORM).document)).toEqual(
       before,
     );
-    expect(personVariables(subject)).toContain('relationship_to_ego');
+    expect(personVariables(subject)).toContain(RELATIONSHIP_TO_EGO);
   });
 
   it('makes the change under the lock the caller holds on the codebook section', async () => {
@@ -1093,14 +1175,14 @@ describe('the in-memory host', () => {
 
     const applied = await subject.adapter.rpcCall('RefactorDeleteVariable', {
       protocolId: subject.protocolId,
-      subject: { entity: 'node', type: 'person' },
-      variableId: 'relationship_to_ego',
+      subject: { entity: 'node', type: PERSON_TYPE },
+      variableId: RELATIONSHIP_TO_EGO,
     });
 
     // The dialog holding the section it is deleting from is the one lock a
     // refactor writes through rather than refusing.
     expect(applied.changedSections).toContain(PERSON);
-    expect(personVariables(subject)).not.toContain('relationship_to_ego');
+    expect(personVariables(subject)).not.toContain(RELATIONSHIP_TO_EGO);
   });
 
   it('keeps a lock when the stream that reported it ends', async () => {
@@ -1425,7 +1507,7 @@ describe('the in-memory host', () => {
       {
         protocolId: subject.protocolId,
         entity: 'node',
-        typeId: 'ghost',
+        typeId: GHOST,
       },
     );
 
@@ -1435,7 +1517,7 @@ describe('the in-memory host', () => {
     expect(isSuccess).toBe(false);
     expect(refusal?._tag).toBe('SectionNotFound');
     expect(revealed(refusalData(refusal))).toMatchObject({
-      sectionId: sectionId({ kind: 'codebookNode', typeId: 'ghost' }),
+      sectionId: sectionId({ kind: 'codebookNode', typeId: GHOST }),
     });
   });
 
@@ -1545,7 +1627,7 @@ function refusalData(refusal: object | undefined): unknown {
 }
 
 describe('codebook sections written with a stage', () => {
-  const INVENTED = sectionId({ kind: 'codebookNode', typeId: 'invented-type' });
+  const INVENTED = sectionId({ kind: 'codebookNode', typeId: INVENTED_TYPE });
   const invented = {
     name: 'Invented',
     color: 'node-color-seq-2',

@@ -4,6 +4,7 @@ import { Cause, Effect, Exit, Redacted, Stream } from 'effect';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { type ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import { createVariableId } from '@codaco/protocol-validation';
 
 import { type Studio } from '../app.ts';
 import { TenantScope } from '../db/tenant.ts';
@@ -428,7 +429,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       events: events.layer,
     });
     const codebookSection = sid(`codebook:node:${reference.typeId}`);
-    const variableId = `interrupted_${randomUUID().replaceAll('-', '')}`;
+    const variableId = createVariableId();
     try {
       const held = await other.call(
         callerOf(ADA),
@@ -449,7 +450,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
                 unknown
               >),
               [variableId]: {
-                name: variableId,
+                name: `interrupted_${variableId.replaceAll('-', '')}`,
                 type: 'text',
               },
             },

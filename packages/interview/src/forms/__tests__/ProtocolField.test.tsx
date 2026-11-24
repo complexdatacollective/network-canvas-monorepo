@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 
+import { testVariableId } from '../../__tests__/testIds';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import ProtocolField from '../ProtocolField';
 
@@ -16,7 +17,7 @@ describe('ProtocolField', () => {
           <ProtocolField
             name="preview-value"
             field={{
-              variable: 'nickname',
+              variable: testVariableId('nickname'),
               label: { en: 'What should we call you?' },
               type: 'text',
               component: 'Text',

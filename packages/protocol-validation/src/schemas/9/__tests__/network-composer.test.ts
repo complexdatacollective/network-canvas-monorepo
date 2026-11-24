@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { stageSchema } from '../stages/index.ts';
 import { networkComposerStage } from '../stages/network-composer.ts';
 import { ComponentTypes } from '../variables/types.ts';
 
 const validStage = {
-  id: 'nc1',
+  id: testId('nc1'),
   label: localized('Build the network'),
   type: 'NetworkComposer',
   subject: { entity: 'node', type: 'person' },
@@ -16,7 +17,7 @@ const validStage = {
   background: { concentricCircles: 4 },
   edges: [
     {
-      id: 'edge-1',
+      id: testId('edge-1'),
       subject: { entity: 'edge', type: 'knows' },
       label: localized('Connection'),
     },
@@ -68,12 +69,12 @@ describe('networkComposerStage schema', () => {
       ...validStage,
       edges: [
         {
-          id: 'edge-1',
+          id: testId('edge-1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
         },
         {
-          id: 'edge-2',
+          id: testId('edge-2'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
         },
@@ -103,7 +104,7 @@ describe('networkComposerStage schema', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'age',
             component: ComponentTypes.Number,
             label: localized('Age?'),
@@ -112,13 +113,13 @@ describe('networkComposerStage schema', () => {
       },
       edges: [
         {
-          id: 'edge-1',
+          id: testId('edge-1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('edge-field-1'),
                 variable: 'closeness',
                 component: ComponentTypes.VisualAnalogScale,
                 label: localized('How close?'),
@@ -170,7 +171,7 @@ describe('stage discriminated union', () => {
 });
 
 const baseStageWithComponent = {
-  id: 's1',
+  id: testId('s1'),
   type: 'NetworkComposer' as const,
   label: localized('Compose'),
   subject: { entity: 'node' as const, type: 'person' },
@@ -187,7 +188,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'age',
             label: localized('How old are they?'),
             component: ComponentTypes.Number,
@@ -219,7 +220,7 @@ describe('ComposerFormFieldSchema', () => {
       ...baseStageWithComponent,
       edges: [
         {
-          id: 'friends',
+          id: testId('friends'),
           subject: { entity: 'edge', type: 'friend' },
           label: localized('Connection'),
           form: {
@@ -245,7 +246,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'age',
             label: { en: '' },
             component: ComponentTypes.Number,
@@ -280,7 +281,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'age',
             label: localized('age'),
             component: 'NotAControl',
@@ -299,7 +300,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'age',
             component: ComponentTypes.Number,
             prompt: localized('Age?'),
@@ -322,13 +323,13 @@ describe('ComposerFormFieldSchema', () => {
       ...baseStageWithComponent,
       edges: [
         {
-          id: 'e1',
+          id: testId('e1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('edge-field-1'),
                 variable: 'closeness',
                 component: ComponentTypes.VisualAnalogScale,
                 parameters: {
@@ -355,7 +356,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'birth_date',
             label: localized('birth_date'),
             component: ComponentTypes.DatePicker,
@@ -379,13 +380,13 @@ describe('ComposerFormFieldSchema', () => {
       ...baseStageWithComponent,
       edges: [
         {
-          id: 'e1',
+          id: testId('e1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('edge-field-1'),
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
@@ -410,13 +411,13 @@ describe('ComposerFormFieldSchema', () => {
       ...baseStageWithComponent,
       edges: [
         {
-          id: 'e1',
+          id: testId('e1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('edge-field-1'),
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
@@ -435,13 +436,13 @@ describe('ComposerFormFieldSchema', () => {
       ...baseStageWithComponent,
       edges: [
         {
-          id: 'e1',
+          id: testId('e1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('edge-field-1'),
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
@@ -461,7 +462,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'birth_year',
             label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
@@ -471,13 +472,13 @@ describe('ComposerFormFieldSchema', () => {
       },
       edges: [
         {
-          id: 'e1',
+          id: testId('e1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('edge-field-1'),
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.RelativeDatePicker,
@@ -497,7 +498,7 @@ describe('ComposerFormFieldSchema', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'closeness',
             label: localized('closeness'),
             component: ComponentTypes.VisualAnalogScale,
@@ -526,14 +527,14 @@ describe('ComposerFormSchema duplicate variables', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'birth_year',
             label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
             parameters: { type: 'year', min: '1990', max: '1990' },
           },
           {
-            id: 'field-2',
+            id: testId('field-2'),
             variable: 'birth_year',
             label: localized('birth_year'),
             component: ComponentTypes.DatePicker,
@@ -555,19 +556,19 @@ describe('ComposerFormSchema duplicate variables', () => {
       ...baseStageWithComponent,
       edges: [
         {
-          id: 'e1',
+          id: testId('e1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('edge-field-1'),
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.DatePicker,
               },
               {
-                id: 'field-2',
+                id: testId('edge-field-2'),
                 variable: 'met_date',
                 label: localized('met_date'),
                 component: ComponentTypes.DatePicker,
@@ -597,7 +598,7 @@ describe('ComposerFormSchema duplicate variables', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'note',
             label: localized('note'),
             component: ComponentTypes.Text,
@@ -606,13 +607,13 @@ describe('ComposerFormSchema duplicate variables', () => {
       },
       edges: [
         {
-          id: 'e1',
+          id: testId('e1'),
           subject: { entity: 'edge', type: 'knows' },
           label: localized('Connection'),
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: testId('edge-field-1'),
                 variable: 'note',
                 label: localized('note'),
                 component: ComponentTypes.Text,
@@ -631,13 +632,13 @@ describe('ComposerFormSchema duplicate variables', () => {
       nodeForm: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'age',
             label: localized('age'),
             component: ComponentTypes.Number,
           },
           {
-            id: 'field-2',
+            id: testId('field-2'),
             variable: 'name',
             label: localized('name'),
             component: ComponentTypes.Text,

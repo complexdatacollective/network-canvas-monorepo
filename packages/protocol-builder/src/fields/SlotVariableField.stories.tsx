@@ -10,17 +10,28 @@ import { familyPedigreeMessages } from '../editors/family-pedigree/sections/pedi
 import type { CodebookSubject } from '../protocol-context.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../testing/protocolFixture.ts';
 import SlotVariableField from './SlotVariableField.tsx';
+
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const SEX_ASSIGNED_AT_BIRTH = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'sexAssignedAtBirth',
+);
 
 const PEDIGREE_STAGE = sectionId({
   kind: 'stage',
-  stageId: 'family-pedigree-1',
+  stageId: fixtureStageId('family-pedigree-1'),
 });
-const FAMILY_MEMBER = sectionId({
+const FAMILY_MEMBER_SECTION = sectionId({
   kind: 'codebookNode',
-  typeId: 'family_member',
+  typeId: FAMILY_MEMBER,
 });
-const PERSON: CodebookSubject = { entity: 'node', type: 'family_member' };
+const PERSON_SUBJECT: CodebookSubject = { entity: 'node', type: FAMILY_MEMBER };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -33,7 +44,7 @@ function ParticipantSlot() {
       label={familyPedigreeMessages.egoLabel}
       hint={familyPedigreeMessages.egoHint}
       createLabel={familyPedigreeMessages.egoCreateLabel}
-      subject={PERSON}
+      subject={PERSON_SUBJECT}
       variableType="boolean"
       writerClass="unvalidated"
       ownSlot={FAMILY_PEDIGREE_SLOTS.egoAttribute}
@@ -49,7 +60,7 @@ function SexAssignedAtBirthSlot() {
       label={familyPedigreeMessages.sexAssignedAtBirthLabel}
       hint={familyPedigreeMessages.sexAssignedAtBirthHint}
       createLabel={familyPedigreeMessages.sexAssignedAtBirthCreateLabel}
-      subject={PERSON}
+      subject={PERSON_SUBJECT}
       variableType="categorical"
       writerClass="unvalidated"
       ownedOptions="pedigreeSexAssignedAtBirth"
@@ -95,7 +106,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     sectionTitle: 'Person attributes',
     children: <ParticipantSlot />,
   },
@@ -178,13 +189,13 @@ export const AnAttributeWhoseValuesChanged: Story = {
   args: {
     children: <SexAssignedAtBirthSlot />,
     seedEdit: (host) => {
-      const { document } = host.store.read(FAMILY_MEMBER);
+      const { document } = host.store.read(FAMILY_MEMBER_SECTION);
       const variables = isRecord(document.variables) ? document.variables : {};
-      host.store.applyAsCollaborator(FAMILY_MEMBER, {
+      host.store.applyAsCollaborator(FAMILY_MEMBER_SECTION, {
         ...document,
         variables: {
           ...variables,
-          sexAssignedAtBirth: {
+          [SEX_ASSIGNED_AT_BIRTH]: {
             name: 'sexAssignedAtBirth',
             type: 'categorical',
             options: [

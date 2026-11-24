@@ -719,7 +719,12 @@ describe('encrypted names', () => {
       ['mum', 'Mother'],
       ['dad', 'Sperm parent'],
     ]);
-    const { held, toWrite } = labelWrites(family, labels, 'name', decrypted);
+    const { held, toWrite } = labelWrites(
+      family,
+      labels,
+      config.nameAttribute,
+      decrypted,
+    );
     expect(Object.fromEntries(held)).toEqual({ mum: ciphertext(1) });
     expect(Object.fromEntries(toWrite)).toEqual({
       dad: 'Father',
@@ -727,7 +732,12 @@ describe('encrypted names', () => {
     });
     // Without the decrypted text, nothing encrypted can be known to be held.
     expect([
-      ...labelWrites(family, labels, 'name', new Map()).toWrite.keys(),
+      ...labelWrites(
+        family,
+        labels,
+        config.nameAttribute,
+        new Map(),
+      ).toWrite.keys(),
     ]).toEqual(['mum', 'dad', 'sis']);
   });
 
@@ -740,7 +750,9 @@ describe('encrypted names', () => {
     );
     const labels = generateLabels(family, 'gendered', intl, words);
     expect(
-      Object.fromEntries(labelWrites(family, labels, 'name', new Map()).held),
+      Object.fromEntries(
+        labelWrites(family, labels, config.nameAttribute, new Map()).held,
+      ),
     ).toEqual({ mum: 'Mother' });
   });
 });

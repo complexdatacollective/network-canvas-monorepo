@@ -4,6 +4,7 @@ import { Redacted } from 'effect';
 import { StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { fixtureStageId } from '@codaco/protocol-builder/testing/protocolFixture';
 import {
   CurrentProtocolSchema,
   type ExtractedAsset,
@@ -26,9 +27,11 @@ vi.mock('~/utils/assetUtils', async (importOriginal) => ({
     Promise.resolve({ persisted: true }),
 }));
 
+const INFORMATION_STAGE_ID = fixtureStageId('information-1');
+
 const PROTOCOL_ID = 'library-row-1';
 const EDIT = 'edit-1';
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({ kind: 'stage', stageId: INFORMATION_STAGE_ID });
 
 /** The language the all-interfaces protocol is written in. */
 const FIXTURE_LANGUAGE = 'en-US';
@@ -42,7 +45,7 @@ const openStore = (): ArchitectStore => {
 
 const stageLabel = (store: ArchitectStore): string | undefined =>
   getProtocol(store.getState())?.stages.find(
-    (stage) => stage.id === 'information-1',
+    (stage) => stage.id === INFORMATION_STAGE_ID,
   )?.label[FIXTURE_LANGUAGE];
 
 describe('useArchitectClient', () => {

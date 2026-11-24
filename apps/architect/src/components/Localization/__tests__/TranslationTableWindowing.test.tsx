@@ -13,6 +13,7 @@ import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -373,7 +374,7 @@ describe('TranslationTable with a large protocol', () => {
       const [firstName] = [{ name: 'first_name', type: 'text' as const }];
       protocol.codebook = {
         ...protocol.codebook,
-        ego: { variables: { firstName } },
+        ego: { variables: { [testVariableId('firstName')]: firstName } },
       };
       protocol.stages = protocol.stages.map((stage, index) =>
         index === 9 && stage.type === 'Information'
@@ -382,7 +383,9 @@ describe('TranslationTable with a large protocol', () => {
               content: {
                 en: 'Hello{name, select, missing {} other {, {name}}}',
               },
-              dynamicValues: { name: { path: 'ego.firstName' } },
+              dynamicValues: {
+                name: { path: `ego.${testVariableId('firstName')}` },
+              },
             }
           : stage,
       );

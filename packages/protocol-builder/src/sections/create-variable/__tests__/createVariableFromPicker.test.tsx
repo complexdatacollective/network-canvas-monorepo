@@ -16,10 +16,13 @@ import {
   attributeField,
   openAttributePicker,
 } from '../../../testing/attributePicker.ts';
+import { fixtureTypeId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { useCreateVariableEditor } from '../useCreateVariableEditor.tsx';
 
-const SUBJECT: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON = fixtureTypeId('node', 'person');
+
+const SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 const SLOT = 'nodeConfig.egoAttribute';
 const LABEL = 'Attribute the bins sort by';
 
@@ -141,9 +144,9 @@ describe('a slot whose attribute needs more than a name', () => {
 
     // Part of the stage's draft: the editor shows it, the protocol does not
     // hold it until the stage is saved.
-    const variables = harness.editorCodebook().node?.person?.variables ?? {};
+    const variables = harness.editorCodebook().node?.[PERSON]?.variables ?? {};
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).not.toContain('closeness');
@@ -260,7 +263,7 @@ describe('a slot whose attribute needs more than a name', () => {
     expect(offer).not.toHaveAttribute('aria-disabled');
     expect(box).toBeEnabled();
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).not.toContain('closeness');

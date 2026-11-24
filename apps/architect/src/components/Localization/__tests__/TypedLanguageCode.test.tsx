@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -316,7 +317,7 @@ describe('typing a language code into the list of languages to change to', () =>
     localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
     stages: [
       {
-        id: 'welcome',
+        id: createProtocolObjectId(),
         type: 'Information',
         label: { en: 'Welcome', fr: 'Bienvenue' },
         content: { en: '# Hello', fr: '# Bonjour' },

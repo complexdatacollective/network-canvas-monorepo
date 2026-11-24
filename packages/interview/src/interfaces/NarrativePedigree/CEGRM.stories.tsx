@@ -33,22 +33,6 @@ import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 // node type but are not family, so only the sociogram shows them.
 // ---------------------------------------------------------------------------
 
-const KIN_TYPE_VAR = 'kinType';
-const LAYOUT_VAR = 'socialLayout';
-
-// Each reciprocal exchange is two booleans: the person provides it to ego (…In)
-// and ego provides it to the person (…Out). Reciprocity is inferred from both.
-const INFO_IN_VAR = 'infoProvidesYou';
-const INFO_OUT_VAR = 'infoYouProvide';
-const SUPPORT_IN_VAR = 'supportProvidesYou';
-const SUPPORT_OUT_VAR = 'supportYouProvide';
-const FEELINGS_IN_VAR = 'feelingsProvidesYou';
-const FEELINGS_OUT_VAR = 'feelingsYouProvide';
-
-// Disseminator and barrier are independent boolean roles.
-const DISSEMINATOR_VAR = 'isDisseminator';
-const BARRIER_VAR = 'isBarrier';
-
 /**
  * Build the CEGRM demonstration interview. The pedigree is a hereditary
  * breast/ovarian cancer (HBOC) family whose cancer descends the maternal line
@@ -65,29 +49,35 @@ export function buildCegrmInterview(seed: number, recordedOnly = false) {
 
   // --- One Person node type for kin AND non-kin -------------------------------
   const person = si.addNodeType({ name: 'Person' });
-  person.addVariable({
-    id: KIN_TYPE_VAR,
-    name: KIN_TYPE_VAR,
+  const KIN_TYPE_VAR = person.addVariable({
+    name: 'kinType',
     type: 'categorical',
     options: [
       { label: 'Biological kin', value: 'biological' },
       { label: 'In-law (affinal)', value: 'affinal' },
       { label: 'Friend (fictive kin)', value: 'fictive' },
     ],
-  });
-  for (const id of [
-    INFO_IN_VAR,
-    INFO_OUT_VAR,
-    SUPPORT_IN_VAR,
-    SUPPORT_OUT_VAR,
-    FEELINGS_IN_VAR,
-    FEELINGS_OUT_VAR,
-    DISSEMINATOR_VAR,
-    BARRIER_VAR,
-  ]) {
-    person.addVariable({ id, name: id, type: 'boolean' });
-  }
-  person.addVariable({ id: LAYOUT_VAR, name: LAYOUT_VAR, type: 'layout' });
+  }).id;
+  const booleanVariable = (name: string) =>
+    person.addVariable({ name, type: 'boolean' }).id;
+
+  // Each reciprocal exchange is two booleans: the person provides it to ego
+  // (…In) and ego provides it to the person (…Out). Reciprocity is inferred
+  // from both.
+  const INFO_IN_VAR = booleanVariable('infoProvidesYou');
+  const INFO_OUT_VAR = booleanVariable('infoYouProvide');
+  const SUPPORT_IN_VAR = booleanVariable('supportProvidesYou');
+  const SUPPORT_OUT_VAR = booleanVariable('supportYouProvide');
+  const FEELINGS_IN_VAR = booleanVariable('feelingsProvidesYou');
+  const FEELINGS_OUT_VAR = booleanVariable('feelingsYouProvide');
+
+  // Disseminator and barrier are independent boolean roles.
+  const DISSEMINATOR_VAR = booleanVariable('isDisseminator');
+  const BARRIER_VAR = booleanVariable('isBarrier');
+  const LAYOUT_VAR = person.addVariable({
+    name: 'socialLayout',
+    type: 'layout',
+  }).id;
 
   // --- Social (member-to-member) edge type; the pedigree adds its own --------
   const socialEdge = si.addEdgeType({ name: 'Knows' });

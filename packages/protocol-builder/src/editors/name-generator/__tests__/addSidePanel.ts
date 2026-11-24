@@ -13,9 +13,9 @@ import { writeInto } from '../../__tests__/writeInto.ts';
  */
 export async function chooseNodeType(
   harness: ReturnType<typeof renderStageEditor>,
-  typeId: string,
+  typeName: string,
 ): Promise<void> {
-  await harness.user.click(screen.getByRole('radio', { name: typeId }));
+  await harness.user.click(screen.getByRole('radio', { name: typeName }));
   await waitFor(() =>
     expect(screen.getByRole('switch', { name: 'Side panels' })).toBeEnabled(),
   );

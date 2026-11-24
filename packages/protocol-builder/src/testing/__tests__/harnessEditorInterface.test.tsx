@@ -4,11 +4,7 @@ import type {
   StageEditorComponent,
   StageEditorProps,
 } from '../../stage-editor-contract.ts';
-import {
-  assertDeclaredStageType,
-  fixtureStageIds,
-  loadFixtureStage,
-} from '../protocolFixture.ts';
+import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
 import {
   renderStageEditor,
   type RenderStageEditorOptions,
@@ -69,7 +65,8 @@ describe('the interface a named editor is opened over', () => {
   it('opens any fixture stage for a call that names no interface', () => {
     // An id as a family's own helper hands one over: worked out from
     // something, and a `string` by the time it reaches the harness.
-    const computed = fixtureStageIds().find((id) => id === 'geospatial-1');
+    const geospatialId = loadFixtureStage('geospatial-1').id;
+    const computed = fixtureStageIds().find((id) => id === geospatialId);
     if (computed === undefined) {
       throw new Error('the fixture has no geospatial stage to open');
     }
@@ -89,28 +86,19 @@ describe('the interface a named editor is opened over', () => {
  * fixture that has moved on is worse than no claim at all.
  */
 describe('what the fixture says each of its stages is', () => {
-  it('refuses a stage whose protocol document says something else', () => {
-    expect(() => assertDeclaredStageType('ego-form-1', 'Information')).toThrow(
-      /"ego-form-1" is a "EgoForm".*is a "Information"/s,
-    );
+  it('opens a handle over the stage of the interface it names', () => {
+    expect(loadFixtureStage('ego-form-1').type).toBe('EgoForm');
+    expect(loadFixtureStage('information-1').type).toBe('Information');
   });
 
   it('refuses a stage nothing has written down', () => {
-    expect(() => assertDeclaredStageType('nowhere-1', 'Information')).toThrow(
-      /does not name/,
-    );
+    expect(() => loadFixtureStage('nowhere-1')).toThrow(/has no stage/);
   });
 
-  it('accepts every stage the protocol holds', () => {
-    // Asked of the protocol rather than of a list here, so a stage added to
-    // the fixture — or one whose interface is changed — fails until the map
-    // says what it is. `loadFixtureStage` runs the same check at open time;
-    // this asks it of all of them at once, before any test has to.
+  it('opens every stage the protocol holds by its own id', () => {
     const ids = fixtureStageIds();
 
     expect(ids.length).toBeGreaterThan(0);
-    expect(() => {
-      for (const id of ids) loadFixtureStage(id);
-    }).not.toThrow();
+    expect(ids.map((id) => loadFixtureStage(id).id)).toEqual(ids);
   });
 });

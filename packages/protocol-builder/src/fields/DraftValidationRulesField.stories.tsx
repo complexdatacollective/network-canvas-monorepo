@@ -6,6 +6,7 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import DraftValidationRulesField, {
   draftRulesIssue,
 } from './DraftValidationRulesField.tsx';
@@ -67,7 +68,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'ego-form-1',
+    stageId: fixtureStageId('ego-form-1'),
     sectionTitle: 'Validation',
     children: <DraftRules />,
   },

@@ -1,3 +1,4 @@
+import { isVariableId } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -7,15 +8,30 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { encryptionFor } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import type { PedigreeConfig } from '../model';
 
+/**
+ * Attributes written with readable keys (`name`, `sex`, `isEgo`), filed
+ * under the variable id each names. A key that is already an id is kept.
+ */
+const attributesById = (
+  attributes: Record<string, VariableValue>,
+): Record<string, VariableValue> =>
+  Object.fromEntries(
+    Object.entries(attributes).map(([key, value]) => [
+      isVariableId(key) ? key : testVariableId(key),
+      value,
+    ]),
+  );
+
 export const config: PedigreeConfig = {
-  personType: 'person',
-  nameAttribute: 'name',
+  personType: testTypeId('person'),
+  nameAttribute: testVariableId('name'),
   genderIdentity: {
-    attribute: 'gender',
+    attribute: testVariableId('gender'),
     terms: [
       { value: 'woman', words: 'feminine' },
       { value: 'man', words: 'masculine' },
@@ -24,13 +40,13 @@ export const config: PedigreeConfig = {
       { value: 'transWoman', words: 'feminine' },
     ],
   },
-  sexAssignedAtBirthAttribute: 'sex',
-  egoAttribute: 'isEgo',
-  relationshipType: 'family',
-  kindAttribute: 'kind',
-  gestationalCarrierAttribute: 'carrier',
-  currentPartnerAttribute: 'current',
-  relativesNotRecordedAttribute: 'notRecorded',
+  sexAssignedAtBirthAttribute: testVariableId('sex'),
+  egoAttribute: testVariableId('isEgo'),
+  relationshipType: testTypeId('family'),
+  kindAttribute: testVariableId('kind'),
+  gestationalCarrierAttribute: testVariableId('carrier'),
+  currentPartnerAttribute: testVariableId('current'),
+  relativesNotRecordedAttribute: testVariableId('notRecorded'),
   relationshipToParticipantAttribute: undefined,
 };
 
@@ -45,8 +61,8 @@ export const person = (
   attributes: Record<string, VariableValue> = {},
 ): NcNode => ({
   [entityPrimaryKeyProperty]: id,
-  type: 'person',
-  [entityAttributesProperty]: attributes,
+  type: config.personType,
+  [entityAttributesProperty]: attributesById(attributes),
 });
 
 /** A person whose name is stored encrypted with the key of the passphrase,
@@ -59,9 +75,9 @@ export async function encryptedPerson(
 ): Promise<NcNode> {
   const { encryptedAttributes, secureAttributes } =
     await generateSecureAttributes(
-      { name },
+      { [config.nameAttribute]: name },
       {
-        name: {
+        [config.nameAttribute]: {
           type: 'text',
           component: 'Text',
           name: 'name',
@@ -84,8 +100,11 @@ export const link = (
   attributes: Record<string, VariableValue> = {},
 ): NcEdge => ({
   [entityPrimaryKeyProperty]: `${from}-${to}-${kind}`,
-  type: 'family',
+  type: config.relationshipType,
   from,
   to,
-  [entityAttributesProperty]: { kind: [kind], ...attributes },
+  [entityAttributesProperty]: {
+    [config.kindAttribute]: [kind],
+    ...attributesById(attributes),
+  },
 });

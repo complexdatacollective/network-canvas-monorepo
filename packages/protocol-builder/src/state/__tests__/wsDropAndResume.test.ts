@@ -10,6 +10,7 @@ import {
   createWebSocketHost,
   type WebSocketHost,
 } from '../../testing/host/websocketHost.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { streamProtocolEvents } from '../channel.ts';
 
 /** A fresh idempotency key: every write below is its own intent. */
@@ -17,8 +18,14 @@ let writes = 0;
 const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
-const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
+const EGO_FORM = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('ego-form-1'),
+});
 
 const isEnglishLabel = Schema.is(Schema.Struct({ 'en-US': Schema.String }));
 

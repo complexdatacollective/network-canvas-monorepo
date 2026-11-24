@@ -2,7 +2,11 @@ import { useCallback, type ReactNode } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
-import type { VariableOption, VariableType } from '@codaco/protocol-validation';
+import {
+  createVariableId,
+  type VariableOption,
+  type VariableType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditorDialog from '../../codebook/components/VariableEditorDialog.tsx';
@@ -233,7 +237,7 @@ export function useCreateVariableEditor({
         }
         openSession({
           key: uuid(),
-          variableId: uuid(),
+          variableId: createVariableId(),
           name: variableName,
           settle: resolve,
           ...target,

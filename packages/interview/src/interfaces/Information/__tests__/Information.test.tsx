@@ -20,6 +20,7 @@ import {
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testIds';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../../contract/context';
 import type { ResolvedAsset } from '../../../contract/types';
@@ -118,7 +119,7 @@ function renderInformation(
 }
 
 const makeStage = (content: LocalizedString | string): InformationStage => ({
-  id: 'info-1',
+  id: testId('info-1'),
   type: 'Information',
   label: { en: 'Info' },
   content: typeof content === 'string' ? { en: content } : content,

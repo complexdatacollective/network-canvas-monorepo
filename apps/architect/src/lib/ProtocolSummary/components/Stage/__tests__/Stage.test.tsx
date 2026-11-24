@@ -3,10 +3,19 @@ import { render as renderBare, screen, within } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import SummaryContext from '../../SummaryContext';
 import Stage from '../Stage';
+
+const KNOWS = testTypeId('knows');
+const PERSON = testTypeId('person');
+const NICK = testVariableId('nick');
+const LAYOUT = testVariableId('layout');
 
 const protocol = {
   schemaVersion: 9,
@@ -184,7 +193,7 @@ describe('Protocol Summary edge labels participants see', () => {
     ...protocol,
     codebook: {
       node: {},
-      edge: { knows: { name: 'knows', color: 'edge-color-seq-1' } },
+      edge: { [KNOWS]: { name: 'knows', color: 'edge-color-seq-1' } },
       ego: {},
     },
   } satisfies CurrentProtocol;
@@ -217,8 +226,8 @@ describe('Protocol Summary edge labels participants see', () => {
         {
           id: 'preset',
           label: { en: 'Everyone' },
-          layoutVariable: 'layout',
-          edges: { display: [{ type: 'knows', label: { en: 'Friends' } }] },
+          layoutVariable: LAYOUT,
+          edges: { display: [{ type: KNOWS, label: { en: 'Friends' } }] },
         },
       ],
     });
@@ -234,18 +243,18 @@ describe('Protocol Summary edge labels participants see', () => {
         {
           id: 'filtered',
           label: { en: 'Friends only' },
-          layoutVariable: 'layout',
+          layoutVariable: LAYOUT,
           filter: {
             rules: [
               {
                 id: 'rule',
                 type: 'edge',
-                options: { type: 'knows', operator: 'EXISTS' },
+                options: { type: KNOWS, operator: 'EXISTS' },
               },
             ],
           },
         },
-        { id: 'everyone', label: { en: 'Everyone' }, layoutVariable: 'layout' },
+        { id: 'everyone', label: { en: 'Everyone' }, layoutVariable: LAYOUT },
       ],
     });
 
@@ -267,7 +276,7 @@ describe('Protocol Summary edge labels participants see', () => {
     renderConfigured('NetworkComposer', {
       edges: [
         {
-          subject: { entity: 'edge', type: 'knows' },
+          subject: { entity: 'edge', type: KNOWS },
           label: { en: 'Friends' },
         },
       ],
@@ -313,12 +322,12 @@ describe('Protocol Summary form text that shows values', () => {
       ...protocol,
       codebook: {
         node: {
-          person: {
+          [PERSON]: {
             name: 'Person',
             color: 'node-color-seq-1',
             variables: {
-              nick: { name: 'Preferred name', type: 'text' },
-              age: { name: 'Age', type: 'number' },
+              [NICK]: { name: 'Preferred name', type: 'text' },
+              [testVariableId('age')]: { name: 'Age', type: 'number' },
             },
           },
         },
@@ -340,13 +349,13 @@ describe('Protocol Summary form text that shows values', () => {
           stageNumber={5}
           type="AlterForm"
           configuration={{
-            subject: { entity: 'node', type: 'person' },
-            dynamicValues: { nick: { path: 'node.nick' } },
+            subject: { entity: 'node', type: PERSON },
+            dynamicValues: { nick: { path: `node.${NICK}` } },
             form: {
               fields: [
                 {
                   id: 'field-1',
-                  variable: 'age',
+                  variable: testVariableId('age'),
                   prompt: { en: 'How old is {nick}?' },
                 },
               ],
@@ -370,7 +379,11 @@ describe('Protocol Summary text that reads by a number answer', () => {
       codebook: {
         node: {},
         edge: {},
-        ego: { variables: { hours: { name: 'Hours', type: 'number' } } },
+        ego: {
+          variables: {
+            [testVariableId('hours')]: { name: 'Hours', type: 'number' },
+          },
+        },
       },
     } as unknown as CurrentProtocol;
     render(
@@ -390,7 +403,9 @@ describe('Protocol Summary text that reads by a number answer', () => {
             content: {
               cs: '{hours, select, missing {} other {{hours, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}',
             },
-            dynamicValues: { hours: { path: 'ego.hours' } },
+            dynamicValues: {
+              hours: { path: `ego.${testVariableId('hours')}` },
+            },
           }}
         />
       </SummaryContext.Provider>,

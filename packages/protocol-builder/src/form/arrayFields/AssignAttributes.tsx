@@ -1,4 +1,4 @@
-import { type ComponentType, useCallback, useMemo } from 'react';
+import { type ComponentType, useMemo } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -8,6 +8,7 @@ import ArrayField, {
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
+import { rowId, rowTemplate } from '../rowDialog.tsx';
 import Attribute, {
   assignAttributeCrossClassIssue,
   AssignAttributesContext,
@@ -162,6 +163,8 @@ export const makeAssignAttributesValidation = (
 });
 
 const EMPTY_ATTRIBUTES: AttributeValue[] = [];
+
+const newAttributeRow = rowTemplate<AttributeValue>();
 const NO_COMMITTED_VARIABLES: ReadonlySet<string> = new Set();
 
 export type AssignAttributesProps = Omit<
@@ -170,6 +173,7 @@ export type AssignAttributesProps = Omit<
   | 'confirmDelete'
   | 'editorComponent'
   | 'emptyStateMessage'
+  | 'getId'
   | 'immediateAdd'
   | 'itemClasses'
   | 'itemComponent'
@@ -277,11 +281,6 @@ export default function AssignAttributes({
     ],
   );
 
-  const itemTemplate = useCallback(
-    () => ({}) satisfies Partial<AttributeValue>,
-    [],
-  );
-
   return (
     <AssignAttributesContext value={context}>
       <ArrayField<AttributeValue>
@@ -291,7 +290,8 @@ export default function AssignAttributes({
         value={value}
         onChange={onChange}
         itemComponent={Attribute}
-        itemTemplate={itemTemplate}
+        itemTemplate={newAttributeRow}
+        getId={rowId}
         // The row renders its own Surface, so ArrayField's wrapper stays bare
         // rather than nesting two levels of padded, shadowed surface.
         itemClasses="p-0! shadow-none bg-transparent"

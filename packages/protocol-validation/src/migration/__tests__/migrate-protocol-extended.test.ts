@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { withOriginalCodebookKeys } from '../../__tests__/testIds.ts';
 import { CURRENT_SCHEMA_VERSION } from '../../schemas/index.ts';
 import { getProtocolFileErrorKind } from '../../utils/protocolFileErrorKind.ts';
 import {
@@ -265,9 +266,11 @@ describe('Protocol Migration - Extended Tests', () => {
     });
 
     it('accepts the same names in a version 9 result', () => {
-      const migrated = migrateProtocol(v7Doc('名前'), 9, {
-        name: 'Test Protocol',
-      });
+      const original = v7Doc('名前');
+      const migrated = withOriginalCodebookKeys(
+        migrateProtocol(original, 9, { name: 'Test Protocol' }),
+        original,
+      );
       expect(migrated.schemaVersion).toBe(9);
       expect(migrated.codebook.node?.person?.variables?.v1?.name).toBe('名前');
     });

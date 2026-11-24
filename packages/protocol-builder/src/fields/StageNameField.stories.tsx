@@ -7,9 +7,13 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { chooseEditingLanguage } from '../testing/chooseEditingLanguage.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import StageNameField from './StageNameField.tsx';
 
-const STAGE = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
+const STAGE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('sociogram-1'),
+});
 
 const STAGE_NAME_LABEL = 'Stage name';
 
@@ -67,7 +71,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'sociogram-1',
+    stageId: fixtureStageId('sociogram-1'),
     // The header slot, NOT a section: a title is host chrome above the form,
     // and mounting it elsewhere is a story about an arrangement nothing ships.
     header: <StageName />,

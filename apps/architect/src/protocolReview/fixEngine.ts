@@ -55,8 +55,9 @@ export type FixFailureKind =
   | 'duplicate_id'
   /**
    * The edit applies, but a member it leaves has no path back to it: it has
-   * no id, and its index is another member's id. Without one there is no
-   * inverse, so the edit is refused rather than made irreversible.
+   * no id, in a list whose other members have ids and so are reached only by
+   * id. Without a path there is no inverse, so the edit is refused rather
+   * than made irreversible.
    */
   | 'ambiguous_path'
   /**

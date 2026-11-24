@@ -1,3 +1,4 @@
+import { testId } from '../__tests__/testIds.ts';
 import type { NodeDefinition } from '../schemas/9/codebook/definitions.ts';
 
 /** A localized string with one translation, in the base protocol's language. */
@@ -126,7 +127,7 @@ export const createBaseProtocol = () => ({
   },
   stages: [
     {
-      id: 'nameGenerator1',
+      id: testId('nameGenerator1'),
       type: 'NameGenerator',
       label: localized('Generate Names'),
       subject: {
@@ -137,7 +138,7 @@ export const createBaseProtocol = () => ({
         title: localized('Add person'),
         fields: [
           {
-            id: 'field-name',
+            id: testId('field-name'),
             variable: 'name',
             prompt: localized('Enter name'),
           },
@@ -145,13 +146,13 @@ export const createBaseProtocol = () => ({
       },
       prompts: [
         {
-          id: 'prompt1',
+          id: testId('prompt1'),
           text: localized('Who do you know?'),
         },
       ],
     },
     {
-      id: 'sociogram1',
+      id: testId('sociogram1'),
       type: 'Sociogram',
       label: localized('Sociogram'),
       subject: {
@@ -163,7 +164,7 @@ export const createBaseProtocol = () => ({
       },
       prompts: [
         {
-          id: 'socPrompt1',
+          id: testId('socPrompt1'),
           text: localized('Position nodes'),
           layout: {
             layoutVariable: 'layoutPosition',

@@ -5,21 +5,38 @@ import {
   withInterfaceText,
 } from '@codaco/interview/supplied-wording';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   type CurrentProtocol,
   type LocalizedString,
   type Stage,
   validateProtocol,
+  createProtocolObjectId,
+  isProtocolObjectId,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { buildProtocolWithStage } from '../buildProtocolWithStage';
 
+const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '9b1c38ef-38af-4d5e-8867-3bf21064aeb7',
+);
+
 // A minimal, valid current-schema protocol containing a single name generator
-// stage whose codebook subject ("person") exists. Tests insert/replace panels
+// stage whose codebook subject type exists. Tests insert/replace panels
 // onto this stage to exercise how `buildProtocolWithStage` normalises wip stage
 // edits before they are validated/previewed.
-const STAGE_ID = 'stage-1';
+const STAGE_ID = ProtocolObjectIdSchema.parse(
+  '2d7c1e9a-4b3f-4a8e-9d6c-0b5a7e3f1c28',
+);
+
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
+const NAME = testVariableId('name');
 
 const localized = (text: string): LocalizedString => ({ en: text });
 
@@ -28,12 +45,20 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     id: STAGE_ID,
     type: 'NameGenerator',
     label: localized('Name some people'),
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     form: {
       title: localized('Add person'),
-      fields: [{ id: 'field-1', variable: 'name', prompt: localized('Name') }],
+      fields: [
+        {
+          id: createProtocolObjectId(),
+          variable: NAME,
+          prompt: localized('Name'),
+        },
+      ],
     },
-    prompts: [{ id: 'prompt-1', text: localized('Who do you know?') }],
+    prompts: [
+      { id: createProtocolObjectId(), text: localized('Who do you know?') },
+    ],
     ...stageOverrides,
   } as Stage;
 
@@ -44,12 +69,12 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: {
+            [NAME]: {
               name: 'Name',
               type: 'text',
               component: 'Text',
@@ -64,7 +89,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     stages: [
       stage,
       {
-        id: 'finish',
+        id: FINISH_STAGE_ID,
         type: 'FinishSession',
         label: localized('Finish'),
         mode: 'confirmation',
@@ -87,7 +112,7 @@ describe('buildProtocolWithStage', () => {
       ...makeProtocol().stages[0],
       panels: [
         {
-          id: 'panel-1',
+          id: createProtocolObjectId(),
           title: { en: 'My roster' },
           dataSource: 'roster-asset-id',
           filter: null,
@@ -128,7 +153,7 @@ describe('buildProtocolWithStage', () => {
         ...makeProtocol().stages[0],
         panels: [
           {
-            id: 'panel-1',
+            id: createProtocolObjectId(),
             title,
             dataSource: 'existing',
             filter: null,
@@ -163,9 +188,9 @@ describe('buildProtocolWithStage', () => {
     const built = buildProtocolWithStage(protocol, newStage, null, 0);
 
     expect(built.stages).toHaveLength(3);
-    expect(built.stages[0]?.id).toBeTruthy();
+    expect(isProtocolObjectId(built.stages[0]?.id)).toBe(true);
     expect(built.stages[1]?.id).toBe(STAGE_ID);
-    expect(built.stages[2]?.id).toBe('finish');
+    expect(built.stages[2]?.id).toBe(FINISH_STAGE_ID);
   });
 
   it('puts a new stage before the finish stage, where a save would put it', () => {
@@ -193,10 +218,11 @@ describe('buildProtocolWithStage', () => {
   // own, which the saved protocol will show; the draft must show it too, or
   // the stage editor could never validate (or preview) the new stage.
   it('validates a draft adding the first stage of a kind, with the text that kind shows', async () => {
-    const QUICK_ADD_ID = 'name-generator-quick-add-1';
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the committed all-interfaces fixture is a valid current protocol
     const fixture = allInterfaces as unknown as CurrentProtocol;
-    const quickAdd = fixture.stages.find(({ id }) => id === QUICK_ADD_ID);
+    const quickAdd = fixture.stages.find(
+      ({ type }) => type === 'NameGeneratorQuickAdd',
+    );
     if (quickAdd === undefined) throw new Error('No quick-add stage');
     const protocol = withInterfaceText({
       ...fixture,
@@ -226,7 +252,7 @@ describe('buildProtocolWithStage', () => {
   it('previews the shared wording held with the stage over Network Canvas’s', async () => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the committed all-interfaces fixture is a valid current protocol
     const fixture = allInterfaces as unknown as CurrentProtocol;
-    const map = fixture.stages.find(({ id }) => id === 'geospatial-1');
+    const map = fixture.stages.find(({ type }) => type === 'Geospatial');
     if (map?.type !== 'Geospatial') throw new Error('No map stage');
     expect(fixture.interfaceText?.geospatial).not.toHaveProperty(
       'searchFailed',
@@ -258,12 +284,15 @@ describe('buildProtocolWithStage', () => {
     const protocol = makeProtocol();
     const stage = protocol.stages[0];
     if (stage === undefined) throw new Error('No stage');
-    const person = protocol.codebook.node?.person;
+    const person = protocol.codebook.node?.[PERSON];
     if (person === undefined) throw new Error('No person type');
     const held = {
       ...person,
       variables: {
-        name: { ...person.variables?.name, validation: { required: true } },
+        [NAME]: {
+          ...person.variables?.[NAME],
+          validation: { required: true },
+        },
       },
     };
     const place = {
@@ -280,25 +309,25 @@ describe('buildProtocolWithStage', () => {
       undefined,
       [],
       {
-        [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+        [sectionId({ kind: 'codebookNode', typeId: PERSON })]: {
           base: person,
           edited: held,
         },
-        [sectionId({ kind: 'codebookNode', typeId: 'place' })]: {
+        [sectionId({ kind: 'codebookNode', typeId: PLACE })]: {
           base: null,
           edited: place,
         },
       },
     );
 
-    expect(built.codebook.node?.person?.variables?.name).toMatchObject({
+    expect(built.codebook.node?.[PERSON]?.variables?.[NAME]).toMatchObject({
       validation: { required: true },
     });
-    expect(built.codebook.node?.place).toEqual(place);
+    expect(built.codebook.node?.[PLACE]).toEqual(place);
     // The protocol itself is left as it was: the changes are the editor's.
-    expect(protocol.codebook.node?.person?.variables?.name).not.toHaveProperty(
-      'validation',
-    );
+    expect(
+      protocol.codebook.node?.[PERSON]?.variables?.[NAME],
+    ).not.toHaveProperty('validation');
     const result = await validateProtocol(built, { draft: true });
     expect(result.error?.issues).toBeUndefined();
   });

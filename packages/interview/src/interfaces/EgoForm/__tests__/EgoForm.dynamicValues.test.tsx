@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
@@ -30,11 +31,13 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', StubObserver);
 });
 
+const NICKNAME_VARIABLE = testVariableId('nickname');
+
 const stage = {
   id: 'ego-form',
   type: 'EgoForm',
   label: { en: 'About you' },
-  dynamicValues: { nickname: { path: 'ego.nickname' } },
+  dynamicValues: { nickname: { path: `ego.${NICKNAME_VARIABLE}` } },
   introductionPanel: {
     title: {
       en: '{nickname, select, missing {About you} other {About {nickname}}}',
@@ -42,7 +45,11 @@ const stage = {
   },
   form: {
     fields: [
-      { id: 'field-1', variable: 'nickname', prompt: { en: 'Your nickname' } },
+      {
+        id: 'field-1',
+        variable: NICKNAME_VARIABLE,
+        prompt: { en: 'Your nickname' },
+      },
     ],
   },
 } as unknown as StageProps<'EgoForm'>['stage'];
@@ -69,7 +76,7 @@ const renderEgoForm = () => {
           edge: {},
           ego: {
             variables: {
-              nickname: {
+              [NICKNAME_VARIABLE]: {
                 name: 'Nickname',
                 type: 'text',
                 component: 'Text',

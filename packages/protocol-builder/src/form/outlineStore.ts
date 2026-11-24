@@ -58,7 +58,19 @@ export type SectionValidationIssue = SchemaProblem &
   Readonly<{
     /** Relative to the stage document: `['prompts', 0, 'variable']`. */
     path: readonly (string | number)[];
+    /**
+     * The innermost protocol object below the stage that the problem is
+     * inside, and where that object was when the problem was found. A list
+     * can be reordered before the next save, so the problem follows the
+     * object's id to wherever it is now (see `setObjectLocator`).
+     */
+    object?: Readonly<{ id: string; path: readonly (string | number)[] }>;
   }>;
+
+/** Where the object holding `id` is in the stage draft now, if anywhere. */
+export type ObjectLocator = (
+  id: string,
+) => readonly (string | number)[] | undefined;
 
 /**
  * One session problem a section has to answer for, and the field that answers.
@@ -194,6 +206,11 @@ function sharedPrefixLength(
   return shared;
 }
 
+const samePath = (
+  a: readonly (string | number)[],
+  b: readonly (string | number)[],
+): boolean => a.length === b.length && sharedPrefixLength(a, b) === a.length;
+
 function sameIssues(
   a: readonly SectionValidationIssue[],
   b: readonly SectionValidationIssue[],
@@ -207,11 +224,34 @@ function sameIssues(
         issue.message === other.message &&
         issue.code === other.code &&
         issue.absent === other.absent &&
-        sharedPrefixLength(issue.path, other.path) === issue.path.length &&
-        issue.path.length === other.path.length
+        samePath(issue.path, other.path) &&
+        issue.object?.id === other.object?.id &&
+        samePath(issue.object?.path ?? [], other.object?.path ?? [])
       );
     })
   );
+}
+
+/**
+ * The issue moved to where its object is now: the object's current path,
+ * followed by the part of the issue's path that was inside the object.
+ * Undefined when the object is no longer in the draft, since a problem with
+ * an object that has been deleted went with it.
+ */
+function relocated(
+  issue: SectionValidationIssue,
+  findObject: ObjectLocator,
+): SectionValidationIssue | undefined {
+  const { object } = issue;
+  if (object === undefined) return issue;
+  const now = findObject(object.id);
+  if (now === undefined) return undefined;
+  if (samePath(now, object.path)) return issue;
+  return {
+    ...issue,
+    path: [...now, ...issue.path.slice(object.path.length)],
+    object: { id: object.id, path: now },
+  };
 }
 
 /**
@@ -234,6 +274,9 @@ export class SectionOutlineStore {
    * can be the one that claims an issue that arrived before it.
    */
   private validationIssues: readonly SectionValidationIssue[] = NO_ISSUES;
+  private locateObject: ObjectLocator | undefined;
+  /** `validationIssues` as `currentIssues` last placed them. */
+  private placedIssues: readonly SectionValidationIssue[] = NO_ISSUES;
   private cachedSnapshot: readonly OutlineSection[] = EMPTY_SECTIONS;
   /** The refusals the last snapshot could pin on no section, as sentences. */
   private cachedUnattributed: readonly string[] = NO_SENTENCES;
@@ -255,10 +298,13 @@ export class SectionOutlineStore {
     // any section registering, being renamed, or changing availability —
     // nothing would bump the version — and a cache keyed on the version alone
     // would keep serving a page that has moved on.
+    const placed = this.placedIssues;
+    const issues = this.currentIssues();
     if (
       this.cachedVersion === this.version &&
       this.sameOrder(ordered) &&
-      this.sameFields(fields)
+      this.sameFields(fields) &&
+      issues === placed
     ) {
       return this.cachedSnapshot;
     }
@@ -267,6 +313,7 @@ export class SectionOutlineStore {
     const { bySection: issuesBySection, unattributed } = this.attributeIssues(
       ordered,
       fields,
+      issues,
     );
     // Identity kept when the sentences have not moved: a host reads this with
     // `useSyncExternalStore`, which re-renders on every change of reference.
@@ -314,7 +361,17 @@ export class SectionOutlineStore {
    * `useSyncExternalStore`.
    */
   getValidationIssues = (): readonly SectionValidationIssue[] =>
-    this.validationIssues;
+    this.currentIssues();
+
+  /**
+   * How the store finds an object in the stage draft as it stands. Issues
+   * carrying an `object` are placed by it each time they are read.
+   */
+  setObjectLocator(locator: ObjectLocator | undefined): void {
+    if (this.locateObject === locator) return;
+    this.locateObject = locator;
+    this.changed();
+  }
 
   registerSection(
     section: Readonly<{ id: string; sectionKey: SectionKey; title: string }>,
@@ -353,7 +410,14 @@ export class SectionOutlineStore {
   revalidate(): void {
     const ordered = this.orderedRecords();
     const fields = ordered.map((record) => fieldsInside(record.element));
-    if (!this.sameOrder(ordered) || !this.sameFields(fields)) this.changed();
+    const placed = this.placedIssues;
+    if (
+      !this.sameOrder(ordered) ||
+      !this.sameFields(fields) ||
+      this.currentIssues() !== placed
+    ) {
+      this.changed();
+    }
   }
 
   setSectionTitle(id: string, title: string): void {
@@ -431,13 +495,14 @@ export class SectionOutlineStore {
   private attributeIssues(
     ordered: readonly SectionRecord[],
     fieldsBySection: readonly (readonly OutlineFieldRegistration[])[],
+    issues: readonly SectionValidationIssue[],
   ): Readonly<{
     bySection: Map<string, OutlineSectionIssue[]>;
     unattributed: string[];
   }> {
     const bySection = new Map<string, OutlineSectionIssue[]>();
     const unattributed: string[] = [];
-    if (this.validationIssues.length === 0) return { bySection, unattributed };
+    if (issues.length === 0) return { bySection, unattributed };
 
     const registered = ordered.flatMap((record, index) =>
       (fieldsBySection[index] ?? []).flatMap((field) => {
@@ -447,7 +512,7 @@ export class SectionOutlineStore {
     );
 
     const saidByField = new Set<string>();
-    for (const issue of this.validationIssues) {
+    for (const issue of issues) {
       let owner: (typeof registered)[number] | undefined;
       let depth = 0;
       for (const field of registered) {
@@ -491,6 +556,26 @@ export class SectionOutlineStore {
       else claimed.push(problem);
     }
     return { bySection, unattributed };
+  }
+
+  /**
+   * The issues with each one carrying an object placed where that object is
+   * now. Kept by identity while the placement has not changed, for
+   * `useSyncExternalStore` and for the snapshot cache.
+   */
+  private currentIssues(): readonly SectionValidationIssue[] {
+    const locator = this.locateObject;
+    const next =
+      locator === undefined
+        ? this.validationIssues
+        : this.validationIssues.flatMap((issue) => {
+            const placed = relocated(issue, locator);
+            return placed === undefined ? [] : [placed];
+          });
+    if (!sameIssues(this.placedIssues, next)) {
+      this.placedIssues = Object.freeze([...next]);
+    }
+    return this.placedIssues;
   }
 
   private sameFields(

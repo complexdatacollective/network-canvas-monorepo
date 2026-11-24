@@ -42,7 +42,12 @@ import {
   stableEventUuid,
 } from '../../platform/analytics.ts';
 import { BrowserLogs } from '../../platform/browser-logs.ts';
-import { baseProtocol } from '../../protocol/__tests__/helpers.ts';
+import {
+  BASE_CODEBOOK_IDS,
+  BASE_PROTOCOL_IDS,
+  baseProtocol,
+  testVariableId,
+} from '../../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../../protocol/store.ts';
 import type { RateLimiter } from '../../rate-limit/limiter.ts';
 import { RATE_LIMITS, type RateLimitScope } from '../../rate-limit/scopes.ts';
@@ -54,7 +59,7 @@ const MAPBOX_KEY = 'pk.participant-test-key';
 const PHOTO_SOURCE = `${'a'.repeat(64)}.png`;
 
 /** The protocol's finish stage, as `baseProtocol` names it. */
-const FINISH_STAGE_ID = 'finish';
+const FINISH_STAGE_ID = BASE_PROTOCOL_IDS.finish;
 
 const interviewProtocol = (
   finishOutcome: FinishOutcome = 'completed',
@@ -161,17 +166,17 @@ const network = (
 ) => ({
   nodes: nodeIds.map((id) => ({
     _uid: id,
-    type: 'person',
-    attributes: { personName: id },
+    type: BASE_CODEBOOK_IDS.person,
+    attributes: { [BASE_CODEBOOK_IDS.personName]: id },
   })),
   edges: edges.map(([from, to]) => ({
     _uid: `${from}-${to}`,
-    type: 'knows',
+    type: BASE_CODEBOOK_IDS.knows,
     from,
     to,
     attributes: {},
   })),
-  ego: { _uid: 'ego', attributes: { age: 41 } },
+  ego: { _uid: 'ego', attributes: { [testVariableId('age')]: 41 } },
 });
 
 const syncInput = (
@@ -604,7 +609,7 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       ).toEqual([{ node_count: 3, edge_count: 1 }]);
       expect(await sessionRow(sessionId)).toMatchObject({
         client_revision: '1',
-        ego_attributes: { age: 41 },
+        ego_attributes: { [testVariableId('age')]: 41 },
       });
 
       const resumed = await opened(sessionToken);
@@ -791,7 +796,10 @@ describe.skipIf(!testDb)('the participant procedures', () => {
     });
 
     it.each([
-      ['a stage that is not a finish stage', { stageId: 'sociogram1' }],
+      [
+        'a stage that is not a finish stage',
+        { stageId: BASE_PROTOCOL_IDS.sociogram },
+      ],
       ['a stage the protocol does not have', { stageId: 'elsewhere' }],
       [
         'an outcome its finish stage does not declare',

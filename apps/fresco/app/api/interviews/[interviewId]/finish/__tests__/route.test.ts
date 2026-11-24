@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
+
 const {
   addEventMock,
   cookieSetMock,
@@ -56,16 +58,20 @@ vi.mock('~/lib/posthog-server', () => ({
 
 import { POST } from '../route';
 
+const INTRO_STAGE_ID = createProtocolObjectId();
+const INELIGIBLE_STAGE_ID = createProtocolObjectId();
+const COMPLETED_STAGE_ID = createProtocolObjectId();
+
 // A stored schema 9 design, which the route parses before it trusts it.
 const STAGES = [
   {
-    id: 'intro',
+    id: INTRO_STAGE_ID,
     type: 'Information',
     label: { en: 'Intro' },
     content: { en: '# Intro' },
   },
   {
-    id: 'finish-ineligible',
+    id: INELIGIBLE_STAGE_ID,
     type: 'FinishSession',
     mode: 'confirmation',
     label: { en: 'Ineligible' },
@@ -79,7 +85,7 @@ const STAGES = [
     outcome: 'ineligible',
   },
   {
-    id: 'finish-completed',
+    id: COMPLETED_STAGE_ID,
     type: 'FinishSession',
     mode: 'confirmation',
     label: { en: 'Done' },
@@ -159,7 +165,7 @@ describe('interview finish route', () => {
     installInterview();
 
     const response = await post({
-      stageId: 'finish-ineligible',
+      stageId: INELIGIBLE_STAGE_ID,
       outcome: 'ineligible',
     });
 
@@ -168,7 +174,7 @@ describe('interview finish route', () => {
       where: { id: 'interview-1' },
       data: {
         finishTime: expect.any(Date),
-        finishStageId: 'finish-ineligible',
+        finishStageId: INELIGIBLE_STAGE_ID,
         finishOutcome: 'ineligible',
       },
     });
@@ -184,7 +190,7 @@ describe('interview finish route', () => {
   it('names the finished interview in the protocol’s limit cookie', async () => {
     installInterview();
 
-    await post({ stageId: 'finish-completed', outcome: 'completed' });
+    await post({ stageId: COMPLETED_STAGE_ID, outcome: 'completed' });
 
     expect(cookieSetMock).toHaveBeenCalledWith(
       'protocol-1',
@@ -196,15 +202,15 @@ describe('interview finish route', () => {
   it.each([
     [
       'an outcome its stage does not declare',
-      { stageId: 'finish-completed', outcome: 'ineligible' },
+      { stageId: COMPLETED_STAGE_ID, outcome: 'ineligible' },
     ],
     [
       'a stage that is not a finish stage',
-      { stageId: 'intro', outcome: 'completed' },
+      { stageId: INTRO_STAGE_ID, outcome: 'completed' },
     ],
     [
       'a stage the protocol does not have',
-      { stageId: 'elsewhere', outcome: 'completed' },
+      { stageId: createProtocolObjectId(), outcome: 'completed' },
     ],
   ])('refuses %s without touching the row', async (_case, body) => {
     installInterview();
@@ -220,9 +226,9 @@ describe('interview finish route', () => {
   it.each([
     ['unparseable JSON', '{'],
     ['an empty object', {}],
-    ['a missing outcome', { stageId: 'finish-completed' }],
+    ['a missing outcome', { stageId: COMPLETED_STAGE_ID }],
     ['a missing stage', { outcome: 'completed' }],
-    ['an unknown outcome', { stageId: 'finish-completed', outcome: 'done' }],
+    ['an unknown outcome', { stageId: COMPLETED_STAGE_ID, outcome: 'done' }],
   ])('refuses %s before reading the interview', async (_case, body) => {
     installInterview();
 
@@ -254,7 +260,7 @@ describe('interview finish route', () => {
               protocol: {
                 ...STORED_PROTOCOL,
                 stages: STAGES.filter(
-                  (stage) => stage.id !== 'finish-ineligible',
+                  (stage) => stage.id !== INELIGIBLE_STAGE_ID,
                 ),
               },
             },
@@ -269,7 +275,7 @@ describe('interview finish route', () => {
       where: { id: 'interview-1' },
       data: {
         finishTime: expect.any(Date),
-        finishStageId: 'finish-completed',
+        finishStageId: COMPLETED_STAGE_ID,
         finishOutcome: 'completed',
       },
     });
@@ -310,7 +316,7 @@ describe('interview finish route', () => {
       installSchema8Interview();
 
       const response = await post({
-        stageId: 'finish-completed',
+        stageId: COMPLETED_STAGE_ID,
         outcome: 'completed',
       });
 
@@ -340,7 +346,7 @@ describe('interview finish route', () => {
     });
 
     const response = await post({
-      stageId: 'finish-completed',
+      stageId: COMPLETED_STAGE_ID,
       outcome: 'completed',
     });
 
@@ -353,7 +359,7 @@ describe('interview finish route', () => {
     findUniqueMock.mockResolvedValue(null);
 
     const response = await post({
-      stageId: 'finish-completed',
+      stageId: COMPLETED_STAGE_ID,
       outcome: 'completed',
     });
 
@@ -366,7 +372,7 @@ describe('interview finish route', () => {
     freezeOnCompletion();
 
     const response = await post({
-      stageId: 'finish-ineligible',
+      stageId: INELIGIBLE_STAGE_ID,
       outcome: 'ineligible',
     });
 
@@ -389,7 +395,7 @@ describe('interview finish route', () => {
     installInterview(new Date('2026-01-01T00:00:00.000Z'));
 
     const response = await post({
-      stageId: 'finish-completed',
+      stageId: COMPLETED_STAGE_ID,
       outcome: 'completed',
     });
 
@@ -397,7 +403,7 @@ describe('interview finish route', () => {
     expect(updateManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          finishStageId: 'finish-completed',
+          finishStageId: COMPLETED_STAGE_ID,
           finishOutcome: 'completed',
         }),
       }),
@@ -409,7 +415,7 @@ describe('interview finish route', () => {
     updateManyMock.mockRejectedValue(new Error('database unavailable'));
 
     const response = await post({
-      stageId: 'finish-completed',
+      stageId: COMPLETED_STAGE_ID,
       outcome: 'completed',
     });
 
@@ -424,7 +430,7 @@ describe('interview finish route', () => {
     installInterview();
 
     const response = await post({
-      stageId: 'finish-completed',
+      stageId: COMPLETED_STAGE_ID,
       outcome: 'completed',
     });
 
@@ -447,7 +453,7 @@ describe('interview finish route', () => {
     updateManyMock
       .mockResolvedValueOnce({ count: 1 })
       .mockResolvedValueOnce({ count: 0 });
-    const body = { stageId: 'finish-completed', outcome: 'completed' };
+    const body = { stageId: COMPLETED_STAGE_ID, outcome: 'completed' };
 
     const [first, second] = await Promise.all([post(body), post(body)]);
 
@@ -468,7 +474,7 @@ describe('interview finish route', () => {
     updateManyMock.mockResolvedValue({ count: 0 });
 
     const response = await post({
-      stageId: 'finish-completed',
+      stageId: COMPLETED_STAGE_ID,
       outcome: 'completed',
     });
 

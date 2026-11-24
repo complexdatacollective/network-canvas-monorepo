@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import {
   mergeEdit,
   NOTHING_STAGED,
@@ -9,19 +10,25 @@ import {
   stageSectionChange,
 } from '../stagedCodebook.ts';
 
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const PLACE = sectionId({ kind: 'codebookNode', typeId: 'place' });
+const NAME = testVariableId('name');
+const AGE = testVariableId('age');
+
+const PERSON = sectionId({
+  kind: 'codebookNode',
+  typeId: testTypeId('person'),
+});
+const PLACE = sectionId({ kind: 'codebookNode', typeId: testTypeId('place') });
 
 const person = (validation?: Record<string, unknown>) => ({
   name: 'Person',
   color: 'node-color-seq-1',
   variables: {
-    name: {
+    [NAME]: {
       name: 'name',
       type: 'text',
       ...(validation === undefined ? {} : { validation }),
     },
-    age: { name: 'age', type: 'number' },
+    [AGE]: { name: 'age', type: 'number' },
   },
 });
 
@@ -36,7 +43,7 @@ describe('mergeEdit', () => {
       name: 'Respondent',
       variables: {
         ...person({ unique: true }).variables,
-        age: { name: 'age', type: 'number', validation: { minValue: 0 } },
+        [AGE]: { name: 'age', type: 'number', validation: { minValue: 0 } },
       },
     };
 
@@ -44,7 +51,7 @@ describe('mergeEdit', () => {
       ...current,
       variables: {
         ...current.variables,
-        name: person({ unique: true, required: true }).variables.name,
+        [NAME]: person({ unique: true, required: true }).variables[NAME],
       },
     });
   });
@@ -82,10 +89,14 @@ describe('mergeEdit', () => {
       ...person(),
       shape: { default: 'circle', dynamic },
     });
-    const base = shaped({ variable: 'age', type: 'discrete', map: [] });
-    const edited = shaped({ variable: 'sex', type: 'discrete', map: ['a'] });
+    const base = shaped({ variable: AGE, type: 'discrete', map: [] });
+    const edited = shaped({
+      variable: testVariableId('sex'),
+      type: 'discrete',
+      map: ['a'],
+    });
     const current = shaped({
-      variable: 'age',
+      variable: AGE,
       type: 'breakpoints',
       map: ['b'],
     });
@@ -96,7 +107,7 @@ describe('mergeEdit', () => {
   it('leaves an attribute deleted by a collaborator deleted, edited or not', () => {
     const base = person();
     const edited = person({ required: true });
-    const { name: _name, ...withoutName } = person().variables;
+    const { [NAME]: _name, ...withoutName } = person().variables;
     const current = { ...person(), variables: withoutName };
 
     expect(mergeEdit(base, edited, current)).toEqual(current);
@@ -105,7 +116,7 @@ describe('mergeEdit', () => {
   it('keeps a collaborator’s removal of something the edit did not touch', () => {
     const base = person({ unique: true });
     const edited = { ...person({ unique: true }), color: 'node-color-seq-4' };
-    const { age: _age, ...withoutAge } = person({ unique: true }).variables;
+    const { [AGE]: _age, ...withoutAge } = person({ unique: true }).variables;
     const current = { ...person({ unique: true }), variables: withoutAge };
 
     expect(mergeEdit(base, edited, current)).toEqual({
@@ -170,7 +181,7 @@ describe('stageSectionChange', () => {
     ...document,
     variables: {
       ...(document.variables as Record<string, unknown>),
-      name: { name: 'name', type: 'text', validation: { required: true } },
+      [NAME]: { name: 'name', type: 'text', validation: { required: true } },
     },
   });
 

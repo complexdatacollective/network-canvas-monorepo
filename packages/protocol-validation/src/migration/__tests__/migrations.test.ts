@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../__tests__/schemaIssues.ts';
+import { withOriginalCodebookKeys } from '../../__tests__/testIds.ts';
 import migrationV1toV2 from '../../schemas/2/migration.ts';
 import migrationV2toV3 from '../../schemas/3/migration.ts';
 import migrationV4toV5 from '../../schemas/5/migration.ts';
@@ -315,9 +316,10 @@ describe('Protocol Migrations', () => {
         stages: [],
       };
 
-      const migrated = migrateProtocol(v3Protocol, undefined, {
-        name: 'Test Protocol',
-      });
+      const migrated = withOriginalCodebookKeys(
+        migrateProtocol(v3Protocol, undefined, { name: 'Test Protocol' }),
+        v3Protocol,
+      );
       expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       const person = migrated.codebook.node?.person;
       expect(person?.name).toBe('My Type');

@@ -12,6 +12,8 @@ import {
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { fixtureTypeId } from '../../testing/protocolFixture.ts';
+import { testTypeId } from '../../testing/testId.ts';
 import type { StagedCodebook } from '../stagedCodebook.ts';
 import {
   readSavedCodebook,
@@ -22,9 +24,15 @@ import {
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const FAMILY = sectionId({ kind: 'codebookNode', typeId: 'family_member' });
-const PLACE = sectionId({ kind: 'codebookNode', typeId: 'place' });
+const PERSON = sectionId({
+  kind: 'codebookNode',
+  typeId: fixtureTypeId('node', 'person'),
+});
+const FAMILY = sectionId({
+  kind: 'codebookNode',
+  typeId: fixtureTypeId('node', 'family member'),
+});
+const PLACE = sectionId({ kind: 'codebookNode', typeId: testTypeId('place') });
 
 const ANA = { sessionId: 'session-2', userId: 'user-2', displayName: 'Ana' };
 

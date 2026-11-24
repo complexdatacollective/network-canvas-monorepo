@@ -4,6 +4,10 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
@@ -15,11 +19,18 @@ import { FAMILY_MEMBER_SECTION } from './pedigreeFixtures.ts';
 
 shimMarkdownEditorMeasurement();
 
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const familyMemberVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'family member' }, name);
+const SEX_ASSIGNED_AT_BIRTH = familyMemberVariable('sexAssignedAtBirth');
+const GENDER_IDENTITY = familyMemberVariable('genderIdentity');
+const IS_EGO = familyMemberVariable('is_ego');
+
 /** The standard sex assigned at birth symbols, for the fixture's options. */
 const SEX_SYMBOLS = {
   default: 'diamond',
   dynamic: {
-    variable: 'sexAssignedAtBirth',
+    variable: SEX_ASSIGNED_AT_BIRTH,
     type: 'discrete',
     map: [
       { value: 'female', shape: 'circle' },
@@ -35,7 +46,7 @@ const SEX_SYMBOLS = {
 const GENDER_SYMBOLS = {
   default: 'diamond',
   dynamic: {
-    variable: 'genderIdentity',
+    variable: GENDER_IDENTITY,
     type: 'discrete',
     map: [
       { value: 'woman', shape: 'circle' },
@@ -81,16 +92,16 @@ const personType = (harness: StageEditorHarness): SectionDoc => {
 
 /** The symbols as the EDITOR shows them: the protocol's, plus the stage's held changes. */
 const shapeOf = (harness: StageEditorHarness): unknown =>
-  harness.editorCodebook().node?.family_member?.shape;
+  harness.editorCodebook().node?.[FAMILY_MEMBER]?.shape;
 
 /** The symbols as the PROTOCOL holds them, which move only when the stage is saved. */
 const savedShapeOf = (harness: StageEditorHarness): unknown =>
-  harness.hostCodebook().node?.family_member?.shape;
+  harness.hostCodebook().node?.[FAMILY_MEMBER]?.shape;
 
 /** The person type's shape, changed from outside the editor. */
 const receiveShape = (harness: StageEditorHarness, shape: unknown): void => {
   harness.receiveCodebookUpdate({
-    node: { family_member: { ...personType(harness), shape } },
+    node: { [FAMILY_MEMBER]: { ...personType(harness), shape } },
   });
 };
 
@@ -279,7 +290,7 @@ describe('the pedigree symbols choice', () => {
       receiveShape(harness, {
         default: 'circle',
         dynamic: {
-          variable: 'is_ego',
+          variable: IS_EGO,
           type: 'discrete',
           map: [{ value: true, shape: 'square' }],
         },
@@ -347,7 +358,7 @@ describe('the pedigree symbols choice', () => {
     const handMade = {
       default: 'circle',
       dynamic: {
-        variable: 'sexAssignedAtBirth',
+        variable: SEX_ASSIGNED_AT_BIRTH,
         type: 'discrete',
         map: [{ value: 'intersex', shape: 'square' }],
       },

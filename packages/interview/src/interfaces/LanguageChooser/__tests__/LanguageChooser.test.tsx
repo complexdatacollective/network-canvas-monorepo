@@ -20,6 +20,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../../__tests__/testIds';
 import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import Shell from '../../../Shell';
 import { suppliedStageText } from '../../../wording/suppliedWording';
@@ -91,7 +92,9 @@ function makePayload({
       network: {
         ego: {
           [entityPrimaryKeyProperty]: 'ego-1',
-          [entityAttributesProperty]: { existing: 'answer' },
+          [entityAttributesProperty]: {
+            [testVariableId('existing')]: 'answer',
+          },
         },
         nodes: [],
         edges: [],
@@ -111,13 +114,13 @@ function makePayload({
       assets: [],
       stages: [
         {
-          id: 'chooser',
+          id: testId('chooser'),
           type: 'LanguageChooser',
           label: { [localization.defaultLocale]: 'Language' },
           title,
         },
         {
-          id: 'after',
+          id: testId('after'),
           type: 'Information',
           label: { [localization.defaultLocale]: 'After' },
           content: { [localization.defaultLocale]: '# After' },
@@ -377,7 +380,7 @@ describe('LanguageChooser', () => {
     await user.click(next);
 
     expect(
-      await screen.findByRole('heading', { name: 'Stage after' }),
+      await screen.findByRole('heading', { name: `Stage ${testId('after')}` }),
     ).toBeInTheDocument();
     expect(liveStore().getState().session.network).toEqual(networkBefore);
   });

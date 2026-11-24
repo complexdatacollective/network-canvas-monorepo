@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
@@ -24,6 +25,10 @@ import { guardState } from '~/hooks/useProtocolNavGuard';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 
 import ProtocolRouteGuard from '../ProtocolRouteGuard';
+
+const STAGE_ID = ProtocolObjectIdSchema.parse(
+  'f1eee6c2-71ec-4db8-8dff-c4fd33182091',
+);
 
 const { mockLocation, mockBrowserNavigate } = vi.hoisted(() => ({
   mockLocation: vi.fn<() => string>(),
@@ -47,7 +52,7 @@ const protocol: CurrentProtocol = {
 };
 
 const stage: Stage = {
-  id: 'stage-1',
+  id: STAGE_ID,
   type: 'Information',
   label: { en: 'A' },
   content: { en: '# A' },
@@ -256,7 +261,7 @@ describe('ProtocolRouteGuard', () => {
   it('keeps a stage editor that was editing operable when the tab is demoted', () => {
     store.dispatch(setActiveProtocol(protocol));
     openDirtyStageDraft();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     // The precondition this test exists to cover: there really is unsaved work
@@ -278,7 +283,7 @@ describe('ProtocolRouteGuard', () => {
   it('keeps that stage editor operable after the draft is undone back to clean', () => {
     store.dispatch(setActiveProtocol(protocol));
     openDirtyStageDraft();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     renderGuard(store);
@@ -300,7 +305,7 @@ describe('ProtocolRouteGuard', () => {
     store.dispatch(setActiveProtocol(protocol));
     store.dispatch(setProtocolLockState('open-elsewhere'));
     openReadOnlyStageEditor();
-    mockLocation.mockReturnValue('/protocol/stage/stage-1');
+    mockLocation.mockReturnValue(`/protocol/stage/${STAGE_ID}`);
 
     renderGuard(store);
 

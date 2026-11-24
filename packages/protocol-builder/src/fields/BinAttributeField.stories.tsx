@@ -8,15 +8,31 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../testing/protocolFixture.ts';
+import { testVariableId } from '../testing/testId.ts';
 import BinAttributeField, {
   type BinAttributeSlot,
 } from './BinAttributeField.tsx';
 
+const PERSON = fixtureTypeId('node', 'person');
+const CONTACT_FREQ = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactFreq',
+);
+const CONTACT_TYPE = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactType',
+);
+
 /** Whose attributes a bin prompt sorts, which the stage's subject decides. */
-const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON_SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 
 /** The codebook section a collaborator's edits below are written to. */
-const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 /** What an Ordinal Bin can draw before the bins stop being readable. */
 const ORDINAL_BIN_LIMIT = 6;
@@ -54,7 +70,7 @@ function TheScale({ committed }: Readonly<{ committed: string | undefined }>) {
   return (
     <BinAttributeField
       slot={SCALE_SLOT}
-      subject={PERSON}
+      subject={PERSON_SUBJECT}
       committed={committed}
       label="Attribute"
       hint="Each of this attribute's values becomes a bin, in the order the attribute lists them."
@@ -72,7 +88,7 @@ function TheBins({ committed }: Readonly<{ committed: string | undefined }>) {
   return (
     <BinAttributeField
       slot={BINS_SLOT}
-      subject={PERSON}
+      subject={PERSON_SUBJECT}
       committed={committed}
       label="Attribute"
       hint="Each of this attribute's values becomes a bin, and dropping someone into a bin records that value for them."
@@ -99,10 +115,10 @@ const meta = {
     },
   },
   args: {
-    stageId: 'ordinal-bin-1',
+    stageId: fixtureStageId('ordinal-bin-1'),
     // What the host stands in for is the row dialog that edits one question.
     sectionTitle: 'The scale',
-    children: <TheScale committed="contactFreq" />,
+    children: <TheScale committed={CONTACT_FREQ} />,
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof FieldStoryHost>;
@@ -172,7 +188,9 @@ export const AnAttributeThatMustBeChosen: Story = {
  * so this host reaches the control's sentence and not that one.
  */
 export const AnAttributeNothingOffers: Story = {
-  args: { children: <TheScale committed="withdrawn_attribute" /> },
+  args: {
+    children: <TheScale committed={testVariableId('withdrawn_attribute')} />,
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -206,7 +224,7 @@ export const MoreBinsThanFit: Story = {
         ...document,
         variables: {
           ...variables,
-          contactFreq: {
+          [CONTACT_FREQ]: {
             name: 'contactFreq',
             type: 'ordinal',
             options: [
@@ -241,9 +259,9 @@ export const MoreBinsThanFit: Story = {
  */
 export const TheOtherBin: Story = {
   args: {
-    stageId: 'categorical-bin-1',
+    stageId: fixtureStageId('categorical-bin-1'),
     sectionTitle: 'The bins',
-    children: <TheBins committed="contactType" />,
+    children: <TheBins committed={CONTACT_TYPE} />,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

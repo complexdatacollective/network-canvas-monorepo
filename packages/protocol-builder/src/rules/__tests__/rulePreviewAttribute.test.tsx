@@ -2,9 +2,15 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { enIntl } from '../../testing/i18n.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { describeRule } from '../ruleDescription.ts';
 import RulePreview from '../RulePreview.tsx';
 import { testCodebook } from './fixtures.ts';
+
+const PERSON = testTypeId('person');
+const AGE = testVariableId('age');
+const MOOD = testVariableId('mood');
+const GONE = testVariableId('gone_from_the_codebook');
 
 /**
  * The attribute in a rule sentence is the builder's own attribute pill.
@@ -20,7 +26,7 @@ const ruleAbout = (attribute: string) => ({
   id: 'rule-1',
   type: 'node',
   options: {
-    type: 'person',
+    type: PERSON,
     attribute,
     operator: 'GREATER_THAN',
     value: 30,
@@ -54,7 +60,7 @@ const attributePart = () => {
 
 describe('the attribute in a rule sentence', () => {
   it('is drawn as the attribute pill, in the accent of its kind of answer', () => {
-    previewOf('age');
+    previewOf(AGE);
     const pill = pillIn(attributePart());
 
     // `--paradise-pink` is the number accent in `AttributePill`'s own table,
@@ -71,7 +77,7 @@ describe('the attribute in a rule sentence', () => {
   });
 
   it('still says in words what kind of answer it is', () => {
-    previewOf('mood');
+    previewOf(MOOD);
 
     expect(screen.getByLabelText('Mood (attribute type: categorical)')).toBe(
       attributePart(),
@@ -79,7 +85,7 @@ describe('the attribute in a rule sentence', () => {
   });
 
   it('wears the destructive accent when the codebook no longer has it', () => {
-    previewOf('gone_from_the_codebook');
+    previewOf(GONE);
     const part = attributePart();
     const pill = pillIn(part);
 
@@ -91,12 +97,12 @@ describe('the attribute in a rule sentence', () => {
     // why the rule cannot be read back.
     expect(part).toHaveAttribute(
       'aria-label',
-      'gone_from_the_codebook (attribute is no longer in the codebook)',
+      `${GONE} (attribute is no longer in the codebook)`,
     );
   });
 
   it('leaves an attribute the codebook still has unmarked', () => {
-    previewOf('age');
+    previewOf(AGE);
 
     expect(pillIn(attributePart())).not.toHaveAttribute(
       'data-attribute-missing',

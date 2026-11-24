@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../../__tests__/suppliedWording.ts';
+import { testId, testVariableId } from '../../../../__tests__/testIds.ts';
 import { findExclusiveVariableConflicts } from '../../../../utils/findExclusiveVariableConflicts.ts';
 import { localized, localizedOptions } from '../../../../utils/test-utils.ts';
 import {
@@ -25,7 +26,7 @@ import {
 } from '../family-pedigree.ts';
 
 const base = {
-  id: 'fp1',
+  id: testId('fp1'),
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
   wording: familyPedigreeWordingIn(),
@@ -160,7 +161,7 @@ describe('familyPedigreeStage', () => {
         form: {
           fields: [
             {
-              id: 'field-1',
+              id: testId('field-1'),
               variable: 'age',
               prompt: localized('How old are they?'),
             },
@@ -432,12 +433,12 @@ describe('familyPedigreeStage', () => {
         ...base,
         nominationPrompts: [
           {
-            id: 'heart',
+            id: testId('heart'),
             text: localized('Who has had heart disease?'),
             attribute: 'hd',
           },
           {
-            id: 'ovarian',
+            id: testId('ovarian'),
             text: localized('Who has had ovarian cancer?'),
             attribute: 'oc',
             onlyForSexAssignedAtBirth: 'female',
@@ -448,7 +449,13 @@ describe('familyPedigreeStage', () => {
   });
 
   it('rejects nomination prompts that reuse an id, or the family prompt id', () => {
-    const prompt = { id: 'heart', text: localized('Who?'), attribute: 'hd' };
+    const prompt = {
+      id: testId('heart'),
+      text: localized('Who?'),
+      attribute: 'hd',
+    };
+    const duplicate = (other: string) =>
+      `The id "${testId('heart')}" is also used in this stage at ${other}. Every id in a protocol must be unique.`;
     expect(
       parseIssues(
         familyPedigreeStage.safeParse({
@@ -458,9 +465,14 @@ describe('familyPedigreeStage', () => {
       ),
     ).toEqual([
       {
-        path: 'nominationPrompts',
+        path: 'nominationPrompts.0.id',
         code: 'custom',
-        message: 'Nomination prompts contain duplicate ID "heart"',
+        message: duplicate('nominationPrompts.1.id'),
+      },
+      {
+        path: 'nominationPrompts.1.id',
+        code: 'custom',
+        message: duplicate('nominationPrompts.0.id'),
       },
     ]);
     expect(
@@ -472,14 +484,7 @@ describe('familyPedigreeStage', () => {
           ],
         }),
       ),
-    ).toEqual([
-      {
-        path: 'nominationPrompts.0.id',
-        code: 'custom',
-        message:
-          'Nomination prompt id "pedigree" is reserved for building the family',
-      },
-    ]);
+    ).toEqual([{ path: 'nominationPrompts.0.id', code: 'invalid_format' }]);
   });
 
   it('rejects an empty list of nomination prompts, or another limit', () => {
@@ -494,7 +499,7 @@ describe('familyPedigreeStage', () => {
           ...base,
           nominationPrompts: [
             {
-              id: 'heart',
+              id: testId('heart'),
               text: localized('Who?'),
               attribute: 'hd',
               onlyForSexAssignedAtBirth: 'intersex',
@@ -579,7 +584,7 @@ describe('FamilyPedigree in a whole protocol', () => {
           ...protocolWith({
             ...base,
             nominationPrompts: [
-              { id: 'heart', text: localized('Who?'), attribute },
+              { id: testId('heart'), text: localized('Who?'), attribute },
             ],
           }),
         }),
@@ -590,7 +595,7 @@ describe('FamilyPedigree in a whole protocol', () => {
       {
         path: 'stages.0.nominationPrompts.0.attribute',
         code: 'custom',
-        message: 'The attribute "relText" must be of type boolean',
+        message: `The attribute "${testVariableId('relText')}" must be of type boolean`,
       },
     ]);
     // Nor can it be the attribute marking the participant.
@@ -620,7 +625,11 @@ describe('FamilyPedigree in a whole protocol', () => {
             ...base,
             form: {
               fields: [
-                { id: 'field-1', variable, prompt: localized('Tell us') },
+                {
+                  id: testId('field-1'),
+                  variable,
+                  prompt: localized('Tell us'),
+                },
               ],
             },
           }),
@@ -632,8 +641,7 @@ describe('FamilyPedigree in a whole protocol', () => {
       {
         path: 'stages.0.form.fields.0.variable',
         code: 'custom',
-        message:
-          'Form field attribute "hd" must define a component (input control) to be rendered as a form field.',
+        message: `Form field attribute "${testVariableId('hd')}" must define a component (input control) to be rendered as a form field.`,
       },
     ]);
   });
@@ -659,10 +667,12 @@ describe('FamilyPedigree in a whole protocol', () => {
         protocolWith({
           ...base,
           nominationPrompts: [
-            { id: 'heart', text: localized('Who?'), attribute: 'hd' },
+            { id: testId('heart'), text: localized('Who?'), attribute: 'hd' },
           ],
           form: {
-            fields: [{ id: 'field-1', variable, prompt: localized('Tell us') }],
+            fields: [
+              { id: testId('field-1'), variable, prompt: localized('Tell us') },
+            ],
           },
         }),
         ['stages', 0, 'form', 'fields', 0, 'variable'],
@@ -702,8 +712,8 @@ describe('FamilyPedigree in a whole protocol', () => {
     const protocol = protocolWith({
       ...base,
       nominationPrompts: [
-        { id: 'heart', text: localized('Who?'), attribute: 'hd' },
-        { id: 'again', text: localized('And who?'), attribute: 'hd' },
+        { id: testId('heart'), text: localized('Who?'), attribute: 'hd' },
+        { id: testId('again'), text: localized('And who?'), attribute: 'hd' },
       ],
     });
     expect(
@@ -766,7 +776,7 @@ describe('FamilyPedigree in a whole protocol', () => {
         {
           path: 'stages.0.nodeConfiguration.relationshipToParticipantAttribute',
           code: 'custom',
-          message: 'The attribute "relText" must be of type categorical',
+          message: `The attribute "${testVariableId('relText')}" must be of type categorical`,
         },
       ]);
     });
@@ -775,7 +785,11 @@ describe('FamilyPedigree in a whole protocol', () => {
       const asField = withRelationship('rel', {
         form: {
           fields: [
-            { id: 'field-1', variable: 'rel', prompt: localized('Who?') },
+            {
+              id: testId('field-1'),
+              variable: 'rel',
+              prompt: localized('Who?'),
+            },
           ],
         },
       });
@@ -809,7 +823,7 @@ describe('FamilyPedigree in a whole protocol', () => {
   describe('gender identity options managed by one stage', () => {
     const second = {
       ...base,
-      id: 'fp2',
+      id: testId('fp2'),
       label: localized('Family again'),
     };
     const twoStages = (secondStage: Record<string, unknown>) => ({
@@ -850,7 +864,7 @@ describe('FamilyPedigree in a whole protocol', () => {
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: testId('field-1'),
             variable: 'isEgo',
             prompt: localized('Are you the participant?'),
           },

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { loadProtocolGallery } from '~/lib/protocolGallery';
@@ -17,6 +18,19 @@ const assetDirectory = join(
   'protocols',
   'protocol-gallery',
 );
+
+const sourceStagesSchema = z.object({
+  stages: z.array(
+    z.object({ type: z.string(), introductionPanel: z.unknown().optional() }),
+  ),
+});
+
+async function readSourceStages(bytes: Uint8Array) {
+  const zip = await JSZip.loadAsync(bytes);
+  const json = await zip.file('protocol.json')?.async('string');
+  if (json === undefined) throw new Error('archive has no protocol.json');
+  return sourceStagesSchema.parse(JSON.parse(json)).stages;
+}
 
 describe('installPreviewProtocol', () => {
   it('installs every shipped gallery protocol at the Shell schema version', async () => {
@@ -41,21 +55,20 @@ describe('installPreviewProtocol', () => {
         );
         // A gallery protocol older than schema 9 gains the finish stage the
         // v8 → v9 migration appends, and an Information stage before each
-        // stage other than an Ego Form that had an introduction panel, named
-        // after that stage.
+        // stage other than an Ego Form that had an introduction panel.
         const downloadTypes = download.stages.map(({ type }) => type);
-        const migrated = install.protocol.stages;
-        const authored = migrated.filter(
-          (stage, index) =>
-            !(
-              stage.type === 'Information' &&
-              stage.id === `${migrated[index + 1]?.id}-introduction`
-            ),
+        const sourceStages = await readSourceStages(bytes);
+        expect(sourceStages.map(({ type }) => type)).toEqual(downloadTypes);
+        const expectedTypes = sourceStages.flatMap(
+          ({ type, introductionPanel }) =>
+            introductionPanel !== undefined && type !== 'EgoForm'
+              ? ['Information', type]
+              : [type],
         );
-        expect(authored.map(({ type }) => type)).toEqual(
-          downloadTypes.at(-1) === 'FinishSession'
-            ? downloadTypes
-            : [...downloadTypes, 'FinishSession'],
+        expect(install.protocol.stages.map(({ type }) => type)).toEqual(
+          expectedTypes.at(-1) === 'FinishSession'
+            ? expectedTypes
+            : [...expectedTypes, 'FinishSession'],
         );
         expect(install.protocol.hash).toMatch(/\S/);
         expect(install.protocol.assets.map(({ assetId }) => assetId)).toEqual(

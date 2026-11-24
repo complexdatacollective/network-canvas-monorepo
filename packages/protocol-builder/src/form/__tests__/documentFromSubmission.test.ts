@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { documentFromSubmission } from '../documentFromSubmission.ts';
+
+const FAMILY_MEMBER = testTypeId('family_member');
+const FM_NAME = testVariableId('fm_name');
+const FM_AGE = testVariableId('fm_age');
 
 describe('documentFromSubmission', () => {
   it('keeps values the editor never rendered', () => {
@@ -213,11 +218,11 @@ describe('documentFromSubmission', () => {
   it('leaves the rest of a key alone when a section owns one path inside it', () => {
     const draft = documentFromSubmission({
       currentFields: {
-        nodeConfig: { type: 'family_member', form: [{ variable: 'fm_name' }] },
+        nodeConfig: { type: FAMILY_MEMBER, form: [{ variable: FM_NAME }] },
       },
       // What the form assembles when the only section pointed inside
       // `nodeConfig` is the one owning the form.
-      submittedValues: { nodeConfig: { form: [{ variable: 'fm_age' }] } },
+      submittedValues: { nodeConfig: { form: [{ variable: FM_AGE }] } },
       mountedPaths: [['nodeConfig', 'form']],
       dormantFields: [],
     });
@@ -226,8 +231,8 @@ describe('documentFromSubmission', () => {
     // would leave the pedigree with no node type — the same loss as deleting a
     // top-level key no section renders, one level down.
     expect(draft.nodeConfig).toEqual({
-      type: 'family_member',
-      form: [{ variable: 'fm_age' }],
+      type: FAMILY_MEMBER,
+      form: [{ variable: FM_AGE }],
     });
   });
 

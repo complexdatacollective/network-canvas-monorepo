@@ -1,5 +1,3 @@
-import { v1 as uuid } from 'uuid';
-
 import {
   interfaceTextWithUpdates,
   withInterfaceText,
@@ -10,6 +8,7 @@ import {
   type StagedCodebook,
 } from '@codaco/protocol-builder/state/stagedCodebook';
 import {
+  createProtocolObjectId,
   type CurrentProtocol,
   type InterfaceTextUpdate,
   type Stage,
@@ -51,7 +50,9 @@ export function buildProtocolWithStage(
   const prunedStage = prune(stage);
 
   // For new stages, generate a temp ID for validation/preview
-  const stageWithId = stageId ? prunedStage : { ...prunedStage, id: uuid() };
+  const stageWithId = stageId
+    ? prunedStage
+    : { ...prunedStage, id: createProtocolObjectId() };
   // Where a save would put it: a new stage never lands after the finish stage.
   const insertAt = creationIndex(protocol.stages, prunedStage, insertAtIndex);
 

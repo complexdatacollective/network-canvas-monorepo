@@ -23,7 +23,9 @@ import {
   encryptedVariables,
   encryptionFor,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   NODE_TYPE,
+  AGE_VARIABLE,
 } from './encryptionFixtures';
 
 afterEach(() => {
@@ -44,7 +46,7 @@ function addPerson(store: Store, name: string) {
   return store.dispatch(
     addNode({
       type: NODE_TYPE,
-      attributeData: { name },
+      attributeData: { [NAME_VARIABLE]: name },
       useEncryption: true,
       currentStep: 0,
     }),
@@ -125,7 +127,7 @@ describe('unlocking an interview', () => {
     const { key } = await encryptionFor('pw', 'another-session');
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(
-        { name: 'Alice' },
+        { [NAME_VARIABLE]: 'Alice' },
         encryptedVariables,
         key,
         'n1',
@@ -144,10 +146,10 @@ describe('unlocking an interview', () => {
 
   it('accepts the right passphrase when one stored answer is damaged', async () => {
     const damaged = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const name = damaged[entityAttributesProperty].name;
+    const name = damaged[entityAttributesProperty][NAME_VARIABLE];
     if (!Array.isArray(name)) throw new Error('expected a ciphertext');
     const [first = 0, ...rest] = name as number[];
-    damaged[entityAttributesProperty].name = [first ^ 1, ...rest];
+    damaged[entityAttributesProperty][NAME_VARIABLE] = [first ^ 1, ...rest];
     const intact = await makeEncryptedPerson('n2', 'Bob', 'pw');
     const store = createEncryptionStore([damaged, intact]);
 
@@ -184,7 +186,7 @@ describe('unlocking an interview', () => {
     await store.dispatch(
       updateNode({
         nodeId: alice?.[entityPrimaryKeyProperty] ?? '',
-        attributePatch: { set: { name: 'Alicia' }, unset: [] },
+        attributePatch: { set: { [NAME_VARIABLE]: 'Alicia' }, unset: [] },
         currentStep: 0,
       }),
     );
@@ -222,11 +224,13 @@ describe('unlocking an interview', () => {
     // answer rather than passing on a network with no one in it.
     const storedAlice = persisted?.network.nodes[0];
     expect(persisted?.network.nodes).toHaveLength(1);
-    expect(storedAlice?.[entityAttributesProperty].name).toEqual(
+    expect(storedAlice?.[entityAttributesProperty][NAME_VARIABLE]).toEqual(
       expect.arrayContaining([expect.any(Number)]),
     );
     expect(
-      Object.keys(storedAlice?.[entitySecureAttributesMeta]?.name ?? {}),
+      Object.keys(
+        storedAlice?.[entitySecureAttributesMeta]?.[NAME_VARIABLE] ?? {},
+      ),
     ).toEqual(['iv']);
     expect(cryptoKeysIn(synced)).toEqual([]);
     expect(JSON.stringify(synced)).not.toContain('DO NOT PERSIST');
@@ -258,7 +262,7 @@ describe('unlocking an interview', () => {
     await store.dispatch(
       updateNode({
         nodeId: 'n1',
-        attributePatch: { set: { name: 'Bob' }, unset: [] },
+        attributePatch: { set: { [NAME_VARIABLE]: 'Bob' }, unset: [] },
         currentStep: 0,
       }),
     );
@@ -275,14 +279,22 @@ describe('an interview with answers in the schema 8 format', () => {
     const legacy: NcNode = {
       [entityPrimaryKeyProperty]: 'legacy-1',
       type: NODE_TYPE,
-      [entityAttributesProperty]: { name: [1, 2, 3, 4], age: 40 },
+      [entityAttributesProperty]: {
+        [NAME_VARIABLE]: [1, 2, 3, 4],
+        [AGE_VARIABLE]: 40,
+      },
       [entitySecureAttributesMeta]: {
-        name: { iv: Array.from({ length: 12 }, () => 7), salt: [1, 2, 3] },
+        [NAME_VARIABLE]: {
+          iv: Array.from({ length: 12 }, () => 7),
+          salt: [1, 2, 3],
+        },
       },
     };
     const store = createEncryptionStore([legacy]);
 
-    expect(readEncryptedAttribute(legacy, 'name', encryptedVariables)).toEqual({
+    expect(
+      readEncryptedAttribute(legacy, NAME_VARIABLE, encryptedVariables),
+    ).toEqual({
       status: 'unreadable',
       reason: 'legacy-format',
     });
@@ -301,12 +313,12 @@ describe('an interview with answers in the schema 8 format', () => {
       .session.network.nodes.find(
         (node) => node[entityPrimaryKeyProperty] !== 'legacy-1',
       );
-    const secure = added?.[entitySecureAttributesMeta]?.name;
+    const secure = added?.[entitySecureAttributesMeta]?.[NAME_VARIABLE];
     expect(secure && Object.keys(secure)).toEqual(['iv']);
 
     const scope = getDecryptionScope(store.getState);
     const stored = added
-      ? readEncryptedAttribute(added, 'name', encryptedVariables)
+      ? readEncryptedAttribute(added, NAME_VARIABLE, encryptedVariables)
       : undefined;
     if (!scope || stored?.status !== 'encrypted') {
       throw new Error('expected the new answer to be encrypted');

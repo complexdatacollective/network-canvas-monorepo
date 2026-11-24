@@ -4,6 +4,10 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import {
+  fixtureStageId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { nameGeneratorQuickAddStageEditor } from './NameGeneratorQuickAddStageEditor.ts';
 
@@ -11,7 +15,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Name Generator (quick add)',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'name-generator-quick-add-1',
+    stageId: fixtureStageId('name-generator-quick-add-1'),
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
@@ -80,7 +84,9 @@ export const ChoosingTheAttribute: Story = {
     // identical above.
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
-    ).toHaveTextContent('"quickAdd": "relationship_to_ego"');
+    ).toHaveTextContent(
+      `"quickAdd": "${fixtureVariableId({ entity: 'node', typeName: 'person' }, 'relationship_to_ego')}"`,
+    );
   },
 };
 
@@ -122,7 +128,9 @@ export const RulesForTheAttribute: Story = {
     const committed = canvas.getByRole('region', {
       name: 'What the host was asked to commit',
     });
-    await expect(committed).toHaveTextContent('"quickAdd": "name"');
+    await expect(committed).toHaveTextContent(
+      `"quickAdd": "${fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name')}"`,
+    );
     await expect(committed).not.toHaveTextContent('validation');
   },
 };

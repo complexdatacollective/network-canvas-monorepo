@@ -4,8 +4,6 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import developmentProtocol from '@codaco/protocols/development';
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
@@ -13,6 +11,12 @@ import { getProtocol } from '~/selectors/protocol';
 // The architect test setup mocks `useDialog` globally; this suite is about
 // what the REAL dialog does with a rejected `onConfirm`.
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
+
+import {
+  templateTypeId,
+  templateVariableId,
+} from '~/templates/__tests__/templateCodebookIds';
+import { developmentProtocol } from '~/templates/development-protocol';
 
 import Variables from '../Variables';
 
@@ -31,9 +35,13 @@ import Variables from '../Variables';
  * the store says the variable is used — that is exactly the state driven here.
  */
 
-const PERSON = 'person_node_type';
+const PERSON = templateTypeId(developmentProtocol, 'node', 'person');
 // person.last_name — in use in the development protocol via prompt sort keys.
-const LAST_NAME = '0ff25001-a2b8-46de-82a9-53143aa00d10';
+const LAST_NAME = templateVariableId(
+  developmentProtocol,
+  { entity: 'node', typeName: 'person' },
+  'last_name',
+);
 
 const makeStore = () => {
   const store = configureStore({
@@ -42,9 +50,7 @@ const makeStore = () => {
       getDefault({ serializableCheck: false, immutableCheck: false }),
   });
   store.dispatch(
-    protocolActions.setActiveProtocol(
-      structuredClone(developmentProtocol) as unknown as CurrentProtocol,
-    ),
+    protocolActions.setActiveProtocol(structuredClone(developmentProtocol)),
   );
   return store;
 };

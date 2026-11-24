@@ -396,7 +396,7 @@ const protocolDocument = () => ({
           form: {
             fields: [
               {
-                id: 'field-1',
+                id: 'knows-field-1',
                 variable: 'note',
                 component: 'Text',
                 label: localized('Anything to add?'),

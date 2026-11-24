@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { friendshipDesign } from '../__fixtures__/example.ts';
 import { buildProtocol } from '../build.ts';
+import { sketchStageId } from '../objectIds.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
 type Stage = { id: string; type: string; content?: Record<string, string> };
@@ -28,7 +29,7 @@ const compiled = async (title: string, text: string) => {
     { now: NOW },
   );
   const stage = (result.protocol.stages as unknown as Stage[]).find(
-    (s) => s.id === 'welcome',
+    (s) => s.id === sketchStageId('welcome'),
   );
   return { result, content: stage?.content };
 };

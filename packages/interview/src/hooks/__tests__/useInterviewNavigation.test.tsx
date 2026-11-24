@@ -10,6 +10,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { createWritesInFlightMiddleware } from '../../store/middleware/writesInFlight';
 import protocol from '../../store/modules/protocol';
@@ -17,6 +18,8 @@ import session, { updateEgo, updatePrompt } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { WritesInFlightProvider } from '../../store/WritesInFlightContext';
 import useInterviewNavigation from '../useInterviewNavigation';
+
+const AGREES = testVariableId('agrees');
 
 type TestStage = {
   id: string;
@@ -57,10 +60,10 @@ const skipWhenDeclined = (
     join: 'AND',
     rules: [
       {
-        id: 'does-not-agree',
+        id: testId('does-not-agree'),
         type: 'ego',
         options: {
-          attribute: asEntityAttributeReference('agrees'),
+          attribute: asEntityAttributeReference(AGREES),
           operator: 'EXACTLY',
           value: false,
         },
@@ -92,7 +95,7 @@ function makeStore(stages: TestStage[], extraMiddleware: Middleware[] = []) {
           edge: {},
           ego: {
             variables: {
-              agrees: { name: 'Agrees', type: 'boolean' },
+              [AGREES]: { name: 'Agrees', type: 'boolean' },
             },
           },
         },
@@ -199,7 +202,7 @@ function renderNavigation(
           edge: {},
           ego: {
             variables: {
-              agrees: { name: 'Agrees', type: 'boolean' },
+              [AGREES]: { name: 'Agrees', type: 'boolean' },
             },
           },
         },
@@ -341,7 +344,9 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
+        await store.dispatch(
+          updateEgo({ set: { [AGREES]: false }, unset: [] }),
+        );
         return true;
       });
     });
@@ -365,7 +370,9 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
+        await store.dispatch(
+          updateEgo({ set: { [AGREES]: false }, unset: [] }),
+        );
         return true;
       });
     });
@@ -404,7 +411,9 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
+        await store.dispatch(
+          updateEgo({ set: { [AGREES]: false }, unset: [] }),
+        );
         return true;
       });
     });
@@ -416,7 +425,7 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: true }, unset: [] }));
+        await store.dispatch(updateEgo({ set: { [AGREES]: true }, unset: [] }));
         return true;
       });
     });
@@ -436,7 +445,9 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
+        await store.dispatch(
+          updateEgo({ set: { [AGREES]: false }, unset: [] }),
+        );
         return true;
       });
     });
@@ -841,7 +852,7 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
 });
 
 describe('useInterviewNavigation waiting for writes begun on the stage', () => {
-  const declined = { set: { agrees: false }, unset: [] };
+  const declined = { set: { [AGREES]: false }, unset: [] };
   // Lets everything already queued run, so a navigation that did not wait
   // would have finished.
   const queuedWorkRuns = () =>

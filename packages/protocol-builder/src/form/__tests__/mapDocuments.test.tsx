@@ -11,6 +11,7 @@ import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import type { StageFormDraft } from '../../stageDocument.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 import {
   type StageEditorFormContextValue,
   useStageEditorForm,
@@ -63,7 +64,11 @@ function renderEditor(readOnly = false) {
   }
 
   const harness = renderStageEditor({
-    stage: { type: 'Information', fields: initialFields },
+    stage: {
+      id: testId('map-documents-stage'),
+      type: 'Information',
+      fields: initialFields,
+    },
     localization: { defaultLocale: 'en', locales: ['en'] },
     ...(readOnly ? { readOnly: true } : {}),
     sections: (

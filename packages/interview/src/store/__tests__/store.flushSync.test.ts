@@ -3,11 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../__tests__/testIds';
 import type { InterviewPayload } from '../../contract/types';
 import { updateEgo } from '../modules/session';
 import { store as createStore } from '../store';
 
-const patch = { set: { agrees: true }, unset: [] };
+const AGREES = testVariableId('agrees');
+
+const patch = { set: { [AGREES]: true }, unset: [] };
 
 function makeInterview() {
   const payload: InterviewPayload = {
@@ -35,7 +38,7 @@ function makeInterview() {
       codebook: {
         ego: {
           variables: {
-            agrees: { name: 'Agrees', type: 'boolean' },
+            [AGREES]: { name: 'Agrees', type: 'boolean' },
           },
         },
       },
@@ -75,7 +78,7 @@ describe('store flushSync', () => {
       expect.objectContaining({
         network: expect.objectContaining({
           ego: expect.objectContaining({
-            [entityAttributesProperty]: { agrees: true },
+            [entityAttributesProperty]: { [AGREES]: true },
           }),
         }),
       }),
@@ -98,7 +101,7 @@ describe('store flushSync', () => {
       expect.objectContaining({
         network: expect.objectContaining({
           ego: expect.objectContaining({
-            [entityAttributesProperty]: { agrees: true },
+            [entityAttributesProperty]: { [AGREES]: true },
           }),
         }),
       }),

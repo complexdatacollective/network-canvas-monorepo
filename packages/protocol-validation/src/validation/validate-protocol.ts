@@ -6,10 +6,13 @@ import { labelCollisionIssues } from '../localization/labelCollisions.ts';
 import { findBuiltInWordingProblems } from '../schemas/9/built-in-wording.ts';
 import { findMissingFallbackLanguage } from '../schemas/9/fallback-language.ts';
 import { findFinishStageTextProblems } from '../schemas/9/finish-stage-text.ts';
+import type { ProtocolObjectId } from '../schemas/9/protocol-object-id.ts';
+import { ProtocolStructureSchema } from '../schemas/9/protocol-structure.ts';
 import {
   type VersionedProtocol,
   VersionedProtocolSchema,
 } from '../schemas/index.ts';
+import { withEnclosingObjectIds } from '../utils/protocolObjectIds.ts';
 import { findPrototypeCodebookKeys } from './prototypeCodebookKeys.ts';
 
 export type ProtocolValidationIssue = {
@@ -25,6 +28,13 @@ export type ProtocolValidationIssue = {
    * stage name's length rule refuses (`STAGE_LABEL_TOO_LONG`).
    */
   params?: Readonly<Record<string, unknown>>;
+  /**
+   * The id of the nearest object holding the failing value that has one of
+   * its own (see `protocolObjectId`), for a schema 9 protocol. A host can
+   * attach the issue to that object, which an edit does not move the way it
+   * moves a path.
+   */
+  objectId?: ProtocolObjectId;
 };
 
 /** Zod's issues as validation issues, each with the `params` it carries. */
@@ -43,6 +53,20 @@ export const toProtocolValidationIssues = (
       ? { params: issue.params }
       : {}),
   }));
+
+const isSchema9Document = (value: unknown): boolean =>
+  typeof value === 'object' &&
+  value !== null &&
+  'schemaVersion' in value &&
+  value.schemaVersion === 9;
+
+const withObjectIds = (
+  protocol: unknown,
+  issues: ProtocolValidationIssue[],
+): ProtocolValidationIssue[] =>
+  isSchema9Document(protocol)
+    ? withEnclosingObjectIds(ProtocolStructureSchema, protocol, issues)
+    : issues;
 
 /** Single-string rendering of validation issues for dialogs, CLI output, and logs. */
 export const formatProtocolValidationIssues = (
@@ -214,10 +238,9 @@ const validateProtocol = async (
 
     return {
       success: false,
-      error: new ProtocolValidationError([
-        ...prototypeKeyIssues,
-        ...schemaIssues,
-      ]),
+      error: new ProtocolValidationError(
+        withObjectIds(protocol, [...prototypeKeyIssues, ...schemaIssues]),
+      ),
     };
   } catch (e) {
     const error = ensureError(e);

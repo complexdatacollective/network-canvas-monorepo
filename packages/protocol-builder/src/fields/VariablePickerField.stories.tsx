@@ -13,10 +13,21 @@ import {
 } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../testing/protocolFixture.ts';
 import { variableNameScope } from './variableNameRules.ts';
 import VariablePickerField from './VariablePickerField.tsx';
 
-const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON = fixtureTypeId('node', 'person');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
+
+const PERSON_SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 
 const FIELD_LABEL = 'Attribute this question records';
 
@@ -57,13 +68,13 @@ function AttributePicker({
   canCreate = false,
   readOnly = false,
 }: Readonly<{ canCreate?: boolean; readOnly?: boolean }>) {
-  const options = useAttributeOptions(PERSON);
+  const options = useAttributeOptions(PERSON_SUBJECT);
   const protocolContext = useProtocolContext();
   const nameScope = useMemo(
     () =>
       variableNameScope(
-        PERSON.entity,
-        variablesForSubject(protocolContext, PERSON),
+        PERSON_SUBJECT.entity,
+        variablesForSubject(protocolContext, PERSON_SUBJECT),
       ),
     [protocolContext],
   );
@@ -125,7 +136,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     sectionTitle: 'What this question records',
     children: <AttributePicker />,
   },
@@ -145,7 +156,10 @@ export const Chosen: Story = {};
 export const NothingChosen: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('family-pedigree-1'),
+      });
       const { document: stageDocument } = host.store.read(stage);
       const nodeConfiguration =
         typeof stageDocument.nodeConfiguration === 'object' &&
@@ -195,7 +209,10 @@ export const HeldBySomebodyElse: Story = {
 export const Unanswered: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('family-pedigree-1'),
+      });
       const { document: stageDocument } = host.store.read(stage);
       const nodeConfiguration =
         typeof stageDocument.nodeConfiguration === 'object' &&
@@ -320,7 +337,10 @@ export const ANameThatCannotBeUsed: Story = {
 export const AChoiceThatIsRuledOut: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('family-pedigree-1'),
+      });
       const { document: stageDocument } = host.store.read(stage);
       const nodeConfiguration =
         typeof stageDocument.nodeConfiguration === 'object' &&
@@ -329,7 +349,7 @@ export const AChoiceThatIsRuledOut: Story = {
           : {};
       host.store.applyAsCollaborator(stage, {
         ...stageDocument,
-        nodeConfiguration: { ...nodeConfiguration, egoAttribute: 'layout' },
+        nodeConfiguration: { ...nodeConfiguration, egoAttribute: LAYOUT },
       });
     },
   },
@@ -353,7 +373,10 @@ export const AChoiceThatIsRuledOut: Story = {
 export const AChoiceNothingOffers: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'family-pedigree-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('family-pedigree-1'),
+      });
       const { document: stageDocument } = host.store.read(stage);
       const nodeConfiguration =
         typeof stageDocument.nodeConfiguration === 'object' &&

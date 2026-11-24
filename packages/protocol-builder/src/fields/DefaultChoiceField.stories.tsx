@@ -7,6 +7,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import { familyPedigreeMessages as messages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import DefaultChoiceField from './DefaultChoiceField.tsx';
 
 /** Where a Family Pedigree keeps the words used for family members. */
@@ -51,7 +52,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     sectionTitle: 'Wording',
     children: <Wording />,
   },

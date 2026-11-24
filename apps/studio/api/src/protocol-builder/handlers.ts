@@ -29,6 +29,7 @@ import {
   SectionsLocked,
 } from '@codaco/protocol-builder-core/contract/errors';
 import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import { createEntityTypeId } from '@codaco/protocol-validation';
 import {
   sectionId as makeSectionId,
   parseSectionId,
@@ -563,7 +564,7 @@ export const ProtocolBuilderHandlers: Layer.Layer<
                       promoted: planned.data.promoted,
                       staged: promote,
                     }),
-                mintId: randomUUID,
+                mintId: kind === 'stage' ? randomUUID : createEntityTypeId,
               }),
             );
             yield* events.publish(session, result.events);

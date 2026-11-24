@@ -11,6 +11,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { readEncryptedAttribute } from '../decryptionScope';
@@ -18,10 +19,15 @@ import { useDecryptedNodes } from '../useDecryptedNodes';
 import { useProtectedFormValues } from '../useProtectedFormValues';
 import {
   createEncryptionStore,
+  AGE_VARIABLE,
   makeEncryptedPerson,
+  NAME_VARIABLE,
+  NICKNAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from './encryptionFixtures';
+
+const PETS_VARIABLE = testVariableId('pets');
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -30,14 +36,14 @@ afterEach(() => {
 // The variables as a protocol re-imported without its encryption declares
 // them: the name the interview stored encrypted is no longer marked.
 const unmarkedVariables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text' },
-  nickname: {
+  [NAME_VARIABLE]: { name: 'name', type: 'text', component: 'Text' },
+  [NICKNAME_VARIABLE]: {
     name: 'nickname',
     type: 'text',
     component: 'Text',
   },
-  age: { name: 'age', type: 'number', component: 'Number' },
-  pets: {
+  [AGE_VARIABLE]: { name: 'age', type: 'number', component: 'Number' },
+  [PETS_VARIABLE]: {
     name: 'pets',
     type: 'categorical',
     component: 'CheckboxGroup',
@@ -74,16 +80,21 @@ describe('a value stored encrypted under a variable the codebook does not mark',
       ...alice,
       [entityAttributesProperty]: {
         ...alice[entityAttributesProperty],
-        pets: [1, 2],
+        [PETS_VARIABLE]: [1, 2],
       },
     };
 
-    expect(readEncryptedAttribute(node, 'name', unmarkedVariables)).toEqual({
+    expect(
+      readEncryptedAttribute(node, NAME_VARIABLE, unmarkedVariables),
+    ).toEqual({
       status: 'encrypted',
-      value: expect.objectContaining({ nodeId: 'n1', variableId: 'name' }),
+      value: expect.objectContaining({
+        nodeId: 'n1',
+        variableId: NAME_VARIABLE,
+      }),
     });
     expect(
-      readEncryptedAttribute(node, 'pets', unmarkedVariables),
+      readEncryptedAttribute(node, PETS_VARIABLE, unmarkedVariables),
     ).toBeUndefined();
   });
 
@@ -92,11 +103,13 @@ describe('a value stored encrypted under a variable the codebook does not mark',
     const legacy: NcNode = {
       ...alice,
       [entitySecureAttributesMeta]: {
-        name: { iv: [1, 2, 3], salt: [4, 5, 6] },
+        [NAME_VARIABLE]: { iv: [1, 2, 3], salt: [4, 5, 6] },
       },
     };
 
-    expect(readEncryptedAttribute(legacy, 'name', unmarkedVariables)).toEqual({
+    expect(
+      readEncryptedAttribute(legacy, NAME_VARIABLE, unmarkedVariables),
+    ).toEqual({
       status: 'unreadable',
       reason: 'legacy-format',
     });
@@ -130,15 +143,15 @@ describe('a value stored encrypted under a variable the codebook does not mark',
     const ready = result.current;
     if (ready.status !== 'ready') throw new Error('expected ready nodes');
     expect(ready.nodes[0]?.[entityAttributesProperty]).toEqual({
-      name: 'Alice',
-      age: 40,
+      [NAME_VARIABLE]: 'Alice',
+      [AGE_VARIABLE]: 40,
     });
   });
 
   it('keeps a form locked until the passphrase is entered, then starts it from the name, never the ciphertext', async () => {
     const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
     const store = await unmarkedStore([alice]);
-    const fields = [{ variable: 'name' }, { variable: 'age' }];
+    const fields = [{ variable: NAME_VARIABLE }, { variable: AGE_VARIABLE }];
 
     const { result } = renderInInterview(store, () =>
       useProtectedFormValues(alice, fields, unmarkedVariables),
@@ -151,7 +164,10 @@ describe('a value stored encrypted under a variable the codebook does not mark',
     await waitFor(() => expect(result.current.status).toBe('ready'));
     const ready = result.current;
     if (ready.status !== 'ready') throw new Error('expected ready values');
-    expect(ready.values).toEqual({ name: 'Alice', age: 40 });
+    expect(ready.values).toEqual({
+      [NAME_VARIABLE]: 'Alice',
+      [AGE_VARIABLE]: 40,
+    });
     expect(Object.values(ready.values).some(isNumberArray)).toBe(false);
   });
 
@@ -160,9 +176,12 @@ describe('a value stored encrypted under a variable the codebook does not mark',
     const bob: NcNode = {
       [entityPrimaryKeyProperty]: 'n2',
       type: NODE_TYPE,
-      [entityAttributesProperty]: { name: 'Bob', pets: [1] },
+      [entityAttributesProperty]: {
+        [NAME_VARIABLE]: 'Bob',
+        [PETS_VARIABLE]: [1],
+      },
     };
-    const fields = [{ variable: 'name' }, { variable: 'pets' }];
+    const fields = [{ variable: NAME_VARIABLE }, { variable: PETS_VARIABLE }];
 
     const { result } = renderInInterview(store, () =>
       useProtectedFormValues(bob, fields, unmarkedVariables),
@@ -170,7 +189,7 @@ describe('a value stored encrypted under a variable the codebook does not mark',
 
     expect(result.current).toEqual({
       status: 'ready',
-      values: { name: 'Bob', pets: [1] },
+      values: { [NAME_VARIABLE]: 'Bob', [PETS_VARIABLE]: [1] },
       unavailable: [],
     });
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);

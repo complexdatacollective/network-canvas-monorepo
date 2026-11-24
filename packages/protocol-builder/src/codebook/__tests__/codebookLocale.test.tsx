@@ -24,6 +24,7 @@ import {
   expectNoLocaleLeaks,
   protocolStrings,
 } from '../../testing/localeSweep.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import CodebookSurface from '../components/CodebookSurface.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
@@ -33,6 +34,17 @@ import type { ValidationMap } from '../variableValidation.ts';
 import { ruleMapPrecheck } from '../variableValidation.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
 import { CodebookEditorHost } from './codebookEditorHost.tsx';
+
+const NEW_VARIABLE_ID = testVariableId('new-variable');
+
+const PERSON = testTypeId('person');
+const KNOWS = testTypeId('knows');
+const AGE = testVariableId('age');
+const CLOSENESS = testVariableId('closeness');
+const CONSENT = testVariableId('consent');
+const ETHNICITY = testVariableId('ethnicity');
+const HEIGHT = testVariableId('height');
+const COMMENT = testVariableId('comment');
 
 /**
  * The codebook read in the researcher's own language, through both routes the
@@ -67,13 +79,13 @@ const inProtocol = (children: ReactNode) => (
 const context: ProtocolBuilderProtocolContext = {
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          age: {
+          [AGE]: {
             name: 'Age',
             type: 'number',
             component: 'Number',
@@ -82,11 +94,11 @@ const context: ProtocolBuilderProtocolContext = {
       },
     },
     edge: {
-      knows: {
+      [KNOWS]: {
         name: 'Knows',
         color: 'edge-color-seq-1',
         variables: {
-          closeness: {
+          [CLOSENESS]: {
             name: 'Closeness',
             type: 'number',
           },
@@ -95,7 +107,7 @@ const context: ProtocolBuilderProtocolContext = {
     },
     ego: {
       variables: {
-        consent: {
+        [CONSENT]: {
           name: 'Consent',
           type: 'boolean',
         },
@@ -252,7 +264,7 @@ const PERSON_DOCUMENT: SectionDoc = {
   variables: {
     // One attribute of each shape-mapping kind, so the mapping below this type
     // is something the sweep can actually open.
-    ethnicity: {
+    [ETHNICITY]: {
       name: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
@@ -261,7 +273,7 @@ const PERSON_DOCUMENT: SectionDoc = {
         { label: { en: 'White' }, value: 'white' },
       ],
     },
-    age: {
+    [AGE]: {
       name: 'Age',
       type: 'number',
       component: 'Number',
@@ -295,7 +307,7 @@ function HeldRules({
     <VariableValidationEditor
       entity="node"
       variableType="number"
-      currentVariableId="age"
+      currentVariableId={AGE}
       allVariables={variables}
       value={rules}
       onChange={setRules}
@@ -310,7 +322,7 @@ describe('the codebook editors swept for English', () => {
       <CodebookEntityEditor
         mode="create"
         sessionKey="es-entity"
-        subject={{ entity: 'node', type: 'person' }}
+        subject={{ entity: 'node', type: PERSON }}
         initialDraft={PERSON_DOCUMENT}
         existingEntityNames={[]}
         onSubmit={refused}
@@ -381,7 +393,7 @@ describe('the codebook editors swept for English', () => {
       <CodebookEntityEditor
         mode="create"
         sessionKey="locale-switch-entity"
-        subject={{ entity: 'node', type: 'person' }}
+        subject={{ entity: 'node', type: PERSON }}
         initialDraft={{}}
         existingEntityNames={[]}
         onSubmit={refused}
@@ -430,9 +442,9 @@ describe('the codebook editors swept for English', () => {
       <VariableEditor
         openId="es-variable"
         mode="create"
-        subject={{ entity: 'node', type: 'person' }}
+        subject={{ entity: 'node', type: PERSON }}
         authoritativeDocument={PERSON_DOCUMENT}
-        variableId="new-variable"
+        variableId={NEW_VARIABLE_ID}
         initialDraft={draft}
         protocolContext={context}
         onSubmitDocument={refused}
@@ -543,9 +555,9 @@ describe('the codebook editors swept for English', () => {
         <VariableEditor
           openId={`es-${draft.name}`}
           mode="create"
-          subject={{ entity: 'node', type: 'person' }}
+          subject={{ entity: 'node', type: PERSON }}
           authoritativeDocument={PERSON_DOCUMENT}
-          variableId="new-variable"
+          variableId={NEW_VARIABLE_ID}
           initialDraft={draft}
           protocolContext={context}
           onSubmitDocument={refused}
@@ -628,9 +640,9 @@ describe('the codebook editors swept for English', () => {
         <VariableEditor
           openId={`held-${draft.name}`}
           mode="create"
-          subject={{ entity: 'node', type: 'person' }}
+          subject={{ entity: 'node', type: PERSON }}
           authoritativeDocument={PERSON_DOCUMENT}
-          variableId="new-variable"
+          variableId={NEW_VARIABLE_ID}
           initialDraft={draft}
           protocolContext={context}
           onSubmitDocument={refused}
@@ -688,12 +700,12 @@ describe('the codebook editors swept for English', () => {
       <VariableEditor
         openId="locale-switch-variable"
         mode="update"
-        subject={{ entity: 'node', type: 'person' }}
+        subject={{ entity: 'node', type: PERSON }}
         authoritativeDocument={{
           ...PERSON_DOCUMENT,
-          variables: { comment: variable },
+          variables: { [COMMENT]: variable },
         }}
-        variableId="comment"
+        variableId={COMMENT}
         initialDraft={localVariable}
         onSubmitDocument={refused}
         onComplete={() => undefined}
@@ -740,13 +752,13 @@ describe('the codebook editors swept for English', () => {
   it('leaves no English in the validation rule list', async () => {
     const user = userEvent.setup();
     const variables: Readonly<Record<string, unknown>> = {
-      age: {
+      [AGE]: {
         name: 'Age',
         type: 'number',
         component: 'Number',
         validation: { minValue: 0 },
       },
-      height: {
+      [HEIGHT]: {
         name: 'Height',
         type: 'number',
         component: 'Number',

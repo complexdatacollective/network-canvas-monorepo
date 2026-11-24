@@ -175,6 +175,7 @@ describe('createInterview seeding', () => {
   });
 
   it('seeds network and stageMetadata when provided', () => {
+    const stageId = '6f1c2a4e-8b3d-4e5f-9a7b-1c2d3e4f5a6b';
     const seededNetwork = {
       ego: {
         [entityPrimaryKeyProperty]: 'ego-1',
@@ -185,7 +186,7 @@ describe('createInterview seeding', () => {
           [entityPrimaryKeyProperty]: 'n1',
           type: 'person',
           promptIDs: [],
-          stageId: 's1',
+          stageId,
           [entityAttributesProperty]: {},
         },
       ],
@@ -193,12 +194,12 @@ describe('createInterview seeding', () => {
     };
     const id = createInterview('proto-1', 'participant-1', {
       network: seededNetwork,
-      stageMetadata: { 'stage-3': [[1, 'n1', 'n2', false]] },
+      stageMetadata: { [stageId]: [[1, 'n1', 'n2', false]] },
     });
     const entry = getTestState().interviews.get(id);
     expect(entry?.session.network.nodes).toHaveLength(1);
     expect(entry?.session.stageMetadata).toEqual({
-      'stage-3': [[1, 'n1', 'n2', false]],
+      [stageId]: [[1, 'n1', 'n2', false]],
     });
   });
 

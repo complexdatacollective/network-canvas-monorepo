@@ -1,7 +1,14 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  fixtureStageId,
+  loadFixtureStage,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 import PromptsSection from '../PromptsSection.tsx';
 import {
   dropUnusedAssignments,
@@ -11,6 +18,9 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from './rowFixtures.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const en = (text: string) => ({ 'en-US': text });
 
@@ -23,9 +33,23 @@ const prompts = (
 );
 
 const openEditor = () => ({
-  stageId: 'name-generator-1',
+  stageId: fixtureStageId('name-generator-1'),
   sections: <>{prompts}</>,
 });
+
+/** The id the fixture's name generator holds its one prompt under. */
+const FIXTURE_PROMPT_ID = (() => {
+  const { prompts: rows } = loadFixtureStage('name-generator-1').fields;
+  const first: unknown = Array.isArray(rows) ? rows[0] : undefined;
+  const id: unknown =
+    typeof first === 'object' && first !== null
+      ? Reflect.get(first, 'id')
+      : undefined;
+  if (typeof id !== 'string') {
+    throw new Error('The fixture name generator has no prompt id.');
+  }
+  return id;
+})();
 
 const promptIds = (stage: Record<string, unknown>): unknown[] => {
   const rows = stage.prompts;
@@ -88,7 +112,7 @@ describe('the prompt list a stage owns', () => {
     const request = await harness.submit();
     expect(request).not.toBeNull();
     const ids = promptIds(request?.stageDocument ?? {});
-    expect(ids[0]).toBe('name-generator-prompt-1');
+    expect(ids[0]).toBe(FIXTURE_PROMPT_ID);
     expect(ids[1]).toEqual(expect.any(String));
     expect(ids[1]).not.toBe(ids[0]);
   });
@@ -122,7 +146,7 @@ describe('the prompt list a stage owns', () => {
     const request = await harness.submit();
     expect(promptIds(request?.stageDocument ?? {})).toHaveLength(1);
     expect(promptIds(request?.stageDocument ?? {})[0]).not.toBe(
-      'name-generator-prompt-1',
+      FIXTURE_PROMPT_ID,
     );
   });
 
@@ -134,17 +158,24 @@ describe('the prompt list a stage owns', () => {
   it('moves a prompt without changing which prompt it is', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testId('moving-prompts-stage'),
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           form: {
             title: en('Add a person'),
-            fields: [{ id: 'field-1', variable: 'name', prompt: en('Name?') }],
+            fields: [
+              {
+                id: testId('field-1'),
+                variable: NAME,
+                prompt: en('Name?'),
+              },
+            ],
           },
           prompts: [
-            { id: 'prompt-a', text: en('First question') },
-            { id: 'prompt-b', text: en('Second question') },
+            { id: testId('prompt-a'), text: en('First question') },
+            { id: testId('prompt-b'), text: en('Second question') },
           ],
         },
       },
@@ -158,8 +189,8 @@ describe('the prompt list a stage owns', () => {
 
     const request = await harness.submit();
     expect(promptIds(request?.stageDocument ?? {})).toEqual([
-      'prompt-b',
-      'prompt-a',
+      testId('prompt-b'),
+      testId('prompt-a'),
     ]);
   });
 
@@ -234,7 +265,7 @@ describe('the prompt list a stage owns', () => {
    */
   it('opens a new prompt already holding what the interface seeds', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: (
         <>
           <PromptsSection
@@ -312,7 +343,10 @@ describe('the prompt list a stage owns', () => {
         fields: {
           label: en('About you'),
           prompts: [
-            { id: 'ego-prompt-1', text: en('Tell us about yourself.') },
+            {
+              id: testId('ego-prompt-1'),
+              text: en('Tell us about yourself.'),
+            },
           ],
         },
       },
@@ -355,7 +389,7 @@ describe('a row editor with a defect in it', () => {
 
     try {
       const harness = renderStageEditor({
-        stageId: 'name-generator-1',
+        stageId: fixtureStageId('name-generator-1'),
         sections: (
           <>
             <PromptsSection
@@ -443,7 +477,10 @@ describe('a stage whose subject names no type yet', () => {
         fields: {
           label: en('About you'),
           prompts: [
-            { id: 'ego-prompt-1', text: en('Tell us about yourself.') },
+            {
+              id: testId('ego-prompt-1'),
+              text: en('Tell us about yourself.'),
+            },
           ],
         },
       },
@@ -530,7 +567,7 @@ describe('what a row editor is given to work with', () => {
 describe('what a family says about its own prompt', () => {
   it('lets a family rule refuse a row the shared ones would take', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: (
         <PromptsSection
           PromptEditor={TestPromptEditor}
@@ -567,7 +604,7 @@ describe('what a family says about its own prompt', () => {
    */
   it('does not refuse the row that was already like that', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: (
         <PromptsSection
           PromptEditor={TestPromptEditor}
@@ -596,7 +633,10 @@ describe('what a family says about its own prompt', () => {
     ).not.toBeInTheDocument();
     const written = await harness.submit();
     expect(written?.stageDocument.prompts).toEqual([
-      { id: 'name-generator-prompt-1', text: en(SEEDED_QUESTION) },
+      {
+        id: FIXTURE_PROMPT_ID,
+        text: en(SEEDED_QUESTION),
+      },
     ]);
   });
 
@@ -609,18 +649,24 @@ describe('what a family says about its own prompt', () => {
   it('lets a family collapse the row the shared rule would leave alone', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'name-generator-assigning',
+        id: testId('name-generator-assigning'),
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           form: {
             title: en('Add a person'),
-            fields: [{ id: 'field-1', variable: 'name', prompt: en('Name?') }],
+            fields: [
+              {
+                id: testId('field-1'),
+                variable: NAME,
+                prompt: en('Name?'),
+              },
+            ],
           },
           prompts: [
             {
-              id: 'prompt-a',
+              id: testId('prompt-a'),
               text: en(SEEDED_QUESTION),
               additionalAttributes: [],
             },
@@ -650,7 +696,10 @@ describe('what a family says about its own prompt', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.prompts).toEqual([
-      { id: 'prompt-a', text: en(`${SEEDED_QUESTION} Anyone else?`) },
+      {
+        id: testId('prompt-a'),
+        text: en(`${SEEDED_QUESTION} Anyone else?`),
+      },
     ]);
   });
 });

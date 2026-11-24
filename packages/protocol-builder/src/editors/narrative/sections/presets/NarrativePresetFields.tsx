@@ -6,7 +6,11 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { formatObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import Section from '@codaco/fresco-ui/Section';
-import type { LocalizedString } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  isProtocolObjectId,
+  type LocalizedString,
+} from '@codaco/protocol-validation';
 
 import { LocalizedInputField } from '../../../../fields/LocalizedStringField.tsx';
 import { FilterRuleSetField } from '../../../../fields/RuleSetField.tsx';
@@ -59,9 +63,11 @@ const HIGHLIGHT_FIELD = 'highlight';
 const FILTER_FIELD = 'filter';
 const HIGHLIGHT_LABELS_FIELD = 'highlightLabels';
 const DISPLAY_LABELS_FIELD = 'displayLabels';
+const HIGHLIGHT_IDS_FIELD = 'highlightIds';
+const DISPLAY_IDS_FIELD = 'displayIds';
 
-type Highlight = Readonly<{ variable: string; label: unknown }>;
-type DisplayedEdge = Readonly<{ type: string; label: unknown }>;
+type Highlight = Readonly<{ id: unknown; variable: string; label: unknown }>;
+type DisplayedEdge = Readonly<{ id: unknown; type: string; label: unknown }>;
 
 const displayedEdgesOf = (edges: unknown): DisplayedEdge[] => {
   if (typeof edges !== 'object' || edges === null) return [];
@@ -72,7 +78,13 @@ const displayedEdgesOf = (edges: unknown): DisplayedEdge[] => {
         const type = asText(Reflect.get(entry, 'type'));
         return type === undefined
           ? []
-          : [{ type, label: Reflect.get(entry, 'label') }];
+          : [
+              {
+                id: Reflect.get(entry, 'id'),
+                type,
+                label: Reflect.get(entry, 'label'),
+              },
+            ];
       })
     : [];
 };
@@ -84,7 +96,13 @@ const highlightsOf = (value: unknown): Highlight[] =>
         const variable = asText(Reflect.get(entry, 'variable'));
         return variable === undefined
           ? []
-          : [{ variable, label: Reflect.get(entry, 'label') }];
+          : [
+              {
+                id: Reflect.get(entry, 'id'),
+                variable,
+                label: Reflect.get(entry, 'label'),
+              },
+            ];
       })
     : [];
 
@@ -95,13 +113,20 @@ const labelIn = (labels: unknown, variable: string): unknown =>
     ? Reflect.get(labels, variable)
     : undefined;
 
+/** The id a ticked entry was opened with, or a new one for a fresh tick. */
+const idIn = (ids: unknown, key: string): string => {
+  const id = labelIn(ids, key);
+  return isProtocolObjectId(id) ? id : createProtocolObjectId();
+};
+
 /**
  * Opens a preset with its highlights and its drawn edge types each held in two
  * slots: the tick list holds the ids, and each one's legend label sits under
  * its id. A label field then comes and goes with its tick, and keeps what was
  * typed into it while the box is unticked. Keyed by id rather than by
  * position, because a tick anywhere in the list would otherwise move every
- * label after it.
+ * label after it. Each entry's own id is kept under its id the same way, so
+ * an entry that stays ticked keeps its id when the preset is saved.
  */
 export function expandNarrativePreset(row: RowValues): RowValues {
   let expanded = row;
@@ -113,6 +138,9 @@ export function expandNarrativePreset(row: RowValues): RowValues {
       [HIGHLIGHT_LABELS_FIELD]: Object.fromEntries(
         highlights.map(({ variable, label }) => [variable, label]),
       ),
+      [HIGHLIGHT_IDS_FIELD]: Object.fromEntries(
+        highlights.map(({ variable, id }) => [variable, id]),
+      ),
     };
   }
   if (typeof row.edges === 'object' && row.edges !== null) {
@@ -122,6 +150,9 @@ export function expandNarrativePreset(row: RowValues): RowValues {
       edges: { ...row.edges, display: displayed.map(({ type }) => type) },
       [DISPLAY_LABELS_FIELD]: Object.fromEntries(
         displayed.map(({ type, label }) => [type, label]),
+      ),
+      [DISPLAY_IDS_FIELD]: Object.fromEntries(
+        displayed.map(({ type, id }) => [type, id]),
       ),
     };
   }
@@ -134,16 +165,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 /**
  * The preset as the protocol holds it: one highlight per ticked attribute and
  * one drawn edge type per ticked type, in tick order, each carrying its legend
- * label. A label left behind by an id that was unticked is dropped with it.
+ * label and its id. A label left behind by an id that was unticked is dropped
+ * with it, and a newly ticked entry gets an id of its own.
  */
 export function collapseNarrativePreset(row: RowValues): RowValues {
   const {
     [HIGHLIGHT_FIELD]: ticked,
     [HIGHLIGHT_LABELS_FIELD]: labels,
     [DISPLAY_LABELS_FIELD]: edgeLabels,
+    [HIGHLIGHT_IDS_FIELD]: highlightIds,
+    [DISPLAY_IDS_FIELD]: displayIds,
     ...preset
   } = row;
   const highlight = (asIdList(ticked) ?? []).map((variable) => ({
+    id: idIn(highlightIds, variable),
     variable,
     label: labelIn(labels, variable),
   }));
@@ -154,6 +189,7 @@ export function collapseNarrativePreset(row: RowValues): RowValues {
   const edges = preset.edges;
   if (!isRecord(edges)) return withHighlight;
   const display = (asNestedIdList(edges, 'display') ?? []).map((type) => ({
+    id: idIn(displayIds, type),
     type,
     label: labelIn(edgeLabels, type),
   }));

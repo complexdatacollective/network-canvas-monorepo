@@ -10,6 +10,7 @@ import {
   protocolName,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { SessionWithResequencedIDs } from '../../../input';
 import { edgeListRows } from '../edgeList';
 import { mockCodebook, mockExportOptions } from './mockObjects';
@@ -28,8 +29,10 @@ describe('edgeListRows', () => {
           [ncTargetUUID]: 'n2',
           from: 1,
           to: 2,
-          type: 'mock-edge-type',
-          [entityAttributesProperty]: { 'relationship-uuid': ['partner'] },
+          type: testTypeId('mock-edge-type'),
+          [entityAttributesProperty]: {
+            [testVariableId('relationship-uuid')]: ['partner'],
+          },
         },
       ],
     };
@@ -81,7 +84,7 @@ describe('edgeListRows', () => {
           [ncTargetUUID]: 'n2',
           from: '1',
           to: '2',
-          type: 'mock-edge-type',
+          type: testTypeId('mock-edge-type'),
           [entityAttributesProperty]: {},
         },
       ],

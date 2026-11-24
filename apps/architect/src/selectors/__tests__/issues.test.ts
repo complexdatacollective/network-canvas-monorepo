@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { RootState } from '~/ducks/modules/root';
 import { buildMapboxToken } from '~/templates/__tests__/buildMapboxToken';
 import {
@@ -26,6 +30,9 @@ import {
 // and nowhere else). This used to hang `dataSource` on the OrdinalBin stage,
 // which no schema declares — the path-walking collector it replaced counted it
 // anyway.
+const PERSON = testTypeId('person');
+const V1 = testVariableId('v1');
+
 const protocol = {
   name: 'Test protocol',
   stages: [
@@ -33,8 +40,8 @@ const protocol = {
       id: 's1',
       type: 'OrdinalBin',
       label: 'Ordinal bin',
-      subject: { entity: 'node', type: 'person' },
-      prompts: [{ id: 'p1', text: 'Rate it', variable: 'v1' }],
+      subject: { entity: 'node', type: PERSON },
+      prompts: [{ id: 'p1', text: 'Rate it', variable: V1 }],
     },
     {
       id: 's2',
@@ -42,18 +49,18 @@ const protocol = {
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       dataSource: 'asset1',
     },
   ],
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         variables: {
-          v1: { name: 'Used variable', type: 'text' },
-          v2: { name: 'Unused variable', type: 'text' },
+          [V1]: { name: 'Used variable', type: 'text' },
+          [testVariableId('v2')]: { name: 'Unused variable', type: 'text' },
         },
       },
     },

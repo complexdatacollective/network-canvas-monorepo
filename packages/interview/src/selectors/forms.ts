@@ -8,6 +8,7 @@ import type {
   ComposerFormField,
   FormField,
   LocalizedString,
+  ProtocolObjectId,
   Variable,
 } from '@codaco/protocol-validation';
 
@@ -59,6 +60,7 @@ const getCodebookVariablesForProvidedSubject = createSelector(
 type FieldMetadata = Variable extends infer V
   ? V extends Variable
     ? Omit<V, 'component' | 'parameters' | 'label'> & {
+        id: ProtocolObjectId;
         component: ComponentType;
         parameters?: Record<string, unknown>;
         variable: string;
@@ -110,7 +112,7 @@ const createFieldMetadata = (
   }
 
   return fields.map((field) => {
-    const { variable, hint, showValidationHints } = field;
+    const { id, variable, hint, showValidationHints } = field;
     const codebookEntry = getCodebookEntry(variables, variable);
     if (!codebookEntry) {
       throw new Error(`Missing codebook entry for variable: ${variable}`);
@@ -160,6 +162,7 @@ const createFieldMetadata = (
     return {
       ...renderedEntry,
       ...(parameters !== undefined ? { parameters } : {}),
+      id,
       component,
       variable,
       label,

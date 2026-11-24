@@ -8,6 +8,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { canvasBehavioursMessages } from '../sections/canvas-behaviours/canvasBehavioursMessages.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import LayoutModeField from './LayoutModeField.tsx';
 
 /** Where every canvas stage keeps this decision. */
@@ -39,7 +40,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'sociogram-1',
+    stageId: fixtureStageId('sociogram-1'),
     sectionTitle: 'Node layout',
     children: <LayoutMode />,
   },
@@ -71,7 +72,7 @@ export const Automatic: Story = {
  * protocol has already made.
  */
 export const NothingStoredIsManual: Story = {
-  args: { stageId: 'narrative-1' },
+  args: { stageId: fixtureStageId('narrative-1') },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -87,7 +88,7 @@ export const NothingStoredIsManual: Story = {
 
 /** Choosing the other mode. */
 export const ChoosingTheOtherMode: Story = {
-  args: { stageId: 'narrative-1' },
+  args: { stageId: fixtureStageId('narrative-1') },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -134,7 +135,10 @@ export const ASpectator: Story = {
 export const AValueThatIsNeitherMode: Story = {
   args: {
     seedEdit: (host) => {
-      const stage = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
+      const stage = sectionId({
+        kind: 'stage',
+        stageId: fixtureStageId('sociogram-1'),
+      });
       const { document } = host.store.read(stage);
       host.store.applyAsCollaborator(stage, {
         ...document,

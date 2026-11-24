@@ -9,6 +9,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { testId, testTypeId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
@@ -26,6 +27,7 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import {
   createEncryptionStore,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
@@ -64,7 +66,7 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', StubObserver);
 });
 
-const EDGE_TYPE = 'friendship';
+const EDGE_TYPE = testTypeId('friendship');
 
 const edgeTypes: Codebook['edge'] = {
   [EDGE_TYPE]: {
@@ -75,11 +77,15 @@ const edgeTypes: Codebook['edge'] = {
 };
 
 const byName: SortRule[] = [
-  { property: asEntityAttributeReference('name'), direction: 'asc' },
+  {
+    id: testId('sort-name'),
+    property: asEntityAttributeReference(NAME_VARIABLE),
+    direction: 'asc',
+  },
 ];
 
 const prompt = (id: string) => ({
-  id,
+  id: testId(id),
   text: { en: 'Who do they know?' },
   createEdge: EDGE_TYPE,
   bucketSortOrder: byName,
@@ -88,7 +94,7 @@ const prompt = (id: string) => ({
 const stageWith = (
   removeAfterConsideration: boolean,
 ): StageProps<'OneToManyDyadCensus'>['stage'] => ({
-  id: 'one-to-many',
+  id: testId('one-to-many'),
   type: 'OneToManyDyadCensus',
   label: { en: 'One to many' },
   subject: { entity: 'node', type: NODE_TYPE },

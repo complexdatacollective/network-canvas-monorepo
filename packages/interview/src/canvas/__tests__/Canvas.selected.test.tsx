@@ -29,6 +29,7 @@ vi.mock('../CanvasNode', () => ({
 // Draws edges from the codebook in the store, which this test has no need of.
 vi.mock('../EdgeLayer', () => ({ default: () => null }));
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import Canvas from '../Canvas';
 import { createCanvasStore } from '../useCanvasStore';
 
@@ -49,13 +50,13 @@ beforeAll(() => {
     noopObserver as unknown as typeof IntersectionObserver;
 });
 
-const HIGHLIGHT_VAR = 'closeness';
+const HIGHLIGHT_VAR = testVariableId('closeness');
 const NODE_ID = 'n1';
 
 const node = (highlighted: boolean): NcNode =>
   ({
     [entityPrimaryKeyProperty]: NODE_ID,
-    type: 'person',
+    type: testTypeId('person'),
     [entityAttributesProperty]: { [HIGHLIGHT_VAR]: highlighted },
   }) as unknown as NcNode;
 

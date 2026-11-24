@@ -2,6 +2,11 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
 import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
 import type { LocalizedString, Stage } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 
@@ -15,6 +20,16 @@ import reducer, {
   isLastFinishStage,
   test,
 } from '../stages';
+
+const SECOND_FINISH_ID = ProtocolObjectIdSchema.parse(
+  '70c1e030-aad3-406c-8bf0-3b98770712be',
+);
+const THIRD_FINISH_ID = ProtocolObjectIdSchema.parse(
+  '72d778b4-8eee-4007-8b94-9d4ea39a56a6',
+);
+const FINISH_ID = ProtocolObjectIdSchema.parse(
+  'a235a4e1-d840-4869-8949-b82e00894c81',
+);
 
 // The stages below are deliberately partial: the reducers under test read only
 // ids, types and references. Typing each label as a LocalizedString keeps them
@@ -82,7 +97,7 @@ describe('protocol.stages', () => {
 
     describe('the finish stage', () => {
       const finish = {
-        id: 'finish',
+        id: FINISH_ID,
         type: 'FinishSession',
         label: localized('Finish'),
         mode: 'confirmation',
@@ -110,7 +125,7 @@ describe('protocol.stages', () => {
                 commitStage({ stageId: null, stage: newStage, index }),
               ),
             ),
-          ).toEqual(['3', '9', '5', 'new', 'finish']);
+          ).toEqual(['3', '9', '5', 'new', FINISH_ID]);
         }
         expect(
           ids(
@@ -119,24 +134,27 @@ describe('protocol.stages', () => {
               commitStage({ stageId: null, stage: newStage, index: 1 }),
             ),
           ),
-        ).toEqual(['3', 'new', '9', '5', 'finish']);
+        ).toEqual(['3', 'new', '9', '5', FINISH_ID]);
       });
 
       it('refuses to delete the only finish stage', () => {
-        expect(isLastFinishStage(withFinish, 'finish')).toBe(true);
-        expect(reducer(withFinish, test.deleteStage('finish'))).toEqual(
+        expect(isLastFinishStage(withFinish, FINISH_ID)).toBe(true);
+        expect(reducer(withFinish, test.deleteStage(FINISH_ID))).toEqual(
           withFinish,
         );
       });
 
       it('deletes a finish stage when another one remains', () => {
-        const twoFinishes = [...withFinish, { ...finish, id: 'finish-2' }];
-        expect(isLastFinishStage(twoFinishes, 'finish')).toBe(false);
-        expect(ids(reducer(twoFinishes, test.deleteStage('finish')))).toEqual([
+        const twoFinishes = [
+          ...withFinish,
+          { ...finish, id: SECOND_FINISH_ID },
+        ];
+        expect(isLastFinishStage(twoFinishes, FINISH_ID)).toBe(false);
+        expect(ids(reducer(twoFinishes, test.deleteStage(FINISH_ID)))).toEqual([
           '3',
           '9',
           '5',
-          'finish-2',
+          SECOND_FINISH_ID,
         ]);
       });
 
@@ -151,8 +169,8 @@ describe('protocol.stages', () => {
       describe('with more than one finish stage', () => {
         const endings = [
           ...withFinish,
-          { ...finish, id: 'finish-2' },
-          { ...finish, id: 'finish-3' },
+          { ...finish, id: SECOND_FINISH_ID },
+          { ...finish, id: THIRD_FINISH_ID },
         ];
 
         it('moves finish stages among themselves', () => {
@@ -160,17 +178,17 @@ describe('protocol.stages', () => {
             '3',
             '9',
             '5',
-            'finish-3',
-            'finish',
-            'finish-2',
+            THIRD_FINISH_ID,
+            FINISH_ID,
+            SECOND_FINISH_ID,
           ]);
           expect(ids(reducer(endings, test.moveStage(3, 5)))).toEqual([
             '3',
             '9',
             '5',
-            'finish-2',
-            'finish-3',
-            'finish',
+            SECOND_FINISH_ID,
+            THIRD_FINISH_ID,
+            FINISH_ID,
           ]);
         });
 
@@ -186,7 +204,7 @@ describe('protocol.stages', () => {
       });
 
       it('adds another finish stage among the finish stages, or at the end', () => {
-        const added = { ...finish, id: 'finish-2' };
+        const added = { ...finish, id: SECOND_FINISH_ID };
         for (const index of [undefined, 0, 2, 10]) {
           expect(
             ids(
@@ -195,7 +213,7 @@ describe('protocol.stages', () => {
                 commitStage({ stageId: null, stage: added, index }),
               ),
             ),
-          ).toEqual(['3', '9', '5', 'finish', 'finish-2']);
+          ).toEqual(['3', '9', '5', FINISH_ID, SECOND_FINISH_ID]);
         }
         expect(
           ids(
@@ -204,7 +222,7 @@ describe('protocol.stages', () => {
               commitStage({ stageId: null, stage: added, index: 3 }),
             ),
           ),
-        ).toEqual(['3', '9', '5', 'finish-2', 'finish']);
+        ).toEqual(['3', '9', '5', SECOND_FINISH_ID, FINISH_ID]);
       });
 
       it('moves stages around before the finish stage', () => {
@@ -212,7 +230,7 @@ describe('protocol.stages', () => {
           '9',
           '5',
           '3',
-          'finish',
+          FINISH_ID,
         ]);
       });
     });
@@ -451,10 +469,10 @@ describe('protocol.stages', () => {
           ],
           codebook: {
             node: {
-              person: {
+              [testTypeId('person')]: {
                 name: 'Person',
                 variables: {
-                  ssn: {
+                  [testVariableId('ssn')]: {
                     name: 'ssn',
                     type: 'text',
                     encrypted: true,

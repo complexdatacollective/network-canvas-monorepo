@@ -16,6 +16,9 @@ import {
 import type { InterviewPayload } from '../contract/types';
 import Shell from '../Shell';
 import { updateEgo } from '../store/modules/session';
+import { testId, testVariableId } from './testIds';
+
+const AGREES = testVariableId('agrees');
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -77,7 +80,7 @@ const payload = {
     codebook: {
       ego: {
         variables: {
-          agrees: { name: 'agrees', type: 'boolean' },
+          [AGREES]: { name: 'agrees', type: 'boolean' },
         },
       },
       node: {},
@@ -86,13 +89,13 @@ const payload = {
     assets: [],
     stages: [
       {
-        id: 'first-stage',
+        id: testId('first-stage'),
         type: 'Information',
         label: { en: 'First stage' },
         content: { en: '# First stage' },
       },
       {
-        id: 'agreed-stage',
+        id: testId('agreed-stage'),
         type: 'Information',
         label: { en: 'Agreed stage' },
         content: { en: '# Agreed stage' },
@@ -102,10 +105,10 @@ const payload = {
             join: 'AND',
             rules: [
               {
-                id: 'does-not-agree',
+                id: testId('does-not-agree'),
                 type: 'ego',
                 options: {
-                  attribute: asEntityAttributeReference('agrees'),
+                  attribute: asEntityAttributeReference(AGREES),
                   operator: 'EXACTLY',
                   value: false,
                 },
@@ -115,7 +118,7 @@ const payload = {
         },
       },
       {
-        id: 'last-stage',
+        id: testId('last-stage'),
         type: 'Information',
         label: { en: 'Last stage' },
         content: { en: '# Last stage' },
@@ -138,7 +141,7 @@ function liveStore() {
   return store;
 }
 
-const declined = { set: { agrees: false }, unset: [] };
+const declined = { set: { [AGREES]: false }, unset: [] };
 
 async function renderShell(
   onExit?: () => void,
@@ -199,12 +202,12 @@ describe('Shell leaving a stage with a write under way', () => {
 
     await userEvent.setup().click(next);
     await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
-    expect(shownStage()).toBe('first-stage');
+    expect(shownStage()).toBe(testId('first-stage'));
 
     act(() => {
       store.dispatch(updateEgo.fulfilled(declined, 'w1', declined));
     });
-    await waitFor(() => expect(shownStage()).toBe('last-stage'));
+    await waitFor(() => expect(shownStage()).toBe(testId('last-stage')));
   });
 
   it('stays on the stage when an answer still being stored is refused', async () => {
@@ -218,10 +221,10 @@ describe('Shell leaving a stage with a write under way', () => {
       store.dispatch(updateEgo.rejected(new Error('refused'), 'w1', declined));
     });
     await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
-    expect(shownStage()).toBe('first-stage');
+    expect(shownStage()).toBe(testId('first-stage'));
 
     await userEvent.setup().click(next);
-    await waitFor(() => expect(shownStage()).toBe('agreed-stage'));
+    await waitFor(() => expect(shownStage()).toBe(testId('agreed-stage')));
   });
 });
 

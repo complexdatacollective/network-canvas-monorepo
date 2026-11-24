@@ -3,21 +3,35 @@ import { describe, expect, it } from 'vitest';
 
 import { alterFormStageEditor } from '../../editors/alter-form/AlterFormStageEditor.ts';
 import { dyadCensusStageEditor } from '../../editors/dyad-census/DyadCensusStageEditor.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const CONTACT_FREQ = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactFreq',
+);
 
 const openCensus = () => {
-  const { type, fields } = loadFixtureStage('dyad-census-1');
+  const { id, type, fields } = loadFixtureStage('dyad-census-1');
   return renderStageEditor({
     stage: {
+      id,
       type,
       fields: {
         ...fields,
         prompts: [
           {
-            id: 'dyad-census-prompt-1',
+            id: testId('dyad-census-prompt-1'),
             text: { 'en-US': 'Who do you know?' },
-            createEdge: 'knows',
+            createEdge: KNOWS,
           },
         ],
       },
@@ -90,23 +104,24 @@ describe('values inserted in a row dialog', () => {
 
 describe('a deleted row', () => {
   it('takes the binding only it used with it', async () => {
-    const { type, fields } = loadFixtureStage('dyad-census-1');
+    const { id, type, fields } = loadFixtureStage('dyad-census-1');
     const harness = renderStageEditor({
       stage: {
+        id,
         type,
         fields: {
           ...fields,
           dynamicValues: { today: { path: 'now' } },
           prompts: [
             {
-              id: 'dated',
+              id: testId('dated'),
               text: { 'en-US': 'Who did you see on {today}?' },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
             {
-              id: 'plain',
+              id: testId('plain'),
               text: { 'en-US': 'Who do you know?' },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
           ],
         },
@@ -126,7 +141,7 @@ describe('a deleted row', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument.prompts).toEqual([
-      expect.objectContaining({ id: 'plain' }),
+      expect.objectContaining({ id: testId('plain') }),
     ]);
     expect(saved?.stageDocument).not.toHaveProperty('dynamicValues');
   });
@@ -159,7 +174,7 @@ describe('a value with answers inserted in a row dialog', () => {
 
   it('is bound without cases when only the value itself is shown', async () => {
     expect(await insertAndSave(/First node: contactFreq.*Ordinal/)).toEqual([
-      { path: 'dyad.source.contactFreq' },
+      { path: `dyad.source.${CONTACT_FREQ}` },
     ]);
   });
 
@@ -168,7 +183,7 @@ describe('a value with answers inserted in a row dialog', () => {
       /First node: contactFreq.*Different wording for each answer/,
     );
     expect(binding).toEqual({
-      path: 'dyad.source.contactFreq',
+      path: `dyad.source.${CONTACT_FREQ}`,
       cases: expect.any(Object),
     });
     expect(Object.keys(binding?.cases ?? {}).length).toBeGreaterThan(0);
@@ -195,17 +210,17 @@ describe('a value shown by answer in an open dialog', () => {
       await dialog.findByRole('textbox', { name: 'Weekly' }),
     ).toBeInTheDocument();
 
-    const person = harness.hostCodebook().node?.person;
+    const person = harness.hostCodebook().node?.[PERSON];
     if (person === undefined) throw new Error('No person type');
-    const contactFreq = person.variables?.contactFreq;
+    const contactFreq = person.variables?.[CONTACT_FREQ];
     if (contactFreq === undefined) throw new Error('No contactFreq');
     harness.receiveCodebookUpdate({
       node: {
-        person: {
+        [PERSON]: {
           ...person,
           variables: {
             ...person.variables,
-            contactFreq: {
+            [CONTACT_FREQ]: {
               ...contactFreq,
               options: [
                 { label: { 'en-US': '**Every** week' }, value: 3 },
@@ -275,18 +290,19 @@ describe('a yes-or-no value without labels for its answers', () => {
 
 describe("a census prompt's preview", () => {
   it('shows the value its text fills in as a pill', async () => {
-    const { type, fields } = loadFixtureStage('dyad-census-1');
+    const { id, type, fields } = loadFixtureStage('dyad-census-1');
     const harness = renderStageEditor({
       stage: {
+        id,
         type,
         fields: {
           ...fields,
           dynamicValues: { today: { path: 'now' } },
           prompts: [
             {
-              id: 'dated',
+              id: testId('dated'),
               text: { 'en-US': 'Who did you see on {today}?' },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
           ],
         },
@@ -309,7 +325,7 @@ describe('a form field saved before fields had ids', () => {
     // The fixture's fields carry no ids, as a protocol saved before
     // Architect gave them one does.
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       registry: alterFormStageEditor,
     });
     await harness.opened();
@@ -337,7 +353,7 @@ describe('a form field saved before fields had ids', () => {
 describe("a value inserted in a form field's question", () => {
   it('shows in the field preview as a pill rather than crashing it', async () => {
     const harness = renderStageEditor({
-      stageId: 'alter-form-1',
+      stageId: fixtureStageId('alter-form-1'),
       registry: alterFormStageEditor,
     });
     await harness.opened();
@@ -371,20 +387,21 @@ describe("a value inserted in a form field's question", () => {
 
 describe('a value inserted in default-language text that is translated', () => {
   it('saves the stage, leaving the untouched translation as it was', async () => {
-    const { type, fields } = loadFixtureStage('dyad-census-1');
+    const { id, type, fields } = loadFixtureStage('dyad-census-1');
     const harness = renderStageEditor({
       stage: {
+        id,
         type,
         fields: {
           ...fields,
           prompts: [
             {
-              id: 'dyad-census-prompt-1',
+              id: testId('dyad-census-prompt-1'),
               text: {
                 'en-US': 'Who do you know?',
                 'fr': 'Qui connaissez-vous ?',
               },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
           ],
         },
@@ -414,16 +431,17 @@ describe('a value inserted in default-language text that is translated', () => {
 describe('rules edited in a row dialog', () => {
   const RULES = [
     {
-      id: 'ties',
+      id: testId('ties'),
       type: 'edge',
       options: { count: 'GREATER_THAN', value: 0 },
     },
   ];
 
   const openCensusWithAnIf = () => {
-    const { type, fields } = loadFixtureStage('dyad-census-1');
+    const { id, type, fields } = loadFixtureStage('dyad-census-1');
     return renderStageEditor({
       stage: {
+        id,
         type,
         fields: {
           ...fields,
@@ -433,11 +451,11 @@ describe('rules edited in a row dialog', () => {
           conditions: { linked: { about: 'dyadSource', rules: RULES } },
           prompts: [
             {
-              id: 'dyad-census-prompt-1',
+              id: testId('dyad-census-prompt-1'),
               text: {
                 'en-US': 'Do they{linked, select, yes { still} other {}} talk?',
               },
-              createEdge: 'knows',
+              createEdge: KNOWS,
             },
           ],
         },
