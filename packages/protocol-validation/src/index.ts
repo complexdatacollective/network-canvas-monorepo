@@ -101,11 +101,12 @@ export {
 // message reads for given values.
 export {
   DYNAMIC_VALUE_MARKER,
-  DYNAMIC_VALUE_NAME,
   type DynamicValueArgument,
   type DynamicValueArguments,
   type DynamicValueState,
+  type DynamicValueStateOf,
   dynamicMessageParts,
+  dynamicValueCaseKeysIn,
   dynamicValueNamesIn,
   findDynamicValueProblem,
   MISSING_CASE,
@@ -226,38 +227,40 @@ export {
   type InformationPagePart,
   informationPageContent,
 } from './schemas/9/information-content-migration.ts';
-// A stage's dynamic values: the bindings, the path vocabulary, and the one
-// table of what each site can show, which validation and Architect share.
+// The values text shows: the names a message uses for them, the cases it
+// chooses versions by, and the one table of what each site can show, which
+// validation, Architect and the interview share.
 export {
   CASED_VARIABLE_TYPES,
-  DYNAMIC_VALUE_ROLE_PREFIXES,
+  DYNAMIC_VALUE_ROLES,
   DYNAMIC_VALUE_VARIABLE_TYPES,
   type AttributeDynamicValueRole,
-  type DynamicValueBinding,
   type DynamicValueForm,
+  type DynamicValueReference,
   type DynamicValueRole,
-  type DynamicValues,
   type DynamicValueSite,
   type DynamicValueSiteContext,
   type DynamicValueStatus,
+  type DynamicValueVariable,
   dynamicValueArgumentsAt,
-  dynamicValueConditionPathFor,
-  dynamicValueLabelPathFor,
-  dynamicValueParticipantPathFor,
+  dynamicValueCaseOf,
+  dynamicValueNameFor,
   dynamicValueParticipantRolesAt,
-  dynamicValuePathFor,
+  dynamicValueReferencesIn,
   dynamicValueRolesAt,
   dynamicValueStatus,
   dynamicValueUnshowableReason,
+  FALSE_CASE,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
   isAttributeDynamicValueRole,
   isLabelledDynamicValueRole,
   type LabelledDynamicValueRole,
-  PARTICIPANT_CASE,
+  optionCaseKey,
+  optionIdFromCaseKey,
   type ParsedDynamicValuePath,
-  FALSE_CASE,
-  parseDynamicValuePath,
+  parseDynamicValueName,
+  rewriteDynamicValueReferences,
   TRUE_CASE,
 } from './schemas/9/dynamic-values.ts';
 // The conditions text chooses its wording by: a stage's, or a node label's.
@@ -269,6 +272,7 @@ export {
   type Conditions,
   ConditionSchema,
   ConditionsSchema,
+  createConditionId,
   type EdgeCountComparison,
   EdgeCountComparisons,
   edgeCountNeedsValue,
@@ -287,6 +291,7 @@ export {
   dynamicValueContextFor,
   type DynamicValueProblem,
   findDynamicValueProblems,
+  findSiteMessageProblem,
   stageDynamicValueContext,
 } from './schemas/9/dynamic-value-validation.ts';
 // What the Family Pedigree's localized messages may use, for an editor of

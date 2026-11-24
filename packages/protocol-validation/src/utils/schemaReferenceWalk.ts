@@ -8,8 +8,8 @@ import {
 import type { StageSubject } from '../schemas/9/common/index.ts';
 import {
   type DynamicValueRole,
-  isDynamicValuePathSchema,
-  parseDynamicValuePath,
+  dynamicValueReferencesIn,
+  optionIdFromCaseKey,
 } from '../schemas/9/dynamic-values.ts';
 import {
   getEntityAttributeReferenceDescriptor,
@@ -52,10 +52,13 @@ export type EntityAttributeReferenceHit = {
   /** See `dataSourceColumn` on the reference descriptor. */
   dataSourceColumn?: true;
   /**
-   * Set when the id is part of a dynamic value's `path` (`ego.<id>`) rather
-   * than the whole of the field at `path`.
+   * Set when the attribute is named inside text that shows dynamic values
+   * (see `dynamicValueNameFor`), rather than being the whole of the field at
+   * `path`, which is then the translation that names it: `name` is the name
+   * the text uses, and `optionIds` the options it gives a version for. Text
+   * can name several attributes, so two hits may share a path.
    */
-  inDynamicValuePath?: true;
+  inMessage?: Readonly<{ name: string; optionIds: readonly string[] }>;
 };
 
 export type EntityTypeReferenceHit = {
@@ -154,6 +157,10 @@ const subtreeHasReference = new WeakMap<z.ZodType, boolean>();
 // with no field of its own.
 const holdsAssetBlocks = (node: z.ZodType): boolean =>
   getLocalizedStringDescriptor(node)?.assetBlocks === true;
+// Text that shows dynamic values names the attributes it shows inside its
+// messages (see `dynamicValueNameFor`).
+const dynamicValueSiteOf = (node: z.ZodType) =>
+  getLocalizedStringDescriptor(node)?.dynamicValues;
 const hasReference = (schema: z.ZodType): boolean => {
   const node = unwrap(schema);
   const cached = subtreeHasReference.get(node);
@@ -165,9 +172,9 @@ const hasReference = (schema: z.ZodType): boolean => {
     getEntityTypeReferenceDescriptor(node) !== undefined ||
     getAssetReferenceDescriptor(node) !== undefined ||
     holdsAssetBlocks(node) ||
+    dynamicValueSiteOf(node) !== undefined ||
     getStageReferenceSite(node) !== undefined ||
-    getProtocolObjectKind(node) !== undefined ||
-    isDynamicValuePathSchema(node);
+    getProtocolObjectKind(node) !== undefined;
   if (!result) {
     if (node instanceof z.ZodObject) {
       result = Object.values(node.shape).some(
@@ -325,7 +332,6 @@ type StringPlan = {
   kind: 'string';
   node: z.ZodString;
   attribute: EntityAttributeReferenceDescriptor | undefined;
-  dynamicValuePath: boolean;
   type: EntityTypeReferenceDescriptor | undefined;
   asset: AssetReferenceDescriptor | undefined;
   stageSite: string | undefined;
@@ -358,12 +364,20 @@ type UnionPlan = {
 // `instanceof` checks at every node of every walk was most of a walk's cost.
 type WalkPlan =
   | { kind: 'none' }
-  | { kind: 'assetBlocks' }
+  | TextPlan
   | StringPlan
   | ObjectPlan
   | { kind: 'array'; element: z.ZodType }
   | { kind: 'record'; valueType: z.ZodType }
   | UnionPlan;
+
+// Localized text that names files it shows as blocks, or attributes it
+// shows as dynamic values, inside its translations.
+type TextPlan = {
+  kind: 'text';
+  assetBlocks: boolean;
+  dynamicValues: boolean;
+};
 
 const NO_PLAN: WalkPlan = { kind: 'none' };
 
@@ -412,13 +426,16 @@ const buildPlan = (schema: z.ZodType): WalkPlan => {
       kind: 'string',
       node,
       attribute: getEntityAttributeReferenceDescriptor(node),
-      dynamicValuePath: isDynamicValuePathSchema(node),
       type: getEntityTypeReferenceDescriptor(node),
       asset: getAssetReferenceDescriptor(node),
       stageSite: getStageReferenceSite(node),
     };
   }
-  if (holdsAssetBlocks(node)) return { kind: 'assetBlocks' };
+  const assetBlocks = holdsAssetBlocks(node);
+  const dynamicValues = dynamicValueSiteOf(node) !== undefined;
+  if (assetBlocks || dynamicValues) {
+    return { kind: 'text', assetBlocks, dynamicValues };
+  }
   if (node instanceof z.ZodObject) {
     const shape = node.shape;
     const fields = Object.keys(shape).flatMap((key) => {
@@ -493,26 +510,6 @@ const walkString = (
       },
     ];
   }
-  // A stage's dynamic value names an attribute inside its path, so that the
-  // attribute's uses include the text that shows it, and deleting it is
-  // blocked like deleting any other attribute in use.
-  if (plan.dynamicValuePath) {
-    const parsed = parseDynamicValuePath(value);
-    if (parsed?.kind !== 'attribute') return [];
-    return [
-      {
-        kind: 'attribute',
-        path,
-        variableId: parsed.variableId,
-        inDynamicValuePath: true,
-        // A binding of a node type's own label is about a node of that
-        // type, which the codebook path names; any other is a stage's.
-        subject:
-          resolveSubject('owningVariable', path, ctx) ??
-          dynamicValueSubject(parsed.role, ctx.stageSubject),
-      },
-    ];
-  }
   const typeDescriptor = plan.type;
   if (typeDescriptor) {
     const entity =
@@ -538,6 +535,71 @@ const walkString = (
     return [{ kind: 'stage', path, stageId: value, site: plan.stageSite }];
   }
   return [];
+};
+
+/**
+ * The attributes text that shows dynamic values names, each a use of that
+ * attribute, so that deleting it is blocked like deleting any other
+ * attribute in use. Every translation is read. A name of a node type's own
+ * label is about a node of that type, which the codebook path names; any
+ * other is a stage's. Existence is checked where the text is, with the rest
+ * of what it shows (`findDynamicValueProblems`).
+ */
+const dynamicTextHits = (
+  locale: string,
+  message: string,
+  path: (string | number)[],
+  ctx: WalkContext,
+): ReferenceHit[] =>
+  dynamicValueReferencesIn(message).flatMap(
+    ({ name, parsed, caseKeys }): ReferenceHit[] => {
+      if (parsed?.kind !== 'attribute') return [];
+      const hitPath = [...path, locale];
+      return [
+        {
+          kind: 'attribute',
+          path: hitPath,
+          variableId: parsed.variableId,
+          subject:
+            resolveSubject('owningVariable', hitPath, ctx) ??
+            dynamicValueSubject(parsed.role, ctx.stageSubject),
+          existence: 'unchecked',
+          inMessage: { name, optionIds: caseKeys.map(optionIdFromCaseKey) },
+        },
+      ];
+    },
+  );
+
+const walkText = (
+  plan: TextPlan,
+  value: unknown,
+  path: (string | number)[],
+  ctx: WalkContext,
+): ReferenceHit[] => {
+  if (!isRecord(value)) return [];
+  return Object.entries(value).flatMap(([locale, message]): ReferenceHit[] => {
+    if (typeof message !== 'string') return [];
+    const values = plan.dynamicValues
+      ? dynamicTextHits(locale, message, path, ctx)
+      : [];
+    // Every translation is read: each is a text some participant is shown,
+    // and a file only one language shows is still in use.
+    const assets =
+      plan.assetBlocks && ctx.readAssetBlocks
+        ? assetBlocksInMessage(message).flatMap(({ block }): ReferenceHit[] =>
+            block.assetId === ''
+              ? []
+              : [
+                  {
+                    kind: 'asset',
+                    path: [...path, locale],
+                    assetId: block.assetId,
+                  },
+                ],
+          )
+        : [];
+    return [...values, ...assets];
+  });
 };
 
 const walkUnion = (
@@ -575,9 +637,12 @@ const walkUnion = (
   if (matchesRefFreeBranch) return [];
   // De-dupe on the full hit (path AND resolved subject/requireType): two
   // branches can expose the same path with different validation metadata,
-  // and those are distinct references that must both survive.
+  // and those are distinct references that must both survive. A value whose
+  // discriminator names its branches is read only through those: a yes/no
+  // variable with an invalid name must not have its options read as a
+  // categorical variable's.
   const merged = new Map<string, ReferenceHit>();
-  for (const option of plan.refOptions) {
+  for (const option of searchOptions) {
     for (const hit of walk(option, value, path, ctx)) {
       merged.set(JSON.stringify(hit), hit);
     }
@@ -595,26 +660,7 @@ const walk = (
   const plan = planFor(schema);
   if (plan.kind === 'none') return [];
   if (plan.kind === 'string') return walkString(plan, value, path, ctx);
-  if (plan.kind === 'assetBlocks') {
-    if (!ctx.readAssetBlocks || !isRecord(value)) return [];
-    // Every translation is read: each is a text some participant is shown,
-    // and a file only one language shows is still in use.
-    return Object.entries(value).flatMap(([locale, message]) =>
-      typeof message === 'string'
-        ? assetBlocksInMessage(message).flatMap(({ block }): ReferenceHit[] =>
-            block.assetId === ''
-              ? []
-              : [
-                  {
-                    kind: 'asset',
-                    path: [...path, locale],
-                    assetId: block.assetId,
-                  },
-                ],
-          )
-        : [],
-    );
-  }
+  if (plan.kind === 'text') return walkText(plan, value, path, ctx);
   if (plan.kind === 'object') {
     if (!isRecord(value)) return [];
     const childCtx: WalkContext = {

@@ -9,6 +9,11 @@ import {
 import { codebookRecord, VariableIdSchema } from '../codebook-ids.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import {
+  createProtocolObjectId,
+  type ProtocolObjectId,
+  protocolObjectId,
+} from '../protocol-object-id.ts';
+import {
   DATE_RESOLUTION,
   isIsoDate,
   isValidDateAtResolution,
@@ -431,9 +436,15 @@ export const categoricalOptionValueSchema = z.union([
  */
 export const optionValueKey = (value: string | number): string => String(value);
 
+/** A new, random option id, for a categorical or ordinal option being created. */
+export const createOptionId = (): ProtocolObjectId => createProtocolObjectId();
+
+// Each option has an id, by which text chooses a version for it (see
+// `optionCaseKey`). Answers are still stored, and exported, by `value`.
 const categoricalOptionsSchema = z
   .array(
     z.strictObject({
+      id: protocolObjectId('option'),
       label: localizedString(nonBlankText(), {
         format: 'markdown',
         lines: 'single',

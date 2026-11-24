@@ -14,10 +14,10 @@ import { markdownTree } from './markdownTree.ts';
 import type { MessagePart } from './messageArguments.ts';
 
 /**
- * A value from the interview that a stage's text may show (see the stage's
- * `dynamicValues`), as the message checker sees it:
+ * A value from the interview that a stage's text may show (see
+ * `schemas/9/dynamic-values.ts`), as the message checker sees it:
  * - `cases`, the keys a select on the value may name besides `missing` and
- *   `other` (a categorical, ordinal or boolean value's binding cases);
+ *   `other` (the option or yes/no cases the text gives a version for);
  * - `numeric`, whether a plural may choose a version by it;
  * - `optional`, whether it can be missing where the text is shown. Such a
  *   value is shown only inside a version of a select on it that is for when
@@ -55,9 +55,6 @@ export const MISSING_CASE = 'missing';
  * never become markdown or HTML. Authored text cannot contain it.
  */
 export const DYNAMIC_VALUE_MARKER = '';
-
-/** An argument name: ASCII letters and digits, starting with a letter. */
-export const DYNAMIC_VALUE_NAME = /^[A-Za-z][A-Za-z0-9]*$/;
 
 // The same parse as every other protocol message check: tags stay text.
 const PARSE_OPTIONS: ParserOptions = { ignoreTag: true };
@@ -340,7 +337,7 @@ export const findFormattedMessageProblem = (
 
 /**
  * Why `message` cannot be the text of a site that may show dynamic values,
- * judged without knowing which values the stage binds, or undefined when it
+ * judged without knowing which values the site offers, or undefined when it
  * may be: it parses, holds no number, date or time formatting, no marker
  * character, and shows something in at least one version. Which values it shows, and how, is `findDynamicValueProblem`'s
  * to judge, against the stage.
@@ -481,14 +478,14 @@ const findElementsProblem = (
 };
 
 /**
- * Why `message`, written in `locale`, cannot be the text of a site whose
- * stage binds `values` there, or undefined when it can. One pass checks that
+ * Why `message`, written in `locale`, cannot be the text of a site that
+ * offers `values`, or undefined when it can. One pass checks that
  * it parses, holds no marker, names only those values, chooses versions only
  * by a value's presence (`missing`), its cases or, for a number, its plural
  * category, and shows a value that can be missing only inside a version for
  * when it has one. Then it checks that some version the values can reach
  * shows something: only a value that can be missing reads `missing`, only
- * the binding's cases are chosen, and only the plural categories `locale`
+ * the value's cases are chosen, and only the plural categories `locale`
  * gives some number.
  */
 export const findDynamicValueProblem = (
@@ -539,6 +536,35 @@ export const dynamicValueNamesIn = (message: string): readonly string[] => {
 };
 
 /**
+ * The case keys a message gives a version for in its selects on each name,
+ * besides `missing` and `other`, in the order it first gives them. A message
+ * that does not parse gives none.
+ */
+export const dynamicValueCaseKeysIn = (
+  message: string,
+): ReadonlyMap<string, readonly string[]> => {
+  const keys = new Map<string, string[]>();
+  const elements = parseMessage(message);
+  if (typeof elements === 'string') return keys;
+  const visit = (nodes: readonly MessageFormatElement[]) => {
+    for (const node of nodes) {
+      if (node.type === TYPE.select) {
+        const own = keys.get(node.value) ?? [];
+        for (const key of Object.keys(node.options)) {
+          if (key !== MISSING_CASE && key !== 'other' && !own.includes(key)) {
+            own.push(key);
+          }
+        }
+        keys.set(node.value, own);
+      }
+      for (const version of versionsOf(node)) visit(version);
+    }
+  };
+  visit(elements);
+  return keys;
+};
+
+/**
  * What a value is at one moment, as far as choosing a version goes: missing,
  * or present, with the select case it matches and the number it is, when it
  * has either.
@@ -546,6 +572,17 @@ export const dynamicValueNamesIn = (message: string): readonly string[] => {
 export type DynamicValueState =
   | Readonly<{ missing: true }>
   | Readonly<{ missing: false; case?: string; count?: number }>;
+
+/**
+ * The state of the value `name` stands for, as the select or plural being
+ * read sees it: `caseKeys` are the cases that select gives a version for
+ * (none for a plural), so a value that can match several cases (a
+ * categorical answer of several options) chooses one this select has.
+ */
+export type DynamicValueStateOf = (
+  name: string,
+  caseKeys: readonly string[],
+) => DynamicValueState;
 
 const pushText = (parts: MessagePart[], text: string) => {
   const last = parts.at(-1);
@@ -632,7 +669,7 @@ const selectableCount = (count: number): number => {
 const flatten = (
   elements: readonly MessageFormatElement[],
   locale: LocaleTag,
-  stateOf: (name: string) => DynamicValueState,
+  stateOf: DynamicValueStateOf,
   plural: string | undefined,
   parts: MessagePart[],
 ) => {
@@ -644,7 +681,12 @@ const flatten = (
       if (plural === undefined) pushText(parts, '#');
       else parts.push({ argument: plural });
     } else if (element.type === TYPE.select) {
-      const state = stateOf(element.value);
+      const state = stateOf(
+        element.value,
+        Object.keys(element.options).filter(
+          (key) => key !== MISSING_CASE && key !== 'other',
+        ),
+      );
       const key = state.missing ? MISSING_CASE : state.case;
       const option =
         (key !== undefined && Object.hasOwn(element.options, key)
@@ -654,7 +696,7 @@ const flatten = (
         flatten(option.value, locale, stateOf, plural, parts);
       }
     } else if (element.type === TYPE.plural) {
-      const state = stateOf(element.value);
+      const state = stateOf(element.value, []);
       const count =
         !state.missing && state.count !== undefined ? state.count : undefined;
       // An exact arm ("=0") is chosen before the count's category, as ICU
@@ -679,15 +721,15 @@ const flatten = (
 /**
  * The version of `message`, written in `locale`, that values in the given
  * states read: its text, and where each value it shows goes. A select on a
- * value takes `missing` when the value is missing, else the version for its
- * case, else `other`; a plural takes its count's category in `locale`. `#`
+ * value takes `missing` when the value is missing, else the version for the
+ * case `stateOf` gives it for that select, else `other`; a plural takes its count's category in `locale`. `#`
  * inside a plural is that plural's value. The interview fills the values in;
  * nothing here formats them. A message that does not parse reads as itself.
  */
 export const dynamicMessageParts = (
   message: string,
   locale: LocaleTag,
-  stateOf: (name: string) => DynamicValueState,
+  stateOf: DynamicValueStateOf,
 ): readonly MessagePart[] => {
   const elements = parseMessage(message);
   if (typeof elements === 'string') return [message];

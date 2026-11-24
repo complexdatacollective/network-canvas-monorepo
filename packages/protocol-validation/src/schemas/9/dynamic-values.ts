@@ -1,16 +1,18 @@
-import { z } from 'zod';
-
 import {
-  DYNAMIC_VALUE_NAME,
   type DynamicValueArgument,
   type DynamicValueArguments,
+  dynamicValueCaseKeysIn,
+  dynamicValueNamesIn,
   MISSING_CASE,
 } from '../../localization/dynamicValueMessages.ts';
+import {
+  type MessageNode,
+  messageStructure,
+  printMessageStructure,
+} from '../../localization/messageStructure.ts';
 import type { StageSubject } from './common/subjects.ts';
 import { placesByTapping } from './stage-wording/bins.ts';
 import type { VariableType } from './variables/types.ts';
-
-const DYNAMIC_VALUE_PATH = 'dynamicValuePath' as const;
 
 /**
  * Where a participant-facing text that may show dynamic values sits, which
@@ -73,22 +75,24 @@ export type DynamicValueRole =
   | 'edgeFrom'
   | 'edgeTo';
 
-export const DYNAMIC_VALUE_ROLE_PREFIXES: Readonly<
-  Record<DynamicValueRole, string>
-> = {
-  ego: 'ego.',
-  node: 'node.',
-  edge: 'edge.',
-  dyadSource: 'dyad.source.',
-  dyadTarget: 'dyad.target.',
-  focal: 'one_to_many.focal.',
-  edgeFrom: 'edge.from.',
-  edgeTo: 'edge.to.',
-};
+/** Every role, by the name text writes it with. */
+export const DYNAMIC_VALUE_ROLES: readonly DynamicValueRole[] = [
+  'ego',
+  'node',
+  'edge',
+  'dyadSource',
+  'dyadTarget',
+  'focal',
+  'edgeFrom',
+  'edgeTo',
+];
+
+const isDynamicValueRole = (value: string): value is DynamicValueRole =>
+  DYNAMIC_VALUE_ROLES.some((role) => role === value);
 
 /**
  * The roles that are a node, and so have the label the interview shows on
- * it (see `dynamicValueLabelPathFor`).
+ * it (see `dynamicValueNameFor`).
  */
 export type LabelledDynamicValueRole = Exclude<
   DynamicValueRole,
@@ -114,26 +118,62 @@ export const isAttributeDynamicValueRole = (
 ): role is AttributeDynamicValueRole =>
   role !== 'edgeFrom' && role !== 'edgeTo';
 
-// Variable ids are UUIDs, so no attribute is named this.
-const LABEL_PATH_SEGMENT = '$label';
-const PARTICIPANT_PATH_SEGMENT = '$isParticipant';
+/**
+ * The case keys of a yes/no value: a yes/no attribute, a condition, and
+ * whether a node is the participant. Text reads `other` for whichever it
+ * gives no version.
+ */
+export const TRUE_CASE = 'true';
+export const FALSE_CASE = 'false';
+
+const BOOLEAN_CASES: readonly string[] = [TRUE_CASE, FALSE_CASE];
+
+// Words after a role that name something other than an attribute. Variable
+// ids are UUIDs, so no attribute is called either.
+const LABEL_WORD = 'label';
+const PARTICIPANT_WORD = 'isParticipant';
+const CONDITION_WORD = 'condition';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * The case key a binding of whether a node is the participant chooses for the
- * participant (`dynamicValueParticipantPathFor`); everyone else reads `other`.
+ * An id as text writes it. A message's argument names and select keys cannot
+ * hold `-`, so a UUID's hyphens are written as underscores. No UUID holds an
+ * underscore, so the change can always be undone (`idFromName`).
  */
-export const PARTICIPANT_CASE = 'participant';
-
-const CONDITION_PATH_PREFIX = '$condition.';
+const idAsName = (id: string): string => id.replaceAll('-', '_');
 
 /**
- * The case keys a binding of a condition may give: the one chosen when the
- * condition is met, and the one chosen when it is not. Text reads `other`
- * for whichever it gives no version.
+ * The id a name's part stands for: the UUID it spells with underscores for
+ * hyphens. A part that spells no UUID is the id as written, so a document
+ * whose codebook keys are still readable (a fixture before its keys are
+ * given ids) names them too, provided they hold no underscore or hyphen.
  */
-export const TRUE_CASE = 'yes';
-export const FALSE_CASE = 'no';
+const idFromName = (part: string): string => {
+  const id = part.replaceAll('_', '-');
+  return UUID.test(id) ? id : part;
+};
 
+/**
+ * The select case key that chooses an option of a categorical or ordinal
+ * attribute: its id, written as a name (see `idAsName`). Answers are stored
+ * by the option's value, which need not be a name; the id always is.
+ */
+export const optionCaseKey = (optionId: string): string => idAsName(optionId);
+
+/** The option id a case key names (the inverse of `optionCaseKey`). */
+export const optionIdFromCaseKey = (key: string): string => idFromName(key);
+
+/**
+ * What one name in a message stands for:
+ * - `intrinsic`, a value the interview knows (`now`);
+ * - `label`, the label the interview shows on a node (`node_label`);
+ * - `participant`, whether the node a form describes is the participant
+ *   (`node_isParticipant`);
+ * - `condition`, whether one of the conditions declared beside the text is
+ *   met (`condition_<id>`);
+ * - `attribute`, an attribute of someone on screen (`ego_<variable id>`).
+ */
 export type ParsedDynamicValuePath =
   | Readonly<{ kind: 'intrinsic'; name: IntrinsicDynamicValue }>
   | Readonly<{ kind: 'label'; role: LabelledDynamicValueRole }>
@@ -145,145 +185,141 @@ export type ParsedDynamicValuePath =
       variableId: string;
     }>;
 
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- entries of a Record<DynamicValueRole, string> with every role present, so every key is a DynamicValueRole
-const ROLE_PREFIX_ENTRIES = Object.entries(DYNAMIC_VALUE_ROLE_PREFIXES) as [
-  DynamicValueRole,
-  string,
-][];
-
-/** What a binding's `path` names, or undefined when it names nothing. */
-export const parseDynamicValuePath = (
-  path: string,
-): ParsedDynamicValuePath | undefined => {
-  if (isIntrinsic(path)) return { kind: 'intrinsic', name: path };
-  if (path.startsWith(CONDITION_PATH_PREFIX)) {
-    const conditionId = path.slice(CONDITION_PATH_PREFIX.length);
-    return conditionId === '' ? undefined : { kind: 'condition', conditionId };
+/**
+ * The name text uses for a value. Attributes and conditions are named by
+ * their ids, so renaming an attribute changes no message, and each id is
+ * prefixed by whose it is: the two nodes of a pair are often of one type, so
+ * one attribute can be shown for each.
+ * - an attribute: `<role>_<variable id>`, as `ego_3377af3f_3c79_…`;
+ * - a node's label: `<role>_label`, as `dyadSource_label`;
+ * - whether the node is the participant: `node_isParticipant`;
+ * - a condition: `condition_<condition id>`;
+ * - today's date: `now`.
+ */
+export const dynamicValueNameFor = (value: ParsedDynamicValuePath): string => {
+  switch (value.kind) {
+    case 'intrinsic':
+      return value.name;
+    case 'label':
+      return `${value.role}_${LABEL_WORD}`;
+    case 'participant':
+      return `${value.role}_${PARTICIPANT_WORD}`;
+    case 'condition':
+      return `${CONDITION_WORD}_${idAsName(value.conditionId)}`;
+    case 'attribute':
+    default:
+      return `${value.role}_${idAsName(value.variableId)}`;
   }
-  // No attribute id holds `$`, so nothing else begins with one.
-  if (path.startsWith('$')) return undefined;
-  for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
-    if (
-      isLabelledDynamicValueRole(role) &&
-      path === `${prefix}${LABEL_PATH_SEGMENT}`
-    ) {
-      return { kind: 'label', role };
-    }
-  }
-  if (
-    path === `${DYNAMIC_VALUE_ROLE_PREFIXES.node}${PARTICIPANT_PATH_SEGMENT}`
-  ) {
-    return { kind: 'participant', role: 'node' };
-  }
-  for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
-    if (!isAttributeDynamicValueRole(role)) continue;
-    if (path.startsWith(prefix) && path.length > prefix.length) {
-      return { kind: 'attribute', role, variableId: path.slice(prefix.length) };
-    }
-  }
-  return undefined;
 };
 
-/** The `path` naming a role's attribute. */
-export const dynamicValuePathFor = (
-  role: AttributeDynamicValueRole,
-  variableId: string,
-): string => `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${variableId}`;
+/**
+ * What a name in a message stands for (see `dynamicValueNameFor`), or
+ * undefined when it stands for nothing text can show.
+ */
+export const parseDynamicValueName = (
+  name: string,
+): ParsedDynamicValuePath | undefined => {
+  if (isIntrinsic(name)) return { kind: 'intrinsic', name };
+  const separator = name.indexOf('_');
+  if (separator <= 0) return undefined;
+  const head = name.slice(0, separator);
+  const rest = name.slice(separator + 1);
+  if (rest === '') return undefined;
+  if (head === CONDITION_WORD) {
+    return { kind: 'condition', conditionId: idFromName(rest) };
+  }
+  if (!isDynamicValueRole(head)) return undefined;
+  if (rest === LABEL_WORD) {
+    return isLabelledDynamicValueRole(head)
+      ? { kind: 'label', role: head }
+      : undefined;
+  }
+  if (rest === PARTICIPANT_WORD) {
+    return head === 'node' ? { kind: 'participant', role: head } : undefined;
+  }
+  return isAttributeDynamicValueRole(head)
+    ? { kind: 'attribute', role: head, variableId: idFromName(rest) }
+    : undefined;
+};
+
+/** One name a message uses, with what it stands for and the cases it gives. */
+export type DynamicValueReference = Readonly<{
+  name: string;
+  /** Undefined when the name stands for nothing text can show. */
+  parsed: ParsedDynamicValuePath | undefined;
+  /**
+   * The case keys the message gives a version for in its selects on the
+   * name, besides `missing` and `other`: option case keys, or `true` and
+   * `false`.
+   */
+  caseKeys: readonly string[];
+}>;
 
 /**
- * The `path` naming a node role's label: the text the interview shows on that
- * node, chosen from its attributes by the same rules (a variable called
- * "name", then one whose name contains "name", then the first text answer)
- * and falling back to its type's name. It is never missing, and unlike any
- * one attribute it names the node however its type records names.
+ * Every name `message` uses, shown or chosen by, with what each stands for
+ * and the case keys it gives. A message that does not parse uses none.
  */
-export const dynamicValueLabelPathFor = (
-  role: LabelledDynamicValueRole,
-): string => `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${LABEL_PATH_SEGMENT}`;
+export const dynamicValueReferencesIn = (
+  message: string,
+): readonly DynamicValueReference[] => {
+  const caseKeys = dynamicValueCaseKeysIn(message);
+  return dynamicValueNamesIn(message).map((name) => ({
+    name,
+    parsed: parseDynamicValueName(name),
+    caseKeys: caseKeys.get(name) ?? [],
+  }));
+};
 
 /**
- * The `path` naming whether the node a form describes is the participant
- * (`true`) or someone else (`false`), which text can choose its wording by
- * but never shows. Only a Family Pedigree's person form knows it: the
- * participant is one of the family it draws (see
- * `dynamicValueParticipantRolesAt`). It is never missing.
+ * `message` with names and case keys replaced: `name` gives the new name
+ * for a name, and `caseKey` the new key for a case key of a select on a
+ * name (given its name before any renaming); each leaves what it returns
+ * undefined for as it is. A message that does not parse, or in which
+ * nothing changes, is returned as it was.
  */
-export const dynamicValueParticipantPathFor = (role: 'node'): string =>
-  `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${PARTICIPANT_PATH_SEGMENT}`;
-
-/**
- * The `path` naming whether one of the conditions declared beside the text
- * (a stage's `conditions`, or a node type's `dynamicLabel.conditions`) is
- * met. Text chooses its wording by it and never shows it. It is never
- * missing.
- */
-export const dynamicValueConditionPathFor = (conditionId: string): string =>
-  `${CONDITION_PATH_PREFIX}${conditionId}`;
-
-const DynamicValuePathSchema = z
-  .string()
-  .refine((path) => parseDynamicValuePath(path) !== undefined, {
-    message: 'This does not name a value the interview can show.',
-  })
-  .meta({ [DYNAMIC_VALUE_PATH]: true });
-
-/** Whether a schema node is a binding's `path` (for reference collection). */
-export const isDynamicValuePathSchema = (schema: z.ZodType): boolean =>
-  schema.meta()?.[DYNAMIC_VALUE_PATH] === true;
-
-/**
- * Binds one argument name a stage's text may use to the value it stands for.
- * `cases` exists only for a categorical, ordinal or boolean value: it maps
- * each select case key the text may name to the stored option value it
- * stands for, because option values need not be names.
- *
- * A categorical answer can hold several options at once. A select then takes
- * the first case, in the order `cases` lists them, whose option the answer
- * includes, and `other` when it includes none: a researcher who wants one
- * option to win lists it first.
- */
-export const DynamicValueBindingSchema = z.strictObject({
-  path: DynamicValuePathSchema,
-  cases: z
-    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-    .optional(),
-});
-
-export type DynamicValueBinding = z.infer<typeof DynamicValueBindingSchema>;
-
-/**
- * A stage's dynamic values, by the argument name its messages use. Names are
- * short identifiers so that a translator reads `{partnerName}`, and renaming
- * a variable changes no message.
- */
-export const DynamicValuesSchema = z
-  .record(z.string(), DynamicValueBindingSchema)
-  .superRefine((bindings, ctx) => {
-    for (const [name, binding] of Object.entries(bindings)) {
-      if (!DYNAMIC_VALUE_NAME.test(name)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `"${name}" cannot name a value: use ASCII letters and digits, starting with a letter.`,
-          path: [name],
-        });
+export const rewriteDynamicValueReferences = (
+  message: string,
+  {
+    name: renameName,
+    caseKey: renameCaseKey,
+  }: {
+    name?: (name: string) => string | undefined;
+    caseKey?: (name: string, key: string) => string | undefined;
+  },
+): string => {
+  if (!message.includes('{')) return message;
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) return message;
+  let changed = false;
+  const rewrite = (nodes: readonly MessageNode[]): MessageNode[] =>
+    nodes.map((node): MessageNode => {
+      if (node.kind === 'argument') {
+        const renamed = renameName?.(node.name);
+        if (renamed === undefined || renamed === node.name) return node;
+        changed = true;
+        return { kind: 'argument', name: renamed };
       }
-      for (const key of Object.keys(binding.cases ?? {})) {
-        if (
-          !DYNAMIC_VALUE_NAME.test(key) ||
-          key === MISSING_CASE ||
-          key === 'other'
-        ) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `"${key}" cannot name a case: use ASCII letters and digits, starting with a letter, other than "${MISSING_CASE}" and "other".`,
-            path: [name, 'cases', key],
-          });
-        }
-      }
-    }
-  });
-
-export type DynamicValues = z.infer<typeof DynamicValuesSchema>;
+      if (node.kind !== 'switch') return node;
+      const renamed = renameName?.(node.argument) ?? node.argument;
+      if (renamed !== node.argument) changed = true;
+      return {
+        ...node,
+        argument: renamed,
+        versions: node.versions.map((version) => {
+          const key =
+            node.type === 'select' &&
+            version.key !== MISSING_CASE &&
+            version.key !== 'other'
+              ? (renameCaseKey?.(node.argument, version.key) ?? version.key)
+              : version.key;
+          if (key !== version.key) changed = true;
+          return { key, nodes: rewrite(version.nodes) };
+        }),
+      };
+    });
+  const nodes = rewrite(structure.nodes);
+  return changed ? printMessageStructure(nodes) : message;
+};
 
 /** Stages whose prompts are shown about two nodes at a time. */
 const DYAD_STAGE_TYPES: ReadonlySet<string> = new Set([
@@ -317,7 +353,7 @@ const placesOneNodeAtATime = (stage: DynamicValueStage): boolean =>
  * What a form field's form describes: its entity, and whether that is the
  * stage's own subject. Only then can text name the entity's attributes: a
  * Network Composer edge type's form describes an edge type of its own, which
- * no stage binding can name unambiguously.
+ * no stage text can name unambiguously.
  */
 export type DynamicValueForm = Readonly<{
   entity: StageSubject['entity'];
@@ -411,7 +447,7 @@ export const DYNAMIC_VALUE_VARIABLE_TYPES: ReadonlySet<VariableType> =
     'categorical',
   ]);
 
-/** Variable types whose bindings may carry select cases. */
+/** Variable types whose values text can choose a version by case. */
 export const CASED_VARIABLE_TYPES: ReadonlySet<VariableType> =
   new Set<VariableType>(['boolean', 'ordinal', 'categorical']);
 
@@ -424,7 +460,11 @@ export type DynamicValueVariable = Readonly<{
   type: VariableType;
   name?: string;
   encrypted?: boolean;
-  options?: readonly Readonly<{ value: unknown; label?: unknown }>[];
+  options?: readonly Readonly<{
+    id?: unknown;
+    value: unknown;
+    label?: unknown;
+  }>[];
 }>;
 
 /**
@@ -451,31 +491,89 @@ export const dynamicValueUnshowableReason = (
 };
 
 /**
- * Whether every answer `variable` can hold is the option of one of
- * `binding`'s cases: both answers of a yes/no attribute, or each option of
- * any other. A present answer then always chooses a case.
+ * The case keys text can give a version for on a value: each option of a
+ * categorical or ordinal attribute (`optionCaseKey` of its id), in codebook
+ * order, and `true` and `false` for a yes/no attribute. An option without an
+ * id is refused by the codebook's own check, and has no key here.
  */
-const casesCoverEveryAnswer = (
-  binding: DynamicValueBinding,
+const caseKeysOfVariable = (
   variable: DynamicValueVariable,
-): boolean => {
-  const answers =
-    variable.type === 'boolean'
-      ? [true, false]
-      : (variable.options ?? []).map((option) => option.value);
-  const chosen = Object.values(binding.cases ?? {});
-  return (
-    answers.length > 0 &&
-    answers.every((answer) => chosen.some((option) => option === answer))
+): readonly string[] => {
+  if (variable.type === 'boolean') return BOOLEAN_CASES;
+  if (!CASED_VARIABLE_TYPES.has(variable.type)) return [];
+  return (variable.options ?? []).flatMap((option) =>
+    typeof option.id === 'string' ? [optionCaseKey(option.id)] : [],
   );
 };
 
 /**
- * A binding as one site sees it:
+ * The case a present value chooses in a select that gives versions for
+ * `givenKeys`, or undefined when it chooses none, and so reads `other`:
+ * - a yes/no value (a yes/no attribute, a condition, whether a node is the
+ *   participant) chooses `true` or `false`;
+ * - an option of a categorical or ordinal attribute chooses its
+ *   `optionCaseKey`. A categorical answer can hold several options at once:
+ *   it chooses the first of them, in the codebook's order of the options,
+ *   that the select gives a version for.
+ *
+ * `variable` is the attribute's codebook variable, and is not needed for a
+ * yes/no value that is no attribute.
+ */
+export const dynamicValueCaseOf = (
+  value: unknown,
+  variable: Pick<DynamicValueVariable, 'options'> | undefined,
+  givenKeys: Iterable<string>,
+): string | undefined => {
+  const given = new Set(givenKeys);
+  if (typeof value === 'boolean') {
+    const key = value ? TRUE_CASE : FALSE_CASE;
+    return given.has(key) ? key : undefined;
+  }
+  const answers: readonly unknown[] = Array.isArray(value) ? value : [value];
+  for (const option of variable?.options ?? []) {
+    if (typeof option.id !== 'string') continue;
+    const key = optionCaseKey(option.id);
+    if (given.has(key) && answers.includes(option.value)) return key;
+  }
+  return undefined;
+};
+
+/**
+ * The cases text gives a value, as the message checker sees them: the keys
+ * the text gives, and whether they cover every answer the value can hold, in
+ * which case its `other` version is never read. Or a reason a key the text
+ * gives is not one the value has.
+ */
+const givenCases = (
+  allowed: readonly string[],
+  caseKeys: readonly string[],
+  describe: (key: string) => string,
+):
+  | Readonly<{ cases: string[]; exhaustive: boolean }>
+  | Readonly<{ problem: string }> => {
+  const given = new Set(caseKeys);
+  const wrong = [...given].find((key) => !allowed.includes(key));
+  if (wrong !== undefined) return { problem: describe(wrong) };
+  const cases = allowed.filter((key) => given.has(key));
+  return {
+    cases,
+    exhaustive: allowed.length > 0 && cases.length === allowed.length,
+  };
+};
+
+const notYesOrNo = (key: string) =>
+  `it has a version for "${key}", but it can only have versions for "${TRUE_CASE}" and "${FALSE_CASE}"`;
+
+const noCases = (key: string) =>
+  `it has a version for "${key}", but it has no versions to choose between other than "${MISSING_CASE}" and "other"`;
+
+/**
+ * A name in a message as one site sees it:
  * - `available`, with its argument for the message checker;
  * - `unavailable`, naming a value that site cannot show;
- * - `unknown`, naming a variable that does not exist, or one of a kind that
- *   cannot be shown.
+ * - `unknown`, naming nothing (no such attribute, condition or role), an
+ *   attribute of a kind that cannot be shown, or giving a version for a case
+ *   the value does not have.
  */
 export type DynamicValueStatus =
   | Readonly<{ status: 'available'; argument: DynamicValueArgument }>
@@ -528,16 +626,21 @@ const ROLE_NAMES: Readonly<Record<DynamicValueRole, string>> = {
   edgeTo: 'the second node of the edge',
 };
 
-/** How a binding reads at a site (see `DynamicValueStatus`). */
+/**
+ * How a name reads at a site (see `DynamicValueStatus`), given what it
+ * stands for (`parseDynamicValueName`, undefined when nothing) and the case
+ * keys the message gives a version for in its selects on it.
+ */
 export const dynamicValueStatus = (
-  binding: DynamicValueBinding,
+  parsed: ParsedDynamicValuePath | undefined,
   context: DynamicValueSiteContext,
+  caseKeys: readonly string[] = [],
 ): DynamicValueStatus => {
-  const parsed = parseDynamicValuePath(binding.path);
   if (parsed === undefined) {
     return {
       status: 'unknown',
-      reason: 'it does not name a value the interview can show',
+      reason:
+        'it does not refer to an attribute, a node’s label, a condition or today’s date',
     };
   }
   if (parsed.kind === 'intrinsic') {
@@ -547,6 +650,8 @@ export const dynamicValueStatus = (
         reason: 'a node’s label can show only what is known about that node',
       };
     }
+    const cases = givenCases([], caseKeys, noCases);
+    if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
     return {
       status: 'available',
       argument: {
@@ -570,12 +675,15 @@ export const dynamicValueStatus = (
         reason: `its rules are about ${ROLE_NAMES[condition.about]}, which this text is not shown with`,
       };
     }
+    const cases = givenCases(BOOLEAN_CASES, caseKeys, notYesOrNo);
+    if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
     return {
       status: 'available',
       argument: {
-        cases: Object.keys(binding.cases ?? {}),
+        cases: cases.cases,
         numeric: false,
         optional: false,
+        ...(cases.exhaustive && { exhaustive: true }),
         unshowable:
           'a condition only chooses wording, and is never shown itself. Give the text a version for when it is met and one for when it is not.',
       },
@@ -590,6 +698,8 @@ export const dynamicValueStatus = (
   // A node on screen always shows a label, its type's name at least, but
   // there may be no node on screen.
   if (parsed.kind === 'label') {
+    const cases = givenCases([], caseKeys, noCases);
+    if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
     return {
       status: 'available',
       argument: {
@@ -607,12 +717,15 @@ export const dynamicValueStatus = (
           'whether a node is the participant is known only in the questions of a Family Pedigree stage’s person form',
       };
     }
+    const cases = givenCases(BOOLEAN_CASES, caseKeys, notYesOrNo);
+    if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
     return {
       status: 'available',
       argument: {
-        cases: Object.keys(binding.cases ?? {}),
+        cases: cases.cases,
         numeric: false,
         optional: false,
+        ...(cases.exhaustive && { exhaustive: true }),
         unshowable:
           'whether the node is the participant only chooses wording, and is never shown itself. Give the text a version for the participant and one for everyone else.',
       },
@@ -634,31 +747,44 @@ export const dynamicValueStatus = (
         : `a ${variable.type} attribute cannot be shown in text`,
     };
   }
+  const attribute =
+    variable.name === undefined ? 'the attribute' : `"${variable.name}"`;
+  const cases = givenCases(
+    caseKeysOfVariable(variable),
+    caseKeys,
+    variable.type === 'boolean'
+      ? notYesOrNo
+      : CASED_VARIABLE_TYPES.has(variable.type)
+        ? (key) =>
+            `it has a version for "${key}", which is not one of the options of ${attribute}`
+        : noCases,
+  );
+  if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
   const unshowable = dynamicValueUnshowableReason(variable);
-  const cased = CASED_VARIABLE_TYPES.has(variable.type);
   return {
     status: 'available',
     argument: {
-      cases: cased ? Object.keys(binding.cases ?? {}) : [],
+      cases: cases.cases,
       numeric: NUMERIC_VARIABLE_TYPES.has(variable.type),
       optional: true,
-      ...(cased &&
-        casesCoverEveryAnswer(binding, variable) && {
-          exhaustive: true,
-        }),
+      ...(cases.exhaustive && { exhaustive: true }),
       ...(unshowable !== undefined && { unshowable }),
     },
   };
 };
 
-/** The arguments a site's messages may use: the bindings available there. */
+/**
+ * The arguments `message` may use at a site: each name it uses that is
+ * available there, with the cases it gives. A name that is not is left out,
+ * and the message checker then reports it as a value that does not exist.
+ */
 export const dynamicValueArgumentsAt = (
-  bindings: DynamicValues | undefined,
+  message: string,
   context: DynamicValueSiteContext,
 ): DynamicValueArguments =>
   Object.fromEntries(
-    Object.entries(bindings ?? {}).flatMap(([name, binding]) => {
-      const status = dynamicValueStatus(binding, context);
+    dynamicValueReferencesIn(message).flatMap(({ name, parsed, caseKeys }) => {
+      const status = dynamicValueStatus(parsed, context, caseKeys);
       return status.status === 'available' ? [[name, status.argument]] : [];
     }),
   );

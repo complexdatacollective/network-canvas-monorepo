@@ -17,6 +17,7 @@ import {
   rewriteStageReferences,
   setObjectIdAt,
   unshareObjects,
+  valueAt,
 } from '../utils/protocolObjectIdRewrite.ts';
 import { findMarkedObjects } from '../utils/protocolObjectIds.ts';
 import {
@@ -69,7 +70,30 @@ export const withTestCodebookIds = <T>(protocol: T): T => {
     typeId: asTestCodebookId(isEntityTypeId, testTypeId),
     variableId: asTestCodebookId(isVariableId, testVariableId),
   });
+  withTestOptionIds(copy);
   return copy;
+};
+
+/**
+ * Gives each option of a categorical or ordinal variable that has no id
+ * `testId` of its variable's id and its value, in place, so a fixture need
+ * not write option ids it never refers to.
+ */
+const withTestOptionIds = (protocol: Record<string, unknown>) => {
+  for (const { id, path, objectKind } of findMarkedObjects(
+    ProtocolStructureSchema,
+    protocol,
+  )) {
+    if (objectKind !== 'option' || id !== undefined) continue;
+    const objectPath = path.slice(0, -1);
+    const option = valueAt(protocol, objectPath);
+    const value = isRecord(option) ? option.value : undefined;
+    setObjectIdAt(
+      protocol,
+      objectPath,
+      testId(`option/${String(objectPath.at(-3))}/${String(value)}`),
+    );
+  }
 };
 
 // The top-level object holding the object at `objectPath`: a stage, or the

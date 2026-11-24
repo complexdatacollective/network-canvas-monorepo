@@ -15,7 +15,13 @@ import {
   dynamicValueContextFor,
   stageDynamicValueContext,
 } from '../dynamic-value-validation.ts';
-import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
+import {
+  type AttributeDynamicValueRole,
+  dynamicValueArgumentsAt,
+  dynamicValueNameFor,
+  type LabelledDynamicValueRole,
+  optionCaseKey,
+} from '../dynamic-values.ts';
 import {
   getLocalizedStringDescriptor,
   localizedMessage,
@@ -59,129 +65,167 @@ const issuesOf = (protocol: unknown) => {
 const stageIndex = (protocol: Protocol, id: string) =>
   (protocol.stages as Stage[]).findIndex((stage) => isStage(stage, id));
 
+// Text names an attribute by the id `withTestIds` gives the fixture's
+// readable key, so it names it the same before and after.
+const attribute = (role: AttributeDynamicValueRole, key: string) =>
+  dynamicValueNameFor({
+    kind: 'attribute',
+    role,
+    variableId: testVariableId(key),
+  });
+
+const labelOf = (role: LabelledDynamicValueRole) =>
+  dynamicValueNameFor({ kind: 'label', role });
+
+const IS_PARTICIPANT = dynamicValueNameFor({
+  kind: 'participant',
+  role: 'node',
+});
+
+// The case key of an option the fixture writes without an id: `withTestIds`
+// gives it `testId` of its place in the codebook as written.
+const optionKey = (
+  entity: 'node' | 'edge',
+  type: string,
+  variable: string,
+  index: number,
+) =>
+  optionCaseKey(
+    testId(
+      JSON.stringify([
+        'codebook',
+        entity,
+        type,
+        'variables',
+        variable,
+        'options',
+        index,
+      ]),
+    ),
+  );
+
+const EGO_NAME = attribute('ego', 'egoName');
+const EGO_AGE = attribute('ego', 'egoAge');
+const NICKNAME = attribute('node', 'nickname');
+const CATEGORY = attribute('node', 'category');
+const FLAG = attribute('node', 'flag');
+const FRIEND = optionKey('node', 'person', 'category', 0);
+const FAMILY = optionKey('node', 'person', 'category', 1);
+
 const guarded = (name: string) =>
   `{${name}, select, missing {Tell us about them.} other {Tell us about {${name}}.}}`;
 
+/** An alter form whose one field asks `prompt`. */
+const askingInAlterForm = (prompt: string) =>
+  editing('alterForm', (stage) => {
+    stage.form = {
+      fields: [{ id: 'field-1', variable: 'nickname', prompt: { en: prompt } }],
+    };
+  });
+
+const NOTHING =
+  'it does not refer to an attribute, a node’s label, a condition or today’s date';
+
 describe('dynamic values in stage text', () => {
-  it('accepts the complete protocol, which binds nothing', () => {
+  it('accepts the complete protocol, which shows no values', () => {
     expect(issuesOf(withTestIds(completeProtocol()))).toEqual([]);
   });
 
   it('accepts an ego value guarded by a missing version on an Information screen', () => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { egoName: { path: 'ego.egoName' } };
-      stage.content = { en: guarded('egoName') };
+      stage.content = { en: guarded(EGO_NAME) };
     });
     expect(issuesOf(protocol)).toEqual([]);
   });
 
   it('refuses a network value shown outside a version for when it has one', () => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { egoName: { path: 'ego.egoName' } };
-      stage.content = { en: 'Hello {egoName}' };
+      stage.content = { en: `Hello {${EGO_NAME}}` };
     });
     const index = stageIndex(protocol, 'information');
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
         path: `stages.${index}.content.en`,
-        message: expect.stringContaining('"egoName" can be missing'),
+        message: expect.stringContaining(`"${EGO_NAME}" can be missing`),
       }),
     ]);
   });
 
   it('refuses a select without a missing version as the guard of its other version', () => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { egoName: { path: 'ego.egoName' } };
-      stage.content = { en: '{egoName, select, other {Hi {egoName}}}' };
+      stage.content = {
+        en: `{${EGO_NAME}, select, other {Hi {${EGO_NAME}}}}`,
+      };
     });
     expect(issuesOf(protocol)).toHaveLength(1);
   });
 
   it('needs no missing version for a value every host guarantees', () => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { today: { path: 'now' } };
-      stage.content = { en: 'Since {today}' };
+      stage.content = { en: 'Since {now}' };
     });
     expect(issuesOf(protocol)).toEqual([]);
   });
 
   it.each([
-    'interview.id',
-    'interview.caseId',
-    'interview.startedAt',
-    'protocol.name',
-    'protocol.hash',
-    'stage.id',
-  ])('refuses the interview metadata %s', (path) => {
+    'interview_id',
+    'protocol_hash',
+    'stage_id',
+    'someone',
+    'ego',
+    `ego_`,
+    'ego_label',
+    'edge_label',
+    'ego_isParticipant',
+    `edgeFrom_${testVariableId('nickname').replaceAll('-', '_')}`,
+    'condition_',
+  ])('refuses %s, which refers to nothing', (name) => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { meta: { path } };
-    });
-    expect(issuesOf(protocol)).toEqual([
-      expect.objectContaining({
-        message: 'This does not name a value the interview can show.',
-      }),
-    ]);
-  });
-
-  it('refuses a name the stage does not bind', () => {
-    const protocol = editing('information', (stage) => {
-      stage.content = { en: 'Hello {someone}' };
-    });
-    expect(issuesOf(protocol)).toEqual([
-      expect.objectContaining({
-        message: expect.stringContaining(
-          'This text refers to a value that does not exist: "someone".',
-        ),
-      }),
-    ]);
-  });
-
-  it('refuses a binding to an attribute that does not exist, at the binding and at its site', () => {
-    const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { gone: { path: 'ego.deleted' } };
-      stage.content = { en: guarded('gone') };
+      stage.content = { en: guarded(name) };
     });
     const index = stageIndex(protocol, 'information');
-    const issues = issuesOf(protocol);
-    expect(issues).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          path: `stages.${index}.dynamicValues.gone.path`,
-        }),
-        expect.objectContaining({
-          path: `stages.${index}.content.en`,
-          message: expect.stringContaining('does not exist'),
-        }),
-      ]),
-    );
-  });
-
-  it('refuses an argument name that is not a short identifier', () => {
-    const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { 'partner-name': { path: 'ego.egoName' } };
-    });
     expect(issuesOf(protocol)).toEqual([
-      expect.objectContaining({
-        message: expect.stringContaining('cannot name a value'),
-      }),
+      {
+        path: `stages.${index}.content.en`,
+        message: `This text cannot use "${name}": ${NOTHING}.`,
+      },
     ]);
   });
 
-  it('refuses a path outside the vocabulary', () => {
+  it('refuses an attribute that does not exist, once, where the text names it', () => {
+    const gone = attribute('ego', 'deleted');
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { other: { path: 'session.secret' } };
+      stage.content = { en: guarded(gone) };
+    });
+    const index = stageIndex(protocol, 'information');
+    expect(issuesOf(protocol)).toEqual([
+      {
+        path: `stages.${index}.content.en`,
+        message: `This text cannot use "${gone}": the attribute it shows does not exist.`,
+      },
+    ]);
+  });
+
+  it('refuses a condition that does not exist', () => {
+    const name = dynamicValueNameFor({
+      kind: 'condition',
+      conditionId: testId('no such condition'),
+    });
+    const protocol = editing('information', (stage) => {
+      stage.content = {
+        en: `{${name}, select, true {Yes.} other {No.}}`,
+      };
     });
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
-        message: 'This does not name a value the interview can show.',
+        message: `This text cannot use "${name}": the condition it names does not exist.`,
       }),
     ]);
   });
 
   it('refuses text that is blank in every version', () => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { you: { path: 'ego.egoName' } };
-      stage.content = { en: '{you, select, missing {} other {}}' };
+      stage.content = { en: `{${EGO_NAME}, select, missing {} other {}}` };
     });
     const index = stageIndex(protocol, 'information');
     expect(issuesOf(protocol)).toEqual([
@@ -194,9 +238,8 @@ describe('dynamic values in stage text', () => {
 
   it('refuses text whose only words are in a plural version its language never chooses', () => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { count: { path: 'ego.egoAge' } };
       stage.content = {
-        en: '{count, select, missing {} other {{count, plural, few {Some} other {}}}}',
+        en: `{${EGO_AGE}, select, missing {} other {{${EGO_AGE}, plural, few {Some} other {}}}}`,
       };
     });
     const index = stageIndex(protocol, 'information');
@@ -210,7 +253,7 @@ describe('dynamic values in stage text', () => {
 
   it('refuses text holding the marker the interview places values with', () => {
     const protocol = editing('information', (stage) => {
-      stage.content = { en: 'Hello ' };
+      stage.content = { en: 'Hello \uE000' };
     });
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
@@ -221,8 +264,7 @@ describe('dynamic values in stage text', () => {
 
   it('keeps sites outside the field boundary literal', () => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = { egoName: { path: 'ego.egoName' } };
-      stage.label = { en: guarded('egoName') };
+      stage.label = { en: guarded(EGO_NAME) };
     });
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
@@ -232,94 +274,60 @@ describe('dynamic values in stage text', () => {
   });
 
   describe('cases', () => {
-    it('lets a categorical value choose a version by case', () => {
-      const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = {
-          kind: { path: 'node.category', cases: { friend: 'friend' } },
-        };
-        stage.form = {
-          fields: [
-            { id: 'field-1', variable: 'nickname', prompt: { en: 'Nickname' } },
-            {
-              id: 'field-2',
-              variable: 'name',
-              prompt: {
-                en: '{kind, select, missing {Their name?} friend {Your friend’s name?} other {Their name?}}',
-              },
-            },
-          ],
-        };
-      });
+    it('lets a categorical value choose a version by the id of an option', () => {
       // `category` is not asked in this form, so it can already have a value.
-      expect(issuesOf(protocol)).toEqual([]);
+      expect(
+        issuesOf(
+          askingInAlterForm(
+            `{${CATEGORY}, select, missing {Their name?} ${FRIEND} {Your friend’s name?} other {Their name?}}`,
+          ),
+        ),
+      ).toEqual([]);
     });
 
-    it('refuses a case the binding does not declare', () => {
-      const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = { kind: { path: 'node.category' } };
-        stage.form = {
-          fields: [
-            {
-              id: 'field-1',
-              variable: 'name',
-              prompt: {
-                en: '{kind, select, friend {Your friend?} other {Them?}}',
-              },
-            },
-          ],
-        };
-      });
-      expect(issuesOf(protocol)).toEqual([
-        expect.objectContaining({
-          message: expect.stringContaining('"friend" is not a version'),
-        }),
-      ]);
-    });
-
-    it('refuses a case standing for no option', () => {
-      const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = {
-          kind: { path: 'node.category', cases: { work: 'colleague' } },
-        };
-      });
-      const index = stageIndex(protocol, 'alterForm');
-      expect(issuesOf(protocol)).toEqual([
-        expect.objectContaining({
-          path: `stages.${index}.dynamicValues.kind.cases.work`,
-        }),
-      ]);
-    });
-
-    it('refuses a second case for an option another case already stands for', () => {
-      const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = {
-          kind: {
-            path: 'node.category',
-            cases: { friend: 'friend', pal: 'friend' },
-          },
-        };
-      });
-      const index = stageIndex(protocol, 'alterForm');
-      expect(issuesOf(protocol)).toEqual([
-        {
-          path: `stages.${index}.dynamicValues.kind.cases.pal`,
-          message:
-            'Case "pal" stands for "friend", as case "friend" already does, so it would never be chosen. Give each option at most one case.',
-        },
-      ]);
+    it('refuses a case that is not an option of the attribute', () => {
+      const strong = optionKey('node', 'person', 'strength', 1);
+      for (const key of ['friend', strong]) {
+        expect(
+          issuesOf(
+            askingInAlterForm(
+              `{${CATEGORY}, select, ${key} {Your friend?} other {Them?}}`,
+            ),
+          ),
+        ).toEqual([
+          expect.objectContaining({
+            message: `This text cannot use "${CATEGORY}": it has a version for "${key}", which is not one of the options of "Category".`,
+          }),
+        ]);
+      }
     });
 
     it('refuses cases on a value without options', () => {
-      const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = {
-          nick: { path: 'node.nickname', cases: { bob: 'Bob' } },
-        };
-      });
-      expect(issuesOf(protocol)).toEqual([
+      expect(
+        issuesOf(
+          askingInAlterForm(
+            `{${NICKNAME}, select, bob {Bob?} other {{${NICKNAME}, select, missing {Them?} other {{${NICKNAME}}?}}}}`,
+          ),
+        ),
+      ).toEqual([
         expect.objectContaining({
-          message: 'Only an attribute with options can have cases.',
+          message: `This text cannot use "${NICKNAME}": it has a version for "bob", but it has no versions to choose between other than "missing" and "other".`,
         }),
       ]);
+    });
+
+    it('reads "other" only for an option the text gives no version for', () => {
+      // With a version for every option, an answer always chooses one of
+      // them, so words only in "other" are never shown.
+      const everyOption = `{${CATEGORY}, select, missing {} ${FRIEND} {} ${FAMILY} {} other {Shown to nobody.}}`;
+      expect(issuesOf(askingInAlterForm(everyOption))).toEqual([
+        expect.objectContaining({
+          message: expect.stringContaining('blank in every version'),
+        }),
+      ]);
+      // With a version for only some, the others read "other".
+      const someOptions = `{${CATEGORY}, select, missing {} ${FRIEND} {} other {Shown for family.}}`;
+      expect(issuesOf(askingInAlterForm(someOptions))).toEqual([]);
     });
   });
 
@@ -329,28 +337,15 @@ describe('dynamic values in stage text', () => {
       (protocol.codebook.node as Record<string, { variables: Variables }>)[
         testTypeId('person')
       ]!.variables;
-    const showingFlag = (message: string, cases?: Record<string, boolean>) =>
-      editing('alterForm', (stage) => {
-        stage.dynamicValues = {
-          flag: { path: 'node.flag', ...(cases && { cases }) },
-        };
-        stage.form = {
-          fields: [
-            { id: 'field-1', variable: 'nickname', prompt: { en: message } },
-          ],
-        };
-      });
-    const UNLABELLED =
-      '"flag" cannot be shown as words: "Flag" is a yes/no attribute without labels for both of its answers. Add a label for yes and for no to "Flag", or give the text a different wording for each answer.';
+    const UNLABELLED = `"${FLAG}" cannot be shown as words: "Flag" is a yes/no attribute without labels for both of its answers. Add a label for yes and for no to "Flag", or give the text a different wording for each answer.`;
 
     it('shows a yes/no attribute with a label for each answer', () => {
-      expect(issuesOf(showingFlag(guarded('flag')))).toEqual([]);
+      expect(issuesOf(askingInAlterForm(guarded(FLAG)))).toEqual([]);
     });
 
     it('refuses text whose words are only in the version no answer reaches', () => {
-      const protocol = showingFlag(
-        '{flag, select, missing {} yes {} no {} other {Shown to nobody.}}',
-        { yes: true, no: false },
+      const protocol = askingInAlterForm(
+        `{${FLAG}, select, missing {} true {} false {} other {Shown to nobody.}}`,
       );
       const index = stageIndex(protocol, 'alterForm');
       expect(issuesOf(protocol)).toEqual([
@@ -359,19 +354,32 @@ describe('dynamic values in stage text', () => {
           message: expect.stringContaining('blank in every version'),
         }),
       ]);
-      // With a case for only one answer, the other answer reads `other`.
+      // With a version for only one answer, the other answer reads `other`.
       expect(
         issuesOf(
-          showingFlag(
-            '{flag, select, missing {} yes {} other {Shown for no.}}',
-            { yes: true },
+          askingInAlterForm(
+            `{${FLAG}, select, missing {} true {} other {Shown for no.}}`,
           ),
         ),
       ).toEqual([]);
     });
 
+    it('refuses a case other than true or false', () => {
+      expect(
+        issuesOf(
+          askingInAlterForm(
+            `{${FLAG}, select, yes {Tell us why.} other {Anything else?}}`,
+          ),
+        ),
+      ).toEqual([
+        expect.objectContaining({
+          message: `This text cannot use "${FLAG}": it has a version for "yes", but it can only have versions for "true" and "false".`,
+        }),
+      ]);
+    });
+
     it('refuses to show a yes/no attribute without labels as words', () => {
-      const protocol = showingFlag(guarded('flag'));
+      const protocol = askingInAlterForm(guarded(FLAG));
       delete personVariables(protocol)[testVariableId('flag')]!.options;
       const index = stageIndex(protocol, 'alterForm');
       expect(issuesOf(protocol)).toEqual([
@@ -383,7 +391,7 @@ describe('dynamic values in stage text', () => {
     });
 
     it('refuses a yes/no attribute with a label for only one answer', () => {
-      const protocol = showingFlag(guarded('flag'));
+      const protocol = askingInAlterForm(guarded(FLAG));
       const flag = personVariables(protocol)[testVariableId('flag')]!;
       flag.options = (flag.options as { value: boolean }[]).filter(
         (option) => option.value,
@@ -394,15 +402,15 @@ describe('dynamic values in stage text', () => {
     });
 
     it('lets text choose its wording by a Toggle, which has no labels, but not show it', () => {
-      const wording =
-        '{flag, select, missing {Anything else?} yes {Tell us why.} other {Anything else?}}';
-      const byAnswer = showingFlag(wording, { yes: true });
+      const byAnswer = askingInAlterForm(
+        `{${FLAG}, select, missing {Anything else?} true {Tell us why.} other {Anything else?}}`,
+      );
       const flag = personVariables(byAnswer)[testVariableId('flag')]!;
       flag.component = 'Toggle';
       delete flag.options;
       expect(issuesOf(byAnswer)).toEqual([]);
 
-      const shown = showingFlag(guarded('flag'));
+      const shown = askingInAlterForm(guarded(FLAG));
       const toggle = personVariables(shown)[testVariableId('flag')]!;
       toggle.component = 'Toggle';
       delete toggle.options;
@@ -413,16 +421,18 @@ describe('dynamic values in stage text', () => {
   });
 
   describe('where values are available', () => {
+    // The names, among `names`, that a site's text can use.
     const argumentsAt = (
       protocol: Protocol,
       id: string,
       sitePath: (string | number)[],
       site: 'stageText' | 'prompt' | 'formField',
+      names: readonly string[],
     ) => {
       const stage = stageIn(protocol, id);
       return Object.keys(
         dynamicValueArgumentsAt(
-          stage.dynamicValues as never,
+          names.map((name) => `{${name}}`).join(' '),
           dynamicValueContextFor({
             codebook: protocol.codebook,
             stage,
@@ -433,26 +443,20 @@ describe('dynamic values in stage text', () => {
       );
     };
 
-    const allRoles = {
-      you: { path: 'ego.egoName' },
-      them: { path: 'node.nickname' },
-      first: { path: 'dyad.source.nickname' },
-      second: { path: 'dyad.target.nickname' },
-      focal: { path: 'one_to_many.focal.nickname' },
-      tie: { path: 'edge.note' },
-      today: { path: 'now' },
-    };
+    const YOU = EGO_NAME;
+    const THEM = NICKNAME;
+    const FIRST = attribute('dyadSource', 'nickname');
+    const SECOND = attribute('dyadTarget', 'nickname');
+    const FOCAL = attribute('focal', 'nickname');
+    const TIE = attribute('edge', 'note');
+    const ALL_ROLES = [YOU, THEM, FIRST, SECOND, FOCAL, TIE, 'now'];
 
-    const withAllRoles = (id: string) =>
-      editing(id, (stage) => {
-        stage.dynamicValues = allRoles;
-      });
+    const unedited = (id: string) => editing(id, () => undefined);
+    const promptNames = (id: string, names = ALL_ROLES) =>
+      argumentsAt(unedited(id), id, ['prompts', 0, 'text'], 'prompt', names);
 
     it('offers the participant and the interview on every stage', () => {
-      const protocol = withAllRoles('sociogram');
-      expect(
-        argumentsAt(protocol, 'sociogram', ['prompts', 0, 'text'], 'prompt'),
-      ).toEqual(['you', 'today']);
+      expect(promptNames('sociogram')).toEqual([YOU, 'now']);
     });
 
     it('offers no one person on an interface that shows many', () => {
@@ -462,37 +466,23 @@ describe('dynamic values in stage text', () => {
         'categoricalBin',
         'nameGenerator',
       ]) {
-        const protocol = withAllRoles(id);
-        expect(
-          argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
-        ).toEqual(['you', 'today']);
+        expect(promptNames(id)).toEqual([YOU, 'now']);
       }
     });
 
     it('offers the pair to a Dyad Census and Tie Strength Census prompt', () => {
       for (const id of ['dyadCensus', 'tieStrength']) {
-        const protocol = withAllRoles(id);
-        expect(
-          argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
-        ).toEqual(['you', 'first', 'second', 'today']);
+        expect(promptNames(id)).toEqual([YOU, FIRST, SECOND, 'now']);
       }
     });
 
     it('offers only the focal person to a one-to-many census prompt', () => {
-      const protocol = withAllRoles('oneToMany');
-      expect(
-        argumentsAt(protocol, 'oneToMany', ['prompts', 0, 'text'], 'prompt'),
-      ).toEqual(['you', 'focal', 'today']);
+      expect(promptNames('oneToMany')).toEqual([YOU, FOCAL, 'now']);
     });
 
     it('offers a form field every attribute of the node it asks about', () => {
+      const names = [NICKNAME, attribute('node', 'name'), CATEGORY, TIE];
       const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = {
-          nick: { path: 'node.nickname' },
-          name: { path: 'node.name' },
-          kind: { path: 'node.category' },
-          tie: { path: 'edge.note' },
-        };
         stage.form = {
           fields: [
             {
@@ -509,24 +499,21 @@ describe('dynamic values in stage text', () => {
           ],
         };
       });
-      const field = (index: number) =>
-        argumentsAt(
-          protocol,
-          'alterForm',
-          ['form', 'fields', index, 'prompt'],
-          'formField',
-        );
       for (const index of [0, 1, 2]) {
-        expect(field(index)).toEqual(['nick', 'name', 'kind']);
+        expect(
+          argumentsAt(
+            protocol,
+            'alterForm',
+            ['form', 'fields', index, 'prompt'],
+            'formField',
+            names,
+          ),
+        ).toEqual(names.slice(0, 3));
       }
     });
 
     it('offers an ego form field every attribute of the participant', () => {
       const protocol = editing('egoForm', (stage) => {
-        stage.dynamicValues = {
-          you: { path: 'ego.egoName' },
-          age: { path: 'ego.egoAge' },
-        };
         stage.form = {
           fields: [
             { id: 'field-1', variable: 'egoName', prompt: { en: 'Name?' } },
@@ -534,79 +521,69 @@ describe('dynamic values in stage text', () => {
           ],
         };
       });
-      const field = (index: number) =>
-        argumentsAt(
-          protocol,
-          'egoForm',
-          ['form', 'fields', index, 'prompt'],
-          'formField',
-        );
-      expect(field(0)).toEqual(['you', 'age']);
-      expect(field(1)).toEqual(['you', 'age']);
+      for (const index of [0, 1]) {
+        expect(
+          argumentsAt(
+            protocol,
+            'egoForm',
+            ['form', 'fields', index, 'prompt'],
+            'formField',
+            [EGO_NAME, EGO_AGE],
+          ),
+        ).toEqual([EGO_NAME, EGO_AGE]);
+      }
     });
 
     it('offers an edge form the edge, and a Network Composer edge type form only the participant', () => {
-      const edgeForm = withAllRoles('alterEdgeForm');
+      const fieldOf = (
+        id: string,
+        sitePath: (string | number)[],
+        names = ALL_ROLES,
+      ) => argumentsAt(unedited(id), id, sitePath, 'formField', names);
+      expect(fieldOf('alterEdgeForm', ['form', 'fields', 0, 'prompt'])).toEqual(
+        [YOU, TIE, 'now'],
+      );
+      const tieStrength = attribute('edge', 'tieStrength');
       expect(
-        argumentsAt(
-          edgeForm,
+        fieldOf(
           'alterEdgeForm',
           ['form', 'fields', 0, 'prompt'],
-          'formField',
+          [tieStrength],
         ),
-      ).toEqual(['you', 'tie', 'today']);
-      const before = editing('alterEdgeForm', (stage) => {
-        stage.dynamicValues = { tie: { path: 'edge.tieStrength' } };
-      });
+      ).toEqual([tieStrength]);
+      expect(fieldOf('composer', ['nodeForm', 'fields', 0, 'label'])).toEqual([
+        YOU,
+        THEM,
+        'now',
+      ]);
       expect(
-        argumentsAt(
-          before,
-          'alterEdgeForm',
-          ['form', 'fields', 0, 'prompt'],
-          'formField',
-        ),
-      ).toEqual(['tie']);
-
-      const composer = withAllRoles('composer');
-      expect(
-        argumentsAt(
-          composer,
-          'composer',
-          ['nodeForm', 'fields', 0, 'label'],
-          'formField',
-        ),
-      ).toEqual(['you', 'them', 'today']);
-      expect(
-        argumentsAt(
-          composer,
-          'composer',
-          ['edges', 0, 'form', 'fields', 0, 'label'],
-          'formField',
-        ),
-      ).toEqual(['you', 'today']);
+        fieldOf('composer', ['edges', 0, 'form', 'fields', 0, 'label']),
+      ).toEqual([YOU, 'now']);
     });
 
     describe('node labels', () => {
-      const labels = {
-        nodeLabel: { path: 'node.$label' },
-        firstLabel: { path: 'dyad.source.$label' },
-        secondLabel: { path: 'dyad.target.$label' },
-        focalLabel: { path: 'one_to_many.focal.$label' },
-        fromLabel: { path: 'edge.from.$label' },
-        toLabel: { path: 'edge.to.$label' },
-      };
-      const withLabels = (id: string) =>
-        editing(id, (stage) => {
-          stage.dynamicValues = { ...labels, them: { path: 'node.nickname' } };
-        });
-      const promptOf = (id: string) =>
-        argumentsAt(withLabels(id), id, ['prompts', 0, 'text'], 'prompt');
+      const NODE_LABEL = labelOf('node');
+      const FIRST_LABEL = labelOf('dyadSource');
+      const SECOND_LABEL = labelOf('dyadTarget');
+      const FOCAL_LABEL = labelOf('focal');
+      const FROM_LABEL = labelOf('edgeFrom');
+      const TO_LABEL = labelOf('edgeTo');
+      const LABELS = [
+        NODE_LABEL,
+        FIRST_LABEL,
+        SECOND_LABEL,
+        FOCAL_LABEL,
+        FROM_LABEL,
+        TO_LABEL,
+        THEM,
+      ];
+      const promptOf = (id: string) => promptNames(id, LABELS);
 
       it('offers the label of each node a prompt is about', () => {
-        expect(promptOf('dyadCensus')).toEqual(['firstLabel', 'secondLabel']);
-        expect(promptOf('tieStrength')).toEqual(['firstLabel', 'secondLabel']);
-        expect(promptOf('oneToMany')).toEqual(['focalLabel']);
-        expect(promptOf('geospatial')).toEqual(['nodeLabel', 'them']);
+        expect(promptOf('dyadCensus')).toEqual([FIRST_LABEL, SECOND_LABEL]);
+        expect(promptOf('tieStrength')).toEqual([FIRST_LABEL, SECOND_LABEL]);
+        expect(promptOf('oneToMany')).toEqual([FOCAL_LABEL]);
+        expect(promptOf('geospatial')).toEqual([NODE_LABEL, THEM]);
         for (const id of ['sociogram', 'ordinalBin', 'categoricalBin']) {
           expect(promptOf(id)).toEqual([]);
         }
@@ -615,33 +592,33 @@ describe('dynamic values in stage text', () => {
       it('offers a bin prompt in select mode the node being placed', () => {
         for (const id of ['ordinalBin', 'categoricalBin']) {
           const protocol = editing(id, (stage) => {
-            stage.dynamicValues = {
-              ...labels,
-              them: { path: 'node.nickname' },
-            };
             stage.behaviours = { interactionMode: 'select' };
           });
           expect(
-            argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
-          ).toEqual(['nodeLabel', 'them']);
+            argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt', LABELS),
+          ).toEqual([NODE_LABEL, THEM]);
         }
         const dragging = editing('ordinalBin', (stage) => {
-          stage.dynamicValues = labels;
           stage.behaviours = { interactionMode: 'drag' };
         });
         expect(
-          argumentsAt(dragging, 'ordinalBin', ['prompts', 0, 'text'], 'prompt'),
+          argumentsAt(
+            dragging,
+            'ordinalBin',
+            ['prompts', 0, 'text'],
+            'prompt',
+            LABELS,
+          ),
         ).toEqual([]);
       });
 
       it('needs a missing version for the label of the node a bin is placing, which is gone once every node is placed', () => {
         const prompted = (text: string) =>
           editing('ordinalBin', (stage) => {
-            stage.dynamicValues = labels;
             stage.behaviours = { interactionMode: 'select' };
             (stage.prompts as Stage[])[0]!.text = { en: text };
           });
-        expect(issuesOf(prompted('How close is {nodeLabel}?'))).toEqual([
+        expect(issuesOf(prompted(`How close is {${NODE_LABEL}}?`))).toEqual([
           expect.objectContaining({
             path: expect.stringContaining('prompts.0.text.en'),
           }),
@@ -649,7 +626,7 @@ describe('dynamic values in stage text', () => {
         expect(
           issuesOf(
             prompted(
-              '{nodeLabel, select, missing {Everyone is placed.} other {How close is {nodeLabel}?}}',
+              `{${NODE_LABEL}, select, missing {Everyone is placed.} other {How close is {${NODE_LABEL}}?}}`,
             ),
           ),
         ).toEqual([]);
@@ -657,10 +634,9 @@ describe('dynamic values in stage text', () => {
 
       it('keeps the node a bin is placing out of the "other" bin\'s label', () => {
         const edited = editing('categoricalBin', (stage) => {
-          stage.dynamicValues = labels;
           stage.behaviours = { interactionMode: 'select' };
           (stage.prompts as Stage[])[0]!.otherOptionLabel = {
-            en: guarded('nodeLabel'),
+            en: guarded(NODE_LABEL),
           };
         });
         // Placing by tapping also shows the bin's Place here button.
@@ -670,9 +646,7 @@ describe('dynamic values in stage text', () => {
         };
         expect(issuesOf(protocol)).toEqual([
           expect.objectContaining({
-            message: expect.stringContaining(
-              'values about the node this stage is about cannot be shown here',
-            ),
+            message: `This text cannot use "${NODE_LABEL}": values about the node this stage is about cannot be shown here.`,
           }),
         ]);
       });
@@ -680,37 +654,38 @@ describe('dynamic values in stage text', () => {
       it('offers the node a form is about by its label', () => {
         expect(
           argumentsAt(
-            withLabels('alterForm'),
+            unedited('alterForm'),
             'alterForm',
             ['form', 'fields', 0, 'prompt'],
             'formField',
+            LABELS,
           ),
-        ).toEqual(['nodeLabel', 'them']);
+        ).toEqual([NODE_LABEL, THEM]);
         expect(
           argumentsAt(
-            withLabels('composer'),
+            unedited('composer'),
             'composer',
             ['nodeForm', 'fields', 0, 'label'],
             'formField',
+            LABELS,
           ),
-        ).toEqual(['nodeLabel', 'them']);
+        ).toEqual([NODE_LABEL, THEM]);
       });
 
       it('offers the question about a node put in the "other" bin that node, but not the bin\'s label', () => {
-        const protocol = withLabels('categoricalBin');
+        const protocol = unedited('categoricalBin');
         expect(
           argumentsAt(
             protocol,
             'categoricalBin',
             ['prompts', 0, 'otherVariablePrompt'],
             'formField',
+            LABELS,
           ),
-        ).toEqual(['nodeLabel', 'them']);
-        expect(issuesOf(protocol)).toEqual([]);
+        ).toEqual([NODE_LABEL, THEM]);
         const misplaced = editing('categoricalBin', (stage) => {
-          stage.dynamicValues = labels;
           (stage.prompts as Stage[])[0]!.otherOptionLabel = {
-            en: 'Not {nodeLabel}',
+            en: `Not {${NODE_LABEL}}`,
           };
         });
         expect(issuesOf(misplaced)).toEqual([
@@ -725,53 +700,44 @@ describe('dynamic values in stage text', () => {
       it('offers an edge form both ends of its edge by label alone', () => {
         expect(
           argumentsAt(
-            withLabels('alterEdgeForm'),
+            unedited('alterEdgeForm'),
             'alterEdgeForm',
             ['form', 'fields', 0, 'prompt'],
             'formField',
+            LABELS,
           ),
-        ).toEqual(['fromLabel', 'toLabel']);
+        ).toEqual([FROM_LABEL, TO_LABEL]);
         expect(
           argumentsAt(
-            withLabels('composer'),
+            unedited('composer'),
             'composer',
             ['edges', 0, 'form', 'fields', 0, 'label'],
             'formField',
+            LABELS,
           ),
-        ).toEqual(['fromLabel', 'toLabel']);
-        // An end's attributes have no codebook type to name them by.
-        expect(
-          issuesOf(
-            editing('alterEdgeForm', (stage) => {
-              stage.dynamicValues = { theirs: { path: 'edge.from.nickname' } };
-            }),
-          ),
-        ).toEqual([
-          expect.objectContaining({
-            message: expect.stringContaining('does not exist'),
-          }),
-        ]);
+        ).toEqual([FROM_LABEL, TO_LABEL]);
       });
 
       it("names every label the stage's text can show, edge type forms included", () => {
-        const protocol = withLabels('composer');
+        const protocol = unedited('composer');
         const shown = Object.keys(
           dynamicValueArgumentsAt(
-            labels,
+            LABELS.slice(0, -1)
+              .map((name) => `{${name}}`)
+              .join(' '),
             stageDynamicValueContext({
               codebook: protocol.codebook,
               stage: stageIn(protocol, 'composer'),
             }),
           ),
         );
-        expect(shown).toEqual(['nodeLabel', 'fromLabel', 'toLabel']);
+        expect(shown).toEqual([NODE_LABEL, FROM_LABEL, TO_LABEL]);
       });
 
       it('needs no missing version for a label, which is never missing', () => {
         const protocol = editing('dyadCensus', (stage) => {
-          stage.dynamicValues = labels;
           (stage.prompts as Stage[])[0]!.text = {
-            en: 'Do {firstLabel} and {secondLabel} know each other?',
+            en: `Do {${FIRST_LABEL}} and {${SECOND_LABEL}} know each other?`,
           };
         });
         expect(issuesOf(protocol)).toEqual([]);
@@ -779,46 +745,29 @@ describe('dynamic values in stage text', () => {
 
       it('refuses cases on a label', () => {
         const protocol = editing('dyadCensus', (stage) => {
-          stage.dynamicValues = {
-            firstLabel: { path: 'dyad.source.$label', cases: { bob: 'Bob' } },
+          (stage.prompts as Stage[])[0]!.text = {
+            en: `{${FIRST_LABEL}, select, bob {Is it Bob?} other {Do they know each other?}}`,
           };
         });
         expect(issuesOf(protocol)).toEqual([
           expect.objectContaining({
-            message: 'Only an attribute with options can have cases.',
+            message: `This text cannot use "${FIRST_LABEL}": it has a version for "bob", but it has no versions to choose between other than "missing" and "other".`,
           }),
         ]);
-      });
-
-      it('refuses a label for the participant, which has none', () => {
-        const protocol = editing('information', (stage) => {
-          stage.dynamicValues = { me: { path: 'ego.$label' } };
-          stage.content = { en: guarded('me') };
-        });
-        expect(issuesOf(protocol)).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              message: expect.stringContaining('does not exist'),
-            }),
-          ]),
-        );
       });
     });
 
     describe('whether the node is the participant', () => {
-      const participant = {
-        isYou: { path: 'node.$isParticipant', cases: { participant: true } },
-      };
-      const choosing =
-        '{isYou, select, participant {What year were you born?} other {What year were they born?}}';
-
-      it("lets a Family Pedigree's person form choose its wording by it", () => {
-        const protocol = editing('familyPedigree', (stage) => {
-          stage.dynamicValues = participant;
+      const choosing = `{${IS_PARTICIPANT}, select, true {What year were you born?} other {What year were they born?}}`;
+      const personForm = (prompt: string) =>
+        editing('familyPedigree', (stage) => {
           (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
-            en: choosing,
+            en: prompt,
           };
         });
+
+      it("lets a Family Pedigree's person form choose its wording by it", () => {
+        const protocol = personForm(choosing);
         expect(issuesOf(protocol)).toEqual([]);
         expect(
           argumentsAt(
@@ -826,28 +775,36 @@ describe('dynamic values in stage text', () => {
             'familyPedigree',
             ['form', 'fields', 0, 'prompt'],
             'formField',
+            [IS_PARTICIPANT],
           ),
-        ).toEqual(['isYou']);
+        ).toEqual([IS_PARTICIPANT]);
       });
 
-      it('needs no missing version, since it is never missing', () => {
-        const protocol = editing('familyPedigree', (stage) => {
-          stage.dynamicValues = participant;
-          (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
-            en: '{isYou, select, participant {Your birth year?} other {Their birth year?}}',
-          };
-        });
-        expect(issuesOf(protocol)).toEqual([]);
+      it('needs no missing version, since it is never missing, nor an other version once both answers have one', () => {
+        expect(
+          issuesOf(
+            personForm(
+              `{${IS_PARTICIPANT}, select, true {Your birth year?} false {Their birth year?} other {}}`,
+            ),
+          ),
+        ).toEqual([]);
+        expect(
+          issuesOf(
+            personForm(
+              `{${IS_PARTICIPANT}, select, true {} false {} other {Never shown.}}`,
+            ),
+          ),
+        ).toEqual([
+          expect.objectContaining({
+            message: expect.stringContaining('blank in every version'),
+          }),
+        ]);
       });
 
       it('refuses to show it as words', () => {
-        const protocol = editing('familyPedigree', (stage) => {
-          stage.dynamicValues = participant;
-          (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
-            en: 'Participant: {isYou}',
-          };
-        });
-        expect(issuesOf(protocol)).toEqual([
+        expect(
+          issuesOf(personForm(`Participant: {${IS_PARTICIPANT}}`)),
+        ).toEqual([
           expect.objectContaining({
             message: expect.stringContaining('only chooses wording'),
           }),
@@ -855,12 +812,7 @@ describe('dynamic values in stage text', () => {
       });
 
       it('is not offered on any other node form, or outside the person form', () => {
-        const alterForm = editing('alterForm', (stage) => {
-          stage.dynamicValues = participant;
-          (stage.form as { fields: Stage[] }).fields[0]!.prompt = {
-            en: choosing,
-          };
-        });
+        const alterForm = askingInAlterForm(choosing);
         expect(issuesOf(alterForm)).toEqual([
           expect.objectContaining({
             message: expect.stringContaining(
@@ -870,31 +822,26 @@ describe('dynamic values in stage text', () => {
         ]);
         expect(
           argumentsAt(
-            editing('familyPedigree', (stage) => {
-              stage.dynamicValues = participant;
-            }),
+            unedited('familyPedigree'),
             'familyPedigree',
             ['nominationPrompts', 0, 'text'],
             'prompt',
+            [IS_PARTICIPANT],
           ),
         ).toEqual([]);
       });
 
-      it('refuses any case but the participant', () => {
-        const protocol = editing('familyPedigree', (stage) => {
-          stage.dynamicValues = {
-            isYou: {
-              path: 'node.$isParticipant',
-              cases: { participant: true, someoneElse: false },
-            },
-          };
-        });
+      it('refuses any case but true and false', () => {
+        const protocol = personForm(
+          `{${IS_PARTICIPANT}, select, participant {You?} other {Them?}}`,
+        );
         expect(issuesOf(protocol)).toEqual([
           expect.objectContaining({
             path:
               'stages.' +
               String(stageIndex(protocol, 'familyPedigree')) +
-              '.dynamicValues.isYou.cases.someoneElse',
+              '.form.fields.0.prompt.en',
+            message: `This text cannot use "${IS_PARTICIPANT}": it has a version for "participant", but it can only have versions for "true" and "false".`,
           }),
         ]);
       });
@@ -902,31 +849,18 @@ describe('dynamic values in stage text', () => {
 
     it('reports a value used where it is not available', () => {
       const protocol = editing('sociogram', (stage) => {
-        stage.dynamicValues = { them: { path: 'node.nickname' } };
-        (stage.prompts as Stage[])[0]!.text = { en: guarded('them') };
+        (stage.prompts as Stage[])[0]!.text = { en: guarded(THEM) };
       });
       expect(issuesOf(protocol)).toEqual([
         expect.objectContaining({
-          message: expect.stringContaining(
-            '"them" cannot be shown here: values about the node this stage is about cannot be shown here',
-          ),
+          message: `This text cannot use "${THEM}": values about the node this stage is about cannot be shown here.`,
         }),
       ]);
     });
 
     it('refuses an encrypted attribute', () => {
-      const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = { secret: { path: 'node.name' } };
-        stage.form = {
-          fields: [
-            {
-              id: 'field-1',
-              variable: 'nickname',
-              prompt: { en: guarded('secret') },
-            },
-          ],
-        };
-      });
+      const secret = attribute('node', 'name');
+      const protocol = askingInAlterForm(guarded(secret));
       const person = (
         protocol.codebook.node as Record<
           string,
@@ -937,7 +871,7 @@ describe('dynamic values in stage text', () => {
       expect(issuesOf(protocol)).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            message: expect.stringContaining('encrypted'),
+            message: `This text cannot use "${secret}": the attribute it shows is encrypted.`,
           }),
         ]),
       );
@@ -947,10 +881,6 @@ describe('dynamic values in stage text', () => {
   describe('translations', () => {
     const twoLanguages = (titles: Record<string, string>) => {
       const protocol = editing('information', (stage) => {
-        stage.dynamicValues = {
-          you: { path: 'ego.egoName' },
-          count: { path: 'ego.egoAge' },
-        };
         stage.content = titles;
       });
       return {
@@ -970,8 +900,8 @@ describe('dynamic values in stage text', () => {
     it('accepts a translation showing what the default-language text shows', () => {
       expect(
         contentIssues({
-          en: guarded('you'),
-          fr: '{you, select, missing {Parlez-nous d’eux.} other {Parlez-nous de {you}.}}',
+          en: guarded(EGO_NAME),
+          fr: `{${EGO_NAME}, select, missing {Parlez-nous d’eux.} other {Parlez-nous de {${EGO_NAME}}.}}`,
         }),
       ).toEqual([]);
     });
@@ -981,24 +911,23 @@ describe('dynamic values in stage text', () => {
       // them, in some version or in all of them.
       expect(
         contentIssues({
-          en: guarded('you'),
-          fr: '{you, select, missing {Parlez-nous d’eux.} other {Parlez-nous de cette personne.}}',
+          en: guarded(EGO_NAME),
+          fr: `{${EGO_NAME}, select, missing {Parlez-nous d’eux.} other {Parlez-nous de cette personne.}}`,
         }),
       ).toEqual([]);
       expect(
-        contentIssues({ en: guarded('you'), fr: 'Parlez-nous d’eux.' }),
+        contentIssues({ en: guarded(EGO_NAME), fr: 'Parlez-nous d’eux.' }),
       ).toEqual([]);
     });
 
     it('accepts a number left out of every plural version of a translation', () => {
-      const english =
-        '{count, select, missing {Some years.} other {{count, plural, one {# year.} other {# years.}}}}';
+      const count = EGO_AGE;
       expect(
         contentIssues({
-          en: english,
+          en: `{${count}, select, missing {Some years.} other {{${count}, plural, one {# year.} other {# years.}}}}`,
           de: 'Einige Jahre.',
-          ru: '{count, select, missing {Годы.} other {{count, plural, one {Один год.} few {Несколько лет.} many {Много лет.} other {Несколько лет.}}}}',
-          ar: '{count, select, missing {Some years.} other {{count, plural, zero {No years.} other {Some years.}}}}',
+          ru: `{${count}, select, missing {Годы.} other {{${count}, plural, one {Один год.} few {Несколько лет.} many {Много лет.} other {Несколько лет.}}}}`,
+          ar: `{${count}, select, missing {Some years.} other {{${count}, plural, zero {No years.} other {Some years.}}}}`,
         }),
       ).toEqual([]);
     });
@@ -1007,7 +936,7 @@ describe('dynamic values in stage text', () => {
       expect(
         contentIssues({
           en: 'Tell us about them.',
-          fr: guarded('you'),
+          fr: guarded(EGO_NAME),
         }),
       ).toEqual([]);
     });
@@ -1015,16 +944,19 @@ describe('dynamic values in stage text', () => {
     it('still checks each translation on its own', () => {
       // A value that can be missing, shown without a version for when it is.
       expect(
-        contentIssues({ en: guarded('you'), fr: 'Parlez-nous de {you}.' }),
+        contentIssues({
+          en: guarded(EGO_NAME),
+          fr: `Parlez-nous de {${EGO_NAME}}.`,
+        }),
       ).toEqual([
         expect.objectContaining({
           path: expect.stringMatching(/content\.fr$/),
-          message: expect.stringContaining('"you" can be missing'),
+          message: expect.stringContaining(`"${EGO_NAME}" can be missing`),
         }),
       ]);
-      // A value the stage does not bind.
+      // A name that refers to nothing.
       expect(
-        contentIssues({ en: guarded('you'), fr: 'Parlez-nous de {other}.' }),
+        contentIssues({ en: guarded(EGO_NAME), fr: 'Parlez-nous de {other}.' }),
       ).toEqual([
         expect.objectContaining({
           path: expect.stringMatching(/content\.fr$/),
@@ -1067,41 +999,55 @@ describe('dynamic values in stage text', () => {
   });
 
   describe('reference collection', () => {
-    it('counts a binding as a use of the attribute it shows', () => {
-      const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = {
-          you: { path: 'ego.egoName' },
-          them: { path: 'node.nickname' },
-          now: { path: 'now' },
-        };
-      });
+    it('counts each attribute text names as a use of it, with the options it gives versions for', () => {
+      const protocol = askingInAlterForm(
+        `${guarded(EGO_NAME)} {${CATEGORY}, select, ${FRIEND} {Friend} other {{now}}}`,
+      );
       const index = stageIndex(protocol, 'alterForm');
-      const hits = collectEntityAttributeReferences(protocol).filter((hit) =>
-        hit.path.includes('dynamicValues'),
+      const path = ['stages', index, 'form', 'fields', 0, 'prompt', 'en'];
+      const hits = collectEntityAttributeReferences(protocol).filter(
+        (hit) => hit.inMessage !== undefined,
       );
       expect(hits).toEqual([
         {
-          path: ['stages', index, 'dynamicValues', 'you', 'path'],
+          path,
           variableId: testVariableId('egoName'),
           subject: { entity: 'ego' },
-          inDynamicValuePath: true,
+          existence: 'unchecked',
+          inMessage: { name: EGO_NAME, optionIds: [] },
         },
         {
-          path: ['stages', index, 'dynamicValues', 'them', 'path'],
-          variableId: testVariableId('nickname'),
+          path,
+          variableId: testVariableId('category'),
           subject: { entity: 'node', type: testTypeId('person') },
-          inDynamicValuePath: true,
+          existence: 'unchecked',
+          inMessage: {
+            name: CATEGORY,
+            optionIds: [
+              testId(
+                JSON.stringify([
+                  'codebook',
+                  'node',
+                  'person',
+                  'variables',
+                  'category',
+                  'options',
+                  0,
+                ]),
+              ),
+            ],
+          },
         },
       ]);
     });
 
-    it('counts a label as a use of no attribute', () => {
-      const protocol = editing('alterForm', (stage) => {
-        stage.dynamicValues = { label: { path: 'node.$label' } };
-      });
+    it('counts a label, a condition or today’s date as a use of no attribute', () => {
+      const protocol = askingInAlterForm(
+        `{${labelOf('node')}} {now} {${dynamicValueNameFor({ kind: 'condition', conditionId: testId('c') })}, select, true {Yes} other {No}}`,
+      );
       expect(
-        collectEntityAttributeReferences(protocol).filter((hit) =>
-          hit.path.includes('dynamicValues'),
+        collectEntityAttributeReferences(protocol).filter(
+          (hit) => hit.inMessage !== undefined,
         ),
       ).toEqual([]);
     });

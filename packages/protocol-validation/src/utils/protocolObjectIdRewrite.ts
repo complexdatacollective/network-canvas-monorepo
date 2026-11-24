@@ -81,6 +81,27 @@ export const setObjectIdAt = (
   for (const [key, value] of rest) object[key] = value;
 };
 
+/**
+ * Renames the keys of `record` in place, keeping their order. Each entry is
+ * defined rather than assigned, so a `__proto__` key stays an entry instead
+ * of replacing the record's prototype.
+ */
+export const renameKeys = (
+  record: Record<string, unknown>,
+  renames: ReadonlyMap<string, string>,
+): void => {
+  const entries = Object.entries(record);
+  for (const key of Object.keys(record)) delete record[key];
+  for (const [key, value] of entries) {
+    Object.defineProperty(record, renames.get(key) ?? key, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+};
+
 export const setValueAt = (
   root: unknown,
   path: readonly (string | number)[],

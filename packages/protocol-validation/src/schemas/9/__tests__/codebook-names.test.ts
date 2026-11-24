@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import {
   EdgeDefinitionSchema,
@@ -104,8 +105,16 @@ describe('an option value', () => {
       name: 'Closeness',
       type,
       options: [
-        { label: localized('Close'), value: 'close' },
-        { label: localized('Distant'), value },
+        {
+          id: testId('codebook-names-option-1'),
+          label: localized('Close'),
+          value: 'close',
+        },
+        {
+          id: testId('codebook-names-option-2'),
+          label: localized('Distant'),
+          value,
+        },
       ],
     });
     expect(result.error?.issues.map(({ path }) => path)).toContainEqual([

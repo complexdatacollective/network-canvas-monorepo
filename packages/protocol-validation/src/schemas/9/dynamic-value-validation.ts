@@ -1,29 +1,22 @@
 import {
-  dynamicValueNamesIn,
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
 } from '../../localization/dynamicValueMessages.ts';
 import type { StageSubject } from './common/subjects.ts';
 import {
-  CASED_VARIABLE_TYPES,
   dynamicValueArgumentsAt,
   type DynamicValueForm,
   type DynamicValueRole,
   type DynamicValueSite,
   type DynamicValueSiteContext,
   type DynamicValueStage,
-  type DynamicValues,
   type DynamicValueVariable,
   dynamicValueAbsentRolesAt,
   dynamicValueParticipantRolesAt,
+  dynamicValueReferencesIn,
   dynamicValueRolesAt,
   dynamicValueStatus,
-  FALSE_CASE,
-  PARTICIPANT_CASE,
-  parseDynamicValuePath,
-  TRUE_CASE,
 } from './dynamic-values.ts';
-
 type Path = (string | number)[];
 
 export type DynamicValueProblem = Readonly<{ path: Path; message: string }>;
@@ -117,7 +110,7 @@ const formOf = (
  *
  * A form field shows the attributes of its form's subject only when that is
  * the stage's own subject: a Network Composer's edge forms each describe
- * their own edge type, which no stage binding can name unambiguously.
+ * their own edge type, which no stage text can name unambiguously.
  */
 export const dynamicValueContextFor = ({
   codebook,
@@ -192,121 +185,29 @@ type SiteHit = Readonly<{
 }>;
 
 /**
- * Problems with the cases of `bindings`, which sit at `base`: a case that
- * stands for no option of its attribute, or for one an earlier case already
- * stands for, and cases on a value that has none. `variablesForRole` gives the
- * attributes of the entity a role names, or undefined where it names none.
+ * Why `message` cannot be text at a site described by `context`, or
+ * undefined when it can: the first name it uses that refers to nothing, is
+ * not available there, or gives a version for a case it does not have
+ * (`text` is how the problem names the text: "This text", "This label"),
+ * and then any misuse `findDynamicValueProblem` finds. Meant for messages
+ * `findDynamicMessageSyntaxProblem` accepts.
  */
-export const findBindingCaseProblems = (
-  bindings: Record<string, unknown>,
-  base: Path,
-  variablesForRole: (
-    role: DynamicValueRole,
-  ) => Readonly<Record<string, DynamicValueVariable>> | undefined,
-): DynamicValueProblem[] =>
-  Object.entries(bindings).flatMap(([name, binding]) => {
-    if (!isRecord(binding) || typeof binding.path !== 'string') return [];
-    const cases = binding.cases;
-    if (!isRecord(cases)) return [];
-    const parsed = parseDynamicValuePath(binding.path);
-    const casesPath: Path = [...base, name, 'cases'];
-    // Whether a node is the participant has one case, for the participant;
-    // everyone else reads `other`.
-    if (parsed?.kind === 'participant') {
-      return Object.entries(cases).flatMap(([key, value]) =>
-        key === PARTICIPANT_CASE && value === true
-          ? []
-          : [
-              {
-                path: [...casesPath, key],
-                message: `Whether the node is the participant has one case, "${PARTICIPANT_CASE}", standing for true; everyone else takes the "other" version.`,
-              },
-            ],
-      );
+export const findSiteMessageProblem = (
+  message: string,
+  context: DynamicValueSiteContext,
+  locale: string,
+  text = 'This text',
+): string | undefined => {
+  for (const { name, parsed, caseKeys } of dynamicValueReferencesIn(message)) {
+    const status = dynamicValueStatus(parsed, context, caseKeys);
+    if (status.status !== 'available') {
+      return `${text} cannot use "${name}": ${status.reason}.`;
     }
-    // A condition is met or it is not: one case for each.
-    if (parsed?.kind === 'condition') {
-      return Object.entries(cases).flatMap(([key, value]) =>
-        (key === TRUE_CASE && value === true) ||
-        (key === FALSE_CASE && value === false)
-          ? []
-          : [
-              {
-                path: [...casesPath, key],
-                message: `A condition has two cases, "${TRUE_CASE}" standing for true and "${FALSE_CASE}" standing for false.`,
-              },
-            ],
-      );
-    }
-    if (parsed?.kind !== 'attribute') {
-      return [
-        {
-          path: casesPath,
-          message: 'Only an attribute with options can have cases.',
-        },
-      ];
-    }
-    const variable = variablesForRole(parsed.role)?.[parsed.variableId];
-    // A missing variable is reported where the binding names it.
-    if (variable === undefined) return [];
-    if (!CASED_VARIABLE_TYPES.has(variable.type)) {
-      return [
-        {
-          path: casesPath,
-          message: 'Only an attribute with options can have cases.',
-        },
-      ];
-    }
-    const optionValues =
-      variable.type === 'boolean'
-        ? [true, false]
-        : (variable.options ?? []).map((option) => option.value);
-    // A select takes the first case its value matches, so a second case for
-    // the same option could never be chosen.
-    const caseFor = new Map<unknown, string>();
-    return Object.entries(cases).flatMap(([key, optionValue]) => {
-      if (!optionValues.includes(optionValue)) {
-        return [
-          {
-            path: [...casesPath, key],
-            message: `Case "${key}" stands for ${JSON.stringify(optionValue)}, which is not one of the attribute's options.`,
-          },
-        ];
-      }
-      const earlier = caseFor.get(optionValue);
-      if (earlier !== undefined) {
-        return [
-          {
-            path: [...casesPath, key],
-            message: `Case "${key}" stands for ${JSON.stringify(optionValue)}, as case "${earlier}" already does, so it would never be chosen. Give each option at most one case.`,
-          },
-        ];
-      }
-      caseFor.set(optionValue, key);
-      return [];
-    });
-  });
-
-const checkBindings = (
-  stage: Record<string, unknown>,
-  stageIndex: number,
-  codebook: unknown,
-): DynamicValueProblem[] => {
-  const bindings = stage.dynamicValues;
-  if (!isRecord(bindings)) return [];
-  const stageSubject = stageSubjectOf(stage);
-  return findBindingCaseProblems(
-    bindings,
-    ['stages', stageIndex, 'dynamicValues'],
-    (role) => {
-      const subject: StageSubject | undefined =
-        role === 'ego'
-          ? { entity: 'ego' }
-          : stageSubject?.entity === (role === 'edge' ? 'edge' : 'node')
-            ? stageSubject
-            : undefined;
-      return variablesOf(codebook, subject);
-    },
+  }
+  return findDynamicValueProblem(
+    message,
+    dynamicValueArgumentsAt(message, context),
+    locale,
   );
 };
 
@@ -331,12 +232,10 @@ export const conditionsContextOf = (
 };
 
 /**
- * Every problem with the dynamic values a protocol's stages show:
- * - at each site, a value that is not bound, not available there, or names
- *   an attribute that does not exist, and any misuse
- *   `findDynamicValueProblem` finds;
- * - each binding case that stands for no option of its attribute, or for an
- *   option an earlier case already stands for.
+ * Every problem with the dynamic values a protocol's stages show: at each
+ * site, in each language, a name that refers to nothing (no such attribute,
+ * condition or role), a value that site cannot show, a version for a case
+ * the value does not have, and any misuse `findDynamicValueProblem` finds.
  *
  * `hits` are the protocol's localized strings (`collectLocalizedStrings`).
  */
@@ -347,11 +246,7 @@ export const findDynamicValueProblems = (
   }>,
   hits: readonly SiteHit[],
 ): DynamicValueProblem[] => {
-  const problems: DynamicValueProblem[] = protocol.stages.flatMap(
-    (stage, index) =>
-      isRecord(stage) ? checkBindings(stage, index, protocol.codebook) : [],
-  );
-
+  const problems: DynamicValueProblem[] = [];
   for (const hit of hits) {
     const [root, stageIndex, ...sitePath] = hit.path;
     if (
@@ -363,33 +258,16 @@ export const findDynamicValueProblems = (
     }
     const stage = protocol.stages[stageIndex];
     if (!isRecord(stage)) continue;
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stage is raw here; its dynamicValues are shaped by DynamicValuesSchema and each binding is checked before use
-    const bindings = (
-      isRecord(stage.dynamicValues) ? stage.dynamicValues : {}
-    ) as DynamicValues;
     const context = dynamicValueContextFor({
       codebook: protocol.codebook,
       stage,
       sitePath,
       site: hit.dynamicValues,
     });
-    const values = dynamicValueArgumentsAt(bindings, context);
-
     for (const [locale, message] of Object.entries(hit.value)) {
       // The field's own check reports what needs no stage.
       if (findDynamicMessageSyntaxProblem(message) !== undefined) continue;
-      const unusable = dynamicValueNamesIn(message).flatMap((name) => {
-        const binding = Object.hasOwn(bindings, name)
-          ? bindings[name]
-          : undefined;
-        if (binding === undefined) return [];
-        const status = dynamicValueStatus(binding, context);
-        return status.status === 'available'
-          ? []
-          : [`"${name}" cannot be shown here: ${status.reason}.`];
-      });
-      const problem =
-        unusable[0] ?? findDynamicValueProblem(message, values, locale);
+      const problem = findSiteMessageProblem(message, context, locale);
       if (problem !== undefined) {
         problems.push({ path: [...hit.path, locale], message: problem });
       }
