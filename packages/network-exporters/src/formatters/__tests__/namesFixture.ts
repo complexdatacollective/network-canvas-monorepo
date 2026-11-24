@@ -13,7 +13,11 @@ import {
   sessionStartTimeProperty,
 } from '@codaco/shared-consts';
 
-import { testTypeId, testVariableId } from '../../__tests__/testIds';
+import {
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../__tests__/testIds';
 import type { FormattedSession, SessionWithResequencedIDs } from '../../input';
 import type { ExportOptions } from '../../options';
 import { insertEgoIntoSessionNetwork } from '../../session/insertEgoIntoSessionNetworks';
@@ -47,9 +51,21 @@ export const namesCodebook = {
         name: 'Réponse oui/non',
         type: 'categorical',
         options: [
-          { label: { en: 'Yes' }, value: 'oui' },
-          { label: { en: 'Maybe' }, value: 'peut être' },
-          { label: { en: 'No' }, value: 'non' },
+          {
+            id: testOptionId('Réponse oui/non/oui'),
+            label: { en: 'Yes' },
+            value: 'oui',
+          },
+          {
+            id: testOptionId('Réponse oui/non/peut être'),
+            label: { en: 'Maybe' },
+            value: 'peut être',
+          },
+          {
+            id: testOptionId('Réponse oui/non/non'),
+            label: { en: 'No' },
+            value: 'non',
+          },
         ],
       },
     },
@@ -76,17 +92,29 @@ export const namesCodebook = {
           name: 'Eye colour, "natural"',
           type: 'categorical',
           options: [
-            { label: { en: 'Light blue' }, value: 'light blue' },
-            { label: { en: 'Brown' }, value: '褐色' },
-            { label: { en: 'Five' }, value: 5 },
+            {
+              id: testOptionId('Eye colour, "natural"/light blue'),
+              label: { en: 'Light blue' },
+              value: 'light blue',
+            },
+            {
+              id: testOptionId('Eye colour, "natural"/褐色'),
+              label: { en: 'Brown' },
+              value: '褐色',
+            },
+            {
+              id: testOptionId('Eye colour, "natural"/5'),
+              label: { en: 'Five' },
+              value: 5,
+            },
           ],
         },
         [testVariableId('p-rank')]: {
           name: 'Rank #',
           type: 'ordinal',
           options: [
-            { label: { en: 'Low' }, value: 1 },
-            { label: { en: 'High' }, value: 2 },
+            { id: testOptionId('Rank #/1'), label: { en: 'Low' }, value: 1 },
+            { id: testOptionId('Rank #/2'), label: { en: 'High' }, value: 2 },
           ],
         },
         [testVariableId('p-close')]: {
@@ -120,8 +148,16 @@ export const namesCodebook = {
           name: 'Kind of tie',
           type: 'categorical',
           options: [
-            { label: { en: 'Family' }, value: 'family member' },
-            { label: { en: 'Friend' }, value: 'ami' },
+            {
+              id: testOptionId('Kind of tie/family member'),
+              label: { en: 'Family' },
+              value: 'family member',
+            },
+            {
+              id: testOptionId('Kind of tie/ami'),
+              label: { en: 'Friend' },
+              value: 'ami',
+            },
           ],
         },
         [testVariableId('k-weight')]: {

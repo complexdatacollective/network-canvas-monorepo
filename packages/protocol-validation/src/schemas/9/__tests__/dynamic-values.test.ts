@@ -146,7 +146,8 @@ describe('dynamic values in stage text', () => {
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
         path: `stages.${index}.content.en`,
-        message: expect.stringContaining(`"${EGO_NAME}" can be missing`),
+        message:
+          'The "EgoName" attribute of the participant can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.',
       }),
     ]);
   });
@@ -201,7 +202,7 @@ describe('dynamic values in stage text', () => {
     expect(issuesOf(protocol)).toEqual([
       {
         path: `stages.${index}.content.en`,
-        message: `This text cannot use "${gone}": the attribute it shows does not exist.`,
+        message: 'This text refers to an attribute that no longer exists.',
       },
     ]);
   });
@@ -218,7 +219,7 @@ describe('dynamic values in stage text', () => {
     });
     expect(issuesOf(protocol)).toEqual([
       expect.objectContaining({
-        message: `This text cannot use "${name}": the condition it names does not exist.`,
+        message: 'This text has an If block whose rules no longer exist.',
       }),
     ]);
   });
@@ -296,7 +297,8 @@ describe('dynamic values in stage text', () => {
           ),
         ).toEqual([
           expect.objectContaining({
-            message: `This text cannot use "${CATEGORY}": it has a version for "${key}", which is not one of the options of "Category".`,
+            message:
+              'This text chooses its wording by the "Category" attribute of the node this stage is about, but one of its versions is for an option that no longer exists.',
           }),
         ]);
       }
@@ -311,7 +313,8 @@ describe('dynamic values in stage text', () => {
         ),
       ).toEqual([
         expect.objectContaining({
-          message: `This text cannot use "${NICKNAME}": it has a version for "bob", but it has no versions to choose between other than "missing" and "other".`,
+          message:
+            'This text chooses its wording by each answer of the "Nickname" attribute of the node this stage is about, but only a categorical, ordinal or yes/no attribute can have a different version for each answer.',
         }),
       ]);
     });
@@ -337,7 +340,7 @@ describe('dynamic values in stage text', () => {
       (protocol.codebook.node as Record<string, { variables: Variables }>)[
         testTypeId('person')
       ]!.variables;
-    const UNLABELLED = `"${FLAG}" cannot be shown as words: "Flag" is a yes/no attribute without labels for both of its answers. Add a label for yes and for no to "Flag", or give the text a different wording for each answer.`;
+    const UNLABELLED = `The "Flag" attribute of the node this stage is about cannot be shown as words. "Flag" is a yes/no attribute without labels for both of its answers. Add a label for yes and for no to "Flag", or give the text a different wording for each answer.`;
 
     it('shows a yes/no attribute with a label for each answer', () => {
       expect(issuesOf(askingInAlterForm(guarded(FLAG)))).toEqual([]);
@@ -373,7 +376,8 @@ describe('dynamic values in stage text', () => {
         ),
       ).toEqual([
         expect.objectContaining({
-          message: `This text cannot use "${FLAG}": it has a version for "yes", but it can only have versions for "true" and "false".`,
+          message:
+            'This text chooses its wording by the "Flag" attribute of the node this stage is about, but one of its versions is neither for yes nor for no.',
         }),
       ]);
     });
@@ -646,7 +650,8 @@ describe('dynamic values in stage text', () => {
         };
         expect(issuesOf(protocol)).toEqual([
           expect.objectContaining({
-            message: `This text cannot use "${NODE_LABEL}": values about the node this stage is about cannot be shown here.`,
+            message:
+              'This text cannot use the label of the node this stage is about, because the text does not refer to that node.',
           }),
         ]);
       });
@@ -691,7 +696,7 @@ describe('dynamic values in stage text', () => {
         expect(issuesOf(misplaced)).toEqual([
           expect.objectContaining({
             message: expect.stringContaining(
-              'values about the node this stage is about cannot be shown here',
+              'This text cannot use the label of the node this stage is about, because the text does not refer to that node.',
             ),
           }),
         ]);
@@ -751,7 +756,8 @@ describe('dynamic values in stage text', () => {
         });
         expect(issuesOf(protocol)).toEqual([
           expect.objectContaining({
-            message: `This text cannot use "${FIRST_LABEL}": it has a version for "bob", but it has no versions to choose between other than "missing" and "other".`,
+            message:
+              'This text chooses its wording by each value of the label of the first node of the pair, but only a categorical, ordinal or yes/no attribute can have a different version for each answer.',
           }),
         ]);
       });
@@ -806,7 +812,8 @@ describe('dynamic values in stage text', () => {
           issuesOf(personForm(`Participant: {${IS_PARTICIPANT}}`)),
         ).toEqual([
           expect.objectContaining({
-            message: expect.stringContaining('only chooses wording'),
+            message:
+              'Whether the node is the participant cannot be shown as words. It chooses which version of the text is shown. Give the text a version for the participant and a version for everyone else.',
           }),
         ]);
       });
@@ -841,7 +848,8 @@ describe('dynamic values in stage text', () => {
               'stages.' +
               String(stageIndex(protocol, 'familyPedigree')) +
               '.form.fields.0.prompt.en',
-            message: `This text cannot use "${IS_PARTICIPANT}": it has a version for "participant", but it can only have versions for "true" and "false".`,
+            message:
+              'This text chooses its wording by whether the node is the participant, but one of its versions is neither for the participant nor for everyone else.',
           }),
         ]);
       });
@@ -853,7 +861,8 @@ describe('dynamic values in stage text', () => {
       });
       expect(issuesOf(protocol)).toEqual([
         expect.objectContaining({
-          message: `This text cannot use "${THEM}": values about the node this stage is about cannot be shown here.`,
+          message:
+            'This text cannot use the "Nickname" attribute of the node this stage is about, because the text does not refer to that node.',
         }),
       ]);
     });
@@ -871,7 +880,8 @@ describe('dynamic values in stage text', () => {
       expect(issuesOf(protocol)).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            message: `This text cannot use "${secret}": the attribute it shows is encrypted.`,
+            message:
+              'This text cannot use the "Name" attribute of the node this stage is about, because the attribute is encrypted.',
           }),
         ]),
       );
@@ -951,7 +961,8 @@ describe('dynamic values in stage text', () => {
       ).toEqual([
         expect.objectContaining({
           path: expect.stringMatching(/content\.fr$/),
-          message: expect.stringContaining(`"${EGO_NAME}" can be missing`),
+          message:
+            'The "EgoName" attribute of the participant can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.',
         }),
       ]);
       // A name that refers to nothing.

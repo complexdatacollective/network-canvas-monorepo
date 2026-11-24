@@ -564,7 +564,13 @@ const dynamicTextHits = (
             resolveSubject('owningVariable', hitPath, ctx) ??
             dynamicValueSubject(parsed.role, ctx.stageSubject),
           existence: 'unchecked',
-          inMessage: { name, optionIds: caseKeys.map(optionIdFromCaseKey) },
+          inMessage: {
+            name,
+            optionIds: caseKeys.flatMap((key) => {
+              const optionId = optionIdFromCaseKey(key);
+              return optionId === undefined ? [] : [optionId];
+            }),
+          },
         },
       ];
     },

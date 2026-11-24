@@ -51,42 +51,49 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "d8a4233e-324e-5fd0-a29b-f7777cf1b3e2",
                 "label": {
                   "en": "Family member"
                 },
                 "value": "family"
               },
               {
+                "id": "81b50acd-e4d3-5043-b435-b0e319d868e5",
                 "label": {
                   "en": "Friend"
                 },
                 "value": "friend"
               },
               {
+                "id": "f28684c8-c8c7-5560-a105-ba70cbfd3c88",
                 "label": {
                   "en": "Family or friend of the person who harmed you"
                 },
                 "value": "partner_network"
               },
               {
+                "id": "fb2f4eb6-5cff-5ee3-80b1-d275faafb419",
                 "label": {
                   "en": "Neighbour"
                 },
                 "value": "neighbour"
               },
               {
+                "id": "7eea2ced-e6c3-5761-b735-e01129912143",
                 "label": {
                   "en": "Colleague or classmate"
                 },
                 "value": "colleague"
               },
               {
+                "id": "516a7fb7-fe8e-54b6-87f4-4ebe3f803ff3",
                 "label": {
                   "en": "Member of a faith or community group"
                 },
                 "value": "community"
               },
               {
+                "id": "05ebb021-540f-58ec-ae18-be4f282404e1",
                 "label": {
                   "en": "Someone else"
                 },
@@ -103,24 +110,28 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "1de348d5-dc01-5f81-9c40-5d6db48a404c",
                 "label": {
                   "en": "Less than once a month"
                 },
                 "value": 1
               },
               {
+                "id": "2e6efd48-b2ff-55fa-9aa4-568ccbffab1c",
                 "label": {
                   "en": "About once a month"
                 },
                 "value": 2
               },
               {
+                "id": "1969b595-4305-5dc5-8dfc-47b0fb944621",
                 "label": {
                   "en": "About once a week"
                 },
                 "value": 3
               },
               {
+                "id": "3843b114-e877-52ec-acb7-b1f3689460eb",
                 "label": {
                   "en": "Most days"
                 },
@@ -153,18 +164,21 @@
             "component": "RadioGroup",
             "options": [
               {
+                "id": "a626eee5-b56c-5289-9c71-95ed092aa3e3",
                 "label": {
                   "en": "Not at all safe"
                 },
                 "value": 1
               },
               {
+                "id": "dd30645d-0377-59e1-85d7-b03d365219b3",
                 "label": {
                   "en": "Somewhat safe"
                 },
                 "value": 2
               },
               {
+                "id": "15278724-8659-5d52-a9d0-c9a2cde44e56",
                 "label": {
                   "en": "Completely safe"
                 },
@@ -178,30 +192,35 @@
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "5bd971c0-f8b5-55c3-bb81-3d443217d14e",
                 "label": {
                   "en": "Believed me and supported my choices"
                 },
                 "value": "supportive"
               },
               {
+                "id": "3a75288e-4f0b-5dc0-aedf-8af61bbe50ce",
                 "label": {
                   "en": "Gave me practical help"
                 },
                 "value": "practical"
               },
               {
+                "id": "6d69a40c-09ab-5603-bfd3-c4772067de23",
                 "label": {
                   "en": "Pressured me to do something I wasn't ready for"
                 },
                 "value": "pressured"
               },
               {
+                "id": "6eb9c404-3299-5ec3-a214-7c60bfb80a3b",
                 "label": {
                   "en": "Didn't believe me or blamed me"
                 },
                 "value": "blamed"
               },
               {
+                "id": "28598e90-19e4-567c-bfa9-f03114262005",
                 "label": {
                   "en": "Told the person who harmed me"
                 },
@@ -248,48 +267,56 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "dd1248a7-b807-5609-8e41-a201baaa0e69",
                 "label": {
                   "en": "Helpline or hotline"
                 },
                 "value": "helpline"
               },
               {
+                "id": "57e31942-f477-5abb-bc6c-98bbaafbeca0",
                 "label": {
                   "en": "Shelter or refuge"
                 },
                 "value": "shelter"
               },
               {
+                "id": "83c74ee8-b265-5149-90d7-f6036bb0df83",
                 "label": {
                   "en": "Police"
                 },
                 "value": "police"
               },
               {
+                "id": "12a270b7-b511-52be-b26b-aeea49cb461b",
                 "label": {
                   "en": "Legal help or advocacy"
                 },
                 "value": "legal_advocacy"
               },
               {
+                "id": "29c458a7-6c09-5360-bbe9-efc68d1b43c0",
                 "label": {
                   "en": "Doctor, nurse, or hospital"
                 },
                 "value": "health"
               },
               {
+                "id": "939dfade-1192-5a32-8e52-4976afa36bf7",
                 "label": {
                   "en": "Counselling or therapy"
                 },
                 "value": "counselling"
               },
               {
+                "id": "a0d09516-2e8e-531e-a88d-0fddb5ae3ac3",
                 "label": {
                   "en": "Faith or community organisation"
                 },
                 "value": "community"
               },
               {
+                "id": "e73f1ffa-9e4b-504a-be8b-83de4fd13706",
                 "label": {
                   "en": "Something else"
                 },
@@ -310,24 +337,28 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "eadde034-bb82-5fd5-91c0-2e426a973d87",
                 "label": {
                   "en": "Not at all helpful"
                 },
                 "value": 1
               },
               {
+                "id": "bf944b31-14f8-574f-86ad-4f8d6403a6f5",
                 "label": {
                   "en": "A little helpful"
                 },
                 "value": 2
               },
               {
+                "id": "0564af7b-9c66-5a80-8a7c-0f224e5ba86d",
                 "label": {
                   "en": "Quite helpful"
                 },
                 "value": 3
               },
               {
+                "id": "eec34820-de0e-5141-9d91-052949279dba",
                 "label": {
                   "en": "Very helpful"
                 },
@@ -390,30 +421,35 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "40f714f0-0c6d-5ecf-936c-05e71cc6a32a",
               "label": {
                 "en": "We are still together and live together"
               },
               "value": "together_cohabiting"
             },
             {
+              "id": "fd7c43fe-f17a-5ef0-b8ef-2d6e8c78fedb",
               "label": {
                 "en": "We are still together but do not live together"
               },
               "value": "together_apart"
             },
             {
+              "id": "bd6d3cfc-dba2-55b9-8ee5-496eb39652ff",
               "label": {
                 "en": "We are on and off"
               },
               "value": "on_off"
             },
             {
+              "id": "e43b6904-dc32-5de7-b64e-c8560aeb4263",
               "label": {
                 "en": "We have separated"
               },
               "value": "separated"
             },
             {
+              "id": "96adf515-bb78-573e-89e9-bbb207a9209a",
               "label": {
                 "en": "Prefer not to say"
               },
@@ -730,11 +766,6 @@
     },
     {
       "id": "12c5edce-2616-533f-be0d-4be4b7ef3360",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "label": {
         "en": "About each person"
       },
@@ -749,21 +780,21 @@
             "id": "bb705bbf-bd0c-5782-b003-708be221d4b0",
             "variable": "75dc971f-d6d7-5309-97f5-1c3b835a2768",
             "prompt": {
-              "en": "How do you know {nodeLabel}?"
+              "en": "How do you know {node_label}?"
             }
           },
           {
             "id": "47761e20-9fe9-5742-8586-9f044c8d58ac",
             "variable": "465a80a2-d32d-514b-9114-cbc9d6769ec8",
             "prompt": {
-              "en": "How often are you usually in touch with {nodeLabel}?"
+              "en": "How often are you usually in touch with {node_label}?"
             }
           },
           {
             "id": "64e4270a-e011-5290-a295-0018fda07ee9",
             "variable": "1fe0538f-f3b0-5b76-a941-008391eee924",
             "prompt": {
-              "en": "Does {nodeLabel} **know** about what has been happening in your relationship?"
+              "en": "Does {node_label} **know** about what has been happening in your relationship?"
             },
             "hint": {
               "en": "Whether you told them or they found out another way."
@@ -784,11 +815,6 @@
     },
     {
       "id": "543b9c9a-c9d2-5c45-acf5-e3f420bbfed0",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "label": {
         "en": "Services you contacted"
       },
@@ -818,7 +844,7 @@
             "id": "62a51a89-6369-57ee-b1b6-f7dea2d23128",
             "variable": "1da99059-e725-5b79-8a95-5ff7713875e8",
             "prompt": {
-              "en": "Overall, how helpful was {nodeLabel}?"
+              "en": "Overall, how helpful was {node_label}?"
             }
           }
         ]
@@ -847,11 +873,6 @@
     },
     {
       "id": "b5d26dd7-99f0-52f2-bb2b-e6f31a5c6f63",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "interviewScript": "Only people the participant said know about the abuse appear here. Anything typed into the 'Something else' box is saved encrypted with the participant's passphrase, because a free-text description is where identifying details tend to appear.",
       "label": {
         "en": "How people reacted"
@@ -885,7 +906,7 @@
           "variable": "04b0fac5-4870-5f13-9d3b-4a48840eaa14",
           "otherVariable": "69888343-5c8e-5e45-9550-b4134dca23bc",
           "otherVariablePrompt": {
-            "en": "In your own words, how did {nodeLabel} react? (This is saved encrypted.)"
+            "en": "In your own words, how did {node_label} react? (This is saved encrypted.)"
           },
           "otherOptionLabel": {
             "en": "Something else"

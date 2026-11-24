@@ -2,7 +2,7 @@ import type { Codebook } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
 import type { RuleDraft } from '../rule.ts';
 
 const PERSON = testTypeId('person');
@@ -40,8 +40,16 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
           name: 'Mood',
           type: 'categorical',
           options: [
-            { label: { en: 'Happy' }, value: 'happy' },
-            { label: { en: 'Sad' }, value: 'sad' },
+            {
+              id: testId('option/Mood/happy'),
+              label: { en: 'Happy' },
+              value: 'happy',
+            },
+            {
+              id: testId('option/Mood/sad'),
+              label: { en: 'Sad' },
+              value: 'sad',
+            },
           ],
         },
         [NOTE]: { name: 'Note', type: 'text' },
@@ -166,8 +174,12 @@ const baseSections: Record<string, SectionDoc> = {
         name: 'Mood',
         type: 'categorical',
         options: [
-          { label: { en: 'Happy' }, value: 'happy' },
-          { label: { en: 'Sad' }, value: 'sad' },
+          {
+            id: testId('option/Mood/happy'),
+            label: { en: 'Happy' },
+            value: 'happy',
+          },
+          { id: testId('option/Mood/sad'), label: { en: 'Sad' }, value: 'sad' },
         ],
       },
       // An option-bearing attribute whose option VALUES are numbers, which is
@@ -177,8 +189,12 @@ const baseSections: Record<string, SectionDoc> = {
         name: 'Strength',
         type: 'ordinal',
         options: [
-          { label: { en: 'Weak' }, value: 1 },
-          { label: { en: 'Strong' }, value: 2 },
+          { id: testId('option/Strength/1'), label: { en: 'Weak' }, value: 1 },
+          {
+            id: testId('option/Strength/2'),
+            label: { en: 'Strong' },
+            value: 2,
+          },
         ],
       },
       // Encrypted, so only a panel over an imported file may name it.

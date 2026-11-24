@@ -62,6 +62,7 @@
           },
           "options": [
             {
+              "id": "80b343ae-57f3-5843-a3d3-c015c07c87f1",
               "label": {
                 "en": "This country (where I live now)",
                 "es": "En el país donde vivo ahora",
@@ -70,6 +71,7 @@
               "value": "host"
             },
             {
+              "id": "fb62b098-692e-5e89-9d14-9fa1f22fb051",
               "label": {
                 "en": "Another country (my country of origin)",
                 "es": "En otro país (mi país de origen)",
@@ -97,6 +99,7 @@
           },
           "options": [
             {
+              "id": "cba3daa0-98a2-5f26-8a47-e4a9e1d780f2",
               "label": {
                 "en": "Citizen of this country",
                 "es": "Nacionalidad o ciudadanía de este país",
@@ -105,6 +108,7 @@
               "value": "citizen"
             },
             {
+              "id": "fb54e92c-da11-55f8-adfe-2626dae6996c",
               "label": {
                 "en": "Permanent resident",
                 "es": "Residencia permanente",
@@ -113,6 +117,7 @@
               "value": "permanent_resident"
             },
             {
+              "id": "c63ba798-b2c8-5f48-b561-6aafce8215dc",
               "label": {
                 "en": "Temporary visa or permit",
                 "es": "Visa o permiso temporal",
@@ -121,6 +126,7 @@
               "value": "temporary"
             },
             {
+              "id": "413cc74e-3017-5f1d-92ba-9a684b21a1af",
               "label": {
                 "en": "Refugee or asylum status",
                 "es": "Refugio o asilo",
@@ -129,6 +135,7 @@
               "value": "refugee_asylum"
             },
             {
+              "id": "3a7d4bfd-8033-5183-aa46-22b38114af6d",
               "label": {
                 "en": "Undocumented or in process",
                 "es": "Sin documentos o en trámite",
@@ -137,6 +144,7 @@
               "value": "undocumented"
             },
             {
+              "id": "9b3e6196-9d3f-59d2-8725-8de0de678c22",
               "label": {
                 "en": "Prefer not to say",
                 "es": "Prefiero no decirlo",
@@ -152,6 +160,7 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "da847765-84c6-52e7-841e-e87d3cbffcfb",
               "label": {
                 "en": "Not at all",
                 "es": "No lo hablo",
@@ -160,6 +169,7 @@
               "value": 1
             },
             {
+              "id": "a4937bb3-dc42-59bd-bbbc-5105f384a9e4",
               "label": {
                 "en": "Not well",
                 "es": "Mal",
@@ -168,6 +178,7 @@
               "value": 2
             },
             {
+              "id": "30672b6d-28c5-5c95-a58e-c17362057674",
               "label": {
                 "en": "Well",
                 "es": "Bien",
@@ -176,6 +187,7 @@
               "value": 3
             },
             {
+              "id": "25f46d92-ffe4-55ac-9444-b9c16304c002",
               "label": {
                 "en": "Very well",
                 "es": "Muy bien",
@@ -200,6 +212,7 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "ef4e231e-cd0d-557b-90a9-ec817a0fbd4d",
               "label": {
                 "en": "Strongly disagree",
                 "es": "Muy en desacuerdo",
@@ -208,6 +221,7 @@
               "value": 1
             },
             {
+              "id": "47fbc441-0e6b-58d1-9a39-383525d452ea",
               "label": {
                 "en": "Disagree",
                 "es": "En desacuerdo",
@@ -216,6 +230,7 @@
               "value": 2
             },
             {
+              "id": "fd4eea1a-901f-5f7a-ae45-6259f20bedf2",
               "label": {
                 "en": "Neither agree nor disagree",
                 "es": "Ni de acuerdo ni en desacuerdo",
@@ -224,6 +239,7 @@
               "value": 3
             },
             {
+              "id": "2eed8c6f-6d7f-5649-a62f-0d2246455e52",
               "label": {
                 "en": "Agree",
                 "es": "De acuerdo",
@@ -232,6 +248,7 @@
               "value": 4
             },
             {
+              "id": "18888e05-ddcd-55fe-b6c1-40b2fa9cb746",
               "label": {
                 "en": "Strongly agree",
                 "es": "Muy de acuerdo",
@@ -270,6 +287,7 @@
             },
             "options": [
               {
+                "id": "0660581d-dcbe-5e8b-ba74-c9548e2db156",
                 "label": {
                   "en": "Partner or spouse",
                   "es": "Pareja o cónyuge",
@@ -278,6 +296,7 @@
                 "value": "partner"
               },
               {
+                "id": "974d8bc4-bac3-52f6-8fb8-3d9e80465361",
                 "label": {
                   "en": "Family member or relative",
                   "es": "Familiar o pariente",
@@ -286,6 +305,7 @@
                 "value": "family"
               },
               {
+                "id": "2e08897c-94ad-544c-8ee0-9f425b3af7d1",
                 "label": {
                   "en": "Friend",
                   "es": "Amistad",
@@ -294,6 +314,7 @@
                 "value": "friend"
               },
               {
+                "id": "20267b2b-85a4-5ec8-940e-10949d425222",
                 "label": {
                   "en": "Co-worker or classmate",
                   "es": "Persona del trabajo o de los estudios",
@@ -302,6 +323,7 @@
                 "value": "coworker"
               },
               {
+                "id": "b7ba7263-0153-5ff2-b5cf-b1340d24f584",
                 "label": {
                   "en": "Community or religious member",
                   "es": "Persona de su comunidad o de un grupo religioso",
@@ -310,6 +332,7 @@
                 "value": "community_member"
               },
               {
+                "id": "9fa4323d-c12d-5481-bb01-392a715fc762",
                 "label": {
                   "en": "Other",
                   "es": "Otro",
@@ -328,6 +351,7 @@
             },
             "options": [
               {
+                "id": "8497e626-4de3-5d3d-ba13-0334fddfad8e",
                 "label": {
                   "en": "Same origin country as me",
                   "es": "Del mismo país de origen que yo",
@@ -336,6 +360,7 @@
                 "value": "same_origin"
               },
               {
+                "id": "89823146-43b4-5be2-8ec9-12bddcda6024",
                 "label": {
                   "en": "This country",
                   "es": "De este país",
@@ -344,6 +369,7 @@
                 "value": "host_country"
               },
               {
+                "id": "26a806f2-e7d6-5c90-8f52-7b9de06ac864",
                 "label": {
                   "en": "A different country",
                   "es": "De otro país",
@@ -352,6 +378,7 @@
                 "value": "other_country"
               },
               {
+                "id": "dedc49a9-2906-54a4-bd0a-b534f8260a08",
                 "label": {
                   "en": "Don't know",
                   "es": "No lo sé",
@@ -370,6 +397,7 @@
             },
             "options": [
               {
+                "id": "92484d7c-0f10-58b9-8545-49baab5f2a71",
                 "label": {
                   "en": "My first / origin language",
                   "es": "Mi lengua materna o de origen",
@@ -378,6 +406,7 @@
                 "value": "origin_language"
               },
               {
+                "id": "c529dc37-3cb2-50a2-8968-6425790eb06a",
                 "label": {
                   "en": "The main language of this country",
                   "es": "El idioma principal de este país",
@@ -386,6 +415,7 @@
                 "value": "host_language"
               },
               {
+                "id": "0c0229cf-c93a-5b55-9e40-d69ef26edd25",
                 "label": {
                   "en": "Both languages",
                   "es": "Los dos idiomas",
@@ -394,6 +424,7 @@
                 "value": "both"
               },
               {
+                "id": "3894e484-606b-5748-a07f-beab78bd52e1",
                 "label": {
                   "en": "Another language",
                   "es": "Otro idioma",
@@ -412,6 +443,7 @@
             },
             "options": [
               {
+                "id": "884f0513-bc19-5343-8396-d7f932bfdd6a",
                 "label": {
                   "en": "In my country of origin",
                   "es": "En mi país de origen",
@@ -420,6 +452,7 @@
                 "value": "in_origin_country"
               },
               {
+                "id": "d34ab8cb-ba3b-555a-8c88-cc1ee83e7440",
                 "label": {
                   "en": "In this country, after I arrived",
                   "es": "En este país, después de llegar",
@@ -428,6 +461,7 @@
                 "value": "since_arriving"
               },
               {
+                "id": "04d4f732-80af-5125-8236-226e0535afe4",
                 "label": {
                   "en": "Through family",
                   "es": "A través de la familia",
@@ -436,6 +470,7 @@
                 "value": "through_family"
               },
               {
+                "id": "3dfa3e4c-c3cf-5ba9-b905-cb8e811c62fd",
                 "label": {
                   "en": "Through work or study",
                   "es": "A través del trabajo o los estudios",
@@ -444,6 +479,7 @@
                 "value": "through_work"
               },
               {
+                "id": "3f1e0375-6fd1-52cf-ae5c-126f968afffe",
                 "label": {
                   "en": "Online",
                   "es": "Por internet",
@@ -452,6 +488,7 @@
                 "value": "online"
               },
               {
+                "id": "d2805a89-1923-5149-bbda-e4e3bc24f078",
                 "label": {
                   "en": "Other",
                   "es": "Otro",
@@ -493,6 +530,7 @@
             },
             "options": [
               {
+                "id": "72e5c3aa-afe4-5dc9-9606-df06ca3d7e30",
                 "label": {
                   "en": "Emotional support (someone to confide in or who shows you love and affection)",
                   "es": "Apoyo emocional (alguien a quien contarle sus cosas o que le muestra amor y afecto)",
@@ -501,6 +539,7 @@
                 "value": "emotional"
               },
               {
+                "id": "0b6e40cd-505e-5d42-9a0a-48f35b64dc14",
                 "label": {
                   "en": "Practical support (help with chores, errands, or a place to stay)",
                   "es": "Apoyo práctico (ayuda con las tareas de la casa, con recados o mandados, o con un lugar donde quedarse)",
@@ -509,6 +548,7 @@
                 "value": "practical"
               },
               {
+                "id": "9615796c-040c-5461-9e4b-90bf5f17464c",
                 "label": {
                   "en": "Informational support (advice and information when you need it)",
                   "es": "Apoyo informativo (consejos e información cuando los necesita)",
@@ -517,6 +557,7 @@
                 "value": "informational"
               },
               {
+                "id": "034dfbba-139b-5e14-9565-4b832742dd66",
                 "label": {
                   "en": "Financial support (help with money or sending money)",
                   "es": "Apoyo económico (ayuda con dinero o con el envío de dinero)",
@@ -532,6 +573,7 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "17257e6d-dbe1-5ac5-900e-0a358c686ac4",
                 "label": {
                   "en": "Not close",
                   "es": "No cercana",
@@ -540,6 +582,7 @@
                 "value": 1
               },
               {
+                "id": "655e2169-fee6-5b8d-9823-63a72d027bb6",
                 "label": {
                   "en": "Somewhat close",
                   "es": "Algo cercana",
@@ -548,6 +591,7 @@
                 "value": 2
               },
               {
+                "id": "2c109b74-7728-5df2-848e-e411dc756106",
                 "label": {
                   "en": "Close",
                   "es": "Cercana",
@@ -556,6 +600,7 @@
                 "value": 3
               },
               {
+                "id": "1d94fb81-41d6-5d3f-8f04-c81cdd43ff59",
                 "label": {
                   "en": "Very close",
                   "es": "Muy cercana",
@@ -564,6 +609,7 @@
                 "value": 4
               },
               {
+                "id": "ecd934a0-2e43-54ef-8ed6-d5ee588eab6c",
                 "label": {
                   "en": "Especially close",
                   "es": "Especialmente cercana",
@@ -656,11 +702,6 @@
     },
     {
       "id": "fd4859da-00a0-539b-9859-e7d38390c7fd",
-      "dynamicValues": {
-        "arrivalYear": {
-          "path": "ego.333ccb78-c945-533d-95f3-75b3eb9f5af4"
-        }
-      },
       "type": "EgoForm",
       "label": {
         "en": "Your background and migration history",
@@ -728,9 +769,9 @@
             "id": "c1f9ece0-86c1-55ba-b5ba-22e29b7a1546",
             "variable": "455eb4e1-a810-5415-a7c3-1cd84278b47f",
             "hint": {
-              "en": "{arrivalYear, select, missing {} other {You said you first came to live here in {arrivalYear}.}}",
-              "es": "{arrivalYear, select, missing {} other {Usted mencionó que vino a vivir a este país por primera vez en {arrivalYear}.}}",
-              "hu": "{arrivalYear, select, missing {} other {Korábbi válasza szerint ekkor költözött először ebbe az országba: {arrivalYear}.}}"
+              "en": "{ego_333ccb78_c945_533d_95f3_75b3eb9f5af4, select, missing {} other {You said you first came to live here in {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.}}",
+              "es": "{ego_333ccb78_c945_533d_95f3_75b3eb9f5af4, select, missing {} other {Usted mencionó que vino a vivir a este país por primera vez en {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.}}",
+              "hu": "{ego_333ccb78_c945_533d_95f3_75b3eb9f5af4, select, missing {} other {Korábbi válasza szerint ekkor költözött először ebbe az országba: {ego_333ccb78_c945_533d_95f3_75b3eb9f5af4}.}}"
             },
             "prompt": {
               "en": "About how many years have you lived in this country?",
@@ -922,11 +963,6 @@
     },
     {
       "id": "9c3fd5ec-ba04-58e8-8f86-b9c630380eec",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "type": "AlterForm",
       "label": {
         "en": "About each person",
@@ -943,9 +979,9 @@
             "id": "a9a36b2f-e144-537c-90c4-c4bb4f28bfb1",
             "variable": "76387d68-620e-5248-abcc-caa2fdedadb8",
             "prompt": {
-              "en": "How would you best categorize {nodeLabel}?",
-              "es": "¿Cómo clasificaría mejor a {nodeLabel}?",
-              "hu": "Ön szerint {nodeLabel} melyik kategóriába tartozik leginkább?"
+              "en": "How would you best categorize {node_label}?",
+              "es": "¿Cómo clasificaría mejor a {node_label}?",
+              "hu": "Ön szerint {node_label} melyik kategóriába tartozik leginkább?"
             }
           },
           {
@@ -961,18 +997,18 @@
             "id": "fe41da66-1e29-51f5-877e-784dbb3ad53e",
             "variable": "526b3f40-6599-598b-b9d1-d7adb0bf4eed",
             "prompt": {
-              "en": "Would you say {nodeLabel} is from the **same ethnic or cultural background** as you?",
-              "es": "¿Diría que {nodeLabel} tiene **el mismo origen étnico o cultural** que usted?",
-              "hu": "Ön szerint {nodeLabel} **etnikai vagy kulturális háttere ugyanaz**, mint az Öné?"
+              "en": "Would you say {node_label} is from the **same ethnic or cultural background** as you?",
+              "es": "¿Diría que {node_label} tiene **el mismo origen étnico o cultural** que usted?",
+              "hu": "Ön szerint {node_label} **etnikai vagy kulturális háttere ugyanaz**, mint az Öné?"
             }
           },
           {
             "id": "d11b5d9b-a2c1-59b7-b62f-bf785373f818",
             "variable": "a7da3315-920b-5e1e-a780-9c5a0af9e29d",
             "prompt": {
-              "en": "What kinds of **support** does {nodeLabel} give you?",
-              "es": "¿Qué tipos de **apoyo** le da {nodeLabel}?",
-              "hu": "Milyen fajta **támogatást** ad Önnek {nodeLabel}?"
+              "en": "What kinds of **support** does {node_label} give you?",
+              "es": "¿Qué tipos de **apoyo** le da {node_label}?",
+              "hu": "Milyen fajta **támogatást** ad Önnek {node_label}?"
             },
             "hint": {
               "en": "Select all that apply.",
@@ -1010,11 +1046,6 @@
     },
     {
       "id": "de083ac9-ef8b-5aed-90eb-1b4da3236522",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "outsideAreasLabel": {
         "en": "Outside Selectable Areas",
         "es": "Fuera de las áreas seleccionables",
@@ -1046,9 +1077,9 @@
         {
           "id": "2745203b-e40f-5d7c-ade3-40d99f8d2279",
           "text": {
-            "en": "Please select the **country where {nodeLabel} currently lives** on the map. This helps us see how your network of important people is spread across the world.",
-            "es": "Por favor, seleccione en el mapa el **país donde vive actualmente {nodeLabel}**. Esto nos ayuda a ver cómo se distribuye por el mundo la red de personas importantes para usted.",
-            "hu": "Kérjük, jelölje ki a térképen azt az **országot, ahol {nodeLabel} jelenleg él**. Ez segít abban, hogy lássuk, hogyan oszlik el a világban az Ön számára fontos emberek köre."
+            "en": "Please select the **country where {node_label} currently lives** on the map. This helps us see how your network of important people is spread across the world.",
+            "es": "Por favor, seleccione en el mapa el **país donde vive actualmente {node_label}**. Esto nos ayuda a ver cómo se distribuye por el mundo la red de personas importantes para usted.",
+            "hu": "Kérjük, jelölje ki a térképen azt az **országot, ahol {node_label} jelenleg él**. Ez segít abban, hogy lássuk, hogyan oszlik el a világban az Ön számára fontos emberek köre."
           },
           "variable": "eb6ed071-ff6a-5bf4-87d9-c83437b55bff"
         }

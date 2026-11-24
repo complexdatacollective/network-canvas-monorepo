@@ -153,8 +153,8 @@ export const DefaultLanguageBadge = () => {
 };
 
 /**
- * What the stage being summarized binds, and what its text can show, for
- * text that shows values the interview fills in. Undefined outside a stage.
+ * What the text of the stage being summarized can show, for text that shows
+ * values the interview fills in. Undefined outside a stage.
  */
 export const SummaryDynamicValuesContext = createContext<
   DynamicMessageSite | undefined
@@ -188,7 +188,7 @@ const TranslationText = ({
 }) => {
   const dynamicSite = useContext(SummaryDynamicValuesContext);
   // A setting that declares arguments is given them by the interview, not
-  // by the stage's bindings, so its declaration names what they are.
+  // by the stage, so its declaration names what they are.
   if (messageArguments !== undefined) {
     return (
       <LocalizedMessageVersionsSummary

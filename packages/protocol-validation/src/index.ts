@@ -263,6 +263,10 @@ export {
   rewriteDynamicValueReferences,
   TRUE_CASE,
 } from './schemas/9/dynamic-values.ts';
+export {
+  removedOptionIds,
+  withoutRemovedOptionVersions,
+} from './localization/removedOptionVersions.ts';
 // The conditions text chooses its wording by: a stage's, or a node label's.
 export {
   type Condition,

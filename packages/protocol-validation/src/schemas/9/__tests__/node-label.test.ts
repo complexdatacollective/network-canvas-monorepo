@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { testId, withTestIds } from '../../../__tests__/testIds.ts';
+import {
+  testId,
+  testVariableId,
+  withTestIds,
+} from '../../../__tests__/testIds.ts';
 import { collectLocalizedStringsFromSchema } from '../../../utils/collectLocalizedStrings.ts';
 import { ConditionSchema } from '../conditions.ts';
 import {
@@ -17,8 +21,19 @@ const HOSPITAL_ID = testId('hospital');
 const HOSPITAL = optionCaseKey(HOSPITAL_ID);
 const BIG_ID = testId('big');
 const BIG = dynamicValueNameFor({ kind: 'condition', conditionId: BIG_ID });
-const KIND = 'node_kind';
-const NAME = 'node_nameVar';
+const NAME_VAR = testVariableId('nameVar');
+const KIND_VAR = testVariableId('kind');
+const SECRET_VAR = testVariableId('secret');
+const KIND = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: KIND_VAR,
+});
+const NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: NAME_VAR,
+});
 
 const codebook = (label: unknown) => ({
   node: {
@@ -27,8 +42,8 @@ const codebook = (label: unknown) => ({
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        nameVar: { name: 'name', type: 'text' },
-        kind: {
+        [NAME_VAR]: { name: 'name', type: 'text' },
+        [KIND_VAR]: {
           name: 'kind',
           type: 'ordinal',
           options: [
@@ -36,7 +51,7 @@ const codebook = (label: unknown) => ({
             { id: testId('school'), label: { en: 'School' }, value: 'school' },
           ],
         },
-        secret: { name: 'secret', type: 'text', encrypted: true },
+        [SECRET_VAR]: { name: 'secret', type: 'text', encrypted: true },
       },
       dynamicLabel: label,
     },
@@ -174,7 +189,7 @@ describe('findNodeLabelProblems', () => {
       {
         type: 'node',
         id: testId('r1'),
-        options: { type: 'place', attribute: 'nameVar', operator: 'EXISTS' },
+        options: { type: 'place', attribute: NAME_VAR, operator: 'EXISTS' },
       },
     ],
   };
@@ -203,40 +218,62 @@ describe('findNodeLabelProblems', () => {
     [
       'today’s date',
       'now',
-      'a node’s label can show only what is known about that node',
+      'This label cannot use today’s date: a node’s label can show only what is known about that node.',
     ],
     [
       'an ego attribute',
-      'ego_anything',
-      'values about the participant cannot be shown here',
+      dynamicValueNameFor({
+        kind: 'attribute',
+        role: 'ego',
+        variableId: testVariableId('anything'),
+      }),
+      'This label cannot use an attribute of the participant, because the text does not refer to the participant.',
     ],
     [
       'an encrypted attribute',
-      'node_secret',
-      'the attribute it shows is encrypted',
+      dynamicValueNameFor({
+        kind: 'attribute',
+        role: 'node',
+        variableId: SECRET_VAR,
+      }),
+      'This label cannot use the "secret" attribute of the node that the label is on, because the attribute is encrypted.',
+    ],
+    [
+      'an attribute that does not exist',
+      dynamicValueNameFor({
+        kind: 'attribute',
+        role: 'node',
+        variableId: testVariableId('gone'),
+      }),
+      'This label refers to an attribute that no longer exists.',
     ],
     [
       'a condition that does not exist',
-      'condition_gone',
-      'the condition it names does not exist',
+      dynamicValueNameFor({ kind: 'condition', conditionId: testId('gone') }),
+      'This label has an If block whose rules no longer exist.',
     ],
-  ])('refuses %s', (_, name, reason) => {
-    expect(
-      problemsOf({ text: { en: `{${name}, select, missing {} other {x}}` } }),
-    ).toEqual([
-      {
-        path: [...LABEL_PATH, 'text', 'en'],
-        message: `This label cannot use "${name}": ${reason}.`,
-      },
-    ]);
-  });
+    [
+      'a name that refers to nothing',
+      'node_kind',
+      'This label cannot use "node_kind": it does not refer to an attribute, a node’s label, a condition or today’s date.',
+    ],
+  ])(
+    'refuses %s, and names it as a researcher knows it',
+    (_, name, message) => {
+      expect(
+        problemsOf({ text: { en: `{${name}, select, missing {} other {x}}` } }),
+      ).toEqual([{ path: [...LABEL_PATH, 'text', 'en'], message }]);
+    },
+  );
 
   it('refuses showing a condition as words', () => {
     const problems = problemsOf({
       text: { en: `{${BIG}}` },
       conditions: { [BIG_ID]: big },
     });
-    expect(problems[0]?.message).toContain('only chooses wording');
+    expect(problems[0]?.message).toBe(
+      'An If block cannot be shown as words. It chooses which version of the text is shown. Give the text a version for when its rules are met and a version for when they are not.',
+    );
   });
 
   it('refuses a case that is neither true nor false', () => {
@@ -248,7 +285,8 @@ describe('findNodeLabelProblems', () => {
     ).toEqual([
       {
         path: [...LABEL_PATH, 'text', 'en'],
-        message: `This label cannot use "${BIG}": it has a version for "yes", but it can only have versions for "true" and "false".`,
+        message:
+          'This label chooses its wording by an If block, but one of its versions is neither for when its rules are met nor for when they are not.',
       },
     ]);
   });
@@ -256,12 +294,15 @@ describe('findNodeLabelProblems', () => {
   it('refuses a case that is not one of the attribute’s options', () => {
     expect(
       problemsOf({
-        text: { en: `{${KIND}, select, hospital {a} other {b}}` },
+        text: {
+          en: `{${KIND}, select, hospital {a} ${optionCaseKey(testId('deleted'))} {c} other {b}}`,
+        },
       }),
     ).toEqual([
       {
         path: [...LABEL_PATH, 'text', 'en'],
-        message: `This label cannot use "${KIND}": it has a version for "hospital", which is not one of the options of "kind".`,
+        message:
+          'This label chooses its wording by the "kind" attribute of the node that the label is on, but one of its versions is for an option that no longer exists.',
       },
     ]);
   });

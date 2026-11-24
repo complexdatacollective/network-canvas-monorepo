@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  dynamicValueNameFor,
   type Variable,
 } from '@codaco/protocol-validation';
 import {
@@ -207,10 +208,11 @@ async function readStoredLocation(node: NcNode | undefined) {
 describe('Geospatial prompt', () => {
   const namingStage: StageProps<'Geospatial'>['stage'] = {
     ...stage,
-    dynamicValues: { who: { path: 'node.$label' } },
     prompts: stage.prompts.map((prompt) => ({
       ...prompt,
-      text: { en: 'Where does {who} live?' },
+      text: {
+        en: `Where does {${dynamicValueNameFor({ kind: 'label', role: 'node' })}} live?`,
+      },
     })),
   };
 

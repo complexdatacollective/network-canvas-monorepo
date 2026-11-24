@@ -39,7 +39,9 @@ import {
   findDynamicValueProblems,
   type InterfaceTextUpdate,
   type LocalizationDeclaration,
+  removedOptionIds,
   stageSchema,
+  withoutRemovedOptionVersions,
 } from '@codaco/protocol-validation';
 import {
   applyCommands,
@@ -51,8 +53,7 @@ import {
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import {
   useConditionsRegistration,
-  useDynamicValuesRegistration,
-  withoutUnusedBindings,
+  withoutUnusedConditions,
 } from '../localization/useDynamicValueSite.ts';
 import type {
   StageEditorActions,
@@ -70,6 +71,7 @@ import { NOT_READY_MESSAGE, useStageEdit } from '../stageEdit.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import {
   NOTHING_STAGED,
+  type StagedCodebook,
   useStagedCodebookStore,
 } from '../state/stagedCodebook.ts';
 import { useLatest } from '../state/useLatest.ts';
@@ -507,20 +509,26 @@ function StageEditorFormBody({
       // As the stage will be saved: holding exactly the wording settings that
       // apply to it (see `stageDocument`), so the schema judges what is
       // saved, and the draft the form goes on editing is what was stored.
-      // Without the value bindings no text uses any more (see
-      // `withoutUnusedBindings`), however their last use went.
-      const fields = withoutUnusedBindings(
-        savedStageFields(
-          identity,
-          documentFromSubmission({
-            currentFields: working.read(),
-            submittedValues: values as Record<string, FieldValue>,
-            mountedPaths: mountedPathsOf(storeApi),
-            dormantFields: dormantFieldsOf(storeApi),
-          }),
-          localization,
+      // Without the conditions no text names any more (see
+      // `withoutUnusedConditions`), however their last use went, and without
+      // the wording written for options the stage's codebook changes removed
+      // (see `withoutVersionsForStagedRemovals`).
+      const fields = withoutVersionsForStagedRemovals(
+        identity,
+        withoutUnusedConditions(
+          savedStageFields(
+            identity,
+            documentFromSubmission({
+              currentFields: working.read(),
+              submittedValues: values as Record<string, FieldValue>,
+              mountedPaths: mountedPathsOf(storeApi),
+              dormantFields: dormantFieldsOf(storeApi),
+            }),
+            localization,
+          ),
+          saved,
         ),
-        saved,
+        stagedCodebook?.read() ?? NOTHING_STAGED,
       );
       working.write(fields);
 
@@ -844,7 +852,7 @@ function StageEditorFormBody({
                   unable to write is a property of the edit, not of any one
                   field, so no section has to remember to pass it down.
                 */}
-                <DynamicValuesRegistration />
+                <ConditionsRegistration />
                 <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </LayoutGroup>
             </form>
@@ -879,19 +887,12 @@ function StageEditorFormBody({
  * route passes through untouched.
  */
 /**
- * Puts the stage's dynamic value bindings, and the conditions its text tests,
- * among what a save writes, whichever sections the stage has: a text field
- * anywhere in it may add one.
+ * Puts the conditions the stage's text tests among what a save writes,
+ * whichever sections the stage has: a text field anywhere in it may add one.
  */
-function DynamicValuesRegistration() {
-  const bindings = useDynamicValuesRegistration();
+function ConditionsRegistration() {
   const conditions = useConditionsRegistration();
-  return (
-    <>
-      <div hidden {...bindings} />
-      <div hidden {...conditions} />
-    </>
-  );
+  return <div hidden {...conditions} />;
 }
 
 function sectionProblems(sections: readonly StageSection[]): string[] {
@@ -903,6 +904,41 @@ function sectionProblems(sections: readonly StageSection[]): string[] {
       }),
     ),
   );
+}
+
+/**
+ * `fields` without the versions that the stage's text writes for options its
+ * codebook changes removed (see `withoutRemovedOptionVersions`). An option
+ * can be deleted from inside a stage editor (the Family Pedigree manages its
+ * gender identity options there), and the stage's own text may have a version
+ * for it. That version names an option that no longer exists, so the stage's
+ * check would refuse the save until the researcher found and removed it.
+ *
+ * An option counts as removed when a changed section had it as the protocol
+ * held it (`base`) and has it no longer (`edited`). A section that the edit
+ * brought into being had no options in the protocol to remove.
+ */
+function withoutVersionsForStagedRemovals(
+  identity: StageIdentity,
+  fields: StageFormDraft,
+  staged: StagedCodebook,
+): StageFormDraft {
+  const changes = Object.values(staged);
+  const removed = removedOptionIds(
+    changes.map(({ base }) => base),
+    changes.map(({ edited }) => edited),
+  );
+  if (removed.size === 0) return fields;
+  let protocol: Readonly<{ stages: readonly SectionDoc[] }> = {
+    stages: [{ ...fields, id: identity.id, type: identity.type }],
+  };
+  for (const [variableId, optionIds] of removed) {
+    protocol = withoutRemovedOptionVersions(protocol, variableId, optionIds);
+  }
+  const [stage] = protocol.stages;
+  if (stage === undefined) return fields;
+  const { id: _id, type: _type, ...pruned } = stage;
+  return pruned;
 }
 
 /**

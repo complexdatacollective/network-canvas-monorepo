@@ -112,16 +112,11 @@
         {
           "id": "69dd216c-f6fb-5361-acba-981ad513056e",
           "text": {
-            "en-US": "Where does {nodeLabel} live?"
+            "en-US": "Where does {node_label} live?"
           },
           "variable": "0754214c-fd6a-53b8-918d-2e365db416bd"
         }
-      ],
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      }
+      ]
     },
     {
       "id": "c042ce7c-1e22-58b2-b46e-1a22bf367e99",

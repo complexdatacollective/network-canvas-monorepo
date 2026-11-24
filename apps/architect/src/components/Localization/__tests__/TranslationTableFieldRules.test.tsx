@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import FormStoreProvider, {
   FormStoreContext,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { testOptionId } from '@codaco/protocol-builder/testing/testId';
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
@@ -64,10 +65,23 @@ const bilingual = (): CurrentProtocol => {
       personVariable('living_status')
     ];
   if (livingStatus?.type !== 'categorical') throw new Error('No options');
+  const held = livingStatus.options;
+  // Each option keeps the id the fixture gave it.
+  const idOf = (value: string) =>
+    held.find((option) => option.value === value)?.id ??
+    testOptionId(personVariable('living_status'), value);
   livingStatus.options = [
-    { value: 'living', label: { en: 'Living', es: 'Vivo' } },
-    { value: 'deceased', label: { en: 'Deceased', es: 'Fallecido' } },
-    { value: 'unknown', label: { en: 'Don’t know' } },
+    {
+      id: idOf('living'),
+      value: 'living',
+      label: { en: 'Living', es: 'Vivo' },
+    },
+    {
+      id: idOf('deceased'),
+      value: 'deceased',
+      label: { en: 'Deceased', es: 'Fallecido' },
+    },
+    { id: idOf('unknown'), value: 'unknown', label: { en: 'Don’t know' } },
   ];
   return protocol;
 };

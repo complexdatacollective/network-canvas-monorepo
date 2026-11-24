@@ -1531,6 +1531,18 @@
     "defaultMessage": "The label the interview would give the node if this label were not set",
     "description": "Short note under “Default label” in the insert-a-value menu of a node type’s own label, saying that the value is the label the interview chooses by its usual rules (the node’s name, or another of its answers)."
   },
+  "protocolBuilder.dynamicText.deletedAttribute": {
+    "defaultMessage": "Deleted attribute",
+    "description": "Shown in place of a value in a piece of text a participant reads, when the attribute that the value comes from has been deleted from the codebook. The researcher should remove the value or insert another one."
+  },
+  "protocolBuilder.dynamicText.deletedCondition": {
+    "defaultMessage": "Deleted condition",
+    "description": "Shown in place of the rules of an “If” in a piece of text a participant reads, when the rules that the “If” tests have been deleted from the stage."
+  },
+  "protocolBuilder.dynamicText.deletedOption": {
+    "defaultMessage": "Deleted option",
+    "description": "Label of a version of a piece of text that was written for one answer to an attribute, when that answer (one of the attribute’s options) has been deleted from the codebook."
+  },
   "protocolBuilder.dynamicText.dyadSourceValue": {
     "defaultMessage": "First node: {attribute}",
     "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the first of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."

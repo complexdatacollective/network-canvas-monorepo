@@ -16,6 +16,7 @@ import type { MessagePart } from './messageArguments.ts';
 /**
  * A value from the interview that a stage's text may show (see
  * `schemas/9/dynamic-values.ts`), as the message checker sees it:
+ * - `description`, how the problems that concern it name it;
  * - `cases`, the keys a select on the value may name besides `missing` and
  *   `other` (the option or yes/no cases the text gives a version for);
  * - `numeric`, whether a plural may choose a version by it;
@@ -27,6 +28,12 @@ import type { MessagePart } from './messageArguments.ts';
  *   answers), or undefined when it can.
  */
 export type DynamicValueArgument = Readonly<{
+  /**
+   * The value as a researcher knows it, for the problems that concern it:
+   * `the "Age" attribute of the participant`, `today’s date`, `an If block`.
+   * Never the name the message uses for it.
+   */
+  description: string;
   cases: readonly string[];
   numeric: boolean;
   optional: boolean;
@@ -382,24 +389,24 @@ export const findDynamicMessageSyntaxProblem = (
 };
 
 /**
- * The argument `name` stands for, read as an own property: a name such as
- * `constructor` must not find `Object.prototype`'s.
+ * What a site's text may do with each name it uses: the argument the name
+ * stands for, or, for a name the text cannot use there, the problem to
+ * report, as a sentence that names the value as a researcher knows it.
  */
-const argumentOf = (
-  values: DynamicValueArguments,
+export type DynamicValueLookup = (
   name: string,
-): DynamicValueArgument | undefined =>
-  Object.hasOwn(values, name) ? values[name] : undefined;
+) => DynamicValueArgument | string;
 
-const unknownValue = (name: string): string =>
-  `This text refers to a value that does not exist: "${name}".`;
+/** `description` with its first letter in capitals, to start a sentence. */
+const atSentenceStart = (description: string): string =>
+  description.charAt(0).toUpperCase() + description.slice(1);
 
-const unguarded = (name: string): string =>
-  `"${name}" can be missing, so the text needs a version for when it is missing ({${name}, select, ${MISSING_CASE} {…} other {…}}), and can show it only in the other versions.`;
+const unguarded = (value: DynamicValueArgument): string =>
+  `${atSentenceStart(value.description)} can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.`;
 
 const findElementsProblem = (
   elements: readonly MessageFormatElement[],
-  values: DynamicValueArguments,
+  argumentOf: DynamicValueLookup,
   guarded: ReadonlySet<string>,
 ): string | undefined => {
   for (const element of elements) {
@@ -408,20 +415,20 @@ const findElementsProblem = (
       case TYPE.pound:
         break;
       case TYPE.argument: {
-        const value = argumentOf(values, element.value);
-        if (value === undefined) return unknownValue(element.value);
+        const value = argumentOf(element.value);
+        if (typeof value === 'string') return value;
         if (value.unshowable !== undefined) {
-          return `"${element.value}" cannot be shown as words: ${value.unshowable}`;
+          return `${atSentenceStart(value.description)} cannot be shown as words. ${atSentenceStart(value.unshowable)}`;
         }
         if (value.optional && !guarded.has(element.value)) {
-          return unguarded(element.value);
+          return unguarded(value);
         }
         break;
       }
       case TYPE.select: {
         const name = element.value;
-        const value = argumentOf(values, name);
-        if (value === undefined) return unknownValue(name);
+        const value = argumentOf(name);
+        if (typeof value === 'string') return value;
         const hasMissing = MISSING_CASE in element.options;
         for (const [key, option] of Object.entries(element.options)) {
           if (
@@ -429,7 +436,7 @@ const findElementsProblem = (
             key !== MISSING_CASE &&
             !value.cases.includes(key)
           ) {
-            return `"${key}" is not a version "${name}" can choose. Its versions are ${[MISSING_CASE, ...value.cases, 'other'].map((each) => `"${each}"`).join(', ')}.`;
+            return `This text has a version that ${value.description} can never choose.`;
           }
           // A case version is read only when the value is that case, so it
           // has a value; `other` only once `missing` has taken the rest. A
@@ -441,27 +448,31 @@ const findElementsProblem = (
             (key !== 'other' || hasMissing || !value.optional);
           const inner = new Set(guarded);
           if (present) inner.add(name);
-          const problem = findElementsProblem(option.value, values, inner);
+          const problem = findElementsProblem(option.value, argumentOf, inner);
           if (problem !== undefined) return problem;
         }
         break;
       }
       case TYPE.plural: {
         const name = element.value;
-        const value = argumentOf(values, name);
-        if (value === undefined) return unknownValue(name);
+        const value = argumentOf(name);
+        if (typeof value === 'string') return value;
         if (!value.numeric || element.pluralType !== 'cardinal') {
-          return `"${name}" is not a number, so it cannot choose a version of the text by number.`;
+          return `${atSentenceStart(value.description)} is not a number, so it cannot choose a version of the text by number.`;
         }
         if (element.offset !== 0) {
-          return `The plural of "${name}" cannot use an offset.`;
+          return `The singular and plural versions for ${value.description} cannot use an offset.`;
         }
-        if (value.optional && !guarded.has(name)) return unguarded(name);
+        if (value.optional && !guarded.has(name)) return unguarded(value);
         for (const [key, option] of Object.entries(element.options)) {
           if (!PLURAL_CATEGORIES.has(key)) {
             return `"${key}" is not a plural category. Use "zero", "one", "two", "few", "many" or "other".`;
           }
-          const problem = findElementsProblem(option.value, values, guarded);
+          const problem = findElementsProblem(
+            option.value,
+            argumentOf,
+            guarded,
+          );
           if (problem !== undefined) return problem;
         }
         break;
@@ -478,39 +489,49 @@ const findElementsProblem = (
 };
 
 /**
- * Why `message`, written in `locale`, cannot be the text of a site that
- * offers `values`, or undefined when it can. One pass checks that
- * it parses, holds no marker, names only those values, chooses versions only
- * by a value's presence (`missing`), its cases or, for a number, its plural
- * category, and shows a value that can be missing only inside a version for
- * when it has one. Then it checks that some version the values can reach
- * shows something: only a value that can be missing reads `missing`, only
- * the value's cases are chosen, and only the plural categories `locale`
- * gives some number.
+ * Why `message`, written in `locale`, cannot be the text of a site whose
+ * values `argumentOf` gives, or undefined when it can. One pass checks that
+ * it parses, contains no marker, uses only names the site can show (else it
+ * reports the problem `argumentOf` gives for the first one that it cannot),
+ * chooses versions only by a value's presence (`missing`), its cases or, for
+ * a number, its plural category, and shows a value that can be missing only
+ * inside a version for when it has one. Then it checks that some version the
+ * values can reach shows something: only a value that can be missing reads
+ * `missing`, only the value's cases are chosen, and only the plural
+ * categories `locale` gives some number.
  */
 export const findDynamicValueProblem = (
   message: string,
-  values: DynamicValueArguments,
+  argumentOf: DynamicValueLookup,
   locale: LocaleTag,
 ): string | undefined => {
   const syntax = findDynamicMessageSyntaxProblem(message);
   if (syntax !== undefined) return syntax;
   const elements = parseMessage(message);
   if (typeof elements === 'string') return elements;
-  const problem = findElementsProblem(elements, values, new Set());
+  const problem = findElementsProblem(elements, argumentOf, new Set());
   if (problem !== undefined) return problem;
   if (!hasChoice(elements)) return undefined;
   const categories = reachableCategories(locale);
+  // Every name the message uses has an argument here: the walk above
+  // reported any that does not.
   const states: ChoiceStates = new Map(
-    Object.entries(values).map(([name, value]) => [
-      name,
-      choiceStates(
-        value.cases,
-        value.numeric ? categories : ['other'],
-        value.optional,
-        value.exhaustive,
-      ),
-    ]),
+    dynamicValueNamesIn(message).flatMap((name) => {
+      const value = argumentOf(name);
+      return typeof value === 'string'
+        ? []
+        : [
+            [
+              name,
+              choiceStates(
+                value.cases,
+                value.numeric ? categories : ['other'],
+                value.optional,
+                value.exhaustive,
+              ),
+            ],
+          ];
+    }),
   );
   return anyVersionShows(elements, states, undefined)
     ? undefined

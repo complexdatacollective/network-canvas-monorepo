@@ -15,6 +15,7 @@ import {
   fixtureTypeId,
   fixtureVariableId,
 } from '../testing/protocolFixture.ts';
+import { testId } from '../testing/testId.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 
 const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
@@ -199,8 +200,16 @@ export const AnAttributeWhoseValuesChanged: Story = {
             name: 'sexAssignedAtBirth',
             type: 'categorical',
             options: [
-              { value: 'female', label: { 'en-US': 'Female' } },
-              { value: 'male', label: { 'en-US': 'Male' } },
+              {
+                id: testId('option/sexAssignedAtBirth/female'),
+                value: 'female',
+                label: { 'en-US': 'Female' },
+              },
+              {
+                id: testId('option/sexAssignedAtBirth/male'),
+                value: 'male',
+                label: { 'en-US': 'Male' },
+              },
             ],
           },
         },

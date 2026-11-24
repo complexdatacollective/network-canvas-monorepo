@@ -4,18 +4,19 @@ import {
   ASCII_PUNCTUATION,
   type Conditions,
   DYNAMIC_VALUE_MARKER,
-  type DynamicValueBinding,
+  type DynamicValueReference,
   type DynamicValueRole,
-  type DynamicValues,
   type DynamicValueState,
   dynamicMessageParts,
-  dynamicValueNamesIn,
+  dynamicValueCaseOf,
+  dynamicValueReferencesIn,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
+  isSameOptionValue,
   type LocaleTag,
   type LocalizedString,
   markdownTree,
-  parseDynamicValuePath,
+  type ParsedDynamicValuePath,
   type Variable,
 } from '@codaco/protocol-validation';
 
@@ -26,14 +27,14 @@ import { conditionHolds } from './conditions';
 
 /**
  * Everything a stage's text can show at one place in the interview: the
- * stage's bindings, the values the interview itself knows, and the attributes
- * of each entity on screen there, with the codebook variables that describe
- * them, and the label each node on screen shows. Built by
- * `DynamicValueScope`; a role with no attributes or label is not on screen,
- * so a value about it reads as missing.
+ * values the interview itself knows, the attributes of each entity on screen
+ * there, with the codebook variables that describe them, and the label each
+ * node on screen shows. Text names each of these directly (see
+ * `parseDynamicValueName`). Built by `DynamicValueScope`; a role with no
+ * attributes or label is not on screen, so a value about it reads as
+ * missing.
  */
 export type DynamicValueSources = Readonly<{
-  bindings: DynamicValues;
   intrinsics: Readonly<Record<IntrinsicDynamicValue, unknown>>;
   attributes: Readonly<
     Partial<Record<DynamicValueRole, Readonly<Record<string, unknown>>>>
@@ -41,7 +42,7 @@ export type DynamicValueSources = Readonly<{
   labels: Readonly<Partial<Record<DynamicValueRole, string>>>;
   /**
    * Whether each node on screen that may be the participant is (see
-   * `node.$isParticipant`); a role without an entry reads as missing.
+   * `node_isParticipant`); a role without an entry reads as missing.
    */
   participants?: Readonly<Partial<Record<DynamicValueRole, boolean>>>;
   /**
@@ -66,9 +67,8 @@ export type DynamicValueSources = Readonly<{
 }>;
 
 /**
- * A value as one message reads it: missing, or present with the case and
- * number that choose its versions, and the raw value with what it is, for
- * formatting.
+ * A value as one message reads it: missing, or present, with the raw value
+ * and what it is, for choosing its versions and for formatting.
  */
 type ResolvedDynamicValue =
   | Readonly<{ missing: true }>
@@ -79,9 +79,9 @@ type ResolvedDynamicValue =
       variable?: Variable;
       /** The intrinsic, for a value the interview knows. */
       intrinsic?: IntrinsicDynamicValue;
-      case?: string;
-      count?: number;
     }>;
+
+const MISSING: ResolvedDynamicValue = { missing: true };
 
 /**
  * Missing as the interview's forms judge an answer missing: null, undefined,
@@ -89,43 +89,33 @@ type ResolvedDynamicValue =
  */
 const isMissing = isUnanswered;
 
-const caseOf = (
-  binding: DynamicValueBinding,
-  value: unknown,
-): string | undefined =>
-  Object.entries(binding.cases ?? {}).find(([, option]) =>
-    Array.isArray(value) ? value.includes(option) : value === option,
-  )?.[0];
-
+/**
+ * The value a name in a message stands for, here. A name that stands for
+ * nothing (`parsed` undefined) reads as missing, as does a value about a role
+ * that is not on screen and a condition the text's stage does not declare.
+ */
 const resolveDynamicValue = (
-  binding: DynamicValueBinding,
+  parsed: ParsedDynamicValuePath | undefined,
   sources: DynamicValueSources,
 ): ResolvedDynamicValue => {
-  const parsed = parseDynamicValuePath(binding.path);
-  if (parsed === undefined) return { missing: true };
+  if (parsed === undefined) return MISSING;
   if (parsed.kind === 'intrinsic') {
     const value = sources.intrinsics[parsed.name];
     return isMissing(value)
-      ? { missing: true }
+      ? MISSING
       : { missing: false, value, intrinsic: parsed.name };
   }
   if (parsed.kind === 'label') {
     // A node on screen always has a label, and its text is shown as the node
     // shows it, even when that is only spaces.
     const label = sources.labels[parsed.role];
-    return label === undefined
-      ? { missing: true }
-      : { missing: false, value: label };
+    return label === undefined ? MISSING : { missing: false, value: label };
   }
   if (parsed.kind === 'participant') {
     const isParticipant = sources.participants?.[parsed.role];
-    if (isParticipant === undefined) return { missing: true };
-    const matched = caseOf(binding, isParticipant);
-    return {
-      missing: false,
-      value: isParticipant,
-      ...(matched !== undefined && { case: matched }),
-    };
+    return isParticipant === undefined
+      ? MISSING
+      : { missing: false, value: isParticipant };
   }
   if (parsed.kind === 'condition') {
     const { conditionId } = parsed;
@@ -142,14 +132,7 @@ const resolveDynamicValue = (
       (condition === undefined
         ? undefined
         : conditionHolds(condition, sources));
-    // A condition the text's stage does not declare reads as missing.
-    if (met === undefined) return { missing: true };
-    const matched = caseOf(binding, met);
-    return {
-      missing: false,
-      value: met,
-      ...(matched !== undefined && { case: matched }),
-    };
+    return met === undefined ? MISSING : { missing: false, value: met };
   }
   // An entity's attributes can be keyed by a roster column's heading as well
   // as by variable ids, so only an own value counts.
@@ -158,19 +141,16 @@ const resolveDynamicValue = (
     attributes === undefined
       ? undefined
       : readOwnProperty(attributes, parsed.variableId);
-  if (isMissing(value)) return { missing: true };
+  if (isMissing(value)) return MISSING;
   const variables = sources.variablesFor(parsed.role);
   const variable =
     variables === undefined
       ? undefined
       : readOwnProperty(variables, parsed.variableId);
-  const matched = caseOf(binding, value);
   return {
     missing: false,
     value,
     ...(variable !== undefined && { variable }),
-    ...(matched !== undefined && { case: matched }),
-    ...(typeof value === 'number' && { count: value }),
   };
 };
 
@@ -266,8 +246,8 @@ const optionLabel = (
   formatters: DynamicValueFormatters,
 ): string | undefined => {
   if (variable === undefined || !('options' in variable)) return undefined;
-  const option = variable.options?.find(
-    (candidate) => candidate.value === value,
+  const option = variable.options?.find((candidate) =>
+    isSameOptionValue(value, candidate.value),
   );
   return option === undefined
     ? undefined
@@ -318,7 +298,7 @@ const formatDynamicValue = (
 
 /**
  * A piece of resolved text: words of the message, or a value in it, with the
- * binding name it stands for and its text.
+ * name the message gives it and its text.
  */
 export type DynamicTextPart = string | Readonly<{ name: string; text: string }>;
 
@@ -328,25 +308,47 @@ export type DynamicText = Readonly<{
   text: string;
 }>;
 
-const namesByMessage = new Map<string, readonly string[]>();
-const namesIn = (message: string): readonly string[] => {
-  let names = namesByMessage.get(message);
-  if (names === undefined) {
-    names = dynamicValueNamesIn(message);
-    namesByMessage.set(message, names);
+/**
+ * In development, says which names a message uses that stand for nothing. Such a
+ * name reads as missing, so the participant sees no sign of it, and only a
+ * protocol that skipped validation can contain one. Names only, never
+ * values, so that no participant's answer reaches the console.
+ */
+const warnOfUnknownNames = (references: readonly DynamicValueReference[]) => {
+  const unknown = references.flatMap(({ name, parsed }) =>
+    parsed === undefined ? [name] : [],
+  );
+  if (unknown.length === 0 || !import.meta.env.DEV) return;
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[interview] Text uses ${unknown.map((name) => `"${name}"`).join(', ')}, which ${unknown.length === 1 ? 'refers' : 'refer'} to no value, and is read as missing. Validation refuses a protocol whose text does this.`,
+  );
+};
+
+// Each message is read once, so a warning about it is given once.
+const referencesByMessage = new Map<string, readonly DynamicValueReference[]>();
+const referencesIn = (message: string): readonly DynamicValueReference[] => {
+  let references = referencesByMessage.get(message);
+  if (references === undefined) {
+    references = dynamicValueReferencesIn(message);
+    referencesByMessage.set(message, references);
+    warnOfUnknownNames(references);
   }
-  return names;
+  return references;
 };
 
 /**
  * The version of `message` (written in `locale`) that the values at this
- * place read, with each value it shows formatted. Selects and plurals on a
- * value are decided here, so a participant's value never reaches ICU
- * matching: a select takes `missing` for a missing value, else its case, else
- * `other`.
+ * place read, with each value it shows formatted. Each name the message uses
+ * is read for what it stands for (see `parseDynamicValueName`). Selects and
+ * plurals on a value are decided here, so a participant's value never
+ * reaches ICU matching: a select takes `missing` for a missing value, else
+ * the case the value chooses among the select's own (see
+ * `dynamicValueCaseOf`), else `other`.
  *
- * Undefined when the message shows none of the stage's values, or names one
- * the stage does not bind: such a message is formatted as any other.
+ * A name that stands for nothing reads as missing, as validation would have
+ * refused it. Undefined when the message shows no values, or does not parse:
+ * such a message is formatted as any other.
  */
 export const resolveDynamicText = (
   message: string,
@@ -355,29 +357,31 @@ export const resolveDynamicText = (
   formatters: DynamicValueFormatters,
 ): DynamicText | undefined => {
   if (!message.includes('{')) return undefined;
-  if (Object.keys(sources.bindings).length === 0) return undefined;
-  const names = namesIn(message);
-  if (
-    names.length === 0 ||
-    names.some((name) => !Object.hasOwn(sources.bindings, name))
-  ) {
-    return undefined;
-  }
+  const references = referencesIn(message);
+  if (references.length === 0) return undefined;
 
-  const resolved = new Map<string, ResolvedDynamicValue>();
-  for (const name of names) {
-    const binding = sources.bindings[name];
-    if (binding !== undefined) {
-      resolved.set(name, resolveDynamicValue(binding, sources));
-    }
-  }
-  const stateOf = (name: string): DynamicValueState => {
+  const resolved = new Map<string, ResolvedDynamicValue>(
+    references.map(({ name, parsed }) => [
+      name,
+      resolveDynamicValue(parsed, sources),
+    ]),
+  );
+  const stateOf = (
+    name: string,
+    caseKeys: readonly string[],
+  ): DynamicValueState => {
     const value = resolved.get(name);
     if (value === undefined || value.missing) return { missing: true };
+    const { variable } = value;
+    const key = dynamicValueCaseOf(
+      value.value,
+      variable !== undefined && 'options' in variable ? variable : undefined,
+      caseKeys,
+    );
     return {
       missing: false,
-      ...(value.case !== undefined && { case: value.case }),
-      ...(value.count !== undefined && { count: value.count }),
+      ...(key !== undefined && { case: key }),
+      ...(typeof value.value === 'number' && { count: value.value }),
     };
   };
 
@@ -399,6 +403,25 @@ export const resolveDynamicText = (
       .map((part) => (typeof part === 'string' ? part : part.text))
       .join(''),
   };
+};
+
+/**
+ * Whether any text in `value` (a stage, read as raw protocol data) shows or
+ * chooses its wording by a value. A message's other arguments, such as the
+ * values the interface gives a Family Pedigree's words, are not values.
+ */
+export const showsDynamicValues = (value: unknown): boolean => {
+  if (typeof value === 'string') {
+    return (
+      value.includes('{') &&
+      referencesIn(value).some(({ parsed }) => parsed !== undefined)
+    );
+  }
+  if (Array.isArray(value)) return value.some(showsDynamicValues);
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value).some(showsDynamicValues);
+  }
+  return false;
 };
 
 // Every ASCII punctuation character, each of which CommonMark lets a

@@ -191,9 +191,16 @@ const withEveryReference = () => {
       map: [{ value: true, shape: 'square' }],
     },
   };
+  // Text names an attribute by the id `withTestCodebookIds` gives its
+  // readable key.
+  const nickname = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'node',
+    variableId: testVariableId('nickname'),
+  });
   person.dynamicLabel = {
     text: {
-      en: '{node_nickname, select, missing {Someone} other {{node_nickname}}}',
+      en: `{${nickname}, select, missing {Someone} other {{${nickname}}}}`,
     },
   };
 
@@ -257,8 +264,13 @@ const withEveryReference = () => {
   }
   const [prompt] = arrayAt(nameGenerator, ['prompts']);
   if (isRecord(prompt)) {
+    const egoName = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: testVariableId('egoName'),
+    });
     prompt.text = {
-      en: 'Who does {ego_egoName, select, missing {the participant} other {{ego_egoName}}} know?',
+      en: `Who does {${egoName}, select, missing {the participant} other {{${egoName}}}} know?`,
     };
     prompt.additionalAttributes = [
       { id: testId('additional'), variable: 'flag', value: true },
@@ -460,102 +472,118 @@ describe('renaming codebook ids', () => {
     );
   });
 
-  it('points every reference at the new id of what it names', () => {
-    const original = withEveryReference();
-    const owners = ownerOfVariable(original);
-    const newTypeId = (type: string, entity: string) =>
-      testTypeId(`new ${entity}/${type}`);
-    const newVariableId = (key: string, owner: string) =>
-      testVariableId(`new ${owner}/${key}`);
+  // Schema 9 text can name only an attribute whose key is a UUID, so only
+  // the codebook keyed by them shows that text follows a rename.
+  it.each([
+    ['readable keys', withEveryReference, 0],
+    [
+      'UUID keys',
+      () => withTestCodebookIds(withEveryReference()),
+      // The node label's and the prompt's.
+      2,
+    ],
+  ])(
+    'points every reference at the new id of what it names, in a codebook with %s',
+    (_, fixture, namedInText) => {
+      const original = fixture();
+      const owners = ownerOfVariable(original);
+      const newTypeId = (type: string, entity: string) =>
+        testTypeId(`new ${entity}/${type}`);
+      const newVariableId = (key: string, owner: string) =>
+        testVariableId(`new ${owner}/${key}`);
 
-    const renamed = structuredClone(original);
-    renameCodebookIds(renamed, {
-      typeId: newTypeId,
-      variableId: (key, owner) =>
-        newVariableId(
-          key,
-          owner.entity === 'ego' ? 'ego' : `${owner.entity}/${owner.type}`,
-        ),
-    });
+      const renamed = structuredClone(original);
+      renameCodebookIds(renamed, {
+        typeId: newTypeId,
+        variableId: (key, owner) =>
+          newVariableId(
+            key,
+            owner.entity === 'ego' ? 'ego' : `${owner.entity}/${owner.type}`,
+          ),
+      });
 
-    // A place inside the codebook moves with the keys it passes through.
-    const renamedPath = (path: Path): Path => {
-      const [root, entity, type, record, key, ...rest] = path;
-      if (root !== 'codebook') return path;
-      if (
-        entity === 'ego' &&
-        type === 'variables' &&
-        typeof record === 'string'
-      ) {
-        return [
-          root,
-          entity,
-          type,
-          newVariableId(record, 'ego'),
-          ...path.slice(4),
-        ];
-      }
-      if (
-        (entity !== 'node' && entity !== 'edge') ||
-        typeof type !== 'string'
-      ) {
-        return path;
-      }
-      const owner = `${entity}/${type}`;
-      return record === 'variables' && typeof key === 'string'
-        ? [
+      // A place inside the codebook moves with the keys it passes through.
+      const renamedPath = (path: Path): Path => {
+        const [root, entity, type, record, key, ...rest] = path;
+        if (root !== 'codebook') return path;
+        if (
+          entity === 'ego' &&
+          type === 'variables' &&
+          typeof record === 'string'
+        ) {
+          return [
             root,
             entity,
-            newTypeId(type, entity),
-            record,
-            newVariableId(key, owner),
-            ...rest,
-          ]
-        : [root, entity, newTypeId(type, entity), ...path.slice(3)];
-    };
+            type,
+            newVariableId(record, 'ego'),
+            ...path.slice(4),
+          ];
+        }
+        if (
+          (entity !== 'node' && entity !== 'edge') ||
+          typeof type !== 'string'
+        ) {
+          return path;
+        }
+        const owner = `${entity}/${type}`;
+        return record === 'variables' && typeof key === 'string'
+          ? [
+              root,
+              entity,
+              newTypeId(type, entity),
+              record,
+              newVariableId(key, owner),
+              ...rest,
+            ]
+          : [root, entity, newTypeId(type, entity), ...path.slice(3)];
+      };
 
-    const references = referencesIn(original);
-    expect(references.length).toBeGreaterThan(0);
-    for (const reference of references) {
-      const now = valueAt(renamed, renamedPath(reference.path));
-      if (reference.entity !== undefined) {
-        expect({ at: reference.kind, now }).toEqual({
+      const references = referencesIn(original);
+      expect(references.length).toBeGreaterThan(0);
+      let renamedInText = 0;
+      for (const reference of references) {
+        const now = valueAt(renamed, renamedPath(reference.path));
+        if (reference.entity !== undefined) {
+          expect({ at: reference.kind, now }).toEqual({
+            at: reference.kind,
+            now: newTypeId(reference.held, reference.entity),
+          });
+          continue;
+        }
+        const owner = owners.get(reference.held);
+        if (reference.dataSourceColumn || owner === undefined) {
+          expect({ at: reference.kind, now }).toEqual({
+            at: reference.kind,
+            now: valueAt(original, reference.path),
+          });
+          continue;
+        }
+        const newId = newVariableId(reference.held, owner);
+        if (reference.inMessage === undefined) {
+          expect({ at: reference.kind, now }).toEqual({
+            at: reference.kind,
+            now: newId,
+          });
+          continue;
+        }
+        // Text names the attribute by its new id, and no longer by its old.
+        const parsed = parseDynamicValueName(reference.inMessage);
+        if (parsed?.kind !== 'attribute') throw new Error('Not an attribute');
+        const names = dynamicValueReferencesIn(String(now)).map(
+          ({ name }) => name,
+        );
+        expect({ at: reference.kind, names }).toEqual({
           at: reference.kind,
-          now: newTypeId(reference.held, reference.entity),
+          names: expect.arrayContaining([
+            dynamicValueNameFor({ ...parsed, variableId: newId }),
+          ]),
         });
-        continue;
+        expect(names).not.toContain(reference.inMessage);
+        renamedInText += 1;
       }
-      const owner = owners.get(reference.held);
-      if (reference.dataSourceColumn || owner === undefined) {
-        expect({ at: reference.kind, now }).toEqual({
-          at: reference.kind,
-          now: valueAt(original, reference.path),
-        });
-        continue;
-      }
-      const newId = newVariableId(reference.held, owner);
-      if (reference.inMessage === undefined) {
-        expect({ at: reference.kind, now }).toEqual({
-          at: reference.kind,
-          now: newId,
-        });
-        continue;
-      }
-      // Text names the attribute by its new id, and no longer by its old.
-      const parsed = parseDynamicValueName(reference.inMessage);
-      if (parsed?.kind !== 'attribute') throw new Error('Not an attribute');
-      const names = dynamicValueReferencesIn(String(now)).map(
-        ({ name }) => name,
-      );
-      expect({ at: reference.kind, names }).toEqual({
-        at: reference.kind,
-        names: expect.arrayContaining([
-          dynamicValueNameFor({ ...parsed, variableId: newId }),
-        ]),
-      });
-      expect(names).not.toContain(reference.inMessage);
-    }
-  });
+      expect(renamedInText).toBe(namedInText);
+    },
+  );
 
   it('leaves the nomination-order sort key and the roster columns as they are', () => {
     const renamed = withTestCodebookIds(withEveryReference());

@@ -11,13 +11,10 @@ import {
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import {
   type Codebook,
-  type DynamicValueBinding,
-  type DynamicValues,
   type DynamicValueSite,
   type DynamicValueSiteContext,
   dynamicValueContextFor,
   dynamicValueRolesAt,
-  parseDynamicValuePath,
   stageDynamicValueContext,
 } from '@codaco/protocol-validation';
 
@@ -28,14 +25,14 @@ import {
 } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { stageFieldsOf } from '../stageDocument.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
 import {
-  dynamicValueCasesUsedIn,
-  dynamicValueNamesUsedIn,
-} from './dynamicValueCatalog.ts';
+  useProtocolContext,
+  useProtocolReading,
+} from '../state/protocolContext.ts';
+import { conditionIdsNamedBy } from './conditionText.ts';
+import { dynamicValueNamesUsedIn } from './dynamicValueCatalog.ts';
 
-/** Where a stage's bindings live in the stage document. */
-const DYNAMIC_VALUES_PATH = 'dynamicValues';
+/** Where a stage's conditions live in the stage document. */
 const CONDITIONS_PATH = 'conditions';
 
 /**
@@ -68,48 +65,12 @@ const subjectOf = (
     ? { entity: value.entity, type: value.type }
     : undefined;
 
-/** The ids of the conditions `bindings` name. */
-const conditionIdsBoundIn = (
-  bindings: Readonly<Record<string, unknown>>,
-): Set<string> =>
-  new Set(
-    Object.values(bindings).flatMap((binding) => {
-      if (!isBinding(binding)) return [];
-      const parsed = parseDynamicValuePath(binding.path);
-      return parsed?.kind === 'condition' ? [parsed.conditionId] : [];
-    }),
-  );
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isCaseValue = (value: unknown): value is string | number | boolean =>
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean';
-
-const isBinding = (value: unknown): value is DynamicValueBinding =>
-  isRecord(value) &&
-  typeof value.path === 'string' &&
-  (value.cases === undefined ||
-    (isRecord(value.cases) && Object.values(value.cases).every(isCaseValue)));
-
-/**
- * The bindings the stage holds at `dynamicValues` that a reader can take
- * `.path` and `.cases` from. Their names and paths are not judged here (the
- * stage's own validation does that). An entry not shaped like a binding is
- * left out on its own, so the others are still read, and written back, when
- * one is malformed.
- */
-export const usableBindings = (value: unknown): DynamicValues =>
-  isRecord(value)
-    ? Object.fromEntries(
-        Object.entries(value).filter(
-          (entry): entry is [string, DynamicValueBinding] =>
-            isBinding(entry[1]),
-        ),
-      )
-    : {};
+/** The ids of the conditions the text in `value` names. */
+const conditionIdsUsedIn = (value: unknown): Set<string> =>
+  conditionIdsNamedBy(dynamicValueNamesUsedIn(value));
 
 const segment = (key: string): string | number =>
   /^\d+$/.test(key) ? Number(key) : key;
@@ -135,25 +96,17 @@ const withValueAt = (
 /**
  * Inside a form that describes an entity of its own rather than the stage's
  * subject (a Network Composer connection type's form), that entity. No stage
- * binding can name its type, so its captions show what needs none: the
+ * text can name its type's attributes unambiguously, so its captions show what needs none: the
  * participant, today's date and, for an edge, the labels of the two nodes it
  * joins.
  */
 export const FormOfItsOwnContext = createContext<'node' | 'edge' | null>(null);
 
 /**
- * Registers the stage's bindings with the stage form, so a binding a text
- * field creates is among what a save writes. Mounted once per stage editor.
- * Returns what marks the field's place in the page: the bindings have no
- * control of their own, since the text that uses them edits them.
- */
-export function useDynamicValuesRegistration() {
-  return useStageValueRegistration(DYNAMIC_VALUES_PATH);
-}
-
-/**
- * Registers the stage's conditions as its bindings are: the "If" a text
- * field holds writes the condition it tests, and no control is theirs.
+ * Registers the stage's conditions with the stage form, so a condition a
+ * text field declares is among what a save writes. Mounted once per stage
+ * editor. Returns what marks the field's place in the page: the conditions
+ * have no control of their own, since the "If" a text holds edits them.
  */
 export function useConditionsRegistration() {
   return useStageValueRegistration(CONDITIONS_PATH);
@@ -171,21 +124,19 @@ function useStageValueRegistration(name: string) {
 
 export type DynamicValueSiteState = Readonly<{
   context: DynamicValueSiteContext;
-  bindings: DynamicValues;
-  /** Writes the stage's bindings, on the stage form behind any dialog. */
-  setBindings: (bindings: DynamicValues) => void;
-  /**
-   * The value names the stage's text uses right now, including the row a
-   * dialog has open, which the stage does not hold until it is saved.
-   */
-  namesInUse: () => ReadonlySet<string>;
   /** The stage's conditions, which any of its text can test. */
   conditions: DynamicValueConditions;
+  /**
+   * Whether the whole protocol has been read. Until it has, the codebook may
+   * lack attributes that the text shows, and they would read as attributes
+   * that no longer exist.
+   */
+  codebookRead: boolean;
 }>;
 
 /**
  * What text at one place in the open stage can show: its context (the roles
- * on screen there and their attributes) and the stage's bindings.
+ * on screen there and their attributes) and the stage's conditions.
  *
  * A form field's caption sits in a row dialog, whose row may not be in the
  * stage yet: the row is placed where it is (found by its id) or at the end,
@@ -201,22 +152,17 @@ export function useDynamicValueSite(
   // A form of its own is not among the stage's rows, so its captions are
   // placed as text about the stage, with the roles its form adds.
   const site: DynamicValueSite = ownForm ? 'stageText' : requested;
-  const { identity, storeApi, liveDraft } = useStageEditorForm();
+  const { identity, storeApi } = useStageEditorForm();
   const { codebook } = useProtocolContext();
+  const codebookRead = useProtocolReading().status === 'read';
   const row = useContext(EditedRowContext);
   const subject = useStageValue('subject');
   // A bin stage's prompt shows the node it is placing only in select mode.
   const behaviours = useStageValue('behaviours');
-  const rawBindings = useStageValue(DYNAMIC_VALUES_PATH);
   const rawConditions = useStageValue(CONDITIONS_PATH);
   const listRoot =
     site === 'formField' && row !== null ? row.listPath[0] : undefined;
   const listRootValue = useStageValue(listRoot);
-
-  const bindings = useMemo(
-    (): DynamicValues => usableBindings(rawBindings),
-    [rawBindings],
-  );
 
   // Worked out on every render rather than memoized: the dialog's row is
   // read live (`row.read`), and which field it asks about can change without
@@ -262,25 +208,6 @@ export function useDynamicValueSite(
     };
   })();
 
-  const setBindings = useCallback(
-    (next: DynamicValues) => {
-      storeApi
-        .getState()
-        .setFieldValue(
-          DYNAMIC_VALUES_PATH,
-          Object.keys(next).length === 0 ? undefined : next,
-        );
-    },
-    [storeApi],
-  );
-
-  const namesInUse = useCallback((): ReadonlySet<string> => {
-    const { [DYNAMIC_VALUES_PATH]: _bindings, ...text } =
-      stageFieldsOf(liveDraft());
-    const names = dynamicValueNamesUsedIn(text);
-    return row === null ? names : dynamicValueNamesUsedIn(row.read(), names);
-  }, [liveDraft, row]);
-
   const setConditions = useCallback(
     (next: Readonly<Record<string, unknown>>) => {
       storeApi
@@ -304,24 +231,24 @@ export function useDynamicValueSite(
     [rawConditions, setConditions, codebook, ownForm, subject],
   );
 
-  return { context, bindings, setBindings, namesInUse, conditions };
+  return { context, conditions, codebookRead };
 }
 
 /**
  * What any text on the open stage can show, for a place that shows text
- * rather than editing it (a row's collapsed preview): the stage's bindings,
- * and every value its prompts or its form's fields could show, so each
- * binding reads as the value it stands for.
+ * rather than editing it (a row's collapsed preview): every value its
+ * prompts or its form's fields could show, so each value in its text reads
+ * as the value it stands for, and the stage's conditions and the codebook,
+ * so a value it cannot show is still called what it was.
  */
-export function useStageDynamicValues(): Pick<
-  DynamicValueSiteState,
-  'context' | 'bindings'
-> {
+export function useStageDynamicValues(): Readonly<{
+  context: DynamicValueSiteContext;
+  conditions: Omit<DynamicValueConditions, 'set'>;
+}> {
   const { identity } = useStageEditorForm();
   const { codebook } = useProtocolContext();
   const subject = useStageValue('subject');
   const behaviours = useStageValue('behaviours');
-  const rawBindings = useStageValue(DYNAMIC_VALUES_PATH);
   const rawConditions = useStageValue(CONDITIONS_PATH);
   return useMemo(
     () => ({
@@ -334,31 +261,35 @@ export function useStageDynamicValues(): Pick<
           conditions: rawConditions,
         },
       }),
-      bindings: usableBindings(rawBindings),
+      conditions: {
+        values: isRecord(rawConditions) ? rawConditions : {},
+        codebook,
+        subject: subjectOf(subject),
+        allowEgoRules: true,
+      },
     }),
-    [identity.type, subject, behaviours, codebook, rawBindings, rawConditions],
+    [identity.type, subject, behaviours, codebook, rawConditions],
   );
 }
 
 /**
- * Called by a row dialog with whether it is open. A value inserted there binds
- * at once, on the stage behind the dialog, but the row reaches the stage only
- * if the dialog saves. So when the dialog closes, saved or cancelled, the
- * stage keeps only the bindings its text uses: those of the stage itself, and
- * of the row an enclosing dialog has open.
+ * Called by a row dialog with whether it is open. The rules an "If" tests are
+ * kept on the stage, and editing them in the dialog changes them there at
+ * once. A dialog that closes without saving puts the stage's conditions back
+ * exactly as they were when it opened: rules it edited go back to what they
+ * were, and a condition an "If" in it declared goes. The dialog calls the
+ * function this answers with when it saves.
  *
- * The rules an "If" tests are kept on the stage too, and editing them in the
- * dialog changes them there at once. The row that already tests them stays
- * on the stage whether or not the dialog saves, so a dialog that closes
- * without saving puts back the rules the stage held when it opened. The
- * dialog calls the function this answers with when it saves.
+ * A condition left unnamed by a saved row (an "If" removed from it) stays
+ * with the stage until the stage is saved (`withoutUnusedConditions`).
  */
-export function useReleaseRowBindings(open: boolean): () => void {
+export function useReleaseRowConditions(open: boolean): () => void {
   const stageForm = useContext(StageEditorFormContext);
-  const enclosingRow = useContext(EditedRowContext);
   const wasOpen = useRef(false);
   const saved = useRef(false);
-  const conditionsAtOpen = useRef<Readonly<Record<string, unknown>>>({});
+  const conditionsAtOpen = useRef<
+    Readonly<Record<string, unknown>> | undefined
+  >(undefined);
 
   useEffect(() => {
     const opened = !wasOpen.current && open;
@@ -368,41 +299,16 @@ export function useReleaseRowBindings(open: boolean): () => void {
     if (opened) {
       saved.current = false;
       const held = stageFieldsOf(stageForm.liveDraft())[CONDITIONS_PATH];
-      conditionsAtOpen.current = isRecord(held) ? held : {};
+      conditionsAtOpen.current = isRecord(held) ? held : undefined;
       return;
     }
-    if (!closed) return;
-    const {
-      [DYNAMIC_VALUES_PATH]: bindings,
-      [CONDITIONS_PATH]: conditions,
-      ...text
-    } = stageFieldsOf(stageForm.liveDraft());
-    if (!saved.current) {
-      const now = isRecord(conditions) ? conditions : {};
-      const restored = { ...now, ...conditionsAtOpen.current };
-      if (!isEqual(restored, now)) {
-        stageForm.storeApi
-          .getState()
-          .setFieldValue(
-            CONDITIONS_PATH,
-            Object.keys(restored).length === 0 ? undefined : restored,
-          );
-      }
-    }
-    if (!isRecord(bindings)) return;
-    const inUse = dynamicValueNamesUsedIn(text);
-    if (enclosingRow !== null) {
-      dynamicValueNamesUsedIn(enclosingRow.read(), inUse);
-    }
-    const kept = Object.entries(bindings).filter(([name]) => inUse.has(name));
-    if (kept.length === Object.keys(bindings).length) return;
+    if (!closed || saved.current) return;
+    const now = stageFieldsOf(stageForm.liveDraft())[CONDITIONS_PATH];
+    if (isEqual(conditionsAtOpen.current, now)) return;
     stageForm.storeApi
       .getState()
-      .setFieldValue(
-        DYNAMIC_VALUES_PATH,
-        kept.length === 0 ? undefined : Object.fromEntries(kept),
-      );
-  }, [open, stageForm, enclosingRow]);
+      .setFieldValue(CONDITIONS_PATH, conditionsAtOpen.current);
+  }, [open, stageForm]);
 
   return useCallback(() => {
     saved.current = true;
@@ -410,88 +316,31 @@ export function useReleaseRowBindings(open: boolean): () => void {
 }
 
 /**
- * `stage` as a save writes it: without the bindings no text in it uses. A
- * binding goes once its last use has: a row or section deleted, a value
- * removed, a value inserted into text that never reached the stage. Only a
- * binding the stage already held unused when last saved is left alone, as
+ * `stage` as a save writes it: without the conditions no text in it names.
+ * A condition goes once its last use has: a row or section deleted, an "If"
+ * removed, an "If" written into a row that never reached the stage. Only a
+ * condition the stage already held unnamed when last saved is left alone, as
  * the editor was given it.
- *
- * A binding that stays keeps only the cases some text still shows a version
- * for, so removing the last wording by answer leaves no case behind to go
- * stale when the attribute's options change.
  */
-export function withoutUnusedBindings<
+export function withoutUnusedConditions<
   T extends Readonly<Record<string, unknown>>,
 >(stage: T, lastSaved: Readonly<Record<string, unknown>>): T {
-  const { [DYNAMIC_VALUES_PATH]: bindings, ...text } = stage;
-  if (!isRecord(bindings) && !isRecord(stage[CONDITIONS_PATH])) return stage;
-  const { [DYNAMIC_VALUES_PATH]: savedBindings, ...savedText } = lastSaved;
-  const inUse = dynamicValueNamesUsedIn(text);
-  const usedWhenSaved = dynamicValueNamesUsedIn(savedText);
-  const casesInUse = dynamicValueCasesUsedIn(text);
-  const keptAsGiven = (name: string) =>
-    isRecord(savedBindings) &&
-    Object.hasOwn(savedBindings, name) &&
-    !usedWhenSaved.has(name);
-  let changed = false;
-  const kept: [string, unknown][] = [];
-  for (const [name, binding] of Object.entries(
-    isRecord(bindings) ? bindings : {},
-  )) {
-    if (keptAsGiven(name)) {
-      kept.push([name, binding]);
-      continue;
-    }
-    if (!inUse.has(name)) {
-      changed = true;
-      continue;
-    }
-    const shown = casesInUse.get(name);
-    if (!isRecord(binding) || !isRecord(binding.cases) || shown === 'all') {
-      kept.push([name, binding]);
-      continue;
-    }
-    const cases = Object.entries(binding.cases).filter(([key]) =>
-      shown?.has(key),
-    );
-    if (cases.length === Object.keys(binding.cases).length) {
-      kept.push([name, binding]);
-      continue;
-    }
-    changed = true;
-    const { cases: _stale, ...rest } = binding;
-    kept.push([
-      name,
-      cases.length === 0 ? rest : { ...rest, cases: Object.fromEntries(cases) },
-    ]);
-  }
-  // A condition goes with the last binding that named it, unless the stage
-  // already held it unnamed when last saved.
-  const { [CONDITIONS_PATH]: conditions, ...rest } = text;
-  const { [CONDITIONS_PATH]: savedConditions } = lastSaved;
-  const named = conditionIdsBoundIn(Object.fromEntries(kept));
-  const namedWhenSaved = conditionIdsBoundIn(
-    isRecord(savedBindings) ? savedBindings : {},
+  const { [CONDITIONS_PATH]: conditions, ...text } = stage;
+  if (!isRecord(conditions)) return stage;
+  const { [CONDITIONS_PATH]: savedConditions, ...savedText } = lastSaved;
+  const named = conditionIdsUsedIn(text);
+  const namedWhenSaved = conditionIdsUsedIn(savedText);
+  const kept = Object.entries(conditions).filter(
+    ([id]) =>
+      named.has(id) ||
+      (isRecord(savedConditions) &&
+        Object.hasOwn(savedConditions, id) &&
+        !namedWhenSaved.has(id)),
   );
-  const keptConditions = isRecord(conditions)
-    ? Object.entries(conditions).filter(
-        ([id]) =>
-          named.has(id) ||
-          (isRecord(savedConditions) &&
-            Object.hasOwn(savedConditions, id) &&
-            !namedWhenSaved.has(id)),
-      )
-    : [];
-  const conditionsChanged =
-    isRecord(conditions) &&
-    keptConditions.length !== Object.keys(conditions).length;
-  if (!changed && !conditionsChanged) return stage;
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `rest` is `stage` minus its bindings and conditions, so with them rebuilt it keeps T's shape
+  if (kept.length === Object.keys(conditions).length) return stage;
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `text` is `stage` minus its conditions, so with them rebuilt it keeps T's shape
   return {
-    ...rest,
-    ...(keptConditions.length > 0 && {
-      [CONDITIONS_PATH]: Object.fromEntries(keptConditions),
-    }),
-    ...(kept.length > 0 && { [DYNAMIC_VALUES_PATH]: Object.fromEntries(kept) }),
+    ...text,
+    ...(kept.length > 0 && { [CONDITIONS_PATH]: Object.fromEntries(kept) }),
   } as T;
 }

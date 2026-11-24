@@ -13,6 +13,7 @@ import {
 import type { StageSubject } from './common/subjects.ts';
 import { placesByTapping } from './stage-wording/bins.ts';
 import type { VariableType } from './variables/types.ts';
+import { isSameOptionValue } from './variables/variable.ts';
 
 /**
  * Where a participant-facing text that may show dynamic values sits, which
@@ -134,25 +135,25 @@ const LABEL_WORD = 'label';
 const PARTICIPANT_WORD = 'isParticipant';
 const CONDITION_WORD = 'condition';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// A UUID as a name writes it, with underscores for its hyphens.
+const UUID_AS_NAME =
+  /^[0-9a-f]{8}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{4}_[0-9a-f]{12}$/i;
 
 /**
  * An id as text writes it. A message's argument names and select keys cannot
- * hold `-`, so a UUID's hyphens are written as underscores. No UUID holds an
- * underscore, so the change can always be undone (`idFromName`).
+ * contain `-`, so a UUID's hyphens are written as underscores. No UUID
+ * contains an underscore, so the change can always be undone (`idFromName`).
  */
 const idAsName = (id: string): string => id.replaceAll('-', '_');
 
 /**
  * The id a name's part stands for: the UUID it spells with underscores for
- * hyphens. A part that spells no UUID is the id as written, so a document
- * whose codebook keys are still readable (a fixture before its keys are
- * given ids) names them too, provided they hold no underscore or hyphen.
+ * hyphens, or undefined when it spells none. Schema 9 keys every attribute,
+ * option and condition by a UUID, so a part that is anything else names
+ * nothing (`ego_first_name`, `ego_now`, `ego_toString`).
  */
-const idFromName = (part: string): string => {
-  const id = part.replaceAll('_', '-');
-  return UUID.test(id) ? id : part;
-};
+const idFromName = (part: string): string | undefined =>
+  UUID_AS_NAME.test(part) ? part.replaceAll('_', '-') : undefined;
 
 /**
  * The select case key that chooses an option of a categorical or ordinal
@@ -161,8 +162,12 @@ const idFromName = (part: string): string => {
  */
 export const optionCaseKey = (optionId: string): string => idAsName(optionId);
 
-/** The option id a case key names (the inverse of `optionCaseKey`). */
-export const optionIdFromCaseKey = (key: string): string => idFromName(key);
+/**
+ * The option id a case key names (the inverse of `optionCaseKey`), or
+ * undefined for a key that names no option (`true`, `false`).
+ */
+export const optionIdFromCaseKey = (key: string): string | undefined =>
+  idFromName(key);
 
 /**
  * What one name in a message stands for:
@@ -226,7 +231,10 @@ export const parseDynamicValueName = (
   const rest = name.slice(separator + 1);
   if (rest === '') return undefined;
   if (head === CONDITION_WORD) {
-    return { kind: 'condition', conditionId: idFromName(rest) };
+    const conditionId = idFromName(rest);
+    return conditionId === undefined
+      ? undefined
+      : { kind: 'condition', conditionId };
   }
   if (!isDynamicValueRole(head)) return undefined;
   if (rest === LABEL_WORD) {
@@ -237,8 +245,9 @@ export const parseDynamicValueName = (
   if (rest === PARTICIPANT_WORD) {
     return head === 'node' ? { kind: 'participant', role: head } : undefined;
   }
-  return isAttributeDynamicValueRole(head)
-    ? { kind: 'attribute', role: head, variableId: idFromName(rest) }
+  const variableId = idFromName(rest);
+  return isAttributeDynamicValueRole(head) && variableId !== undefined
+    ? { kind: 'attribute', role: head, variableId }
     : undefined;
 };
 
@@ -533,39 +542,37 @@ export const dynamicValueCaseOf = (
   for (const option of variable?.options ?? []) {
     if (typeof option.id !== 'string') continue;
     const key = optionCaseKey(option.id);
-    if (given.has(key) && answers.includes(option.value)) return key;
+    if (
+      given.has(key) &&
+      answers.some((answer) => isSameOptionValue(answer, option.value))
+    ) {
+      return key;
+    }
   }
   return undefined;
 };
 
 /**
  * The cases text gives a value, as the message checker sees them: the keys
- * the text gives, and whether they cover every answer the value can hold, in
- * which case its `other` version is never read. Or a reason a key the text
- * gives is not one the value has.
+ * the text gives, and whether they cover every answer the value can have, in
+ * which case its `other` version is never read. Or the first key the text
+ * gives that is not one the value has.
  */
 const givenCases = (
   allowed: readonly string[],
   caseKeys: readonly string[],
-  describe: (key: string) => string,
 ):
   | Readonly<{ cases: string[]; exhaustive: boolean }>
-  | Readonly<{ problem: string }> => {
+  | Readonly<{ wrong: string }> => {
   const given = new Set(caseKeys);
   const wrong = [...given].find((key) => !allowed.includes(key));
-  if (wrong !== undefined) return { problem: describe(wrong) };
+  if (wrong !== undefined) return { wrong };
   const cases = allowed.filter((key) => given.has(key));
   return {
     cases,
     exhaustive: allowed.length > 0 && cases.length === allowed.length,
   };
 };
-
-const notYesOrNo = (key: string) =>
-  `it has a version for "${key}", but it can only have versions for "${TRUE_CASE}" and "${FALSE_CASE}"`;
-
-const noCases = (key: string) =>
-  `it has a version for "${key}", but it has no versions to choose between other than "${MISSING_CASE}" and "other"`;
 
 /**
  * A name in a message as one site sees it:
@@ -574,10 +581,16 @@ const noCases = (key: string) =>
  * - `unknown`, naming nothing (no such attribute, condition or role), an
  *   attribute of a kind that cannot be shown, or giving a version for a case
  *   the value does not have.
+ *
+ * `problem` is the rest of a sentence whose subject is the text ("This
+ * text", "This label"). It names the value as a researcher knows it (by the
+ * attribute's name, "today’s date", "an If block"), and never by the name
+ * the message uses for it, its id or a case key. A name that does not parse
+ * is the only one quoted, because nothing else identifies it.
  */
 export type DynamicValueStatus =
   | Readonly<{ status: 'available'; argument: DynamicValueArgument }>
-  | Readonly<{ status: 'unavailable' | 'unknown'; reason: string }>;
+  | Readonly<{ status: 'unavailable' | 'unknown'; problem: string }>;
 
 export type DynamicValueSiteContext = Readonly<{
   roles: ReadonlySet<DynamicValueRole>;
@@ -626,35 +639,117 @@ const ROLE_NAMES: Readonly<Record<DynamicValueRole, string>> = {
   edgeTo: 'the second node of the edge',
 };
 
+/** A role as a researcher knows it, at a site. */
+const roleName = (
+  role: DynamicValueRole,
+  context: DynamicValueSiteContext,
+): string =>
+  context.nodeLabel === true && role === 'node'
+    ? 'the node that the label is on'
+    : ROLE_NAMES[role];
+
+/**
+ * A variable of a role, read as an own property: Schema 9 keys every
+ * variable by a UUID, and no name may find `Object.prototype`'s.
+ */
+const variableOf = (
+  context: DynamicValueSiteContext,
+  role: DynamicValueRole,
+  variableId: string,
+): DynamicValueVariable | undefined => {
+  const variables = context.variablesFor(role);
+  return variables !== undefined && Object.hasOwn(variables, variableId)
+    ? variables[variableId]
+    : undefined;
+};
+
+/**
+ * What a researcher knows a value by: the attribute's name and whose it is,
+ * the label of a node, whether the node is the participant, an If block (a
+ * condition), or today's date. An attribute that is not in the codebook is
+ * "an attribute".
+ */
+const describeValue = (
+  parsed: ParsedDynamicValuePath,
+  context: DynamicValueSiteContext,
+): string => {
+  switch (parsed.kind) {
+    case 'intrinsic':
+      return 'today’s date';
+    case 'label':
+      return `the label of ${roleName(parsed.role, context)}`;
+    case 'participant':
+      return 'whether the node is the participant';
+    case 'condition':
+      return 'an If block';
+    case 'attribute':
+    default: {
+      const name = variableOf(context, parsed.role, parsed.variableId)?.name;
+      return name === undefined
+        ? `an attribute of ${roleName(parsed.role, context)}`
+        : `the "${name}" attribute of ${roleName(parsed.role, context)}`;
+    }
+  }
+};
+
+const ANSWERS_ARE_NOT_CASES =
+  'only a categorical, ordinal or yes/no attribute can have a different version for each answer';
+
+/**
+ * How a researcher knows the case a wrong key stands for, as the end of
+ * "chooses its wording by …, but one of its versions is …".
+ */
+const wrongCaseProblem = (
+  description: string,
+  wrong: string,
+): Readonly<{ status: 'unknown'; problem: string }> => ({
+  status: 'unknown',
+  problem: `chooses its wording by ${description}, but one of its versions is ${wrong}`,
+});
+
 /**
  * How a name reads at a site (see `DynamicValueStatus`), given what it
  * stands for (`parseDynamicValueName`, undefined when nothing) and the case
- * keys the message gives a version for in its selects on it.
+ * keys the message gives a version for in its selects on it. `name` is the
+ * name itself, quoted only in the problem of a name that does not parse.
  */
 export const dynamicValueStatus = (
   parsed: ParsedDynamicValuePath | undefined,
   context: DynamicValueSiteContext,
   caseKeys: readonly string[] = [],
+  name?: string,
 ): DynamicValueStatus => {
   if (parsed === undefined) {
     return {
       status: 'unknown',
-      reason:
-        'it does not refer to an attribute, a node’s label, a condition or today’s date',
+      problem: `cannot use ${name === undefined ? 'a value' : `"${name}"`}: it does not refer to an attribute, a node’s label, a condition or today’s date`,
     };
   }
+  const description = describeValue(parsed, context);
+  // A value with no cases: a select on it gives versions only for when it
+  // is missing and when it is not.
+  const withoutCases = () => {
+    const cases = givenCases([], caseKeys);
+    return 'wrong' in cases
+      ? {
+          status: 'unknown' as const,
+          problem: `chooses its wording by each value of ${description}, but ${ANSWERS_ARE_NOT_CASES}`,
+        }
+      : undefined;
+  };
   if (parsed.kind === 'intrinsic') {
     if (context.nodeLabel === true) {
       return {
         status: 'unavailable',
-        reason: 'a node’s label can show only what is known about that node',
+        problem: `cannot use ${description}: a node’s label can show only what is known about that node`,
       };
     }
-    const cases = givenCases([], caseKeys, noCases);
-    if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
+    const problem = withoutCases();
+    if (problem !== undefined) return problem;
     return {
       status: 'available',
       argument: {
+        description,
         cases: [],
         numeric: false,
         optional: INTRINSIC_DYNAMIC_VALUES[parsed.name].optional,
@@ -666,43 +761,56 @@ export const dynamicValueStatus = (
     if (condition === undefined) {
       return {
         status: 'unknown',
-        reason: 'the condition it names does not exist',
+        problem: 'has an If block whose rules no longer exist',
       };
     }
     if (condition.about !== undefined && !context.roles.has(condition.about)) {
       return {
         status: 'unavailable',
-        reason: `its rules are about ${ROLE_NAMES[condition.about]}, which this text is not shown with`,
+        problem: `has an If block whose rules are about ${roleName(condition.about, context)}, which this text does not refer to`,
       };
     }
-    const cases = givenCases(BOOLEAN_CASES, caseKeys, notYesOrNo);
-    if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
+    const cases = givenCases(BOOLEAN_CASES, caseKeys);
+    if ('wrong' in cases) {
+      return wrongCaseProblem(
+        description,
+        'neither for when its rules are met nor for when they are not',
+      );
+    }
     return {
       status: 'available',
       argument: {
+        description,
         cases: cases.cases,
         numeric: false,
         optional: false,
         ...(cases.exhaustive && { exhaustive: true }),
         unshowable:
-          'a condition only chooses wording, and is never shown itself. Give the text a version for when it is met and one for when it is not.',
+          'It chooses which version of the text is shown. Give the text a version for when its rules are met and a version for when they are not.',
       },
     };
   }
   if (!context.roles.has(parsed.role)) {
     return {
       status: 'unavailable',
-      reason: `values about ${ROLE_NAMES[parsed.role]} cannot be shown here`,
+      problem: `cannot use ${description}, because the text does not refer to ${
+        parsed.role === 'ego'
+          ? 'the participant'
+          : parsed.role === 'edge'
+            ? 'that edge'
+            : 'that node'
+      }`,
     };
   }
   // A node on screen always shows a label, its type's name at least, but
   // there may be no node on screen.
   if (parsed.kind === 'label') {
-    const cases = givenCases([], caseKeys, noCases);
-    if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
+    const problem = withoutCases();
+    if (problem !== undefined) return problem;
     return {
       status: 'available',
       argument: {
+        description,
         cases: [],
         numeric: false,
         optional: context.absentRoles?.has(parsed.role) ?? false,
@@ -713,57 +821,69 @@ export const dynamicValueStatus = (
     if (!(context.participantRoles?.has(parsed.role) ?? false)) {
       return {
         status: 'unavailable',
-        reason:
-          'whether a node is the participant is known only in the questions of a Family Pedigree stage’s person form',
+        problem: `cannot use ${description}, because this is known only in the questions of a Family Pedigree stage’s person form`,
       };
     }
-    const cases = givenCases(BOOLEAN_CASES, caseKeys, notYesOrNo);
-    if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
+    const cases = givenCases(BOOLEAN_CASES, caseKeys);
+    if ('wrong' in cases) {
+      return wrongCaseProblem(
+        description,
+        'neither for the participant nor for everyone else',
+      );
+    }
     return {
       status: 'available',
       argument: {
+        description,
         cases: cases.cases,
         numeric: false,
         optional: false,
         ...(cases.exhaustive && { exhaustive: true }),
         unshowable:
-          'whether the node is the participant only chooses wording, and is never shown itself. Give the text a version for the participant and one for everyone else.',
+          'It chooses which version of the text is shown. Give the text a version for the participant and a version for everyone else.',
       },
     };
   }
-  const variables = context.variablesFor(parsed.role);
-  const variable = variables?.[parsed.variableId];
+  const variable = variableOf(context, parsed.role, parsed.variableId);
   if (variable === undefined) {
     return {
       status: 'unknown',
-      reason: 'the attribute it shows does not exist',
+      problem: 'refers to an attribute that no longer exists',
     };
   }
-  if (!DYNAMIC_VALUE_VARIABLE_TYPES.has(variable.type) || variable.encrypted) {
+  if (variable.encrypted === true) {
     return {
       status: 'unknown',
-      reason: variable.encrypted
-        ? 'the attribute it shows is encrypted'
-        : `a ${variable.type} attribute cannot be shown in text`,
+      problem: `cannot use ${description}, because the attribute is encrypted`,
     };
   }
-  const attribute =
-    variable.name === undefined ? 'the attribute' : `"${variable.name}"`;
-  const cases = givenCases(
-    caseKeysOfVariable(variable),
-    caseKeys,
-    variable.type === 'boolean'
-      ? notYesOrNo
-      : CASED_VARIABLE_TYPES.has(variable.type)
-        ? (key) =>
-            `it has a version for "${key}", which is not one of the options of ${attribute}`
-        : noCases,
-  );
-  if ('problem' in cases) return { status: 'unknown', reason: cases.problem };
+  if (!DYNAMIC_VALUE_VARIABLE_TYPES.has(variable.type)) {
+    return {
+      status: 'unknown',
+      problem: `cannot use ${description}, because a ${variable.type} attribute cannot be shown in text`,
+    };
+  }
+  const cases = givenCases(caseKeysOfVariable(variable), caseKeys);
+  if ('wrong' in cases) {
+    if (variable.type === 'boolean') {
+      return wrongCaseProblem(description, 'neither for yes nor for no');
+    }
+    if (CASED_VARIABLE_TYPES.has(variable.type)) {
+      return wrongCaseProblem(
+        description,
+        'for an option that no longer exists',
+      );
+    }
+    return {
+      status: 'unknown',
+      problem: `chooses its wording by each answer of ${description}, but ${ANSWERS_ARE_NOT_CASES}`,
+    };
+  }
   const unshowable = dynamicValueUnshowableReason(variable);
   return {
     status: 'available',
     argument: {
+      description,
       cases: cases.cases,
       numeric: NUMERIC_VARIABLE_TYPES.has(variable.type),
       optional: true,
@@ -784,7 +904,7 @@ export const dynamicValueArgumentsAt = (
 ): DynamicValueArguments =>
   Object.fromEntries(
     dynamicValueReferencesIn(message).flatMap(({ name, parsed, caseKeys }) => {
-      const status = dynamicValueStatus(parsed, context, caseKeys);
+      const status = dynamicValueStatus(parsed, context, caseKeys, name);
       return status.status === 'available' ? [[name, status.argument]] : [];
     }),
   );

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  deterministicProtocolObjectId,
   findValidationContradictions,
   type Codebook,
   type Variable,
@@ -272,8 +273,18 @@ async function runtimeHasWitness(variables: Variables): Promise<boolean> {
   return search(0);
 }
 
-function option(value: string | number) {
-  return { label: { en: `Option ${String(value)}` }, value };
+// The ids of the options below: the same UUID for the same variable and
+// value.
+const optionId = deterministicProtocolObjectId(
+  'e8c3d1a4-6b2f-4f7e-9a05-2c1d7b8e4f36',
+);
+
+function option(variable: string, value: string | number) {
+  return {
+    id: optionId(`${variable}/${String(value)}`),
+    label: { en: `Option ${String(value)}` },
+    value,
+  };
 }
 
 function required(validation: Record<string, unknown>) {
@@ -319,14 +330,14 @@ function generatedFixture(seed: number): Variables {
         name: 'Pinned A',
         type: 'ordinal',
         component: 'RadioGroup',
-        options: [option(value)],
+        options: [option('a', value)],
         validation: required({ differentFrom: reference('b') }),
       },
       b: {
         name: 'Pinned B',
         type: 'ordinal',
         component: 'RadioGroup',
-        options: [option(value)],
+        options: [option('b', value)],
         validation: required({}),
       },
     };
@@ -462,7 +473,7 @@ function generatedFixture(seed: number): Variables {
         name: 'Too many choices',
         type: 'categorical',
         component: 'CheckboxGroup',
-        options: [option(`x-${variant}`), option(`y-${variant}`)],
+        options: [option('a', `x-${variant}`), option('a', `y-${variant}`)],
         validation: required({ minSelected: 3 }),
       },
     };
@@ -483,7 +494,7 @@ function generatedFixture(seed: number): Variables {
             name: 'Required empty selection',
             type: 'categorical',
             component: 'CheckboxGroup',
-            options: [option(`x-${variant}`), option(`y-${variant}`)],
+            options: [option('a', `x-${variant}`), option('a', `y-${variant}`)],
             validation: required({ maxSelected: 0 }),
           },
         };

@@ -37,6 +37,14 @@ const stagesSchema = z.array(stageSchema);
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * An option by its variable as well as its id: two variables' options may
+ * share an id, and text names an option only through the attribute that it
+ * belongs to.
+ */
+const optionKey = (variableId: string, optionId: string) =>
+  JSON.stringify([variableId, optionId]);
+
 const startsWith = (
   path: readonly (string | number)[],
   prefix: readonly (string | number)[],
@@ -55,7 +63,7 @@ const startsWith = (
  * treated alike, by their keys, and so are the options of its categorical
  * and ordinal variables, by their ids. Text in the fragment that names a
  * replaced condition (`condition_<id>`) or gives a version for a replaced
- * option names its replacement. `fragment` is not changed.
+ * option of an attribute names its replacement. `fragment` is not changed.
  */
 export const freshenProtocolFragmentIds = <T>(
   fragment: T,
@@ -65,6 +73,7 @@ export const freshenProtocolFragmentIds = <T>(
   const taken = new Set<string>(destinationIds);
   const idMap = new Map<string, ProtocolObjectId>();
   const stageRenames = new Map<string, string>();
+  // By `optionKey`: two variables' options may share an id.
   const optionRenames = new Map<string, string>();
   const stagePaths: (string | number)[][] = [];
   const copy = structuredClone(fragment);
@@ -91,8 +100,11 @@ export const freshenProtocolFragmentIds = <T>(
     setObjectIdAt(copy, path.slice(0, -1), fresh);
     if (id !== undefined && firstOccurrence) idMap.set(id, fresh);
     if (id !== undefined && firstStageOccurrence) stageRenames.set(id, fresh);
-    if (id !== undefined && firstOccurrence && objectKind === 'option') {
-      optionRenames.set(id, fresh);
+    // An option's id is at `[…, 'variables', <variable id>, 'options', <index>, 'id']`.
+    const variableId = objectKind === 'option' ? path.at(-4) : undefined;
+    if (id !== undefined && typeof variableId === 'string') {
+      const key = optionKey(variableId, id);
+      if (!optionRenames.has(key)) optionRenames.set(key, fresh);
     }
   }
 
@@ -109,6 +121,14 @@ export const freshenProtocolFragmentIds = <T>(
       hit.dynamicValues === 'nodeLabel' ? [hit.path.slice(0, -1)] : [],
     ),
   ];
+  // A condition's key is unique only among the conditions of its stage or
+  // node type label, not across the protocol: two stages may each declare a
+  // condition with one key, and text names only the conditions declared
+  // beside it. So each owner's renames are kept apart, and each text is
+  // rewritten by the renames of the owner that declares its conditions. A
+  // key is still replaced when it is not a UUID, or is an id taken by the
+  // destination or by an earlier object or condition in the fragment, so
+  // that `idMap` names each replaced key once.
   const conditionRenames = new Map<string, Map<string, string>>();
   for (const owner of owners) {
     const conditions = valueAt(copy, [...owner, 'conditions']);
@@ -157,10 +177,14 @@ export const freshenProtocolFragmentIds = <T>(
             : dynamicValueNameFor({ ...parsed, conditionId: renamed });
         },
         caseKey: (name, key) => {
-          if (parseDynamicValueName(name)?.kind !== 'attribute') {
+          const parsed = parseDynamicValueName(name);
+          const optionId = optionIdFromCaseKey(key);
+          if (parsed?.kind !== 'attribute' || optionId === undefined) {
             return undefined;
           }
-          const renamed = optionRenames.get(optionIdFromCaseKey(key));
+          const renamed = optionRenames.get(
+            optionKey(parsed.variableId, optionId),
+          );
           return renamed === undefined ? undefined : optionCaseKey(renamed);
         },
       });

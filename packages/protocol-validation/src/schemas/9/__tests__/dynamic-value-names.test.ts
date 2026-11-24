@@ -10,6 +10,8 @@ import {
   dynamicValueCaseOf,
   dynamicValueNameFor,
   dynamicValueReferencesIn,
+  type DynamicValueSiteContext,
+  dynamicValueStatus,
   isAttributeDynamicValueRole,
   isLabelledDynamicValueRole,
   optionCaseKey,
@@ -77,22 +79,62 @@ describe('the names text uses for values', () => {
     'dyadSource_isParticipant',
     `edgeFrom_${VARIABLE.replaceAll('-', '_')}`,
     'condition_',
+    // The id part must be a whole UUID written with underscores.
+    'ego_egoName',
+    'ego_first_name',
+    'ego_now',
+    'ego_toString',
+    'ego_constructor',
+    `ego_${VARIABLE}`,
+    `ego_${VARIABLE.replaceAll('-', '_')}_x`,
+    `ego_${VARIABLE.replaceAll('-', '_').slice(1)}`,
+    'condition_if1',
+    `condition_${VARIABLE.replaceAll('-', '_')}_x`,
   ])('reads %s as naming nothing', (name) => {
     expect(parseDynamicValueName(name)).toBeUndefined();
-  });
-
-  it('keeps a part that spells no UUID as it is written', () => {
-    expect(parseDynamicValueName('ego_egoName')).toEqual({
-      kind: 'attribute',
-      role: 'ego',
-      variableId: 'egoName',
-    });
   });
 
   it('writes an option id as a case key and reads it back', () => {
     const optionId = testId('option');
     expect(optionCaseKey(optionId)).not.toContain('-');
     expect(optionIdFromCaseKey(optionCaseKey(optionId))).toBe(optionId);
+  });
+
+  it('reads no option id from a key that spells no UUID', () => {
+    expect(optionIdFromCaseKey('true')).toBeUndefined();
+    expect(optionIdFromCaseKey('friend')).toBeUndefined();
+    expect(
+      optionIdFromCaseKey(`${optionCaseKey(testId('option'))}_x`),
+    ).toBeUndefined();
+  });
+});
+
+describe('dynamicValueStatus', () => {
+  const context: DynamicValueSiteContext = {
+    roles: new Set(['ego'] as const),
+    variablesFor: () => ({
+      [VARIABLE]: { name: 'Age', type: 'number' },
+    }),
+  };
+
+  it('finds an attribute only among the variables’ own keys', () => {
+    for (const variableId of ['toString', 'constructor', '__proto__']) {
+      expect(
+        dynamicValueStatus(
+          { kind: 'attribute', role: 'ego', variableId },
+          context,
+        ),
+      ).toEqual({
+        status: 'unknown',
+        problem: 'refers to an attribute that no longer exists',
+      });
+    }
+    expect(
+      dynamicValueStatus(
+        { kind: 'attribute', role: 'ego', variableId: VARIABLE },
+        context,
+      ).status,
+    ).toBe('available');
   });
 });
 
@@ -132,6 +174,15 @@ describe('dynamicValueCaseOf', () => {
       keyOf(1),
     );
     expect(dynamicValueCaseOf(3, variable, [keyOf(2)])).toBe(keyOf(2));
+  });
+
+  it('compares an answer with option values as the schema does, so 3 and "3" are one value', () => {
+    expect(dynamicValueCaseOf('3', variable, [keyOf(2)])).toBe(keyOf(2));
+    expect(dynamicValueCaseOf(['3'], variable, [keyOf(2)])).toBe(keyOf(2));
+    const numbered = { options: [{ id: testId('one'), value: '1' }] };
+    expect(
+      dynamicValueCaseOf(1, numbered, [optionCaseKey(testId('one'))]),
+    ).toBe(optionCaseKey(testId('one')));
   });
 
   it('chooses none for an option the select gives no version for', () => {

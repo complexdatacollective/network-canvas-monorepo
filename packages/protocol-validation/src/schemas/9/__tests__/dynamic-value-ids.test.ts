@@ -77,6 +77,12 @@ const protocolWith = (conditionIds: readonly string[]) => {
   return { protocol, information, alterForm };
 };
 
+/** The complete protocol with `stages` before its Finish stage. */
+const withStages = (stages: readonly Stage[]) => {
+  const protocol = withFinishStage(completeProtocol());
+  return { ...protocol, stages: [...stages, ...(protocol.stages as Stage[])] };
+};
+
 const contentOf = (stage: unknown) =>
   String(((stage as Stage).content as Record<string, string>).en);
 
@@ -86,28 +92,71 @@ const issuesOf = (protocol: unknown) => {
 };
 
 describe('freshenProtocolFragmentIds and the text that names conditions and options', () => {
-  it('gives a condition whose key is taken or not a UUID a new one, and the text that names it its new name', () => {
+  it('gives a condition whose key is taken a new one, and the text that names it its new name', () => {
     const taken = testId('taken');
-    const readable = 'readable';
     const kept = testId('kept');
-    const { information } = protocolWith([taken, readable, kept]);
+    const { information } = protocolWith([taken, kept]);
 
     const { fragment, idMap } = freshenProtocolFragmentIds(information, [
       taken,
     ]);
     const conditionIds = Object.keys(fragment.conditions as Stage);
-    expect(conditionIds).toHaveLength(3);
+    expect(conditionIds).toHaveLength(2);
     expect(conditionIds.every(isProtocolObjectId)).toBe(true);
     expect(conditionIds).not.toContain(taken);
-    expect(conditionIds).not.toContain(readable);
     expect(conditionIds).toContain(kept);
     expect(idMap.get(taken)).toBe(conditionIds[0]);
-    expect(idMap.get(readable)).toBe(conditionIds[1]);
 
     // The text names the conditions the copy declares, in the same order.
     expect(
       dynamicValueReferencesIn(contentOf(fragment)).map(({ name }) => name),
     ).toEqual(conditionIds.map(conditionName));
+  });
+
+  it('gives a condition whose key is not a UUID a UUID', () => {
+    const { information } = protocolWith([testId('kept')]);
+    information.conditions = {
+      ...(information.conditions as Stage),
+      readable: { rules: [egoRule('readable rule')] },
+    };
+    const { fragment, idMap } = freshenProtocolFragmentIds(information, []);
+    const conditionIds = Object.keys(fragment.conditions as Stage);
+    expect(conditionIds).not.toContain('readable');
+    expect(conditionIds.every(isProtocolObjectId)).toBe(true);
+    expect(conditionIds).toContain(idMap.get('readable'));
+  });
+
+  it('keeps the text of each copied stage naming the conditions that its own stage declares, when two stages share a key', () => {
+    // Condition keys are unique only within a stage, so two stages may share
+    // one; copying both gives one of them a new key.
+    const shared = testId('shared');
+    const first = protocolWith([shared]).information;
+    const second = structuredClone(first);
+    second.id = testId('second information');
+    second.content = {
+      en: `{${conditionName(shared)}, select, true {Second.} other {No.}}`,
+    };
+
+    const destination = collectProtocolObjectIds(withStages([])).map(
+      ({ id }) => id,
+    );
+    const { fragment } = freshenProtocolFragmentIds(
+      [first, second],
+      destination,
+    );
+    const [firstCopy, secondCopy] = fragment;
+    const firstKeys = Object.keys(firstCopy!.conditions as Stage);
+    const secondKeys = Object.keys(secondCopy!.conditions as Stage);
+    expect(firstKeys).toEqual([shared]);
+    expect(secondKeys).toHaveLength(1);
+    expect(secondKeys).not.toEqual(firstKeys);
+    expect(
+      dynamicValueReferencesIn(contentOf(firstCopy)).map(({ name }) => name),
+    ).toEqual(firstKeys.map(conditionName));
+    expect(
+      dynamicValueReferencesIn(contentOf(secondCopy)).map(({ name }) => name),
+    ).toEqual(secondKeys.map(conditionName));
+    expect(issuesOf(withStages([firstCopy!, secondCopy!]))).toEqual([]);
   });
 
   it('gives the options of a copied codebook new ids, and the text that chooses by them their new keys', () => {
@@ -138,6 +187,77 @@ describe('freshenProtocolFragmentIds and the text that names conditions and opti
       expect.toSatisfy((id: string) => optionIds.includes(id)),
     ]);
   });
+});
+
+describe('freshenProtocolFragmentIds and options that share an id', () => {
+  const STRENGTH = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'node',
+    variableId: testVariableId('strength'),
+  });
+
+  // The node type's variables, whichever key the type has.
+  const personVariables = (codebook: { node: unknown }): Stage => {
+    const variables = Object.values(
+      codebook.node as Record<string, { variables?: Stage }>,
+    )
+      .map((type) => type.variables)
+      .find((each) => each?.[testVariableId('strength')] !== undefined);
+    if (variables === undefined) throw new Error('No Strength attribute');
+    return variables;
+  };
+
+  it.each([
+    ['taken by the destination', true],
+    ['free', false],
+  ])(
+    'gives each variable’s text the new id of its own option, when the shared id is %s',
+    (_, taken) => {
+      const { protocol, alterForm } = protocolWith([testId('condition')]);
+      const strengthOptions = (
+        personVariables(protocol.codebook)[testVariableId('strength')] as Stage
+      ).options as Stage[];
+      // Strength's first option has the id of Category's first option.
+      strengthOptions[0]!.id = FRIEND_ID;
+      const prompt = (alterForm.form as { fields: Stage[] }).fields[0]!
+        .prompt as Record<string, string>;
+      prompt.en = `${prompt.en} {${STRENGTH}, select, missing {} ${optionCaseKey(FRIEND_ID)} {Weak?} other {}}`;
+
+      const { fragment } = freshenProtocolFragmentIds(
+        protocol,
+        [...(taken ? [FRIEND_ID] : []), testId('condition')],
+        ProtocolStructureSchema,
+      );
+      const copied = personVariables(fragment.codebook);
+      const firstOptionOf = (key: string) =>
+        String(
+          ((copied[testVariableId(key)] as Stage).options as Stage[])[0]!.id,
+        );
+      const category = firstOptionOf('category');
+      const strength = firstOptionOf('strength');
+      expect(category === FRIEND_ID).toBe(!taken);
+      expect(strength).not.toBe(FRIEND_ID);
+      expect(strength).not.toBe(category);
+
+      const copiedForm = (fragment.stages as Stage[]).find(
+        (stage) => stage.type === 'AlterForm',
+      );
+      const text = String(
+        (
+          (copiedForm!.form as { fields: Stage[] }).fields[0]!.prompt as Record<
+            string,
+            string
+          >
+        ).en,
+      );
+      const keysOf = (name: string) =>
+        dynamicValueReferencesIn(text).find(
+          (reference) => reference.name === name,
+        )?.caseKeys;
+      expect(keysOf(CATEGORY)).toEqual([optionCaseKey(category)]);
+      expect(keysOf(STRENGTH)).toEqual([optionCaseKey(strength)]);
+    },
+  );
 });
 
 describe('the ids the migration gives options', () => {

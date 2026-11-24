@@ -8,10 +8,12 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
 import {
+  fixtureOptionId,
   fixtureTypeId,
   fixtureVariableId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 import { sectionIdForCodebookSubject } from '../editing.ts';
 import { useSetVariableOptions } from '../useCodebookVariableEdits.ts';
 
@@ -29,6 +31,34 @@ const CLOSENESS = fixtureVariableId(
   { entity: 'edge', typeName: 'knows' },
   'closeness',
 );
+
+/** A family member option row as the fixture holds it, with its id. */
+const familyMemberOption = (
+  variableName: 'sexAssignedAtBirth' | 'genderIdentity',
+  value: string,
+  label: string,
+) => ({
+  id: fixtureOptionId(
+    { entity: 'node', typeName: 'family member' },
+    variableName,
+    value,
+  ),
+  value,
+  label: { 'en-US': label },
+});
+
+/** The fixture's sex assigned at birth values, exactly as it holds them. */
+const SEX_ASSIGNED_AT_BIRTH_OPTIONS = [
+  familyMemberOption('sexAssignedAtBirth', 'female', 'Female'),
+  familyMemberOption('sexAssignedAtBirth', 'male', 'Male'),
+  familyMemberOption('sexAssignedAtBirth', 'intersex', 'Intersex'),
+  familyMemberOption('sexAssignedAtBirth', 'unknown', 'Don’t know'),
+  familyMemberOption(
+    'sexAssignedAtBirth',
+    'preferNotToSay',
+    'Prefer not to say',
+  ),
+];
 
 /**
  * The type the family pedigree describes, whose `sexAssignedAtBirth` values
@@ -154,13 +184,10 @@ describe('writing the answers an attribute offers', () => {
 
   /** An unchanged list is not a revision anybody has to merge. */
   it('writes nothing when the list already matches', async () => {
-    const { harness, outcome, before } = await write(SEX_ASSIGNED_AT_BIRTH, [
-      { value: 'female', label: { 'en-US': 'Female' } },
-      { value: 'male', label: { 'en-US': 'Male' } },
-      { value: 'intersex', label: { 'en-US': 'Intersex' } },
-      { value: 'unknown', label: { 'en-US': 'Don’t know' } },
-      { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
-    ]);
+    const { harness, outcome, before } = await write(
+      SEX_ASSIGNED_AT_BIRTH,
+      SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+    );
 
     await waitFor(() => expect(outcome()).toBe('unchanged'));
     expect(harness.host.store.read(familyMemberSection)).toEqual(before);
@@ -206,9 +233,13 @@ describe('writing the answers an attribute offers', () => {
    */
   describe('a list a stage manages', () => {
     const WITH_A_NEW_OPTION = [
-      { value: 'woman', label: { 'en-US': 'Woman' } },
-      { value: 'man', label: { 'en-US': 'Man' } },
-      { value: 'agender', label: { 'en-US': 'Agender' } },
+      familyMemberOption('genderIdentity', 'woman', 'Woman'),
+      familyMemberOption('genderIdentity', 'man', 'Man'),
+      {
+        id: testId('option/genderIdentity/agender'),
+        value: 'agender',
+        label: { 'en-US': 'Agender' },
+      },
     ];
 
     it('is refused from another stage’s editor, naming the stage that manages it', async () => {
@@ -258,13 +289,7 @@ describe('writing the answers an attribute offers', () => {
     it('leaves another attribute of the same type editable', async () => {
       const { outcome } = await write(
         SEX_ASSIGNED_AT_BIRTH,
-        [
-          { value: 'female', label: { 'en-US': 'Female' } },
-          { value: 'male', label: { 'en-US': 'Male' } },
-          { value: 'intersex', label: { 'en-US': 'Intersex' } },
-          { value: 'unknown', label: { 'en-US': 'Don’t know' } },
-          { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
-        ],
+        SEX_ASSIGNED_AT_BIRTH_OPTIONS,
         FAMILY_MEMBER,
         'name-generator-1',
       );

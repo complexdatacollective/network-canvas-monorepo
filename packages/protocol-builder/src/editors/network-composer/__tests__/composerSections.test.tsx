@@ -14,7 +14,9 @@ import {
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import { readMessage } from '../../../testing/i18n.ts';
+import { MINTED_ID } from '../../../testing/mintedId.ts';
 import {
+  fixtureOptionId,
   fixtureTypeId,
   fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
@@ -856,8 +858,16 @@ describe('what a network composer lets the participant build', () => {
       name: 'circle',
       type: 'categorical',
       options: [
-        { label: { 'en-US': 'Inner' }, value: 'inner' },
-        { label: { 'en-US': 'Outer' }, value: 'outer' },
+        {
+          id: testId('option/circle/inner'),
+          label: { 'en-US': 'Inner' },
+          value: 'inner',
+        },
+        {
+          id: testId('option/circle/outer'),
+          label: { 'en-US': 'Outer' },
+          value: 'outer',
+        },
       ],
     });
 
@@ -900,8 +910,16 @@ describe('what a network composer lets the participant build', () => {
       name: 'circle',
       type: 'categorical',
       options: [
-        { label: { 'en-US': 'Inner' }, value: 'inner' },
-        { label: { 'en-US': 'Outer' }, value: 'outer' },
+        {
+          id: testId('option/circle/inner'),
+          label: { 'en-US': 'Inner' },
+          value: 'inner',
+        },
+        {
+          id: testId('option/circle/outer'),
+          label: { 'en-US': 'Outer' },
+          value: 'outer',
+        },
       ],
     });
 
@@ -1136,10 +1154,38 @@ describe('what a network composer lets the participant build', () => {
     // the protocol does not hold them.
     const withLetter = expect.objectContaining({
       options: [
-        { label: { 'en-US': 'In person' }, value: 'in_person' },
-        { label: { 'en-US': 'Phone or video call' }, value: 'call' },
-        { label: { 'en-US': 'Text or messaging' }, value: 'text' },
-        { label: { 'en-US': 'Letter' }, value: 'letter' },
+        {
+          id: fixtureOptionId(
+            { entity: 'node', typeName: 'person' },
+            'contactType',
+            'in_person',
+          ),
+          label: { 'en-US': 'In person' },
+          value: 'in_person',
+        },
+        {
+          id: fixtureOptionId(
+            { entity: 'node', typeName: 'person' },
+            'contactType',
+            'call',
+          ),
+          label: { 'en-US': 'Phone or video call' },
+          value: 'call',
+        },
+        {
+          id: fixtureOptionId(
+            { entity: 'node', typeName: 'person' },
+            'contactType',
+            'text',
+          ),
+          label: { 'en-US': 'Text or messaging' },
+          value: 'text',
+        },
+        {
+          id: MINTED_ID,
+          label: { 'en-US': 'Letter' },
+          value: 'letter',
+        },
       ],
     });
     await waitFor(() =>
@@ -1349,8 +1395,16 @@ describe('what a network composer lets the participant build', () => {
     expect(created?.[1]).toMatchObject({
       type: 'ordinal',
       options: [
-        { label: { 'en-US': 'Not at all close' }, value: 'far' },
-        { label: { 'en-US': 'Very close' }, value: 'near' },
+        {
+          id: MINTED_ID,
+          label: { 'en-US': 'Not at all close' },
+          value: 'far',
+        },
+        {
+          id: MINTED_ID,
+          label: { 'en-US': 'Very close' },
+          value: 'near',
+        },
       ],
     });
 
@@ -2104,8 +2158,16 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
       name: 'region',
       type: 'categorical',
       options: [
-        { label: { 'en-US': 'North' }, value: 'north' },
-        { label: { 'en-US': 'South' }, value: 'south' },
+        {
+          id: testId('option/region/north'),
+          label: { 'en-US': 'North' },
+          value: 'north',
+        },
+        {
+          id: testId('option/region/south'),
+          label: { 'en-US': 'South' },
+          value: 'south',
+        },
       ],
     });
     const grouping = await waitFor(() =>

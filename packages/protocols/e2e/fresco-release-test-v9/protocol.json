@@ -33,6 +33,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "b7289c97-60b8-5788-b990-07661b1ba01f",
                 "label": {
                   "en": "Work",
                   "es": "Trabajo"
@@ -40,6 +41,7 @@
                 "value": "work"
               },
               {
+                "id": "413acdfc-a242-5363-a690-1f5abf772d2e",
                 "label": {
                   "en": "Family",
                   "es": "Familia"
@@ -47,6 +49,7 @@
                 "value": "family"
               },
               {
+                "id": "e51f3267-49ed-524d-b58f-c7e76ba219dd",
                 "label": {
                   "en": "Neighbourhood",
                   "es": "Barrio"
@@ -60,6 +63,7 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "3e3e4cc3-62a9-5817-8a1f-10cf25331043",
                 "label": {
                   "en": "Close",
                   "es": "Cercano"
@@ -67,6 +71,7 @@
                 "value": 1
               },
               {
+                "id": "8c449c91-556a-5db4-8dff-abe2b34dcb04",
                 "label": {
                   "en": "Not close",
                   "es": "No cercano"
@@ -99,6 +104,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "c018ef12-f719-541b-ab4d-f273f977fb29",
                 "value": "woman",
                 "label": {
                   "en": "Woman",
@@ -106,6 +112,7 @@
                 }
               },
               {
+                "id": "a099df44-2a50-5e3f-a3d5-547a10f27d81",
                 "value": "man",
                 "label": {
                   "en": "Man",
@@ -113,6 +120,7 @@
                 }
               },
               {
+                "id": "0784d673-5d3a-55e9-aa62-a76b539f578f",
                 "value": "nonBinary",
                 "label": {
                   "en": "Non-binary",
@@ -120,6 +128,7 @@
                 }
               },
               {
+                "id": "a6b3bc6e-3d28-53dc-93af-d8b842b24020",
                 "value": "differentIdentity",
                 "label": {
                   "en": "A different identity",
@@ -127,6 +136,7 @@
                 }
               },
               {
+                "id": "5b58f563-2c6b-53a5-b1af-dd6c5c775bbd",
                 "value": "unknown",
                 "label": {
                   "en": "Don’t know",
@@ -134,6 +144,7 @@
                 }
               },
               {
+                "id": "7fe5e886-010f-506e-a04f-c2f01184f3a0",
                 "value": "preferNotToSay",
                 "label": {
                   "en": "Prefer not to say",
@@ -147,6 +158,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "18ac3e1f-5180-5075-a273-04608adb4831",
                 "value": "female",
                 "label": {
                   "en": "Female",
@@ -154,6 +166,7 @@
                 }
               },
               {
+                "id": "a94e202c-7532-5bea-bd6a-1b3baf088167",
                 "value": "male",
                 "label": {
                   "en": "Male",
@@ -161,6 +174,7 @@
                 }
               },
               {
+                "id": "0c7637a3-6850-5431-9953-7f5aa18e387d",
                 "value": "intersex",
                 "label": {
                   "en": "Intersex",
@@ -168,6 +182,7 @@
                 }
               },
               {
+                "id": "d86dd2ba-eb4d-5334-ae72-7c180724c278",
                 "value": "unknown",
                 "label": {
                   "en": "Don’t know",
@@ -175,6 +190,7 @@
                 }
               },
               {
+                "id": "21c9d67f-b0d0-522c-b10b-70149f3a6f6f",
                 "value": "preferNotToSay",
                 "label": {
                   "en": "Prefer not to say",
@@ -200,6 +216,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "a120b986-ec7d-5144-88cc-399be83335d6",
                 "value": "partner",
                 "label": {
                   "en": "Partner",
@@ -207,6 +224,7 @@
                 }
               },
               {
+                "id": "39850206-df66-5b22-b710-d5b7d5a4815d",
                 "value": "biological",
                 "label": {
                   "en": "Biological parent",
@@ -214,6 +232,7 @@
                 }
               },
               {
+                "id": "f194fe5e-3086-500a-b9a0-97ae598a9daa",
                 "value": "adoptive",
                 "label": {
                   "en": "Adoptive parent",
@@ -221,6 +240,7 @@
                 }
               },
               {
+                "id": "4153dab8-fbce-593f-8774-7bd0f61991c3",
                 "value": "social",
                 "label": {
                   "en": "Step or social parent",
@@ -228,6 +248,7 @@
                 }
               },
               {
+                "id": "215b9519-ee23-5ff9-9d23-1676bc42989c",
                 "value": "donor",
                 "label": {
                   "en": "Egg or sperm donor",
@@ -235,6 +256,7 @@
                 }
               },
               {
+                "id": "18ec0591-adc6-5c9c-93a2-468057582453",
                 "value": "surrogate",
                 "label": {
                   "en": "Surrogate",
@@ -242,6 +264,7 @@
                 }
               },
               {
+                "id": "ff0fdc9b-4e97-590b-98d4-152de45a4ef6",
                 "value": "identicalTwin",
                 "label": {
                   "en": "Identical twin",
@@ -249,6 +272,7 @@
                 }
               },
               {
+                "id": "d4145124-d456-507e-b887-db26f7127a4d",
                 "value": "fraternalTwin",
                 "label": {
                   "en": "Fraternal twin",
@@ -256,6 +280,7 @@
                 }
               },
               {
+                "id": "9c386213-f1ba-562c-a02d-fa59e2cefaa0",
                 "value": "unknownZygosityTwin",
                 "label": {
                   "en": "Twin, not known if identical",
@@ -333,14 +358,9 @@
         "en": "Welcome",
         "es": "Bienvenida"
       },
-      "dynamicValues": {
-        "today": {
-          "path": "now"
-        }
-      },
       "content": {
-        "en": "# Welcome\n\nThis interview was started on {today}.",
-        "es": "# Bienvenida\n\nEsta entrevista se empezó el {today}."
+        "en": "# Welcome\n\nThis interview was started on {now}.",
+        "es": "# Bienvenida\n\nEsta entrevista se empezó el {now}."
       }
     },
     {
@@ -416,14 +436,9 @@
         "en": "Greeting",
         "es": "Saludo"
       },
-      "dynamicValues": {
-        "egoName": {
-          "path": "ego.da7d8d07-b30e-5f7b-80fb-7ee2cd9c6ad0"
-        }
-      },
       "content": {
-        "en": "# {egoName, select, missing {Hello} other {Hello, {egoName}}}\n\nThank you{egoName, select, missing {.} other {, {egoName}.}} Next, tell us about the people you know.",
-        "es": "# {egoName, select, missing {Hola} other {Hola, {egoName}}}\n\nGracias{egoName, select, missing {.} other {, {egoName}.}} Ahora, háblanos de las personas que conoces."
+        "en": "# {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {Hello} other {Hello, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}}}\n\nThank you{ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {.} other {, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}.}} Next, tell us about the people you know.",
+        "es": "# {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {Hola} other {Hola, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}}}\n\nGracias{ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {.} other {, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}.}} Ahora, háblanos de las personas que conoces."
       }
     },
     {
@@ -459,11 +474,6 @@
         "en": "About each person",
         "es": "Sobre cada persona"
       },
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "subject": {
         "entity": "node",
         "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
@@ -474,8 +484,8 @@
             "id": "498b3f9b-7894-5b47-93af-b5f7a0f7e4ee",
             "variable": "82ee67e8-c1c2-5f68-868d-efb95113e814",
             "prompt": {
-              "en": "How many hours a week do you spend with {nodeLabel}?",
-              "es": "¿Cuántas horas a la semana pasas con {nodeLabel}?"
+              "en": "How many hours a week do you spend with {node_label}?",
+              "es": "¿Cuántas horas a la semana pasas con {node_label}?"
             }
           }
         ]

@@ -18,7 +18,7 @@ import {
   openAttributePicker,
 } from '../../testing/attributePicker.ts';
 import type { InMemoryProtocolStore } from '../../testing/host/protocolStore.ts';
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
 
 const PERSON = testTypeId('person');
@@ -57,8 +57,12 @@ const personDefinition: SectionDoc = {
       name: 'Mood',
       type: 'categorical',
       options: [
-        { label: { en: 'Happy' }, value: 'happy' },
-        { label: { en: 'Sad' }, value: 'sad' },
+        {
+          id: testId('option/Mood/happy'),
+          label: { en: 'Happy' },
+          value: 'happy',
+        },
+        { id: testId('option/Mood/sad'), label: { en: 'Sad' }, value: 'sad' },
       ],
     },
   },
@@ -741,8 +745,8 @@ describe('a codebook that changes underneath the editor', () => {
           name: 'Age',
           type: 'categorical',
           options: [
-            { label: { en: 'Young' }, value: 30 },
-            { label: { en: 'Old' }, value: 60 },
+            { id: testId('option/Age/30'), label: { en: 'Young' }, value: 30 },
+            { id: testId('option/Age/60'), label: { en: 'Old' }, value: 60 },
           ],
         },
       },

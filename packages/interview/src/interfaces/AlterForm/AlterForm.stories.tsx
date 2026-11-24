@@ -4,7 +4,10 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { ComponentType } from '@codaco/protocol-validation';
+import {
+  type ComponentType,
+  dynamicValueNameFor,
+} from '@codaco/protocol-validation';
 
 import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
 import { enterPassphraseInPrompter } from '../../storybook-support/passphraseSteps';
@@ -176,31 +179,35 @@ function buildWordedPerPersonInterview() {
     label: 'Alter Form (Worded per person)',
     subject: { entity: 'node', type: person.id },
   });
-  stage.stageEntry.dynamicValues = {
-    name: { path: `node.${name.id}` },
-    family: { path: `node.${family.id}`, cases: { yes: true } },
-  };
+  // The names the text gives the person's name and whether they are family.
+  const nameArg = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'node',
+    variableId: name.id,
+  });
+  const familyArg = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'node',
+    variableId: family.id,
+  });
   stage.addFormField({
     component: 'Number',
-    prompt: { 'en-US': 'How old is {name}?' },
+    prompt: { 'en-US': `How old is {${nameArg}}?` },
   });
   stage.addFormField({
     variable: closeness.id,
     component: 'LikertScale',
     prompt: {
-      'en-US':
-        '{family, select, yes {{name} is part of your family. Leaving aside any sense of duty you feel because you are related, how close do you feel to {name} today?} other {How close are you to {name}?}}',
+      'en-US': `{${familyArg}, select, true {{${nameArg}} is part of your family. Leaving aside any sense of duty you feel because you are related, how close do you feel to {${nameArg}} today?} other {How close are you to {${nameArg}}?}}`,
     },
   });
   stage.addFormField({
     component: 'TextArea',
     prompt: {
-      'en-US':
-        '{family, select, yes {Tell us about the place {name} has in your family.} other {How did you meet {name}?}}',
+      'en-US': `{${familyArg}, select, true {Tell us about the place {${nameArg}} has in your family.} other {How did you meet {${nameArg}}?}}`,
     },
     hint: {
-      'en-US':
-        '{family, select, yes {Family ties can be complicated. Mention anything you think matters: history you share, caring for one another, living apart, or disagreements. Write as much or as little as you like.} other {A sentence is enough.}}',
+      'en-US': `{${familyArg}, select, true {Family ties can be complicated. Mention anything you think matters: history you share, caring for one another, living apart, or disagreements. Write as much or as little as you like.} other {A sentence is enough.}}`,
     },
   });
 

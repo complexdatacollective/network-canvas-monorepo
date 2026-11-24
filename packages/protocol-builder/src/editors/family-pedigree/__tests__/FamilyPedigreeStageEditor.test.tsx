@@ -1,10 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { get } from 'es-toolkit/compat';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+  dynamicValueNameFor,
   familyPedigreeStage,
   isProtocolObjectId,
+  optionCaseKey,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
@@ -23,6 +25,11 @@ import {
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import {
+  MINTED_OPTION_ID,
+  stubbedOptionId,
+} from '../../../testing/mintedId.ts';
+import {
+  fixtureOptionId,
   fixtureTypeId,
   fixtureVariableId,
   loadFixtureStage,
@@ -31,7 +38,11 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
-import { testId, testVariableId } from '../../../testing/testId.ts';
+import {
+  testId,
+  testOptionId,
+  testVariableId,
+} from '../../../testing/testId.ts';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
 import {
@@ -51,6 +62,14 @@ import {
 } from './pedigreeFixtures.ts';
 
 shimMarkdownEditorMeasurement();
+
+// Option rows take their ids from the function made for option ids.
+vi.mock('@codaco/protocol-validation', async (importActual) => {
+  const actual =
+    await importActual<typeof import('@codaco/protocol-validation')>();
+  let made = 0;
+  return { ...actual, createOptionId: () => stubbedOptionId((made += 1)) };
+});
 
 const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
@@ -102,6 +121,7 @@ const addFreshGenderAttribute = (harness: StageEditorHarness): void => {
     name: FRESH_GENDER,
     type: 'categorical',
     options: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
+      id: testOptionId(FRESH_GENDER_ID, value),
       value,
       label: { 'en-US': value },
     })),
@@ -458,15 +478,36 @@ describe('the attribute slots', () => {
     ).toMatchObject({
       type: 'categorical',
       options: [
-        { value: 'woman', label: { 'en-US': 'Woman' } },
-        { value: 'man', label: { 'en-US': 'Man' } },
-        { value: 'nonBinary', label: { 'en-US': 'Non-binary' } },
         {
+          id: MINTED_OPTION_ID,
+          value: 'woman',
+          label: { 'en-US': 'Woman' },
+        },
+        {
+          id: MINTED_OPTION_ID,
+          value: 'man',
+          label: { 'en-US': 'Man' },
+        },
+        {
+          id: MINTED_OPTION_ID,
+          value: 'nonBinary',
+          label: { 'en-US': 'Non-binary' },
+        },
+        {
+          id: MINTED_OPTION_ID,
           value: 'differentIdentity',
           label: { 'en-US': 'A different identity' },
         },
-        { value: 'unknown', label: { 'en-US': 'Don’t know' } },
-        { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
+        {
+          id: MINTED_OPTION_ID,
+          value: 'unknown',
+          label: { 'en-US': 'Don’t know' },
+        },
+        {
+          id: MINTED_OPTION_ID,
+          value: 'preferNotToSay',
+          label: { 'en-US': 'Prefer not to say' },
+        },
       ],
     });
     expect(
@@ -532,6 +573,7 @@ describe('the attribute slots', () => {
       : undefined;
     expect(isRecord(created) ? created.options : undefined).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+        id: MINTED_OPTION_ID,
         value,
         label: {
           'en-US': suppliedOptionLabel(
@@ -856,8 +898,16 @@ describe('the gender identity options, which this stage manages', () => {
       name: 'fm_otherGender',
       type: 'categorical',
       options: [
-        { value: 'woman', label: { 'en-US': 'Woman' } },
-        { value: 'man', label: { 'en-US': 'Man' } },
+        {
+          id: testId('option/fm_otherGender/woman'),
+          value: 'woman',
+          label: { 'en-US': 'Woman' },
+        },
+        {
+          id: testId('option/fm_otherGender/man'),
+          value: 'man',
+          label: { 'en-US': 'Man' },
+        },
       ],
     });
     await screen.findByText('Gender identity', { selector: FIELD_LABEL });
@@ -998,6 +1048,69 @@ describe('the gender identity options, which this stage manages', () => {
       { value: 'unknown', words: 'unknown' },
       { value: 'agender', words: 'neutral' },
     ]);
+  });
+
+  // The stage's own text may choose its wording by the person's gender
+  // identity. A version written for an option removed here names an option
+  // the attribute no longer has, which the stage's check refuses, so it goes
+  // with the option and the stage still saves.
+  it('takes the wording written for a removed option out of the stage’s text, and the stage saves', async () => {
+    const gender = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: GENDER_IDENTITY,
+    });
+    const woman = optionCaseKey(
+      fixtureOptionId(
+        { entity: 'node', typeName: 'family member' },
+        'genderIdentity',
+        'woman',
+      ),
+    );
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        form: {
+          fields: [
+            {
+              id: testId('field-1'),
+              variable: OCCUPATION,
+              prompt: {
+                'en-US': `{${gender}, select, ${woman} {What is her job?} other {What is their job?}}`,
+              },
+            },
+          ],
+        },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariable(harness, OCCUPATION, {
+      name: 'fm_occupation',
+      type: 'text',
+      component: 'Text',
+    });
+    await harness.opened();
+    const dialog = within(await openGenderOptions(harness));
+
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Remove option 1' }),
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(async () =>
+      expect((await summaryRows()).map(([label]) => label)).not.toContain(
+        'Woman',
+      ),
+    );
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(
+      get(request?.stageDocument, ['form', 'fields', 0, 'prompt']),
+    ).toEqual({ 'en-US': `{${gender}, select, other {What is their job?}}` });
+    // Saved with the option it no longer has a version for.
+    expect(get(OPTIONS(harness), [0, 'value'])).toBe('man');
   });
 
   it('keeps the words a stage gave its options when the dialog is cancelled', async () => {
@@ -1446,19 +1559,47 @@ describe('the gender identity words', () => {
       name: 'customGender',
       type: 'categorical',
       options: [
-        { value: 'woman', label: { 'en-US': 'Female' } },
-        { value: 'agender', label: { 'en-US': 'Agender' } },
-        { value: 'man', label: { 'en-US': 'Male' } },
-        { value: 'unknown', label: { 'en-US': 'Unsure' } },
+        {
+          id: testId('option/customGender/woman'),
+          value: 'woman',
+          label: { 'en-US': 'Female' },
+        },
+        {
+          id: testId('option/customGender/agender'),
+          value: 'agender',
+          label: { 'en-US': 'Agender' },
+        },
+        {
+          id: testId('option/customGender/man'),
+          value: 'man',
+          label: { 'en-US': 'Male' },
+        },
+        {
+          id: testId('option/customGender/unknown'),
+          value: 'unknown',
+          label: { 'en-US': 'Unsure' },
+        },
       ],
     };
     const OTHER_GENDER = {
       name: 'otherGender',
       type: 'categorical',
       options: [
-        { value: 'preferNotToSay', label: { 'en-US': 'No answer' } },
-        { value: 'woman', label: { 'en-US': 'W' } },
-        { value: 'nonbinary', label: { 'en-US': 'NB' } },
+        {
+          id: testId('option/otherGender/preferNotToSay'),
+          value: 'preferNotToSay',
+          label: { 'en-US': 'No answer' },
+        },
+        {
+          id: testId('option/otherGender/woman'),
+          value: 'woman',
+          label: { 'en-US': 'W' },
+        },
+        {
+          id: testId('option/otherGender/nonbinary'),
+          value: 'nonbinary',
+          label: { 'en-US': 'NB' },
+        },
       ],
     };
 
@@ -2296,6 +2437,7 @@ describe('recording the relationship to the participant', () => {
     name: 'fm_relationship',
     type: 'categorical',
     options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+      id: testOptionId('fm_relationship', value),
       value,
       label: { 'en-US': value },
     })),
@@ -2328,8 +2470,16 @@ describe('recording the relationship to the participant', () => {
         name: 'fm_someRelationships',
         type: 'categorical',
         options: [
-          { value: 'parent', label: { 'en-US': 'Parent' } },
-          { value: 'sibling', label: { 'en-US': 'Sibling' } },
+          {
+            id: testId('option/fm_someRelationships/parent'),
+            value: 'parent',
+            label: { 'en-US': 'Parent' },
+          },
+          {
+            id: testId('option/fm_someRelationships/sibling'),
+            value: 'sibling',
+            label: { 'en-US': 'Sibling' },
+          },
         ],
       },
     });

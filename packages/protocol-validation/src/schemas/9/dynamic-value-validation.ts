@@ -1,10 +1,11 @@
 import {
+  type DynamicValueLookup,
+  dynamicValueCaseKeysIn,
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
 } from '../../localization/dynamicValueMessages.ts';
 import type { StageSubject } from './common/subjects.ts';
 import {
-  dynamicValueArgumentsAt,
   type DynamicValueForm,
   type DynamicValueRole,
   type DynamicValueSite,
@@ -13,9 +14,9 @@ import {
   type DynamicValueVariable,
   dynamicValueAbsentRolesAt,
   dynamicValueParticipantRolesAt,
-  dynamicValueReferencesIn,
   dynamicValueRolesAt,
   dynamicValueStatus,
+  parseDynamicValueName,
 } from './dynamic-values.ts';
 type Path = (string | number)[];
 
@@ -187,10 +188,12 @@ type SiteHit = Readonly<{
 /**
  * Why `message` cannot be text at a site described by `context`, or
  * undefined when it can: the first name it uses that refers to nothing, is
- * not available there, or gives a version for a case it does not have
- * (`text` is how the problem names the text: "This text", "This label"),
- * and then any misuse `findDynamicValueProblem` finds. Meant for messages
- * `findDynamicMessageSyntaxProblem` accepts.
+ * not available there, or gives a version for a case it does not have, or
+ * any other misuse `findDynamicValueProblem` finds, in the order the message
+ * reads. `text` is how the problem names the text: "This text", "This
+ * label". Each problem names a value as a researcher knows it (see
+ * `DynamicValueStatus`). Meant for messages `findDynamicMessageSyntaxProblem`
+ * accepts.
  */
 export const findSiteMessageProblem = (
   message: string,
@@ -198,17 +201,25 @@ export const findSiteMessageProblem = (
   locale: string,
   text = 'This text',
 ): string | undefined => {
-  for (const { name, parsed, caseKeys } of dynamicValueReferencesIn(message)) {
-    const status = dynamicValueStatus(parsed, context, caseKeys);
-    if (status.status !== 'available') {
-      return `${text} cannot use "${name}": ${status.reason}.`;
-    }
-  }
-  return findDynamicValueProblem(
-    message,
-    dynamicValueArgumentsAt(message, context),
-    locale,
-  );
+  const caseKeys = dynamicValueCaseKeysIn(message);
+  const looked = new Map<string, ReturnType<DynamicValueLookup>>();
+  const argumentOf: DynamicValueLookup = (name) => {
+    const known = looked.get(name);
+    if (known !== undefined) return known;
+    const status = dynamicValueStatus(
+      parseDynamicValueName(name),
+      context,
+      caseKeys.get(name) ?? [],
+      name,
+    );
+    const found =
+      status.status === 'available'
+        ? status.argument
+        : `${text} ${status.problem}.`;
+    looked.set(name, found);
+    return found;
+  };
+  return findDynamicValueProblem(message, argumentOf, locale);
 };
 
 /**

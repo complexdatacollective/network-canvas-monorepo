@@ -40,72 +40,84 @@
           "component": "CheckboxGroup",
           "options": [
             {
+              "id": "848d3eac-6786-5645-8683-86349596c4b3",
               "label": {
                 "en": "Started or finished education"
               },
               "value": "education"
             },
             {
+              "id": "60f7084b-2542-5e6f-99df-6f13298e8a0a",
               "label": {
                 "en": "A new job, or a change of career"
               },
               "value": "new_job"
             },
             {
+              "id": "bb7c8641-1c1e-5529-a6d3-a8f88a236fb0",
               "label": {
                 "en": "Lost a job, or left work"
               },
               "value": "job_loss"
             },
             {
+              "id": "cfdefd4c-6adc-5b7c-98a0-8619cf35cd4b",
               "label": {
                 "en": "Moved to a new place"
               },
               "value": "moved"
             },
             {
+              "id": "ec785253-b090-5f47-ab3d-eea50e2f6bc1",
               "label": {
                 "en": "Moved to another country"
               },
               "value": "migrated"
             },
             {
+              "id": "7001f5bb-4391-59b4-9f4a-482dd80971d0",
               "label": {
                 "en": "A relationship began, or ended"
               },
               "value": "relationship"
             },
             {
+              "id": "21e5013f-0b9b-58ba-b8a9-c8245193cee4",
               "label": {
                 "en": "Became a parent, or a carer"
               },
               "value": "caring"
             },
             {
+              "id": "b73ba436-ddc3-587e-af19-d26928559f1b",
               "label": {
                 "en": "Someone close to me died"
               },
               "value": "bereavement"
             },
             {
+              "id": "944868d5-2f9b-5f76-ad0a-e1983c5d55a5",
               "label": {
                 "en": "An illness, injury, or diagnosis"
               },
               "value": "health"
             },
             {
+              "id": "45bad8c3-cf29-5b81-8db9-f560d9fc0634",
               "label": {
                 "en": "Left care, or left home"
               },
               "value": "left_care"
             },
             {
+              "id": "5a8d21e4-5787-576d-8005-806e86814525",
               "label": {
                 "en": "Retired"
               },
               "value": "retirement"
             },
             {
+              "id": "400298db-851d-5c7c-8b01-2c51e239e707",
               "label": {
                 "en": "Something else"
               },
@@ -146,54 +158,63 @@
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "39f0c6c2-d4d8-5ecb-a76d-335f2e6baf2f",
                 "label": {
                   "en": "Family"
                 },
                 "value": "family"
               },
               {
+                "id": "be1e8194-3744-5aee-a999-aec88f8f7c73",
                 "label": {
                   "en": "My partner's family"
                 },
                 "value": "partner_family"
               },
               {
+                "id": "7efee077-432c-5cad-ab16-68882f3ab7e3",
                 "label": {
                   "en": "Friends"
                 },
                 "value": "friends"
               },
               {
+                "id": "aff2abba-5502-52a4-8ba9-c40a72a5bd64",
                 "label": {
                   "en": "Work or study"
                 },
                 "value": "work_study"
               },
               {
+                "id": "9e16d075-7e1c-5984-8b66-d308224803a7",
                 "label": {
                   "en": "Neighborhood"
                 },
                 "value": "neighborhood"
               },
               {
+                "id": "d7b0ff05-5d8f-509d-aa50-4811c6df9128",
                 "label": {
                   "en": "Community or faith group"
                 },
                 "value": "community"
               },
               {
+                "id": "f7dea34c-f8f1-5b9b-8ca2-1c7758b7edd7",
                 "label": {
                   "en": "Services and professionals"
                 },
                 "value": "professionals"
               },
               {
+                "id": "b5a4ae72-2659-5628-bf7e-34eb2ded1737",
                 "label": {
                   "en": "Online"
                 },
                 "value": "online"
               },
               {
+                "id": "906dce96-bb8e-578f-af96-efe4f2e3230c",
                 "label": {
                   "en": "Somewhere else"
                 },
@@ -302,30 +323,35 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "c68c474a-133b-50e9-8dce-94ea10c4be79",
                 "label": {
                   "en": "Not at all close"
                 },
                 "value": 1
               },
               {
+                "id": "a7904276-9010-5f26-8b58-4fa441495171",
                 "label": {
                   "en": "A little close"
                 },
                 "value": 2
               },
               {
+                "id": "4e5684f4-9901-5766-a73b-984b0ed826b6",
                 "label": {
                   "en": "Fairly close"
                 },
                 "value": 3
               },
               {
+                "id": "a3f9101a-75ab-5a55-a7c2-dea479c152fb",
                 "label": {
                   "en": "Very close"
                 },
                 "value": 4
               },
               {
+                "id": "3e464890-6ba0-5f79-bc30-495b9a72c674",
                 "label": {
                   "en": "Extremely close"
                 },
@@ -339,30 +365,35 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "e5b545fb-e4cf-5c17-80c8-0bc100373bb1",
                 "label": {
                   "en": "Not at all close"
                 },
                 "value": 1
               },
               {
+                "id": "64cd434c-c684-5115-a507-052224431b74",
                 "label": {
                   "en": "A little close"
                 },
                 "value": 2
               },
               {
+                "id": "bf965ce6-4566-56c5-bee6-a76a4dfb1c7f",
                 "label": {
                   "en": "Fairly close"
                 },
                 "value": 3
               },
               {
+                "id": "0b52f35b-8e24-51d6-9d36-6f0cd76e5e6b",
                 "label": {
                   "en": "Very close"
                 },
                 "value": 4
               },
               {
+                "id": "280f64bc-c546-539e-ab1f-93875a2ce844",
                 "label": {
                   "en": "Extremely close"
                 },
@@ -504,11 +535,6 @@
     },
     {
       "id": "4cc555c0-9c09-5b10-a5f3-0cf71b79f2ed",
-      "dynamicValues": {
-        "transitionWhen": {
-          "path": "ego.d8394f0b-b581-5159-b926-28b64408fd9d"
-        }
-      },
       "type": "NetworkComposer",
       "label": {
         "en": "The people in your story"
@@ -535,7 +561,7 @@
             "variable": "836afb8d-9b14-5b10-8ee5-08c2917b738a",
             "component": "Toggle",
             "label": {
-              "en": "Knew them before {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
+              "en": "Knew them before {ego_d8394f0b_b581_5159_b926_28b64408fd9d, select, missing {the change} other {{ego_d8394f0b_b581_5159_b926_28b64408fd9d}}}"
             }
           },
           {
@@ -543,7 +569,7 @@
             "variable": "f9c50272-f343-5db1-9e7e-5dafcd21c55b",
             "component": "Toggle",
             "label": {
-              "en": "New since {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
+              "en": "New since {ego_d8394f0b_b581_5159_b926_28b64408fd9d, select, missing {the change} other {{ego_d8394f0b_b581_5159_b926_28b64408fd9d}}}"
             }
           },
           {
@@ -567,7 +593,7 @@
             "variable": "bfc384de-08f6-590d-9861-eded48dff1bc",
             "component": "Toggle",
             "label": {
-              "en": "Lost touch since {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
+              "en": "Lost touch since {ego_d8394f0b_b581_5159_b926_28b64408fd9d, select, missing {the change} other {{ego_d8394f0b_b581_5159_b926_28b64408fd9d}}}"
             }
           },
           {
@@ -575,7 +601,7 @@
             "variable": "b59f9ba7-7a61-584b-bbb2-9b08db22d24c",
             "component": "LikertScale",
             "label": {
-              "en": "How close you were before {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
+              "en": "How close you were before {ego_d8394f0b_b581_5159_b926_28b64408fd9d, select, missing {the change} other {{ego_d8394f0b_b581_5159_b926_28b64408fd9d}}}"
             }
           },
           {

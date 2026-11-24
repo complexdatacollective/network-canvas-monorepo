@@ -165,11 +165,9 @@ const mapOptionsOfFixture = (): Record<string, unknown> => {
 const EVERY_STAGE = {
   interviewScript: 'Read this to the participant before you begin.',
   skipLogic,
-  // No editor manages bindings yet, so they must survive a save untouched.
-  dynamicValues: { today: { path: 'now' } },
   // No text here tests it, so it too must survive a save as it was given.
   conditions: {
-    consented: {
+    [testId('condition/consented')]: {
       rules: [
         {
           id: testId('consented-rule'),
@@ -198,7 +196,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       },
       interviewScript: 'Read this aloud.',
       skipLogic,
-      dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
     },
     settle: stageName,
@@ -210,7 +207,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Ego Form' },
       interviewScript: 'Ask about them.',
       skipLogic,
-      dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
       introductionPanel: {
         title: { 'en-US': 'Introduction' },
@@ -237,7 +233,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Alter Form' },
       interviewScript: 'Ask about each person.',
       skipLogic,
-      dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
       filter: nodeFilter('stage'),
       subject: { entity: 'node', type: PERSON },
@@ -262,7 +257,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Alter Edge Form' },
       interviewScript: 'Ask about each relationship.',
       skipLogic,
-      dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
       filter: edgeFilter('stage'),
       subject: { entity: 'edge', type: KNOWS },
@@ -287,7 +281,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Name Generator' },
       interviewScript: 'Guidance.',
       skipLogic,
-      dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
       subject: { entity: 'node', type: PERSON },
       form: {
@@ -400,7 +393,6 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'FinishSession',
     fields: fixtureMaximal('finish', {
       interviewScript: EVERY_STAGE.interviewScript,
-      dynamicValues: EVERY_STAGE.dynamicValues,
       conditions: EVERY_STAGE.conditions,
     }),
   },
@@ -574,6 +566,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
           name: 'fm_relationship',
           type: 'categorical',
           options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+            id: testId(`option/fm_relationship/${value}`),
             value,
             label: { 'en-US': value },
           })),

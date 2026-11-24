@@ -12,7 +12,6 @@ import { useSelector } from 'react-redux';
 import type {
   Codebook,
   DynamicValueRole,
-  DynamicValues,
   IntrinsicDynamicValue,
   Stage,
   Variable,
@@ -26,7 +25,10 @@ import {
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import { conditionReadsNetwork } from './conditions';
-import type { DynamicValueSources } from './resolveDynamicText';
+import {
+  type DynamicValueSources,
+  showsDynamicValues,
+} from './resolveDynamicText';
 
 const DynamicValueScopeContext = createContext<DynamicValueSources | null>(
   null,
@@ -39,7 +41,16 @@ const DynamicValueScopeContext = createContext<DynamicValueSources | null>(
 export const useDynamicValueSources = (): DynamicValueSources | null =>
   useContext(DynamicValueScopeContext);
 
-const NO_BINDINGS: DynamicValues = {};
+const StageShowsValuesContext = createContext(false);
+
+/**
+ * Whether any of the stage's text shows or chooses its wording by a value.
+ * A form follows its answers as they are given only on such a stage, since
+ * nothing else would read them.
+ */
+export const useStageShowsDynamicValues = (): boolean =>
+  useContext(StageShowsValuesContext);
+
 const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
 const NO_LABELS: Readonly<Partial<Record<DynamicValueRole, string>>> = {};
 
@@ -64,11 +75,10 @@ const subjectVariables = (
 };
 
 /**
- * Supplies a stage's dynamic values to the text inside it: the stage's
- * bindings, today's date, and the participant's
- * attributes, read live from the network so a correction made earlier shows
- * at once. Entities the stage's interface is on are added beneath it by
- * `DynamicValueEntity`.
+ * Supplies a stage's dynamic values to the text inside it: today's date, the
+ * participant's attributes and the stage's conditions, read live from the
+ * network so a correction made earlier shows at once. Entities the stage's
+ * interface is on are added beneath it by `DynamicValueEntity`.
  *
  * `now` is when the stage was shown, so the text does not change while the
  * participant reads it.
@@ -104,7 +114,6 @@ export function StageDynamicValues({
     const intrinsics: Record<IntrinsicDynamicValue, unknown> = { now };
     const subject = 'subject' in stage ? stage.subject : undefined;
     return {
-      bindings: stage.dynamicValues ?? NO_BINDINGS,
       intrinsics,
       attributes: { ego: egoAttributes },
       labels: NO_LABELS,
@@ -120,11 +129,17 @@ export function StageDynamicValues({
       },
     };
   }, [codebook, stage, egoAttributes, now, connectivity]);
+  const showsValues = useMemo(
+    () => stage !== undefined && showsDynamicValues(stage),
+    [stage],
+  );
 
   return (
-    <DynamicValueScopeContext.Provider value={sources}>
-      {children}
-    </DynamicValueScopeContext.Provider>
+    <StageShowsValuesContext.Provider value={showsValues}>
+      <DynamicValueScopeContext.Provider value={sources}>
+        {children}
+      </DynamicValueScopeContext.Provider>
+    </StageShowsValuesContext.Provider>
   );
 }
 

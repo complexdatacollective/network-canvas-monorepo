@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 
+import { testId } from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol, Variable } from '@codaco/protocol-validation';
 import { ArchitectI18nProvider } from '~/i18n/ArchitectI18nProvider';
 
@@ -9,14 +10,20 @@ import Variables from './Variables';
 
 const NAME = 'consentPreference';
 const STORED_VALUE = 'preferNotToSay';
+const PREFER_NOT_TO_SAY = testId('option/consent-preference/preferNotToSay');
+const YES = testId('option/consent-preference/yes');
 
 const variables = {
   'consent-preference': {
     name: NAME,
     type: 'categorical',
     options: [
-      { value: STORED_VALUE, label: { en: 'Prefer not to say' } },
-      { value: 'yes', label: { en: 'Yes' } },
+      {
+        id: PREFER_NOT_TO_SAY,
+        value: STORED_VALUE,
+        label: { en: 'Prefer not to say' },
+      },
+      { id: YES, value: 'yes', label: { en: 'Yes' } },
     ],
   } as unknown as Variable,
 };
@@ -89,6 +96,7 @@ export const OptionLabelsInEveryLanguage: Story = {
         type: 'categorical',
         options: [
           {
+            id: PREFER_NOT_TO_SAY,
             value: STORED_VALUE,
             label: {
               en: 'Prefer not to say',
@@ -96,7 +104,7 @@ export const OptionLabelsInEveryLanguage: Story = {
               ar: 'أفضل عدم الإجابة',
             },
           },
-          { value: 'yes', label: { en: 'Yes', fr: 'Oui' } },
+          { id: YES, value: 'yes', label: { en: 'Yes', fr: 'Oui' } },
         ],
       },
     } satisfies Record<string, Variable>,

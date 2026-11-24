@@ -436,6 +436,20 @@ export const categoricalOptionValueSchema = z.union([
  */
 export const optionValueKey = (value: string | number): string => String(value);
 
+const isOptionValue = (value: unknown): value is string | number =>
+  typeof value === 'string' || typeof value === 'number';
+
+/**
+ * Whether a stored answer is the option value `value`, compared as the
+ * schema compares option values (`optionValueKey`): an answer of `"1"` is the
+ * option whose value is `1`. A yes/no option's value is matched exactly.
+ */
+export const isSameOptionValue = (answer: unknown, value: unknown): boolean =>
+  answer === value ||
+  (isOptionValue(answer) &&
+    isOptionValue(value) &&
+    optionValueKey(answer) === optionValueKey(value));
+
 /** A new, random option id, for a categorical or ordinal option being created. */
 export const createOptionId = (): ProtocolObjectId => createProtocolObjectId();
 

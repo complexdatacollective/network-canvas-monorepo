@@ -25,18 +25,21 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "edac9ea1-cc13-545d-b2c5-eb8a9c1c6211",
               "label": {
                 "en": "Current smoker (smoke every day or some days)"
               },
               "value": "current"
             },
             {
+              "id": "5509853f-8a5e-5076-a4e9-a4e317af8b4b",
               "label": {
                 "en": "Former smoker (smoked at least 100 cigarettes in my life, but not now)"
               },
               "value": "former"
             },
             {
+              "id": "b77d0f5c-0a4f-5221-a839-2d2e532f829f",
               "label": {
                 "en": "Never smoker (have not smoked 100 cigarettes in my life)"
               },
@@ -53,24 +56,28 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "d0b7ffe8-a990-517c-b7dd-e6797d4b54ee",
               "label": {
                 "en": "I vape every day"
               },
               "value": "daily"
             },
             {
+              "id": "88fc9484-5c34-5a62-a8f3-3a3d2ce4a45e",
               "label": {
                 "en": "I vape some days"
               },
               "value": "some_days"
             },
             {
+              "id": "e8b493eb-778d-5f2b-bbe1-4f670bc8b4ee",
               "label": {
                 "en": "I have tried vaping, but not now"
               },
               "value": "former"
             },
             {
+              "id": "5d53ac18-3693-5091-bb53-16069699c4b7",
               "label": {
                 "en": "I have never vaped"
               },
@@ -87,30 +94,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "33e9140a-7b51-5787-8fc5-2f5ba0d89f12",
               "label": {
                 "en": "Poor"
               },
               "value": 1
             },
             {
+              "id": "bdc1dc92-c18e-5fd3-b92b-f97773873ceb",
               "label": {
                 "en": "Fair"
               },
               "value": 2
             },
             {
+              "id": "c62794bb-a467-56d0-905f-fe24bfbf8acf",
               "label": {
                 "en": "Good"
               },
               "value": 3
             },
             {
+              "id": "117a345e-5963-5f56-a5e2-7517f56de3e3",
               "label": {
                 "en": "Very good"
               },
               "value": 4
             },
             {
+              "id": "48f09166-4e96-5534-8054-1d31c2422cd0",
               "label": {
                 "en": "Excellent"
               },
@@ -127,30 +139,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "99db3f4a-edb3-5a7b-83c7-40e1d295cfd8",
               "label": {
                 "en": "Never"
               },
               "value": 0
             },
             {
+              "id": "cdcee421-8947-5eeb-ad44-b3edb0f7e2ae",
               "label": {
                 "en": "Monthly or less"
               },
               "value": 1
             },
             {
+              "id": "8d121691-5ddd-5f5c-bbbe-bbc7f02b26f4",
               "label": {
                 "en": "2 to 4 times a month"
               },
               "value": 2
             },
             {
+              "id": "9f0ba55a-c97c-5898-8d2b-fca79093695b",
               "label": {
                 "en": "2 to 3 times a week"
               },
               "value": 3
             },
             {
+              "id": "c2d83005-d35c-5b3a-a3df-9b2bff5e3996",
               "label": {
                 "en": "4 or more times a week"
               },
@@ -187,36 +204,42 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "b673c62a-b100-5de0-9a14-95aa7ad810de",
                 "label": {
                   "en": "Partner or spouse"
                 },
                 "value": "partner"
               },
               {
+                "id": "aa8a7d8a-6ca7-53e4-b3d3-6c8656fa5412",
                 "label": {
                   "en": "Family member"
                 },
                 "value": "family"
               },
               {
+                "id": "2e6531b8-8516-5be6-8c31-a4ac7b9575da",
                 "label": {
                   "en": "Friend"
                 },
                 "value": "friend"
               },
               {
+                "id": "6df2fd2b-0379-5f4b-8155-dccdc7476d58",
                 "label": {
                   "en": "Co-worker or classmate"
                 },
                 "value": "coworker"
               },
               {
+                "id": "b3b0b9e0-edab-5908-973a-35403a9a434e",
                 "label": {
                   "en": "Neighbour"
                 },
                 "value": "neighbour"
               },
               {
+                "id": "3cd9647a-f0c6-504a-815f-b638c3fa08ae",
                 "label": {
                   "en": "Other"
                 },
@@ -230,24 +253,28 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "73239835-cc9e-5a71-92c6-03b45f7acd19",
                 "label": {
                   "en": "Not close"
                 },
                 "value": 1
               },
               {
+                "id": "222abc6d-6e7c-5088-8dee-46a93b064924",
                 "label": {
                   "en": "Somewhat close"
                 },
                 "value": 2
               },
               {
+                "id": "5d4881da-986c-579d-9979-bffa6fb80946",
                 "label": {
                   "en": "Close"
                 },
                 "value": 3
               },
               {
+                "id": "5092e625-5f9f-5763-b13e-f2cc0bf59349",
                 "label": {
                   "en": "Very close"
                 },
@@ -261,18 +288,21 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "ef191bf0-8b55-5973-8583-cb9a4124cb92",
                 "label": {
                   "en": "Yes"
                 },
                 "value": "yes"
               },
               {
+                "id": "506f1e1d-95b9-56a7-8057-a4b09aec9a77",
                 "label": {
                   "en": "No"
                 },
                 "value": "no"
               },
               {
+                "id": "8e6677a7-0640-58c9-b62d-8b5bb5384918",
                 "label": {
                   "en": "Don't know"
                 },
@@ -286,24 +316,28 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "7dddbb15-51b2-5537-897f-4b32dd29ef1b",
                 "label": {
                   "en": "Not at all active"
                 },
                 "value": 1
               },
               {
+                "id": "5050fe4b-da44-5e31-a497-3637114ca3a3",
                 "label": {
                   "en": "Slightly active"
                 },
                 "value": 2
               },
               {
+                "id": "03a6ddfc-50cc-5e54-975d-cc453e6f9fb4",
                 "label": {
                   "en": "Moderately active"
                 },
                 "value": 3
               },
               {
+                "id": "499c8cc8-b1d4-5ead-86ce-8a84e809ae2e",
                 "label": {
                   "en": "Very active"
                 },
@@ -317,30 +351,35 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "0a344033-3337-5206-84b4-7edf615b34e6",
                 "label": {
                   "en": "Poor"
                 },
                 "value": 1
               },
               {
+                "id": "cb00494c-8a44-5c71-8910-27cd1df2a49c",
                 "label": {
                   "en": "Fair"
                 },
                 "value": 2
               },
               {
+                "id": "a9285e97-75b3-5709-8b3c-02327cfb6985",
                 "label": {
                   "en": "Good"
                 },
                 "value": 3
               },
               {
+                "id": "da5e5cf7-817e-5967-8284-ffd9f7328806",
                 "label": {
                   "en": "Very good"
                 },
                 "value": 4
               },
               {
+                "id": "66a9e6d9-a3bc-579a-8b76-bb6f91c2f442",
                 "label": {
                   "en": "Excellent"
                 },
@@ -354,30 +393,35 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "f6dd34d1-6dc5-5d75-bd6c-701e79e444ec",
                 "label": {
                   "en": "Never"
                 },
                 "value": "never"
               },
               {
+                "id": "50002336-6e87-5fb5-85de-489a018233f6",
                 "label": {
                   "en": "Monthly or less"
                 },
                 "value": "monthly"
               },
               {
+                "id": "b10f8b90-363f-5363-83b2-414a7d00dad4",
                 "label": {
                   "en": "Weekly"
                 },
                 "value": "weekly"
               },
               {
+                "id": "f273e848-f5b4-57ce-984d-e562373156ea",
                 "label": {
                   "en": "Most days"
                 },
                 "value": "most_days"
               },
               {
+                "id": "31ba8f33-e501-54ce-b512-8e9882022a44",
                 "label": {
                   "en": "Don't know"
                 },
@@ -391,24 +435,28 @@
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "a2392980-f6a7-55b5-8fe9-8333a5917853",
                 "label": {
                   "en": "Exercise together"
                 },
                 "value": "exercise"
               },
               {
+                "id": "d61d2ef8-8b17-5e28-bec3-9f035250ee2c",
                 "label": {
                   "en": "Eat meals together"
                 },
                 "value": "meals"
               },
               {
+                "id": "439bc168-91ed-5d0e-814b-1e9606a5590b",
                 "label": {
                   "en": "Smoke or vape together"
                 },
                 "value": "smoke_vape"
               },
               {
+                "id": "f035e6bb-0714-57a0-94ee-739c11bc0459",
                 "label": {
                   "en": "Drink alcohol together"
                 },
@@ -584,11 +632,6 @@
     },
     {
       "id": "75c52f26-adf4-54ee-97bd-db33f1c53be1",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "type": "AlterForm",
       "label": {
         "en": "Their behaviours"
@@ -603,7 +646,7 @@
             "id": "9a16ed3c-2a45-5090-a99d-f00beebf34d9",
             "variable": "6c105aba-e793-5323-8d2a-0122aa1ab215",
             "prompt": {
-              "en": "Which of these activities do you ever do **with {nodeLabel}**?"
+              "en": "Which of these activities do you ever do **with {node_label}**?"
             },
             "hint": {
               "en": "Select all that apply."
@@ -613,35 +656,35 @@
             "id": "73d056c9-61a2-5178-b9de-2b59bb861db0",
             "variable": "5eedb669-ff63-5e0f-922f-60cdf213a616",
             "prompt": {
-              "en": "What is your relationship to {nodeLabel}?"
+              "en": "What is your relationship to {node_label}?"
             }
           },
           {
             "id": "4d770057-278b-529b-8942-67824f654d5c",
             "variable": "2d97da18-ea10-5c8c-8135-5c6bea8dd5dc",
             "prompt": {
-              "en": "As far as you know, does {nodeLabel} **smoke**?"
+              "en": "As far as you know, does {node_label} **smoke**?"
             }
           },
           {
             "id": "289ca432-cec7-5f9e-b33e-42c69b514d8f",
             "variable": "a585234d-14b0-5b6c-bd92-02bf65c6f043",
             "prompt": {
-              "en": "How **physically active** would you say {nodeLabel} is?"
+              "en": "How **physically active** would you say {node_label} is?"
             }
           },
           {
             "id": "6c9a02b6-9346-5f61-a8a0-7c45fb4316c6",
             "variable": "566239d3-c1d6-5ca3-b58f-4941aed01ebe",
             "prompt": {
-              "en": "How **healthy** would you say {nodeLabel}'s diet is?"
+              "en": "How **healthy** would you say {node_label}'s diet is?"
             }
           },
           {
             "id": "85b9a830-a37f-54da-91cf-2e7dd3a32a87",
             "variable": "859fa610-6c3e-5d45-95a1-97b800483da2",
             "prompt": {
-              "en": "How often does {nodeLabel} **drink alcohol**, as far as you know?"
+              "en": "How often does {node_label} **drink alcohol**, as far as you know?"
             }
           }
         ]

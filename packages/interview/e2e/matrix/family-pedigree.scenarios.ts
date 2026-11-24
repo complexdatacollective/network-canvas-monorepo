@@ -2,11 +2,12 @@ import type { Locator, Page } from '@playwright/test';
 import { z } from 'zod';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type {
-  FramingSetting,
-  PedigreeGenderWords,
-  PedigreeRelationshipKind,
-  PedigreeSexAssignedAtBirth,
+import {
+  dynamicValueNameFor,
+  type FramingSetting,
+  type PedigreeGenderWords,
+  type PedigreeRelationshipKind,
+  type PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -1711,10 +1712,10 @@ function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
   const { synth, fp, person, relate, parents } = scaffold({
     askGenderIdentity: false,
   });
-  fp.stageEntry.dynamicValues = { who: { path: 'node.$label' } };
+  const who = dynamicValueNameFor({ kind: 'label', role: 'node' });
   fp.addFormField({
     component: 'Number',
-    prompt: { 'en-US': 'How old is {who}?' },
+    prompt: { 'en-US': `How old is {${who}}?` },
   });
   person('ego', { sex: 'female', isEgo: true });
   person('mum', { sex: 'female' });
@@ -1782,17 +1783,14 @@ function dynamicValuesWordedForParticipant(): ScenarioDefinition {
   const { synth, fp, person, relate, parents } = scaffold({
     askGenderIdentity: false,
   });
-  fp.stageEntry.dynamicValues = {
-    isParticipant: {
-      path: 'node.$isParticipant',
-      cases: { participant: true },
-    },
-  };
+  const isParticipant = dynamicValueNameFor({
+    kind: 'participant',
+    role: 'node',
+  });
   fp.addFormField({
     component: 'Boolean',
     prompt: {
-      'en-US':
-        '{isParticipant, select, participant {Are you still living?} other {Is this person still living?}}',
+      'en-US': `{${isParticipant}, select, true {Are you still living?} other {Is this person still living?}}`,
     },
   });
   person('ego', { sex: 'female', isEgo: true });

@@ -5,7 +5,12 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import {
+  testId,
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../testing/testId.ts';
 import {
   type CodebookSubject,
   DuplicateVariableNameError,
@@ -43,7 +48,11 @@ const categorical = (name: string, values: readonly string[]) => ({
   name,
   type: 'categorical',
   component: 'CheckboxGroup',
-  options: values.map((value) => ({ label: { en: value }, value })),
+  options: values.map((value) => ({
+    id: testOptionId(name, value),
+    label: { en: value },
+    value,
+  })),
 });
 
 const text = (name: string) => ({ name, type: 'text', component: 'Text' });
@@ -228,8 +237,16 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
           {
             options: [
-              { label: { en: 'Bar' }, value: 'bar' },
-              { label: { en: 'Qux' }, value: 'qux' },
+              {
+                id: testId('option/other/bar'),
+                label: { en: 'Bar' },
+                value: 'bar',
+              },
+              {
+                id: testId('option/other/qux'),
+                label: { en: 'Qux' },
+                value: 'qux',
+              },
             ],
           },
           ['options'],
@@ -253,8 +270,16 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
           {
             options: [
-              { label: { en: 'Bar' }, value: 'bar' },
-              { label: { en: 'Baz' }, value: 'qux' },
+              {
+                id: testId('option/other/bar'),
+                label: { en: 'Bar' },
+                value: 'bar',
+              },
+              {
+                id: testId('option/other/qux'),
+                label: { en: 'Baz' },
+                value: 'qux',
+              },
             ],
           },
           ['options'],
@@ -277,8 +302,16 @@ describe('changing an attribute that is already in the codebook', () => {
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: { en: 'Bar' }, value: 'bar' },
-              { label: { en: 'Baz' }, value: 'baz' },
+              {
+                id: testId('option/options/bar'),
+                label: { en: 'Bar' },
+                value: 'bar',
+              },
+              {
+                id: testId('option/options/baz'),
+                label: { en: 'Baz' },
+                value: 'baz',
+              },
             ],
           },
           ['type', 'component', 'options'],
@@ -307,8 +340,16 @@ describe('changing an attribute that is already in the codebook', () => {
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: { en: 'Bar' }, value: 'bar' },
-            { label: { en: 'Qux' }, value: 'qux' },
+            {
+              id: testId('option/options/bar'),
+              label: { en: 'Bar' },
+              value: 'bar',
+            },
+            {
+              id: testId('option/options/qux'),
+              label: { en: 'Qux' },
+              value: 'qux',
+            },
           ],
         },
         ['type', 'component', 'options'],
@@ -325,8 +366,12 @@ describe('changing an attribute that is already in the codebook', () => {
         'foo',
         {
           options: [
-            { label: { en: 'Bar' }, value: 'bar' },
-            { label: { en: 'Z' }, value: 'z' },
+            {
+              id: testId('option/Foo/bar'),
+              label: { en: 'Bar' },
+              value: 'bar',
+            },
+            { id: testId('option/Foo/z'), label: { en: 'Z' }, value: 'z' },
           ],
         },
         ['options'],
@@ -354,9 +399,21 @@ describe('changing an attribute that is already in the codebook', () => {
             'foo',
             {
               options: [
-                { label: { en: 'Bar' }, value: 'bar' },
-                { label: { en: 'Baz' }, value: 'baz' },
-                { label: { en: 'Qux' }, value: 'qux' },
+                {
+                  id: testId('option/foo_bar/bar'),
+                  label: { en: 'Bar' },
+                  value: 'bar',
+                },
+                {
+                  id: testId('option/foo_bar/baz'),
+                  label: { en: 'Baz' },
+                  value: 'baz',
+                },
+                {
+                  id: testId('option/foo_bar/qux'),
+                  label: { en: 'Qux' },
+                  value: 'qux',
+                },
               ],
             },
             ['options'],
@@ -364,7 +421,11 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
         ),
       ).toMatchObject({
-        options: [{ value: 'bar' }, { value: 'baz' }, { value: 'qux' }],
+        options: [
+          { id: testId('option/foo_bar/bar'), value: 'bar' },
+          { id: testId('option/foo_bar/baz'), value: 'baz' },
+          { id: testId('option/foo_bar/qux'), value: 'qux' },
+        ],
       });
     });
 
@@ -434,14 +495,18 @@ describe('the names the write stores', () => {
         'foo',
         {
           options: [
-            { label: { en: 'First' }, value },
-            { label: { en: 'Second' }, value: 'baz' },
+            { id: testOptionId('foo', 'first'), label: { en: 'First' }, value },
+            {
+              id: testOptionId('foo', 'baz'),
+              label: { en: 'Second' },
+              value: 'baz',
+            },
           ],
         },
         ['options'],
       );
       expect(storedVariable(written, 'foo')).toMatchObject({
-        options: [{ value }, { value: 'baz' }],
+        options: [{ value }, { id: testOptionId('foo', 'baz'), value: 'baz' }],
       });
     },
   );
@@ -453,16 +518,24 @@ describe('the names the write stores', () => {
       {
         options: [
           {
+            id: testOptionId('foo', 'first'),
             label: { en: 'First' },
             value: `  ${'Collègue'.normalize('NFD')}  `,
           },
-          { label: { en: 'Second' }, value: 'baz' },
+          {
+            id: testOptionId('foo', 'baz'),
+            label: { en: 'Second' },
+            value: 'baz',
+          },
         ],
       },
       ['options'],
     );
     expect(storedVariable(written, 'foo')).toMatchObject({
-      options: [{ value: 'Collègue' }, { value: 'baz' }],
+      options: [
+        { id: testOptionId('foo', 'first'), value: 'Collègue' },
+        { id: testOptionId('foo', 'baz'), value: 'baz' },
+      ],
     });
   });
 
@@ -478,7 +551,11 @@ describe('the names the write stores', () => {
         {
           options: [
             { label: { en: 'First' }, value },
-            { label: { en: 'Second' }, value: 'baz' },
+            {
+              id: testId('option/options/baz'),
+              label: { en: 'Second' },
+              value: 'baz',
+            },
           ],
         },
         ['options'],
@@ -493,8 +570,16 @@ describe('the names the write stores', () => {
         'foo',
         {
           options: [
-            { label: { en: 'First' }, value: 'yes\tplease' },
-            { label: { en: 'Second' }, value: 'baz' },
+            {
+              id: testId('option/options/yes\tplease'),
+              label: { en: 'First' },
+              value: 'yes\tplease',
+            },
+            {
+              id: testId('option/options/baz'),
+              label: { en: 'Second' },
+              value: 'baz',
+            },
           ],
         },
         ['options'],

@@ -9,13 +9,14 @@ import userEvent from '@testing-library/user-event';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { dynamicValueNameFor } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import NodeLabelField from '../../../fields/NodeLabelField.tsx';
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
-import { testTypeId, testVariableId } from '../../../testing/testId.ts';
+import { testId, testTypeId, testVariableId } from '../../../testing/testId.ts';
 import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import { NodeLabelFieldProvider } from '../../nodeLabelFieldSlot.ts';
@@ -747,6 +748,53 @@ describe('a node type’s Dynamic label', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('dynamicLabel');
+  });
+
+  it('drops a condition that no translation of the label names when it is saved', async () => {
+    const CLOSE = testId('condition/close');
+    const CLOSE_NAME = dynamicValueNameFor({
+      kind: 'condition',
+      conditionId: CLOSE,
+    });
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(
+      {
+        ...NODE_DOCUMENT,
+        dynamicLabel: {
+          text: { en: `{${CLOSE_NAME}, select, true {Close} other {Friend}}` },
+          conditions: {
+            [CLOSE]: {
+              about: 'node',
+              rules: [
+                {
+                  id: testId('rule/close'),
+                  type: 'node',
+                  options: {
+                    type: PERSON_ADULT,
+                    attribute: AGE,
+                    operator: 'EXISTS',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+      onSubmit,
+    );
+
+    // The "If" is replaced in the label's only translation.
+    const label = await screen.findByRole('textbox', { name: /^Label/ });
+    await user.click(label);
+    await user.keyboard('{Control>}a{/Control}');
+    await user.keyboard('Friend');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0].dynamicLabel).toEqual({
+      text: { en: 'Friend' },
+    });
   });
 
   it('keeps the label through switching it off and on again in one edit', async () => {

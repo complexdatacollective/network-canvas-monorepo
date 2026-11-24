@@ -9,7 +9,7 @@ import {
 
 import { translationText } from '../../localization/localizedText.ts';
 import { enIntl } from '../../testing/i18n.ts';
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import type { OperandOptionProblem } from '../ruleCodebook.ts';
 import {
@@ -517,7 +517,9 @@ describe('codebook entries that are legal but sparse', () => {
           [RANK]: {
             name: 'Rank',
             type: 'ordinal',
-            options: [{ label: { en: '' }, value: 1 }],
+            options: [
+              { id: testId('option/Rank/1'), label: { en: '' }, value: 1 },
+            ],
           },
         },
       },
@@ -686,8 +688,16 @@ describe('an operand naming an option the attribute no longer offers', () => {
               name: 'Strength',
               type: 'ordinal',
               options: [
-                { label: { en: 'Weak' }, value: 1 },
-                { label: { en: 'Strong' }, value: 2 },
+                {
+                  id: testId('option/Strength/1'),
+                  label: { en: 'Weak' },
+                  value: 1,
+                },
+                {
+                  id: testId('option/Strength/2'),
+                  label: { en: 'Strong' },
+                  value: 2,
+                },
               ],
             },
           },

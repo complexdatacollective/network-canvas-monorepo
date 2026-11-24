@@ -6,7 +6,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import {
-  type DynamicValues,
   type FamilyPedigreeNominationPrompt,
   type FinishMode,
   type FinishOutcome,
@@ -94,9 +93,6 @@ const variablesOnStage =
       memo.push([variable.id, variable.name]);
       return memo;
     }, []);
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
 /**
  * Canvas stage types whose built-in wording the summary prints after
  * everything else the stage holds, and only the settings the stage's
@@ -189,7 +185,6 @@ export type StageConfiguration = {
     targetFeatureProperty?: string;
   };
   edges?: { subject: { type: string }; label: LocalizedString }[];
-  dynamicValues?: DynamicValues;
 } & Readonly<Record<string, unknown>>;
 
 type StageProps = {
@@ -461,26 +456,35 @@ const StageContent = ({
     </div>
   );
 };
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /**
  * A stage, and what its text that shows values can show: every value its
- * prompts or its form's fields could, so each binding reads as the value it
- * stands for wherever the summary prints it.
+ * prompts or its form's fields could, so each value in its text reads as
+ * the value it stands for wherever the summary prints it.
  */
 const Stage = (props: StageProps) => {
   const { protocol } = useContext(SummaryContext);
   const { configuration, type } = props;
-  const site = useMemo(
-    () => ({
+  const site = useMemo(() => {
+    const conditions: unknown =
+      'conditions' in configuration ? configuration.conditions : undefined;
+    return {
       context: stageDynamicValueContext({
         codebook: protocol.codebook,
         stage: { ...configuration, type },
       }),
-      bindings: isRecord(configuration.dynamicValues)
-        ? configuration.dynamicValues
-        : {},
-    }),
-    [configuration, type, protocol.codebook],
-  );
+      // The codebook and the stage's conditions, so that a value the stage
+      // cannot show is still called what it was, or said to be deleted.
+      conditions: {
+        values: isRecord(conditions) ? conditions : {},
+        codebook: protocol.codebook,
+        subject: undefined,
+        allowEgoRules: true,
+      },
+    };
+  }, [configuration, type, protocol.codebook]);
   return (
     <SummaryDynamicValuesContext value={site}>
       <StageContent {...props} />
