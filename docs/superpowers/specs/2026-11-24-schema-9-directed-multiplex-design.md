@@ -461,10 +461,12 @@ and regenerated interface images, as the repository's conventions require.
    new stage copies the original's label and settings and takes a new ID.
 5. Sociogram and Narrative highlight settings become per-type entries holding
    the stage's single node type.
-6. Sort rules gain their node type.
+6. Sort rules on the Sociogram and One-to-Many Dyad Census gain their node
+   type.
 7. Network Composer's single node type, quick-add attribute and form become
    one node entry. Its layout variable becomes the stage's layout.
-8. Edge types and filter rules are left as they are.
+8. Edge types are left as they are. Filter rules are left as they are, apart
+   from any that name a removed ego or edge layout variable.
 
 Canonical protocols, templates and fixtures are re-saved once, after the
 migration is complete.
