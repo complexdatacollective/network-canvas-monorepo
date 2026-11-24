@@ -1533,11 +1533,11 @@
   },
   "protocolBuilder.dynamicText.deletedAttribute": {
     "defaultMessage": "Deleted attribute",
-    "description": "Shown in place of a value in a piece of text a participant reads, when the attribute that the value comes from has been deleted from the codebook. The researcher should remove the value or insert another one."
+    "description": "Shown in place of a value in a piece of text that a participant reads, when the attribute that the value comes from has been deleted from the codebook. The researcher should remove the value or insert another one."
   },
   "protocolBuilder.dynamicText.deletedCondition": {
     "defaultMessage": "Deleted condition",
-    "description": "Shown in place of the rules of an “If” in a piece of text a participant reads, when the rules that the “If” tests have been deleted from the stage."
+    "description": "Shown in place of the rules of an “If” in a piece of text that a participant reads, when the rules that the “If” tests have been deleted from the stage."
   },
   "protocolBuilder.dynamicText.deletedOption": {
     "defaultMessage": "Deleted option",
@@ -1553,7 +1553,7 @@
   },
   "protocolBuilder.dynamicText.editIfTitle": {
     "defaultMessage": "Edit rules",
-    "description": "Title of the dialog where a researcher changes the rules of an “If” in a piece of text a participant reads. Also names the button on each row of an “If” that opens it."
+    "description": "Title of the dialog where a researcher changes the rules of an “If” in a piece of text that a participant reads. Also names the button on each row of an “If” that opens it."
   },
   "protocolBuilder.dynamicText.elseIfNotRow": {
     "defaultMessage": "Else if not: {rules}",
@@ -1605,7 +1605,7 @@
   },
   "protocolBuilder.dynamicText.logicMenu": {
     "defaultMessage": "Insert logic",
-    "description": "Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu."
+    "description": "Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text that a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu."
   },
   "protocolBuilder.dynamicText.needsAnswerLabels": {
     "defaultMessage": "Add labels for its yes and no answers first",
@@ -1613,7 +1613,7 @@
   },
   "protocolBuilder.dynamicText.newIfTitle": {
     "defaultMessage": "When should this text be shown?",
-    "description": "Title of the dialog where a researcher sets the rules of a new “If” in a piece of text a participant reads."
+    "description": "Title of the dialog where a researcher sets the rules of a new “If” in a piece of text that a participant reads."
   },
   "protocolBuilder.dynamicText.no": {
     "defaultMessage": "No",
@@ -7413,7 +7413,7 @@
   },
   "protocolBuilder.ruleSet.addConditionRule": {
     "defaultMessage": "Add new rule",
-    "description": "Action that adds a rule to the rules of an “If” in a piece of text a participant reads. The text shows one wording when the rules are met and another when they are not."
+    "description": "Action that adds a rule to the rules of an “If” in a piece of text that a participant reads. The text shows one wording when the rules are met and another when they are not."
   },
   "protocolBuilder.ruleSet.addFilterRule": {
     "defaultMessage": "Add new filter rule",

@@ -35,10 +35,12 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   collectLocalizedStringsFromSchema,
   collectProtocolObjectIdsFromSchema,
+  dynamicValueReferencesIn,
   enclosingProtocolObjects,
   findDynamicValueProblems,
   type InterfaceTextUpdate,
   type LocalizationDeclaration,
+  optionIdFromCaseKey,
   removedOptionIds,
   stageSchema,
   withoutRemovedOptionVersions,
@@ -511,8 +513,8 @@ function StageEditorFormBody({
       // saved, and the draft the form goes on editing is what was stored.
       // Without the conditions no text names any more (see
       // `withoutUnusedConditions`), however their last use went, and without
-      // the wording written for options the stage's codebook changes removed
-      // (see `withoutVersionsForStagedRemovals`).
+      // the wording written for options that the stage's codebook changes
+      // leave out (see `withoutVersionsForStagedRemovals`).
       const fields = withoutVersionsForStagedRemovals(
         identity,
         withoutUnusedConditions(
@@ -907,26 +909,30 @@ function sectionProblems(sections: readonly StageSection[]): string[] {
 }
 
 /**
- * `fields` without the versions that the stage's text writes for options its
- * codebook changes removed (see `withoutRemovedOptionVersions`). An option
- * can be deleted from inside a stage editor (the Family Pedigree manages its
- * gender identity options there), and the stage's own text may have a version
- * for it. That version names an option that no longer exists, so the stage's
- * check would refuse the save until the researcher found and removed it.
+ * `fields` without the versions that the stage's text writes for options that
+ * a variable in the stage's changed codebook sections does not have (see
+ * `withoutRemovedOptionVersions`). An option can be deleted from inside a
+ * stage editor (the Family Pedigree manages its gender identity options
+ * there), and the stage's own text may have a version for it. That version
+ * names an option that no longer exists, so the stage's check would refuse
+ * the save until the researcher found and removed it.
  *
- * An option counts as removed when a changed section had it as the protocol
- * held it (`base`) and has it no longer (`edited`). A section that the edit
- * brought into being had no options in the protocol to remove.
+ * The text is compared with the options each changed variable has as the
+ * edit leaves it (`edited`), not with what the protocol held before (`base`):
+ * an option created and removed in the same edit, or on a variable or section
+ * the edit created, was never in the protocol, and its version must go too.
+ * Text about a variable that no changed section has is left as it is.
  */
 function withoutVersionsForStagedRemovals(
   identity: StageIdentity,
   fields: StageFormDraft,
   staged: StagedCodebook,
 ): StageFormDraft {
-  const changes = Object.values(staged);
+  const sections = Object.values(staged).map(({ edited }) => edited);
+  if (sections.length === 0) return fields;
   const removed = removedOptionIds(
-    changes.map(({ base }) => base),
-    changes.map(({ edited }) => edited),
+    [optionsTheTextChooses(identity, fields)],
+    sections,
   );
   if (removed.size === 0) return fields;
   let protocol: Readonly<{ stages: readonly SectionDoc[] }> = {
@@ -939,6 +945,46 @@ function withoutVersionsForStagedRemovals(
   if (stage === undefined) return fields;
   const { id: _id, type: _type, ...pruned } = stage;
   return pruned;
+}
+
+/**
+ * The options that the stage's text gives a version for, in any translation,
+ * by the variable whose select chooses them. They are returned in the shape
+ * of a codebook record that holds variables, so that `removedOptionIds` can
+ * compare them with the options the changed sections have.
+ */
+function optionsTheTextChooses(
+  identity: StageIdentity,
+  fields: StageFormDraft,
+): Readonly<{
+  variables: Record<string, { options: { id: string }[] }>;
+}> {
+  const byVariable = new Map<string, Set<string>>();
+  const document = stageDocument(identity, fields);
+  for (const { value } of collectLocalizedStringsFromSchema(
+    stageSchema,
+    document,
+  )) {
+    for (const message of Object.values(value)) {
+      for (const { parsed, caseKeys } of dynamicValueReferencesIn(message)) {
+        if (parsed?.kind !== 'attribute') continue;
+        const options = byVariable.get(parsed.variableId) ?? new Set();
+        for (const key of caseKeys) {
+          const optionId = optionIdFromCaseKey(key);
+          if (optionId !== undefined) options.add(optionId);
+        }
+        byVariable.set(parsed.variableId, options);
+      }
+    }
+  }
+  return {
+    variables: Object.fromEntries(
+      [...byVariable].map(([variableId, options]) => [
+        variableId,
+        { options: [...options].map((id) => ({ id })) },
+      ]),
+    ),
+  };
 }
 
 /**

@@ -214,3 +214,59 @@ describe('a text the editor cannot hold', () => {
     logged.mockRestore();
   });
 });
+
+const PARTICIPANT = dynamicValueNameFor({ kind: 'participant', role: 'node' });
+
+/** Opens the folded set of versions in the text and lists each version's name, without the text's own. */
+const versionNames = async (message: string): Promise<string[]> => {
+  const user = userEvent.setup();
+  renderEditor(message);
+  await screen.findByRole('textbox');
+  const pill = await waitFor(() => {
+    const found = document.querySelector<HTMLElement>('[data-versions-pill]');
+    if (found === null) throw new Error('No pill');
+    return found;
+  });
+  await user.click(pill);
+  await screen.findAllByRole('textbox', { name: /./u });
+  return screen
+    .getAllByRole('textbox')
+    .map((box) => box.getAttribute('aria-label') ?? '')
+    .filter((name) => name !== '' && name !== 'text');
+};
+
+/**
+ * A version of a yes-or-no value is named for what chooses it: `true` and
+ * `false` for themselves, and `other` for whichever of the two the text gives
+ * no version of its own.
+ */
+describe('a set of versions on a yes-or-no value', () => {
+  it('names an explicit version for someone else, and the rest for the participant', async () => {
+    const names = await versionNames(
+      `Hi{${PARTICIPANT}, select, false { them} other { you}}`,
+    );
+    expect(names).toEqual(['About someone else', 'About the participant']);
+  });
+
+  it('names an explicit version for the participant, and the rest for someone else', async () => {
+    const names = await versionNames(
+      `Hi{${PARTICIPANT}, select, true { you} other { them}}`,
+    );
+    expect(names).toEqual(['About the participant', 'About someone else']);
+  });
+
+  it('names a condition’s versions for its rules met, not met, and otherwise', async () => {
+    const condition = dynamicValueNameFor({
+      kind: 'condition',
+      conditionId: testId('condition/gone'),
+    });
+    const names = await versionNames(
+      `Hi{${condition}, select, true { a} false { b} other { c}}`,
+    );
+    expect(names).toEqual([
+      'If: Deleted condition',
+      'If not: Deleted condition',
+      'Otherwise',
+    ]);
+  });
+});

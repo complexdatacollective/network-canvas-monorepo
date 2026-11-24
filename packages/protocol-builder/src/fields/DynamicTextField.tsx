@@ -205,7 +205,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.dynamicText.logicMenu',
     defaultMessage: 'Insert logic',
     description:
-      'Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu.',
+      'Name of the toolbar button, beside the insert-a-value button, that opens a menu of logic to insert into a piece of text that a participant reads: an “If” whose rules the researcher sets, or different wording for each answer to an attribute. Also names the menu.',
   },
   logicIf: {
     id: 'protocolBuilder.dynamicText.logicIf',
@@ -236,13 +236,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.dynamicText.newIfTitle',
     defaultMessage: 'When should this text be shown?',
     description:
-      'Title of the dialog where a researcher sets the rules of a new “If” in a piece of text a participant reads.',
+      'Title of the dialog where a researcher sets the rules of a new “If” in a piece of text that a participant reads.',
   },
   editIfTitle: {
     id: 'protocolBuilder.dynamicText.editIfTitle',
     defaultMessage: 'Edit rules',
     description:
-      'Title of the dialog where a researcher changes the rules of an “If” in a piece of text a participant reads. Also names the button on each row of an “If” that opens it.',
+      'Title of the dialog where a researcher changes the rules of an “If” in a piece of text that a participant reads. Also names the button on each row of an “If” that opens it.',
   },
   ifRow: {
     id: 'protocolBuilder.dynamicText.ifRow',
@@ -351,7 +351,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.dynamicText.deletedAttribute',
     defaultMessage: 'Deleted attribute',
     description:
-      'Shown in place of a value in a piece of text a participant reads, when the attribute that the value comes from has been deleted from the codebook. The researcher should remove the value or insert another one.',
+      'Shown in place of a value in a piece of text that a participant reads, when the attribute that the value comes from has been deleted from the codebook. The researcher should remove the value or insert another one.',
   },
   deletedOption: {
     id: 'protocolBuilder.dynamicText.deletedOption',
@@ -363,7 +363,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.dynamicText.deletedCondition',
     defaultMessage: 'Deleted condition',
     description:
-      'Shown in place of the rules of an “If” in a piece of text a participant reads, when the rules that the “If” tests have been deleted from the stage.',
+      'Shown in place of the rules of an “If” in a piece of text that a participant reads, when the rules that the “If” tests have been deleted from the stage.',
   },
   no: {
     id: 'protocolBuilder.dynamicText.no',
@@ -398,6 +398,11 @@ type Naming = Readonly<{
    * no option.
    */
   recordedVersionLabel: (argument: string, key: string) => string | undefined;
+  /**
+   * What the version of a condition's set of versions keyed `key` (`true` or
+   * `false`) is called: the condition's rules, as met or as not met.
+   */
+  conditionVersionLabel: (conditionId: string, key: string) => string;
 }>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -441,8 +446,13 @@ const namingFor = (
   sources: NamingSources,
   // Where the conditions themselves are not in reach, an "If" is named
   // without its rules.
-  conditionLabel: (conditionId: string) => string = () =>
-    intl.formatMessage(messages.ifRow, { rules: '…' }),
+  conditionLabel: (conditionId: string, key?: string) => string = (_, key) =>
+    intl.formatMessage(
+      key === FALSE_CASE ? messages.ifNotRow : messages.ifRow,
+      {
+        rules: '…',
+      },
+    ),
 ): Naming => {
   const attributeLabel = (
     role: DynamicValueRole,
@@ -548,6 +558,14 @@ const namingFor = (
         ? String(option.value)
         : intl.formatMessage(messages.deletedOption);
     },
+    conditionVersionLabel: (conditionId, key) =>
+      sources.conditions !== undefined &&
+      Object.hasOwn(sources.conditions, conditionId)
+        ? conditionLabel(conditionId, key)
+        : intl.formatMessage(
+            key === FALSE_CASE ? messages.ifNotRow : messages.ifRow,
+            { rules: intl.formatMessage(messages.deletedCondition) },
+          ),
     // Everything the text is shown with, one node, a pair or an edge's two
     // ends, is listed together; a value of a pair's node says which node.
     groupLabel: (choice) =>
@@ -672,20 +690,31 @@ const messageLabelsFor = ({
     }
     if (key === MISSING_CASE)
       return intl.formatMessage(messages.versionMissing);
-    if (choiceByName.get(node.argument)?.kind === 'participant') {
-      return intl.formatMessage(
+    // A version is named for what chooses it: `true` and `false` for
+    // themselves, and `other` for whichever of the two the text gives no
+    // version of its own.
+    // Read from the name, so that a value this place does not offer is
+    // named the same way.
+    const named = parseDynamicValueName(node.argument);
+    if (named?.kind === 'participant') {
+      const keys = new Set(node.versions.map((version) => version.key));
+      const aboutParticipant =
         key === 'other'
-          ? participantVersionMessages.aboutSomeoneElse
-          : participantVersionMessages.aboutParticipant,
+          ? keys.has(FALSE_CASE) && !keys.has(TRUE_CASE)
+          : key !== FALSE_CASE;
+      return intl.formatMessage(
+        aboutParticipant
+          ? participantVersionMessages.aboutParticipant
+          : participantVersionMessages.aboutSomeoneElse,
       );
     }
     // A condition switched on in some shape other than an "If" (text another
-    // tool wrote): each version is named for the condition.
-    const flag = choiceByName.get(node.argument);
-    if (flag?.kind === 'condition') {
-      return key === 'other'
-        ? intl.formatMessage(messages.versionOtherwise)
-        : presentationalTextValue(naming.valueLabel(flag));
+    // tool wrote): each version is named for the condition, met or not met.
+    if (named?.kind === 'condition') {
+      if (key === TRUE_CASE || key === FALSE_CASE) {
+        return naming.conditionVersionLabel(named.conditionId, key);
+      }
+      if (key === 'other') return intl.formatMessage(messages.versionOtherwise);
     }
     const presence = node.versions.every(
       (version) => version.key === MISSING_CASE || version.key === 'other',
@@ -909,11 +938,11 @@ export function DynamicMessageEditor({
       conditions: conditionValues,
       labelText,
     },
-    (conditionId) =>
+    (conditionId, key = TRUE_CASE) =>
       ifBlock.rowLabel(
         {
           argument: dynamicValueNameFor({ kind: 'condition', conditionId }),
-          key: TRUE_CASE,
+          key,
         },
         0,
       ),

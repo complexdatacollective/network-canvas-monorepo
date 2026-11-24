@@ -3,6 +3,8 @@ import { get } from 'es-toolkit/compat';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createOptionId,
+  createVariableId,
   dynamicValueNameFor,
   familyPedigreeStage,
   isProtocolObjectId,
@@ -63,12 +65,18 @@ import {
 
 shimMarkdownEditorMeasurement();
 
-// Option rows take their ids from the function made for option ids.
+// Option rows take their ids from the function made for option ids. A test
+// that writes text about an attribute or option before the editor creates it
+// names the id the next one is given.
 vi.mock('@codaco/protocol-validation', async (importActual) => {
   const actual =
     await importActual<typeof import('@codaco/protocol-validation')>();
   let made = 0;
-  return { ...actual, createOptionId: () => stubbedOptionId((made += 1)) };
+  return {
+    ...actual,
+    createOptionId: vi.fn(() => stubbedOptionId((made += 1))),
+    createVariableId: vi.fn(actual.createVariableId),
+  };
 });
 
 const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
@@ -1111,6 +1119,135 @@ describe('the gender identity options, which this stage manages', () => {
     ).toEqual({ 'en-US': `{${gender}, select, other {What is their job?}}` });
     // Saved with the option it no longer has a version for.
     expect(get(OPTIONS(harness), [0, 'value'])).toBe('man');
+  });
+
+  // An attribute created in this edit, and its options, were never in the
+  // protocol, so a version for one of its options removed before the save
+  // goes too. Text about an attribute this edit did not change is kept.
+  it('takes out the wording for an option of an attribute created in the same edit, and the stage saves', async () => {
+    const created = testVariableId('gender_created');
+    const woman = testOptionId(created, 'woman');
+    const createdGender = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: created,
+    });
+    // A participant's attribute, in a codebook section this edit leaves alone.
+    const egoMood = testVariableId('ego_mood');
+    const calm = testOptionId(egoMood, 'calm');
+    const mood = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: egoMood,
+    });
+    const aboutMood = `{${mood}, select, ${optionCaseKey(calm)} {Calm.} other {Not calm.}}`;
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        form: {
+          fields: [
+            {
+              id: testId('field-1'),
+              variable: OCCUPATION,
+              prompt: {
+                'en-US': `{${createdGender}, select, ${optionCaseKey(woman)} {What is her job?} other {What is their job?}} ${aboutMood}`,
+              },
+            },
+          ],
+        },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariable(harness, OCCUPATION, {
+      name: 'fm_occupation',
+      type: 'text',
+      component: 'Text',
+    });
+    const ego = harness.hostCodebook().ego;
+    harness.receiveCodebookUpdate({
+      ego: {
+        ...ego,
+        variables: {
+          ...ego?.variables,
+          [egoMood]: {
+            name: 'ego_mood',
+            type: 'categorical',
+            component: 'CheckboxGroup',
+            options: [
+              { id: calm, value: 'calm', label: { 'en-US': 'Calm' } },
+              {
+                id: testOptionId(egoMood, 'tense'),
+                value: 'tense',
+                label: { 'en-US': 'Tense' },
+              },
+            ],
+          },
+        },
+      },
+    });
+    await harness.opened();
+
+    // The attribute, and its first option, get the ids the text names.
+    vi.mocked(createVariableId).mockReturnValueOnce(created);
+    vi.mocked(createOptionId).mockReturnValueOnce(woman);
+    await inventAttribute(
+      harness.user,
+      attributeField('Gender identity'),
+      'gender_created',
+    );
+    const editor = within(
+      await screen.findByRole('dialog', {
+        name: 'Create a new gender identity attribute',
+      }),
+    );
+    await harness.user.click(
+      editor.getByRole('button', { name: 'Create attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(variableIdByName(harness, 'gender_created')).toBe(created);
+    expect(
+      get(editorPersonVariables(harness), [created, 'options', 0]),
+    ).toMatchObject({ id: woman, value: 'woman' });
+
+    const dialog = within(await openGenderOptions(harness));
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Remove option 1' }),
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(async () =>
+      expect((await summaryRows()).map(([label]) => label)).not.toContain(
+        'Woman',
+      ),
+    );
+    // Neither the attribute nor the option was ever in the protocol.
+    expect(
+      harness.stagedCodebook()[FAMILY_MEMBER_SECTION]?.base?.variables,
+    ).not.toHaveProperty(created);
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(
+      get(request?.stageDocument, ['form', 'fields', 0, 'prompt']),
+    ).toEqual({
+      'en-US': `{${createdGender}, select, other {What is their job?}} ${aboutMood}`,
+    });
+    // Saved with the options the edit left it.
+    expect(
+      get(harness.protocolSections()[FAMILY_MEMBER_SECTION]?.variables, [
+        created,
+        'options',
+      ]),
+    ).toEqual(
+      [
+        'man',
+        'nonBinary',
+        'differentIdentity',
+        'unknown',
+        'preferNotToSay',
+      ].map((value) => expect.objectContaining({ value })),
+    );
   });
 
   it('keeps the words a stage gave its options when the dialog is cancelled', async () => {
