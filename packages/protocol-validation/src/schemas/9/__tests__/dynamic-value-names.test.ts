@@ -5,6 +5,7 @@ import {
   dynamicMessageParts,
   type DynamicValueState,
 } from '../../../localization/dynamicValueMessages.ts';
+import { findSiteMessageProblem } from '../dynamic-value-validation.ts';
 import {
   DYNAMIC_VALUE_ROLES,
   dynamicValueCaseOf,
@@ -237,6 +238,50 @@ describe('a select on several options of one answer', () => {
     expect(dynamicMessageParts(message, 'en', stateOf)).toEqual([
       'Family / Friend',
     ]);
+  });
+
+  it('accepts wording that only a select inside another one shows, as both options of one answer reach it', () => {
+    const variableId = testVariableId('kind');
+    const kind = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId,
+    });
+    const context: DynamicValueSiteContext = {
+      roles: new Set(['ego'] as const),
+      variablesFor: () => ({
+        [variableId]: { name: 'Kind', type: 'categorical', options },
+      }),
+    };
+    const message = `{${kind}, select, missing {} ${FRIEND} {{${kind}, select, ${FAMILY} {Both} other {}}} other {}}`;
+    // The answer "friend and family" chooses Friend in the outer select and
+    // Family in the inner one, so the text shows "Both".
+    const stateOf = (
+      _name: string,
+      keys: readonly string[],
+    ): DynamicValueState => {
+      const chosen = dynamicValueCaseOf(
+        ['friend', 'family'],
+        { options },
+        keys,
+      );
+      return {
+        missing: false,
+        ...(chosen !== undefined && { case: chosen }),
+      };
+    };
+    expect(dynamicMessageParts(message, 'en', stateOf)).toEqual(['Both']);
+    expect(findSiteMessageProblem(message, context, 'en')).toBeUndefined();
+    // An ordinal answer is one option, so the same text is blank for one.
+    const ordinal: DynamicValueSiteContext = {
+      ...context,
+      variablesFor: () => ({
+        [variableId]: { name: 'Kind', type: 'ordinal', options },
+      }),
+    };
+    expect(findSiteMessageProblem(message, ordinal, 'en')).toContain(
+      'blank in every version',
+    );
   });
 });
 

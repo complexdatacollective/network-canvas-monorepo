@@ -176,6 +176,23 @@ describe('resolveDynamicText', () => {
     }
   });
 
+  it('gives no warning for interface wording that is only scanned for values', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      // Interface wording has arguments of its own, such as `count`; scanning
+      // a stage for values reads it, and must neither warn nor need Vite's
+      // environment, which hosts such as Fresco do not have.
+      expect(
+        showsDynamicValues({
+          minNodesNotice: '{count, plural, one {# more} other {# more}}',
+        }),
+      ).toBe(false);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('gives no warning outside development', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     vi.stubEnv('DEV', false);

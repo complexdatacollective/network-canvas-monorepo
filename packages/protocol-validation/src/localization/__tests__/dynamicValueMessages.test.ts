@@ -121,10 +121,82 @@ describe('findDynamicMessageSyntaxProblem on blank text', () => {
         `${blank}{g, select, z {{a, select, y {visible} other {}}} other {}}`,
       ),
     ).toBeUndefined();
-    // Choices on one value still agree with each other.
+    // Choices on one value still agree with each other: inside the version
+    // for z, the value is z.
     expect(
       findDynamicMessageSyntaxProblem(
-        `${blank}{g, select, z {{g, select, y {visible} other {}}} other {}}`,
+        `${blank}{g, select, z {{g, select, z {} other {visible}}} other {}}`,
+      ),
+    ).toContain('blank in every version');
+  });
+
+  it('accepts wording that a select inside another chooses by a different case', () => {
+    // A value that can be several cases at once (a categorical answer with
+    // several options) can be z in the outer select and y in the inner one.
+    expect(
+      findDynamicMessageSyntaxProblem(
+        '{g, select, missing {} z {{g, select, y {visible} other {}}} other {}}',
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe('findDynamicValueProblem on a value with several cases at once', () => {
+  const kinds = (
+    cases: readonly string[],
+    more: Partial<DynamicValueArguments[string]> = {},
+  ): DynamicValueLookup =>
+    lookupOf({
+      kind: {
+        description: 'the "Kind" attribute of the participant',
+        cases,
+        numeric: false,
+        optional: true,
+        multiple: true,
+        ...more,
+      },
+    });
+
+  it('reads a case in a select inside one for another case', () => {
+    const message =
+      '{kind, select, missing {} friend {{kind, select, family {Both} other {}}} other {}}';
+    expect(
+      findDynamicValueProblem(message, kinds(['friend', 'family']), 'en'),
+    ).toBeUndefined();
+    // A value that is one case at a time is never both.
+    expect(
+      findDynamicValueProblem(
+        message,
+        kinds(['friend', 'family'], { multiple: false }),
+        'en',
+      ),
+    ).toContain('blank in every version');
+  });
+
+  it('chooses, in each select, the first of its cases in the order of the cases', () => {
+    // A select that reads family when it also gives friend proves the value
+    // is not friend, if friend comes first.
+    const message =
+      '{kind, select, missing {} friend {} family {{kind, select, friend {visible} other {}}} other {}}';
+    expect(
+      findDynamicValueProblem(message, kinds(['friend', 'family']), 'en'),
+    ).toContain('blank in every version');
+    expect(
+      findDynamicValueProblem(message, kinds(['family', 'friend']), 'en'),
+    ).toBeUndefined();
+  });
+
+  it('is at least one of its cases when they are every answer it has', () => {
+    const message =
+      '{kind, select, missing {} friend {} other {{kind, select, family {} other {visible}}}}';
+    expect(
+      findDynamicValueProblem(message, kinds(['friend', 'family']), 'en'),
+    ).toBeUndefined();
+    expect(
+      findDynamicValueProblem(
+        message,
+        kinds(['friend', 'family'], { exhaustive: true }),
+        'en',
       ),
     ).toContain('blank in every version');
   });

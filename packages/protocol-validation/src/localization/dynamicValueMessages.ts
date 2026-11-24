@@ -42,6 +42,13 @@ export type DynamicValueArgument = Readonly<{
    * answer of a yes/no or option attribute, so its `other` is never read.
    */
   exhaustive?: boolean;
+  /**
+   * The value can be several of `cases` at once, as a categorical answer can
+   * hold several options. Each select then chooses, of the cases it gives a
+   * version for, the first in the order of `cases` that the value is, so
+   * two selects on the value may choose different versions.
+   */
+  multiple?: boolean;
   unshowable?: string;
 }>;
 
@@ -103,14 +110,45 @@ const parseMessage = (message: string): MessageFormatElement[] | string => {
 
 /**
  * What one value is, as far as choosing a version goes: missing, or present
- * with the case and plural category that choose for it.
+ * with the plural category that chooses for it and what the versions chosen
+ * so far prove about its cases: the ones it is (`is`), and the ones it is not
+ * (`isNot`).
  */
 type ChoiceState = Readonly<
-  { missing: true } | { missing: false; case?: string; category: string }
+  | { missing: true }
+  | {
+      missing: false;
+      category: string;
+      is: ReadonlySet<string>;
+      isNot: ReadonlySet<string>;
+    }
 >;
 
-/** The states each value may be in, by name. */
-type ChoiceStates = ReadonlyMap<string, readonly ChoiceState[]>;
+/**
+ * How a value chooses between the versions of a select, by name:
+ * - `answers`: `one` case at most; `several`, each select choosing the first
+ *   of its cases in the order of `cases`; or `unknown`, judged without the
+ *   stage, where a select may choose any case not yet ruled out;
+ * - `cases`: the value's cases, in the order that chooses between them;
+ * - `exhaustive`: a present value is at least one of `cases`.
+ */
+type ChoiceRule = Readonly<{
+  answers: 'one' | 'several' | 'unknown';
+  cases: readonly string[];
+  exhaustive: boolean;
+}>;
+
+/** The states each value may be in, and how it chooses, by name. */
+type ChoiceStates = ReadonlyMap<
+  string,
+  Readonly<{ states: readonly ChoiceState[]; rule: ChoiceRule }>
+>;
+
+const UNKNOWN_RULE: ChoiceRule = {
+  answers: 'unknown',
+  cases: [],
+  exhaustive: false,
+};
 
 const optionFor = (
   options: Readonly<Record<string, { value: MessageFormatElement[] }>>,
@@ -120,22 +158,73 @@ const optionFor = (
     ? options[key]
     : undefined) ?? options.other;
 
-/** The version key a select or plural on a value in `state` reads. */
-const choiceKey = (node: MessageFormatElement, state: ChoiceState) => {
-  if (node.type === TYPE.plural) {
-    return state.missing ? 'other' : state.category;
+/**
+ * The versions a select on a value in `state` may read, each with the state
+ * that reading it proves the value is in. The interview chooses for each
+ * select by itself (`dynamicValueCaseOf`), so a value that can be several
+ * cases at once may read a version of one case here and of another case in a
+ * select inside it.
+ */
+const selectReadings = (
+  node: Readonly<{
+    options: Record<string, { value: MessageFormatElement[] }>;
+  }>,
+  state: ChoiceState,
+  rule: ChoiceRule,
+): readonly (readonly [key: string, next: ChoiceState])[] => {
+  if (state.missing) return [[MISSING_CASE, state]];
+  const given = Object.keys(node.options).filter(
+    (key) => key !== MISSING_CASE && key !== 'other',
+  );
+  const keys =
+    rule.answers === 'several'
+      ? rule.cases.filter((key) => given.includes(key))
+      : given;
+  const readings: (readonly [string, ChoiceState])[] = [];
+  keys.forEach((key, index) => {
+    const before = rule.answers === 'several' ? keys.slice(0, index) : [];
+    const possible =
+      !state.isNot.has(key) &&
+      before.every((earlier) => !state.is.has(earlier)) &&
+      (rule.answers !== 'one' || [...state.is].every((known) => known === key));
+    if (possible) {
+      readings.push([
+        key,
+        {
+          ...state,
+          is: new Set([...state.is, key]),
+          isNot: new Set([...state.isNot, ...before]),
+        },
+      ]);
+    }
+  });
+  const isNot = new Set([...state.isNot, ...keys]);
+  if (
+    keys.every((key) => !state.is.has(key)) &&
+    !(
+      rule.exhaustive &&
+      rule.cases.length > 0 &&
+      rule.cases.every((key) => isNot.has(key))
+    )
+  ) {
+    readings.push(['other', { ...state, isNot }]);
   }
-  return state.missing ? MISSING_CASE : state.case;
+  return readings;
 };
+
+/** Whether the value `name` may have a value in `states`. */
+const mayBePresent = (states: ChoiceStates, name: string) =>
+  (states.get(name)?.states ?? []).some((state) => !state.missing);
 
 /**
  * Whether some version of `nodes` that values in `states` reach shows
  * anything: visible text, a value or a count. Text shows when any one of its
  * pieces does, and pieces on different values do not constrain each other,
- * so each version of a choice is read under only the states that choose it.
- * Choices on one value therefore agree (text only in a present version
- * inside a missing one shows nothing), and the check never enumerates
- * combinations of values.
+ * so each version of a choice is read under only the states that choose it,
+ * narrowed by what choosing it proves. Choices on one value therefore agree
+ * (text only in a present version inside a missing one shows nothing, nor
+ * text only in a version of a case inside one that rules the case out), and
+ * the check never enumerates combinations of values.
  */
 const anyVersionShows = (
   nodes: readonly MessageFormatElement[],
@@ -147,24 +236,26 @@ const anyVersionShows = (
       case TYPE.literal:
         return !isBlankText(node.value);
       case TYPE.argument:
-        return (states.get(node.value) ?? []).some((state) => !state.missing);
+        return mayBePresent(states, node.value);
       case TYPE.pound:
-        return (
-          plural === undefined ||
-          (states.get(plural) ?? []).some((state) => !state.missing)
-        );
+        return plural === undefined || mayBePresent(states, plural);
       case TYPE.select:
       case TYPE.plural: {
         const name = node.value;
-        const possible = states.get(name) ?? [];
+        const value = states.get(name);
+        const rule = value?.rule ?? UNKNOWN_RULE;
+        const readings = (value?.states ?? []).flatMap((state) =>
+          node.type === TYPE.plural
+            ? [[state.missing ? 'other' : state.category, state] as const]
+            : selectReadings(node, state, rule),
+        );
         return Object.values(node.options).some((option) => {
-          const choosing = possible.filter(
-            (state) =>
-              optionFor(node.options, choiceKey(node, state)) === option,
+          const choosing = readings.flatMap(([key, next]) =>
+            optionFor(node.options, key) === option ? [next] : [],
           );
           if (choosing.length === 0) return false;
           const inner = new Map(states);
-          inner.set(name, choosing);
+          inner.set(name, { states: choosing, rule });
           return anyVersionShows(
             option.value,
             inner,
@@ -182,68 +273,55 @@ const anyVersionShows = (
   });
 
 /**
- * Every state of a value that has `cases` and may be in `categories`. A
- * present value matches none of its cases only when they are not
- * `exhaustive`.
+ * The states a value may start in: missing, when it is `optional`, and
+ * present in each of `categories`, with nothing yet proved about its cases.
  */
 const choiceStates = (
-  cases: readonly string[],
   categories: Iterable<string>,
   optional: boolean,
-  exhaustive = false,
-): readonly ChoiceState[] => {
-  const states: ChoiceState[] = optional ? [{ missing: true }] : [];
-  const allCategories = [...new Set(categories)];
-  const keys = exhaustive && cases.length > 0 ? cases : [undefined, ...cases];
-  for (const key of keys) {
-    for (const category of allCategories) {
-      states.push(
-        key === undefined
-          ? { missing: false, category }
-          : { missing: false, case: key, category },
-      );
-    }
-  }
-  return states;
-};
+): readonly ChoiceState[] => [
+  ...(optional ? [{ missing: true } as const] : []),
+  ...[...new Set(categories)].map((category) => ({
+    missing: false as const,
+    category,
+    is: new Set<string>(),
+    isNot: new Set<string>(),
+  })),
+];
 
 /**
  * The states each value `elements` uses may be in, judged without the stage:
- * possibly missing, and present with each case and plural category the text
- * names. The check errs towards accepting.
+ * possibly missing, and present in each plural category the text names. A
+ * select may choose any case it gives that the versions around it do not rule
+ * out, as a value that can be several cases at once may. The check errs
+ * towards accepting.
  */
 const statesNamedIn = (
   elements: readonly MessageFormatElement[],
 ): ChoiceStates => {
-  const cases = new Map<string, Set<string>>();
   const categories = new Map<string, Set<string>>();
   const collect = (nodes: readonly MessageFormatElement[]) => {
     for (const node of nodes) {
-      if (node.type === TYPE.argument && !cases.has(node.value)) {
-        cases.set(node.value, new Set());
-      }
-      if (node.type === TYPE.select || node.type === TYPE.plural) {
-        const own = cases.get(node.value) ?? new Set<string>();
-        cases.set(node.value, own);
-        const keys = Object.keys(node.options);
-        if (node.type === TYPE.select) {
-          for (const key of keys) {
-            if (key !== MISSING_CASE && key !== 'other') own.add(key);
-          }
-        } else {
-          const counted = categories.get(node.value) ?? new Set<string>();
-          for (const key of keys) counted.add(key);
-          categories.set(node.value, counted);
+      if (
+        node.type === TYPE.argument ||
+        node.type === TYPE.select ||
+        node.type === TYPE.plural
+      ) {
+        const counted =
+          categories.get(node.value) ?? new Set<string>(['other']);
+        categories.set(node.value, counted);
+        if (node.type === TYPE.plural) {
+          for (const key of Object.keys(node.options)) counted.add(key);
         }
-        for (const version of versionsOf(node)) collect(version);
       }
+      for (const version of versionsOf(node)) collect(version);
     }
   };
   collect(elements);
   return new Map(
-    [...cases].map(([name, keys]) => [
+    [...categories].map(([name, counted]) => [
       name,
-      choiceStates([...keys], ['other', ...(categories.get(name) ?? [])], true),
+      { states: choiceStates(counted, true), rule: UNKNOWN_RULE },
     ]),
   );
 };
@@ -523,12 +601,17 @@ export const findDynamicValueProblem = (
         : [
             [
               name,
-              choiceStates(
-                value.cases,
-                value.numeric ? categories : ['other'],
-                value.optional,
-                value.exhaustive,
-              ),
+              {
+                states: choiceStates(
+                  value.numeric ? categories : ['other'],
+                  value.optional,
+                ),
+                rule: {
+                  answers: value.multiple === true ? 'several' : 'one',
+                  cases: value.cases,
+                  exhaustive: value.exhaustive === true,
+                },
+              },
             ],
           ];
     }),

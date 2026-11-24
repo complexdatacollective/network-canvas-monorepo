@@ -888,6 +888,7 @@ export const dynamicValueStatus = (
       numeric: NUMERIC_VARIABLE_TYPES.has(variable.type),
       optional: true,
       ...(cases.exhaustive && { exhaustive: true }),
+      ...(variable.type === 'categorical' && { multiple: true }),
       ...(unshowable !== undefined && { unshowable }),
     },
   };

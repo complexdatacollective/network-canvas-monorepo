@@ -312,27 +312,35 @@ export type DynamicText = Readonly<{
  * In development, says which names a message uses that stand for nothing. Such a
  * name reads as missing, so the participant sees no sign of it, and only a
  * protocol that skipped validation can contain one. Names only, never
- * values, so that no participant's answer reaches the console.
+ * values, so that no participant's answer reaches the console. Given only
+ * for a message that is resolved as text, once per message: a message that
+ * is merely scanned (`showsDynamicValues`) may be interface wording, whose
+ * own arguments, such as `count`, are not values. `import.meta.env` is
+ * Vite's, and absent in hosts that build this source another way.
  */
-const warnOfUnknownNames = (references: readonly DynamicValueReference[]) => {
+const warnedMessages = new Set<string>();
+const warnOfUnknownNames = (
+  message: string,
+  references: readonly DynamicValueReference[],
+) => {
+  if (!import.meta.env?.DEV || warnedMessages.has(message)) return;
+  warnedMessages.add(message);
   const unknown = references.flatMap(({ name, parsed }) =>
     parsed === undefined ? [name] : [],
   );
-  if (unknown.length === 0 || !import.meta.env.DEV) return;
+  if (unknown.length === 0) return;
   // eslint-disable-next-line no-console
   console.warn(
     `[interview] Text uses ${unknown.map((name) => `"${name}"`).join(', ')}, which ${unknown.length === 1 ? 'refers' : 'refer'} to no value, and is read as missing. Validation refuses a protocol whose text does this.`,
   );
 };
 
-// Each message is read once, so a warning about it is given once.
 const referencesByMessage = new Map<string, readonly DynamicValueReference[]>();
 const referencesIn = (message: string): readonly DynamicValueReference[] => {
   let references = referencesByMessage.get(message);
   if (references === undefined) {
     references = dynamicValueReferencesIn(message);
     referencesByMessage.set(message, references);
-    warnOfUnknownNames(references);
   }
   return references;
 };
@@ -359,6 +367,7 @@ export const resolveDynamicText = (
   if (!message.includes('{')) return undefined;
   const references = referencesIn(message);
   if (references.length === 0) return undefined;
+  warnOfUnknownNames(message, references);
 
   const resolved = new Map<string, ResolvedDynamicValue>(
     references.map(({ name, parsed }) => [
