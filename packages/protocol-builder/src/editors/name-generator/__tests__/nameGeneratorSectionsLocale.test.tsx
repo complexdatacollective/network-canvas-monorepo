@@ -6,7 +6,12 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import AlterLimitsSection from '../../../sections/alter-limits/AlterLimitsSection.tsx';
 import NameGeneratorPromptsSection from '../../../sections/name-generator-prompts/NameGeneratorPromptsSection.tsx';
 import NodePanelsSection from '../../../sections/panels/NodePanelsSection.tsx';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../testing/testId.ts';
 import {
   alreadyProtecting,
   personRule,
@@ -29,19 +34,24 @@ import {
  * whatever the catalog said, including nothing at all.
  */
 
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const RELATIONSHIP_TO_EGO = personVariable('relationship_to_ego');
+
 /** A name generator carrying the panels a test needs it to start with. */
 const nameGeneratorWith = (panels: SectionDoc[]) => ({
   id: 'name-generator-with-panels',
   type: 'NameGenerator' as const,
   fields: {
     label: { 'en-US': 'Name Generator' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     form: {
       title: { 'en-US': 'Add a person' },
       fields: [
         {
           id: 'field-1',
-          variable: 'name',
+          variable: personVariable('name'),
           prompt: "What is this person's name?",
         },
       ],
@@ -79,12 +89,14 @@ describe('the name-generator sections, read in Spanish', () => {
         type: 'NameGenerator',
         fields: {
           label: { 'en-US': 'Name Generator' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           prompts: [
             {
               id: 'prompt-1',
               text: { 'en-US': 'Who are the people you know?' },
-              additionalAttributes: [{ variable: 'closeFriend', value: true }],
+              additionalAttributes: [
+                { variable: testVariableId('closeFriend'), value: true },
+              ],
             },
           ],
         },
@@ -122,7 +134,10 @@ describe('the name-generator sections, read in Spanish', () => {
               {
                 id: 'rule-1',
                 type: 'edge',
-                options: { type: 'knows', operator: 'EXISTS' },
+                options: {
+                  type: fixtureTypeId('edge', 'knows'),
+                  operator: 'EXISTS',
+                },
               },
             ],
           },
@@ -159,13 +174,13 @@ describe('the name-generator sections, read in Spanish', () => {
           dataSource: 'existing',
           filter: {
             join: 'AND',
-            rules: [personRule('rule-1', 'relationship_to_ego')],
+            rules: [personRule('rule-1', RELATIONSHIP_TO_EGO)],
           },
         },
       ]),
       locale: 'es',
       sections: <NodePanelsSection />,
-      adapter: alreadyProtecting('relationship_to_ego'),
+      adapter: alreadyProtecting(RELATIONSHIP_TO_EGO, PERSON),
     });
 
     await harness.user.click(

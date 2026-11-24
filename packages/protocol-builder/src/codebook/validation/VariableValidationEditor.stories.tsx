@@ -2,13 +2,18 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, within } from 'storybook/test';
 
+import { testVariableId } from '../../testing/testId.ts';
 import type { ValidationMap } from '../variableValidation.ts';
 import VariableValidationEditor from './VariableValidationEditor.tsx';
 
+const AGE = testVariableId('age');
+const HEIGHT = testVariableId('height');
+const NICKNAME = testVariableId('nickname');
+
 const variables = {
-  age: { name: 'Age', type: 'number', component: 'Number' },
-  height: { name: 'Height', type: 'number', component: 'Number' },
-  nickname: { name: 'Nickname', type: 'text', component: 'Text' },
+  [AGE]: { name: 'Age', type: 'number', component: 'Number' },
+  [HEIGHT]: { name: 'Height', type: 'number', component: 'Number' },
+  [NICKNAME]: { name: 'Nickname', type: 'text', component: 'Text' },
 };
 
 function ValidationEditorProof({
@@ -34,7 +39,7 @@ function ValidationEditorProof({
       <VariableValidationEditor
         entity="node"
         variableType="number"
-        currentVariableId="age"
+        currentVariableId={AGE}
         allVariables={variables}
         value={validation}
         onChange={setValidation}
@@ -90,7 +95,7 @@ function fillOfRuleRows(group: Element): string {
  */
 export const OneOnOneOffInEachGroup: Story = {
   args: {
-    seed: { required: true, minValue: 0, sameAs: 'height' },
+    seed: { required: true, minValue: 0, sameAs: HEIGHT },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

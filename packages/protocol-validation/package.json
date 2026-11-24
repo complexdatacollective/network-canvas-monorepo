@@ -71,6 +71,7 @@
     "micromark-extension-gfm-autolink-literal": "^2.1.0",
     "micromark-util-decode-numeric-character-reference": "^2.0.2",
     "ohash": "^2.0.12",
+    "uuid": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -79,6 +80,7 @@
     "@octokit/types": "^18.0.0",
     "@types/gunzip-maybe": "^1.4.3",
     "dotenv": "catalog:",
+    "fast-check": "^4.10.2",
     "gunzip-maybe": "^1.4.2",
     "mdast-util-find-and-replace": "^3.0.2",
     "tar-stream": "^3.2.2",

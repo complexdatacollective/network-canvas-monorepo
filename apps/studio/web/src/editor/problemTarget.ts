@@ -9,8 +9,17 @@ import { formatObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
  * the section to open and the form field to focus.
  */
 export type ProblemTarget =
-  /** A screen, and the names its form may give the field, most specific first. */
-  | Readonly<{ kind: 'stage'; stageId: string; fieldNames: readonly string[] }>
+  /**
+   * A screen, the names its form may give the field, most specific first, and
+   * the id of the object inside the screen the problem is about, where it is
+   * one with an id of its own (a prompt, a form field, a rule).
+   */
+  | Readonly<{
+      kind: 'stage';
+      stageId: string;
+      fieldNames: readonly string[];
+      objectId?: string;
+    }>
   /** A section of the protocol that is not a screen. */
   | Readonly<{ kind: 'section'; section: 'settings' | 'codebook' | 'assets' }>
   /** A problem about the interview as a whole, or the order of its screens. */
@@ -27,10 +36,15 @@ export type ProblemTarget =
  *
  * A path that names no screen of this protocol, or none at all, is about the
  * interview as a whole and is the outline's to answer for.
+ *
+ * `objectId` is the object the problem is about (see
+ * `withEnclosingObjectIds`), kept for a problem on a screen so that the row
+ * drawing that object can be found wherever the list has put it.
  */
 export function locateProblem(
   path: readonly (string | number)[],
   stages: readonly Readonly<{ id: string }>[],
+  objectId?: string,
 ): ProblemTarget {
   const [section, index, ...within] = path;
   if (section === 'stages') {
@@ -42,6 +56,8 @@ export function locateProblem(
       fieldNames: within
         .map((_, length) => formatObjectPath(within.slice(0, length + 1)))
         .toReversed(),
+      // The screen's own id names nothing inside it.
+      ...(objectId === undefined || objectId === stage.id ? {} : { objectId }),
     };
   }
   if (section === 'codebook') return { kind: 'section', section: 'codebook' };

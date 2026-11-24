@@ -22,7 +22,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDeflateRaw, crc32 } from 'node:zlib';
 
-import { migrateProtocol } from '../../../../packages/protocol-validation/src/index.ts';
+import {
+  deterministicProtocolObjectId,
+  migrateProtocol,
+} from '../../../../packages/protocol-validation/src/index.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..', '..');
@@ -206,10 +209,33 @@ written.missingAsset = await write(
 // would prove nothing: a file refused for some other reason looks identical.
 // Both are schema 9, so the pending validation is what judges them, and the
 // refused one is refused as an invalid protocol.
+// The upgrade gives every type and variable a new UUID, so the rules find the
+// person type and its variables by name.
+const idNamed = (record, name) => {
+  const ids = Object.entries(record ?? {})
+    .filter(([, entry]) => entry?.name === name)
+    .map(([id]) => id);
+  if (ids.length !== 1)
+    throw new Error(
+      `the upgraded protocol has ${ids.length} codebook entries named "${name}"`,
+    );
+  return ids[0];
+};
+const personType = idNamed(current.codebook.node, 'Person');
+const personVariable = (name) =>
+  idNamed(current.codebook.node[personType].variables, name);
 const filtered = (rule) => {
   const document = structuredClone(current);
-  document.stages.find((entry) => entry.id === 'stage-socio').filter = {
-    rules: [{ id: 'rule-filter', type: 'node', options: rule }],
+  document.stages.find((entry) => entry.type === 'Sociogram').filter = {
+    rules: [
+      {
+        id: deterministicProtocolObjectId(
+          '2d7c4b1e-9a3f-4e6d-8b2c-5f1a0e9d7c34',
+        )('release-test-filter-rule'),
+        type: 'node',
+        options: rule,
+      },
+    ],
   };
   return document;
 };
@@ -217,8 +243,8 @@ written.fractionalValue = await write(
   'fractional-value-filter.netcanvas',
   archiveOf(
     filtered({
-      type: 'person',
-      attribute: 'hours',
+      type: personType,
+      attribute: personVariable('hours'),
       operator: 'LESS_THAN',
       value: 2.5,
     }),
@@ -229,8 +255,8 @@ written.fractionalCount = await write(
   'fractional-count-filter.netcanvas',
   archiveOf(
     filtered({
-      type: 'person',
-      attribute: 'context',
+      type: personType,
+      attribute: personVariable('context'),
       operator: 'OPTIONS_GREATER_THAN',
       value: 1.5,
     }),

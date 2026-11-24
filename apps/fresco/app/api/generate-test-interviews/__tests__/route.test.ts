@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl, formatMessageError } from '@codaco/app-i18n/messages';
 import { SyntheticDataConstraintError } from '@codaco/protocol-utilities';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import { POST } from '~/app/api/generate-test-interviews/route';
 import { Prisma } from '~/lib/db/generated/client';
 import {
@@ -217,8 +218,10 @@ describe('synthetic generation failure transport', () => {
 });
 
 describe('the finish recorded for generated interviews', () => {
+  const INELIGIBLE_STAGE_ID = createProtocolObjectId();
+  const COMPLETED_STAGE_ID = createProtocolObjectId();
   const finishStage = {
-    id: 'end-ineligible',
+    id: INELIGIBLE_STAGE_ID,
     type: 'FinishSession',
     mode: 'confirmation',
     label: { en: 'Finish' },
@@ -239,14 +242,14 @@ describe('the finish recorded for generated interviews', () => {
     localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [
       {
-        id: 'info',
+        id: createProtocolObjectId(),
         type: 'Information',
         label: { en: 'Info' },
         content: { en: '# Info' },
       },
       finishStage,
       // A later ending, which the generated routes below never reach.
-      { ...finishStage, id: 'end-completed', outcome: 'completed' },
+      { ...finishStage, id: COMPLETED_STAGE_ID, outcome: 'completed' },
     ],
   };
 
@@ -262,7 +265,7 @@ describe('the finish recorded for generated interviews', () => {
       ([args]) => (args as { data: Record<string, unknown> }).data,
     );
     expect(completed).toMatchObject({
-      finishStageId: 'end-ineligible',
+      finishStageId: INELIGIBLE_STAGE_ID,
       finishOutcome: 'ineligible',
     });
     expect(completed?.finishTime).toBeInstanceOf(Date);
@@ -297,7 +300,7 @@ describe('the finish recorded for generated interviews', () => {
     expect(updateInterview.mock.calls[0]?.[0]).toMatchObject({
       where: { id: 'created-interview-1' },
       data: {
-        finishStageId: 'end-ineligible',
+        finishStageId: INELIGIBLE_STAGE_ID,
         finishOutcome: 'ineligible',
       },
     });

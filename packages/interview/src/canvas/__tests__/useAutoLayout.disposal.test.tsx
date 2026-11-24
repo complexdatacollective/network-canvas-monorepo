@@ -8,6 +8,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import { ContractProvider } from '../../contract/context';
 import type { AppDispatch } from '../../store/store';
 import { useAutoLayout } from '../useAutoLayout';
@@ -36,12 +37,12 @@ vi.mock('../createAutoLayoutWorker.ts', () => ({
   createAutoLayoutMockWorker: workers.create,
 }));
 
-const LAYOUT_VAR = 'layout';
+const LAYOUT_VAR = testVariableId('layout');
 
 const nodes: NcNode[] = [
   {
     [entityPrimaryKeyProperty]: 'alex',
-    type: 'person',
+    type: testTypeId('person'),
     [entityAttributesProperty]: { [LAYOUT_VAR]: { x: 0.2, y: 0.3 } },
   },
 ];

@@ -5,6 +5,7 @@ import { interfaceTextShownBy } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 
 import type { StoredAsset } from '../assetDB';
@@ -16,6 +17,10 @@ import {
   UnresolvedAssetsError,
 } from '../bundleProtocol';
 import type { LegacyStoredProtocolRow } from '../legacyProtocolLibrary';
+
+const END_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '51e42ee4-031b-440d-88f4-b04f55409dd6',
+);
 
 const getAssetById = vi.fn();
 
@@ -235,7 +240,10 @@ describe('the finish stage text guard', () => {
       ...makeProtocol({ 'id-1': asset('image', 'photo.jpg', 'Photo') }),
       localization: japanese,
       stages: [
-        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+        createDefaultFinishSessionStage({
+          id: END_STAGE_ID,
+          localization: japanese,
+        }),
       ],
     };
     const interfaceText: Record<string, Record<string, { ja: string }>> = {};
@@ -255,7 +263,7 @@ describe('the finish stage text guard', () => {
     await expect(refusal).rejects.toBeInstanceOf(DownloadRefusedError);
     await expect(refusal).rejects.toMatchObject({
       problem: {
-        stageId: 'end',
+        stageId: END_STAGE_ID,
         stageIndex: 0,
         locale: 'ja',
         missing: ['content', 'finishedContent'],

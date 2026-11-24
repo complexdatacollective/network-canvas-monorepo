@@ -41,9 +41,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * What identifies a member of a list across copies: a plain value is its own
- * identity (such as an attribute named in a list of them); a member with an
- * id, its id; one without (such as a form's field, which may omit its id),
- * the attribute it records, which a list holds once at most.
+ * identity (such as an attribute named in a list of them); a protocol object,
+ * its id; a row keyed by the value it stands for (such as an answer option),
+ * that value, which a list holds once at most.
  */
 const idOf = (member: unknown): string | null => {
   if (typeof member === 'string' || typeof member === 'number') {
@@ -51,8 +51,11 @@ const idOf = (member: unknown): string | null => {
   }
   if (!isRecord(member)) return null;
   if (typeof member.id === 'string') return member.id;
-  return typeof member.variable === 'string'
-    ? `variable:${member.variable}`
+  const { value } = member;
+  return typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+    ? `value:${typeof value}:${String(value)}`
     : null;
 };
 
@@ -144,20 +147,6 @@ function carried(before: unknown, after: unknown, held: unknown): unknown {
     [before, after, held].every(allHaveIds)
   ) {
     return carriedMembers(before, after, held);
-  }
-  // Members nothing identifies: matched by position while no copy has added
-  // or removed one, so an unsaved edit to one member survives a change to
-  // another.
-  if (
-    Array.isArray(before) &&
-    Array.isArray(after) &&
-    Array.isArray(held) &&
-    before.length === after.length &&
-    held.length === after.length
-  ) {
-    return held.map((member, index) =>
-      carried(before[index], after[index], member),
-    );
   }
   // Nothing left to match by: the change is taken only where the draft has
   // not changed the same list. Otherwise the draft's own list is kept, so

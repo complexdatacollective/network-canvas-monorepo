@@ -3,13 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { Variable } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../__tests__/testIds';
 import { buildRosterSortConfig } from './buildRosterSortConfig';
 
-const nameVariableId = 'var-name';
-const ageVariableId = 'var-age';
-const lastNameVariableId = 'var-last';
-const firstNameVariableId = 'var-first';
-const levelVariableId = 'var-level';
+const nameVariableId = testVariableId('var-name');
+const ageVariableId = testVariableId('var-age');
+const lastNameVariableId = testVariableId('var-last');
+const firstNameVariableId = testVariableId('var-first');
+const levelVariableId = testVariableId('var-level');
 
 const nodeVariables: Record<string, Variable> = {
   [nameVariableId]: { name: 'name', type: 'text' },

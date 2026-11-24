@@ -418,6 +418,11 @@ try {
             `select "finishOutcome" || '|' || coalesce("finishStageId", '') from "Interview" where id = '${result.interviewId}';`,
           );
           const [outcome = '', stageId = ''] = finish.split('|');
+          // The stored protocol's finish stage, found by its type: the
+          // migration gives it a UUID derived from the protocol's content.
+          const finishStageIds = psql(
+            `select coalesce(string_agg(stage->>'id', ','), '') from "Protocol", jsonb_array_elements(stages::jsonb) as stage where id = '${result.protocolId}' and stage->>'type' = 'FinishSession';`,
+          );
           if (outcome !== 'completed' || stageId === '')
             return {
               pass: false,
@@ -441,8 +446,8 @@ try {
             .isVisible()
             .catch(() => false);
           return {
-            pass: shown && thanked && !back && stageId === 'finish',
-            detail: `finishTime recorded (${finishedAt}), outcome ${outcome} at stage ${stageId}; completed state shown: ${shown && thanked}; a way back into the interview offered: ${back}`,
+            pass: shown && thanked && !back && stageId === finishStageIds,
+            detail: `finishTime recorded (${finishedAt}), outcome ${outcome} at stage ${stageId} (the protocol's finish stages: ${finishStageIds || 'none'}); completed state shown: ${shown && thanked}; a way back into the interview offered: ${back}`,
           };
         }),
       );

@@ -10,10 +10,18 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
 import VariableEditor from './VariableEditor.tsx';
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const PERSON = testTypeId('person');
+const SUBJECT = { entity: 'node', type: PERSON } as const;
+const CLOSENESS_ID = testVariableId('closeness');
+const CONSENT = testVariableId('consent');
+const MET = testVariableId('met');
+const RAPPORT = testVariableId('rapport');
+const PREFERENCE = testVariableId('preference');
+const NEW_ATTRIBUTE = testVariableId('newAttribute');
 
 const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 
@@ -66,7 +74,7 @@ const CLOSENESS: SectionDoc = {
 const SURFACES = {
   /** A choice list, which is what every earlier story here showed. */
   options: {
-    variableId: 'closeness',
+    variableId: CLOSENESS_ID,
     committed: CLOSENESS,
     draft: CLOSENESS,
   },
@@ -76,7 +84,7 @@ const SURFACES = {
    * cannot answer.
    */
   booleanAnswers: {
-    variableId: 'consent',
+    variableId: CONSENT,
     committed: {
       name: 'consent',
       type: 'boolean',
@@ -103,7 +111,7 @@ const SURFACES = {
    * than edited down to a pair.
    */
   heldAnswers: {
-    variableId: 'consent',
+    variableId: CONSENT,
     committed: {
       name: 'consent',
       type: 'boolean',
@@ -132,7 +140,7 @@ const SURFACES = {
    * be. Shown and left alone for the same reason.
    */
   heldAnswerValues: {
-    variableId: 'consent',
+    variableId: CONSENT,
     committed: {
       name: 'consent',
       type: 'boolean',
@@ -154,7 +162,7 @@ const SURFACES = {
   },
   /** A date field's resolution and the two dates it is bounded by, reversed. */
   dateSettings: {
-    variableId: 'met',
+    variableId: MET,
     committed: {
       name: 'met',
       type: 'datetime',
@@ -170,7 +178,7 @@ const SURFACES = {
   },
   /** The words at each end of a sliding scale, with the high end cleared. */
   scaleSettings: {
-    variableId: 'rapport',
+    variableId: RAPPORT,
     committed: {
       name: 'rapport',
       type: 'scalar',
@@ -202,7 +210,7 @@ const SURFACES = {
    * than replacing it with the copy it keeps for a save that did not happen.
    */
   contradiction: {
-    variableId: 'preference',
+    variableId: PREFERENCE,
     committed: {
       name: 'preference',
       type: 'categorical',
@@ -262,7 +270,7 @@ function VariableEditorDemo({
     setSubmissions((count) => count + 1);
     return Promise.resolve({
       status: 'applied',
-      sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+      sectionId: sectionId({ kind: 'codebookNode', typeId: PERSON }),
     });
   };
   const common = {
@@ -301,7 +309,7 @@ function VariableEditorDemo({
           <VariableEditor
             {...common}
             mode="create"
-            variableId="new-attribute"
+            variableId={NEW_ATTRIBUTE}
             initialDraft={{
               name: locked ? 'biologicalSex' : '',
               type: 'categorical',

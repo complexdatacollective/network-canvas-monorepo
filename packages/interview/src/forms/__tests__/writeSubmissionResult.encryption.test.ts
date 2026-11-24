@@ -5,6 +5,7 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
   createEncryptionStore,
+  NAME_VARIABLE,
   NODE_TYPE,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { addNode } from '../../store/modules/session';
@@ -17,7 +18,7 @@ const addProtectedPerson = (store: ReturnType<typeof createEncryptionStore>) =>
   store.dispatch(
     addNode({
       type: NODE_TYPE,
-      attributeData: { name: 'Alice' },
+      attributeData: { [NAME_VARIABLE]: 'Alice' },
       useEncryption: true,
       currentStep: 0,
     }),

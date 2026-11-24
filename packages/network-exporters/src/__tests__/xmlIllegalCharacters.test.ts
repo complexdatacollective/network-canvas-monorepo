@@ -16,6 +16,7 @@ import type { InterviewExportInput } from '../input';
 import type { ExportOptions } from '../options';
 import type { ExportWarning } from '../output';
 import { runRecordedExport } from './exportHarness';
+import { testTypeId, testVariableId } from './testIds';
 
 // Built from code points so that no control character sits in this source.
 const control = String.fromCharCode(0x1);
@@ -36,22 +37,22 @@ const graphmlAndCsv: ExportOptions = {
 const codebook: Codebook = {
   ego: {
     variables: {
-      'ego-note': { name: 'Ego note', type: 'text' },
+      [testVariableId('ego-note')]: { name: 'Ego note', type: 'text' },
     },
   },
   node: {
-    person: {
+    [testTypeId('person')]: {
       // A name with a character XML cannot hold, as protocol text can carry.
       name: `Per${control}son`,
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-nick': { name: 'Nickname', type: 'text' },
-        'p-odd': {
+        [testVariableId('p-nick')]: { name: 'Nickname', type: 'text' },
+        [testVariableId('p-odd')]: {
           name: `Odd${control}name`,
           type: 'text',
         },
-        'p-colour': {
+        [testVariableId('p-colour')]: {
           name: 'Colour',
           type: 'categorical',
           options: [
@@ -63,11 +64,11 @@ const codebook: Codebook = {
     },
   },
   edge: {
-    knows: {
+    [testTypeId('knows')]: {
       name: 'Knows',
       color: 'edge-color-seq-1',
       variables: {
-        'e-note': {
+        [testVariableId('e-note')]: {
           name: 'Edge note',
           type: 'text',
         },
@@ -89,26 +90,30 @@ const interviewWithBadCharacters: InterviewExportInput = {
     nodes: [
       {
         [entityPrimaryKeyProperty]: 'node-1',
-        type: 'person',
+        type: testTypeId('person'),
         [entityAttributesProperty]: {
-          'p-nick': `Al${bell}ice`,
-          'p-odd': 'plain',
-          'p-colour': ['red'],
+          [testVariableId('p-nick')]: `Al${bell}ice`,
+          [testVariableId('p-odd')]: 'plain',
+          [testVariableId('p-colour')]: ['red'],
           // Not in the codebook: an attribute that came with a roster.
           'roster-note': `from${nonCharacter}roster`,
         },
       },
       {
         [entityPrimaryKeyProperty]: 'node-2',
-        type: 'person',
-        [entityAttributesProperty]: { 'p-nick': `Bob${loneSurrogate}` },
+        type: testTypeId('person'),
+        [entityAttributesProperty]: {
+          [testVariableId('p-nick')]: `Bob${loneSurrogate}`,
+        },
       },
       {
         [entityPrimaryKeyProperty]: 'node-3',
-        type: 'person',
+        type: testTypeId('person'),
         // Everything XML allows survives: other scripts, astral characters,
         // and the whitespace controls.
-        [entityAttributesProperty]: { 'p-nick': '日本語 😀 Café\tx\ny' },
+        [entityAttributesProperty]: {
+          [testVariableId('p-nick')]: '日本語 😀 Café\tx\ny',
+        },
       },
     ],
     edges: [
@@ -116,13 +121,17 @@ const interviewWithBadCharacters: InterviewExportInput = {
         [entityPrimaryKeyProperty]: 'edge-1',
         from: 'node-1',
         to: 'node-2',
-        type: 'knows',
-        [entityAttributesProperty]: { 'e-note': `${control}edge` },
+        type: testTypeId('knows'),
+        [entityAttributesProperty]: {
+          [testVariableId('e-note')]: `${control}edge`,
+        },
       },
     ],
     ego: {
       [entityPrimaryKeyProperty]: 'ego-1',
-      [entityAttributesProperty]: { 'ego-note': `before${control}after` },
+      [entityAttributesProperty]: {
+        [testVariableId('ego-note')]: `before${control}after`,
+      },
     },
   },
 };
@@ -138,14 +147,14 @@ const cleanInterview: InterviewExportInput = {
     nodes: [
       {
         [entityPrimaryKeyProperty]: 'node-4',
-        type: 'person',
-        [entityAttributesProperty]: { 'p-nick': 'Carol' },
+        type: testTypeId('person'),
+        [entityAttributesProperty]: { [testVariableId('p-nick')]: 'Carol' },
       },
     ],
     edges: [],
     ego: {
       [entityPrimaryKeyProperty]: 'ego-2',
-      [entityAttributesProperty]: { 'ego-note': 'fine' },
+      [entityAttributesProperty]: { [testVariableId('ego-note')]: 'fine' },
     },
   },
 };
@@ -216,13 +225,15 @@ describe('GraphML files for answers holding characters XML cannot store', () => 
   });
 
   it('removes the characters from answers, and nothing else', () => {
-    expect(dataValues(document, 'ego-note')).toEqual(['beforeafter']);
-    expect(dataValues(document, 'p-nick')).toEqual([
+    expect(dataValues(document, testVariableId('ego-note'))).toEqual([
+      'beforeafter',
+    ]);
+    expect(dataValues(document, testVariableId('p-nick'))).toEqual([
       'Alice',
       'Bob',
       '日本語 😀 Café\tx\ny',
     ]);
-    expect(dataValues(document, 'e-note')).toEqual(['edge']);
+    expect(dataValues(document, testVariableId('e-note'))).toEqual(['edge']);
   });
 
   it('removes them from roster attributes, which have no codebook entry', () => {
@@ -244,7 +255,7 @@ describe('GraphML files for answers holding characters XML cannot store', () => 
 
   it('removes them from names the protocol authored', () => {
     const [oddKey] = Array.from(document.getElementsByTagName('key')).filter(
-      (key) => key.getAttribute('id') === 'p-odd',
+      (key) => key.getAttribute('id') === testVariableId('p-odd'),
     );
 
     expect(oddKey?.getAttribute('attr.name')).toBe('Odd_name');

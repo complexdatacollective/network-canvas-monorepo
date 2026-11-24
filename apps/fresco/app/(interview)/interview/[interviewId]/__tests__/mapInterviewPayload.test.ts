@@ -313,7 +313,7 @@ describe('mapInterviewPayload', () => {
         {
           stages: [
             {
-              id: 'intro',
+              id: '5e2d8c41-7a9b-4f3e-8d1c-0b6a4e2f9c73',
               type: 'Information',
               label: { fr: 'Introduction' },
               content: { fr: '# Bienvenue' },
@@ -400,6 +400,9 @@ describe('mapInterviewPayload', () => {
  * other part of the payload contains, so finding one in a serialised payload
  * means the answer was sent.
  */
+const FINISH_STAGE_ID = 'a3f6c2d1-8e4b-4c7a-9f2e-1d5b7c9e0a48';
+const OTHER_FINISH_STAGE_ID = 'd7b1e9a4-2c6f-4e8d-a3b5-6f0c8e2d4a17';
+
 function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
   const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
   return {
@@ -435,7 +438,7 @@ function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
       ],
     },
     finishTime: new Date('2026-01-03T00:00:00.000Z'),
-    finishStageId: 'finish-completed',
+    finishStageId: FINISH_STAGE_ID,
     finishOutcome: 'completed',
     network: {
       nodes: [
@@ -557,7 +560,7 @@ describe('mapInterviewForViewer', () => {
       // What the completed view needs is still there.
       expect(result.payload.session).toMatchObject({
         finishTime: '2026-01-03T00:00:00.000Z',
-        finishStageId: 'finish-completed',
+        finishStageId: FINISH_STAGE_ID,
       });
     },
   );
@@ -590,7 +593,7 @@ describe('mapInterviewForViewer', () => {
         ...finished.protocol,
         stages: [
           finishStage(
-            'finish-completed',
+            FINISH_STAGE_ID,
             {
               age: 'ego.age',
               town: 'ego.town',
@@ -600,7 +603,11 @@ describe('mapInterviewForViewer', () => {
             },
             '# Done at {age}, {node} {inherited}',
           ),
-          finishStage('finish-other', { other: 'ego.other' }, '# Done {other}'),
+          finishStage(
+            OTHER_FINISH_STAGE_ID,
+            { other: 'ego.other' },
+            '# Done {other}',
+          ),
         ],
       },
       network: {

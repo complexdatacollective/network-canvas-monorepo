@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
   suppliedInterfaceText,
@@ -8,18 +9,22 @@ import {
 } from '../__tests__/TestProtocolLocalization';
 import useItems from './useItems';
 
-const { sourceNodes, typeDefinition } = vi.hoisted(() => ({
-  sourceNodes: [
-    { _uid: 'unnamed-item', type: 'person', attributes: {} },
-    { _uid: 'named-item', type: 'person', attributes: { name: 'Zoë Álvarez' } },
-  ],
-  typeDefinition: {
-    name: 'person_internal',
-    variables: {
-      name: { name: 'name', type: 'text' },
-    },
+const PERSON_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const sourceNodes = [
+  { _uid: 'unnamed-item', type: PERSON_TYPE, attributes: {} },
+  {
+    _uid: 'named-item',
+    type: PERSON_TYPE,
+    attributes: { [NAME_VAR]: 'Zoë Álvarez' },
   },
-}));
+];
+const typeDefinition = {
+  name: 'person_internal',
+  variables: {
+    [NAME_VAR]: { name: 'name', type: 'text' },
+  },
+};
 
 vi.mock('../../hooks/useExternalData', () => ({
   default: () => ({ externalData: sourceNodes, status: { state: 'ready' } }),
@@ -38,15 +43,15 @@ vi.mock('../../selectors/name-generator', () => ({
 function RosterLabels() {
   const { items } = useItems({
     stage: {
-      id: 'stage',
+      id: testId('stage'),
       type: 'NameGeneratorRoster',
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       unnamedLabel: { en: 'Unnamed {count}', es: 'Sin nombre {count}' },
       panelTitle: { en: 'Available to add' },
       label: { en: 'Authored stage' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON_TYPE },
       dataSource: 'source',
-      prompts: [{ id: 'prompt', text: { en: 'Authored prompt' } }],
+      prompts: [{ id: testId('prompt'), text: { en: 'Authored prompt' } }],
     },
     getNavigationHelpers: () => ({
       moveForward: () => {},

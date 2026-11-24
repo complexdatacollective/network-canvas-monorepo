@@ -15,16 +15,34 @@ import {
   expectNoLocaleLeaks,
   protocolStrings,
 } from '../../testing/localeSweep.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+} from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../testing/testId.ts';
 import { exactlyText } from '../../testing/text.ts';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import InterviewerGuidanceSection from '../interviewer-guidance/InterviewerGuidanceSection.tsx';
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
+const CLOSENESS = testVariableId('closeness');
+const MET_ON = testVariableId('met_on');
+const LUGAR_DE_CONTACTO = testVariableId('lugar_de_contacto');
 
 /** Protocol copy in the fixture's one language. */
 const en = (text: string) => ({ 'en-US': text });
@@ -294,13 +312,13 @@ describe('the form-fields section, read in Spanish', () => {
     // bound attribute's kind cannot change, so only its own controls are
     // offered.
     seedPersonVariables(harness, {
-      closeness: {
+      [CLOSENESS]: {
         name: 'closeness',
         type: 'scalar',
         parameters: { minLabel: en('Nada cerca'), maxLabel: en('Muy cerca') },
       },
     });
-    await chooseAttribute(harness, dialog, 'closeness');
+    await chooseAttribute(harness, dialog, CLOSENESS);
     const scaleControls = await dialog.findByRole('combobox', {
       name: 'Control de entrada',
     });
@@ -337,7 +355,7 @@ describe('the form-fields section, read in Spanish', () => {
  */
 const PERSON_TYPE_SECTION = sectionId({
   kind: 'codebookNode',
-  typeId: 'person',
+  typeId: PERSON,
 });
 
 /** The fixture's alter form, mounted with only the section under test. */
@@ -389,7 +407,7 @@ const seedPersonVariables = (
   const existing = person.variables;
   harness.receiveCodebookUpdate({
     node: {
-      person: {
+      [PERSON]: {
         ...person,
         variables: {
           ...(typeof existing === 'object' && existing !== null
@@ -692,7 +710,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
   it('offers what a date field accepts', async () => {
     const harness = alterFormInSpanish();
     seedPersonVariables(harness, {
-      met_on: {
+      [MET_ON]: {
         name: 'met_on',
         type: 'datetime',
         component: 'DatePicker',
@@ -702,7 +720,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await chooseAttribute(harness, dialog, 'met_on');
+    await chooseAttribute(harness, dialog, MET_ON);
 
     const settings = within(
       await dialog.findByRole('region', { name: 'Ajustes del control' }),
@@ -732,7 +750,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
             fields: [
               {
                 id: 'field-1',
-                variable: 'layout',
+                variable: LAYOUT,
                 prompt: en('¿Dónde se sitúa?'),
               },
             ],
@@ -834,7 +852,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
     // The type this stage collects about, deleted by a collaborator. A
     // codebook section has a lock of its own, so holding this stage does not
     // hold that off.
-    harness.receiveCodebookUpdate({ node: { person: null } });
+    harness.receiveCodebookUpdate({ node: { [PERSON]: null } });
 
     const dialog = await inventAttribute(harness, 'apodo');
 
@@ -861,7 +879,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
   it('says the input control could not be recorded', async () => {
     const harness = alterFormInSpanish();
     seedPersonVariables(harness, {
-      lugar_de_contacto: {
+      [LUGAR_DE_CONTACTO]: {
         name: 'lugar_de_contacto',
         type: 'categorical',
         component: 'CheckboxGroup',
@@ -879,7 +897,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await chooseAttribute(harness, dialog, 'lugar_de_contacto');
+    await chooseAttribute(harness, dialog, LUGAR_DE_CONTACTO);
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Control de entrada' }),
       'ToggleButtonGroup',
@@ -944,17 +962,17 @@ describe('a form a Spanish researcher cannot save', () => {
         type: 'AlterForm',
         fields: {
           label: en('Formulario de alter'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           form: {
             fields: [
               {
                 id: 'field-1',
-                variable: 'relationship_to_ego',
+                variable: RELATIONSHIP_TO_EGO,
                 prompt: en('¿De qué os conocéis?'),
               },
               {
                 id: 'field-2',
-                variable: 'relationship_to_ego',
+                variable: RELATIONSHIP_TO_EGO,
                 prompt: en('¿Y de qué más?'),
               },
             ],
@@ -989,10 +1007,10 @@ describe('a form a Spanish researcher cannot save', () => {
         type: 'AlterForm',
         fields: {
           label: en('Formulario de alter'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           // A field that names an attribute and asks nothing, which the row
           // dialog cannot produce and an import can.
-          form: { fields: [{ variable: 'relationship_to_ego' }] },
+          form: { fields: [{ variable: RELATIONSHIP_TO_EGO }] },
         },
       },
       locale: 'es',

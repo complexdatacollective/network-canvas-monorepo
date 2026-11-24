@@ -3,9 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 
 import { readMessage } from '../../../testing/i18n.ts';
+import { testVariableId } from '../../../testing/testId.ts';
 import { makeAssignAttributesValidation } from '../AssignAttributes.tsx';
 import { makeMultiSelectValidation } from '../MultiSelect.tsx';
 import { optionsValidationFor } from '../Options.tsx';
+
+const WORRIED = testVariableId('worried');
+const NAME = testVariableId('name');
+const NICKNAME = testVariableId('nickname');
 
 /**
  * What the field would report for this whole array, as the researcher reads
@@ -206,7 +211,7 @@ describe('makeMultiSelectValidation', () => {
   });
 
   it('refuses a row missing one of its columns', async () => {
-    await expect(arrayIssue(custom, [{ property: 'name' }])).resolves.toBe(
+    await expect(arrayIssue(custom, [{ property: NAME }])).resolves.toBe(
       'Every row needs a value in each column.',
     );
   });
@@ -216,7 +221,7 @@ describe('makeMultiSelectValidation', () => {
     // column already shows "Required" on the row. Without the same trim here
     // the researcher reads that error and is still allowed to save.
     await expect(
-      arrayIssue(custom, [{ property: 'name', direction: '   ' }]),
+      arrayIssue(custom, [{ property: NAME, direction: '   ' }]),
     ).resolves.toBe('Every row needs a value in each column.');
   });
 
@@ -236,18 +241,18 @@ describe('makeMultiSelectValidation', () => {
         { fieldName: 'property', label: 'Property' },
         { fieldName: 'direction', label: 'Direction' },
       ],
-      [{ fieldName: 'property', values: ['nickname'], message: MISSING }],
+      [{ fieldName: 'property', values: [NICKNAME], message: MISSING }],
     );
 
     it('refuses a complete row whose column names one', async () => {
       await expect(
-        arrayIssue(withDangling, [{ property: 'nickname', direction: 'asc' }]),
+        arrayIssue(withDangling, [{ property: NICKNAME, direction: 'asc' }]),
       ).resolves.toBe(MISSING);
     });
 
     it('passes a row naming something that still exists', async () => {
       await expect(
-        arrayIssue(withDangling, [{ property: 'name', direction: 'asc' }]),
+        arrayIssue(withDangling, [{ property: NAME, direction: 'asc' }]),
       ).resolves.toBeUndefined();
     });
 
@@ -256,7 +261,7 @@ describe('makeMultiSelectValidation', () => {
       // different attribute, while the column beside it is still empty, sends
       // them to fix the half of the row that is not the one blocking them.
       await expect(
-        arrayIssue(withDangling, [{ property: 'nickname' }]),
+        arrayIssue(withDangling, [{ property: NICKNAME }]),
       ).resolves.toBe('Every row needs a value in each column.');
     });
 
@@ -264,7 +269,7 @@ describe('makeMultiSelectValidation', () => {
       // The values are ids of one kind of thing. A direction that happens to
       // spell the same string is not a reference to it.
       await expect(
-        arrayIssue(withDangling, [{ property: 'name', direction: 'nickname' }]),
+        arrayIssue(withDangling, [{ property: NAME, direction: NICKNAME }]),
       ).resolves.toBeUndefined();
     });
   });
@@ -273,10 +278,10 @@ describe('makeMultiSelectValidation', () => {
 describe('makeAssignAttributesValidation', () => {
   const { custom } = makeAssignAttributesValidation({
     allVariables: {
-      worried: { name: 'Worried', type: 'boolean' },
+      [WORRIED]: { name: 'Worried', type: 'boolean' },
     },
-    committedVariableIds: new Set(['worried']),
-    draftValidatedVariables: new Set(['worried']),
+    committedVariableIds: new Set([WORRIED]),
+    draftValidatedVariables: new Set([WORRIED]),
     hasValidatedUseElsewhere: () => false,
   });
 
@@ -285,7 +290,7 @@ describe('makeAssignAttributesValidation', () => {
   });
 
   it('refuses a half-finished stamp', async () => {
-    await expect(arrayIssue(custom, [{ variable: 'worried' }])).resolves.toBe(
+    await expect(arrayIssue(custom, [{ variable: WORRIED }])).resolves.toBe(
       'Every additional attribute needs both an attribute and a value.',
     );
   });
@@ -304,7 +309,7 @@ describe('makeAssignAttributesValidation', () => {
 
   it('accepts `false` as an assigned value', async () => {
     await expect(
-      arrayIssue(custom, [{ variable: 'worried', value: false }]),
+      arrayIssue(custom, [{ variable: WORRIED, value: false }]),
     ).resolves.toBeUndefined();
   });
 
@@ -313,7 +318,7 @@ describe('makeAssignAttributesValidation', () => {
     // refused — but it is also what this prompt already had, and re-saving an
     // unchanged pick introduces nothing new.
     await expect(
-      arrayIssue(custom, [{ variable: 'worried', value: true }]),
+      arrayIssue(custom, [{ variable: WORRIED, value: true }]),
     ).resolves.toBeUndefined();
   });
 
@@ -325,28 +330,28 @@ describe('makeAssignAttributesValidation', () => {
     // unchanged introduces nothing new to refuse.
     const { custom: settled } = makeAssignAttributesValidation({
       allVariables: {
-        worried: { name: 'Worried', type: 'boolean' },
+        [WORRIED]: { name: 'Worried', type: 'boolean' },
       },
-      committedVariableIds: new Set(['worried']),
+      committedVariableIds: new Set([WORRIED]),
       draftValidatedVariables: new Set(),
       hasValidatedUseElsewhere: () => true,
     });
     await expect(
-      arrayIssue(settled, [{ variable: 'worried', value: true }]),
+      arrayIssue(settled, [{ variable: WORRIED, value: true }]),
     ).resolves.toBeUndefined();
   });
 
   it('refuses a NEW pick of a variable this stage validates', async () => {
     const { custom: strict } = makeAssignAttributesValidation({
       allVariables: {
-        worried: { name: 'Worried', type: 'boolean' },
+        [WORRIED]: { name: 'Worried', type: 'boolean' },
       },
       committedVariableIds: new Set(),
-      draftValidatedVariables: new Set(['worried']),
+      draftValidatedVariables: new Set([WORRIED]),
       hasValidatedUseElsewhere: () => false,
     });
     await expect(
-      arrayIssue(strict, [{ variable: 'worried', value: true }]),
+      arrayIssue(strict, [{ variable: WORRIED, value: true }]),
     ).resolves.toMatch(/"Worried" is collected by this stage's form/);
   });
 });

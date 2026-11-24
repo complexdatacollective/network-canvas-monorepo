@@ -27,8 +27,12 @@ import {
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { richTextOf } from '../../testing/text.ts';
 import BooleanAnswersField from '../BooleanAnswersField.tsx';
+
+const PERSON = testTypeId('person');
+const CLOSENESS = testVariableId('closeness');
 
 /**
  * Punctuation a researcher types into a label, chosen so that every character
@@ -129,8 +133,8 @@ function fieldNamed(name: string): HTMLElement {
 
 // ───────────────────────────── the codebook's own attribute editor
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const SUBJECT = { entity: 'node', type: PERSON } as const;
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
 const APPLIED: CodebookWriteOutcome = {
   status: 'applied',
   sectionId: PERSON_SECTION,
@@ -163,8 +167,8 @@ function renderAttributeEditor(
     openId: 'open-1',
     mode: 'update',
     subject: SUBJECT,
-    authoritativeDocument: personDocument({ closeness: committed }),
-    variableId: 'closeness',
+    authoritativeDocument: personDocument({ [CLOSENESS]: committed }),
+    variableId: CLOSENESS,
     initialDraft: committed,
     onSubmitDocument,
     onComplete: () => undefined,
@@ -185,7 +189,7 @@ function renderAttributeEditor(
       const variables = document?.variables;
       const variable =
         typeof variables === 'object' && variables !== null
-          ? Reflect.get(variables, 'closeness')
+          ? Reflect.get(variables, CLOSENESS)
           : undefined;
       const written =
         typeof variable === 'object' && variable !== null

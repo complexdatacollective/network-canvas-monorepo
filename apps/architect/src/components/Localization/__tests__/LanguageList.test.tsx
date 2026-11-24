@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -21,7 +22,7 @@ const trilingual: CurrentProtocol = {
   codebook: { node: {}, edge: {}, ego: {} },
   stages: [
     {
-      id: 'welcome',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
       content: { fr: '# Bonjour' },

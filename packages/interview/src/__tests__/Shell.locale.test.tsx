@@ -22,6 +22,7 @@ import type { InterviewPayload, SyncHandler } from '../contract/types';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
 import { withInterfaceText } from '../wording/suppliedWording';
+import { testId, testVariableId } from './testIds';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
@@ -70,7 +71,7 @@ vi.mock('../interfaces', async () => {
         </button>
         <ProtocolField
           field={{
-            variable: 'respuesta.original',
+            variable: testVariableId('respuesta'),
             type: 'text',
             component: 'Text',
             label: { en: 'Nombre elegido por el estudio' },
@@ -156,7 +157,7 @@ function makePayload(id = 'locale-session') {
       assets: [],
       stages: [
         {
-          id: 'authored-screen',
+          id: testId('authored-screen'),
           type: 'Information',
           label: { en: 'Literal screen label' },
           // The probe stage shows its text as the heading, unrendered.

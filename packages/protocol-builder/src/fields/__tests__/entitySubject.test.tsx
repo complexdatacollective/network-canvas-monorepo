@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId } from '../../testing/testId.ts';
 import { entitySubject } from '../EntityTypePickerField.tsx';
+
+const PERSON = testTypeId('person');
+const KNOWS = testTypeId('knows');
 
 /**
  * The bridge between the two spellings of a stage's subject.
@@ -20,13 +24,13 @@ describe('turning a picked type into a stage subject', () => {
    * discriminant were wrong. So each branch is exercised by name.
    */
   it('tags a node pick as a node and an edge pick as an edge', () => {
-    expect(entitySubject('node', 'person')).toEqual({
+    expect(entitySubject('node', PERSON)).toEqual({
       entity: 'node',
-      type: 'person',
+      type: PERSON,
     });
-    expect(entitySubject('edge', 'knows')).toEqual({
+    expect(entitySubject('edge', KNOWS)).toEqual({
       entity: 'edge',
-      type: 'knows',
+      type: KNOWS,
     });
   });
 

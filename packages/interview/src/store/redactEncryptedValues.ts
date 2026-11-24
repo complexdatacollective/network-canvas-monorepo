@@ -27,11 +27,9 @@ function redactWithin(draft: unknown, encrypted: ReadonlySet<string>): void {
   }
   if (!isRecord(draft)) return;
   for (const [key, value] of Object.entries(draft)) {
-    // An encrypted variable may share the metadata property's name, so the
-    // variable ids are checked first: hiding metadata too costs nothing in a
-    // copy made for display.
+    if (key === entitySecureAttributesMeta) continue;
     if (!encrypted.has(key)) {
-      if (key !== entitySecureAttributesMeta) redactWithin(value, encrypted);
+      redactWithin(value, encrypted);
     } else if (
       value !== null &&
       value !== undefined &&

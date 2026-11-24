@@ -10,12 +10,17 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 
 const en = (text: string) => ({ 'en-US': text });
 
 const renderField = (fields: SectionDoc, children: ReactNode) =>
   renderStageEditor({
-    stage: { type: 'Information', fields },
+    stage: {
+      id: testId('field-seeding-stage'),
+      type: 'Information',
+      fields,
+    },
     sections: (
       <BuilderSection sectionKey="introduction" title="Introduction">
         {children}
@@ -193,7 +198,7 @@ const skipLogicOf = (value: string) => ({
     rules: [
       {
         type: 'ego',
-        id: 'rule-1',
+        id: testId('rule-1'),
         options: {
           operator: 'CONTAINS',
           attribute: '3377af3f-3c79-41da-9b0b-6570fb519b93',
@@ -247,7 +252,11 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
 
   it('shows the edit rather than the value it replaced', async () => {
     const harness = renderStageEditor({
-      stage: { type: 'Information', fields: SEEDED_ITEMS },
+      stage: {
+        id: testId('field-seeding-stage'),
+        type: 'Information',
+        fields: SEEDED_ITEMS,
+      },
       sections: overlappingItems,
     });
 
@@ -265,7 +274,11 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
 
   it('does not write the replaced draft back over it on save', async () => {
     const harness = renderStageEditor({
-      stage: { type: 'Information', fields: SEEDED_ITEMS },
+      stage: {
+        id: testId('field-seeding-stage'),
+        type: 'Information',
+        fields: SEEDED_ITEMS,
+      },
       sections: overlappingItems,
     });
 

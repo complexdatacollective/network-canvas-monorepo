@@ -30,11 +30,6 @@ import {
 } from './errors.ts';
 import { MigrationChain, type ProtocolDocument } from './index.ts';
 import { findRefusedContent } from './refusedContent.ts';
-import {
-  createSessionMigrator,
-  type RecordedSessionStep,
-  type SessionMigrator,
-} from './session.ts';
 
 // The chain is created in the same module that registers into it. If it lived
 // in `./index.ts`, a re-evaluation of this module alone — which is what a dev
@@ -88,8 +83,7 @@ function migrateAndValidate(
   document: unknown,
   targetVersion: ValidatedSchemaVersion,
   dependencies: Record<string, unknown>,
-  recordSessionSteps: boolean,
-): { protocol: VersionedProtocol; sessionSteps: RecordedSessionStep[] } {
+): VersionedProtocol {
   const detectedVersion = detectSchemaVersion(document);
 
   // Every schema parse below would drop a `__proto__` codebook id unseen, so
@@ -124,21 +118,11 @@ function migrateAndValidate(
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the version is the document's own, which migrations of every version accept
   const startDocument = normalizedDocument as ProtocolDocument<SchemaVersion>;
 
-  // Perform migration
-  const { document: migrated, sessionSteps } = recordSessionSteps
-    ? protocolMigrations.migrateWithSessionSteps(
-        startDocument,
-        targetVersion,
-        dependencies,
-      )
-    : {
-        document: protocolMigrations.migrate(
-          startDocument,
-          targetVersion,
-          dependencies,
-        ),
-        sessionSteps: [],
-      };
+  const migrated = protocolMigrations.migrate(
+    startDocument,
+    targetVersion,
+    dependencies,
+  );
 
   // Validated against the schema of the version it was migrated to, which the
   // version-discriminated union picks from the document's own `schemaVersion`.
@@ -194,7 +178,7 @@ function migrateAndValidate(
     }
   }
 
-  return { protocol: postValidationResult.data, sessionSteps };
+  return postValidationResult.data;
 }
 
 export function migrateProtocol(
@@ -212,57 +196,7 @@ export function migrateProtocol(
   targetVersion: ValidatedSchemaVersion = CURRENT_SCHEMA_VERSION,
   dependencies: Record<string, unknown> = {},
 ): VersionedProtocol {
-  return migrateAndValidate(document, targetVersion, dependencies, false)
-    .protocol;
-}
-
-/**
- * A migrated protocol, and the migrator for the sessions recorded against the
- * protocol it was migrated from.
- */
-export type ProtocolWithSessionMigrator<P extends VersionedProtocol> = {
-  protocol: P;
-  /**
-   * Carries one session recorded against the source protocol to the migrated
-   * one: its stage metadata and resume position follow their stages, and any
-   * data the migration re-spells is rewritten. Pure, so a host may call it
-   * for each of its sessions, in any order, inside the transaction that
-   * writes the protocol. A session that cannot be migrated is reported in the
-   * result, never thrown; if any session fails, the host writes neither the
-   * protocol nor any of its sessions.
-   */
-  migrateSession: SessionMigrator;
-};
-
-/**
- * `migrateProtocol` for a host that stores sessions against its protocols:
- * migrates the protocol exactly as `migrateProtocol` does, throwing the same
- * errors, and returns it together with the migrator for its sessions. When the
- * protocol is already at the target version the migrator only validates each
- * session against the current session schema.
- */
-export function migrateProtocolWithSessions(
-  document: unknown,
-  targetVersion?: typeof CURRENT_SCHEMA_VERSION,
-  dependencies?: Record<string, unknown>,
-): ProtocolWithSessionMigrator<CurrentProtocol>;
-export function migrateProtocolWithSessions<V extends ValidatedSchemaVersion>(
-  document: unknown,
-  targetVersion: V,
-  dependencies?: Record<string, unknown>,
-): ProtocolWithSessionMigrator<Protocol<V>>;
-export function migrateProtocolWithSessions(
-  document: unknown,
-  targetVersion: ValidatedSchemaVersion = CURRENT_SCHEMA_VERSION,
-  dependencies: Record<string, unknown> = {},
-): ProtocolWithSessionMigrator<VersionedProtocol> {
-  const { protocol, sessionSteps } = migrateAndValidate(
-    document,
-    targetVersion,
-    dependencies,
-    true,
-  );
-  return { protocol, migrateSession: createSessionMigrator(sessionSteps) };
+  return migrateAndValidate(document, targetVersion, dependencies);
 }
 
 export function getMigrationInfo(

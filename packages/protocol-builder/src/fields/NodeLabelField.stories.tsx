@@ -7,7 +7,15 @@ import { CodebookSchema } from '@codaco/protocol-validation';
 
 import { ProtocolLocalizationProvider } from '../localization/ProtocolLocalization.tsx';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
+import { testId, testTypeId, testVariableId } from '../testing/testId.ts';
 import NodeLabelField, { type NodeLabelDraft } from './NodeLabelField.tsx';
+
+const PLACE = testTypeId('place');
+const NEAR = testTypeId('near');
+const PLACE_NAME = testVariableId('placeName');
+const KIND = testVariableId('kind');
+const BEDS = testVariableId('beds');
 
 const LABEL = 'Label';
 const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
@@ -15,13 +23,13 @@ const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
 /** A place with a kind, and one way of joining two places. */
 const CODEBOOK = CodebookSchema.parse({
   node: {
-    place: {
+    [PLACE]: {
       name: 'Place',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        placeName: { name: 'name', type: 'text' },
-        kind: {
+        [PLACE_NAME]: { name: 'name', type: 'text' },
+        [KIND]: {
           name: 'kind',
           type: 'ordinal',
           options: [
@@ -29,11 +37,11 @@ const CODEBOOK = CodebookSchema.parse({
             { label: { en: 'School' }, value: 'school' },
           ],
         },
-        beds: { name: 'beds', type: 'number' },
+        [BEDS]: { name: 'beds', type: 'number' },
       },
     },
   },
-  edge: { near: { name: 'Near', color: 'edge-color-seq-1' } },
+  edge: { [NEAR]: { name: 'Near', color: 'edge-color-seq-1' } },
 });
 
 const SWITCH_ON_KIND: NodeLabelDraft = {
@@ -42,7 +50,7 @@ const SWITCH_ON_KIND: NodeLabelDraft = {
   },
   dynamicValues: {
     kind: {
-      path: 'node.kind',
+      path: `node.${KIND}`,
       cases: { hospital: 'hospital', school: 'school' },
     },
     nodeLabel: { path: 'node.$label' },
@@ -53,9 +61,9 @@ const SWITCH_ON_KIND: NodeLabelDraft = {
       about: 'node',
       rules: [
         {
-          id: 'has-near',
+          id: testId('has-near'),
           type: 'edge',
-          options: { type: 'near', operator: 'EXISTS' },
+          options: { type: NEAR, operator: 'EXISTS' },
         },
       ],
     },
@@ -76,7 +84,7 @@ function NodeLabel({
         label={LABEL}
         hint="Shown on every node of this type."
         codebook={CODEBOOK}
-        nodeType={isNew ? undefined : 'place'}
+        nodeType={isNew ? undefined : PLACE}
         {...(initialValue === undefined ? {} : { initialValue })}
       />
     </ProtocolLocalizationProvider>
@@ -96,7 +104,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'categorical-bin-1',
+    stageId: fixtureStageId('categorical-bin-1'),
     sectionTitle: 'Dynamic label',
     children: <NodeLabel />,
   },

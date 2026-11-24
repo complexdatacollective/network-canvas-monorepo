@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "participant_consent": {
+        "f4bf1f1d-048a-5f74-a886-4d2b0e363546": {
           "name": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
@@ -34,7 +34,7 @@
             "required": true
           }
         },
-        "transition_type": {
+        "53e80437-1b60-55ab-820c-954f5be62341": {
           "name": "transition_type",
           "type": "categorical",
           "component": "CheckboxGroup",
@@ -116,7 +116,7 @@
             "required": true
           }
         },
-        "transition_when": {
+        "d8394f0b-b581-5159-b926-28b64408fd9d": {
           "name": "transition_when",
           "type": "datetime",
           "component": "DatePicker",
@@ -124,7 +124,7 @@
             "type": "month"
           }
         },
-        "transition_summary": {
+        "dfda68c0-b2bf-54ef-a48b-c9870c89b700": {
           "name": "transition_summary",
           "type": "text",
           "component": "TextArea"
@@ -132,7 +132,7 @@
       }
     },
     "node": {
-      "person": {
+      "93d1e2e9-4675-5246-9270-6c58443e26d4": {
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -140,7 +140,7 @@
           "default": "circle"
         },
         "variables": {
-          "social_circle": {
+          "8a5878ef-1cd9-5d9a-b791-827e8125c72d": {
             "name": "social_circle",
             "type": "categorical",
             "component": "CheckboxGroup",
@@ -201,7 +201,7 @@
               }
             ]
           },
-          "knew_before": {
+          "836afb8d-9b14-5b10-8ee5-08c2917b738a": {
             "name": "knew_before",
             "type": "boolean",
             "component": "Boolean",
@@ -220,7 +220,7 @@
               }
             ]
           },
-          "arrived_with_change": {
+          "f9c50272-f343-5db1-9e7e-5dafcd21c55b": {
             "name": "arrived_with_change",
             "type": "boolean",
             "component": "Boolean",
@@ -239,7 +239,7 @@
               }
             ]
           },
-          "lost_touch": {
+          "bfc384de-08f6-590d-9861-eded48dff1bc": {
             "name": "lost_touch",
             "type": "boolean",
             "component": "Boolean",
@@ -258,7 +258,7 @@
               }
             ]
           },
-          "helped_through": {
+          "4106c90a-c575-503e-989b-67a8d3f8869b": {
             "name": "helped_through",
             "type": "boolean",
             "component": "Boolean",
@@ -277,7 +277,7 @@
               }
             ]
           },
-          "made_it_harder": {
+          "f269dd53-7b1a-5188-a062-f1a2fb0ef739": {
             "name": "made_it_harder",
             "type": "boolean",
             "component": "Boolean",
@@ -296,7 +296,7 @@
               }
             ]
           },
-          "closeness_before": {
+          "b59f9ba7-7a61-584b-bbb2-9b08db22d24c": {
             "name": "closeness_before",
             "type": "ordinal",
             "component": "LikertScale",
@@ -333,7 +333,7 @@
               }
             ]
           },
-          "closeness_now": {
+          "5db54ccf-06a6-5068-9db1-d8197e1450e2": {
             "name": "closeness_now",
             "type": "ordinal",
             "component": "LikertScale",
@@ -370,12 +370,12 @@
               }
             ]
           },
-          "how_we_met": {
+          "6de7b9ad-8b21-58bd-ab06-84cca03a902e": {
             "name": "how_we_met",
             "type": "text",
             "component": "TextArea"
           },
-          "layout": {
+          "bbf798ba-b8e5-5f9c-9529-77e756079940": {
             "name": "layout",
             "type": "layout"
           },
@@ -391,11 +391,11 @@
       }
     },
     "edge": {
-      "knows": {
+      "ce80fd7a-65c1-51e6-b519-bad57b5b226f": {
         "name": "Knows",
         "color": "edge-color-seq-1"
       },
-      "close": {
+      "3fc03840-a26d-56d9-9449-7b3c042e882d": {
         "name": "Close",
         "color": "edge-color-seq-2"
       }
@@ -403,7 +403,7 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "3119f64a-0be4-5512-9b4e-e6cf4c665859",
       "type": "Information",
       "label": {
         "en": "Template notes (delete before fielding)"
@@ -413,7 +413,7 @@
       }
     },
     {
-      "id": "ego-consent",
+      "id": "ded8db8b-3e13-5b27-9af4-f6be4c9d2fa0",
       "type": "EgoForm",
       "label": {
         "en": "Welcome and consent"
@@ -429,8 +429,8 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "participant_consent",
+            "id": "94ebe3fd-1c58-5ff6-9146-811cb5eb0116",
+            "variable": "f4bf1f1d-048a-5f74-a886-4d2b0e363546",
             "prompt": {
               "en": "Do you consent to participate in this study?"
             }
@@ -439,7 +439,7 @@
       }
     },
     {
-      "id": "ego-transition",
+      "id": "14499150-b419-56f9-b160-63ea966c3be4",
       "type": "EgoForm",
       "label": {
         "en": "The change we'll be talking about"
@@ -452,7 +452,7 @@
               "id": "6f2b1c48-9d0a-4f77-9a2e-3c51d0b4a7e1",
               "type": "ego",
               "options": {
-                "attribute": "participant_consent",
+                "attribute": "f4bf1f1d-048a-5f74-a886-4d2b0e363546",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -461,7 +461,7 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "6f67464e-ac00-594e-9306-d200752c44b6"
         }
       },
       "interviewScript": "",
@@ -476,15 +476,15 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "transition_type",
+            "id": "2e6ef52c-6f97-5ce7-afce-4f02216bd547",
+            "variable": "53e80437-1b60-55ab-820c-954f5be62341",
             "prompt": {
               "en": "What kind of change?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "transition_when",
+            "id": "a3cf9bae-ddad-5d32-ac84-a90518404e82",
+            "variable": "d8394f0b-b581-5159-b926-28b64408fd9d",
             "prompt": {
               "en": "When did it happen?"
             },
@@ -493,8 +493,8 @@
             }
           },
           {
-            "id": "field-3",
-            "variable": "transition_summary",
+            "id": "c2dc2e1f-9f3a-51a4-b33e-030a04cd8b7b",
+            "variable": "dfda68c0-b2bf-54ef-a48b-c9870c89b700",
             "prompt": {
               "en": "In a few sentences, what happened?"
             }
@@ -503,10 +503,10 @@
       }
     },
     {
-      "id": "composer-network",
+      "id": "4cc555c0-9c09-5b10-a5f3-0cf71b79f2ed",
       "dynamicValues": {
         "transitionWhen": {
-          "path": "ego.transition_when"
+          "path": "ego.d8394f0b-b581-5159-b926-28b64408fd9d"
         }
       },
       "type": "NetworkComposer",
@@ -516,11 +516,11 @@
       "interviewScript": "You should operate this interface throughout, building the map while listening to the participant's narration. Add each person when they are mentioned, using the first name or nickname the participant chooses. Automatic layout is enabled at the start to keep the map legible as it grows. Leave it on while adding people, and pause it only when you need to make a deliberate adjustment. Treat automatically produced positions as a display aid, not as evidence about closeness or importance. If position, circles, or clusters are intended to represent meaning, ask the participant what the arrangement should convey, turn off automatic layout, make the placement yourself, and confirm your interpretation. Do not impose a fixed meaning unless your study's field manual defines one. Ask open questions about how people are connected and record the configured details without interrupting the story more than necessary.\n\nWhen naming slows, use the same sequence of cues with every participant. First ask whether there is anyone else they would like to add. Then prompt across contexts such as family, friends, work or study, neighborhood, community or faith groups, services and professionals, and online ties. Follow up on groups and people who know one another, while allowing uncertainty, multiple group memberships, and relationships that changed over time. Visual mapping can feel exposing, so check your entries and placements verbally, make any requested corrections yourself, avoid pressuring the participant to rank anyone precisely, and follow your study's privacy and distress procedures.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "93d1e2e9-4675-5246-9270-6c58443e26d4"
       },
       "quickAdd": "ea198045-6a3a-44e9-86b7-a02263b9f891",
-      "layoutVariable": "layout",
-      "convexHullVariable": "social_circle",
+      "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
+      "convexHullVariable": "8a5878ef-1cd9-5d9a-b791-827e8125c72d",
       "background": {
         "concentricCircles": 1,
         "skewedTowardCenter": true
@@ -531,64 +531,64 @@
       "nodeForm": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "knew_before",
+            "id": "a975ddb9-c2a7-5171-a1b2-497137f8284b",
+            "variable": "836afb8d-9b14-5b10-8ee5-08c2917b738a",
             "component": "Toggle",
             "label": {
               "en": "Knew them before {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
             }
           },
           {
-            "id": "field-2",
-            "variable": "arrived_with_change",
+            "id": "bf8eeb47-b506-53c4-b048-45b29b0c7c92",
+            "variable": "f9c50272-f343-5db1-9e7e-5dafcd21c55b",
             "component": "Toggle",
             "label": {
               "en": "New since {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
             }
           },
           {
-            "id": "field-3",
-            "variable": "helped_through",
+            "id": "46a368e2-c43b-50d8-93f4-da0ed44b2120",
+            "variable": "4106c90a-c575-503e-989b-67a8d3f8869b",
             "component": "Toggle",
             "label": {
               "en": "Helped you through it"
             }
           },
           {
-            "id": "field-4",
-            "variable": "made_it_harder",
+            "id": "0a138a79-5a0a-5806-9cec-16a58e338a47",
+            "variable": "f269dd53-7b1a-5188-a062-f1a2fb0ef739",
             "component": "Toggle",
             "label": {
               "en": "Made things harder"
             }
           },
           {
-            "id": "field-5",
-            "variable": "lost_touch",
+            "id": "2375b97d-78ef-5093-948a-01a695974107",
+            "variable": "bfc384de-08f6-590d-9861-eded48dff1bc",
             "component": "Toggle",
             "label": {
               "en": "Lost touch since {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
             }
           },
           {
-            "id": "field-6",
-            "variable": "closeness_before",
+            "id": "56fd82d1-926f-5747-8c6d-253413114263",
+            "variable": "b59f9ba7-7a61-584b-bbb2-9b08db22d24c",
             "component": "LikertScale",
             "label": {
               "en": "How close you were before {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
             }
           },
           {
-            "id": "field-7",
-            "variable": "closeness_now",
+            "id": "33dd4243-d9b9-548e-bb57-677d139a4fa3",
+            "variable": "5db54ccf-06a6-5068-9db1-d8197e1450e2",
             "component": "LikertScale",
             "label": {
               "en": "How close you are now"
             }
           },
           {
-            "id": "field-8",
-            "variable": "how_we_met",
+            "id": "79225392-a3c9-5ed8-87e2-9ab842f14f24",
+            "variable": "6de7b9ad-8b21-58bd-ab06-84cca03a902e",
             "component": "TextArea",
             "label": {
               "en": "How you know each other"
@@ -601,20 +601,20 @@
       },
       "edges": [
         {
-          "id": "composer-edge-knows",
+          "id": "5094ac69-0cbc-5185-a5d2-544c05afb2bc",
           "subject": {
             "entity": "edge",
-            "type": "knows"
+            "type": "ce80fd7a-65c1-51e6-b519-bad57b5b226f"
           },
           "label": {
             "en": "Knows"
           }
         },
         {
-          "id": "composer-edge-close",
+          "id": "640fc487-a3b6-5e21-a2b5-f931c8d3e0f8",
           "subject": {
             "entity": "edge",
-            "type": "close"
+            "type": "3fc03840-a26d-56d9-9449-7b3c042e882d"
           },
           "label": {
             "en": "Close"
@@ -623,7 +623,7 @@
       ]
     },
     {
-      "id": "narrative-review",
+      "id": "3f6fac4d-04f0-52d1-8a18-cbece93bfc43",
       "attributesHeading": {
         "en": "Attributes"
       },
@@ -640,7 +640,7 @@
       "interviewScript": "You should operate this interface throughout, using the completed map as a prompt for narration rather than as an objective or complete account of the participant's network. Move through the presets selectively and ask the participant what they notice. Invite them to explain what clusters, gaps, bridges, isolated people, and changes in closeness mean in their own story. Ask about ties between people and how those relationships changed across the transition. If the participant wants to explore a different arrangement or annotate the map, make those changes yourself and confirm that they reflect what the participant intended.\n\nTreat the map and the spoken account as complementary evidence. If they appear to diverge, explore the difference rather than correcting either one. Keep questions open, give the participant time to reflect, and follow their lead around sensitive relationships. Remind them that they may skip a question or ask you to change the map. Capture the conversation using your approved study procedure, because this stage does not save the discussion or free-draw annotations.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "93d1e2e9-4675-5246-9270-6c58443e26d4"
       },
       "background": {
         "concentricCircles": 1,
@@ -653,28 +653,30 @@
       },
       "presets": [
         {
-          "id": "preset-circles",
+          "id": "3f870d50-d825-5da4-90b7-b61dae4aee2a",
           "label": {
             "en": "The circles of your life"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "social_circle"
+          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
+          "groupVariable": "8a5878ef-1cd9-5d9a-b791-827e8125c72d"
         },
         {
-          "id": "preset-before-since",
+          "id": "0d2ef46d-d28a-589e-a391-912967a94cee",
           "label": {
             "en": "Before and since"
           },
-          "layoutVariable": "layout",
+          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
           "highlight": [
             {
-              "variable": "knew_before",
+              "id": "797ae0e8-41f4-51ad-b637-bdf47ae09eeb",
+              "variable": "836afb8d-9b14-5b10-8ee5-08c2917b738a",
               "label": {
                 "en": "Knew them before the change"
               }
             },
             {
-              "variable": "arrived_with_change",
+              "id": "9922f3d0-878f-5ecd-92b9-2efa5f0436f1",
+              "variable": "f9c50272-f343-5db1-9e7e-5dafcd21c55b",
               "label": {
                 "en": "New since the change"
               }
@@ -682,20 +684,22 @@
           ]
         },
         {
-          "id": "preset-help-and-strain",
+          "id": "f617bdac-dda8-5168-b778-3b2892c4c60e",
           "label": {
             "en": "Who helped, and who didn't"
           },
-          "layoutVariable": "layout",
+          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
           "highlight": [
             {
-              "variable": "helped_through",
+              "id": "e5715d6e-06f6-5574-804f-abe17db7b57d",
+              "variable": "4106c90a-c575-503e-989b-67a8d3f8869b",
               "label": {
                 "en": "Helped you through it"
               }
             },
             {
-              "variable": "made_it_harder",
+              "id": "c3401db0-2f03-53b5-8c1f-48d6a3965ef1",
+              "variable": "f269dd53-7b1a-5188-a062-f1a2fb0ef739",
               "label": {
                 "en": "Made things harder"
               }
@@ -703,16 +707,17 @@
           ]
         },
         {
-          "id": "preset-fell-away",
+          "id": "71b81337-c2fd-5c41-930f-ee134d7f3b83",
           "label": {
             "en": "Who fell away"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "social_circle",
+          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
+          "groupVariable": "8a5878ef-1cd9-5d9a-b791-827e8125c72d",
           "edges": {
             "display": [
               {
-                "type": "knows",
+                "id": "2b90079a-9c31-5dca-a7b2-2e010398b9c1",
+                "type": "ce80fd7a-65c1-51e6-b519-bad57b5b226f",
                 "label": {
                   "en": "Knows"
                 }
@@ -721,7 +726,8 @@
           },
           "highlight": [
             {
-              "variable": "lost_touch",
+              "id": "15649fab-cb7c-5234-92ac-6934fa92124d",
+              "variable": "bfc384de-08f6-590d-9861-eded48dff1bc",
               "label": {
                 "en": "Lost touch since the change"
               }
@@ -729,15 +735,16 @@
           ]
         },
         {
-          "id": "preset-close-to-whom",
+          "id": "18c7cba0-23ef-5695-86bc-6001e86d93e1",
           "label": {
             "en": "Who is close to whom"
           },
-          "layoutVariable": "layout",
+          "layoutVariable": "bbf798ba-b8e5-5f9c-9529-77e756079940",
           "edges": {
             "display": [
               {
-                "type": "close",
+                "id": "cd3da0e8-d8c6-55a7-96ef-7719ae4e59b8",
+                "type": "3fc03840-a26d-56d9-9449-7b3c042e882d",
                 "label": {
                   "en": "Close"
                 }
@@ -748,7 +755,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "d519df8c-380d-5f94-933f-73b2072abe71",
       "finishLabel": {
         "en": "Finish"
       },
@@ -772,7 +779,7 @@
       "outcome": "completed"
     },
     {
-      "id": "finish-declined",
+      "id": "6f67464e-ac00-594e-9306-d200752c44b6",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {

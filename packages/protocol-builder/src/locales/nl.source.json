@@ -1986,6 +1986,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property} — this attribute cannot be used to sort",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.",
   "protocolBuilder.stageEdit.addFailed": "This stage could not be added. Wait a moment and try again.",
+  "protocolBuilder.stageEdit.addInvalidShape": "This stage could not be added because part of it is not valid. Your changes are still here. Correct the problem, then try adding the stage again.",
   "protocolBuilder.stageEdit.blockedBy": "{holder} is editing another part of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} are editing other parts of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.",

@@ -1,13 +1,19 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorRosterStageEditor } from '../NameGeneratorRosterStageEditor.ts';
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const ROSTER_INDEX = fixtureStageIds().indexOf('name-generator-roster-1');
+const ROSTER_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('name-generator-roster-1'),
+);
 
 const stageNameInput = (): HTMLElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
@@ -65,7 +71,7 @@ describe('creating a roster name generator', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'NameGeneratorRoster',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
       dataSource: 'roster_data',
     });
     // The heading over the people it offers, which the researcher was never

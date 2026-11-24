@@ -1,8 +1,19 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import { nodeLayout } from '../nodeLayout.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
 
 const NodeLayout = nodeLayout();
 
@@ -48,17 +59,18 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
   it('keeps a behaviour it does not offer', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testId('hand-authored-sociogram'),
         type: 'Sociogram' as const,
         fields: {
           label: en('Sociogram'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           background: { concentricCircles: 4 },
           behaviours: { automaticLayout: true, freeDraw: true },
           prompts: [
             {
-              id: 'sociogram-prompt-1',
+              id: testId('sociogram-prompt-1'),
               text: en('Place the people you know'),
-              layout: { layoutVariable: 'layout' },
+              layout: { layoutVariable: LAYOUT },
             },
           ],
         },

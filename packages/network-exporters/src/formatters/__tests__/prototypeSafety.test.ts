@@ -7,6 +7,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import type { FormattedSession } from '../../input';
 import { partitionByType } from '../../session/partitionByType';
 import { attributeListRows } from '../csv/attributeList';
@@ -48,7 +49,7 @@ const hazardValues = (ids: readonly string[]) =>
 const codebookFor = (nameOf: (id: string) => string): Codebook => ({
   ego: { variables: hazardVariables(nameOf) },
   node: {
-    person: {
+    [testTypeId('person')]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
@@ -56,7 +57,7 @@ const codebookFor = (nameOf: (id: string) => string): Codebook => ({
     },
   },
   edge: {
-    knows: {
+    [testTypeId('knows')]: {
       name: 'Knows',
       variables: hazardVariables(nameOf),
     },
@@ -69,12 +70,12 @@ const sessionFor = (ids: readonly string[]): FormattedSession => ({
   nodes: [
     {
       [entityPrimaryKeyProperty]: 'node-a',
-      type: 'person',
+      type: testTypeId('person'),
       [entityAttributesProperty]: hazardValues(ids),
     },
     {
       [entityPrimaryKeyProperty]: 'node-b',
-      type: 'person',
+      type: testTypeId('person'),
       [entityAttributesProperty]: {},
     },
   ],
@@ -83,14 +84,14 @@ const sessionFor = (ids: readonly string[]): FormattedSession => ({
       [entityPrimaryKeyProperty]: 'edge-a',
       from: 'node-a',
       to: 'node-b',
-      type: 'knows',
+      type: testTypeId('knows'),
       [entityAttributesProperty]: hazardValues(ids),
     },
     {
       [entityPrimaryKeyProperty]: 'edge-b',
       from: 'node-b',
       to: 'node-a',
-      type: 'knows',
+      type: testTypeId('knows'),
       [entityAttributesProperty]: {},
     },
   ],
@@ -222,11 +223,11 @@ describe.each([
 describe('attributes the codebook does not declare, keyed by Object.prototype keys', () => {
   const codebook: Codebook = {
     node: {
-      person: {
+      [testTypeId('person')]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
-        variables: { 'v-name': textVariable('Name') },
+        variables: { [testVariableId('v-name')]: textVariable('Name') },
       },
     },
     edge: {},
@@ -236,9 +237,9 @@ describe('attributes the codebook does not declare, keyed by Object.prototype ke
     nodes: [
       {
         [entityPrimaryKeyProperty]: 'node-a',
-        type: 'person',
+        type: testTypeId('person'),
         [entityAttributesProperty]: record([
-          ['v-name', 'Dee'],
+          [testVariableId('v-name'), 'Dee'],
           ['constructor', 'left over'],
           ['toString', 'left over too'],
           ['__proto__', 'and this'],
@@ -301,7 +302,7 @@ describe('categorical variables named after Object.prototype keys', () => {
   it('writes the option columns and values', () => {
     const codebook: Codebook = {
       node: {
-        person: {
+        [testTypeId('person')]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
@@ -326,7 +327,7 @@ describe('categorical variables named after Object.prototype keys', () => {
       nodes: [
         {
           [entityPrimaryKeyProperty]: 'node-a',
-          type: 'person',
+          type: testTypeId('person'),
           [entityAttributesProperty]: record(
             hazards.map((id) => [id, ['constructor']]),
           ),

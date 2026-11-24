@@ -7,6 +7,7 @@ import { Button } from '@codaco/fresco-ui/Button';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { Prompt as TPrompt } from '@codaco/protocol-validation';
 
+import { testId } from '../../__tests__/testIds';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import Prompts from './Prompts';
 
@@ -35,54 +36,54 @@ const MotionDecorator = (Story: React.ComponentType) => {
 
 const singlePrompt: TPrompt[] = [
   {
-    id: 'prompt-1',
+    id: testId('prompt-1'),
     text: { en: 'Who are the people in your network?' },
   },
 ];
 
 const multiplePrompts: TPrompt[] = [
   {
-    id: 'prompt-1',
+    id: testId('prompt-1'),
     text: { en: 'Who are the people in your network?' },
   },
   {
-    id: 'prompt-2',
+    id: testId('prompt-2'),
     text: { en: 'Who do you talk to most frequently?' },
   },
   {
-    id: 'prompt-3',
+    id: testId('prompt-3'),
     text: { en: 'Who provides you with emotional support?' },
   },
   {
-    id: 'prompt-4',
+    id: testId('prompt-4'),
     text: { en: 'Who do you go to for advice?' },
   },
 ];
 
 const markdownPrompts: TPrompt[] = [
   {
-    id: 'prompt-1',
+    id: testId('prompt-1'),
     text: { en: 'Name the people who are **important** to you' },
   },
   {
-    id: 'prompt-2',
+    id: testId('prompt-2'),
     text: { en: 'Who do you *trust* the most?' },
   },
   {
-    id: 'prompt-3',
+    id: testId('prompt-3'),
     text: { en: 'List people who help with **work** or *personal* matters' },
   },
 ];
 
 const longPrompts: TPrompt[] = [
   {
-    id: 'prompt-1',
+    id: testId('prompt-1'),
     text: {
       en: 'Please think carefully about all the people in your life who you have had any kind of meaningful interaction with in the past year, including family members, friends, colleagues, neighbors, and acquaintances',
     },
   },
   {
-    id: 'prompt-2',
+    id: testId('prompt-2'),
     text: {
       en: 'Now consider the relationships between these people and identify any who know each other independently of you',
     },
@@ -125,7 +126,7 @@ type Story = StoryObj<typeof meta>;
 export const SinglePrompt: Story = {
   args: {
     prompts: singlePrompt,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
   },
   parameters: {
     docs: {
@@ -140,7 +141,7 @@ export const SinglePrompt: Story = {
 export const MultiplePrompts: Story = {
   args: {
     prompts: multiplePrompts,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
   },
   parameters: {
     docs: {
@@ -175,7 +176,7 @@ export const MultiplePrompts: Story = {
 export const WithMarkdown: Story = {
   args: {
     prompts: markdownPrompts,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
   },
   parameters: {
     docs: {
@@ -197,7 +198,7 @@ export const WithMarkdown: Story = {
 export const LongPromptText: Story = {
   args: {
     prompts: longPrompts,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
   },
   parameters: {
     docs: {
@@ -227,7 +228,8 @@ function InteractiveNavigationDemo() {
     setCurrentIndex((prev) => Math.min(multiplePrompts.length - 1, prev + 1));
   };
 
-  const currentPromptId = multiplePrompts[currentIndex]?.id ?? 'prompt-1';
+  const currentPromptId =
+    multiplePrompts[currentIndex]?.id ?? testId('prompt-1');
 
   return (
     <div className="flex flex-col gap-6">
@@ -348,7 +350,7 @@ export const InteractiveNavigation: Story = {
 export const AccessibilityDemo: Story = {
   args: {
     prompts: multiplePrompts,
-    currentPromptId: 'prompt-2',
+    currentPromptId: testId('prompt-2'),
   },
   parameters: {
     docs: {
@@ -390,7 +392,7 @@ export const AccessibilityDemo: Story = {
 export const CustomClassName: Story = {
   args: {
     prompts: singlePrompt,
-    currentPromptId: 'prompt-1',
+    currentPromptId: testId('prompt-1'),
     className: cx('text-3xl'),
   },
   parameters: {

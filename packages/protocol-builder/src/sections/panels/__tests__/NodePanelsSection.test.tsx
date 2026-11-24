@@ -10,8 +10,23 @@ import {
   answeredRule,
   personRule,
 } from '../../../editors/anonymisation/__tests__/anonymisationFixtures.tsx';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId, testTypeId } from '../../../testing/testId.ts';
 import NodePanelsSection from '../NodePanelsSection.tsx';
+
+const PLACE = testTypeId('place');
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const en = (text: string) => ({ 'en-US': text });
 
@@ -50,22 +65,27 @@ const stagedInTheHost = async (
 
 /** A name generator carrying the panels a test needs it to start with. */
 const nameGeneratorWith = (configured: SectionDoc[]) => ({
-  id: 'name-generator-with-panels',
+  id: testId('name-generator-with-panels'),
   type: 'NameGenerator' as const,
   fields: {
     label: en('Name Generator'),
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     form: {
       title: en('Add a person'),
       fields: [
         {
-          id: 'field-1',
-          variable: 'name',
+          id: testId('field-1'),
+          variable: NAME,
           prompt: en("What is this person's name?"),
         },
       ],
     },
-    prompts: [{ id: 'prompt-1', text: en('Who are the people you know?') }],
+    prompts: [
+      {
+        id: testId('prompt-1'),
+        text: en('Who are the people you know?'),
+      },
+    ],
     panels: configured,
   },
 });
@@ -79,16 +99,16 @@ const openPanel = async (harness: Harness, name: string, index = 0) => {
 
 /** A panel narrowed by a rule only the interview's own network can answer. */
 const panelWithAnEdgeRule = {
-  id: 'panel-1',
+  id: testId('panel-1'),
   title: en('People you named earlier'),
   dataSource: 'existing',
   filter: {
     join: 'AND',
     rules: [
       {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'edge',
-        options: { type: 'knows', operator: 'EXISTS' },
+        options: { type: KNOWS, operator: 'EXISTS' },
       },
     ],
   },
@@ -101,16 +121,16 @@ const panelWithAnEdgeRule = {
  * stage carrying one is a stage this section has to be able to open and save.
  */
 const panelWithAnEgoRule = {
-  id: 'panel-1',
+  id: testId('panel-1'),
   title: en('People you named earlier'),
   dataSource: 'existing',
   filter: {
     rules: [
       {
-        id: 'rule-1',
+        id: testId('rule-1'),
         type: 'ego',
         options: {
-          attribute: 'ego_name',
+          attribute: EGO_NAME,
           operator: 'EXACTLY',
           value: 'Ada',
         },
@@ -173,14 +193,14 @@ describe('the side panels a name generator shows', () => {
   it('shows the panels a stage arrives with, and saves them unchanged', async () => {
     const { fields } = nameGeneratorWith([
       {
-        id: 'panel-1',
+        id: testId('panel-1'),
         title: en('People you named earlier'),
         dataSource: 'existing',
       },
     ]);
     const harness = renderStageEditor({
       stage: {
-        id: 'name-generator-with-panels',
+        id: testId('name-generator-with-panels'),
         type: 'NameGenerator',
         fields,
       },
@@ -248,7 +268,11 @@ describe('the side panels a name generator shows', () => {
   it('numbers the source control after the panel being added', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
+        {
+          id: testId('panel-1'),
+          title: en('First panel'),
+          dataSource: 'existing',
+        },
       ]),
       sections: panels,
     });
@@ -271,12 +295,12 @@ describe('the side panels a name generator shows', () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
         {
-          id: 'panel-1',
+          id: testId('panel-1'),
           title: en('People you named earlier'),
           dataSource: 'existing',
         },
         {
-          id: 'panel-2',
+          id: testId('panel-2'),
           title: en('People from the roster'),
           dataSource: 'existing',
         },
@@ -309,7 +333,9 @@ describe('the side panels a name generator shows', () => {
    */
   it('refuses to save a panel with no title', async () => {
     const harness = renderStageEditor({
-      stage: nameGeneratorWith([{ id: 'panel-1', dataSource: 'existing' }]),
+      stage: nameGeneratorWith([
+        { id: testId('panel-1'), dataSource: 'existing' },
+      ]),
       sections: panels,
     });
 
@@ -335,7 +361,11 @@ describe('the side panels a name generator shows', () => {
   it('refuses a panel whose stored source is not network data', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: en('People nearby'), dataSource: 'geo_data' },
+        {
+          id: testId('panel-1'),
+          title: en('People nearby'),
+          dataSource: 'geo_data',
+        },
       ]),
       sections: panels,
     });
@@ -380,7 +410,7 @@ describe('the side panels a name generator shows', () => {
 
     const saved = panelsOf(await harness.submit())[0];
     expect(saved).toEqual({
-      id: 'panel-1',
+      id: testId('panel-1'),
       title: en('People you named earlier'),
       dataSource: 'roster_data',
     });
@@ -428,8 +458,16 @@ describe('the side panels a name generator shows', () => {
   it('offers no third panel once there are two', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
-        { id: 'panel-2', title: en('Second panel'), dataSource: 'existing' },
+        {
+          id: testId('panel-1'),
+          title: en('First panel'),
+          dataSource: 'existing',
+        },
+        {
+          id: testId('panel-2'),
+          title: en('Second panel'),
+          dataSource: 'existing',
+        },
       ]),
       sections: panels,
     });
@@ -443,7 +481,11 @@ describe('the side panels a name generator shows', () => {
     harness.unmount();
     renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
+        {
+          id: testId('panel-1'),
+          title: en('First panel'),
+          dataSource: 'existing',
+        },
       ]),
       sections: panels,
     });
@@ -468,9 +510,21 @@ describe('the side panels a name generator shows', () => {
   it('refuses a stage carrying more panels than it can show', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
-        { id: 'panel-2', title: en('Second panel'), dataSource: 'existing' },
-        { id: 'panel-3', title: en('Third panel'), dataSource: 'existing' },
+        {
+          id: testId('panel-1'),
+          title: en('First panel'),
+          dataSource: 'existing',
+        },
+        {
+          id: testId('panel-2'),
+          title: en('Second panel'),
+          dataSource: 'existing',
+        },
+        {
+          id: testId('panel-3'),
+          title: en('Third panel'),
+          dataSource: 'existing',
+        },
       ]),
       sections: panels,
     });
@@ -511,7 +565,7 @@ describe('the side panels a name generator shows', () => {
   it('waits for a node type before offering panels', async () => {
     renderStageEditor({
       stage: {
-        id: 'name-generator-without-a-type',
+        id: testId('name-generator-without-a-type'),
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
@@ -519,14 +573,17 @@ describe('the side panels a name generator shows', () => {
             title: en('Add a person'),
             fields: [
               {
-                id: 'field-1',
-                variable: 'name',
+                id: testId('field-1'),
+                variable: NAME,
                 prompt: en('What is their name?'),
               },
             ],
           },
           prompts: [
-            { id: 'prompt-1', text: en('Who are the people you know?') },
+            {
+              id: testId('prompt-1'),
+              text: en('Who are the people you know?'),
+            },
           ],
         },
       },
@@ -549,7 +606,7 @@ describe('the side panels a name generator shows', () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
         {
-          id: 'panel-1',
+          id: testId('panel-1'),
           title: en('People you named earlier'),
           dataSource: 'existing',
         },
@@ -598,7 +655,7 @@ describe('the side panels a name generator shows', () => {
     );
 
     expect(panelsOf(await harness.submit())[0]).toEqual({
-      id: 'panel-1',
+      id: testId('panel-1'),
       title: en('People you named earlier'),
       dataSource: 'existing',
     });
@@ -643,18 +700,22 @@ describe('the side panels a name generator shows', () => {
   it('keeps both panels whole when they are reordered', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
         {
-          id: 'panel-2',
+          id: testId('panel-1'),
+          title: en('First panel'),
+          dataSource: 'existing',
+        },
+        {
+          id: testId('panel-2'),
           title: en('Second panel'),
           dataSource: 'existing',
           filter: {
             join: 'AND',
             rules: [
               {
-                id: 'rule-1',
+                id: testId('rule-1'),
                 type: 'edge',
-                options: { type: 'knows', operator: 'EXISTS' },
+                options: { type: KNOWS, operator: 'EXISTS' },
               },
             ],
           },
@@ -670,7 +731,10 @@ describe('the side panels a name generator shows', () => {
     await harness.user.keyboard('{ArrowDown}');
 
     const saved = panelsOf(await harness.submit());
-    expect(saved.map((panel) => panel.id)).toEqual(['panel-2', 'panel-1']);
+    expect(saved.map((panel) => panel.id)).toEqual([
+      testId('panel-2'),
+      testId('panel-1'),
+    ]);
     expect(saved[0]).toMatchObject({
       title: en('Second panel'),
       filter: { join: 'AND' },
@@ -722,7 +786,11 @@ describe('the side panels a name generator shows', () => {
   it('names a network imported in this edit in the panel summary', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
+        {
+          id: testId('panel-1'),
+          title: en('First panel'),
+          dataSource: 'existing',
+        },
       ]),
       sections: panels,
     });
@@ -750,7 +818,11 @@ describe('the side panels a name generator shows', () => {
   it('follows a codebook change made elsewhere', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
+        {
+          id: testId('panel-1'),
+          title: en('First panel'),
+          dataSource: 'existing',
+        },
       ]),
       sections: panels,
     });
@@ -772,7 +844,7 @@ describe('the side panels a name generator shows', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        place: {
+        [PLACE]: {
           name: 'place',
           color: 'node-color-seq-2',
           icon: 'add-a-place',
@@ -817,7 +889,7 @@ describe('a panel filter emptied down to nothing', () => {
     await saveTheRow(harness, dialog);
 
     expect(panelsOf(await harness.submit())[0]).toEqual({
-      id: 'panel-1',
+      id: testId('panel-1'),
       title: en('People you named earlier'),
       dataSource: 'existing',
     });
@@ -881,12 +953,12 @@ describe('a panel filter emptied down to nothing', () => {
  */
 describe('a panel filter on an encrypted attribute', () => {
   const panelReading = (dataSource: string) => ({
-    id: 'panel-1',
+    id: testId('panel-1'),
     title: en('People you named earlier'),
     dataSource,
     filter: {
       join: 'AND',
-      rules: [personRule('rule-1', 'relationship_to_ego')],
+      rules: [personRule(testId('rule-1'), RELATIONSHIP_TO_EGO)],
     },
   });
 
@@ -894,7 +966,7 @@ describe('a panel filter on an encrypted attribute', () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([panelReading('roster_data')]),
       sections: panels,
-      adapter: alreadyProtecting('relationship_to_ego'),
+      adapter: alreadyProtecting(RELATIONSHIP_TO_EGO),
     });
 
     const dialog = await openPanel(harness, 'Edit panel');
@@ -914,7 +986,7 @@ describe('a panel filter on an encrypted attribute', () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([panelReading('existing')]),
       sections: panels,
-      adapter: alreadyProtecting('relationship_to_ego'),
+      adapter: alreadyProtecting(RELATIONSHIP_TO_EGO),
     });
 
     const dialog = await openPanel(harness, 'Edit panel');
@@ -938,13 +1010,13 @@ describe('a panel filter on an encrypted attribute', () => {
       ...panelReading('existing'),
       filter: {
         join: 'AND',
-        rules: [answeredRule('rule-1', 'relationship_to_ego')],
+        rules: [answeredRule(testId('rule-1'), RELATIONSHIP_TO_EGO)],
       },
     };
     const harness = renderStageEditor({
       stage: nameGeneratorWith([panel]),
       sections: panels,
-      adapter: alreadyProtecting('relationship_to_ego'),
+      adapter: alreadyProtecting(RELATIONSHIP_TO_EGO),
     });
 
     const dialog = await openPanel(harness, 'Edit panel');
@@ -982,11 +1054,19 @@ const STILL_IN_USE =
   'This resource is still used elsewhere on this stage, so it was not discarded.';
 
 const ONE_PANEL = [
-  { id: 'panel-1', title: en('First panel'), dataSource: 'existing' },
+  {
+    id: testId('panel-1'),
+    title: en('First panel'),
+    dataSource: 'existing',
+  },
 ];
 const TWO_PANELS = [
   ...ONE_PANEL,
-  { id: 'panel-2', title: en('Second panel'), dataSource: 'existing' },
+  {
+    id: testId('panel-2'),
+    title: en('Second panel'),
+    dataSource: 'existing',
+  },
 ];
 
 /**

@@ -1,5 +1,8 @@
 import { matrixTest } from '../fixtures/matrix-test.js';
-import { buildSyntheticPayload } from '../helpers/synthetic-payload.js';
+import {
+  buildSyntheticPayload,
+  finishStageIdOf,
+} from '../helpers/synthetic-payload.js';
 import type {
   InterfaceScenarios,
   ScenarioContext,
@@ -37,9 +40,7 @@ export async function installScenario(
             finishedAt: {
               stageId:
                 scenario.finished === 'recorded'
-                  ? (result.protocol.stages.findLast(
-                      (stage) => stage.type === 'FinishSession',
-                    )?.id ?? null)
+                  ? (finishStageIdOf(result.protocol) ?? null)
                   : null,
             },
           }

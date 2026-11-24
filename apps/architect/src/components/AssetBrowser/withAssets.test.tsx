@@ -3,6 +3,8 @@ import { render } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
+
 import withAssets from './withAssets';
 
 const protocol = {
@@ -20,7 +22,7 @@ const protocol = {
   },
   stages: [
     {
-      id: 'info',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Info' },
       content: {

@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { VARIABLE_REFERENCE_VALIDATIONS } from '@codaco/protocol-validation';
 
+import { testVariableId } from '../../__tests__/testIds';
 import { buildFieldValidationProps } from '../buildFieldValidationProps';
+
+const V1 = testVariableId('v1');
+const V2 = testVariableId('v2');
 
 describe('buildFieldValidationProps', () => {
   it('returns an empty object when the field has no validation', () => {
-    expect(buildFieldValidationProps({ type: 'text', variable: 'v1' })).toEqual(
+    expect(buildFieldValidationProps({ type: 'text', variable: V1 })).toEqual(
       {},
     );
   });
@@ -15,7 +19,7 @@ describe('buildFieldValidationProps', () => {
     expect(
       buildFieldValidationProps({
         type: 'text',
-        variable: 'v1',
+        variable: V1,
         validation: { required: true, minLength: 2, maxLength: 8 },
       }),
     ).toEqual({ required: true, minLength: 2, maxLength: 8 });
@@ -25,30 +29,30 @@ describe('buildFieldValidationProps', () => {
     expect(
       buildFieldValidationProps({
         type: 'text',
-        variable: 'v1',
+        variable: V1,
         validation: { unique: true },
       }),
-    ).toEqual({ unique: 'v1' });
+    ).toEqual({ unique: V1 });
   });
 
   it('wraps comparator rules with the field type', () => {
     expect(
       buildFieldValidationProps({
         type: 'number',
-        variable: 'v2',
-        validation: { greaterThanVariable: 'v1' },
+        variable: V2,
+        validation: { greaterThanVariable: V1 },
       }),
-    ).toEqual({ greaterThanVariable: { attribute: 'v1', type: 'number' } });
+    ).toEqual({ greaterThanVariable: { attribute: V1, type: 'number' } });
   });
 
   it('maps every variable-reference rule the schema declares', () => {
     const validation = Object.fromEntries(
-      VARIABLE_REFERENCE_VALIDATIONS.map((rule) => [rule, 'v1']),
+      VARIABLE_REFERENCE_VALIDATIONS.map((rule) => [rule, V1]),
     );
 
     const props = buildFieldValidationProps({
       type: 'number',
-      variable: 'v2',
+      variable: V2,
       validation,
     });
 
@@ -61,17 +65,17 @@ describe('buildFieldValidationProps', () => {
     expect(() =>
       buildFieldValidationProps({
         type: 'text',
-        variable: 'v1',
+        variable: V1,
         validation: { minLength: '24' },
       }),
-    ).toThrow(/"v1".*"minLength".*string.*a number is required/);
+    ).toThrow(new RegExp(`"${V1}".*"minLength".*string.*a number is required`));
   });
 
   it('throws on a NaN bound', () => {
     expect(() =>
       buildFieldValidationProps({
         type: 'number',
-        variable: 'v1',
+        variable: V1,
         validation: { maxValue: Number.NaN },
       }),
     ).toThrow(/"maxValue"/);
@@ -81,7 +85,7 @@ describe('buildFieldValidationProps', () => {
     expect(() =>
       buildFieldValidationProps({
         type: 'text',
-        variable: 'v1',
+        variable: V1,
         validation: { required: 'yes' },
       }),
     ).toThrow(/"required"/);
@@ -91,7 +95,7 @@ describe('buildFieldValidationProps', () => {
     expect(() =>
       buildFieldValidationProps({
         type: 'text',
-        variable: 'v2',
+        variable: V2,
         validation: { sameAs: 42 },
       }),
     ).toThrow(/"sameAs"/);

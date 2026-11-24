@@ -14,7 +14,6 @@ import { createStudio } from '../app.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
 import { resolve } from '../env/resolve.ts';
-import { NEW_PROTOCOL_FINISH_STAGE_ID } from '../protocol/sectionize.ts';
 import { authServiceStub } from './support/auth.ts';
 import {
   insertTeam,
@@ -27,6 +26,7 @@ import {
   createRpcClient,
   expectRpcFailure,
   type RpcTestClient,
+  finishStageIdOf,
 } from './support/rpc.ts';
 import {
   openRateLimitStore,
@@ -168,7 +168,7 @@ describe.skipIf(!testDb)('team-scoped procedures', () => {
     // Both screens went in front of the finish stage a new protocol starts with.
     const openedOrder = opened.sections.stageOrder;
     expect(openedOrder && Redacted.value(openedOrder)).toEqual({
-      stages: [stageB, stageA, NEW_PROTOCOL_FINISH_STAGE_ID],
+      stages: [stageB, stageA, finishStageIdOf(opened.sections)],
     });
     const staleMove = await expectRpcFailure(
       client.callExit(

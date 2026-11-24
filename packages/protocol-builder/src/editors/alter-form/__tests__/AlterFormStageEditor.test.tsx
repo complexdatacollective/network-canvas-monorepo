@@ -4,8 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   fixtureStageIds,
   loadFixtureStage,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
@@ -39,13 +43,19 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+
 const openFixture = () => ({
   stageId: 'alter-form-1',
   editor: mountedAs(alterFormStageEditor.AlterForm),
 });
 
 /** Where a host would insert a new one: over the form the fixture holds. */
-const ALTER_FORM_INDEX = fixtureStageIds().indexOf('alter-form-1');
+const ALTER_FORM_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('alter-form-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'AlterForm' as const, position: ALTER_FORM_INDEX },
@@ -87,16 +97,16 @@ describe('the editor for a form about each person', () => {
   it('keeps a filter the stage already has', async () => {
     const harness = renderStageEditor({
       stage: {
-        id: 'alter-form-filtered',
+        id: testId('alter-form-filtered'),
         type: 'AlterForm',
         fields: {
           ...loadFixtureStage('alter-form-1').fields,
           filter: {
             rules: [
               {
-                id: 'rule-a',
+                id: testId('rule-a'),
                 type: 'node',
-                options: { type: 'person', operator: 'EXISTS' },
+                options: { type: PERSON, operator: 'EXISTS' },
               },
             ],
           },
@@ -149,13 +159,13 @@ describe('the editor for a form about each person', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        person: personDefinition({
-          relationship_to_ego: {
+        [PERSON]: personDefinition({
+          [personVariable('relationship_to_ego')]: {
             name: 'how_they_know_each_other',
             type: 'text',
             component: 'Text',
           },
-          flagged: {
+          [personVariable('flagged')]: {
             name: 'flagged',
             type: 'boolean',
             component: 'Boolean',
@@ -185,7 +195,7 @@ describe('the editor for a form about each person', () => {
 
     await authorsValuesFromField(harness, {
       kind: 'codebookNode',
-      typeId: 'person',
+      typeId: PERSON,
     });
   });
 
@@ -194,7 +204,7 @@ describe('the editor for a form about each person', () => {
 
     await authorsDateSettingsFromField(harness, {
       kind: 'codebookNode',
-      typeId: 'person',
+      typeId: PERSON,
     });
   });
 });

@@ -17,7 +17,6 @@ import { SecretsCipher } from '../secrets/services.ts';
 export type PinnedVersion = {
   readonly protocolId: string;
   readonly protocolVersionId: string;
-  readonly schemaVersion: number;
   readonly publishedAt: Date;
 };
 
@@ -57,16 +56,6 @@ export const participantProtocolPayload: (
   version: PinnedVersion,
 ) {
   const teamId = yield* tenantTeamId;
-  if (version.schemaVersion < CURRENT_SCHEMA_VERSION) {
-    // `studio-api migrate` upgrades every version a study that is not closed
-    // still runs (`protocol/upgrade-pinned.ts`); one left behind means the
-    // upgrade did not run, or the study was reopened without it.
-    return yield* Effect.die(
-      new Error(
-        `protocol version ${version.protocolVersionId} is stored at schema ${version.schemaVersion}, and the interview runtime runs only schema ${CURRENT_SCHEMA_VERSION}: run \`studio-api migrate\` to upgrade the versions studies are pinned to`,
-      ),
-    );
-  }
   const document = yield* getVersionDocument(
     teamId,
     version.protocolVersionId,

@@ -10,6 +10,7 @@ import { findVariableRoleConflicts } from '@codaco/protocol-validation';
 import { analyse } from '../analyse.ts';
 import { buildProtocol } from '../build.ts';
 import { buildWordingRequest } from '../feedback.ts';
+import { sketchStageId, sketchTypeId, sketchVariableId } from '../objectIds.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
 type Json = Record<string, unknown>;
@@ -103,17 +104,22 @@ const build = async (d: Json) => {
   };
 };
 const stageById = (stages: Stage[], id: string) => {
-  const s = stages.find((x) => x.id === id);
+  const s = stages.find((x) => x.id === sketchStageId(id));
   if (!s) throw new Error(`stage ${id} missing`);
   return s;
 };
+// Copied filters and skip logic get an id for each place they appear.
+const withoutIds = (value: unknown): unknown =>
+  JSON.parse(JSON.stringify(value), (key, v: unknown) =>
+    key === 'id' ? undefined : v,
+  );
 const varNames = (protocol: unknown, type: string) =>
   Object.values(
     (
       protocol as {
         codebook: { node: Record<string, { variables: Json }> };
       }
-    ).codebook.node[type]!.variables,
+    ).codebook.node[sketchTypeId(type)]!.variables,
   ).map((v) => (v as { name: string }).name);
 
 describe('compiler review fixes', () => {
@@ -334,8 +340,11 @@ describe('compiler review fixes', () => {
     const ids = r.stages.map((s) => s.id);
     // the form is a new kind of task, so its introduction screen comes first
     expect(
-      ids.slice(ids.indexOf('later') + 1, ids.indexOf('later') + 3),
-    ).toEqual(['later_details_intro', 'later_details']);
+      ids.slice(
+        ids.indexOf(sketchStageId('later')) + 1,
+        ids.indexOf(sketchStageId('later')) + 3,
+      ),
+    ).toEqual(['later_details_intro', 'later_details'].map(sketchStageId));
     expect(stageById(r.stages, 'later').type).toBe('NameGeneratorQuickAdd');
     const details = stageById(r.stages, 'later_details') as Stage & {
       form: { fields: unknown[] };
@@ -482,7 +491,7 @@ describe('compiler review fixes', () => {
     const types = stageById(r.stages, 'i').skipLogic?.filter.rules.map(
       (x) => x.options.type,
     );
-    expect(types).toEqual(['a']);
+    expect(types).toEqual([sketchTypeId('a')]);
   });
 
   it.each([
@@ -629,16 +638,22 @@ describe('compiler review fixes', () => {
 
     const skipped = await withMap(conditional);
     expect(skipped.codes).toContain('NARRATIVE_WITHOUT_MAP');
-    expect(skipped.stages.some((s) => s.id === 'story')).toBe(false);
+    expect(skipped.stages.some((s) => s.id === sketchStageId('story'))).toBe(
+      false,
+    );
 
     const filtered = await withMap(always, adults);
     expect(filtered.codes).not.toContain('BAD_FILTER');
     expect(filtered.codes).toContain('NARRATIVE_WITHOUT_MAP');
-    expect(filtered.stages.some((s) => s.id === 'story')).toBe(false);
+    expect(filtered.stages.some((s) => s.id === sketchStageId('story'))).toBe(
+      false,
+    );
 
     const shown = await withMap(always);
     expect(shown.codes).not.toContain('NARRATIVE_WITHOUT_MAP');
-    expect(shown.stages.some((s) => s.id === 'story')).toBe(true);
+    expect(shown.stages.some((s) => s.id === sketchStageId('story'))).toBe(
+      true,
+    );
   });
 
   it('reports a strengthless prompt removed from a mixed with_strength census', async () => {
@@ -770,8 +785,8 @@ describe('compiler review fixes', () => {
     const order = async (role: string) => {
       const { stages } = await build(opening(role));
       const ids = stages.map((s) => s.id);
-      return ids.findIndex((id) => id.includes('consent')) <
-        ids.indexOf('intro')
+      return ids.indexOf(sketchStageId('consent')) <
+        ids.indexOf(sketchStageId('intro'))
         ? 'consent first'
         : 'consent after';
     };
@@ -802,8 +817,11 @@ describe('compiler review fixes', () => {
     expect(r.validation.success).toBe(true);
     const ids = r.stages.map((s) => s.id);
     expect(
-      ids.slice(ids.indexOf('roster') + 1, ids.indexOf('roster') + 3),
-    ).toEqual(['roster_overlap_intro', 'roster_overlap']);
+      ids.slice(
+        ids.indexOf(sketchStageId('roster')) + 1,
+        ids.indexOf(sketchStageId('roster')) + 3,
+      ),
+    ).toEqual(['roster_overlap_intro', 'roster_overlap'].map(sketchStageId));
     const form = stageById(r.stages, 'roster_overlap') as Stage & {
       form: { fields: { prompt: LocalizedText }[] };
     };
@@ -893,8 +911,8 @@ describe('compiler review fixes', () => {
     expect(r.validation.success).toBe(true);
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
     const ids = r.stages.map((x) => x.id);
-    expect(ids).toContain('early');
-    expect(ids).not.toContain('late');
+    expect(ids).toContain(sketchStageId('early'));
+    expect(ids).not.toContain(sketchStageId('late'));
     expect(r.codes).toContain('WRITTEN_BY_FORM');
   });
 
@@ -1110,7 +1128,9 @@ describe('compiler review fixes', () => {
     expect(r.validation.success).toBe(true);
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
     const ids = r.stages.map((x) => x.id);
-    expect(ids).toEqual(expect.arrayContaining(['map', 'story']));
+    expect(ids).toEqual(
+      expect.arrayContaining(['map', 'story'].map(sketchStageId)),
+    );
   });
 
   it('caps a roster minimum before generating its rows', async () => {
@@ -1187,8 +1207,11 @@ describe('instrument attributes', () => {
       edges: { create: string; display: string[] };
     }[];
     expect(prompts.map((p) => p.edges)).toEqual([
-      { create: 'knows', display: ['knows'] },
-      { create: 'conflict', display: ['conflict'] },
+      { create: sketchTypeId('knows'), display: [sketchTypeId('knows')] },
+      {
+        create: sketchTypeId('conflict'),
+        display: [sketchTypeId('conflict')],
+      },
     ]);
   });
 
@@ -1238,11 +1261,15 @@ describe('instrument attributes', () => {
     const canvas = stageById(r.stages, 'canvas');
     expect(canvas).toMatchObject({
       type: 'NetworkComposer',
-      quickAdd: 'person_name',
-      layoutVariable: 'person_layout',
-      convexHullVariable: 'person_circles',
-      nodeForm: { fields: [{ variable: 'person_role', component: 'Text' }] },
-      edges: [{ subject: { entity: 'edge', type: 'knows' } }],
+      quickAdd: sketchVariableId('person_name'),
+      layoutVariable: sketchVariableId('person_layout'),
+      convexHullVariable: sketchVariableId('person_circles'),
+      nodeForm: {
+        fields: [
+          { variable: sketchVariableId('person_role'), component: 'Text' },
+        ],
+      },
+      edges: [{ subject: { entity: 'edge', type: sketchTypeId('knows') } }],
     });
     // it creates the people, so it is never skipped for want of them
     expect(canvas.skipLogic).toBeUndefined();
@@ -1304,7 +1331,7 @@ describe('instrument attributes', () => {
     expect(r.validation.success).toBe(true);
     expect(findVariableRoleConflicts(r.protocol as never)).toEqual([]);
     expect(stageById(r.stages, 'canvas').convexHullVariable).toBe(
-      'person_circles',
+      sketchVariableId('person_circles'),
     );
   });
 
@@ -1370,8 +1397,10 @@ describe('instrument attributes', () => {
     );
     expect(r.validation.success).toBe(true);
     expect(findVariableRoleConflicts(r.protocol as never)).toEqual([]);
-    expect(r.stages.map((s) => s.id)).toContain('tie_form');
-    expect(r.stages.map((s) => s.id)).not.toContain('strength_census');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('tie_form'));
+    expect(r.stages.map((s) => s.id)).not.toContain(
+      sketchStageId('strength_census'),
+    );
   });
 
   it('drops a second bins question that would overwrite the same attribute', async () => {
@@ -1399,8 +1428,8 @@ describe('instrument attributes', () => {
       }),
     );
     expect(r.codes).toContain('DUPLICATE_BINS_WRITER');
-    expect(r.stages.map((s) => s.id)).toContain('b1');
-    expect(r.stages.map((s) => s.id)).not.toContain('b2');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('b1'));
+    expect(r.stages.map((s) => s.id)).not.toContain(sketchStageId('b2'));
   });
 
   it('drops a census question on a relationship an earlier question creates', async () => {
@@ -1432,8 +1461,8 @@ describe('instrument attributes', () => {
       }),
     );
     expect(r.codes).toContain('DUPLICATE_RELATIONSHIP_CREATOR');
-    expect(r.stages.map((s) => s.id)).toContain('rc1');
-    expect(r.stages.map((s) => s.id)).not.toContain('rc2');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('rc1'));
+    expect(r.stages.map((s) => s.id)).not.toContain(sketchStageId('rc2'));
   });
 
   it.each([
@@ -1628,7 +1657,9 @@ describe('instrument attributes', () => {
       expect(preset.filter?.rules).toHaveLength(1);
     }
     // Each view holds a copy of its own.
-    expect(story.presets[0]?.filter).toEqual(story.presets[1]?.filter);
+    expect(withoutIds(story.presets[0]?.filter)).toEqual(
+      withoutIds(story.presets[1]?.filter),
+    );
     expect(story.presets[0]?.filter).not.toBe(story.presets[1]?.filter);
   });
 
@@ -1755,7 +1786,7 @@ describe('instrument attributes', () => {
       }),
     );
     expect(r.codes).not.toContain('FORM_FIELD_REPEATED');
-    expect(r.stages.map((s) => s.id)).toContain('af2');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('af2'));
   });
 
   it('gives a generated follow-up form a free id', async () => {
@@ -1902,7 +1933,7 @@ describe('instrument attributes', () => {
       }),
     );
     expect(r.codes).not.toContain('WRITTEN_BY_FORM');
-    expect(r.stages.map((s) => s.id)).toContain('b');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('b'));
   });
 
   it('asks a form question once when two forms reach the same people', async () => {
@@ -1973,7 +2004,7 @@ describe('instrument attributes', () => {
       }),
     );
     expect(r.codes).not.toContain('FORM_FIELD_REPEATED');
-    expect(r.stages.map((s) => s.id)).toContain('af2');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('af2'));
   });
 
   it('keeps the roster overlap form when its id needed a suffix', async () => {
@@ -2068,7 +2099,7 @@ describe('instrument attributes', () => {
     );
     expect(r.codes).toContain('WRITTEN_BY_FORM');
     expect(r.codes).not.toContain('FORM_FIELD_WRITTEN_ELSEWHERE');
-    expect(r.stages.map((s) => s.id)).toContain('af2');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('af2'));
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
   });
 
@@ -2226,7 +2257,7 @@ describe('instrument attributes', () => {
       }),
     );
     expect(JSON.stringify(stageById(r.stages, 'b'))).toContain('Role?');
-    expect(r.stages.map((s) => s.id)).toContain('friends');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('friends'));
     expect(findVariableRoleConflicts(r.protocol)).toEqual([]);
   });
 
@@ -2349,7 +2380,7 @@ describe('instrument attributes', () => {
       }),
     );
     expect(JSON.stringify(stageById(r.stages, 'b'))).toContain('Role?');
-    expect(r.stages.map((s) => s.id)).toContain('friends');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('friends'));
   });
 
   it('drops a repeated highlight when two map filters name the same answer differently', async () => {
@@ -2468,7 +2499,7 @@ describe('instrument attributes', () => {
       }),
     );
     expect(JSON.stringify(stageById(r.stages, 'b'))).toContain('Role?');
-    expect(r.stages.map((s) => s.id)).toContain('friends');
+    expect(r.stages.map((s) => s.id)).toContain(sketchStageId('friends'));
   });
 
   it('keeps an earlier writer when a narrative before the form groups by it', async () => {
@@ -2612,7 +2643,7 @@ describe('instrument attributes', () => {
       const codebook = r.protocol.codebook as {
         node: Record<string, { name: string }>;
       };
-      expect(codebook.node.person?.name).toBe('Café regular');
+      expect(codebook.node[sketchTypeId('person')]?.name).toBe('Café regular');
     });
   });
 
@@ -2660,16 +2691,18 @@ describe('instrument attributes', () => {
         }),
       );
       expect(r.validation.success).toBe(true);
-      expect(ids(r.stages)).toEqual([
-        'researcher_notes',
-        'ng_intro',
-        'ng',
-        'ng2',
-        'af_intro',
-        'af',
-        'af2',
-        'finish',
-      ]);
+      expect(ids(r.stages)).toEqual(
+        [
+          'researcher_notes',
+          'ng_intro',
+          'ng',
+          'ng2',
+          'af_intro',
+          'af',
+          'af2',
+          'finish',
+        ].map(sketchStageId),
+      );
       const intro = stageById(r.stages, 'ng_intro') as Stage & {
         content: LocalizedText;
       };
@@ -2687,8 +2720,8 @@ describe('instrument attributes', () => {
         }),
       );
       expect(r.validation.success).toBe(true);
-      expect(stageById(r.stages, 'af_intro').skipLogic).toEqual(
-        stageById(r.stages, 'af').skipLogic,
+      expect(withoutIds(stageById(r.stages, 'af_intro').skipLogic)).toEqual(
+        withoutIds(stageById(r.stages, 'af').skipLogic),
       );
       expect(stageById(r.stages, 'af').skipLogic).toBeDefined();
     });
@@ -2709,10 +2742,10 @@ describe('instrument attributes', () => {
       );
       expect(r.validation.success).toBe(true);
       const all = ids(r.stages);
-      expect(all).toContain('af3');
-      expect(all).toContain('af_intro');
-      expect(all).toContain('af2_intro');
-      expect(all).not.toContain('af3_intro');
+      expect(all).toContain(sketchStageId('af3'));
+      expect(all).toContain(sketchStageId('af_intro'));
+      expect(all).toContain(sketchStageId('af2_intro'));
+      expect(all).not.toContain(sketchStageId('af3_intro'));
     });
 
     it('introduces a task again after a stage skipped when no one was named', async () => {
@@ -2736,13 +2769,13 @@ describe('instrument attributes', () => {
         design({ nodeTypes: [people, colleague], stages: stages(0) }),
       );
       expect(maybe.validation.success).toBe(true);
-      expect(ids(maybe.stages)).toContain('af_c_intro');
+      expect(ids(maybe.stages)).toContain(sketchStageId('af_c_intro'));
       const sure = await build(
         design({ nodeTypes: [people, colleague], stages: stages(1) }),
       );
       expect(sure.validation.success).toBe(true);
-      expect(ids(sure.stages)).toContain('af_intro');
-      expect(ids(sure.stages)).not.toContain('af_c_intro');
+      expect(ids(sure.stages)).toContain(sketchStageId('af_intro'));
+      expect(ids(sure.stages)).not.toContain(sketchStageId('af_c_intro'));
     });
 
     it('describes only the composer tools the stage has', async () => {
@@ -2787,7 +2820,7 @@ describe('instrument attributes', () => {
         }),
       );
       expect(r.validation.success).toBe(true);
-      expect(ids(r.stages)).not.toContain('ng_intro');
+      expect(ids(r.stages)).not.toContain(sketchStageId('ng_intro'));
     });
 
     it('adds its own introduction after instructions that may not show', async () => {
@@ -2808,7 +2841,7 @@ describe('instrument attributes', () => {
         }),
       );
       expect(r.validation.success).toBe(true);
-      expect(ids(r.stages)).toContain('ng_intro');
+      expect(ids(r.stages)).toContain(sketchStageId('ng_intro'));
     });
 
     it('explains only the map tasks that are new', async () => {
@@ -2893,7 +2926,7 @@ describe('instrument attributes', () => {
         { now: NOW },
       );
       const intro = (r.protocol.stages as unknown as Stage[]).find(
-        (x) => x.id === 'ng_intro',
+        (x) => x.id === sketchStageId('ng_intro'),
       ) as Stage & {
         content: LocalizedText;
       };

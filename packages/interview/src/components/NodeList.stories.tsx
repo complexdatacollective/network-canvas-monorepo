@@ -12,31 +12,37 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../__tests__/testIds';
 import NodeList from './NodeList';
+
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
+const NAME = testVariableId('name');
+const PLACE_NAME = testVariableId('place-name');
 
 const mockProtocol = {
   id: 'test-protocol',
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
-        displayVariable: 'name',
+        displayVariable: NAME,
         variables: {
-          name: {
+          [NAME]: {
             name: 'Name',
             type: 'text',
           },
         },
       },
-      place: {
+      [PLACE]: {
         name: 'Place',
         color: 'node-color-seq-2',
         shape: { default: 'circle' },
-        displayVariable: 'name',
+        displayVariable: PLACE_NAME,
         variables: {
-          name: {
+          [PLACE_NAME]: {
             name: 'Name',
             type: 'text',
           },
@@ -51,7 +57,7 @@ const mockProtocol = {
       label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
-        type: 'person',
+        type: PERSON,
       },
       prompts: [
         {
@@ -151,10 +157,10 @@ const createMockNodes = (
 ): NcNode[] => {
   return Array.from({ length: count }, (_, i) => ({
     [entityPrimaryKeyProperty]: `node-${i + 1 + idOffset}`,
-    type: 'person',
+    type: PERSON,
     stageId: stageId ?? 'stage-1',
     [entityAttributesProperty]: {
-      name: names[(i + idOffset) % names.length] ?? 'Unknown',
+      [NAME]: names[(i + idOffset) % names.length] ?? 'Unknown',
     },
   }));
 };

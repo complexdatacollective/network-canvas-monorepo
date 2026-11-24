@@ -62,25 +62,17 @@ const stageInput = (page: InformationPageFixture) => {
   };
 };
 
-const LOCALES = (page: InformationPageFixture) => page.locales ?? ['en'];
-
 // Every page, once through the 8 to 9 migration and once as an Information
 // stage of a synthetic interview, in one protocol each.
-const migrated = (locales: readonly string[]) => {
-  const pages = INFORMATION_PAGES.filter(
-    (page) => LOCALES(page).join() === locales.join(),
-  );
+const migrated = () => {
   const protocol = migrateProtocol(
     {
       name: 'Protocol',
       schemaVersion: 8,
       codebook: { node: {}, edge: {}, ego: {} },
       assetManifest: INFORMATION_PAGE_ASSETS,
-      ...(locales.length > 1 && {
-        localization: { defaultLocale: 'en', locales },
-      }),
-      stages: pages.map((page, index) => ({
-        id: `info-${index}`,
+      stages: INFORMATION_PAGES.map((page) => ({
+        id: page.name,
         type: 'Information',
         label: page.label ?? 'Intro',
         ...(page.title !== undefined && { title: page.title }),
@@ -90,28 +82,26 @@ const migrated = (locales: readonly string[]) => {
     9,
   );
   const synth = new SyntheticInterview();
-  synth.setLocalization({ defaultLocale: 'en', locales: [...locales] });
-  for (const page of pages) synth.addInformationStage(stageInput(page));
+  synth.setLocalization({ defaultLocale: 'en', locales: ['en'] });
+  for (const page of INFORMATION_PAGES) {
+    synth.addInformationStage(stageInput(page));
+  }
   const built = synth.getProtocol().stages as { content?: LocalizedString }[];
-  return pages.map((page, index) => ({
-    name: page.name,
-    migration: (
-      protocol.stages.find(({ id }) => id === `info-${index}`) as
-        | { content?: unknown }
-        | undefined
-    )?.content,
-    synthetic: built[index]?.content,
-  }));
+  return INFORMATION_PAGES.map((page, index) => {
+    const stage = protocol.stages[index];
+    return {
+      name: page.name,
+      migration: stage?.type === 'Information' ? stage.content : undefined,
+      synthetic: built[index]?.content,
+    };
+  });
 };
 
 // The two writers of a page join its parts alike once its text is in
 // schema 9 form: what the migration writes from a schema 8 page is what a
 // synthetic interview writes from the same parts in that form.
 describe('an Information stage written as the 8 to 9 migration writes its page', () => {
-  const localeSets = [
-    ...new Set(INFORMATION_PAGES.map((page) => LOCALES(page).join())),
-  ].map((joined) => joined.split(','));
-  const cases = localeSets.flatMap(migrated);
+  const cases = migrated();
 
   it('covers every page', () => {
     expect(cases).toHaveLength(INFORMATION_PAGES.length);

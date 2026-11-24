@@ -4,6 +4,7 @@ import { SyntheticInterview } from '@codaco/protocol-utilities';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
+import { finishStageIdOf } from '../helpers/synthetic-payload.js';
 import type { InterfaceScenarios, ScenarioContext } from './types.js';
 
 // The name variable's codebook key is a builder-generated id, not the literal
@@ -21,8 +22,9 @@ const FINISHED_HEADING = 'Interview Finished';
 const FINISHED_TEXT = 'Thank you for participating!';
 
 // The finish stage every scenario that does not author its own ends at:
-// SyntheticInterview appends it, with Network Canvas's own text, under this id.
-const DEFAULT_FINISH_STAGE_ID = 'finish';
+// SyntheticInterview appends it, with Network Canvas's own text. Captured by
+// build() for run(), as seededNameVarId is.
+let defaultFinishStageId = '';
 
 /** A researcher's own finish stage: its text, and an outcome that is not the default. */
 const AUTHORED = {
@@ -79,6 +81,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         synth.addInformationStage({ title: 'Study overview' });
+        defaultFinishStageId = finishStageIdOf(synth.getProtocol()) ?? '';
         return synth;
       },
       // currentStep 1: the finish stage SyntheticInterview appends, with the
@@ -117,7 +120,7 @@ export const finishSessionScenarios: InterfaceScenarios = {
         expect(calls).toHaveLength(1);
         expect(calls[0]?.aborted).toBe(false);
         expect(calls[0]?.finish).toEqual({
-          stageId: DEFAULT_FINISH_STAGE_ID,
+          stageId: defaultFinishStageId,
           outcome: 'completed',
         });
 

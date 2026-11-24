@@ -10,9 +10,26 @@ import { describe, expect, it, vi } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { attributeField } from '../../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../testing/testId.ts';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
+
+const CONTACTED = testVariableId('contacted');
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
+const HIGHLIGHTED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'highlighted',
+);
 
 /**
  * The prompt text is a rich-text editor, and its editing surface cannot be
@@ -188,7 +205,7 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await chooseStamp(harness, dialog, 'highlighted');
+    await chooseStamp(harness, dialog, HIGHLIGHTED);
     await harness.user.click(dialog.getByRole('radio', { name: 'True' }));
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -198,7 +215,7 @@ describe("a name generator's prompts", () => {
     const request = await harness.submit();
     const rows = request?.stageDocument.prompts;
     expect(Array.isArray(rows) && rows[0]).toMatchObject({
-      additionalAttributes: [{ variable: 'highlighted', value: true }],
+      additionalAttributes: [{ variable: HIGHLIGHTED, value: true }],
     });
   });
 
@@ -220,9 +237,9 @@ describe("a name generator's prompts", () => {
     );
     const offered = offeredIds(await openPicker(harness, dialog));
 
-    expect(offered).toContain('highlighted');
-    expect(offered).not.toContain('name');
-    expect(offered).not.toContain('flagged');
+    expect(offered).toContain(HIGHLIGHTED);
+    expect(offered).not.toContain(NAME);
+    expect(offered).not.toContain(FLAGGED);
   });
 
   /**
@@ -241,7 +258,7 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await chooseStamp(harness, dialog, 'highlighted');
+    await chooseStamp(harness, dialog, HIGHLIGHTED);
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     expect(
@@ -266,18 +283,18 @@ describe("a name generator's prompts", () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        person: personDefinition({
-          name: {
+        [PERSON]: personDefinition({
+          [NAME]: {
             name: 'name',
             type: 'text',
             component: 'Text',
           },
-          highlighted: {
+          [HIGHLIGHTED]: {
             name: 'highlighted',
             type: 'boolean',
             component: 'Boolean',
           },
-          contacted: {
+          [CONTACTED]: {
             name: 'contacted',
             type: 'boolean',
           },
@@ -292,7 +309,7 @@ describe("a name generator's prompts", () => {
     const window = await openPicker(harness, dialog);
     // The revision reaches the picker over the protocol channel, which is a
     // microtask rather than the click that opened the dialog.
-    await waitFor(() => expect(offeredIds(window)).toContain('contacted'));
+    await waitFor(() => expect(offeredIds(window)).toContain(CONTACTED));
   });
 
   /**
@@ -375,7 +392,7 @@ describe("a name generator's prompts", () => {
     // joined the stage's draft with it, and is not in the protocol until the
     // stage is. The id it was filed under is the codebook's to choose, so the
     // stamp below is compared against whatever the codebook says it is.
-    const variables = harness.editorCodebook().node?.person?.variables ?? {};
+    const variables = harness.editorCodebook().node?.[PERSON]?.variables ?? {};
     const [created] =
       Object.entries(variables).find(
         ([, variable]) => variable.name === 'nominated_early',
@@ -388,14 +405,14 @@ describe("a name generator's prompts", () => {
       type: 'boolean',
     });
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).not.toContain('nominated_early');
 
     const request = await harness.submit();
     expect(
-      harness.hostCodebook().node?.person?.variables?.[created],
+      harness.hostCodebook().node?.[PERSON]?.variables?.[created],
     ).toMatchObject({ name: 'nominated_early', type: 'boolean' });
     const rows = request?.stageDocument.prompts;
     expect(Array.isArray(rows) && rows[0]).toMatchObject({
@@ -472,7 +489,7 @@ describe("a name generator's prompts", () => {
       sections: prompts,
       heldSections: [
         {
-          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          sectionId: sectionId({ kind: 'codebookNode', typeId: PERSON }),
           displayName: 'Priya Raman',
         },
       ],
@@ -502,14 +519,14 @@ describe("a name generator's prompts", () => {
       'Priya Raman is currently editing a section needed for this change.',
     );
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).not.toContain('nominatedEarly');
     expect(
-      Object.values(harness.editorCodebook().node?.person?.variables ?? {}).map(
-        (variable) => variable.name,
-      ),
+      Object.values(
+        harness.editorCodebook().node?.[PERSON]?.variables ?? {},
+      ).map((variable) => variable.name),
     ).toContain('nominatedEarly');
   });
 });

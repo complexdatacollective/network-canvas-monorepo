@@ -1,7 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
 import {
@@ -41,7 +44,7 @@ const openFixture = () => ({
 });
 
 /** Where a host would insert a new ego form: over the one the fixture holds. */
-const EGO_FORM_INDEX = fixtureStageIds().indexOf('ego-form-1');
+const EGO_FORM_INDEX = fixtureStageIds().indexOf(fixtureStageId('ego-form-1'));
 
 const createFixture = () => ({
   create: { type: 'EgoForm' as const, position: EGO_FORM_INDEX },

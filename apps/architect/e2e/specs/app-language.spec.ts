@@ -1,11 +1,18 @@
 import type { Page } from '@playwright/test';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
+import {
+  createProtocolObjectId,
+  CurrentProtocolSchema,
+} from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
-import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
+import {
+  loadAllInterfacesFixture,
+  stageIdOfType,
+} from '../helpers/load-fixture.js';
 import { readProtocolJson, readStageJson } from '../helpers/read-store.js';
 import { StagePreview } from '../pageobjects/preview.js';
 import { writeHeadingAndText } from '../pageobjects/rich-text.js';
@@ -317,6 +324,9 @@ test('formats printed attribute order and updates linked-list grammar live while
 }) => {
   // Underscore/hyphen/dot distinguish locale collation from codepoint order.
   const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
+  const attributeId = (index: number) => testVariableId(`attribute-${index}`);
+  const sortStageId = createProtocolObjectId();
+  const conjunctionStageId = createProtocolObjectId();
   const protocol = CurrentProtocolSchema.parse(
     withInterfaceText({
       ...emptyProtocol(),
@@ -324,7 +334,7 @@ test('formats printed attribute order and updates linked-list grammar live while
         ego: {
           variables: Object.fromEntries(
             names.map((name, index) => [
-              `attribute-${index}`,
+              attributeId(index),
               { name, type: 'text', component: 'Text' },
             ]),
           ),
@@ -332,7 +342,7 @@ test('formats printed attribute order and updates linked-list grammar live while
       },
       stages: [
         {
-          id: 'sort',
+          id: sortStageId,
           type: 'EgoForm',
           label: { en: 'Authored_sort' },
           introductionPanel: {
@@ -341,14 +351,14 @@ test('formats printed attribute order and updates linked-list grammar live while
           },
           form: {
             fields: names.map((_, index) => ({
-              id: `field-${index}`,
-              variable: `attribute-${index}`,
+              id: createProtocolObjectId(),
+              variable: attributeId(index),
               prompt: { en: `Authored_prompt_${index}` },
             })),
           },
         },
         {
-          id: 'conjunction',
+          id: conjunctionStageId,
           type: 'EgoForm',
           label: { en: 'Authored_conjunction' },
           introductionPanel: {
@@ -357,8 +367,8 @@ test('formats printed attribute order and updates linked-list grammar live while
           },
           form: {
             fields: [0, 3].map((index) => ({
-              id: `field-${index}`,
-              variable: `attribute-${index}`,
+              id: createProtocolObjectId(),
+              variable: attributeId(index),
               prompt: { en: `Authored_prompt_${index}` },
             })),
           },
@@ -380,9 +390,9 @@ test('formats printed attribute order and updates linked-list grammar live while
           exact: true,
         }),
       });
-  await expect(attributeRow('sort')).toHaveCount(1);
-  const links = attributeRow('sort').getByRole('link');
-  const rows = page.locator('tr[id^="variable-attribute-"]');
+  await expect(attributeRow(sortStageId)).toHaveCount(1);
+  const links = attributeRow(sortStageId).getByRole('link');
+  const rows = page.locator('tr[id^="variable-"]');
   await expect(links).toHaveText([
     'alpha_name',
     'alpha-name',
@@ -393,13 +403,13 @@ test('formats printed attribute order and updates linked-list grammar live while
   expect(
     await rows.evaluateAll((elements) => elements.map((element) => element.id)),
   ).toEqual([
-    'variable-attribute-0',
-    'variable-attribute-2',
-    'variable-attribute-1',
-    'variable-attribute-3',
+    `variable-${attributeId(0)}`,
+    `variable-${attributeId(2)}`,
+    `variable-${attributeId(1)}`,
+    `variable-${attributeId(3)}`,
   ]);
-  await expect(attributeRow('conjunction')).toHaveCount(1);
-  const conjunction = attributeRow('conjunction')
+  await expect(attributeRow(conjunctionStageId)).toHaveCount(1);
+  const conjunction = attributeRow(conjunctionStageId)
     .getByRole('cell')
     .filter({ has: page.getByRole('link', { name: 'Isabel', exact: true }) });
   await expect(conjunction).toHaveText('alpha_name e Isabel');
@@ -418,18 +428,18 @@ test('formats printed attribute order and updates linked-list grammar live while
       elements.map((element) => element.getAttribute('href')),
     ),
   ).toEqual([
-    '#variable-attribute-0',
-    '#variable-attribute-2',
-    '#variable-attribute-1',
-    '#variable-attribute-3',
+    `#variable-${attributeId(0)}`,
+    `#variable-${attributeId(2)}`,
+    `#variable-${attributeId(1)}`,
+    `#variable-${attributeId(3)}`,
   ]);
   expect(
     await rows.evaluateAll((elements) => elements.map((element) => element.id)),
   ).toEqual([
-    'variable-attribute-0',
-    'variable-attribute-2',
-    'variable-attribute-1',
-    'variable-attribute-3',
+    `variable-${attributeId(0)}`,
+    `variable-${attributeId(2)}`,
+    `variable-${attributeId(1)}`,
+    `variable-${attributeId(3)}`,
   ]);
   await expect(conjunction).toHaveText('alpha_name and Isabel');
   expect(await readProtocolJson(page)).toEqual(before);
@@ -461,11 +471,11 @@ test('renders British spelling in the actual type dialog and in the stage editor
   // Two stage editors, because the copy in them is the protocol-builder
   // package's and its British overrides are a catalog of its own: a stage
   // editor reading American English is the failure this catches.
-  await page.goto('/protocol/stage/narrative-1');
+  await page.goto(`/protocol/stage/${stageIdOfType(protocol, 'Narrative')}`);
   await expect(
     page.getByRole('heading', { name: 'Visualisation presets' }),
   ).toBeVisible();
-  await page.goto('/protocol/stage/geospatial-1');
+  await page.goto(`/protocol/stage/${stageIdOfType(protocol, 'Geospatial')}`);
   await expect(
     page.getByRole('radiogroup', { name: 'Map outline and selection colour' }),
   ).toBeVisible();

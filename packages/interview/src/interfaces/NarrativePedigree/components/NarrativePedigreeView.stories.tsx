@@ -16,6 +16,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
@@ -25,16 +26,16 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import { narrativePedigreeWords } from '../__tests__/narrativePedigreeWords';
 import NarrativePedigreeView from './NarrativePedigreeView';
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'family';
-const NAME_VAR = 'name';
-const EGO_VAR = 'isEgo';
-const SEX_VAR = 'sexAssignedAtBirth';
-const KIND_VAR = 'kind';
-const CURRENT_VAR = 'currentPartner';
-const CARRIER_VAR = 'gestationalCarrier';
-const BREAST_CANCER_VAR = 'breastCancer';
-const HAEMOPHILIA_VAR = 'haemophilia';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('family');
+const NAME_VAR = testVariableId('name');
+const EGO_VAR = testVariableId('isEgo');
+const SEX_VAR = testVariableId('sexAssignedAtBirth');
+const KIND_VAR = testVariableId('kind');
+const CURRENT_VAR = testVariableId('currentPartner');
+const CARRIER_VAR = testVariableId('gestationalCarrier');
+const BREAST_CANCER_VAR = testVariableId('breastCancer');
+const HAEMOPHILIA_VAR = testVariableId('haemophilia');
 
 const SOURCE_STAGE_ID = 'source-fp';
 
@@ -131,7 +132,7 @@ const sourceStage = {
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
 
 const narrativeStage: NarrativeStage = {
-  id: 'np-1',
+  id: testId('np-1'),
   type: 'NarrativePedigree',
   label: { en: 'Disease Pedigree' },
   sourceStageId: SOURCE_STAGE_ID,
@@ -139,14 +140,14 @@ const narrativeStage: NarrativeStage = {
   ...narrativePedigreeWords(),
   diseases: [
     {
-      id: 'breast-cancer',
+      id: testId('breast-cancer'),
       label: { en: 'Breast Cancer' },
       color: 'node-color-seq-1',
       attribute: asEntityAttributeReference(BREAST_CANCER_VAR),
       inheritancePattern: 'autosomalDominant',
     },
     {
-      id: 'haemophilia',
+      id: testId('haemophilia'),
       label: { en: 'Haemophilia' },
       color: 'node-color-seq-6',
       attribute: asEntityAttributeReference(HAEMOPHILIA_VAR),

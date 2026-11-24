@@ -12,6 +12,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { NcNode } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import type { InterviewPayload } from '../../contract/types';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
@@ -43,7 +44,7 @@ const anonymisationStage = (
   id: string,
   validation: StageProps<'Anonymisation'>['stage']['validation'],
 ): StageProps<'Anonymisation'>['stage'] => ({
-  id,
+  id: testId(id),
   type: 'Anonymisation',
   label: { en: 'Protect your answers' },
   explanationText: { en: '# Protect your answers\n\nChoose one.' },
@@ -51,7 +52,7 @@ const anonymisationStage = (
 });
 
 const informationStage: Stages[number] = {
-  id: 'information',
+  id: testId('information'),
   type: 'Information',
   label: { en: 'Welcome' },
   content: { en: '# Welcome' },

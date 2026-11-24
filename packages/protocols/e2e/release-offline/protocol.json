@@ -9,19 +9,19 @@
   "lastModified": "2026-10-30T00:00:00.000Z",
   "codebook": {
     "node": {
-      "person": {
+      "6460163b-455b-5686-a58b-b4724aeb75d0": {
         "name": "Person",
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
         },
         "variables": {
-          "name": {
+          "f7b41887-de21-5d95-906a-80e8552e2219": {
             "name": "name",
             "type": "text",
             "component": "Text"
           },
-          "age": {
+          "7a8bb50f-40e0-561c-bba8-ae976a8ae252": {
             "name": "age",
             "type": "number"
           }
@@ -45,7 +45,7 @@
   },
   "stages": [
     {
-      "id": "stage-welcome",
+      "id": "375bc35c-d78e-5c5f-8bdc-5196bd2cea27",
       "type": "Information",
       "label": {
         "en-US": "Welcome"
@@ -55,7 +55,7 @@
       }
     },
     {
-      "id": "stage-roster",
+      "id": "3d80572d-c637-5d36-8f41-acb5440b7bc4",
       "minNodesNotice": {
         "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
       },
@@ -71,7 +71,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "6460163b-455b-5686-a58b-b4724aeb75d0"
       },
       "dataSource": "roster_data",
       "panelTitle": {
@@ -80,6 +80,7 @@
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "2d527bf0-ddae-5285-9ca6-53d318be2dff",
             "label": {
               "en-US": "Age"
             },
@@ -90,12 +91,14 @@
       "sortOptions": {
         "sortOrder": [
           {
+            "id": "6393e61b-00a2-514a-ae86-309d4ee2a617",
             "property": "age",
             "direction": "desc"
           }
         ],
         "sortableProperties": [
           {
+            "id": "f1548135-3606-542b-917f-855b088e72ee",
             "label": {
               "en-US": "Age"
             },
@@ -109,7 +112,7 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "edf49369-de38-5596-8f7d-24124b956aca",
           "text": {
             "en-US": "Who on this list do you know?"
           }
@@ -124,7 +127,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "a18c82be-1062-5367-9539-187fdf15eb31",
       "finishLabel": {
         "en-US": "Finish"
       },

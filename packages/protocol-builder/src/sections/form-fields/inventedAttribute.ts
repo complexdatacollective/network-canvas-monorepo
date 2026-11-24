@@ -33,17 +33,13 @@ export const INVENTED_TYPE_NOTICE = defineMessages({
  * row commits). It is never written to the protocol: each family's own commit
  * replaces it with the created attribute's own id before the row is committed.
  *
- * Spelled with a `#`, which is the whole of why this value and not another
- * one. A variable's record key is an id, not a name: `CodebookIdSchema` is
- * `/^[a-zA-Z0-9._:-]+$/`, and the uuids this package mints are only what IT
- * creates, so an imported or hand-written protocol may key a variable
- * anything that regex allows. A sentinel inside that alphabet is a record key
- * the codebook may legally hold: the picker would then offer the real
- * attribute and this option under one value, choosing the attribute would
- * read as a request to invent one, and saving would create a second attribute
- * beside it. `#` is outside the id alphabet, so no record key can ever be
- * this. What a researcher TYPES for the attribute is a name, which may hold
- * any character and is never a record key.
+ * Not a UUID, which is the whole of why this value and not another one. A
+ * variable's record key is a UUID (`VariableIdSchema`), so no record key can
+ * ever be this, and the picker can never offer a real attribute and this
+ * option under one value. Were it possible, choosing the attribute would read
+ * as a request to invent one, and saving would create a second attribute
+ * beside it. What a researcher TYPES for the attribute is a name, which may
+ * hold any character and is never a record key.
  *
  * Its own module because both form families invent: the shared form-fields
  * row and the network composer's. One sentinel and one pair of keys, so a row

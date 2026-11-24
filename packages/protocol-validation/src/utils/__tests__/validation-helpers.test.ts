@@ -7,7 +7,6 @@ import {
   entityExists,
   filterRuleAttributeExists,
   filterRuleEntityExists,
-  findDuplicateId,
   findDuplicateName,
   findDuplicateValue,
   getAllEntityNames,
@@ -250,47 +249,6 @@ describe('Validation Helpers', () => {
         'number',
       );
       expect(result).toBe(false);
-    });
-  });
-
-  describe('findDuplicateId', () => {
-    it('returns null for array with unique IDs', () => {
-      const items = [{ id: 'item1' }, { id: 'item2' }, { id: 'item3' }];
-      const result = findDuplicateId(items);
-      expect(result).toBeNull();
-    });
-
-    it('returns first duplicate ID found', () => {
-      const items = [
-        { id: 'item1' },
-        { id: 'item2' },
-        { id: 'item1' }, // Duplicate
-      ];
-      const result = findDuplicateId(items);
-      expect(result).toBe('item1');
-    });
-
-    it('returns first duplicate when multiple duplicates exist', () => {
-      const items = [
-        { id: 'item1' },
-        { id: 'item2' },
-        { id: 'item1' }, // First duplicate
-        { id: 'item3' },
-        { id: 'item2' }, // Second duplicate
-      ];
-      const result = findDuplicateId(items);
-      expect(result).toBe('item1');
-    });
-
-    it('returns null for empty array', () => {
-      const result = findDuplicateId([]);
-      expect(result).toBeNull();
-    });
-
-    it('returns null for single item', () => {
-      const items = [{ id: 'item1' }];
-      const result = findDuplicateId(items);
-      expect(result).toBeNull();
     });
   });
 

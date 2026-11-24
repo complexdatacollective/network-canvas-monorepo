@@ -8,10 +8,14 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { FieldStoryHost } from '../../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import FeaturePropertyField from './FeaturePropertyField.tsx';
 import type { GeoJsonPropertiesState } from './useGeoJsonFeatureProperties.ts';
 
-const GEOSPATIAL = sectionId({ kind: 'stage', stageId: 'geospatial-1' });
+const GEOSPATIAL = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('geospatial-1'),
+});
 
 /** The fixture's geospatial stage with its map settings changed. */
 const withMapOptions =
@@ -79,7 +83,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'geospatial-1',
+    stageId: fixtureStageId('geospatial-1'),
     sectionTitle: 'Map layer',
     children: (
       <PropertyPicker dataSourceAssetId="geo_data" properties={REGIONS} />

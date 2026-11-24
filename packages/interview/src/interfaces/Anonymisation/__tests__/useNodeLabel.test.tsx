@@ -18,7 +18,9 @@ import { useNodeLabel } from '../useNodeLabel';
 import {
   createEncryptionStore,
   encryptionFor,
+  AGE_VARIABLE,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from './encryptionFixtures';
@@ -153,9 +155,12 @@ describe('useNodeLabel with encrypted labels', () => {
     const legacy: NcNode = {
       [entityPrimaryKeyProperty]: 'legacy-1',
       type: NODE_TYPE,
-      [entityAttributesProperty]: { name: [9, 8, 7, 6] },
+      [entityAttributesProperty]: { [NAME_VARIABLE]: [9, 8, 7, 6] },
       [entitySecureAttributesMeta]: {
-        name: { iv: Array.from({ length: 12 }, () => 1), salt: [2, 3, 4] },
+        [NAME_VARIABLE]: {
+          iv: Array.from({ length: 12 }, () => 1),
+          salt: [2, 3, 4],
+        },
       },
     };
     const store = createEncryptionStore([legacy]);
@@ -182,8 +187,8 @@ describe('useNodeLabel with encrypted labels', () => {
   it('decrypts a name its record says is encrypted, though the codebook no longer marks it', async () => {
     // As a protocol re-imported without its encryption declares the name.
     const unmarkedVariables: Record<string, Variable> = {
-      name: { name: 'name', type: 'text', component: 'Text' },
-      age: { name: 'age', type: 'number', component: 'Number' },
+      [NAME_VARIABLE]: { name: 'name', type: 'text', component: 'Text' },
+      [AGE_VARIABLE]: { name: 'age', type: 'number', component: 'Number' },
     };
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
     const store = createEncryptionStore([node], undefined, unmarkedVariables);

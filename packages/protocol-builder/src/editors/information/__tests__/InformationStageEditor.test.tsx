@@ -6,7 +6,10 @@ import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvide
 import { withMod } from '@codaco/fresco-ui/testing/modKey';
 
 import PageContentSection from '../../../sections/page-content/PageContentSection.tsx';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectStageUntouched,
@@ -53,7 +56,9 @@ const openFixture = () => ({
 });
 
 /** Where a host would insert a new page: over the one the fixture holds. */
-const INFORMATION_INDEX = fixtureStageIds().indexOf('information-1');
+const INFORMATION_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('information-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'Information' as const, position: INFORMATION_INDEX },

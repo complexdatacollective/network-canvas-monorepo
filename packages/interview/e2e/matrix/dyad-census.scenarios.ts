@@ -1,4 +1,5 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 
 import { DyadCensusFixture } from '../fixtures/dyad-census-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
@@ -567,7 +568,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
             about: 'dyadTarget',
             rules: [
               {
-                id: 'named-sam',
+                id: createProtocolObjectId(),
                 type: 'node',
                 options: {
                   type: nodeType.id,
@@ -582,7 +583,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
             about: 'dyadSource',
             rules: [
               {
-                id: 'has-an-edge',
+                id: createProtocolObjectId(),
                 type: 'edge',
                 options: { count: 'GREATER_THAN', value: 0 },
               },

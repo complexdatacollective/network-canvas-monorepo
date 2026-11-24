@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -12,11 +13,13 @@ import { baseStageSchema } from './base.ts';
  * One text rather than a heading and a list of items, so the page is written,
  * read and translated as the single document a participant sees.
  */
-export const informationStage = baseStageSchema.extend({
-  type: z.literal('Information'),
-  content: localizedString(
-    nonBlankText(),
-    { format: 'markdown', lines: 'multiple', assetBlocks: true },
-    { dynamicValues: 'stageText' },
-  ),
-});
+export const informationStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('Information'),
+    content: localizedString(
+      nonBlankText(),
+      { format: 'markdown', lines: 'multiple', assetBlocks: true },
+      { dynamicValues: 'stageText' },
+    ),
+  }),
+);

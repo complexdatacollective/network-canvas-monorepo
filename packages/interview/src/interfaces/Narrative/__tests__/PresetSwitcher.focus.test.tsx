@@ -1,6 +1,8 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { testId } from '../../../__tests__/testIds';
+
 vi.mock('../../../hooks/useStageSelector', () => ({
   useStageSelector: () => ({
     categoricalOptions: undefined,
@@ -23,9 +25,9 @@ const HEADINGS = {
 const layoutVariable = asEntityAttributeReference('layout');
 
 const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
-  { id: 'first', label: { en: 'First' }, layoutVariable },
-  { id: 'second', label: { en: 'Second' }, layoutVariable },
-  { id: 'third', label: { en: 'Third' }, layoutVariable },
+  { id: testId('first'), label: { en: 'First' }, layoutVariable },
+  { id: testId('second'), label: { en: 'Second' }, layoutVariable },
+  { id: testId('third'), label: { en: 'Third' }, layoutVariable },
 ];
 
 function renderSwitcher(activePreset: number) {

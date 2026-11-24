@@ -10,7 +10,10 @@ import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  createProtocolObjectId,
+} from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { importAssetAsync } from '~/ducks/modules/protocol/assetManifest';
 import { rootReducer } from '~/ducks/modules/root';
@@ -54,7 +57,7 @@ const makeStore = () => {
           // Schema 9 requires the finish stage that ends the interview.
           stages: [
             {
-              id: 'finish',
+              id: createProtocolObjectId(),
               type: 'FinishSession',
               label: { en: 'Finish' },
               mode: 'confirmation',

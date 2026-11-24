@@ -7,6 +7,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import type { InterviewPayload } from '../../contract/types';
 import Shell from '../../Shell';
 
@@ -61,7 +62,7 @@ const lockedPayload = () =>
       assets: [],
       stages: [
         {
-          id: 'locked-stage',
+          id: testId('locked-stage'),
           type: 'Information',
           label: { en: 'Locked stage' },
           content: { en: '# Locked stage' },

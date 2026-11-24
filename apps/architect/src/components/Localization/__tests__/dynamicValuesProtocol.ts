@@ -1,4 +1,8 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
+import {
+  type CurrentProtocol,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
 
 type Stage = CurrentProtocol['stages'][number];
 
@@ -19,11 +23,15 @@ export const dynamicValuesProtocol = (
   codebook: {
     node: {},
     edge: {},
-    ego: { variables: { firstName: { name: 'first_name', type: 'text' } } },
+    ego: {
+      variables: {
+        [testVariableId('firstName')]: { name: 'first_name', type: 'text' },
+      },
+    },
   },
   stages: [
     {
-      id: 'welcome',
+      id: ProtocolObjectIdSchema.parse('5b0c2a4e-1f7d-4c3a-8e9b-0a1b2c3d4e11'),
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
       content,

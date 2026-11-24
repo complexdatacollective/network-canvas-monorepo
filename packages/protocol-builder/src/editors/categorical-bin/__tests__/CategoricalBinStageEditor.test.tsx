@@ -5,13 +5,36 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { categoricalBinStageEditor } from '../CategoricalBinStageEditor.ts';
 
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const CONTACT_TYPE = personVariable('contactType');
+const RELATIONSHIP = personVariable('relationship_to_ego');
+
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const CATEGORICAL_BIN_INDEX = fixtureStageIds().indexOf('categorical-bin-1');
+const CATEGORICAL_BIN_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('categorical-bin-1'),
+);
+
+/** The id the fixture gives its one prompt, read from the fixture itself. */
+const fixturePromptId = (): unknown => {
+  const rows = loadFixtureStage('categorical-bin-1').fields.prompts;
+  const [first] = Array.isArray(rows) ? rows : [];
+  return typeof first === 'object' && first !== null && 'id' in first
+    ? first.id
+    : undefined;
+};
 
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
@@ -60,7 +83,7 @@ describe('creating a categorical bin stage', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Attribute'),
-      'contactType',
+      CONTACT_TYPE,
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
@@ -71,13 +94,13 @@ describe('creating a categorical bin stage', () => {
     expect(request?.stageDocument).toMatchObject({
       type: 'CategoricalBin',
       label: { 'en-US': 'Person Categorical Bin' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         text: { 'en-US': 'What kind of contact?' },
-        variable: 'contactType',
+        variable: CONTACT_TYPE,
       },
     ]);
   });
@@ -92,7 +115,7 @@ describe('creating a categorical bin stage', () => {
    */
   it('saves a prompt whose bin for everything else is filled in', async () => {
     const harness = renderStageEditor({
-      stageId: 'categorical-bin-1',
+      stageId: fixtureStageId('categorical-bin-1'),
       registry: categoricalBinStageEditor,
     });
 
@@ -116,7 +139,7 @@ describe('creating a categorical bin stage', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Other attribute', groupElement),
-      'relationship_to_ego',
+      RELATIONSHIP,
     );
     await writeInto(
       harness,
@@ -137,12 +160,12 @@ describe('creating a categorical bin stage', () => {
     const request = await harness.submit();
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
-        id: 'categorical-bin-prompt-1',
+        id: fixturePromptId(),
         text: {
           'en-US': 'What type of contact do you have most with this person?',
         },
-        variable: 'contactType',
-        otherVariable: 'relationship_to_ego',
+        variable: CONTACT_TYPE,
+        otherVariable: RELATIONSHIP,
         otherOptionLabel: { 'en-US': 'Something else' },
         otherVariablePrompt: { 'en-US': 'What kind of contact is it?' },
       },

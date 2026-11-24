@@ -1,11 +1,41 @@
 import { type Page } from '@playwright/test';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { SlidesFormFixture } from '../fixtures/slides-form-fixture.js';
+import { e2eVariableId } from '../helpers/codebook-ids.js';
 import type { InterfaceScenarios } from './types.js';
+
+// The ids of the variables these scenarios name.
+const CAP = e2eVariableId('cap');
+const CAP_EQ = e2eVariableId('cap-eq');
+const CEILING = e2eVariableId('ceiling');
+const CHANNELS = e2eVariableId('channels');
+const CLOSENESS = e2eVariableId('closeness');
+const CODE_NAME = e2eVariableId('code-name');
+const CONTACT_COUNT = e2eVariableId('contact-count');
+const CONTEXTS = e2eVariableId('contexts');
+const END = e2eVariableId('end');
+const EXCLUDED = e2eVariableId('excluded');
+const FIELD_A = e2eVariableId('field-a');
+const FIELD_B = e2eVariableId('field-b');
+const FIELD_C = e2eVariableId('field-c');
+const FLOOR = e2eVariableId('floor');
+const FREQUENCY = e2eVariableId('frequency');
+const HAVE_MET = e2eVariableId('have-met');
+const IMPORTANCE = e2eVariableId('importance');
+const LAST_CONTACT = e2eVariableId('last-contact');
+const MET_AT = e2eVariableId('met-at');
+const MET_MONTH = e2eVariableId('met-month');
+const SEE_REGULARLY = e2eVariableId('see-regularly');
+const START = e2eVariableId('start');
+const STORY = e2eVariableId('story');
+const TRUST = e2eVariableId('trust');
+const YEARS_KNOWN = e2eVariableId('years-known');
+const noteId = (index: number) => e2eVariableId(`note-${index}`);
 
 // AlterEdgeForm's EdgeHeader renders TWO endpoint node buttons inside the
 // sticky slide header (AlterEdgeForm.tsx:39-57), so the single-header helpers
@@ -91,7 +121,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'story',
+          id: STORY,
           name: 'story',
           type: 'text',
           component: 'TextArea',
@@ -103,7 +133,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'TextArea',
-          variable: 'story',
+          variable: STORY,
           prompt: 'Describe this relationship.',
         });
         synth.addManualNode(stage.id, nt.id, 'n0', { [personName.id]: 'Alex' });
@@ -121,9 +151,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // The stage opens directly on the first relationship's questions.
         await interview.waitForForm();
         await expectEdgeSlide(page, 'Alex', 'Sam');
-        await expect(
-          stage.form.field('story').locator('textarea'),
-        ).toBeVisible();
+        await expect(stage.form.field(STORY).locator('textarea')).toBeVisible();
         // label and interviewScript are author-facing only: never rendered.
         await expect(page.getByText('Internal: edge form')).toHaveCount(0);
         await expect(page.getByText('Ask about each tie.')).toHaveCount(0);
@@ -141,7 +169,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const et = synth.addEdgeType({ name: 'Friendship' });
         const et2 = synth.addEdgeType({ name: 'Coworker' });
         et.addVariable({
-          id: 'met-at',
+          id: MET_AT,
           name: 'metAt',
           type: 'text',
           component: 'Text',
@@ -151,7 +179,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'Text',
-          variable: 'met-at',
+          variable: MET_AT,
           prompt: 'Where did you meet?',
         });
         synth.addManualNode(stage.id, nt.id, 'n0', { [personName.id]: 'Alex' });
@@ -172,11 +200,11 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await interview.waitForForm();
 
         await expectEdgeSlide(page, 'Alex', 'Sam');
-        await stage.form.fillText('met-at', 'Work');
+        await stage.form.fillText(MET_AT, 'Work');
         await advanceEdgeSlide(page, slides);
 
         await expectEdgeSlide(page, 'Sam', 'Jo');
-        await stage.form.fillText('met-at', 'School');
+        await stage.form.fillText(MET_AT, 'School');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -187,10 +215,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const edges = network?.edges ?? [];
         const byUid = (uid: string) =>
           edges.find((e) => e[entityPrimaryKeyProperty] === uid);
-        expect(byUid('f1')?.attributes['met-at']).toBe('Work');
-        expect(byUid('f2')?.attributes['met-at']).toBe('School');
+        expect(byUid('f1')?.attributes[MET_AT]).toBe('Work');
+        expect(byUid('f2')?.attributes[MET_AT]).toBe('School');
         // The out-of-subject Coworker edge is never touched.
-        expect(byUid('c1')?.attributes).not.toHaveProperty('met-at');
+        expect(byUid('c1')?.attributes).not.toHaveProperty(MET_AT);
       },
     },
 
@@ -204,10 +232,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const nt = synth.addNodeType({ name: 'Person' });
         const personName = nt.addVariable({ name: 'name', type: 'text' });
-        nt.addVariable({ id: 'excluded', name: 'excluded', type: 'boolean' });
+        nt.addVariable({ id: EXCLUDED, name: 'excluded', type: 'boolean' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'met-at',
+          id: MET_AT,
           name: 'metAt',
           type: 'text',
           component: 'Text',
@@ -220,10 +248,10 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
             rules: [
               {
                 type: 'node',
-                id: 'keep-included',
+                id: createProtocolObjectId(),
                 options: {
                   type: nt.id,
-                  attribute: 'excluded',
+                  attribute: EXCLUDED,
                   operator: 'EXACTLY',
                   value: false,
                 },
@@ -233,20 +261,20 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'Text',
-          variable: 'met-at',
+          variable: MET_AT,
           prompt: 'Where did you meet?',
         });
         synth.addManualNode(stage.id, nt.id, 'a', {
           [personName.id]: 'Avery',
-          excluded: false,
+          [EXCLUDED]: false,
         });
         synth.addManualNode(stage.id, nt.id, 'b', {
           [personName.id]: 'Blair',
-          excluded: false,
+          [EXCLUDED]: false,
         });
         synth.addManualNode(stage.id, nt.id, 'c', {
           [personName.id]: 'Cameron',
-          excluded: true,
+          [EXCLUDED]: true,
         });
         synth.addManualEdge(et.id, 'ab', 'a', 'b', {});
         synth.addManualEdge(et.id, 'bc', 'b', 'c', {});
@@ -267,7 +295,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           page.locator('[data-stage-section="form"]').getByText('Cameron'),
         ).toHaveCount(0);
 
-        await stage.form.fillText('met-at', 'Work');
+        await stage.form.fillText(MET_AT, 'Work');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -279,11 +307,11 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const edges = network?.edges ?? [];
         const ab = edges.find((e) => e[entityPrimaryKeyProperty] === 'ab');
         const bc = edges.find((e) => e[entityPrimaryKeyProperty] === 'bc');
-        expect(ab?.attributes['met-at']).toBe('Work');
+        expect(ab?.attributes[MET_AT]).toBe('Work');
         // SyntheticInterview materialises every declared variable on manual
         // entities with its type-neutral value. The filtered edge remains
         // untouched; only the visible A-B edge receives the submitted answer.
-        expect(bc?.attributes['met-at']).toBe('');
+        expect(bc?.attributes[MET_AT]).toBe('');
         expect(edges).toHaveLength(2);
       },
     },
@@ -298,7 +326,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'met-at',
+          id: MET_AT,
           name: 'metAt',
           type: 'text',
           component: 'Text',
@@ -309,7 +337,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'Text',
-          variable: 'met-at',
+          variable: MET_AT,
           prompt: 'Where did you meet?',
         });
         // Three nodes but zero edges of the subject type.
@@ -368,13 +396,13 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'met-at',
+          id: MET_AT,
           name: 'metAt',
           type: 'text',
           component: 'Text',
         });
         et.addVariable({
-          id: 'story',
+          id: STORY,
           name: 'story',
           type: 'text',
           component: 'TextArea',
@@ -384,12 +412,12 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'Text',
-          variable: 'met-at',
+          variable: MET_AT,
           prompt: 'Where did you meet?',
         });
         stage.addFormField({
           component: 'TextArea',
-          variable: 'story',
+          variable: STORY,
           prompt: 'Tell the story.',
         });
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
@@ -405,8 +433,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const slides = new SlidesFormFixture(page);
         await interview.waitForForm();
 
-        await stage.form.fillText('met-at', 'Work');
-        await stage.form.fillText('story', 'A long story about how we met.');
+        await stage.form.fillText(MET_AT, 'Work');
+        await stage.form.fillText(STORY, 'A long story about how we met.');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -415,8 +443,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
 
         const network = await protocol.getNetworkState(interview.interviewId);
         const edge = (network?.edges ?? [])[0];
-        expect(edge?.attributes['met-at']).toBe('Work');
-        expect(edge?.attributes.story).toBe('A long story about how we met.');
+        expect(edge?.attributes[MET_AT]).toBe('Work');
+        expect(edge?.attributes[STORY]).toBe('A long story about how we met.');
       },
     },
 
@@ -430,7 +458,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'years-known',
+          id: YEARS_KNOWN,
           name: 'yearsKnown',
           type: 'number',
           component: 'Number',
@@ -440,7 +468,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'Number',
-          variable: 'years-known',
+          variable: YEARS_KNOWN,
           prompt: 'How many years have you known each other?',
         });
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
@@ -456,7 +484,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const slides = new SlidesFormFixture(page);
         await interview.waitForForm();
 
-        await stage.form.fillNumber('years-known', '42');
+        await stage.form.fillNumber(YEARS_KNOWN, '42');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -466,8 +494,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const network = await protocol.getNetworkState(interview.interviewId);
         const edge = (network?.edges ?? [])[0];
         // coerceFormValues turned the raw string into a number.
-        expect(edge?.attributes['years-known']).toBe(42);
-        expect(typeof edge?.attributes['years-known']).toBe('number');
+        expect(edge?.attributes[YEARS_KNOWN]).toBe(42);
+        expect(typeof edge?.attributes[YEARS_KNOWN]).toBe('number');
       },
     },
 
@@ -487,7 +515,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'have-met',
+          id: HAVE_MET,
           name: 'haveMet',
           type: 'boolean',
           component: 'Boolean',
@@ -497,13 +525,13 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           ],
         });
         et.addVariable({
-          id: 'see-regularly',
+          id: SEE_REGULARLY,
           name: 'seeRegularly',
           type: 'boolean',
           component: 'Toggle',
         });
         et.addVariable({
-          id: 'closeness',
+          id: CLOSENESS,
           name: 'closeness',
           type: 'ordinal',
           component: 'RadioGroup',
@@ -514,7 +542,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           ],
         });
         et.addVariable({
-          id: 'trust',
+          id: TRUST,
           name: 'trust',
           type: 'ordinal',
           component: 'LikertScale',
@@ -531,22 +559,22 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'Boolean',
-          variable: 'have-met',
+          variable: HAVE_MET,
           prompt: 'Have you ever worked together?',
         });
         stage.addFormField({
           component: 'Toggle',
-          variable: 'see-regularly',
+          variable: SEE_REGULARLY,
           prompt: 'Do you see each other regularly?',
         });
         stage.addFormField({
           component: 'RadioGroup',
-          variable: 'closeness',
+          variable: CLOSENESS,
           prompt: 'How close is this relationship?',
         });
         stage.addFormField({
           component: 'LikertScale',
-          variable: 'trust',
+          variable: TRUST,
           prompt: 'How much do you trust this person?',
         });
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
@@ -565,16 +593,16 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // Both custom Boolean labels render; the Toggle is a role=switch.
         await expect(page.getByText('Yes, we have')).toBeVisible();
         await expect(page.getByText('No, never')).toBeVisible();
-        const toggle = stage.form.field('see-regularly').getByRole('switch');
+        const toggle = stage.form.field(SEE_REGULARLY).getByRole('switch');
         await expect(toggle).toBeVisible();
 
         await stage.form
-          .field('have-met')
+          .field(HAVE_MET)
           .getByRole('radio', { name: 'No, never' })
           .click();
         await toggle.click();
-        await stage.form.selectRadio('closeness', 'Close');
-        await stage.form.selectLikert('trust', 'Three');
+        await stage.form.selectRadio(CLOSENESS, 'Close');
+        await stage.form.selectLikert(TRUST, 'Three');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -583,11 +611,11 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
 
         const network = await protocol.getNetworkState(interview.interviewId);
         const edge = (network?.edges ?? [])[0];
-        expect(edge?.attributes['have-met']).toBe(false);
-        expect(edge?.attributes['see-regularly']).toBe(true);
+        expect(edge?.attributes[HAVE_MET]).toBe(false);
+        expect(edge?.attributes[SEE_REGULARLY]).toBe(true);
         // Ordinal values persist as scalars, not arrays.
-        expect(edge?.attributes.closeness).toBe(2);
-        expect(edge?.attributes.trust).toBe(3);
+        expect(edge?.attributes[CLOSENESS]).toBe(2);
+        expect(edge?.attributes[TRUST]).toBe(3);
       },
     },
 
@@ -605,7 +633,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'contexts',
+          id: CONTEXTS,
           name: 'contexts',
           type: 'categorical',
           component: 'CheckboxGroup',
@@ -616,7 +644,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           ],
         });
         et.addVariable({
-          id: 'channels',
+          id: CHANNELS,
           name: 'channels',
           type: 'categorical',
           component: 'ToggleButtonGroup',
@@ -631,12 +659,12 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'CheckboxGroup',
-          variable: 'contexts',
+          variable: CONTEXTS,
           prompt: 'In what contexts do you interact?',
         });
         stage.addFormField({
           component: 'ToggleButtonGroup',
-          variable: 'channels',
+          variable: CHANNELS,
           prompt: 'How do you keep in touch?',
         });
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
@@ -655,14 +683,14 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // ToggleButtonGroup options render as role=checkbox toggle buttons.
         await expect(
           stage.form
-            .field('channels')
+            .field(CHANNELS)
             .getByRole('checkbox', { name: 'Call', exact: true }),
         ).toBeVisible();
 
-        await stage.form.selectCheckbox('contexts', 'Work');
-        await stage.form.selectCheckbox('contexts', 'Family');
-        await stage.form.selectToggleButton('channels', 'Call');
-        await stage.form.selectToggleButton('channels', 'Text');
+        await stage.form.selectCheckbox(CONTEXTS, 'Work');
+        await stage.form.selectCheckbox(CONTEXTS, 'Family');
+        await stage.form.selectToggleButton(CHANNELS, 'Call');
+        await stage.form.selectToggleButton(CHANNELS, 'Text');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -671,8 +699,8 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
 
         const network = await protocol.getNetworkState(interview.interviewId);
         const edge = (network?.edges ?? [])[0];
-        expect(edge?.attributes.contexts).toEqual(['work', 'family']);
-        expect(edge?.attributes.channels).toEqual(['call', 'text']);
+        expect(edge?.attributes[CONTEXTS]).toEqual(['work', 'family']);
+        expect(edge?.attributes[CHANNELS]).toEqual(['call', 'text']);
       },
     },
 
@@ -687,7 +715,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'frequency',
+          id: FREQUENCY,
           name: 'frequency',
           type: 'ordinal',
           component: 'RadioGroup',
@@ -707,7 +735,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'RadioGroup',
-          variable: 'frequency',
+          variable: FREQUENCY,
           prompt: 'How often do you interact?',
         });
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
@@ -728,7 +756,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await expect
           .poll(() =>
             stage.form
-              .field('frequency')
+              .field(FREQUENCY)
               .locator('fieldset')
               .evaluate(
                 (el) =>
@@ -758,28 +786,28 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'importance',
+          id: IMPORTANCE,
           name: 'importance',
           type: 'scalar',
           component: 'VisualAnalogScale',
           parameters: { minLabel: 'Not at all', maxLabel: 'Extremely' },
         });
         et.addVariable({
-          id: 'contact-count',
+          id: CONTACT_COUNT,
           name: 'contactCount',
           type: 'number',
           component: 'Number',
           validation: { minValue: 10, maxValue: 90 },
         });
         et.addVariable({
-          id: 'met-month',
+          id: MET_MONTH,
           name: 'metMonth',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'month', min: '2020-01', max: '2026-12' },
         });
         et.addVariable({
-          id: 'last-contact',
+          id: LAST_CONTACT,
           name: 'lastContact',
           type: 'datetime',
           component: 'RelativeDatePicker',
@@ -791,22 +819,22 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'VisualAnalogScale',
-          variable: 'importance',
+          variable: IMPORTANCE,
           prompt: 'How important is this relationship?',
         });
         stage.addFormField({
           component: 'Number',
-          variable: 'contact-count',
+          variable: CONTACT_COUNT,
           prompt: 'How many times have you spoken?',
         });
         stage.addFormField({
           component: 'DatePicker',
-          variable: 'met-month',
+          variable: MET_MONTH,
           prompt: 'Roughly when did you first meet?',
         });
         stage.addFormField({
           component: 'RelativeDatePicker',
-          variable: 'last-contact',
+          variable: LAST_CONTACT,
           prompt: 'When did you last speak?',
         });
         synth.addManualNode(stage.id, nt.id, 'alex', {
@@ -827,42 +855,42 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // Scalar values use the protocol's normalized 0-1 range.
         await expect(page.getByText('Not at all')).toBeVisible();
         await expect(page.getByText('Extremely')).toBeVisible();
-        const vasSlider = stage.form.field('importance').getByRole('slider');
+        const vasSlider = stage.form.field(IMPORTANCE).getByRole('slider');
         await expect(vasSlider).toHaveAttribute('min', '0');
         await expect(vasSlider).toHaveAttribute('max', '1');
         await vasSlider.focus();
         await vasSlider.press('End');
 
         const contactCount = stage.form
-          .field('contact-count')
+          .field(CONTACT_COUNT)
           .getByRole('spinbutton');
         await contactCount.fill('95');
 
-        const monthField = stage.form.field('met-month');
+        const monthField = stage.form.field(MET_MONTH);
         await monthField.locator('select').first().selectOption('2024');
         await monthField.locator('select').nth(1).selectOption('06');
 
         const relDateInput = stage.form
-          .field('last-contact')
+          .field(LAST_CONTACT)
           .locator('input[type="date"]');
         await relDateInput.fill('2026-08-15'); // after anchor+after → invalid
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('contact-count')).toBeVisible();
-        await expect(stage.form.getFieldError('last-contact')).toBeVisible();
+        await expect(stage.form.getFieldError(CONTACT_COUNT)).toBeVisible();
+        await expect(stage.form.getFieldError(LAST_CONTACT)).toBeVisible();
         await expect(
           page.getByRole('heading', { name: 'Complete' }),
         ).not.toBeVisible();
 
-        await stage.form.fillNumber('contact-count', '5');
+        await stage.form.fillNumber(CONTACT_COUNT, '5');
         await relDateInput.fill('2026-06-15'); // within 2026-06-01..2026-07-01
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('contact-count')).toBeVisible();
-        await expect(stage.form.getFieldError('last-contact')).toBeHidden();
+        await expect(stage.form.getFieldError(CONTACT_COUNT)).toBeVisible();
+        await expect(stage.form.getFieldError(LAST_CONTACT)).toBeHidden();
         await expect(
           page.getByRole('heading', { name: 'Complete' }),
         ).not.toBeVisible();
 
-        await stage.form.fillNumber('contact-count', '42');
+        await stage.form.fillNumber(CONTACT_COUNT, '42');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -871,12 +899,12 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
 
         const network = await protocol.getNetworkState(interview.interviewId);
         const edge = (network?.edges ?? [])[0];
-        const importance = edge?.attributes.importance;
+        const importance = edge?.attributes[IMPORTANCE];
         expect(typeof importance).toBe('number');
         expect(importance).toBe(1);
-        expect(edge?.attributes['contact-count']).toBe(42);
-        expect(edge?.attributes['met-month']).toBe('2024-06');
-        expect(edge?.attributes['last-contact']).toBe('2026-06-15');
+        expect(edge?.attributes[CONTACT_COUNT]).toBe(42);
+        expect(edge?.attributes[MET_MONTH]).toBe('2024-06');
+        expect(edge?.attributes[LAST_CONTACT]).toBe('2026-06-15');
       },
     },
 
@@ -896,7 +924,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'closeness',
+          id: CLOSENESS,
           name: 'closeness',
           type: 'ordinal',
           component: 'RadioGroup',
@@ -908,14 +936,14 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           validation: { required: true },
         });
         et.addVariable({
-          id: 'story',
+          id: STORY,
           name: 'story',
           type: 'text',
           component: 'TextArea',
           validation: { minLength: 5, maxLength: 10 },
         });
         et.addVariable({
-          id: 'contexts',
+          id: CONTEXTS,
           name: 'contexts',
           type: 'categorical',
           component: 'CheckboxGroup',
@@ -933,19 +961,19 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'RadioGroup',
-          variable: 'closeness',
+          variable: CLOSENESS,
           prompt: 'How close is this relationship?',
         });
         stage.addFormField({
           component: 'TextArea',
-          variable: 'story',
+          variable: STORY,
           prompt: 'Describe this relationship.',
           hint: 'Keep it short.',
           showValidationHints: true,
         });
         stage.addFormField({
           component: 'CheckboxGroup',
-          variable: 'contexts',
+          variable: CONTEXTS,
           prompt: 'In what contexts do you interact?',
         });
         synth.addManualNode(stage.id, nt.id, 'a', { [personName.id]: 'Alex' });
@@ -974,32 +1002,32 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
 
         // Attempt 1: required radio empty, text too short, only 1 selected
         // (below the min of 2).
-        await stage.form.selectCheckbox('contexts', 'Work');
-        await stage.form.fillText('story', 'abc');
+        await stage.form.selectCheckbox(CONTEXTS, 'Work');
+        await stage.form.fillText(STORY, 'abc');
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('closeness')).toBeVisible();
-        await expect(stage.form.getFieldError('story')).toBeVisible();
-        await expect(stage.form.getFieldError('contexts')).toBeVisible();
+        await expect(stage.form.getFieldError(CLOSENESS)).toBeVisible();
+        await expect(stage.form.getFieldError(STORY)).toBeVisible();
+        await expect(stage.form.getFieldError(CONTEXTS)).toBeVisible();
         const before = await protocol.getNetworkState(interview.interviewId);
-        expect((before?.edges ?? [])[0]?.attributes.closeness).toBeUndefined();
+        expect((before?.edges ?? [])[0]?.attributes[CLOSENESS]).toBeUndefined();
 
         // Attempt 2: too many selected (3 > 2); text too long; radio now valid.
-        await stage.form.selectCheckbox('contexts', 'Social');
-        await stage.form.selectCheckbox('contexts', 'Family');
-        await stage.form.fillText('story', 'abcdefghijk');
-        await stage.form.selectRadio('closeness', 'Close');
+        await stage.form.selectCheckbox(CONTEXTS, 'Social');
+        await stage.form.selectCheckbox(CONTEXTS, 'Family');
+        await stage.form.fillText(STORY, 'abcdefghijk');
+        await stage.form.selectRadio(CLOSENESS, 'Close');
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('story')).toBeVisible();
-        await expect(stage.form.getFieldError('contexts')).toBeVisible();
-        await expect(stage.form.getFieldError('closeness')).toHaveCount(0);
+        await expect(stage.form.getFieldError(STORY)).toBeVisible();
+        await expect(stage.form.getFieldError(CONTEXTS)).toBeVisible();
+        await expect(stage.form.getFieldError(CLOSENESS)).toHaveCount(0);
 
         // Attempt 3: all within bounds (2 selected, 6-char story).
         const family = stage.form
-          .field('contexts')
+          .field(CONTEXTS)
           .getByRole('checkbox', { name: 'Family', exact: true });
         await family.click(); // deselect back down to 2
         await expect(family).not.toBeChecked();
-        await stage.form.fillText('story', 'abcdef');
+        await stage.form.fillText(STORY, 'abcdef');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -1007,9 +1035,9 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         ).toBeVisible();
         const network = await protocol.getNetworkState(interview.interviewId);
         const edge = (network?.edges ?? [])[0];
-        expect(edge?.attributes.closeness).toBe(2);
-        expect(edge?.attributes.story).toBe('abcdef');
-        expect(edge?.attributes.contexts).toEqual(['work', 'social']);
+        expect(edge?.attributes[CLOSENESS]).toBe(2);
+        expect(edge?.attributes[STORY]).toBe('abcdef');
+        expect(edge?.attributes[CONTEXTS]).toEqual(['work', 'social']);
       },
     },
 
@@ -1027,90 +1055,90 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const personName = nt.addVariable({ name: 'name', type: 'text' });
         const et = synth.addEdgeType({ name: 'Friendship' });
         et.addVariable({
-          id: 'code-name',
+          id: CODE_NAME,
           name: 'codeName',
           type: 'text',
           component: 'Text',
           validation: { unique: true },
         });
         et.addVariable({
-          id: 'field-a',
+          id: FIELD_A,
           name: 'fieldA',
           type: 'text',
           component: 'Text',
         });
         et.addVariable({
-          id: 'field-b',
+          id: FIELD_B,
           name: 'fieldB',
           type: 'text',
           component: 'Text',
-          validation: { differentFrom: 'field-a' },
+          validation: { differentFrom: FIELD_A },
         });
         et.addVariable({
-          id: 'field-c',
+          id: FIELD_C,
           name: 'fieldC',
           type: 'text',
           component: 'Text',
-          validation: { sameAs: 'field-a' },
+          validation: { sameAs: FIELD_A },
         });
         et.addVariable({
-          id: 'start',
+          id: START,
           name: 'start',
           type: 'number',
           component: 'Number',
         });
         et.addVariable({
-          id: 'end',
+          id: END,
           name: 'end',
           type: 'number',
           component: 'Number',
-          validation: { greaterThanVariable: 'start' },
+          validation: { greaterThanVariable: START },
         });
         et.addVariable({
-          id: 'floor',
+          id: FLOOR,
           name: 'floor',
           type: 'number',
           component: 'Number',
         });
         et.addVariable({
-          id: 'ceiling',
+          id: CEILING,
           name: 'ceiling',
           type: 'number',
           component: 'Number',
-          validation: { greaterThanOrEqualToVariable: 'floor' },
+          validation: { greaterThanOrEqualToVariable: FLOOR },
         });
         et.addVariable({
-          id: 'cap',
+          id: CAP,
           name: 'cap',
           type: 'number',
           component: 'Number',
-          validation: { lessThanVariable: 'end' },
+          validation: { lessThanVariable: END },
         });
         et.addVariable({
-          id: 'cap-eq',
+          id: CAP_EQ,
           name: 'capEq',
           type: 'number',
           component: 'Number',
-          validation: { lessThanOrEqualToVariable: 'end' },
+          validation: { lessThanOrEqualToVariable: END },
         });
         const stage = synth.addStage('AlterEdgeForm', {
           subject: { entity: 'edge', type: et.id },
         });
         for (const [variable, prompt] of [
-          ['code-name', 'Give this relationship a code name.'],
-          ['field-a', 'Field A'],
-          ['field-b', 'Field B'],
-          ['field-c', 'Field C'],
+          [CODE_NAME, 'Give this relationship a code name.'],
+          [FIELD_A, 'Field A'],
+          [FIELD_B, 'Field B'],
+          [FIELD_C, 'Field C'],
         ] as const) {
           stage.addFormField({ component: 'Text', variable, prompt });
         }
         for (const [variable, prompt] of [
-          ['start', 'Start value'],
-          ['end', 'End value'],
-          ['floor', 'Floor value'],
-          ['ceiling', 'Ceiling value'],
-          ['cap', 'Cap value'],
-          ['cap-eq', 'Cap-equal value'],
+          [START, 'Start value'],
+          [END, 'End value'],
+          [FLOOR, 'Floor value'],
+          [CEILING, 'Ceiling value'],
+          [CAP, 'Cap value'],
+          [CAP_EQ, 'Cap-equal value'],
         ] as const) {
           stage.addFormField({ component: 'Number', variable, prompt });
         }
@@ -1132,54 +1160,54 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await interview.waitForForm();
 
         // Slide 0 (Alex–Sam): every constraint satisfied.
-        await stage.form.fillText('code-name', 'same');
-        await stage.form.fillText('field-a', 'alpha');
-        await stage.form.fillText('field-b', 'beta'); // differs from A: OK
-        await stage.form.fillText('field-c', 'alpha'); // sameAs A: OK
-        await stage.form.fillNumber('start', '10');
-        await stage.form.fillNumber('end', '15'); // > start: OK
-        await stage.form.fillNumber('floor', '10');
-        await stage.form.fillNumber('ceiling', '10'); // >= floor: OK
-        await stage.form.fillNumber('cap', '5'); // < end: OK
-        await stage.form.fillNumber('cap-eq', '15'); // <= end: OK
+        await stage.form.fillText(CODE_NAME, 'same');
+        await stage.form.fillText(FIELD_A, 'alpha');
+        await stage.form.fillText(FIELD_B, 'beta'); // differs from A: OK
+        await stage.form.fillText(FIELD_C, 'alpha'); // sameAs A: OK
+        await stage.form.fillNumber(START, '10');
+        await stage.form.fillNumber(END, '15'); // > start: OK
+        await stage.form.fillNumber(FLOOR, '10');
+        await stage.form.fillNumber(CEILING, '10'); // >= floor: OK
+        await stage.form.fillNumber(CAP, '5'); // < end: OK
+        await stage.form.fillNumber(CAP_EQ, '15'); // <= end: OK
         await advanceEdgeSlide(page, slides);
 
         // Slide 1 (Sam–Jo): reuse the code name (unique) and break every
         // cross-field rule.
         await expectEdgeSlide(page, 'Sam', 'Jo');
-        await stage.form.fillText('code-name', 'same'); // collides: unique
-        await stage.form.fillText('field-a', 'alpha');
-        await stage.form.fillText('field-b', 'alpha'); // == A: differentFrom
-        await stage.form.fillText('field-c', 'zzz'); // != A: sameAs
-        await stage.form.fillNumber('start', '10');
-        await stage.form.fillNumber('end', '5'); // < start: greaterThanVariable
-        await stage.form.fillNumber('floor', '10');
-        await stage.form.fillNumber('ceiling', '9'); // < floor: GTE variable
-        await stage.form.fillNumber('cap', '6'); // !< end: lessThanVariable
-        await stage.form.fillNumber('cap-eq', '6'); // !<= end: LTE variable
+        await stage.form.fillText(CODE_NAME, 'same'); // collides: unique
+        await stage.form.fillText(FIELD_A, 'alpha');
+        await stage.form.fillText(FIELD_B, 'alpha'); // == A: differentFrom
+        await stage.form.fillText(FIELD_C, 'zzz'); // != A: sameAs
+        await stage.form.fillNumber(START, '10');
+        await stage.form.fillNumber(END, '5'); // < start: greaterThanVariable
+        await stage.form.fillNumber(FLOOR, '10');
+        await stage.form.fillNumber(CEILING, '9'); // < floor: GTE variable
+        await stage.form.fillNumber(CAP, '6'); // !< end: lessThanVariable
+        await stage.form.fillNumber(CAP_EQ, '6'); // !<= end: LTE variable
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('code-name')).toBeVisible();
-        await expect(stage.form.getFieldError('field-b')).toBeVisible();
-        await expect(stage.form.getFieldError('field-c')).toBeVisible();
-        await expect(stage.form.getFieldError('end')).toBeVisible();
-        await expect(stage.form.getFieldError('ceiling')).toBeVisible();
-        await expect(stage.form.getFieldError('cap')).toBeVisible();
-        await expect(stage.form.getFieldError('cap-eq')).toBeVisible();
+        await expect(stage.form.getFieldError(CODE_NAME)).toBeVisible();
+        await expect(stage.form.getFieldError(FIELD_B)).toBeVisible();
+        await expect(stage.form.getFieldError(FIELD_C)).toBeVisible();
+        await expect(stage.form.getFieldError(END)).toBeVisible();
+        await expect(stage.form.getFieldError(CEILING)).toBeVisible();
+        await expect(stage.form.getFieldError(CAP)).toBeVisible();
+        await expect(stage.form.getFieldError(CAP_EQ)).toBeVisible();
         const before = await protocol.getNetworkState(interview.interviewId);
         expect(
           (before?.edges ?? []).find(
             (e) => e[entityPrimaryKeyProperty] === 'e2',
-          )?.attributes['code-name'],
+          )?.attributes[CODE_NAME],
         ).toBe('');
 
         // Fix every violation.
-        await stage.form.fillText('code-name', 'different');
-        await stage.form.fillText('field-b', 'gamma');
-        await stage.form.fillText('field-c', 'alpha');
-        await stage.form.fillNumber('end', '15');
-        await stage.form.fillNumber('ceiling', '10');
-        await stage.form.fillNumber('cap', '4');
-        await stage.form.fillNumber('cap-eq', '5');
+        await stage.form.fillText(CODE_NAME, 'different');
+        await stage.form.fillText(FIELD_B, 'gamma');
+        await stage.form.fillText(FIELD_C, 'alpha');
+        await stage.form.fillNumber(END, '15');
+        await stage.form.fillNumber(CEILING, '10');
+        await stage.form.fillNumber(CAP, '4');
+        await stage.form.fillNumber(CAP_EQ, '5');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -1189,14 +1217,14 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const edges = network?.edges ?? [];
         const e1 = edges.find((e) => e[entityPrimaryKeyProperty] === 'e1');
         const e2 = edges.find((e) => e[entityPrimaryKeyProperty] === 'e2');
-        expect(e1?.attributes['code-name']).toBe('same');
-        expect(e2?.attributes['code-name']).toBe('different');
-        expect(e2?.attributes['field-b']).toBe('gamma');
-        expect(e2?.attributes['field-c']).toBe('alpha');
-        expect(e2?.attributes.end).toBe(15);
-        expect(e2?.attributes.ceiling).toBe(10);
-        expect(e2?.attributes.cap).toBe(4);
-        expect(e2?.attributes['cap-eq']).toBe(5);
+        expect(e1?.attributes[CODE_NAME]).toBe('same');
+        expect(e2?.attributes[CODE_NAME]).toBe('different');
+        expect(e2?.attributes[FIELD_B]).toBe('gamma');
+        expect(e2?.attributes[FIELD_C]).toBe('alpha');
+        expect(e2?.attributes[END]).toBe(15);
+        expect(e2?.attributes[CEILING]).toBe(10);
+        expect(e2?.attributes[CAP]).toBe(4);
+        expect(e2?.attributes[CAP_EQ]).toBe(5);
       },
     },
 
@@ -1223,7 +1251,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
           color: 'edge-color-seq-3',
         });
         et.addVariable({
-          id: 'met-at',
+          id: MET_AT,
           name: 'metAt',
           type: 'text',
           component: 'Text',
@@ -1233,7 +1261,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         });
         stage.addFormField({
           component: 'Text',
-          variable: 'met-at',
+          variable: MET_AT,
           prompt: 'Where did you meet?',
         });
         synth.addManualNode(stage.id, nt.id, 'n0', { [personName.id]: 'Alex' });
@@ -1241,7 +1269,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         synth.addManualNode(stage.id, nt.id, 'n2', { [personName.id]: 'Jo' });
         synth.addManualNode(stage.id, nt.id, 'n3', { [personName.id]: 'Kai' });
         // First edge pre-seeded so its value is present at load.
-        synth.addManualEdge(et.id, 'e01', 'n0', 'n1', { 'met-at': 'kept' });
+        synth.addManualEdge(et.id, 'e01', 'n0', 'n1', { [MET_AT]: 'kept' });
         synth.addManualEdge(et.id, 'e12', 'n1', 'n2', {});
         synth.addManualEdge(et.id, 'e23', 'n2', 'n3', {});
         synth.addInformationStage({
@@ -1272,7 +1300,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         );
         expect(connectorBg).not.toBe('rgba(0, 0, 0, 0)');
         // Pre-seeded value is restored into the input before any edit.
-        await expect(stage.form.field('met-at').locator('input')).toHaveValue(
+        await expect(stage.form.field(MET_AT).locator('input')).toHaveValue(
           'kept',
         );
         await advanceEdgeSlide(page, slides);
@@ -1280,18 +1308,14 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // Slide 1 (Sam–Jo): own value unset; fill it. Wait for the outgoing
         // slide to unmount so the input locator resolves to a single element.
         await expectEdgeSlide(page, 'Sam', 'Jo');
-        await expect(stage.form.field('met-at').locator('input')).toHaveCount(
-          1,
-        );
-        await expect(stage.form.field('met-at').locator('input')).toHaveValue(
-          '',
-        );
-        await stage.form.fillText('met-at', 'reunion');
+        await expect(stage.form.field(MET_AT).locator('input')).toHaveCount(1);
+        await expect(stage.form.field(MET_AT).locator('input')).toHaveValue('');
+        await stage.form.fillText(MET_AT, 'reunion');
         await advanceEdgeSlide(page, slides);
 
         // Slide 2 (Jo–Kai): fill and leave the stage.
         await expectEdgeSlide(page, 'Jo', 'Kai');
-        await stage.form.fillText('met-at', 'conference');
+        await stage.form.fillText(MET_AT, 'conference');
         await advanceEdgeSlide(page, slides);
 
         await expect(
@@ -1303,9 +1327,9 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         const byUid = (uid: string) =>
           edges.find((e) => e[entityPrimaryKeyProperty] === uid);
         // Each edge keeps its own value, including the untouched pre-seed.
-        expect(byUid('e01')?.attributes['met-at']).toBe('kept');
-        expect(byUid('e12')?.attributes['met-at']).toBe('reunion');
-        expect(byUid('e23')?.attributes['met-at']).toBe('conference');
+        expect(byUid('e01')?.attributes[MET_AT]).toBe('kept');
+        expect(byUid('e12')?.attributes[MET_AT]).toBe('reunion');
+        expect(byUid('e23')?.attributes[MET_AT]).toBe('conference');
       },
     },
 
@@ -1332,7 +1356,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // rest are optional and valid on mount (formStore isValid = !validation).
         for (let i = 0; i < 20; i++) {
           et.addVariable({
-            id: `note-${i}`,
+            id: noteId(i),
             name: `note${i}`,
             type: 'text',
             component: 'Text',
@@ -1345,7 +1369,7 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         for (let i = 0; i < 20; i++) {
           stage.addFormField({
             component: 'Text',
-            variable: `note-${i}`,
+            variable: noteId(i),
             prompt: `Note ${i + 1}`,
           });
         }
@@ -1383,9 +1407,9 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         // ScrollArea to its bottom sentinel: the ready-state pulse only turns
         // on once BOTH conditions hold.
         for (let i = 0; i < 20; i++) {
-          await stage.form.fillText(`note-${i}`, `value ${i}`);
+          await stage.form.fillText(noteId(i), `value ${i}`);
         }
-        const lastNote = stage.form.field('note-19').locator('input');
+        const lastNote = stage.form.field(noteId(19)).locator('input');
         await lastNote.blur();
         await lastNote.evaluate((el) => {
           let node = el.parentElement;
@@ -1406,33 +1430,33 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
 
         // Slide 1: fill validly, navigate backwards — auto-submits, no dialog.
         await expectEdgeSlide(page, 'Sam', 'Jo');
-        await stage.form.fillText('note-0', 'slide1 valid');
+        await stage.form.fillText(noteId(0), 'slide1 valid');
         await goBackEdgeSlide(page, 'Sam');
         await expectEdgeSlide(page, 'Alex', 'Sam');
-        await expect(stage.form.field('note-0').locator('input')).toHaveCount(
+        await expect(stage.form.field(noteId(0)).locator('input')).toHaveCount(
           1,
         );
-        await expect(stage.form.field('note-0').locator('input')).toHaveValue(
+        await expect(stage.form.field(noteId(0)).locator('input')).toHaveValue(
           'value 0',
         );
         let network = await protocol.getNetworkState(interview.interviewId);
         expect(
           (network?.edges ?? []).find(
             (e) => e[entityPrimaryKeyProperty] === 'e2',
-          )?.attributes['note-0'],
+          )?.attributes[noteId(0)],
         ).toBe('slide1 valid'); // persisted despite going back
 
         // Return to slide 1, make it invalid-dirty, go back → discard dialog.
         await advanceEdgeSlide(page, slides);
         await expectEdgeSlide(page, 'Sam', 'Jo');
-        await stage.form.fillText('note-0', ''); // violates required
+        await stage.form.fillText(noteId(0), ''); // violates required
         const dialog = await slides.previousSlideExpectingDiscardDialog();
         await expect(
           dialog.getByRole('heading', { name: 'Discard changes?' }),
         ).toBeVisible();
         await slides.discardCancelButton.click();
         await expect(dialog).toBeHidden();
-        await expect(stage.form.field('note-0').locator('input')).toHaveValue(
+        await expect(stage.form.field(noteId(0)).locator('input')).toHaveValue(
           '',
         );
 
@@ -1440,17 +1464,17 @@ export const alterEdgeFormScenarios: InterfaceScenarios = {
         await slides.previousSlideExpectingDiscardDialog();
         await slides.discardConfirmButton.click();
         await expectEdgeSlide(page, 'Alex', 'Sam');
-        await expect(stage.form.field('note-0').locator('input')).toHaveCount(
+        await expect(stage.form.field(noteId(0)).locator('input')).toHaveCount(
           1,
         );
-        await expect(stage.form.field('note-0').locator('input')).toHaveValue(
+        await expect(stage.form.field(noteId(0)).locator('input')).toHaveValue(
           'value 0',
         );
         network = await protocol.getNetworkState(interview.interviewId);
         expect(
           (network?.edges ?? []).find(
             (e) => e[entityPrimaryKeyProperty] === 'e2',
-          )?.attributes['note-0'],
+          )?.attributes[noteId(0)],
         ).toBe('slide1 valid'); // discard did not overwrite the earlier persist
       },
     },

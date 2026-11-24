@@ -11,6 +11,7 @@ import {
   protocolName,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { SessionWithResequencedIDs } from '../../../input';
 import { attributeListRows } from '../attributeList';
 import { mockCodebook, mockExportOptions } from './mockObjects';
@@ -31,8 +32,8 @@ describe('attributeListRows', () => {
         [nodeExportIDProperty]: 1,
         [egoProperty]: 'ego-1',
         [entityPrimaryKeyProperty]: 'uid-1',
-        type: 'mock-node-type',
-        [entityAttributesProperty]: { 'mock-uuid-1': 'Jane' },
+        type: testTypeId('mock-node-type'),
+        [entityAttributesProperty]: { [testVariableId('mock-uuid-1')]: 'Jane' },
       } as SessionWithResequencedIDs['nodes'][number],
     ]);
 
@@ -59,9 +60,10 @@ describe('attributeListRows', () => {
         [nodeExportIDProperty]: 1,
         [egoProperty]: 'ego-1',
         [entityPrimaryKeyProperty]: 'uid-1',
-        type: 'mock-node-type',
+        type: testTypeId('mock-node-type'),
         [entityAttributesProperty]: {
-          'mock-uuid-1': '=HYPERLINK("https://evil.example","click")',
+          [testVariableId('mock-uuid-1')]:
+            '=HYPERLINK("https://evil.example","click")',
         },
       } as SessionWithResequencedIDs['nodes'][number],
     ]);
@@ -85,13 +87,13 @@ describe('attributeListRows', () => {
   it('guards a header that could run as a formula, as it does the answers', () => {
     const codebook = {
       node: {
-        'mock-node-type': {
+        [testTypeId('mock-node-type')]: {
           name: 'person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            'v-total': { name: '=total', type: 'text' },
-            'v-score': {
+            [testVariableId('v-total')]: { name: '=total', type: 'text' },
+            [testVariableId('v-score')]: {
               name: '-score, adjusted',
               type: 'text',
             },
@@ -104,8 +106,11 @@ describe('attributeListRows', () => {
         [nodeExportIDProperty]: 1,
         [egoProperty]: 'ego-1',
         [entityPrimaryKeyProperty]: 'uid-1',
-        type: 'mock-node-type',
-        [entityAttributesProperty]: { 'v-total': '=1+1', 'v-score': '-2' },
+        type: testTypeId('mock-node-type'),
+        [entityAttributesProperty]: {
+          [testVariableId('v-total')]: '=1+1',
+          [testVariableId('v-score')]: '-2',
+        },
       } as SessionWithResequencedIDs['nodes'][number],
     ]);
 
@@ -138,7 +143,7 @@ describe('attributeListRows', () => {
         [nodeExportIDProperty]: 1,
         [egoProperty]: 'ego-1',
         [entityPrimaryKeyProperty]: 'uid-1',
-        type: 'mock-node-type',
+        type: testTypeId('mock-node-type'),
         [entityAttributesProperty]: {},
       } as SessionWithResequencedIDs['nodes'][number],
     ]);
@@ -161,7 +166,7 @@ describe('attributeListRows', () => {
         [nodeExportIDProperty]: 1,
         [egoProperty]: 'ego-1',
         [entityPrimaryKeyProperty]: 'uid-1',
-        type: 'mock-node-type',
+        type: testTypeId('mock-node-type'),
         [entityAttributesProperty]: { externalAttribute: 'external value' },
       } as SessionWithResequencedIDs['nodes'][number],
     ]);
@@ -190,17 +195,17 @@ describe('attributeListRows', () => {
     ({ metadata }) => {
       const codebook = {
         node: {
-          'mock-node-type': {
+          [testTypeId('mock-node-type')]: {
             name: 'person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
-              'v-name': {
+              [testVariableId('v-name')]: {
                 name: 'name',
                 type: 'text',
                 encrypted: true,
               },
-              'v-city': { name: 'city', type: 'text' },
+              [testVariableId('v-city')]: { name: 'city', type: 'text' },
             },
           },
         },
@@ -211,12 +216,14 @@ describe('attributeListRows', () => {
           [nodeExportIDProperty]: 1,
           [egoProperty]: 'ego-1',
           [entityPrimaryKeyProperty]: 'uid-1',
-          type: 'mock-node-type',
+          type: testTypeId('mock-node-type'),
           [entityAttributesProperty]: {
-            'v-name': ciphertext,
-            'v-city': 'Lisbon',
+            [testVariableId('v-name')]: ciphertext,
+            [testVariableId('v-city')]: 'Lisbon',
           },
-          [entitySecureAttributesMeta]: { 'v-name': metadata },
+          [entitySecureAttributesMeta]: {
+            [testVariableId('v-name')]: metadata,
+          },
         },
       ]);
 

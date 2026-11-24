@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { testVariableId } from '../__tests__/testIds';
 import { buildProtocolFieldErrors } from './buildProtocolFieldErrors';
+
+const COLOUR = testVariableId('colour');
 
 describe('buildProtocolFieldErrors', () => {
   it('maps canonical opaque paths back to protocol variable IDs', () => {
@@ -27,11 +30,11 @@ describe('buildProtocolFieldErrors', () => {
     const entries = buildProtocolFieldErrors(
       {
         fieldErrors: {
-          colour: ['PROTOCOL_AUTHORED_MESSAGE', 'ANOTHER_AUTHORED_MESSAGE'],
+          [COLOUR]: ['PROTOCOL_AUTHORED_MESSAGE', 'ANOTHER_AUTHORED_MESSAGE'],
         },
       },
-      [{ variable: 'colour' }],
-      { colour: 'Text' },
+      [{ variable: COLOUR }],
+      { [COLOUR]: 'Text' },
       {},
     );
     expect(JSON.stringify(entries)).not.toContain('AUTHORED_MESSAGE');

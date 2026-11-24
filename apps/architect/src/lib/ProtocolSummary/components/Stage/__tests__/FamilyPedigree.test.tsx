@@ -1,10 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import SummaryContext from '../../SummaryContext';
 import FamilyPedigree from '../FamilyPedigree';
+
+const PERSON = testTypeId('person');
+const GENDER = testVariableId('gender');
+const NAME = testVariableId('name');
 
 const protocol = {
   schemaVersion: 9,
@@ -12,12 +20,12 @@ const protocol = {
   localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          gender: {
+          [GENDER]: {
             name: 'Gender',
             type: 'categorical',
             options: [
@@ -43,11 +51,11 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
           nodeConfiguration={{
             genderIdentity: {
-              attribute: 'gender',
+              attribute: GENDER,
               terms: [
                 { value: 'woman', words: 'feminine' },
                 { value: 'transWoman', words: 'feminine' },
@@ -81,11 +89,11 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
           nodeConfiguration={{
-            nameAttribute: 'name',
-            relationshipToParticipantAttribute: 'gender',
+            nameAttribute: NAME,
+            relationshipToParticipantAttribute: GENDER,
           }}
           edgeConfiguration={null}
           completeness={null}
@@ -107,9 +115,9 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
-          nodeConfiguration={{ nameAttribute: 'name' }}
+          nodeConfiguration={{ nameAttribute: NAME }}
           edgeConfiguration={null}
           completeness={null}
           framing={null}
@@ -134,9 +142,9 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
-          nodeConfiguration={{ nameAttribute: 'name' }}
+          nodeConfiguration={{ nameAttribute: NAME }}
           edgeConfiguration={null}
           completeness={null}
           framing={null}
@@ -161,9 +169,9 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
-          nodeConfiguration={{ nameAttribute: 'name' }}
+          nodeConfiguration={{ nameAttribute: NAME }}
           edgeConfiguration={null}
           completeness={null}
           framing="participantPreference"
@@ -184,7 +192,7 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
           nodeConfiguration={null}
           edgeConfiguration={null}
@@ -195,13 +203,13 @@ describe('Protocol Summary family pedigree', () => {
             {
               id: 'nomination-1',
               text: { en: 'Who has had **ovarian** cancer?' },
-              attribute: 'gender',
+              attribute: GENDER,
               onlyForSexAssignedAtBirth: 'female',
             },
             {
               id: 'nomination-2',
               text: { en: 'Who has had diabetes?' },
-              attribute: 'gender',
+              attribute: GENDER,
             },
           ]}
         />
@@ -248,7 +256,7 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
           nodeConfiguration={{
             nameField: {
@@ -294,7 +302,7 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
           nodeConfiguration={null}
           edgeConfiguration={null}
@@ -314,7 +322,7 @@ describe('Protocol Summary family pedigree', () => {
         value={{ protocol, protocolName: protocol.name, index: [] }}
       >
         <FamilyPedigree
-          personType="person"
+          personType={PERSON}
           prompt={null}
           nodeConfiguration={null}
           edgeConfiguration={null}

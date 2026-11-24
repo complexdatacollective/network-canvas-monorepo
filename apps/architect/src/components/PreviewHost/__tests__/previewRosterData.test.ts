@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
@@ -21,6 +25,9 @@ function csvBlob(): Blob {
   return new Blob([PEOPLE_CSV], { type: 'text/csv' });
 }
 
+const PERSON = testTypeId('person');
+const VAR_NAME = testVariableId('var-name');
+
 function makeProtocol(
   overrides: Partial<CurrentProtocol> = {},
 ): CurrentProtocol {
@@ -31,10 +38,10 @@ function makeProtocol(
     stages: [],
     codebook: {
       node: {
-        person: {
+        [PERSON]: {
           variables: {
-            'var-name': { name: 'Name', type: 'text' },
-            'var-age': { name: 'Age', type: 'number' },
+            [VAR_NAME]: { name: 'Name', type: 'text' },
+            [testVariableId('var-age')]: { name: 'Age', type: 'number' },
           },
         },
       },
@@ -59,7 +66,7 @@ const rosterStage = {
   type: 'NameGeneratorRoster',
   allAddedNotice: { en: 'There is nothing left to add from this list.' },
   unnamedLabel: { en: 'Unnamed {count}' },
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: PERSON },
   dataSource: 'roster',
   prompts: [{ id: 'p1', text: 'Pick people' }],
 };
@@ -181,8 +188,8 @@ describe('collectPreviewRosterData', () => {
 
     expect(result['stage-ngr']).toHaveLength(3);
     const [first] = result['stage-ngr']!;
-    expect(first!.type).toBe('person');
-    expect(first![entityAttributesProperty]['var-name']).toBe('Ada');
+    expect(first!.type).toBe(PERSON);
+    expect(first![entityAttributesProperty][VAR_NAME]).toBe('Ada');
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:roster');
   });
 

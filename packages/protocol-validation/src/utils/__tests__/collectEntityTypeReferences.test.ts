@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { familyPedigreeWordingIn } from '../../__tests__/suppliedWording.ts';
+import { testId } from '../../__tests__/testIds.ts';
 import { collectEntityTypeReferences } from '../collectEntityAttributeReferences.ts';
 import { localized } from '../test-utils.ts';
 
@@ -164,7 +165,7 @@ describe('a node type’s own label', () => {
               known: {
                 rules: [
                   {
-                    id: 'own',
+                    id: testId('own'),
                     type: 'node',
                     options: {
                       type: 'person',
@@ -173,7 +174,7 @@ describe('a node type’s own label', () => {
                     },
                   },
                   {
-                    id: 'tie',
+                    id: testId('tie'),
                     type: 'edge',
                     options: { type: 'friendship', operator: 'EXISTS' },
                   },

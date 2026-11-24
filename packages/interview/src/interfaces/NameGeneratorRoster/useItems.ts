@@ -59,7 +59,7 @@ const detailsWithVariableUUIDs =
     }));
 
     return withUUIDReplacement?.map((field) => ({
-      id: field.variable,
+      id: field.id,
       label: resolveText(field.label),
       value: Object.hasOwn(attrs, field.variable)
         ? attrs[field.variable]

@@ -16,6 +16,7 @@ import {
   entityAttributesProperty,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
@@ -29,12 +30,12 @@ beforeAll(() => {
   Element.prototype.scrollTo = () => {};
 });
 
-const NODE_TYPE = 'person';
-const VAR = 'born_on';
+const NODE_TYPE = testTypeId('person');
+const VAR = testVariableId('born_on');
 
 const fields: FormField[] = [
   {
-    id: 'field-L36',
+    id: testId('field-L36'),
     variable: asEntityAttributeReference(VAR),
     prompt: { en: 'Born on' },
   },
@@ -64,10 +65,10 @@ function makeWrapper(
         codebook: {
           node: {
             [NODE_TYPE]: {
-              name: NODE_TYPE,
+              name: 'person',
               variables: {
                 [VAR]: {
-                  name: VAR,
+                  name: 'born_on',
                   type: 'datetime',
                   component,
                   ...(parameters !== undefined ? { parameters } : {}),

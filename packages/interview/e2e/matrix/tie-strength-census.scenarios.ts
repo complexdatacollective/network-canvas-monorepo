@@ -6,7 +6,13 @@ import {
 
 import { expect } from '../fixtures/matrix-test.js';
 import { TieStrengthCensusFixture } from '../fixtures/tie-strength-census-fixture.js';
+import { e2eVariableId } from '../helpers/codebook-ids.js';
 import type { InterfaceScenarios } from './types.js';
+
+// The ids of the variables these scenarios name.
+const CLOSENESS = e2eVariableId('closeness');
+const LEVEL = e2eVariableId('level');
+const STRENGTH = e2eVariableId('strength');
 
 // Ordinal option set reused by most scenarios. Values seed the option-card
 // `data-value`s; labels seed the rendered card text.
@@ -26,8 +32,8 @@ const STRENGTH_OPTIONS = [
  *   the stage has no pairs and navigation passes it.
  * - Edge attributes are keyed by the codebook variable id, and network
  *   entities use the `_uid`/`attributes` shared-consts keys — not literal
- *   `.id`/`.Strength`. Each edge variable is given an explicit kebab-case id so
- *   assertions can read it precisely (CodebookIdSchema allows [a-z0-9._:-]).
+ *   `.id`/`.Strength`. Codebook ids are UUIDs, so each edge variable is given
+ *   a fixed id from `e2eVariableId` that the assertions can read.
  * - `addEdge`/`updateEdge` are async thunks, so post-mutation network reads are
  *   wrapped in `expect.poll` rather than read synchronously.
  * - The e2e host mounts Shell without stage navigation (App.tsx:151-161), so
@@ -58,7 +64,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: STRENGTH_OPTIONS,
@@ -72,7 +78,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         stage.addPrompt({
           text: 'How close are these two people?',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'Not close',
         });
         return synth;
@@ -113,7 +119,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
 
         const network = await protocol.getNetworkState(interview.interviewId);
         const edge = network!.edges[0]!;
-        expect(edge[entityAttributesProperty].strength).toBe(2);
+        expect(edge[entityAttributesProperty][STRENGTH]).toBe(2);
         expect(edge.type).toBeTruthy();
 
         const fromNode = network!.nodes.find(
@@ -143,7 +149,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const placeName = place.addVariable({ type: 'text', name: 'name' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: STRENGTH_OPTIONS,
@@ -156,7 +162,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         censusStage.addPrompt({
           text: 'How close are these two people?',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'Not close',
         });
         // Two Place nodes that must never be paired or connected.
@@ -233,7 +239,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: [
@@ -243,7 +249,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           ],
         });
         friendship.addVariable({
-          id: 'closeness',
+          id: CLOSENESS,
           name: 'Closeness',
           type: 'ordinal',
           options: [
@@ -260,13 +266,13 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         stage.addPrompt({
           text: 'Prompt A text',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'No Friendship',
         });
         stage.addPrompt({
           text: 'Prompt B text',
           createEdge: friendship.id,
-          edgeVariable: 'closeness',
+          edgeVariable: CLOSENESS,
           negativeLabel: 'No Closeness',
         });
         synth.addInformationStage({
@@ -334,8 +340,8 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const network = await protocol.getNetworkState(interview.interviewId);
         // One Friendship edge per pair, each carrying BOTH prompt variables.
         for (const edge of network!.edges) {
-          expect(edge[entityAttributesProperty].strength).toBeDefined();
-          expect(edge[entityAttributesProperty].closeness).toBeDefined();
+          expect(edge[entityAttributesProperty][STRENGTH]).toBeDefined();
+          expect(edge[entityAttributesProperty][CLOSENESS]).toBeDefined();
         }
       },
     },
@@ -348,7 +354,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: STRENGTH_OPTIONS,
@@ -361,7 +367,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         stage.addPrompt({
           text: 'How close are these two people?',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'Not close',
         });
         return synth;
@@ -396,7 +402,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: STRENGTH_OPTIONS,
@@ -409,7 +415,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         stage.addPrompt({
           text: 'How close are these two people?',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'Not close',
         });
         return synth;
@@ -429,7 +435,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           .toBe(1);
         let network = await protocol.getNetworkState(interview.interviewId);
         const edgeId = network!.edges[0]![entityPrimaryKeyProperty];
-        expect(network!.edges[0]![entityAttributesProperty].strength).toBe(2);
+        expect(network!.edges[0]![entityAttributesProperty][STRENGTH]).toBe(2);
 
         // Auto-advance fired on the real 350ms timer.
         await tsc.waitForPairChange(pair1Labels);
@@ -443,7 +449,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         await expect
           .poll(async () => {
             const net = await protocol.getNetworkState(interview.interviewId);
-            return net?.edges[0]?.[entityAttributesProperty].strength;
+            return net?.edges[0]?.[entityAttributesProperty][STRENGTH];
           })
           .toBe(3);
         network = await protocol.getNetworkState(interview.interviewId);
@@ -465,7 +471,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: STRENGTH_OPTIONS,
@@ -478,12 +484,12 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         stage.addPrompt({
           text: 'How close are these two people?',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'Not close',
         });
         // Pre-seed an edge on pair 1 (nodes[0]-nodes[1]) with Strength = 3.
         synth.addEdges([[0, 1]], friendship.id);
-        synth.setEdgeAttribute(0, 'strength', 3);
+        synth.setEdgeAttribute(0, STRENGTH, 3);
         return synth;
       },
       run: async ({ page, interview, protocol }) => {
@@ -543,14 +549,14 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: STRENGTH_OPTIONS,
         });
         const trust = synth.addEdgeType({ name: 'Trust' });
         trust.addVariable({
-          id: 'level',
+          id: LEVEL,
           name: 'Level',
           type: 'ordinal',
           options: [
@@ -567,13 +573,13 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         stage.addPrompt({
           text: 'Rate friendship strength',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'No Friendship',
         });
         stage.addPrompt({
           text: 'Rate trust level',
           createEdge: trust.id,
-          edgeVariable: 'level',
+          edgeVariable: LEVEL,
           negativeLabel: 'No Trust',
         });
         synth.addInformationStage({
@@ -682,23 +688,21 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
 
         // Friendship (strength): pair 1 = 2, pair 2 = 1, pair 3 declined.
         expect(
-          edgeBetween(p1a, p1b, 'strength')?.[entityAttributesProperty]
-            .strength,
+          edgeBetween(p1a, p1b, STRENGTH)?.[entityAttributesProperty][STRENGTH],
         ).toBe(2);
         expect(
-          edgeBetween(p2a, p2b, 'strength')?.[entityAttributesProperty]
-            .strength,
+          edgeBetween(p2a, p2b, STRENGTH)?.[entityAttributesProperty][STRENGTH],
         ).toBe(1);
-        expect(edgeBetween(p3a, p3b, 'strength')).toBeUndefined();
+        expect(edgeBetween(p3a, p3b, STRENGTH)).toBeUndefined();
 
         // Trust (level): pair 2 = 3, pair 3 = 1, pair 1 declined.
         expect(
-          edgeBetween(p2a, p2b, 'level')?.[entityAttributesProperty].level,
+          edgeBetween(p2a, p2b, LEVEL)?.[entityAttributesProperty][LEVEL],
         ).toBe(3);
         expect(
-          edgeBetween(p3a, p3b, 'level')?.[entityAttributesProperty].level,
+          edgeBetween(p3a, p3b, LEVEL)?.[entityAttributesProperty][LEVEL],
         ).toBe(1);
-        expect(edgeBetween(p1a, p1b, 'level')).toBeUndefined();
+        expect(edgeBetween(p1a, p1b, LEVEL)).toBeUndefined();
       },
     },
     {
@@ -714,7 +718,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           color: 'edge-color-seq-3',
         });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: STRENGTH_OPTIONS,
@@ -727,13 +731,13 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         stage.addPrompt({
           text: 'How close are these two people?',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'Not close',
         });
         // Seed pair 1's edge so the connector deterministically shows its edge
         // colour without racing the auto-advance timer.
         synth.addEdges([[0, 1]], friendship.id);
-        synth.setEdgeAttribute(0, 'strength', 2);
+        synth.setEdgeAttribute(0, STRENGTH, 2);
         return synth;
       },
       run: async ({ page }) => {
@@ -755,7 +759,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
-          id: 'strength',
+          id: STRENGTH,
           name: 'Strength',
           type: 'ordinal',
           options: STRENGTH_OPTIONS,
@@ -769,7 +773,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         stage.addPrompt({
           text: 'How close are these two people?',
           createEdge: friendship.id,
-          edgeVariable: 'strength',
+          edgeVariable: STRENGTH,
           negativeLabel: 'Not close',
         });
         return synth;

@@ -6,6 +6,7 @@ import {
   type NcEdge,
 } from '@codaco/shared-consts';
 
+import { testTypeId } from '../../../__tests__/testIds';
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
 import {
   config,
@@ -47,7 +48,7 @@ const familyLinks = [
  * sociogram might draw. */
 const friendship = (from: string, to: string): NcEdge => ({
   [entityPrimaryKeyProperty]: `${from}-${to}-friend`,
-  type: 'friendship',
+  type: testTypeId('friendship'),
   from,
   to,
   [entityAttributesProperty]: {},

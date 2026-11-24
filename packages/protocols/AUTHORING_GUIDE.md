@@ -43,19 +43,31 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
 1. **Every object is a Zod `strictObject`** — unknown/extra keys fail. Do not add keys that
    aren't defined for that object. No comment keys.
 2. **Valid JSON only** — no comments, no trailing commas.
-3. **IDs must be unique** in their scope: `stages[].id` (across all stages); `prompts[].id`
-   (within a stage); `presets[].id`, `items[].id`, `panels[].id`, filter `rules[].id`.
-   Use short readable slugs (`"ng-support"`, `"p1"`) or UUIDs.
-4. **Variable record-keys must match `^[A-Za-z0-9._:-]+$`** — i.e. letters, digits, `. _ - :`
-   only. **NO SPACES** in a key. Use snake_case: `alter_age`, `close_feeling`. A variable's
-   `name` is what researchers see in exports: it may use letters from any language, digits,
-   spaces and punctuation, but must not be empty, start or end with a space, or contain control
-   characters (tabs, line breaks). Simplest: make the record-key and the `name` identical.
+3. **Object ids are UUIDs, unique across the whole protocol.** These objects need an `id`:
+   stages, prompts, panels, Information `items`, form `fields`, filter `rules`, roster sort
+   rules (`sortOptions.sortOrder`), `additionalAttributes` rows, roster card and sort properties
+   (`cardOptions.additionalProperties`, `sortOptions.sortableProperties`), Narrative `presets`
+   and the rows of their `edges.display` and `highlight` lists, FamilyPedigree diseases and
+   NetworkComposer edge settings. Each id must be a UUID (for example
+   `"3f2c8a91-6b4d-4e2f-9a17-5c0d8e6b2a43"`), and no two of these objects anywhere in the
+   protocol may share one, even when they are of different kinds or on different stages.
+   Generate a fresh one for each object (`crypto.randomUUID()`, or `uuidgen`). Find a finish
+   stage by its `type` (`"FinishSession"`), never by its id.
+4. **Codebook keys are UUIDs.** Every key of `codebook.node`, `codebook.edge` and every
+   `variables` record (node, edge and ego) must be a UUID. A readable key such as `person` or
+   `alter_age` fails. No two variables anywhere in the codebook may share an id, even when they
+   belong to different entities. Generate a fresh one for each type and variable, as for object ids. A variable's `name` is
+   what researchers see in exports: it may use letters from any language, digits, spaces and
+   punctuation, but must not be empty, start or end with a space, or contain control characters
+   (tabs, line breaks). Use snake_case names such as `alter_age` and `close_feeling`.
 5. **Variable `name` values must be unique within an entity** (within a node type / edge type /
    ego). **Entity display names** (`node.name`, `edge.name`) must be unique across the whole
    codebook (a node and an edge can't both be named "Person").
 6. **References use record KEYS, not `name`s.** A form field's `variable`, a bin prompt's
-   `variable`, etc. must equal the key under which the variable is registered in the codebook.
+   `variable`, a stage's `subject.type`, etc. must equal the UUID under which the variable or
+   type is registered in the codebook. Columns of a roster data file are the exception: they
+   are matched to variables by the variable's `name`, so a roster's card, sort and search
+   properties name the file's columns.
 7. **Participant-facing text is never a plain string.** It is a localized string (§2.1):
    `"text": { "en-US": "Who do you spend time with?" }`. A bare `"text": "…"` fails.
 
@@ -115,7 +127,7 @@ All three are optional, but you must define any type a stage references.
 ```jsonc
 "codebook": {
   "node": {
-    "person": {                       // key = node-type id (slug, used as stage subject.type)
+    "6f1c2b7e-4d3a-4e8b-9c51-2a7d0e9f8b14": { // key = node-type id (UUID, used as stage subject.type)
       "name": "Person",               // REQUIRED name (spaces allowed here); participants never see it
       "color": "node-color-seq-1",    // REQUIRED: node-color-seq-1 … node-color-seq-8
       "shape": { "default": "circle" }, // REQUIRED: default ∈ circle|square|diamond|custom:<id>
@@ -125,7 +137,7 @@ All three are optional, but you must define any type a stage references.
     }
   },
   "edge": {
-    "knows": {                         // key = edge-type id (slug, used in createEdge / subject)
+    "b2e94d10-7c6f-4a35-8e2d-91f3c5a06d78": { // key = edge-type id (UUID, used in createEdge / subject)
       "name": "Knows",                 // REQUIRED, unique across codebook; participants never see it
       "color": "edge-color-seq-1",     // optional: edge-color-seq-1 … edge-color-seq-8
       "variables": { /* see §4 */ }
@@ -209,20 +221,20 @@ non-ascending integer values are allowed). Option `label`s, and a scalar's `minL
 `maxLabel`, are localized strings. Examples:
 
 ```jsonc
-"alter_name":   { "name": "alter_name", "type": "text", "component": "Text",
+"0c8f3a52-1d6e-4b7a-9f20-6e4b8d1c3a97": { "name": "alter_name", "type": "text", "component": "Text",
   "validation": { "required": true } },
-"close_feeling":{ "name": "close_feeling", "type": "ordinal", "component": "LikertScale",
+"5a2d7e19-8b3c-4f61-a0d4-c7e9f2b13658": { "name": "close_feeling", "type": "ordinal", "component": "LikertScale",
   "options": [ {"label":{"en-US":"Not close"},"value":1}, {"label":{"en-US":"Somewhat close"},"value":2},
                {"label":{"en-US":"Very close"},"value":3} ],
   "validation": { "required": true } },
-"relationship": { "name": "relationship", "type": "categorical", "component": "CheckboxGroup",
+"e71b4c08-3f9a-4d26-b5e1-0a8c6d2f9b43": { "name": "relationship", "type": "categorical", "component": "CheckboxGroup",
   "options": [ {"label":{"en-US":"Family"},"value":"family"}, {"label":{"en-US":"Friend"},"value":"friend"} ] },
-"lives_with":   { "name": "lives_with", "type": "boolean", "component": "Boolean",
+"9d36f2a1-c04b-4e87-8a5f-b1d7e3c96024": { "name": "lives_with", "type": "boolean", "component": "Boolean",
   "options": [ {"label":{"en-US":"Yes"},"value":true}, {"label":{"en-US":"No"},"value":false} ] },
-"start_date":   { "name": "start_date", "type": "datetime", "component": "DatePicker",
+"2f8e5b6c-a71d-4390-9c4e-d3b0a8f71e25": { "name": "start_date", "type": "datetime", "component": "DatePicker",
   "parameters": { "type": "month" } },
-"layout":       { "name": "layout", "type": "layout" },
-"alter_loc":    { "name": "alter_loc", "type": "location" }
+"b4a09d73-6e2f-4c18-8d5b-f9c1e7a3204d": { "name": "layout", "type": "layout" },
+"73c1e8f4-2b5a-4d09-b6e3-a8f0d4c95712": { "name": "alter_loc", "type": "location" }
 ```
 
 **Avoiding duplicate alters.** When the same person may be named under more than one prompt, or
@@ -246,14 +258,14 @@ Required keys per stage type used by these templates:
 
 - **Information**: `content`, the whole page as one Markdown text. A `# Heading` that opens it is the page's heading.
 - **EgoForm**: `introductionPanel:{title,text?}` (REQUIRED; shown above the questions, and `text` may be left out for a title-only panel) + `form:{fields:[{id,variable(ego key), prompt}]}` (no `title`). No other stage has an `introductionPanel` in schema 9: to explain another stage to the participant, put an **Information** stage just before it (give it the same `skipLogic` so the two are skipped together).
-- **NameGenerator**: `subject`(node) + `form:{fields:[{id,variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
+- **NameGenerator**: `subject`(node) + `form:{fields:[{id,variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?:[{id,variable,value}]}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
 - **NameGeneratorQuickAdd**: `subject`(node) + `quickAdd:"<a text node-variable key>"` + `prompts:[{id,text}]` (≥1). (No `form`.)
 - **AlterForm**: `subject`(node) + `form:{fields:[{id,variable(node key),prompt}]}` + `filter?`.
 - **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `form:{fields:[{id,variable(edge key),prompt}]}`.
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
 - **Sociogram**: `subject`(node) + `prompts:[{id,text, layout:{layoutVariable:"<layout node key>"}, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.
-- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:[{type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
+- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:[{id, type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{id, variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
 - **DyadCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>"}]` (≥1).
 - **TieStrengthCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>", edgeVariable:"<ordinal edge key>", negativeLabel:"…"}]` (≥1).
 - **Geospatial**: `subject`(node) + `prompts:[{id,text, variable:"<location node key>"}]` (≥1) + `mapOptions` (all REQUIRED):
@@ -276,7 +288,7 @@ Required keys per stage type used by these templates:
   chosen language, normally first:
   ```jsonc
   {
-    "id": "language-chooser",
+    "id": "02cabc1c-467a-5870-ab97-abd472fb3fed",
     "type": "LanguageChooser",
     "label": { "en-US": "Language", "es": "Idioma" },
     "title": { "en-US": "Choose a language", "es": "Elige un idioma" }
@@ -293,7 +305,7 @@ Required keys per stage type used by these templates:
   `"finish"` goes to the first finish stage after the stage that owns the rule, which is this one.
   ```jsonc
   {
-    "id": "finish",
+    "id": "3bd853b4-3534-519b-9681-73e8d9d338fb",
     "type": "FinishSession",
     "label": { "en-US": "Finish Interview" },
     "title": { "en-US": "Finish Interview" },
@@ -338,7 +350,7 @@ protocol, with a label that flags it for removal, e.g.:
 
 ```jsonc
 {
-  "id": "information-researcher-notes",
+  "id": "9835d7d2-8c69-5651-a594-de77a870b0e0",
   "type": "Information",
   "label": { "en-US": "Template notes (delete before fielding)" },
   "content": {

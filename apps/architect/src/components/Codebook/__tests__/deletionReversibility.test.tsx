@@ -6,8 +6,6 @@ import { v4 as uuid } from 'uuid';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-import developmentProtocol from '@codaco/protocols/development';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -16,6 +14,9 @@ import { getProtocol } from '~/selectors/protocol';
 // The architect test setup mocks `useDialog` globally; these cases are about
 // what the REAL dialog puts in front of the researcher.
 vi.unmock('@codaco/fresco-ui/dialogs/useDialog');
+
+import { templateTypeId } from '~/templates/__tests__/templateCodebookIds';
+import { developmentProtocol } from '~/templates/development-protocol';
 
 import EntityType from '../EntityType';
 import Variables from '../Variables';
@@ -46,7 +47,7 @@ import Variables from '../Variables';
 const UNDO_PROMISE =
   'You can restore it with Undo while this protocol remains open.';
 
-const PERSON = 'person_node_type';
+const PERSON = templateTypeId(developmentProtocol, 'node', 'person');
 
 // A variable and a type invented for this suite, so neither can be in use by a
 // stage — `deleteVariableAsync` refuses a used variable, and the type's delete
@@ -55,9 +56,7 @@ const SPARE_VARIABLE = uuid();
 const SPARE_TYPE = uuid();
 
 const makeStore = () => {
-  const protocol = structuredClone(
-    developmentProtocol,
-  ) as unknown as CurrentProtocol;
+  const protocol = structuredClone(developmentProtocol);
 
   const personVariables = protocol.codebook.node?.[PERSON]?.variables;
   if (!personVariables) throw new Error('fixture is missing the person type');

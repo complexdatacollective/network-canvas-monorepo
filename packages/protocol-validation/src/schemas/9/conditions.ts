@@ -4,6 +4,7 @@ import { DYNAMIC_VALUE_NAME } from '../../localization/dynamicValueMessages.ts';
 import type { DynamicValueRole } from './dynamic-values.ts';
 import { entityTypeReference } from './entity-type-reference.ts';
 import { filterRuleSchema } from './filters/index.ts';
+import { protocolObjectId } from './protocol-object-id.ts';
 
 /**
  * How a count of edges is compared: against a number, or against the counts
@@ -35,7 +36,7 @@ export const edgeCountNeedsValue = (comparison: EdgeCountComparison): boolean =>
 export const EdgeCountRuleSchema = z
   .strictObject({
     type: z.literal('edge'),
-    id: z.string(),
+    id: protocolObjectId('rule'),
     options: z.strictObject({
       /** The one edge type counted; absent, every edge counts. */
       type: entityTypeReference({ entity: 'edge' }).optional(),

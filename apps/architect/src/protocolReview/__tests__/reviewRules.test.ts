@@ -4,7 +4,15 @@ import { describeFixTextEdits } from '../describeFix';
 import { applyOperations, fixFits, writtenHolds } from '../fixEngine';
 import { readPath } from '../fixPath';
 import { editProtocol, protocolReplacement, recordFix } from '../protocolFix';
-import { makeProtocol, op } from './fixtures';
+import {
+  makeProtocol,
+  op,
+  WELCOME_STAGE_ID,
+  NAMES_STAGE_ID,
+  NAMES_PROMPT_ID,
+  FREQ,
+  PERSON,
+} from './fixtures';
 
 /**
  * The engine's rules, each checked at every place that has to keep it. The
@@ -68,8 +76,16 @@ describe('A: a model-written fix never throws past the engine', () => {
   it('describeFixTextEdits answers for any value', () => {
     expect(() =>
       describeFixTextEdits(makeProtocol(), [
-        { op: 'set', path: '/stages/names/prompts/p1/text', value: DEEP },
-        { op: 'set', path: '/stages/names/label/en', value: '{oops' },
+        {
+          op: 'set',
+          path: `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
+          value: DEEP,
+        },
+        {
+          op: 'set',
+          path: `/stages/${NAMES_STAGE_ID}/label/en`,
+          value: '{oops',
+        },
       ]),
     ).not.toThrow();
   });
@@ -127,11 +143,13 @@ describe('F: the preview shows every text change a fix makes', () => {
   it('expands a replaced localized object into the translations it changes', () => {
     const protocol = makeProtocol();
     const { operations } = recordFix(protocol, [
-      op('set', '/stages/names/prompts/p1/text', { en: 'New wording' }),
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
+        en: 'New wording',
+      }),
     ]);
     expect(describeFixTextEdits(protocol, operations)).toEqual([
       {
-        path: '/stages/names/prompts/p1/text/en',
+        path: `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
         now: 'Name people',
         after: 'New wording',
         locale: 'en',
@@ -148,14 +166,14 @@ describe('F: the preview shows every text change a fix makes', () => {
   it('gives an edit only for the default language when a fix names other translations', () => {
     const protocol = makeProtocol();
     const { operations } = recordFix(protocol, [
-      op('set', '/stages/names/prompts/p1/text', {
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
         en: 'New wording',
         fr: 'Nouveau texte',
       }),
     ]);
     expect(describeFixTextEdits(protocol, operations)).toEqual([
       {
-        path: '/stages/names/prompts/p1/text/en',
+        path: `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
         now: 'Name people',
         after: 'New wording',
         locale: 'en',
@@ -172,13 +190,13 @@ describe('F: the preview shows every text change a fix makes', () => {
   it('shows a new localized text, which has nothing now', () => {
     const protocol = makeProtocol();
     const { operations } = recordFix(protocol, [
-      op('set', '/stages/welcome/introductionPanel', {
+      op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel`, {
         en: 'Before you start',
       }),
     ]);
     expect(describeFixTextEdits(protocol, operations)).toEqual([
       {
-        path: '/stages/welcome/introductionPanel/en',
+        path: `/stages/${WELCOME_STAGE_ID}/introductionPanel/en`,
         now: null,
         after: 'Before you start',
         locale: 'en',
@@ -191,13 +209,13 @@ describe('F: the preview shows every text change a fix makes', () => {
       },
     ]);
     const label = recordFix(protocol, [
-      op('set', '/codebook/node/person/variables/freq/options/0/label', {
+      op('set', `/codebook/node/${PERSON}/variables/${FREQ}/options/0/label`, {
         en: 'Very often',
       }),
     ]);
     expect(describeFixTextEdits(protocol, label.operations)).toEqual([
       {
-        path: '/codebook/node/person/variables/freq/options/0/label/en',
+        path: `/codebook/node/${PERSON}/variables/${FREQ}/options/0/label/en`,
         now: 'Often',
         after: 'Very often',
         locale: 'en',
@@ -207,9 +225,9 @@ describe('F: the preview shows every text change a fix makes', () => {
         textPath: [
           'codebook',
           'node',
-          'person',
+          PERSON,
           'variables',
-          'freq',
+          FREQ,
           'options',
           0,
           'label',
@@ -223,7 +241,7 @@ describe('F: the preview shows every text change a fix makes', () => {
 
 describe('B on a real protocol (the family is in fixFamily.test.ts)', () => {
   it('sees an edit to the first of two options inserted at one index', async () => {
-    const options = '/codebook/node/person/variables/freq/options';
+    const options = `/codebook/node/${PERSON}/variables/${FREQ}/options`;
     const edit = await editProtocol(makeProtocol(), [
       op('insert', `${options}/0`, { label: { en: 'A', fr: 'A' }, value: 3 }),
       op('insert', `${options}/0`, { label: { en: 'B', fr: 'B' }, value: 4 }),

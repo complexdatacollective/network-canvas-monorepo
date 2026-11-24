@@ -76,7 +76,9 @@ export class InterviewNav {
   }
 
   async fillEgoName(value: string): Promise<void> {
-    const field = this.page.locator('[data-field-name="ego_name"] input');
+    const field = this.page.getByRole('textbox', {
+      name: 'What is your name?',
+    });
     await field.fill(value);
     // Protocol-form fields (useProtocolForm.tsx) never pass validateOnChange
     // to fresco-ui's Field, so validation — and therefore isFormValid, which

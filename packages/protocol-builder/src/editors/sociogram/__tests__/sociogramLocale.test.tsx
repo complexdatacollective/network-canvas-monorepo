@@ -5,7 +5,12 @@ import {
   attributeField,
   createRowIn,
 } from '../../../testing/attributePicker.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testTypeId } from '../../../testing/testId.ts';
 import {
   openPrompt,
   sociogramSections,
@@ -116,19 +121,24 @@ describe('the canvas sections, read in Spanish', () => {
    * spliced into the Spanish sentence rather than into the English one.
    */
   it('splices a lost connection type’s id into the Spanish tick list', async () => {
-    const LOST_EDGE = 'former_edge';
+    const LOST_EDGE = testTypeId('former_edge');
     const harness = renderStageEditor({
       stage: {
         type: 'Sociogram' as const,
         fields: {
           label: 'Sociogram',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
           background: { concentricCircles: 4 },
           prompts: [
             {
               id: 'sociogram-prompt-1',
               text: 'Coloca a las personas que se conocen cerca',
-              layout: { layoutVariable: 'layout' },
+              layout: {
+                layoutVariable: fixtureVariableId(
+                  { entity: 'node', typeName: 'person' },
+                  'layout',
+                ),
+              },
               edges: { display: [LOST_EDGE] },
             },
           ],

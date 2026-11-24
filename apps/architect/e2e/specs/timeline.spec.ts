@@ -4,7 +4,10 @@ import {
   readAnnouncements,
   recordAnnouncements,
 } from '@codaco/e2e-helpers/announcements';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
@@ -46,7 +49,7 @@ const anyNodeOfFirstType = (protocol: {
     rules: [
       {
         type: 'node' as const,
-        id: 'skip-when-any-node-exists',
+        id: createProtocolObjectId(),
         options: { type: nodeType, operator: 'EXISTS' as const },
       },
     ],
@@ -444,7 +447,7 @@ test('swaps two stages that end the interview from the keyboard', async ({
   }
   const screenedOut = {
     ...finish,
-    id: 'screened-out',
+    id: createProtocolObjectId(),
     label: { [protocol.localization.defaultLocale]: 'Screened out' },
     outcome: 'ineligible' as const,
   };

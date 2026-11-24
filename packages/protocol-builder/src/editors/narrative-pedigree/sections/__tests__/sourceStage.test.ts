@@ -6,7 +6,13 @@ import {
   protocolContextFromSections,
   type ProtocolBuilderProtocolContext,
 } from '../../../../protocol-context.ts';
-import { fixtureProtocolSections } from '../../../../testing/protocolFixture.ts';
+import {
+  fixtureProtocolSections,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../../testing/protocolFixture.ts';
+import { testVariableId } from '../../../../testing/testId.ts';
 import {
   diseaseMarksNobody,
   resolveSourceStages,
@@ -31,26 +37,32 @@ function contextInOrder(
   });
 }
 
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const HAS_CONDITION_X = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'hasConditionX',
+);
+
 const FIXTURE_ORDER = [
-  'ego-form-1',
-  'sociogram-1',
-  'family-pedigree-1',
-  'narrative-pedigree-1',
+  fixtureStageId('ego-form-1'),
+  fixtureStageId('sociogram-1'),
+  fixtureStageId('family-pedigree-1'),
+  fixtureStageId('narrative-pedigree-1'),
 ];
 
 describe('the pedigrees a narrative pedigree may read', () => {
   it('offers the Family Pedigree stages that run before it', () => {
     const { options, problem } = resolveSourceStages(
       contextInOrder(FIXTURE_ORDER),
-      'narrative-pedigree-1',
-      'family-pedigree-1',
+      fixtureStageId('narrative-pedigree-1'),
+      fixtureStageId('family-pedigree-1'),
     );
 
     // Numbered as the researcher will see it in the interview, because two
     // pedigrees may carry the same name.
     expect(options).toEqual([
       {
-        value: 'family-pedigree-1',
+        value: fixtureStageId('family-pedigree-1'),
         label: { 'en-US': 'Family Pedigree' },
         position: 3,
       },
@@ -72,7 +84,7 @@ describe('the pedigrees a narrative pedigree may read', () => {
     );
 
     expect(options.map((option) => option.value)).toEqual([
-      'family-pedigree-1',
+      fixtureStageId('family-pedigree-1'),
     ]);
     expect(problem).toBeNull();
   });
@@ -85,7 +97,9 @@ describe('the pedigrees a narrative pedigree may read', () => {
    */
   it('offers a stage being created only the pedigrees it will run after', () => {
     const context = contextInOrder(FIXTURE_ORDER);
-    const pedigreeIndex = FIXTURE_ORDER.indexOf('family-pedigree-1');
+    const pedigreeIndex = FIXTURE_ORDER.indexOf(
+      fixtureStageId('family-pedigree-1'),
+    );
 
     expect(
       resolveSourceStages(context, 'not-in-the-order-yet', undefined, 0)
@@ -108,7 +122,7 @@ describe('the pedigrees a narrative pedigree may read', () => {
         undefined,
         pedigreeIndex + 1,
       ).options.map((option) => option.value),
-    ).toEqual(['family-pedigree-1']);
+    ).toEqual([fixtureStageId('family-pedigree-1')]);
   });
 
   /**
@@ -118,7 +132,9 @@ describe('the pedigrees a narrative pedigree may read', () => {
    */
   it('numbers the pedigrees a stage being created would read where they stay', () => {
     const context = contextInOrder(FIXTURE_ORDER);
-    const pedigreeIndex = FIXTURE_ORDER.indexOf('family-pedigree-1');
+    const pedigreeIndex = FIXTURE_ORDER.indexOf(
+      fixtureStageId('family-pedigree-1'),
+    );
     const positionsWhenInsertedAt = (position?: number) =>
       resolveSourceStages(
         context,
@@ -142,7 +158,7 @@ describe('the pedigrees a narrative pedigree may read', () => {
     const { options, problem } = resolveSourceStages(
       contextInOrder(FIXTURE_ORDER),
       'not-in-the-order-yet',
-      'family-pedigree-1',
+      fixtureStageId('family-pedigree-1'),
       0,
     );
 
@@ -155,12 +171,12 @@ describe('the pedigrees a narrative pedigree may read', () => {
       // The researcher — or a collaborator — moved the pedigree below the
       // stage that reads it, so the family would still be empty.
       contextInOrder([
-        'ego-form-1',
-        'narrative-pedigree-1',
-        'family-pedigree-1',
+        fixtureStageId('ego-form-1'),
+        fixtureStageId('narrative-pedigree-1'),
+        fixtureStageId('family-pedigree-1'),
       ]),
-      'narrative-pedigree-1',
-      'family-pedigree-1',
+      fixtureStageId('narrative-pedigree-1'),
+      fixtureStageId('family-pedigree-1'),
     );
 
     expect(problem).toBe('afterThisStage');
@@ -170,8 +186,11 @@ describe('the pedigrees a narrative pedigree may read', () => {
 
   it('reports a source that has left the interview', () => {
     const { problem } = resolveSourceStages(
-      contextInOrder(['family-pedigree-1', 'narrative-pedigree-1']),
-      'narrative-pedigree-1',
+      contextInOrder([
+        fixtureStageId('family-pedigree-1'),
+        fixtureStageId('narrative-pedigree-1'),
+      ]),
+      fixtureStageId('narrative-pedigree-1'),
       'a-pedigree-that-was-deleted',
     );
 
@@ -181,8 +200,8 @@ describe('the pedigrees a narrative pedigree may read', () => {
   it('reports a source whose interface is no longer a pedigree', () => {
     const { problem } = resolveSourceStages(
       contextInOrder(FIXTURE_ORDER),
-      'narrative-pedigree-1',
-      'sociogram-1',
+      fixtureStageId('narrative-pedigree-1'),
+      fixtureStageId('sociogram-1'),
     );
 
     expect(problem).toBe('notAPedigree');
@@ -191,7 +210,7 @@ describe('the pedigrees a narrative pedigree may read', () => {
   it('says nothing is wrong when nothing has been chosen', () => {
     const { problem } = resolveSourceStages(
       contextInOrder(FIXTURE_ORDER),
-      'narrative-pedigree-1',
+      fixtureStageId('narrative-pedigree-1'),
       undefined,
     );
 
@@ -202,14 +221,19 @@ describe('the pedigrees a narrative pedigree may read', () => {
 describe('the node type a narrative pedigree describes', () => {
   it('is the source pedigree’s own alter type', () => {
     expect(
-      sourceStageNodeType(contextInOrder(FIXTURE_ORDER), 'family-pedigree-1'),
-    ).toBe('family_member');
+      sourceStageNodeType(
+        contextInOrder(FIXTURE_ORDER),
+        fixtureStageId('family-pedigree-1'),
+      ),
+    ).toBe(FAMILY_MEMBER);
   });
 
   it('is nothing at all when the source cannot be resolved', () => {
     const context = contextInOrder(FIXTURE_ORDER);
 
-    expect(sourceStageNodeType(context, 'sociogram-1')).toBeUndefined();
+    expect(
+      sourceStageNodeType(context, fixtureStageId('sociogram-1')),
+    ).toBeUndefined();
     expect(sourceStageNodeType(context, 'no-such-stage')).toBeUndefined();
     expect(sourceStageNodeType(context, undefined)).toBeUndefined();
   });
@@ -224,31 +248,36 @@ describe('the attributes the source pedigree records', () => {
     expect([
       ...sourceStageRecordedVariables(
         contextInOrder(FIXTURE_ORDER),
-        'family-pedigree-1',
+        fixtureStageId('family-pedigree-1'),
       ),
-    ]).toEqual(['hasConditionX']);
+    ]).toEqual([HAS_CONDITION_X]);
   });
 
   it('is nothing at all when the source cannot be resolved', () => {
     const context = contextInOrder(FIXTURE_ORDER);
 
-    expect(sourceStageRecordedVariables(context, 'sociogram-1').size).toBe(0);
+    expect(
+      sourceStageRecordedVariables(context, fixtureStageId('sociogram-1')).size,
+    ).toBe(0);
     expect(sourceStageRecordedVariables(context, 'no-such-stage').size).toBe(0);
     expect(sourceStageRecordedVariables(context, undefined).size).toBe(0);
   });
 });
 
 describe('a disease that would mark nobody', () => {
-  const recorded = new Set(['hasConditionX']);
+  const recorded = new Set([HAS_CONDITION_X]);
 
   it('is one mapping an attribute nothing records', () => {
-    expect(diseaseMarksNobody({ attribute: 'biologicalSex' }, recorded)).toBe(
-      true,
-    );
+    expect(
+      diseaseMarksNobody(
+        { attribute: testVariableId('biologicalSex') },
+        recorded,
+      ),
+    ).toBe(true);
   });
 
   it('is not one mapping an attribute a nomination prompt writes', () => {
-    expect(diseaseMarksNobody({ attribute: 'hasConditionX' }, recorded)).toBe(
+    expect(diseaseMarksNobody({ attribute: HAS_CONDITION_X }, recorded)).toBe(
       false,
     );
   });
@@ -261,6 +290,8 @@ describe('a disease that would mark nobody', () => {
     expect(diseaseMarksNobody({ attribute: '' }, recorded)).toBe(false);
     expect(diseaseMarksNobody({}, recorded)).toBe(false);
     expect(diseaseMarksNobody(null, recorded)).toBe(false);
-    expect(diseaseMarksNobody(['hasConditionZ'], recorded)).toBe(false);
+    expect(
+      diseaseMarksNobody([testVariableId('hasConditionZ')], recorded),
+    ).toBe(false);
   });
 });

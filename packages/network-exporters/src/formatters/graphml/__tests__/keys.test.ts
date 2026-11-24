@@ -7,6 +7,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { FormattedSession } from '../../../input';
 import type { ExportWarning } from '../../../output';
 import {
@@ -45,7 +46,7 @@ const personCodebook = (
 ) =>
   ({
     node: {
-      person: {
+      [testTypeId('person')]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
@@ -61,7 +62,7 @@ const sessionWithNode = (
   nodes: [
     {
       [entityPrimaryKeyProperty]: 'node-a',
-      type: 'person',
+      type: testTypeId('person'),
       [entityAttributesProperty]: attributes,
     },
   ],
@@ -91,7 +92,7 @@ describe('GraphML keys for names in other scripts, with spaces and punctuation',
   });
 
   it('writes a valid attr.name and keeps the original name in <desc>', () => {
-    const key = keyById(keys, 'p-name');
+    const key = keyById(keys, testVariableId('p-name'));
 
     expect(key.getAttribute('attr.name')).toBe('Full_name');
     expect(descOf(key)).toBe('Full name');
@@ -99,28 +100,28 @@ describe('GraphML keys for names in other scripts, with spaces and punctuation',
   });
 
   it('puts <desc> first in the <key>, where the GraphML schema allows it', () => {
-    const key = keyById(keys, 'p-age');
+    const key = keyById(keys, testVariableId('p-age'));
 
     expect(key.getAttribute('attr.name')).toBe('年齢__years_');
     expect(key.firstChild).toBe(key.getElementsByTagName('desc')[0]);
   });
 
   it('lets variables of different types that share a name share an attr.name', () => {
-    expect(keyById(keys, 'pl-name').getAttribute('attr.name')).toBe(
-      'Full_name',
-    );
+    expect(
+      keyById(keys, testVariableId('pl-name')).getAttribute('attr.name'),
+    ).toBe('Full_name');
   });
 
   it('writes the layout keys in the order X, screenSpaceY, screenSpaceX, Y', () => {
     const layoutKeys = keys.filter((key) =>
-      key.getAttribute('id')?.startsWith('p-pos_'),
+      key.getAttribute('id')?.startsWith(`${testVariableId('p-pos')}_`),
     );
 
     expect(layoutKeys.map((key) => key.getAttribute('id'))).toEqual([
-      'p-pos_X',
-      'p-pos_screenSpaceY',
-      'p-pos_screenSpaceX',
-      'p-pos_Y',
+      `${testVariableId('p-pos')}_X`,
+      `${testVariableId('p-pos')}_screenSpaceY`,
+      `${testVariableId('p-pos')}_screenSpaceX`,
+      `${testVariableId('p-pos')}_Y`,
     ]);
     expect(layoutKeys.map(descOf)).toEqual([
       'map position_X',
@@ -138,7 +139,7 @@ describe('GraphML keys for names in other scripts, with spaces and punctuation',
 
   it('names each categorical option after the variable and the option value', () => {
     const optionKeys = keys.filter((key) =>
-      key.getAttribute('id')?.startsWith('p-eyes_'),
+      key.getAttribute('id')?.startsWith(`${testVariableId('p-eyes')}_`),
     );
 
     expect(optionKeys.map(descOf)).toEqual([
@@ -156,9 +157,9 @@ describe('GraphML keys for names in other scripts, with spaces and punctuation',
   it('keeps the data under the key ids, which do not depend on names', () => {
     const data = new Map(nodeData(xml, 0));
 
-    expect(data.get('p-name')).toBe('Dee');
-    expect(data.get('p-age')).toBe('40');
-    expect(data.get('p-rank')).toBe('2');
+    expect(data.get(testVariableId('p-name'))).toBe('Dee');
+    expect(data.get(testVariableId('p-age'))).toBe('40');
+    expect(data.get(testVariableId('p-rank'))).toBe('2');
   });
 
   it('declares only ids and attr.names that are NMTOKENs', () => {
@@ -173,20 +174,24 @@ describe('GraphML keys for names that are already valid', () => {
   it('leaves attr.name as written and adds no <desc>', async () => {
     const xml = await render(
       personCodebook({
-        'v-1': { name: 'name', type: 'text' },
-        'v-2': {
+        [testVariableId('v-1')]: { name: 'name', type: 'text' },
+        [testVariableId('v-2')]: {
           name: 'a.b-c:d_e',
           type: 'number',
         },
-        'v-3': { name: '年齢', type: 'number' },
+        [testVariableId('v-3')]: { name: '年齢', type: 'number' },
       }),
-      sessionWithNode({ 'v-1': 'Dee', 'v-2': 1, 'v-3': 2 }),
+      sessionWithNode({
+        [testVariableId('v-1')]: 'Dee',
+        [testVariableId('v-2')]: 1,
+        [testVariableId('v-3')]: 2,
+      }),
     );
     const keys = keyElements(xml);
 
     expect(
-      ['v-1', 'v-2', 'v-3'].map((id) =>
-        keyById(keys, id).getAttribute('attr.name'),
+      [testVariableId('v-1'), testVariableId('v-2'), testVariableId('v-3')].map(
+        (id) => keyById(keys, id).getAttribute('attr.name'),
       ),
     ).toEqual(['name', 'a.b-c:d_e', '年齢']);
     expect(xml).not.toContain('<desc');
@@ -197,32 +202,38 @@ describe('GraphML keys for names that derive the same attr.name', () => {
   it('numbers them in codebook order, and each <desc> says which is which', async () => {
     const xml = await render(
       personCodebook({
-        'v-space': { name: 'a b', type: 'text' },
-        'v-question': { name: 'a?b', type: 'text' },
-        'v-valid': { name: 'a_b', type: 'text' },
+        [testVariableId('v-space')]: { name: 'a b', type: 'text' },
+        [testVariableId('v-question')]: { name: 'a?b', type: 'text' },
+        [testVariableId('v-valid')]: { name: 'a_b', type: 'text' },
       }),
       sessionWithNode({
-        'v-space': 'one',
-        'v-question': 'two',
-        'v-valid': 'three',
+        [testVariableId('v-space')]: 'one',
+        [testVariableId('v-question')]: 'two',
+        [testVariableId('v-valid')]: 'three',
       }),
     );
     const keys = keyElements(xml);
 
-    expect(keyById(keys, 'v-valid').getAttribute('attr.name')).toBe('a_b');
-    expect(descOf(keyById(keys, 'v-valid'))).toBeNull();
-    expect(keyById(keys, 'v-space').getAttribute('attr.name')).toBe('a_b_2');
-    expect(descOf(keyById(keys, 'v-space'))).toBe('a b');
-    expect(keyById(keys, 'v-question').getAttribute('attr.name')).toBe('a_b_3');
-    expect(descOf(keyById(keys, 'v-question'))).toBe('a?b');
+    expect(
+      keyById(keys, testVariableId('v-valid')).getAttribute('attr.name'),
+    ).toBe('a_b');
+    expect(descOf(keyById(keys, testVariableId('v-valid')))).toBeNull();
+    expect(
+      keyById(keys, testVariableId('v-space')).getAttribute('attr.name'),
+    ).toBe('a_b_2');
+    expect(descOf(keyById(keys, testVariableId('v-space')))).toBe('a b');
+    expect(
+      keyById(keys, testVariableId('v-question')).getAttribute('attr.name'),
+    ).toBe('a_b_3');
+    expect(descOf(keyById(keys, testVariableId('v-question')))).toBe('a?b');
     expect(new Map(nodeData(xml, 0))).toEqual(
       new Map([
         ['networkCanvasUUID', 'node-a'],
         ['networkCanvasType', 'Person'],
         ['label', 'one'],
-        ['v-space', 'one'],
-        ['v-question', 'two'],
-        ['v-valid', 'three'],
+        [testVariableId('v-space'), 'one'],
+        [testVariableId('v-question'), 'two'],
+        [testVariableId('v-valid'), 'three'],
       ]),
     );
   });
@@ -230,12 +241,14 @@ describe('GraphML keys for names that derive the same attr.name', () => {
   it('escapes the original name in <desc>', async () => {
     const xml = await render(
       personCodebook({
-        'v-1': { name: 'R&D <team>', type: 'text' },
+        [testVariableId('v-1')]: { name: 'R&D <team>', type: 'text' },
       }),
-      sessionWithNode({ 'v-1': 'x' }),
+      sessionWithNode({ [testVariableId('v-1')]: 'x' }),
     );
 
-    expect(descOf(keyById(keyElements(xml), 'v-1'))).toBe('R&D <team>');
+    expect(descOf(keyById(keyElements(xml), testVariableId('v-1')))).toBe(
+      'R&D <team>',
+    );
     expect(xml).toContain('<desc>R&amp;D &lt;team&gt;</desc>');
   });
 });
@@ -334,7 +347,7 @@ describe('GraphML key ids that would be the same', () => {
       nodes: [
         {
           [entityPrimaryKeyProperty]: 'node-a',
-          type: 'person',
+          type: testTypeId('person'),
           [entityAttributesProperty]: {
             pos_X: 'written',
             pos: { x: 0.25, y: 0.75 },
@@ -422,20 +435,24 @@ describe('GraphML columns the export renames', () => {
   it('reports each column numbered to keep it apart from another', async () => {
     const { xml, warnings } = await renderReporting(
       personCodebook({
-        'v-label': { name: 'label', type: 'text' },
-        'v-text': { name: 'pos_X', type: 'text' },
-        'v-layout': { name: 'pos', type: 'layout' },
-        'v-space': { name: 'a b', type: 'text' },
-        'v-valid': { name: 'a_b', type: 'text' },
+        [testVariableId('v-label')]: { name: 'label', type: 'text' },
+        [testVariableId('v-text')]: { name: 'pos_X', type: 'text' },
+        [testVariableId('v-layout')]: { name: 'pos', type: 'layout' },
+        [testVariableId('v-space')]: { name: 'a b', type: 'text' },
+        [testVariableId('v-valid')]: { name: 'a_b', type: 'text' },
       }),
-      sessionWithNode({ 'v-label': 'Dee' }),
+      sessionWithNode({ [testVariableId('v-label')]: 'Dee' }),
     );
     const keys = keyElements(xml);
 
-    expect(keyById(keys, 'v-label').getAttribute('attr.name')).toBe('label_2');
-    expect(keyById(keys, 'v-layout_X').getAttribute('attr.name')).toBe(
-      'pos_X_2',
-    );
+    expect(
+      keyById(keys, testVariableId('v-label')).getAttribute('attr.name'),
+    ).toBe('label_2');
+    expect(
+      keyById(keys, `${testVariableId('v-layout')}_X`).getAttribute(
+        'attr.name',
+      ),
+    ).toBe('pos_X_2');
     expect(warnings).toEqual([
       renamed('Person', 'label', 'label', 'label_2'),
       renamed('Person', 'pos', 'pos_X', 'pos_X_2'),
@@ -446,23 +463,23 @@ describe('GraphML columns the export renames', () => {
   it('does not report a name made into a valid attr.name, or one shared by two types', async () => {
     const codebook = {
       node: {
-        person: {
+        [testTypeId('person')]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            'p-name': {
+            [testVariableId('p-name')]: {
               name: 'Full name',
               type: 'text',
             },
           },
         },
-        place: {
+        [testTypeId('place')]: {
           name: 'Place',
           color: 'node-color-seq-2',
           shape: { default: 'circle' },
           variables: {
-            'pl-name': {
+            [testVariableId('pl-name')]: {
               name: 'Full name',
               type: 'text',
             },
@@ -472,14 +489,16 @@ describe('GraphML columns the export renames', () => {
     } satisfies Codebook;
     const { xml, warnings } = await renderReporting(
       codebook,
-      sessionWithNode({ 'p-name': 'Dee' }),
+      sessionWithNode({ [testVariableId('p-name')]: 'Dee' }),
     );
     const keys = keyElements(xml);
 
-    expect(keyById(keys, 'p-name').getAttribute('attr.name')).toBe('Full_name');
-    expect(keyById(keys, 'pl-name').getAttribute('attr.name')).toBe(
-      'Full_name',
-    );
+    expect(
+      keyById(keys, testVariableId('p-name')).getAttribute('attr.name'),
+    ).toBe('Full_name');
+    expect(
+      keyById(keys, testVariableId('pl-name')).getAttribute('attr.name'),
+    ).toBe('Full_name');
     expect(warnings).toEqual([]);
   });
 });

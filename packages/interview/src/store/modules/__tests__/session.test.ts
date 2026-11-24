@@ -11,6 +11,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { createInitialNetwork } from '../../../contract/network';
 import {
   encryptionFor,
@@ -32,6 +33,35 @@ import sessionReducer, {
 } from '../session';
 import ui from '../ui';
 
+const NODE_TYPE = testTypeId('test-node-type');
+const EDGE_TYPE = testTypeId('test-edge-type');
+const PERSON = testTypeId('person');
+const FRIENDSHIP = testTypeId('friendship');
+const VAR_1 = testVariableId('var-1');
+const VAR_2 = testVariableId('var-2');
+const VAR_3 = testVariableId('var-3');
+const EDGE_VAR_1 = testVariableId('edge-var-1');
+const EDGE_VAR_2 = testVariableId('edge-var-2');
+const EDGE_VAR_3 = testVariableId('edge-var-3');
+const EDGE_VAR_CLOSENESS = testVariableId('edge-var-closeness');
+const EGO_VAR_1 = testVariableId('ego-var-1');
+const EGO_VAR_2 = testVariableId('ego-var-2');
+const EGO_VAR_3 = testVariableId('ego-var-3');
+const DEFINED = testVariableId('defined');
+const LEGACY_NULL = testVariableId('legacyNull');
+const LEGACY_UNDEFINED = testVariableId('legacyUndefined');
+const NODE_KEEP = testVariableId('nodeKeep');
+const NODE_REMOVE = testVariableId('nodeRemove');
+const NODE_ADDED = testVariableId('nodeAdded');
+const EDGE_KEEP = testVariableId('edgeKeep');
+const EDGE_REMOVE = testVariableId('edgeRemove');
+const EDGE_ADDED = testVariableId('edgeAdded');
+const EGO_KEEP = testVariableId('egoKeep');
+const EGO_REMOVE = testVariableId('egoRemove');
+const EGO_ADDED = testVariableId('egoAdded');
+const IS_CLOSE_TIE = testVariableId('isCloseTie');
+const IS_FAMILY = testVariableId('isFamily');
+
 /**
  * Minimal store setup for testing session thunks.
  * Only includes state required by addNode.
@@ -40,7 +70,7 @@ function createTestStore(options: {
   codebookVariables?: Record<string, { name: string }>;
   nodeTypeName?: string;
 }) {
-  const nodeTypeId = 'test-node-type-uuid';
+  const nodeTypeId = NODE_TYPE;
   const { codebookVariables = {}, nodeTypeName = 'Person' } = options;
 
   const sessionState = createTestSessionState();
@@ -111,18 +141,18 @@ describe('addNode', () => {
       // Setup
       const store = createTestStore({
         codebookVariables: {
-          'var-uuid-1': { name: 'firstName' },
-          'var-uuid-2': { name: 'lastName' },
+          [VAR_1]: { name: 'firstName' },
+          [VAR_2]: { name: 'lastName' },
         },
       });
 
       // Execute
       const result = await store.dispatch(
         addNode({
-          type: 'test-node-type-uuid',
+          type: NODE_TYPE,
           attributeData: {
-            'var-uuid-1': 'John',
-            'var-uuid-2': 'Doe',
+            [VAR_1]: 'John',
+            [VAR_2]: 'Doe',
           },
           currentStep: 0,
         }),
@@ -134,23 +164,23 @@ describe('addNode', () => {
         type: string;
         attributeData: Record<string, unknown>;
       };
-      expect(payload.type).toBe('test-node-type-uuid');
-      expect(payload.attributeData['var-uuid-1']).toBe('John');
-      expect(payload.attributeData['var-uuid-2']).toBe('Doe');
+      expect(payload.type).toBe(NODE_TYPE);
+      expect(payload.attributeData[VAR_1]).toBe('John');
+      expect(payload.attributeData[VAR_2]).toBe('Doe');
     });
 
     it('succeeds with empty attributeData', async () => {
       // Setup
       const store = createTestStore({
         codebookVariables: {
-          'var-uuid-1': { name: 'firstName' },
+          [VAR_1]: { name: 'firstName' },
         },
       });
 
       // Execute
       const result = await store.dispatch(
         addNode({
-          type: 'test-node-type-uuid',
+          type: NODE_TYPE,
           attributeData: {},
           currentStep: 0,
         }),
@@ -169,7 +199,7 @@ describe('addNode', () => {
       // Execute
       const result = await store.dispatch(
         addNode({
-          type: 'test-node-type-uuid',
+          type: NODE_TYPE,
           currentStep: 0,
         }),
       );
@@ -189,17 +219,17 @@ describe('addNode', () => {
         // Setup
         const store = createTestStore({
           codebookVariables: {
-            'var-uuid-1': { name: 'firstName' },
+            [VAR_1]: { name: 'firstName' },
           },
         });
 
         // Execute
         const result = await store.dispatch(
           addNode({
-            type: 'test-node-type-uuid',
+            type: NODE_TYPE,
             attributeData: {
-              'var-uuid-1': 'John',
-              'unknownKey': 'value',
+              [VAR_1]: 'John',
+              unknownKey: 'value',
             },
             currentStep: 0,
           }),
@@ -219,18 +249,18 @@ describe('addNode', () => {
         // Setup
         const store = createTestStore({
           codebookVariables: {
-            'var-uuid-1': { name: 'firstName' },
+            [VAR_1]: { name: 'firstName' },
           },
         });
 
         // Execute - simulates external data with attributes not in codebook
         const result = await store.dispatch(
           addNode({
-            type: 'test-node-type-uuid',
+            type: NODE_TYPE,
             attributeData: {
-              'var-uuid-1': 'John', // Known attribute
-              'name': 'John Doe', // Unknown - from CSV column
-              'first_language': 'English', // Unknown - from CSV column
+              [VAR_1]: 'John', // Known attribute
+              name: 'John Doe', // Unknown - from CSV column
+              first_language: 'English', // Unknown - from CSV column
             },
             allowUnknownAttributes: true,
             currentStep: 0,
@@ -243,9 +273,9 @@ describe('addNode', () => {
           (result.payload as { attributeData: Record<string, unknown> })
             .attributeData,
         ).toMatchObject({
-          'var-uuid-1': 'John',
-          'name': 'John Doe',
-          'first_language': 'English',
+          [VAR_1]: 'John',
+          name: 'John Doe',
+          first_language: 'English',
         });
       });
 
@@ -253,18 +283,18 @@ describe('addNode', () => {
         // Setup
         const store = createTestStore({
           codebookVariables: {
-            'var-uuid-1': { name: 'firstName' },
+            [VAR_1]: { name: 'firstName' },
           },
         });
 
         // Execute
         const result = await store.dispatch(
           addNode({
-            type: 'test-node-type-uuid',
+            type: NODE_TYPE,
             attributeData: {
-              'var-uuid-1': 'John',
-              'externalField': 'external value',
-              'anotherField': 123,
+              [VAR_1]: 'John',
+              externalField: 'external value',
+              anotherField: 123,
             },
             allowUnknownAttributes: true,
             currentStep: 0,
@@ -276,7 +306,7 @@ describe('addNode', () => {
         const payload = result.payload as {
           attributeData: Record<string, unknown>;
         };
-        expect(payload.attributeData['var-uuid-1']).toBe('John');
+        expect(payload.attributeData[VAR_1]).toBe('John');
         expect(payload.attributeData.externalField).toBe('external value');
         expect(payload.attributeData.anotherField).toBe(123);
       });
@@ -288,18 +318,18 @@ describe('addNode', () => {
       // Setup: codebook has 3 node variables
       const store = createTestStore({
         codebookVariables: {
-          'var-uuid-1': { name: 'firstName' },
-          'var-uuid-2': { name: 'lastName' },
-          'var-uuid-3': { name: 'age' },
+          [VAR_1]: { name: 'firstName' },
+          [VAR_2]: { name: 'lastName' },
+          [VAR_3]: { name: 'age' },
         },
       });
 
       // Execute: only provide value for one variable
       const result = await store.dispatch(
         addNode({
-          type: 'test-node-type-uuid',
+          type: NODE_TYPE,
           attributeData: {
-            'var-uuid-1': 'John',
+            [VAR_1]: 'John',
           },
           currentStep: 0,
         }),
@@ -310,27 +340,27 @@ describe('addNode', () => {
         attributeData: Record<string, unknown>;
       };
       expect(payload.attributeData).toEqual({
-        'var-uuid-1': 'John',
+        [VAR_1]: 'John',
       });
     });
 
     it('omits legacy null and own undefined values', async () => {
       const store = createTestStore({
         codebookVariables: {
-          defined: { name: 'defined' },
-          legacyNull: { name: 'legacyNull' },
-          legacyUndefined: { name: 'legacyUndefined' },
+          [DEFINED]: { name: 'defined' },
+          [LEGACY_NULL]: { name: 'legacyNull' },
+          [LEGACY_UNDEFINED]: { name: 'legacyUndefined' },
         },
       });
       const attributeData: Record<string, VariableValue | undefined> = {
-        defined: false,
-        legacyUndefined: undefined,
+        [DEFINED]: false,
+        [LEGACY_UNDEFINED]: undefined,
       };
-      Reflect.set(attributeData, 'legacyNull', null);
+      Reflect.set(attributeData, LEGACY_NULL, null);
 
       const result = await store.dispatch(
         addNode({
-          type: 'test-node-type-uuid',
+          type: NODE_TYPE,
           attributeData,
           currentStep: 0,
         }),
@@ -340,9 +370,9 @@ describe('addNode', () => {
       if (!addNode.fulfilled.match(result)) {
         throw new Error('expected addNode to be fulfilled');
       }
-      expect(result.payload.attributeData).toStrictEqual({ defined: false });
+      expect(result.payload.attributeData).toStrictEqual({ [DEFINED]: false });
       expect(
-        Object.hasOwn(result.payload.attributeData, 'legacyUndefined'),
+        Object.hasOwn(result.payload.attributeData, LEGACY_UNDEFINED),
       ).toBe(false);
     });
   });
@@ -414,14 +444,14 @@ function createTestStoreWithEdge(options: {
   edgeVariables?: Record<string, { name: string }>;
   edges?: NcEdge[];
 }) {
-  const edgeTypeId = 'test-edge-type-uuid';
+  const edgeTypeId = EDGE_TYPE;
   const { edgeVariables = {}, edges = [] } = options;
 
   const network = createInitialNetwork();
   // Add two nodes so we can create edges between them
   network.nodes = [
-    { _uid: 'node-1', type: 'person', [entityAttributesProperty]: {} },
-    { _uid: 'node-2', type: 'person', [entityAttributesProperty]: {} },
+    { _uid: 'node-1', type: PERSON, [entityAttributesProperty]: {} },
+    { _uid: 'node-2', type: PERSON, [entityAttributesProperty]: {} },
   ];
   network.edges = edges;
 
@@ -485,31 +515,31 @@ function createMutationStore() {
   network.nodes = [
     {
       _uid: 'node-1',
-      type: 'person',
+      type: PERSON,
       [entityAttributesProperty]: {
-        nodeKeep: 'kept',
-        nodeRemove: [1, 2, 3],
+        [NODE_KEEP]: 'kept',
+        [NODE_REMOVE]: [1, 2, 3],
       },
       [entitySecureAttributesMeta]: {
-        nodeRemove: { iv: [1] },
+        [NODE_REMOVE]: { iv: [1] },
       },
     },
   ];
   network.edges = [
     {
       _uid: 'edge-1',
-      type: 'friendship',
+      type: FRIENDSHIP,
       from: 'node-1',
       to: 'node-2',
       [entityAttributesProperty]: {
-        edgeKeep: 1,
-        edgeRemove: false,
+        [EDGE_KEEP]: 1,
+        [EDGE_REMOVE]: false,
       },
     },
   ];
   network.ego[entityAttributesProperty] = {
-    egoKeep: 'kept',
-    egoRemove: true,
+    [EGO_KEEP]: 'kept',
+    [EGO_REMOVE]: true,
   };
 
   const sessionState = {
@@ -524,34 +554,34 @@ function createMutationStore() {
   const protocolState = {
     codebook: {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           variables: {
-            nodeKeep: { name: 'nodeKeep', type: 'text' },
-            nodeRemove: {
+            [NODE_KEEP]: { name: 'nodeKeep', type: 'text' },
+            [NODE_REMOVE]: {
               name: 'nodeRemove',
               type: 'text',
               encrypted: true,
             },
-            nodeAdded: { name: 'nodeAdded', type: 'boolean' },
+            [NODE_ADDED]: { name: 'nodeAdded', type: 'boolean' },
           },
         },
       },
       edge: {
-        friendship: {
+        [FRIENDSHIP]: {
           name: 'Friendship',
           variables: {
-            edgeKeep: { name: 'edgeKeep', type: 'number' },
-            edgeRemove: { name: 'edgeRemove', type: 'boolean' },
-            edgeAdded: { name: 'edgeAdded', type: 'text' },
+            [EDGE_KEEP]: { name: 'edgeKeep', type: 'number' },
+            [EDGE_REMOVE]: { name: 'edgeRemove', type: 'boolean' },
+            [EDGE_ADDED]: { name: 'edgeAdded', type: 'text' },
           },
         },
       },
       ego: {
         variables: {
-          egoKeep: { name: 'egoKeep', type: 'text' },
-          egoRemove: { name: 'egoRemove', type: 'boolean' },
-          egoAdded: { name: 'egoAdded', type: 'number' },
+          [EGO_KEEP]: { name: 'egoKeep', type: 'text' },
+          [EGO_REMOVE]: { name: 'egoRemove', type: 'boolean' },
+          [EGO_ADDED]: { name: 'egoAdded', type: 'number' },
         },
       },
     },
@@ -559,7 +589,7 @@ function createMutationStore() {
       {
         id: 'stage-1',
         type: 'NameGenerator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
         prompts: [{ id: 'prompt-1' }],
       },
     ],
@@ -589,8 +619,8 @@ describe('attribute patch reducers', () => {
       toggleNodeAttributes({
         nodeId: 'node-1',
         attributePatch: {
-          set: { nodeAdded: false },
-          unset: ['nodeRemove'],
+          set: { [NODE_ADDED]: false },
+          unset: [NODE_REMOVE],
         },
       }),
     );
@@ -598,8 +628,8 @@ describe('attribute patch reducers', () => {
     expect(result.type).toBe('NETWORK/TOGGLE_NODE_ATTRIBUTES/fulfilled');
     const node = store.getState().session.network.nodes[0];
     expect(node?.[entityAttributesProperty]).toStrictEqual({
-      nodeKeep: 'kept',
-      nodeAdded: false,
+      [NODE_KEEP]: 'kept',
+      [NODE_ADDED]: false,
     });
     expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
   });
@@ -611,7 +641,7 @@ describe('attribute patch reducers', () => {
     const result = await store.dispatch(
       toggleNodeAttributes({
         nodeId: 'node-1',
-        attributePatch: { set: { edgeKeep: true }, unset: [] },
+        attributePatch: { set: { [EDGE_KEEP]: true }, unset: [] },
       }),
     );
 
@@ -620,7 +650,7 @@ describe('attribute patch reducers', () => {
       throw new Error('expected toggleNodeAttributes to be rejected');
     }
     expect(result.error.message).toContain(
-      'edgeKeep do not exist in protocol codebook',
+      `${EDGE_KEEP} do not exist in protocol codebook`,
     );
     expect(store.getState().session).toStrictEqual(before);
   });
@@ -633,8 +663,8 @@ describe('attribute patch reducers', () => {
       toggleNodeAttributes({
         nodeId: 'node-1',
         attributePatch: {
-          set: { nodeKeep: 'changed' },
-          unset: ['nodeKeep'],
+          set: { [NODE_KEEP]: 'changed' },
+          unset: [NODE_KEEP],
         },
       }),
     );
@@ -644,7 +674,7 @@ describe('attribute patch reducers', () => {
       throw new Error('expected toggleNodeAttributes to be rejected');
     }
     expect(result.error.message).toContain(
-      'nodeKeep cannot be both set and unset',
+      `${NODE_KEEP} cannot be both set and unset`,
     );
     expect(store.getState().session).toStrictEqual(before);
   });
@@ -656,8 +686,8 @@ describe('attribute patch reducers', () => {
       updateNode({
         nodeId: 'node-1',
         attributePatch: {
-          set: { nodeAdded: false },
-          unset: ['nodeRemove'],
+          set: { [NODE_ADDED]: false },
+          unset: [NODE_REMOVE],
         },
         currentStep: 0,
       }),
@@ -666,8 +696,8 @@ describe('attribute patch reducers', () => {
     expect(result.type).toBe('NETWORK/UPDATE_NODE/fulfilled');
     const node = store.getState().session.network.nodes[0];
     expect(node?.[entityAttributesProperty]).toStrictEqual({
-      nodeKeep: 'kept',
-      nodeAdded: false,
+      [NODE_KEEP]: 'kept',
+      [NODE_ADDED]: false,
     });
     expect(node?.[entitySecureAttributesMeta]).toBeUndefined();
   });
@@ -675,7 +705,7 @@ describe('attribute patch reducers', () => {
   it('encrypts node values without mutating the patch', async () => {
     const store = createMutationStore();
     await unlockWith(store, 'pw');
-    const patch = { set: { nodeRemove: 'secret' }, unset: [] };
+    const patch = { set: { [NODE_REMOVE]: 'secret' }, unset: [] };
 
     const result = await store.dispatch(
       updateNode({
@@ -687,8 +717,8 @@ describe('attribute patch reducers', () => {
 
     expect(result.type).toBe('NETWORK/UPDATE_NODE/fulfilled');
     const node = store.getState().session.network.nodes[0];
-    const data = node?.[entityAttributesProperty].nodeRemove;
-    const secure = node?.[entitySecureAttributesMeta]?.nodeRemove;
+    const data = node?.[entityAttributesProperty][NODE_REMOVE];
+    const secure = node?.[entitySecureAttributesMeta]?.[NODE_REMOVE];
     expect(secure).toEqual({ iv: expect.any(Array) });
     if (!secure || !isNumberArray(data)) {
       throw new Error('Expected the value to be stored encrypted');
@@ -698,11 +728,11 @@ describe('attribute patch reducers', () => {
       decryptValue(
         key,
         { iv: secure.iv, data },
-        { nodeId: 'node-1', variableId: 'nodeRemove' },
+        { nodeId: 'node-1', variableId: NODE_REMOVE },
       ),
     ).resolves.toBe('secret');
     expect(patch).toStrictEqual({
-      set: { nodeRemove: 'secret' },
+      set: { [NODE_REMOVE]: 'secret' },
       unset: [],
     });
   });
@@ -722,8 +752,8 @@ describe('attribute patch reducers', () => {
       updateNode({
         nodeId: 'node-1',
         attributePatch: {
-          set: { nodeKeep: 'changed' },
-          unset: ['nodeKeep'],
+          set: { [NODE_KEEP]: 'changed' },
+          unset: [NODE_KEEP],
         },
         currentStep: 0,
       }),
@@ -741,8 +771,8 @@ describe('attribute patch reducers', () => {
       updateEdge({
         edgeId: 'edge-1',
         attributePatch: {
-          set: { edgeAdded: '' },
-          unset: ['edgeRemove'],
+          set: { [EDGE_ADDED]: '' },
+          unset: [EDGE_REMOVE],
         },
       }),
     );
@@ -750,7 +780,7 @@ describe('attribute patch reducers', () => {
     expect(result.type).toBe('NETWORK/UPDATE_EDGE/fulfilled');
     expect(
       store.getState().session.network.edges[0]?.[entityAttributesProperty],
-    ).toStrictEqual({ edgeKeep: 1, edgeAdded: '' });
+    ).toStrictEqual({ [EDGE_KEEP]: 1, [EDGE_ADDED]: '' });
   });
 
   it('rejects overlapping edge patch keys without mutation', async () => {
@@ -761,8 +791,8 @@ describe('attribute patch reducers', () => {
       updateEdge({
         edgeId: 'edge-1',
         attributePatch: {
-          set: { edgeKeep: 2 },
-          unset: ['edgeKeep'],
+          set: { [EDGE_KEEP]: 2 },
+          unset: [EDGE_KEEP],
         },
       }),
     );
@@ -776,15 +806,15 @@ describe('attribute patch reducers', () => {
 
     const result = await store.dispatch(
       updateEgo({
-        set: { egoAdded: 0 },
-        unset: ['egoRemove'],
+        set: { [EGO_ADDED]: 0 },
+        unset: [EGO_REMOVE],
       }),
     );
 
     expect(result.type).toBe('NETWORK/UPDATE_EGO/fulfilled');
     expect(
       store.getState().session.network.ego[entityAttributesProperty],
-    ).toStrictEqual({ egoKeep: 'kept', egoAdded: 0 });
+    ).toStrictEqual({ [EGO_KEEP]: 'kept', [EGO_ADDED]: 0 });
   });
 
   it('rejects unknown and overlapping ego patch keys without mutation', async () => {
@@ -798,8 +828,8 @@ describe('attribute patch reducers', () => {
     );
     const overlap = await store.dispatch(
       updateEgo({
-        set: { egoKeep: 'changed' },
-        unset: ['egoKeep'],
+        set: { [EGO_KEEP]: 'changed' },
+        unset: [EGO_KEEP],
       }),
     );
 
@@ -817,20 +847,20 @@ describe('addEdge', () => {
       // Setup: codebook has 3 edge variables
       const store = createTestStoreWithEdge({
         edgeVariables: {
-          'edge-var-1': { name: 'strength' },
-          'edge-var-2': { name: 'duration' },
-          'edge-var-3': { name: 'frequency' },
+          [EDGE_VAR_1]: { name: 'strength' },
+          [EDGE_VAR_2]: { name: 'duration' },
+          [EDGE_VAR_3]: { name: 'frequency' },
         },
       });
 
       // Execute: only provide value for one variable
       const result = await store.dispatch(
         addEdge({
-          type: 'test-edge-type-uuid',
+          type: EDGE_TYPE,
           from: 'node-1',
           to: 'node-2',
           attributeData: {
-            'edge-var-1': 5,
+            [EDGE_VAR_1]: 5,
           },
           currentStep: 0,
         }),
@@ -841,7 +871,7 @@ describe('addEdge', () => {
         attributeData: Record<string, unknown>;
       };
       expect(payload.attributeData).toEqual({
-        'edge-var-1': 5,
+        [EDGE_VAR_1]: 5,
       });
     });
   });
@@ -854,14 +884,14 @@ describe('updateEdge', () => {
       // is defined only under codebook.edge.<type>.variables
       const store = createTestStoreWithEdge({
         edgeVariables: {
-          'edge-var-closeness': { name: 'closeness' },
+          [EDGE_VAR_CLOSENESS]: { name: 'closeness' },
         },
         edges: [
           {
             _uid: 'edge-1',
             from: 'node-1',
             to: 'node-2',
-            type: 'test-edge-type-uuid',
+            type: EDGE_TYPE,
             [entityAttributesProperty]: {},
           },
         ],
@@ -872,7 +902,7 @@ describe('updateEdge', () => {
         updateEdge({
           edgeId: 'edge-1',
           attributePatch: {
-            set: { 'edge-var-closeness': 2 },
+            set: { [EDGE_VAR_CLOSENESS]: 2 },
             unset: [],
           },
         }),
@@ -886,21 +916,21 @@ describe('updateEdge', () => {
         throw new Error('expected updateEdge to be fulfilled');
       }
       expect(result.payload.attributePatch.set).toEqual({
-        'edge-var-closeness': 2,
+        [EDGE_VAR_CLOSENESS]: 2,
       });
     });
 
     it('rejects edge attributes that are not in the edge codebook', async () => {
       const store = createTestStoreWithEdge({
         edgeVariables: {
-          'edge-var-closeness': { name: 'closeness' },
+          [EDGE_VAR_CLOSENESS]: { name: 'closeness' },
         },
         edges: [
           {
             _uid: 'edge-1',
             from: 'node-1',
             to: 'node-2',
-            type: 'test-edge-type-uuid',
+            type: EDGE_TYPE,
             [entityAttributesProperty]: {},
           },
         ],
@@ -954,11 +984,11 @@ function createTestStoreWithPrompts(options: {
   const protocolState = {
     codebook: {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           variables: {
-            isCloseTie: { name: 'isCloseTie', type: 'boolean' },
-            isFamily: { name: 'isFamily', type: 'boolean' },
+            [IS_CLOSE_TIE]: { name: 'isCloseTie', type: 'boolean' },
+            [IS_FAMILY]: { name: 'isFamily', type: 'boolean' },
           },
         },
       },
@@ -967,7 +997,7 @@ function createTestStoreWithPrompts(options: {
       {
         id: 'stage-1',
         type: 'NameGenerator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: PERSON },
         prompts,
       },
     ],
@@ -1001,15 +1031,15 @@ describe('addNodeToPrompt', () => {
       prompts: [
         {
           id: 'prompt-1',
-          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+          additionalAttributes: [{ variable: IS_CLOSE_TIE, value: true }],
         },
       ],
       promptIndex: 0,
       nodes: [
         {
           _uid: 'node-1',
-          type: 'person',
-          [entityAttributesProperty]: { isCloseTie: false },
+          type: PERSON,
+          [entityAttributesProperty]: { [IS_CLOSE_TIE]: false },
           promptIDs: [],
         },
       ],
@@ -1018,14 +1048,14 @@ describe('addNodeToPrompt', () => {
     await store.dispatch(
       addNodeToPrompt({
         nodeId: 'node-1',
-        promptAttributes: { isCloseTie: true },
+        promptAttributes: { [IS_CLOSE_TIE]: true },
         currentStep: 0,
       }),
     );
 
     const node = store.getState().session.network.nodes[0];
     // The prompt's value wins over the value the node already carried.
-    expect(node?.[entityAttributesProperty].isCloseTie).toBe(true);
+    expect(node?.[entityAttributesProperty][IS_CLOSE_TIE]).toBe(true);
     // The node is still recorded as belonging to the prompt.
     expect(node?.promptIDs).toEqual(['prompt-1']);
   });
@@ -1033,16 +1063,16 @@ describe('addNodeToPrompt', () => {
   it('applies a prompt additionalAttribute the node does not yet carry', async () => {
     const legacyNode: NcNode = {
       _uid: 'node-1',
-      type: 'person',
+      type: PERSON,
       [entityAttributesProperty]: {},
       promptIDs: [],
     };
-    Reflect.set(legacyNode[entityAttributesProperty], 'isCloseTie', null);
+    Reflect.set(legacyNode[entityAttributesProperty], IS_CLOSE_TIE, null);
     const store = createTestStoreWithPrompts({
       prompts: [
         {
           id: 'prompt-1',
-          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+          additionalAttributes: [{ variable: IS_CLOSE_TIE, value: true }],
         },
       ],
       promptIndex: 0,
@@ -1052,13 +1082,13 @@ describe('addNodeToPrompt', () => {
     await store.dispatch(
       addNodeToPrompt({
         nodeId: 'node-1',
-        promptAttributes: { isCloseTie: true },
+        promptAttributes: { [IS_CLOSE_TIE]: true },
         currentStep: 0,
       }),
     );
 
     const node = store.getState().session.network.nodes[0];
-    expect(node?.[entityAttributesProperty].isCloseTie).toBe(true);
+    expect(node?.[entityAttributesProperty][IS_CLOSE_TIE]).toBe(true);
     expect(node?.promptIDs).toEqual(['prompt-1']);
   });
 });
@@ -1075,15 +1105,15 @@ describe('removeNodeFromPrompt', () => {
       prompts: [
         {
           id: 'prompt-1',
-          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+          additionalAttributes: [{ variable: IS_CLOSE_TIE, value: true }],
         },
       ],
       promptIndex: 0,
       nodes: [
         {
           _uid: 'node-1',
-          type: 'person',
-          [entityAttributesProperty]: { isCloseTie: false },
+          type: PERSON,
+          [entityAttributesProperty]: { [IS_CLOSE_TIE]: false },
           promptIDs: ['prompt-1'],
         },
       ],
@@ -1095,7 +1125,7 @@ describe('removeNodeFromPrompt', () => {
 
     const node = store.getState().session.network.nodes[0];
     expect(
-      Object.hasOwn(node?.[entityAttributesProperty] ?? {}, 'isCloseTie'),
+      Object.hasOwn(node?.[entityAttributesProperty] ?? {}, IS_CLOSE_TIE),
     ).toBe(false);
     expect(node?.promptIDs).toEqual([]);
   });
@@ -1108,15 +1138,15 @@ describe('removeNodeFromPrompt', () => {
       prompts: [
         {
           id: 'prompt-1',
-          additionalAttributes: [{ variable: 'isCloseTie', value: false }],
+          additionalAttributes: [{ variable: IS_CLOSE_TIE, value: false }],
         },
       ],
       promptIndex: 0,
       nodes: [
         {
           _uid: 'node-1',
-          type: 'person',
-          [entityAttributesProperty]: { isCloseTie: false },
+          type: PERSON,
+          [entityAttributesProperty]: { [IS_CLOSE_TIE]: false },
           promptIDs: ['prompt-1'],
         },
       ],
@@ -1128,7 +1158,7 @@ describe('removeNodeFromPrompt', () => {
 
     const node = store.getState().session.network.nodes[0];
     expect(
-      Object.hasOwn(node?.[entityAttributesProperty] ?? {}, 'isCloseTie'),
+      Object.hasOwn(node?.[entityAttributesProperty] ?? {}, IS_CLOSE_TIE),
     ).toBe(false);
     expect(node?.promptIDs).toEqual([]);
   });
@@ -1141,19 +1171,19 @@ describe('removeNodeFromPrompt', () => {
       prompts: [
         {
           id: 'prompt-1',
-          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+          additionalAttributes: [{ variable: IS_CLOSE_TIE, value: true }],
         },
         {
           id: 'prompt-2',
-          additionalAttributes: [{ variable: 'isCloseTie', value: true }],
+          additionalAttributes: [{ variable: IS_CLOSE_TIE, value: true }],
         },
       ],
       promptIndex: 0, // remove from prompt-1
       nodes: [
         {
           _uid: 'node-1',
-          type: 'person',
-          [entityAttributesProperty]: { isCloseTie: true },
+          type: PERSON,
+          [entityAttributesProperty]: { [IS_CLOSE_TIE]: true },
           promptIDs: ['prompt-1', 'prompt-2'],
         },
       ],
@@ -1164,7 +1194,7 @@ describe('removeNodeFromPrompt', () => {
     );
 
     const node = store.getState().session.network.nodes[0];
-    expect(node?.[entityAttributesProperty].isCloseTie).toBe(true);
+    expect(node?.[entityAttributesProperty][IS_CLOSE_TIE]).toBe(true);
     expect(node?.promptIDs).toEqual(['prompt-2']);
   });
 });
@@ -1172,8 +1202,8 @@ describe('removeNodeFromPrompt', () => {
 function createTestStoreWithMetadata(stageMetadata: StageMetadata) {
   const network = createInitialNetwork();
   network.nodes = [
-    { _uid: 'node-1', type: 'person', [entityAttributesProperty]: {} },
-    { _uid: 'node-2', type: 'person', [entityAttributesProperty]: {} },
+    { _uid: 'node-1', type: PERSON, [entityAttributesProperty]: {} },
+    { _uid: 'node-2', type: PERSON, [entityAttributesProperty]: {} },
   ];
 
   const sessionState = {
@@ -1231,16 +1261,16 @@ describe('updateEgo', () => {
       // Setup: codebook has 3 ego variables
       const store = createTestStoreWithEgo({
         egoVariables: {
-          'ego-var-1': { name: 'age' },
-          'ego-var-2': { name: 'gender' },
-          'ego-var-3': { name: 'occupation' },
+          [EGO_VAR_1]: { name: 'age' },
+          [EGO_VAR_2]: { name: 'gender' },
+          [EGO_VAR_3]: { name: 'occupation' },
         },
       });
 
       // Execute: only provide value for one variable
       const result = await store.dispatch(
         updateEgo({
-          set: { 'ego-var-1': 25 },
+          set: { [EGO_VAR_1]: 25 },
           unset: [],
         }),
       );
@@ -1249,7 +1279,7 @@ describe('updateEgo', () => {
       // in unset, so variables owned by other stages remain untouched.
       expect(result.type).toBe('NETWORK/UPDATE_EGO/fulfilled');
       expect(result.payload).toEqual({
-        set: { 'ego-var-1': 25 },
+        set: { [EGO_VAR_1]: 25 },
         unset: [],
       });
     });

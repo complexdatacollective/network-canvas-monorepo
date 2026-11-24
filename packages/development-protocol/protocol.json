@@ -3,7 +3,7 @@
   "experiments": {},
   "stages": [
     {
-      "id": "language-chooser",
+      "id": "659deb69-9c75-5256-a411-8bed162cd7bb",
       "type": "LanguageChooser",
       "label": {
         "en": "Language",
@@ -11,7 +11,7 @@
       }
     },
     {
-      "id": "anonymisation-interface",
+      "id": "bbfd72b2-d248-587e-adb3-d3c5f59aa8df",
       "label": {
         "en": "Anonymisation Interface",
         "es": "Interfaz de anonimización"
@@ -27,7 +27,7 @@
       }
     },
     {
-      "id": "ego-form-1",
+      "id": "3d6e6710-9221-5ea6-bd2d-30ae1e853b30",
       "interviewScript": "This is a **markdown field** that contains notes for the interviewer that are printed with the codebook, and can be reviewed during the interview.\n\nFor now it will only support rich text, but not images or audio.",
       "type": "EgoForm",
       "label": {
@@ -47,7 +47,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "b868df32-7146-57be-8162-40f6008d07a5",
             "variable": "3377af3f-3c79-41da-9b0b-6570fb519b93",
             "prompt": {
               "en": "What is your name?",
@@ -55,7 +55,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "a15e46cc-3a66-5ef0-82dd-f339a65f9b9b",
             "variable": "b4956387-cada-412f-9e97-fe352c3cc44e",
             "prompt": {
               "en": "Tell us about **yourself** maybe",
@@ -63,7 +63,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "2bdd67fe-8f73-5549-a298-6c9053257384",
             "variable": "f3eb5f0b-84ad-43f0-8db5-9f83cd3a56de",
             "prompt": {
               "en": "What is your age?",
@@ -71,7 +71,7 @@
             }
           },
           {
-            "id": "field-4",
+            "id": "2a45fd1c-705b-588b-ad4f-88d81dd13295",
             "variable": "683ad529-66c6-4c84-8e31-a31452d6b5e9",
             "prompt": {
               "en": "How much do you like likert scales?",
@@ -79,7 +79,7 @@
             }
           },
           {
-            "id": "field-5",
+            "id": "aaae5717-3d22-59ff-8ad8-f8e382a68452",
             "variable": "f3537457-41a2-4fbf-a1f8-9235b3c1edc6",
             "prompt": {
               "en": "Which of these things do you like?",
@@ -87,7 +87,7 @@
             }
           },
           {
-            "id": "field-6",
+            "id": "22c2ed83-e3e0-502b-908e-ac68e03e32b8",
             "variable": "7c647977-f2d1-426f-b0c5-6d44c795c554",
             "prompt": {
               "en": "Which of these other things do you like?",
@@ -95,7 +95,7 @@
             }
           },
           {
-            "id": "field-7",
+            "id": "c7432c0c-062d-5cd3-9c93-68272b723aa0",
             "variable": "67fefac9-561f-454a-8f78-81bd9470efaa",
             "prompt": {
               "en": "Is the switch below not turned on?",
@@ -103,7 +103,7 @@
             }
           },
           {
-            "id": "field-8",
+            "id": "ed2f38fa-a745-59ac-9323-3670b8ba490a",
             "variable": "300a798f-d11b-4195-91ee-3221bc586c0a",
             "prompt": {
               "en": "Do you like scales",
@@ -111,7 +111,7 @@
             }
           },
           {
-            "id": "field-9",
+            "id": "6f766e45-9740-5a6e-8d7c-c688cfee2936",
             "variable": "03c54247-aa12-497a-b8f8-c4cb69048455",
             "prompt": {
               "en": "Pick somewhere on the line",
@@ -119,7 +119,7 @@
             }
           },
           {
-            "id": "field-10",
+            "id": "cf77194f-64ac-5342-9d6e-314f45d09b0e",
             "variable": "23a10bcb-bd71-46a1-a36d-4ab80cb5a1d1",
             "prompt": {
               "en": "What is your date of birth?",
@@ -127,7 +127,7 @@
             }
           },
           {
-            "id": "field-11",
+            "id": "4b5b82bc-41a9-5325-87fb-f79cdd6178ad",
             "variable": "9c47f32e-b72f-4b1b-93a2-e29766dc3012",
             "prompt": {
               "en": "Pick your *favourite* day in the last 60 days",
@@ -135,7 +135,7 @@
             }
           },
           {
-            "id": "field-12",
+            "id": "896f55cd-0d93-5b0a-9f02-6d9e363efc97",
             "variable": "cc7d7fdb-c6e8-4c67-a3f3-e76c56511c41",
             "prompt": {
               "en": "Pick your favourite day that is _after_ than the day above",
@@ -146,7 +146,7 @@
       }
     },
     {
-      "id": "quick-add-ng-encryption",
+      "id": "f95c31be-fb8d-5a7b-bab1-6515c7e5c0f1",
       "label": {
         "en": "Quick Add NG with Encryption",
         "es": "GN de adición rápida con cifrado"
@@ -154,12 +154,12 @@
       "type": "NameGeneratorQuickAdd",
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
-      "quickAdd": "name_variable",
+      "quickAdd": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
       "prompts": [
         {
-          "id": "quick-add-ng-encryption",
+          "id": "80e4f6a3-f0f3-5457-a580-47fdee244c5f",
           "text": {
             "en": "This is a quick add name generator with encryption",
             "es": "Este es un generador de nombres de adición rápida con cifrado"
@@ -168,7 +168,7 @@
       ]
     },
     {
-      "id": "one-to-many-dyad-census",
+      "id": "c34971a5-e8bb-5897-b430-7053ba7c3b8b",
       "label": {
         "en": "One to Many Dyad Census",
         "es": "Censo de díadas de uno a muchos"
@@ -179,36 +179,38 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "prompts": [
         {
-          "id": "friends",
+          "id": "97256bc5-631c-5ae2-8b7e-18ded744279a",
           "text": {
             "en": "Tap on all the people who would consider this person a friend",
             "es": "Toca a todas las personas que considerarían a esta persona un amigo"
           },
-          "createEdge": "friend_edge_type",
+          "createEdge": "70b691ec-912f-5207-a0ef-63c78d7d3df9",
           "bucketSortOrder": [
             {
+              "id": "865e2c77-0079-5936-a3b8-e2e55f73179d",
               "property": "*",
               "direction": "desc"
             }
           ],
           "binSortOrder": [
             {
-              "property": "name_variable",
+              "id": "69be5a3b-8670-5738-9807-1b29c7b8f7b2",
+              "property": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
               "direction": "desc"
             }
           ]
         },
         {
-          "id": "professional",
+          "id": "5ffa94ae-5281-57f5-b8c5-22b23f11d7f3",
           "text": {
             "en": "Tap on all the people who work with this person.",
             "es": "Toca a todas las personas que trabajan con esta persona."
           },
-          "createEdge": "professional_edge_type"
+          "createEdge": "01e58147-1429-5f19-93fc-52b08cd0685a"
         }
       ]
     },
@@ -246,7 +248,7 @@
       }
     },
     {
-      "id": "namegen1",
+      "id": "bc89e559-f02c-5632-9431-7f4ac4e93faf",
       "interviewScript": "This is an example of interview script on a name generator.",
       "type": "NameGenerator",
       "label": {
@@ -260,15 +262,15 @@
         },
         "fields": [
           {
-            "id": "field-1",
-            "variable": "name_variable",
+            "id": "b037eb5e-71ef-5717-890d-fd961faff321",
+            "variable": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
             "prompt": {
               "en": "What is this person's name?",
               "es": "¿Cómo se llama esta persona?"
             }
           },
           {
-            "id": "field-2",
+            "id": "ff4738bd-1a90-5421-a3ae-94a5c022e5cf",
             "variable": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
             "prompt": {
               "en": "What is this person's *nickname*?",
@@ -276,7 +278,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "8f7289a2-7b3a-5088-95f4-3500567ff371",
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
             "prompt": {
               "en": "What is this person's age?",
@@ -287,7 +289,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "panels": [
         {
@@ -299,7 +301,7 @@
           "dataSource": "existing"
         },
         {
-          "id": "another-unique-id",
+          "id": "9385e48e-fa01-504a-8ad3-0fd65ffd567d",
           "title": {
             "en": "External data not using UUIDs",
             "es": "Datos externos sin UUID"
@@ -310,10 +312,10 @@
             "rules": [
               {
                 "type": "node",
-                "id": "15218241538622",
+                "id": "2fec8402-8c7d-5911-a803-67734185fe87",
                 "options": {
-                  "type": "person_node_type",
-                  "attribute": "name_variable",
+                  "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
+                  "attribute": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
                   "operator": "EXACTLY",
                   "value": "Dee"
                 }
@@ -324,44 +326,47 @@
       ],
       "prompts": [
         {
-          "id": "6cl",
+          "id": "a3065168-ec2b-5a36-aa81-dba3df81c077",
           "text": {
             "en": "Who would _you_ consider to be a **close friend**?",
             "es": "¿A quién considerarías _tú_ un **amigo cercano**?"
           },
           "additionalAttributes": [
             {
+              "id": "93cbc9c3-7dc6-508e-b8ca-2bdbf9b9c002",
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
               "value": true
             },
             {
+              "id": "a65d7fd7-d818-5991-950d-0e426c33b0db",
               "variable": "94e2dee9-1c25-4b64-b8bb-4946465c3c07",
               "value": false
             }
           ]
         },
         {
-          "id": "6su",
+          "id": "f016d842-b67a-5cae-903b-f2f12936c4b9",
           "text": {
             "en": "This is a particularly long prompt, which will be discouraged in the Architect interface but might still be desired by a researcher. What does this look like rendered?",
             "es": "Esta es una instrucción especialmente larga, que la interfaz de Architect desaconsejará, pero que un investigador podría querer de todos modos. ¿Cómo se ve al mostrarse?"
           },
           "additionalAttributes": [
             {
+              "id": "3e18c69a-ee09-54d3-9197-1e7639f45faa",
               "variable": "94e2dee9-1c25-4b64-b8bb-4946465c3c07",
               "value": true
             }
           ]
         },
         {
-          "id": "2we",
+          "id": "56fb66eb-5f8e-5ad0-98ce-bae6bf852b5a",
           "text": {
             "en": "Prompt with no additional attributes",
             "es": "Instrucción sin atributos adicionales"
           }
         },
         {
-          "id": "2wj",
+          "id": "37f0f2ca-acfb-5614-93c9-3c28834c273a",
           "text": {
             "en": "Second prompt with no additional attributes",
             "es": "Segunda instrucción sin atributos adicionales"
@@ -370,7 +375,7 @@
       ]
     },
     {
-      "id": "namegen1a",
+      "id": "ff5874a0-12ad-5108-b081-6eae95a04526",
       "type": "NameGenerator",
       "label": {
         "en": "NG CSV File",
@@ -383,15 +388,15 @@
         },
         "fields": [
           {
-            "id": "field-1",
-            "variable": "name_variable",
+            "id": "1f31326b-e401-555d-bd4c-861d16b5fcae",
+            "variable": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
             "prompt": {
               "en": "What is this person's name?",
               "es": "¿Cómo se llama esta persona?"
             }
           },
           {
-            "id": "field-2",
+            "id": "eba8a12e-a188-5480-9562-71c00fbecea2",
             "variable": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
             "prompt": {
               "en": "What is this person's nickname?",
@@ -399,7 +404,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "39bb32da-a415-53e3-a006-088a18a9f356",
             "variable": "c5fee926-855d-4419-b5bb-54e89010cea6",
             "prompt": {
               "en": "What is this person's age?",
@@ -410,11 +415,11 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "panels": [
         {
-          "id": "another-unique-id-123",
+          "id": "02b8976d-c34d-5553-9598-76847d4314f9",
           "title": {
             "en": "External data from CSV",
             "es": "Datos externos de un CSV"
@@ -424,7 +429,7 @@
       ],
       "prompts": [
         {
-          "id": "2wedwee",
+          "id": "a6575d29-e163-526f-92cf-a17554a0ecaa",
           "text": {
             "en": "NameGen with CSV external data",
             "es": "Generador de nombres con datos externos CSV"
@@ -433,20 +438,20 @@
       ]
     },
     {
-      "id": "namegen2",
+      "id": "691573df-43ef-5f00-a397-b14c38819341",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en": "NG Quick add",
         "es": "GN de adición rápida"
       },
-      "quickAdd": "venue_name_variable",
+      "quickAdd": "1a9a393a-10c8-50e6-87ca-4b602fcebcff",
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "panels": [
         {
-          "id": "cab85e8a-0a9e-4d5f-9242-930b5d9ce3e4",
+          "id": "cb0bd8e4-75d1-5cc4-a4b2-4de74b0cf070",
           "title": {
             "en": "Other Venues",
             "es": "Otros lugares"
@@ -460,20 +465,21 @@
       },
       "prompts": [
         {
-          "id": "6cl",
+          "id": "7e0ce43e-1568-5349-b3a3-b76275f1c9d8",
           "text": {
             "en": "This name generator creates venue nodes using the quick add form",
             "es": "Este generador de nombres crea nodos de lugares con el formulario de adición rápida"
           },
           "additionalAttributes": [
             {
+              "id": "047f0b1b-ca3c-5bf3-8b41-696e1712cdb1",
               "variable": "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f",
               "value": true
             }
           ]
         },
         {
-          "id": "6su",
+          "id": "c7a03a3a-281f-5896-8b78-81eb7383c954",
           "text": {
             "en": "Another venue prompt",
             "es": "Otra instrucción de lugares"
@@ -482,7 +488,7 @@
       ]
     },
     {
-      "id": "dyadcensus-introduction",
+      "id": "a444c565-c6ce-5619-9cdd-33863511a0b3",
       "type": "Information",
       "label": {
         "en": "Introduction to the Dyad Census",
@@ -494,7 +500,7 @@
       }
     },
     {
-      "id": "dyadcensus",
+      "id": "51035a9f-2e7a-5fb4-a118-6051052f7ae7",
       "type": "DyadCensus",
       "label": {
         "en": "Dyad Census",
@@ -502,29 +508,29 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "prompts": [
         {
-          "id": "friends",
+          "id": "e74b1ca7-84de-5f05-b723-e1fffec36624",
           "text": {
             "en": "Are these people friends?",
             "es": "¿Son amigas estas personas?"
           },
-          "createEdge": "friend_edge_type"
+          "createEdge": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
         },
         {
-          "id": "professional",
+          "id": "f0681525-f8d8-5b10-bf07-0d7a652024de",
           "text": {
             "en": "Do these people work together?",
             "es": "¿Trabajan juntas estas personas?"
           },
-          "createEdge": "professional_edge_type"
+          "createEdge": "01e58147-1429-5f19-93fc-52b08cd0685a"
         }
       ]
     },
     {
-      "id": "tie-strength-census-introduction",
+      "id": "4957e1f2-6f3f-5002-b2b4-aa4babaaed43",
       "type": "Information",
       "label": {
         "en": "Introduction to the Tie-Strength Census",
@@ -536,7 +542,7 @@
       }
     },
     {
-      "id": "tie-strength-census",
+      "id": "a1b3a07c-f61b-596e-a8b1-1c8118091d90",
       "type": "TieStrengthCensus",
       "label": {
         "en": "Tie-Strength Census",
@@ -544,16 +550,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "prompts": [
         {
-          "id": "friendship-strength",
+          "id": "b24bb6a8-1ff3-580f-b44d-b1a54c2c9bad",
           "text": {
             "en": "Thinking about each pair of people, please choose the option that best describes **how close they are to one another**.",
             "es": "Pensando en cada par de personas, elige la opción que mejor describa **lo cercanas que son entre sí**."
           },
-          "createEdge": "friend_edge_type",
+          "createEdge": "70b691ec-912f-5207-a0ef-63c78d7d3df9",
           "edgeVariable": "e343a91f-628d-4175-870c-75429857399e",
           "negativeLabel": {
             "en": "Don't know each other",
@@ -561,13 +567,13 @@
           }
         },
         {
-          "id": "professional-strength",
+          "id": "32159f13-e6f7-566c-b7eb-099bf29d3bb6",
           "text": {
             "en": "How often do these people work together on important projects?",
             "es": "¿Con qué frecuencia trabajan juntas estas personas en proyectos importantes?"
           },
-          "createEdge": "professional_edge_type",
-          "edgeVariable": "f984jk23-628d-4175-870c-ejd8e7al8vc3",
+          "createEdge": "01e58147-1429-5f19-93fc-52b08cd0685a",
+          "edgeVariable": "bceed163-c123-546a-8c27-675db28e6886",
           "negativeLabel": {
             "en": "Do not work together",
             "es": "No trabajan juntas"
@@ -576,7 +582,7 @@
       ]
     },
     {
-      "id": "ordinalBin1",
+      "id": "223e9e7e-42cf-5e4d-ab58-6aea24665731",
       "type": "OrdinalBin",
       "label": {
         "en": "Contact Freq for close ties",
@@ -584,7 +590,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "filter": {
         "join": "AND",
@@ -592,7 +598,7 @@
           {
             "type": "node",
             "options": {
-              "type": "person_node_type",
+              "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
               "operator": "EXACTLY",
               "attribute": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
               "value": true
@@ -603,7 +609,7 @@
       },
       "prompts": [
         {
-          "id": "contactFreq",
+          "id": "5cd138b2-6db9-5bca-86be-fab2317aecd0",
           "text": {
             "en": "Contact frequency ordinal variable for close ties only",
             "es": "Variable ordinal de frecuencia de contacto solo para vínculos cercanos"
@@ -612,23 +618,26 @@
           "color": "ord-color-seq-1",
           "bucketSortOrder": [
             {
+              "id": "7cfde7c4-60e4-5076-93bd-8223e90d92f6",
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
               "direction": "desc"
             }
           ],
           "binSortOrder": [
             {
+              "id": "67113ef3-5f73-59c2-897f-64c66a333aa0",
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
               "direction": "desc"
             },
             {
+              "id": "f57f843a-bb15-549f-989e-bfd1f48d65c4",
               "property": "c5fee926-855d-4419-b5bb-54e89010cea6",
               "direction": "desc"
             }
           ]
         },
         {
-          "id": "discussFreq",
+          "id": "974e6bed-0f1a-5659-9117-eb1f00aafd39",
           "text": {
             "en": "Discussion Frequency variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the color override to style these bins differently than the main prompt.",
             "es": "Variable de frecuencia de conversación, con una instrucción mucho más larga que la anterior. Ten en cuenta también que esta instrucción usa la sustitución de color para dar a estos contenedores un estilo distinto al de la instrucción principal."
@@ -639,7 +648,7 @@
       ]
     },
     {
-      "id": "ordinalBin2",
+      "id": "9860cf3c-3e7b-512a-82c7-0ba098b54551",
       "type": "OrdinalBin",
       "label": {
         "en": "Contact Freq.",
@@ -647,22 +656,22 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "prompts": [
         {
-          "id": "visitFreq",
+          "id": "505aa66d-6e28-54d0-86b7-16a964ac0598",
           "text": {
             "en": "Showing an ordinalbin interface with a node type other than person.",
             "es": "Se muestra una interfaz de contenedores ordinales con un tipo de nodo distinto de persona."
           },
-          "variable": "venueVisitFreqVariable",
+          "variable": "682bdac0-3951-585f-9ec6-e8ea873f4d44",
           "color": "ord-color-seq-7"
         }
       ]
     },
     {
-      "id": "namegenroster2a",
+      "id": "7ad2f55f-6d6b-54bf-bc9c-6e205efb2ba2",
       "type": "NameGeneratorRoster",
       "label": {
         "en": "NG HIV Services",
@@ -670,7 +679,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "behaviours": {
         "minNodes": 1,
@@ -679,7 +688,7 @@
       "dataSource": "HIVServices-csv",
       "prompts": [
         {
-          "id": "7tk",
+          "id": "86603249-b7b7-5dac-9c6b-6faf90dfb757",
           "text": {
             "en": "HIV Venue CSV data, with no sort options or additional attributes.",
             "es": "Datos CSV de lugares de VIH, sin opciones de orden ni atributos adicionales."
@@ -688,7 +697,7 @@
       ]
     },
     {
-      "id": "namegenroster2",
+      "id": "c565814c-3722-524e-98fd-d2489426e046",
       "type": "NameGeneratorRoster",
       "label": {
         "en": "NG Classmates",
@@ -696,12 +705,13 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "dataSource": "previousInterview-json",
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "797a0653-c4ad-576c-9355-24fb1fd3c662",
             "label": {
               "en": "Name",
               "es": "Nombre"
@@ -709,6 +719,7 @@
             "variable": "last_name"
           },
           {
+            "id": "6bf8c965-edba-53cb-917e-ef95a4ae1fba",
             "label": {
               "en": "Age",
               "es": "Edad"
@@ -720,12 +731,14 @@
       "sortOptions": {
         "sortOrder": [
           {
+            "id": "87e69a68-181c-5e07-8f96-7f81073123a7",
             "property": "age",
             "direction": "desc"
           }
         ],
         "sortableProperties": [
           {
+            "id": "93fffac0-80b2-5543-b388-1ab39509b528",
             "label": {
               "en": "Nickname",
               "es": "Apodo"
@@ -733,6 +746,7 @@
             "variable": "nickname"
           },
           {
+            "id": "ebfe5544-b27f-5574-9c1f-56f4c481643d",
             "label": {
               "en": "Age",
               "es": "Edad"
@@ -743,13 +757,14 @@
       },
       "prompts": [
         {
-          "id": "7cl",
+          "id": "8a32bcaa-de33-5fa9-8263-b865b279ce5d",
           "text": {
             "en": "previous interview JSON",
             "es": "JSON de la entrevista anterior"
           },
           "additionalAttributes": [
             {
+              "id": "ef55195d-e23c-5bc3-bab8-2bf8e76d7dac",
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
               "value": true
             }
@@ -758,7 +773,7 @@
       ]
     },
     {
-      "id": "namegen4",
+      "id": "12b96898-1b8f-5f4b-82eb-abba40b4eb9c",
       "type": "NameGenerator",
       "label": {
         "en": "NG Inputs",
@@ -771,7 +786,7 @@
         },
         "fields": [
           {
-            "id": "field-1",
+            "id": "8ea3de97-6b50-56ff-97dc-6d356a53a666",
             "variable": "2377af3f-3c79-41da-9b0b-6570fb519b93",
             "prompt": {
               "en": "What is this person's _name_?",
@@ -779,7 +794,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "cf33ac87-f3d2-5ca8-9335-d2eb1cb64038",
             "variable": "e3eb5f0b-84ad-43f0-8db5-9f83cd3a56de",
             "prompt": {
               "en": "What is this person's _age_?",
@@ -787,7 +802,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "a45b14fb-fffb-5671-bcb8-40bc313270c3",
             "variable": "583ad529-66c6-4c84-8e31-a31452d6b5e9",
             "prompt": {
               "en": "How much do you like **likert scales**?",
@@ -795,7 +810,7 @@
             }
           },
           {
-            "id": "field-4",
+            "id": "55f34900-0197-5c87-85ff-d4bf934b9eb4",
             "variable": "e3537457-41a2-4fbf-a1f8-9235b3c1edc6",
             "prompt": {
               "en": "Which of *these things* do you like?",
@@ -803,7 +818,7 @@
             }
           },
           {
-            "id": "field-5",
+            "id": "a63a5e15-8382-57be-98aa-feb3b2f0c3e4",
             "variable": "6c647977-f2d1-426f-b0c5-6d44c795c554",
             "prompt": {
               "en": "Which of these **other** things do you like?",
@@ -811,7 +826,7 @@
             }
           },
           {
-            "id": "field-6",
+            "id": "0c02a894-07c7-5570-9cc0-32ed639903dc",
             "variable": "57fefac9-561f-454a-8f78-81bd9470efaa",
             "prompt": {
               "en": "Is the switch below not turned _on_?",
@@ -819,15 +834,15 @@
             }
           },
           {
-            "id": "field-7",
-            "variable": "683ad529-66c6-4c84-8e31-a31452dsf74k",
+            "id": "7310f72a-6db2-5591-9c66-3dc68b3ecde0",
+            "variable": "83d505ce-12a2-55ed-acf1-89705adf8864",
             "prompt": {
               "en": "This is a variable whose **value** you must choose!",
               "es": "¡Esta es una variable cuyo **valor** debes elegir!"
             }
           },
           {
-            "id": "field-8",
+            "id": "5db3ce62-765e-5c6d-aae7-41624ca4e72f",
             "variable": "e4e0df51-4b53-4e16-9249-8587537370e9",
             "prompt": {
               "en": "Do you like **likert scales**?",
@@ -835,7 +850,7 @@
             }
           },
           {
-            "id": "field-9",
+            "id": "12ddafe3-e13b-5409-b7f1-5b75fc42a234",
             "variable": "720224a3-e2d3-4729-968a-29d3f3e4fca6",
             "prompt": {
               "en": "How _far away_ is the moon?",
@@ -846,11 +861,11 @@
       },
       "subject": {
         "entity": "node",
-        "type": "dummy_node_type"
+        "type": "bdf1e3c5-8e25-5b1a-a185-1494b149a039"
       },
       "prompts": [
         {
-          "id": "6cl",
+          "id": "e9fde7b9-33b5-58f7-aca3-4de1bbf09006",
           "text": {
             "en": "This name generator is designed to test input types",
             "es": "Este generador de nombres está pensado para probar los tipos de campo"
@@ -859,7 +874,7 @@
       ]
     },
     {
-      "id": "sociogram",
+      "id": "72f260ee-3b85-5434-b20b-00860c02e544",
       "type": "Sociogram",
       "label": {
         "en": "Sociogram",
@@ -867,7 +882,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "background": {
         "concentricCircles": 4,
@@ -878,68 +893,80 @@
       },
       "prompts": [
         {
-          "id": "closeness1",
+          "id": "c1085b44-fcd2-5a7b-841d-2720fa91fe0f",
           "text": {
             "en": "This interface uses the concentric circles background and excludes John and William",
             "es": "Esta interfaz usa el fondo de círculos concéntricos y excluye a John y a William"
           },
           "sortOrder": [
             {
+              "id": "5c1200a6-8b5b-5162-903c-cff604ca6295",
               "property": "*",
               "direction": "desc"
             }
           ],
           "layout": {
-            "layoutVariable": "layout_variable"
+            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "edges": {
-            "display": ["professional_edge_type", "friend_edge_type"],
-            "create": "friend_edge_type"
+            "display": [
+              "01e58147-1429-5f19-93fc-52b08cd0685a",
+              "70b691ec-912f-5207-a0ef-63c78d7d3df9"
+            ],
+            "create": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
           },
           "highlight": {
             "allowHighlighting": false
           }
         },
         {
-          "id": "edgeType2",
+          "id": "d10b6522-b43f-5296-94f2-da7e49238a62",
           "text": {
             "en": "Creates a second edge type",
             "es": "Crea un segundo tipo de vínculo"
           },
           "layout": {
-            "layoutVariable": "layout_variable"
+            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "sortOrder": [
             {
+              "id": "2876c321-73ad-595b-b0a3-802b8c344c4d",
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
               "direction": "desc"
             }
           ],
           "edges": {
-            "display": ["friend_edge_type", "professional_edge_type"],
-            "create": "professional_edge_type"
+            "display": [
+              "70b691ec-912f-5207-a0ef-63c78d7d3df9",
+              "01e58147-1429-5f19-93fc-52b08cd0685a"
+            ],
+            "create": "01e58147-1429-5f19-93fc-52b08cd0685a"
           },
           "highlight": {
             "allowHighlighting": false
           }
         },
         {
-          "id": "closeness2",
+          "id": "2971ceef-5d7d-5fa4-ad9c-b318b67bb296",
           "text": {
             "en": "Toggle variable",
             "es": "Variable de interruptor"
           },
           "layout": {
-            "layoutVariable": "layout_variable"
+            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "sortOrder": [
             {
+              "id": "93ca6c0a-039f-54b2-833e-ff11fa354f3a",
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
               "direction": "desc"
             }
           ],
           "edges": {
-            "display": ["friend_edge_type", "professional_edge_type"]
+            "display": [
+              "70b691ec-912f-5207-a0ef-63c78d7d3df9",
+              "01e58147-1429-5f19-93fc-52b08cd0685a"
+            ]
           },
           "highlight": {
             "allowHighlighting": true,
@@ -947,23 +974,26 @@
           }
         },
         {
-          "id": "closeness3",
+          "id": "28763ead-4a69-5abd-80c3-9f6da6742147",
           "text": {
             "en": "This prompt shows 3 concentric circles and creates friend edges.",
             "es": "Esta instrucción muestra 3 círculos concéntricos y crea vínculos de amistad."
           },
           "layout": {
-            "layoutVariable": "layout_variable"
+            "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801"
           },
           "edges": {
-            "display": ["friend_edge_type", "professional_edge_type"],
-            "create": "friend_edge_type"
+            "display": [
+              "70b691ec-912f-5207-a0ef-63c78d7d3df9",
+              "01e58147-1429-5f19-93fc-52b08cd0685a"
+            ],
+            "create": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
           }
         }
       ]
     },
     {
-      "id": "sociogram2",
+      "id": "0f0347ee-0dec-5ad5-87db-08aeb130fd2c",
       "type": "Sociogram",
       "label": {
         "en": "Sociogram with background image",
@@ -971,7 +1001,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "background": {
         "image": "quadrant-1",
@@ -979,25 +1009,26 @@
       },
       "prompts": [
         {
-          "id": "23423",
+          "id": "f5f073b1-a1f3-55a7-ba69-bfafaa332223",
           "text": {
             "en": "This interface uses a background image. Nodes are placed in reverse nomination order.",
             "es": "Esta interfaz usa una imagen de fondo. Los nodos se colocan en orden inverso de nominación."
           },
           "sortOrder": [
             {
+              "id": "5e5faa44-52eb-5121-b841-990a6a5b7774",
               "property": "*",
               "direction": "desc"
             }
           ],
           "layout": {
-            "layoutVariable": "venue_layout_variable"
+            "layoutVariable": "28fec613-725c-5ef7-90ed-3d9c8d42f2d0"
           }
         }
       ]
     },
     {
-      "id": "namegenroster1",
+      "id": "fafa24ad-d1d7-51f1-b795-ff13d0015709",
       "type": "NameGeneratorRoster",
       "label": {
         "en": "NG Classmates",
@@ -1005,12 +1036,13 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "dataSource": "previousInterview-json",
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "f6b98a67-3276-5b6b-b171-0f4e2608ba4d",
             "label": {
               "en": "Name",
               "es": "Nombre"
@@ -1018,6 +1050,7 @@
             "variable": "last_name"
           },
           {
+            "id": "9ab91e48-846c-529c-b3e1-910b7e9694bf",
             "label": {
               "en": "Age",
               "es": "Edad"
@@ -1032,13 +1065,14 @@
       },
       "prompts": [
         {
-          "id": "7cl1",
+          "id": "1a965b9e-f990-5e7f-89a6-e213e76baa9b",
           "text": {
             "en": "Which classmates would you also think of as friends?",
             "es": "¿A qué compañeros de clase considerarías también amigos?"
           },
           "additionalAttributes": [
             {
+              "id": "1e380e5b-a672-5480-be1f-d8068bdc8d79",
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
               "value": true
             }
@@ -1052,6 +1086,7 @@
           },
           "additionalAttributes": [
             {
+              "id": "60a27f4a-6bbe-5e85-9d82-8294da6df956",
               "variable": "e1dda563-f6f6-47b7-91cb-31b4c2fdb73a",
               "value": true
             }
@@ -1060,7 +1095,7 @@
       ]
     },
     {
-      "id": "namegenroster3",
+      "id": "efb68fc8-bb16-585b-85f7-f572e9afed3b",
       "type": "NameGeneratorRoster",
       "label": {
         "en": "Roster Autocomplete HIV",
@@ -1068,12 +1103,13 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "dataSource": "HIVServices",
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "b43ab909-f0b9-5926-b552-32bc8f6183a2",
             "label": {
               "en": "Address",
               "es": "Dirección"
@@ -1081,6 +1117,7 @@
             "variable": "67132d2b-c371-4c57-a5eb-6520083f9d22"
           },
           {
+            "id": "770e17b3-ec2a-5dc8-987c-d40e1e179051",
             "label": {
               "en": "Subsidiary/Program/Project",
               "es": "Filial/Programa/Proyecto"
@@ -1099,13 +1136,14 @@
       },
       "prompts": [
         {
-          "id": "7su",
+          "id": "be98155b-53ef-5dc4-a72b-b67dcf986df9",
           "text": {
             "en": "Which of these venues have you visited in the previous 6 months?",
             "es": "¿Cuáles de estos lugares has visitado en los últimos 6 meses?"
           },
           "additionalAttributes": [
             {
+              "id": "87946602-7cb9-5f71-8fc7-67c415a11b02",
               "variable": "55f1fbbe-2fe5-42a7-88fb-9a8e5e659d2f",
               "value": true
             }
@@ -1114,7 +1152,7 @@
       ]
     },
     {
-      "id": "catBin1",
+      "id": "da4f42f6-b4d2-5efe-b6a0-8bc2d32fb369",
       "type": "CategoricalBin",
       "label": {
         "en": "Contact Types",
@@ -1122,12 +1160,12 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "prompts": [
         {
           "variable": "e343a91f-628d-4175-870c-957beffa0152",
-          "id": "cat2",
+          "id": "e436c28d-675d-5919-978c-5a437cc3892d",
           "text": {
             "en": "Categorical bin excluding nodes called \"William\"",
             "es": "Contenedor categórico que excluye los nodos llamados \"William\""
@@ -1135,7 +1173,7 @@
         },
         {
           "variable": "e343a91f-628d-4175-870c-957beffa0153",
-          "id": "cat3",
+          "id": "7b3c8364-91e3-5791-b094-524fea8cac7d",
           "text": {
             "en": "Three with other",
             "es": "Tres con otro"
@@ -1151,7 +1189,7 @@
           }
         },
         {
-          "id": "cat4",
+          "id": "edf6e8be-cac7-5e87-b528-49583cf71a4a",
           "text": {
             "en": "Four",
             "es": "Cuatro"
@@ -1159,7 +1197,7 @@
           "variable": "e343a91f-628d-4175-870c-957beffa0154"
         },
         {
-          "id": "contactType",
+          "id": "c3fdab5a-a16c-5c31-b2c8-149d6054fa83",
           "text": {
             "en": "What is the most frequent type of contact you have?",
             "es": "¿Cuál es el tipo de contacto más frecuente que tienes?"
@@ -1167,27 +1205,31 @@
           "variable": "e343a91f-628d-4175-870c-957beffa0151",
           "bucketSortOrder": [
             {
+              "id": "b568d704-fb8c-5abf-a760-61e5174a4d64",
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
               "direction": "desc"
             }
           ],
           "binSortOrder": [
             {
+              "id": "b02f7907-2604-532c-9813-926cf8c8ee6a",
               "property": "0e75ec18-2cb1-4606-9f18-034d28b07c19",
               "direction": "desc"
             },
             {
+              "id": "e82cb18a-6ffc-541e-aff0-fb8a53b13580",
               "property": "c5fee926-855d-4419-b5bb-54e89010cea6",
               "direction": "desc"
             },
             {
+              "id": "9f510470-2f28-5903-9484-66f95c5ec6af",
               "property": "0ff25001-a2b8-46de-82a9-53143aa00d10",
               "direction": "desc"
             }
           ]
         },
         {
-          "id": "discussType",
+          "id": "7d1dd0cd-3bb0-54d6-b2b2-0c76e518778c",
           "text": {
             "en": "Discussion type variable, with a much longer prompt than the previous prompt. Please also note that this prompt uses the max number of bins.",
             "es": "Variable de tipo de conversación, con una instrucción mucho más larga que la anterior. Ten en cuenta también que esta instrucción usa el número máximo de contenedores."
@@ -1197,7 +1239,7 @@
       ]
     },
     {
-      "id": "alter-form-1-introduction",
+      "id": "9d8acaf6-b784-518c-8890-c1fed34f6a6b",
       "type": "Information",
       "label": {
         "en": "Introduction to the alter form",
@@ -1211,7 +1253,7 @@
             {
               "type": "node",
               "options": {
-                "type": "person_node_type",
+                "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
                 "operator": "INCLUDES",
                 "attribute": "e343a91f-628d-4175-870c-957beffa0153",
                 "value": "two"
@@ -1227,7 +1269,7 @@
       }
     },
     {
-      "id": "alter-form-1",
+      "id": "28fbc780-449a-5ad5-b534-5950499de74a",
       "type": "AlterForm",
       "label": {
         "en": "Alter Form",
@@ -1235,12 +1277,12 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "0cdcb996-9dde-5621-aba3-a6c82021f027",
             "variable": "246c4d84-ebd7-41a6-8c1a-ef83938227ba",
             "prompt": {
               "en": "What is this person's life story?",
@@ -1248,7 +1290,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "b3bcf42a-80ec-5dd2-b603-68718bde992b",
             "variable": "9b56bc6d-6b20-4e38-9aab-4057e78e1130",
             "prompt": {
               "en": "Choose a date",
@@ -1256,7 +1298,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "c57ac100-388c-5467-aec8-3f98e05819d2",
             "variable": "490db003-3289-4969-b426-919cefb4cdf0",
             "prompt": {
               "en": "Do you want to do another likert?",
@@ -1273,19 +1315,19 @@
             {
               "type": "node",
               "options": {
-                "type": "person_node_type",
+                "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
                 "operator": "INCLUDES",
                 "attribute": "e343a91f-628d-4175-870c-957beffa0153",
                 "value": "two"
               },
-              "id": "d9f1e1cb-59ee-4ed8-84d1-37a81518db04"
+              "id": "e6f07f03-a4d7-5fb8-8752-d8df85833b20"
             }
           ]
         }
       }
     },
     {
-      "id": "alter-edge-form-1-introduction",
+      "id": "b03799a2-74c0-5c99-814b-14f8e43edce8",
       "type": "Information",
       "label": {
         "en": "Introduction to the alter edge form",
@@ -1297,7 +1339,7 @@
       }
     },
     {
-      "id": "alter-edge-form-1",
+      "id": "43f47803-da34-5029-96ec-2770efc28696",
       "type": "AlterEdgeForm",
       "label": {
         "en": "Alter Edge Form (friends)",
@@ -1305,12 +1347,12 @@
       },
       "subject": {
         "entity": "edge",
-        "type": "friend_edge_type"
+        "type": "70b691ec-912f-5207-a0ef-63c78d7d3df9"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "c64e6933-b2ca-596b-90c8-b431f066e626",
             "variable": "e343a91f-628d-4175-870c-957beffa0002",
             "prompt": {
               "en": "Two item categorical variable",
@@ -1318,7 +1360,7 @@
             }
           },
           {
-            "id": "field-2",
+            "id": "2703f99a-c594-596e-b9fc-75daff68143e",
             "variable": "e343a91f-628d-4175-870c-957beffa0003",
             "prompt": {
               "en": "_Three_ item categorical variable",
@@ -1326,7 +1368,7 @@
             }
           },
           {
-            "id": "field-3",
+            "id": "3c24d3fd-52e1-5179-99af-dedf6baf5f0a",
             "variable": "e343a91f-628d-4175-870c-957beffa0004",
             "prompt": {
               "en": "Four item categorical variable",
@@ -1342,14 +1384,14 @@
             "type": "edge",
             "options": {
               "operator": "NOT_EXISTS",
-              "type": "professional_edge_type"
+              "type": "01e58147-1429-5f19-93fc-52b08cd0685a"
             },
             "id": "3a6fad4a-f175-492f-87d7-0747a4e4ffca"
           },
           {
             "type": "node",
             "options": {
-              "type": "person_node_type",
+              "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a",
               "operator": "EXCLUDES",
               "attribute": "1096204b-48fe-444c-b642-4ab211f7f57c",
               "value": [-1, 1]
@@ -1360,7 +1402,7 @@
       }
     },
     {
-      "id": "alter-edge-form-2-introduction",
+      "id": "6227920b-4d4a-5ac8-becb-206dc80f3ed3",
       "type": "Information",
       "label": {
         "en": "An alternative alter edge interface",
@@ -1372,7 +1414,7 @@
       }
     },
     {
-      "id": "alter-edge-form-2",
+      "id": "1632d58f-23d6-5e5c-8a48-231a26d53b56",
       "type": "AlterEdgeForm",
       "label": {
         "en": "Alter Edge Form (professional)",
@@ -1380,12 +1422,12 @@
       },
       "subject": {
         "entity": "edge",
-        "type": "professional_edge_type"
+        "type": "01e58147-1429-5f19-93fc-52b08cd0685a"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "87a2b3b2-c5f5-5d49-a1b3-bda4fe8f08b5",
             "variable": "d343a91f-628d-4175-870c-957beffa0002",
             "prompt": {
               "en": "Two item categorical variable",
@@ -1396,7 +1438,7 @@
       }
     },
     {
-      "id": "narrative1",
+      "id": "1a38659b-f2ec-5fc1-9718-36a9de0b3ce8",
       "type": "Narrative",
       "label": {
         "en": "Narrative",
@@ -1404,28 +1446,30 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
       "presets": [
         {
-          "id": "preset1",
+          "id": "17123343-f65d-5bb3-95de-e81f38f2135d",
           "label": {
             "en": "My preset",
             "es": "Mi ajuste predefinido"
           },
-          "layoutVariable": "layout_variable",
+          "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801",
           "groupVariable": "e343a91f-628d-4175-870c-957beffa0154",
           "edges": {
             "display": [
               {
-                "type": "friend_edge_type",
+                "id": "9188e4dd-3bf7-552f-94c6-09d24c94a177",
+                "type": "70b691ec-912f-5207-a0ef-63c78d7d3df9",
                 "label": {
                   "en": "friend",
                   "es": "amigo"
                 }
               },
               {
-                "type": "professional_edge_type",
+                "id": "0f9683b0-8415-5f3c-83f7-def630329670",
+                "type": "01e58147-1429-5f19-93fc-52b08cd0685a",
                 "label": {
                   "en": "professional",
                   "es": "profesional"
@@ -1435,6 +1479,7 @@
           },
           "highlight": [
             {
+              "id": "1c856ed5-51c0-52fb-82b2-02e1e1ed2c72",
               "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
               "label": {
                 "en": "has_given_advice",
@@ -1442,6 +1487,7 @@
               }
             },
             {
+              "id": "64329ab6-2bd5-5d83-b86e-46ed3a9a0daf",
               "variable": "ae44b6ba-ad49-4ecf-bf38-b65decfce000",
               "label": {
                 "en": "close_friend",
@@ -1451,7 +1497,7 @@
           ]
         },
         {
-          "id": "preset2",
+          "id": "78af7c87-b4a0-5ecc-9255-f52de2c1e87f",
           "label": {
             "en": "Another preset (with more text than will fit)",
             "es": "Otro ajuste predefinido (con más texto del que cabe)"
@@ -1461,7 +1507,8 @@
           "edges": {
             "display": [
               {
-                "type": "professional_edge_type",
+                "id": "ed1496df-b73a-5ad6-afac-bfd1260f732b",
+                "type": "01e58147-1429-5f19-93fc-52b08cd0685a",
                 "label": {
                   "en": "professional",
                   "es": "profesional"
@@ -1471,6 +1518,7 @@
           },
           "highlight": [
             {
+              "id": "4fd3ee6a-5ff2-5e31-a544-bd6132c2c10b",
               "variable": "03b03617-46ae-41cb-9462-9acd8a17edd6",
               "label": {
                 "en": "has_given_advice",
@@ -1490,7 +1538,7 @@
       }
     },
     {
-      "id": "rubberduck",
+      "id": "68d57907-cee7-5d9c-9c5f-ff636caa6f51",
       "label": {
         "en": "Audio test",
         "es": "Prueba de audio"
@@ -1502,7 +1550,7 @@
       }
     },
     {
-      "id": "info-sound",
+      "id": "5d4bc103-7759-50cd-90e3-af31fa6b9a81",
       "label": {
         "en": "InfoSound",
         "es": "Información con sonido"
@@ -1514,7 +1562,7 @@
       }
     },
     {
-      "id": "markdown",
+      "id": "1e429309-e5fa-5e60-a8e1-3749db1d381d",
       "label": {
         "en": "Markdown",
         "es": "Markdown"
@@ -1526,7 +1574,7 @@
       }
     },
     {
-      "id": "skippable screen",
+      "id": "fc867cb0-53d0-5693-a15d-c60204df9b35",
       "label": {
         "en": "Skip or Show",
         "es": "Omitir o mostrar"
@@ -1539,7 +1587,7 @@
           "rules": [
             {
               "type": "ego",
-              "id": "15218241553253",
+              "id": "81084666-0d81-5e4e-b18c-cd0bf423f7bb",
               "options": {
                 "attribute": "3377af3f-3c79-41da-9b0b-6570fb519b93",
                 "operator": "EXACTLY",
@@ -1555,7 +1603,7 @@
       }
     },
     {
-      "id": "network-composer-dev",
+      "id": "94c27099-3f3d-5f4e-a56e-7679d7b7b3c3",
       "type": "NetworkComposer",
       "label": {
         "en": "Network Composer",
@@ -1563,16 +1611,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person_node_type"
+        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
       },
-      "quickAdd": "name_variable",
-      "layoutVariable": "layout_variable",
+      "quickAdd": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
+      "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801",
       "background": {
         "concentricCircles": 4
       }
     },
     {
-      "id": "geospatial-dev",
+      "id": "ceabf87a-65c2-580a-86e2-402a9ad08c5f",
       "type": "Geospatial",
       "label": {
         "en": "Geospatial",
@@ -1580,7 +1628,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "venue_node_type"
+        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
       },
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
@@ -1593,7 +1641,7 @@
       },
       "prompts": [
         {
-          "id": "geospatial-prompt-dev",
+          "id": "e7891dd7-0db6-5366-ae37-9c62f133ecc8",
           "text": {
             "en": "Where is this place located?",
             "es": "¿Dónde está este lugar?"
@@ -1603,7 +1651,7 @@
       ]
     },
     {
-      "id": "family-pedigree-dev",
+      "id": "bc11f7ae-a719-54c9-950c-9577588468ec",
       "wording": {
         "connectParent": {
           "es": "{parentIsYou, select, true {Eres progenitor de {child}} other {{childIsYou, select, true {{parent} es tu progenitor} other {{parent} es progenitor de {child}}}}}"
@@ -1689,16 +1737,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "family_member"
+        "type": "26ee7973-6f8c-5f79-a732-fce25931e0f2"
       },
       "prompt": {
         "en": "Who is in your family?",
         "es": "¿Quién forma parte de tu familia?"
       },
       "nodeConfiguration": {
-        "nameAttribute": "fm_name",
+        "nameAttribute": "ad3b1a5c-b92c-57c7-a6c6-6cbaa9ebfff2",
         "genderIdentity": {
-          "attribute": "genderIdentity",
+          "attribute": "119a3f66-ac6a-5a4f-9f89-2265d4231d3c",
           "terms": [
             {
               "value": "woman",
@@ -1726,49 +1774,49 @@
             }
           ]
         },
-        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
-        "egoAttribute": "is_ego"
+        "sexAssignedAtBirthAttribute": "583802f3-9ac0-57c8-86f3-b06ca01216c5",
+        "egoAttribute": "9758e3c0-1925-5962-88c9-bc00bde19835"
       },
       "edgeConfiguration": {
-        "type": "family_edge",
-        "kindAttribute": "relationshipKind",
-        "gestationalCarrierAttribute": "isGestationalCarrier",
-        "currentPartnerAttribute": "isCurrentPartner"
+        "type": "b9faffb1-d86d-5d78-86ee-0a92c9da4692",
+        "kindAttribute": "96ac838c-50ba-5a2e-a7ce-5038f570d67d",
+        "gestationalCarrierAttribute": "0244613a-1225-598d-8737-8ea900031588",
+        "currentPartnerAttribute": "96f1e2bf-77e8-511c-93cc-c056dd00dd34"
       },
       "nominationPrompts": [
         {
-          "id": "nom-conditionx",
+          "id": "692edae2-0b21-5459-933d-fcbdd87374a1",
           "text": {
             "en": "Who in your family has been diagnosed with **condition X**?",
             "es": "¿Quién en tu familia ha recibido un diagnóstico de **la condición X**?"
           },
-          "attribute": "hasConditionX"
+          "attribute": "50630f43-1683-5c1f-a242-869e4399e7e8"
         }
       ]
     },
     {
-      "id": "narrative-pedigree-dev",
+      "id": "f66ce8a5-c3c3-59b3-9c63-4a522073acca",
       "type": "NarrativePedigree",
       "label": {
         "en": "Narrative Pedigree",
         "es": "Árbol genealógico narrativo"
       },
-      "sourceStageId": "family-pedigree-dev",
+      "sourceStageId": "bc11f7ae-a719-54c9-950c-9577588468ec",
       "diseases": [
         {
-          "id": "disease-conditionx",
+          "id": "34468293-763b-5aa8-a648-c29c0cf71959",
           "label": {
             "en": "Condition X",
             "es": "Condición X"
           },
           "color": "node-color-seq-1",
-          "attribute": "hasConditionX",
+          "attribute": "50630f43-1683-5c1f-a242-869e4399e7e8",
           "inheritancePattern": "autosomalDominant"
         }
       ]
     },
     {
-      "id": "finish",
+      "id": "bc9eb737-f362-5e9e-b8f6-c7187c907e20",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
@@ -1788,7 +1836,7 @@
   ],
   "codebook": {
     "node": {
-      "person_node_type": {
+      "02f0c3a5-008e-58e9-91ce-0cd152fbe22a": {
         "name": "person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -1796,7 +1844,7 @@
           "default": "circle"
         },
         "variables": {
-          "name_variable": {
+          "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99": {
             "encrypted": true,
             "name": "name",
             "component": "Text",
@@ -1823,7 +1871,7 @@
             "component": "Text",
             "type": "text",
             "validation": {
-              "differentFrom": "name_variable"
+              "differentFrom": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99"
             }
           },
           "ae44b6ba-ad49-4ecf-bf38-b65decfce000": {
@@ -2109,11 +2157,11 @@
               }
             ]
           },
-          "layout_variable": {
+          "792400ec-4fd2-535d-bf18-65cb440ec801": {
             "name": "closenessLayout",
             "type": "layout"
           },
-          "layout_variable_manual": {
+          "15c24db9-8fb3-5dc9-b8e0-f29e7214f746": {
             "name": "manualLayout",
             "type": "layout"
           },
@@ -2180,7 +2228,7 @@
           }
         }
       },
-      "dummy_node_type": {
+      "bdf1e3c5-8e25-5b1a-a185-1494b149a039": {
         "name": "dummytype",
         "color": "node-color-seq-6",
         "shape": {
@@ -2202,7 +2250,7 @@
             "component": "Toggle",
             "type": "boolean"
           },
-          "683ad529-66c6-4c84-8e31-a31452dsf74k": {
+          "83d505ce-12a2-55ed-acf1-89705adf8864": {
             "name": "booleanVariable3",
             "type": "boolean",
             "component": "Boolean",
@@ -2470,7 +2518,7 @@
           }
         }
       },
-      "venue_node_type": {
+      "9d747cc7-dda5-5ac9-957d-52d3cbba197f": {
         "name": "venue",
         "color": "node-color-seq-4",
         "icon": "add-a-place",
@@ -2478,7 +2526,7 @@
           "default": "circle"
         },
         "variables": {
-          "venue_name_variable": {
+          "1a9a393a-10c8-50e6-87ca-4b602fcebcff": {
             "name": "name",
             "type": "text",
             "validation": {
@@ -2489,7 +2537,7 @@
             "name": "location",
             "type": "location"
           },
-          "venueVisitFreqVariable": {
+          "682bdac0-3951-585f-9ec6-e8ea873f4d44": {
             "name": "visitfreq",
             "type": "ordinal",
             "options": [
@@ -2566,17 +2614,17 @@
             "name": "rawaddr",
             "type": "text"
           },
-          "venue_layout_variable": {
+          "28fec613-725c-5ef7-90ed-3d9c8d42f2d0": {
             "name": "Layout",
             "type": "layout"
           },
-          "venue_layout_variable_manual": {
+          "fbd9661c-9de5-5cee-8492-c6bce2f7b238": {
             "name": "Layout_Manual",
             "type": "layout"
           }
         }
       },
-      "family_member": {
+      "26ee7973-6f8c-5f79-a732-fce25931e0f2": {
         "name": "family member",
         "color": "node-color-seq-2",
         "icon": "add-a-person",
@@ -2584,7 +2632,7 @@
           "default": "circle"
         },
         "variables": {
-          "fm_name": {
+          "ad3b1a5c-b92c-57c7-a6c6-6cbaa9ebfff2": {
             "name": "fm_name",
             "type": "text",
             "component": "Text",
@@ -2592,12 +2640,12 @@
               "unique": true
             }
           },
-          "is_ego": {
+          "9758e3c0-1925-5962-88c9-bc00bde19835": {
             "name": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
-          "genderIdentity": {
+          "119a3f66-ac6a-5a4f-9f89-2265d4231d3c": {
             "name": "genderIdentity",
             "type": "categorical",
             "options": [
@@ -2645,7 +2693,7 @@
               }
             ]
           },
-          "sexAssignedAtBirth": {
+          "583802f3-9ac0-57c8-86f3-b06ca01216c5": {
             "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
@@ -2686,7 +2734,7 @@
               }
             ]
           },
-          "hasConditionX": {
+          "50630f43-1683-5c1f-a242-869e4399e7e8": {
             "name": "hasConditionX",
             "type": "boolean",
             "component": "Toggle"
@@ -2981,7 +3029,7 @@
       }
     },
     "edge": {
-      "friend_edge_type": {
+      "70b691ec-912f-5207-a0ef-63c78d7d3df9": {
         "name": "friend",
         "color": "edge-color-seq-1",
         "variables": {
@@ -3101,11 +3149,11 @@
           }
         }
       },
-      "professional_edge_type": {
+      "01e58147-1429-5f19-93fc-52b08cd0685a": {
         "name": "professional",
         "color": "edge-color-seq-2",
         "variables": {
-          "f984jk23-628d-4175-870c-ejd8e7al8vc3": {
+          "bceed163-c123-546a-8c27-675db28e6886": {
             "name": "professional-strength",
             "type": "ordinal",
             "options": [
@@ -3169,15 +3217,15 @@
           }
         }
       },
-      "visits_edge_type": {
+      "4b1ca489-8201-5ba9-945d-488eecf1b722": {
         "name": "visits",
         "color": "edge-color-seq-3"
       },
-      "family_edge": {
+      "b9faffb1-d86d-5d78-86ee-0a92c9da4692": {
         "name": "family_edge",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipKind": {
+          "96ac838c-50ba-5a2e-a7ce-5038f570d67d": {
             "name": "relationshipKind",
             "type": "categorical",
             "options": [
@@ -3246,11 +3294,11 @@
               }
             ]
           },
-          "isGestationalCarrier": {
+          "0244613a-1225-598d-8737-8ea900031588": {
             "name": "isGestationalCarrier",
             "type": "boolean"
           },
-          "isCurrentPartner": {
+          "96f1e2bf-77e8-511c-93cc-c056dd00dd34": {
             "name": "isCurrentPartner",
             "type": "boolean"
           }

@@ -82,6 +82,7 @@ import {
   loadFixtureStage,
 } from './protocolFixture.ts';
 import { HARNESS_PRINCIPAL, SeedProtocolCache } from './seedProtocolCache.tsx';
+import { testId } from './testId.ts';
 
 /**
  * The layers a host actually mounts, in the order Architect merges them.
@@ -455,7 +456,7 @@ type StageEditorSeeding<T extends StageType> =
        * A call that has NOT named an interface — sections under test, the
        * dispatcher under test, a family helper passing an id it computed —
        * leaves `T` at the whole union and may pass any string; those are the
-       * calls `assertDeclaredStageType` covers at open time.
+       * calls `loadFixtureStage` checks at open time.
        */
       stageId?: StageType extends T ? string : FixtureStageId<T>;
       stage?: never;
@@ -1182,13 +1183,15 @@ function NamedEditorUnderTest<T extends StageType>({
  * refused a call that gave two, so at most one of these branches can be taken.
  * See `StageEditorSeeding`.
  */
+const STAGE_UNDER_TEST = testId('stage-under-test');
+
 function seedFrom<T extends StageType>(
   options: RenderStageEditorOptions<T>,
 ): SeededStage {
   if (options.create !== undefined) {
     const { type, position, fields } = options.create;
     return {
-      id: 'stage-under-test',
+      id: STAGE_UNDER_TEST,
       type,
       // What the editor opens a create session with: the interface's own
       // authored defaults and the wording supplied in the protocol's
@@ -1202,7 +1205,7 @@ function seedFrom<T extends StageType>(
     };
   }
   if (options.stage !== undefined) {
-    const { id = 'stage-under-test', type, fields } = options.stage;
+    const { id = STAGE_UNDER_TEST, type, fields } = options.stage;
     return { id, type, fields };
   }
   if (options.stageId === undefined) {

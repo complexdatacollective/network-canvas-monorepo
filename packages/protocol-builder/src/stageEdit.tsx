@@ -84,8 +84,12 @@ export type StageSaveOutcome =
   | Readonly<{ status: 'saved'; sectionId: ProtocolSectionId }>
   /** The stage is somebody else's now; this draft is gone and cannot be retried. */
   | Readonly<{ status: 'lost'; message: string }>
-  /** The host answered, and wrote nothing; the draft stays to be saved again. */
-  | Readonly<{ status: 'refused'; message: string }>
+  /**
+   * The host answered, and wrote nothing; the draft stays to be saved again.
+   * `objectId` names the object in the stage the refusal is about, where the
+   * host could say.
+   */
+  | Readonly<{ status: 'refused'; message: string; objectId?: string }>
   /**
    * No answer came, so the stage may or may not have been saved. Saving the
    * same draft again is how to find out: the host answers that request with
@@ -497,13 +501,19 @@ function refusedAdd(refusal: Refusal<'Create'> | undefined): StageSaveOutcome {
         status: 'refused',
         message: blockedMessage(blockedHolders(refusal.blocked)),
       };
-    case 'InvalidShape':
+    case 'InvalidShape': {
+      if (isCodebookSectionId(refusal.sectionId)) {
+        return { status: 'refused', message: CODEBOOK_CLASH_MESSAGE };
+      }
+      const objectId = refusal.issues.find(
+        (issue) => issue.objectId !== undefined,
+      )?.objectId;
       return {
         status: 'refused',
-        message: isCodebookSectionId(refusal.sectionId)
-          ? CODEBOOK_CLASH_MESSAGE
-          : INVALID_SHAPE_MESSAGE,
+        message: ADD_INVALID_SHAPE_MESSAGE,
+        ...(objectId === undefined ? {} : { objectId }),
       };
+    }
     case 'ProtocolNotFound':
     case 'SectionNotFound':
     case 'SectionExists':
@@ -555,7 +565,14 @@ const messages = defineMessages({
     defaultMessage:
       'This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.',
     description:
-      'Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview.',
+      'Shown above a stage editor’s fields when the host refused to save changes to an existing stage because the stage was the wrong shape. The editor then reloads the stage as the protocol holds it, so the researcher’s unsaved work is gone. A stage is one step of an interview.',
+  },
+  addInvalidShape: {
+    id: 'protocolBuilder.stageEdit.addInvalidShape',
+    defaultMessage:
+      'This stage could not be added because part of it is not valid. Your changes are still here. Correct the problem, then try adding the stage again.',
+    description:
+      'Shown above the editor of a new stage when the host refused to add it because part of the stage was the wrong shape. Nothing was added, and the researcher’s unsaved work is still on screen. Where the host named the list item at fault, focus moves to it. A stage is one step of an interview.',
   },
   codebookClash: {
     id: 'protocolBuilder.stageEdit.codebookClash',
@@ -608,6 +625,7 @@ const messages = defineMessages({
 export const NOT_READY_MESSAGE = createMessageError(messages.notReady);
 const LOCK_LOST_MESSAGE = createMessageError(messages.lockLost);
 const INVALID_SHAPE_MESSAGE = createMessageError(messages.invalidShape);
+const ADD_INVALID_SHAPE_MESSAGE = createMessageError(messages.addInvalidShape);
 const CODEBOOK_CLASH_MESSAGE = createMessageError(messages.codebookClash);
 
 const ADD_FAILED_MESSAGE = createMessageError(messages.addFailed);

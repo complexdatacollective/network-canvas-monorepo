@@ -5,7 +5,7 @@ import {
   type MessageArguments,
   type RequiredPlacements,
 } from '../../../localization/messageArguments.ts';
-import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import {
   TitlelessFormSchema,
   NodeStageSubjectSchema,
@@ -23,6 +23,7 @@ import {
   localizedString,
   nonBlankText,
 } from '../localized-string.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 import { categoricalOptionValueSchema } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -295,7 +296,8 @@ export const CompletenessSchema = z.strictObject({
 
 /**
  * The prompt id the interview gives the family-building step, which comes
- * before every nomination prompt; a nomination prompt may not reuse it.
+ * before every nomination prompt. It is not a UUID, so no nomination prompt
+ * can share it.
  */
 export const FAMILY_PEDIGREE_BUILD_PROMPT_ID = 'pedigree';
 
@@ -307,12 +309,7 @@ export const FAMILY_PEDIGREE_BUILD_PROMPT_ID = 'pedigree';
  * has it unset.
  */
 const NominationPromptSchema = z.strictObject({
-  id: z
-    .string()
-    .min(1)
-    .refine((id) => id !== FAMILY_PEDIGREE_BUILD_PROMPT_ID, {
-      message: `Nomination prompt id "${FAMILY_PEDIGREE_BUILD_PROMPT_ID}" is reserved for building the family`,
-    }),
+  id: protocolObjectId('prompt'),
   text: localizedString(
     nonBlankText(),
     { format: 'markdown', lines: 'single' },
@@ -799,34 +796,32 @@ export const isCompleteFamilyPedigreeWording = (
  * sex assigned at birth), how they are related to the person they are added
  * to, and then the researcher's `form` fields.
  */
-export const familyPedigreeStage = baseStageSchema.extend({
-  type: z.literal('FamilyPedigree'),
-  subject: NodeStageSubjectSchema,
-  prompt: localizedString(
-    nonBlankText(),
-    { format: 'markdown', lines: 'single' },
-    {
-      dynamicValues: 'prompt',
-    },
-  ),
-  nodeConfiguration: NodeConfigurationSchema,
-  edgeConfiguration: EdgeConfigurationSchema,
-  // Which words describe family members, or `participantPreference` to let
-  // the participant choose. Absent: `gendered`.
-  framing: z.enum(FRAMING_SETTINGS).optional(),
-  // Absent: the participant may continue with any family they have drawn.
-  completeness: CompletenessSchema.optional(),
-  // Researcher-defined person fields, asked after the interface's own.
-  form: TitlelessFormSchema.optional(),
-  // Asked in turn once the family is drawn, each its own prompt.
-  nominationPrompts: z
-    .array(NominationPromptSchema)
-    .min(1)
-    .superRefine(duplicateIdRefinement('Nomination prompts'))
-    .optional(),
-  // The words the interface shows, which Network Canvas supplies.
-  wording: FamilyPedigreeWordingSchema.optional(),
-});
+export const familyPedigreeStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('FamilyPedigree'),
+    subject: NodeStageSubjectSchema,
+    prompt: localizedString(
+      nonBlankText(),
+      { format: 'markdown', lines: 'single' },
+      {
+        dynamicValues: 'prompt',
+      },
+    ),
+    nodeConfiguration: NodeConfigurationSchema,
+    edgeConfiguration: EdgeConfigurationSchema,
+    // Which words describe family members, or `participantPreference` to let
+    // the participant choose. Absent: `gendered`.
+    framing: z.enum(FRAMING_SETTINGS).optional(),
+    // Absent: the participant may continue with any family they have drawn.
+    completeness: CompletenessSchema.optional(),
+    // Researcher-defined person fields, asked after the interface's own.
+    form: TitlelessFormSchema.optional(),
+    // Asked in turn once the family is drawn, each its own prompt.
+    nominationPrompts: z.array(NominationPromptSchema).min(1).optional(),
+    // The words the interface shows, which Network Canvas supplies.
+    wording: FamilyPedigreeWordingSchema.optional(),
+  }),
+);
 
 export type FamilyPedigreeStageDefinition = z.infer<typeof familyPedigreeStage>;
 export type FamilyPedigreeNodeConfiguration = z.infer<

@@ -1,23 +1,32 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   type CurrentProtocol,
   CurrentProtocolSchema,
+  deterministicProtocolObjectId,
 } from '@codaco/protocol-validation';
 
 import { emptyProtocol } from './seed.js';
 
-export const EGO_FIRST_NAME_ID = 'firstName';
-export const EGO_AGE_ID = 'age';
-export const EGO_MOOD_ID = 'mood';
-const NODE_NICKNAME_ID = 'nickname';
+export const EGO_FIRST_NAME_ID = testVariableId('firstName');
+export const EGO_AGE_ID = testVariableId('age');
+export const EGO_MOOD_ID = testVariableId('mood');
+const NODE_NICKNAME_ID = testVariableId('nickname');
+const PERSON_TYPE_ID = testTypeId('person');
 
 /** Stage ids the specs open by address. */
-const EGO_FORM_STAGE_ID = 'ego-form';
-export const INFO_STAGE_ID = 'info';
-export const ANSWERS_STAGE_ID = 'answers';
+const objectId = deterministicProtocolObjectId(
+  '6f1d2c3b-4a5e-4f60-8a71-9b2c3d4e5f60',
+);
+const EGO_FORM_STAGE_ID = objectId('ego-form');
+export const INFO_STAGE_ID = objectId('info');
+export const ANSWERS_STAGE_ID = objectId('answers');
 
 /** An ego attribute no form collects, so only a stage's text can use it. */
-export const EGO_NICKNAME_ID = 'egoNickname';
+export const EGO_NICKNAME_ID = testVariableId('egoNickname');
 
 /**
  * A protocol with an ego form that collects three attributes (a name, an age
@@ -59,7 +68,7 @@ export function pipedTextProtocol(
           },
         },
         node: {
-          person: {
+          [PERSON_TYPE_ID]: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
@@ -82,12 +91,20 @@ export function pipedTextProtocol(
           form: {
             fields: [
               {
-                id: 'f1',
+                id: objectId('f1'),
                 variable: EGO_FIRST_NAME_ID,
                 prompt: en('Your name?'),
               },
-              { id: 'f2', variable: EGO_AGE_ID, prompt: en('Your age?') },
-              { id: 'f3', variable: EGO_MOOD_ID, prompt: en('Your mood?') },
+              {
+                id: objectId('f2'),
+                variable: EGO_AGE_ID,
+                prompt: en('Your age?'),
+              },
+              {
+                id: objectId('f3'),
+                variable: EGO_MOOD_ID,
+                prompt: en('Your mood?'),
+              },
             ],
           },
         },

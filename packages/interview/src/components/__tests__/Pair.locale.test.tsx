@@ -7,21 +7,24 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import Pair from '../Pair';
+
+const NAME = testVariableId('name');
 
 // Isolate the pair's accessible name from decryption and graphical nodes;
 // the names returned here are literal participant data, as in the live hook.
 vi.mock('../../interfaces/Anonymisation/useNodeLabel', () => ({
   useNodeLabel: (node: NcNode | undefined) =>
-    node?.[entityAttributesProperty].name,
+    node?.[entityAttributesProperty][NAME],
 }));
 vi.mock('../ConnectedNode', () => ({ default: () => null }));
 
 const person = (id: string, name?: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
-  [entityAttributesProperty]: name === undefined ? {} : { name },
-  type: 'person',
+  [entityAttributesProperty]: name === undefined ? {} : { [NAME]: name },
+  type: testTypeId('person'),
 });
 
 // The pair's name is read only by screen readers, and screen reader text

@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -15,7 +16,7 @@ import { dynamicValuesProtocol } from './dynamicValuesProtocol';
 
 const WELCOME = 'Welcome back{name, select, missing {} other {, {name}}}';
 
-const BINDINGS = { name: { path: 'ego.firstName' } };
+const BINDINGS = { name: { path: `ego.${testVariableId('firstName')}` } };
 const GHOST_TITLE = { en: '{ghost} welcome', fr: '{ghost} bienvenue' };
 
 const protocol = dynamicValuesProtocol({ en: WELCOME }, BINDINGS);

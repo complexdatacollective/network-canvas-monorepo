@@ -7,6 +7,7 @@ import { VARIABLE_TYPE_VALIDATIONS } from '@codaco/protocol-validation';
 
 import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { enIntl, readMessage } from '../../testing/i18n.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import { variableRoleKey } from '../variableRoles.ts';
 import {
   buildProspectiveVariables,
@@ -29,7 +30,24 @@ import {
   type RuleMapContext,
 } from '../variableValidation.ts';
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const SUBJECT = { entity: 'node', type: testTypeId('person') } as const;
+const SUBJECT_ID = testVariableId('subject');
+const A = testVariableId('a');
+const B = testVariableId('b');
+const C = testVariableId('c');
+const D = testVariableId('d');
+const X = testVariableId('x');
+const BELOW = testVariableId('below');
+const ABOVE = testVariableId('above');
+const COLORS = testVariableId('colors');
+const CATEGORY = testVariableId('category');
+const MET_ON = testVariableId('metOn');
+const BORN_ON = testVariableId('bornOn');
+const VALIDATED = testVariableId('validated');
+const FIRST = testVariableId('first');
+const SECOND = testVariableId('second');
+const PREVIOUS = testVariableId('previous');
+const OTHER = testVariableId('other');
 
 const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
 
@@ -42,7 +60,7 @@ const ruleContext = (
   overrides: Partial<RuleMapContext> = {},
 ): RuleMapContext => ({
   allVariables: {},
-  currentVariableId: 'subject',
+  currentVariableId: SUBJECT_ID,
   variableType: 'number',
   ...overrides,
 });
@@ -165,8 +183,8 @@ describe('prospective contradiction analysis', () => {
   it('reports an inverted bound introduced by the draft', () => {
     expect(
       findDraftContradictions({
-        allVariables: { subject: numberVariable('Subject') },
-        currentVariableId: 'subject',
+        allVariables: { [SUBJECT_ID]: numberVariable('Subject') },
+        currentVariableId: SUBJECT_ID,
         variableType: 'number',
         validation: { minValue: 10, maxValue: 2 },
       }),
@@ -175,17 +193,17 @@ describe('prospective contradiction analysis', () => {
 
   it('finds a contradiction introduced between two other variables', () => {
     const allVariables = {
-      a: numberVariable('A', { sameAs: 'b' }),
-      b: numberVariable('B', { lessThanVariable: 'c' }),
-      c: numberVariable('C', { required: true, maxValue: 10 }),
+      [A]: numberVariable('A', { sameAs: B }),
+      [B]: numberVariable('B', { lessThanVariable: C }),
+      [C]: numberVariable('C', { required: true, maxValue: 10 }),
     };
 
     expect(
       findDraftContradictions({
         allVariables,
-        currentVariableId: 'a',
+        currentVariableId: A,
         variableType: 'number',
-        validation: { required: true, sameAs: 'b', minValue: 10 },
+        validation: { required: true, sameAs: B, minValue: 10 },
       }),
     ).not.toHaveLength(0);
   });
@@ -194,58 +212,58 @@ describe('prospective contradiction analysis', () => {
 describe('legal comparison targets', () => {
   it('excludes a target made impossible by propagated draft bounds', () => {
     const allVariables = {
-      a: numberVariable('A'),
-      b: numberVariable('B', { lessThanVariable: 'c' }),
-      c: numberVariable('C', { required: true, maxValue: 10 }),
-      d: numberVariable('D'),
+      [A]: numberVariable('A'),
+      [B]: numberVariable('B', { lessThanVariable: C }),
+      [C]: numberVariable('C', { required: true, maxValue: 10 }),
+      [D]: numberVariable('D'),
     };
 
     expect(
       findLegalReferenceTargets({
         allVariables,
-        currentVariableId: 'a',
+        currentVariableId: A,
         variableType: 'number',
         validation: { required: true, minValue: 10 },
         ruleKey: 'sameAs',
-        candidateIds: ['b', 'd'],
+        candidateIds: [B, D],
       }),
-    ).toEqual(new Set(['d']));
+    ).toEqual(new Set([D]));
   });
 
   it("retains another variable's incoming constraint on the edited variable", () => {
     const allVariables = {
-      x: numberVariable('X', {
+      [X]: numberVariable('X', {
         minValue: 10,
         maxValue: 10,
-        lessThanVariable: 'a',
+        lessThanVariable: A,
       }),
-      a: numberVariable('A'),
-      below: numberVariable('Below', { minValue: 5, maxValue: 5 }),
-      above: numberVariable('Above', { minValue: 100, maxValue: 100 }),
+      [A]: numberVariable('A'),
+      [BELOW]: numberVariable('Below', { minValue: 5, maxValue: 5 }),
+      [ABOVE]: numberVariable('Above', { minValue: 100, maxValue: 100 }),
     };
 
     expect(
       findLegalReferenceTargets({
         allVariables,
-        currentVariableId: 'a',
+        currentVariableId: A,
         variableType: 'number',
         validation: {},
         ruleKey: 'lessThanVariable',
-        candidateIds: ['below', 'above'],
+        candidateIds: [BELOW, ABOVE],
       }),
-    ).toEqual(new Set(['above']));
+    ).toEqual(new Set([ABOVE]));
   });
 
   it('treats __proto__ as an ordinary variable record id', () => {
     const allVariables = Object.fromEntries([
-      ['a', numberVariable('A')],
+      [A, numberVariable('A')],
       ['__proto__', numberVariable('Prototype')],
     ]);
 
     expect(
       findLegalReferenceTargets({
         allVariables,
-        currentVariableId: 'a',
+        currentVariableId: A,
         variableType: 'number',
         validation: {},
         ruleKey: 'lessThanVariable',
@@ -257,19 +275,19 @@ describe('legal comparison targets', () => {
 
 describe('rule-map and field-editor save gates', () => {
   it('reports the same incomplete draft from both gates', () => {
-    const allVariables = { subject: numberVariable('Subject') };
+    const allVariables = { [SUBJECT_ID]: numberVariable('Subject') };
     const validation = { minValue: null };
 
     expect(
       makeFieldEditorValidate(allVariables)({
-        variable: 'subject',
+        variable: SUBJECT_ID,
         component: 'Number',
         validation,
       }).validation,
     ).toBe(
       ruleMapIssue(
         validation,
-        ruleContext({ allVariables, currentVariableId: 'subject' }),
+        ruleContext({ allVariables, currentVariableId: SUBJECT_ID }),
       ),
     );
   });
@@ -295,7 +313,7 @@ describe('rule-map and field-editor save gates', () => {
 
   it('reports a contradiction introduced by shrinking categorical options', () => {
     const allVariables = {
-      colors: {
+      [COLORS]: {
         name: 'Colors',
         type: 'categorical',
         options: [
@@ -309,7 +327,7 @@ describe('rule-map and field-editor save gates', () => {
 
     expect(
       makeFieldEditorValidate(allVariables)({
-        variable: 'colors',
+        variable: COLORS,
         validation: { minSelected: 3 },
         options: [
           { label: 'Red', value: 'red' },
@@ -321,13 +339,13 @@ describe('rule-map and field-editor save gates', () => {
 
   it('checks every independently resolved stage-effective form view', () => {
     const allVariables = {
-      a: {
+      [A]: {
         name: 'A',
         type: 'datetime',
         component: 'DatePicker',
         validation: {},
       },
-      b: {
+      [B]: {
         name: 'B',
         type: 'datetime',
         component: 'DatePicker',
@@ -341,17 +359,17 @@ describe('rule-map and field-editor save gates', () => {
       undefined,
       [
         {
-          renderedVariableIds: new Set(['a', 'b']),
+          renderedVariableIds: new Set([A, B]),
           overlay: {
-            a: { component: 'DatePicker', parameters: { type: 'year' } },
-            b: { component: 'DatePicker', parameters: { type: 'year' } },
+            [A]: { component: 'DatePicker', parameters: { type: 'year' } },
+            [B]: { component: 'DatePicker', parameters: { type: 'year' } },
           },
         },
         {
-          renderedVariableIds: new Set(['a', 'b']),
+          renderedVariableIds: new Set([A, B]),
           overlay: {
-            a: { component: 'DatePicker', parameters: { type: 'year' } },
-            b: { component: 'DatePicker', parameters: {} },
+            [A]: { component: 'DatePicker', parameters: { type: 'year' } },
+            [B]: { component: 'DatePicker', parameters: {} },
           },
         },
       ],
@@ -360,8 +378,8 @@ describe('rule-map and field-editor save gates', () => {
     expect(
       readMessage(
         validate({
-          variable: 'a',
-          validation: { sameAs: 'b' },
+          variable: A,
+          validation: { sameAs: B },
           component: 'DatePicker',
           parameters: {},
         }).validation ?? '',
@@ -373,7 +391,7 @@ describe('rule-map and field-editor save gates', () => {
 
   it('applies the unchanged-pick escape to its cross-class save backstop', () => {
     const allVariables = {
-      colors: {
+      [COLORS]: {
         name: 'Colors',
         type: 'categorical',
         options: [
@@ -392,14 +410,14 @@ describe('rule-map and field-editor save gates', () => {
 
     expect(
       validate(
-        { variable: 'colors', validation: {} },
-        { initialValues: { variable: 'colors' } },
+        { variable: COLORS, validation: {} },
+        { initialValues: { variable: COLORS } },
       ),
     ).toEqual({});
     expect(
       validate(
-        { variable: 'colors', validation: {} },
-        { initialValues: { variable: 'other' } },
+        { variable: COLORS, validation: {} },
+        { initialValues: { variable: OTHER } },
       ).variable,
     ).toBeDefined();
   });
@@ -408,32 +426,29 @@ describe('rule-map and field-editor save gates', () => {
 describe('draft writer roles and cross-class picks', () => {
   it('collects live form and additional-attribute writers', () => {
     expect(
-      draftFormFieldVariableIds([
-        { variable: 'validated' },
-        { variable: null },
-      ]),
-    ).toEqual(new Set(['validated']));
+      draftFormFieldVariableIds([{ variable: VALIDATED }, { variable: null }]),
+    ).toEqual(new Set([VALIDATED]));
     expect(
       draftAdditionalAttributeVariableIds([
-        { additionalAttributes: [{ variable: 'first' }] },
-        { additionalAttributes: [{ variable: 'second' }] },
+        { additionalAttributes: [{ variable: FIRST }] },
+        { additionalAttributes: [{ variable: SECOND }] },
       ]),
-    ).toEqual(new Set(['first', 'second']));
+    ).toEqual(new Set([FIRST, SECOND]));
   });
 
   it('rejects a changed nested pick claimed by the opposite writer class', () => {
-    const key = variableRoleKey(SUBJECT, 'category');
+    const key = variableRoleKey(SUBJECT, CATEGORY);
     const roleMap = Object.fromEntries([
       [key, { validated: 1, unvalidated: 0 }],
     ]);
     const allVariables = {
-      category: { name: 'Category', type: 'categorical' },
+      [CATEGORY]: { name: 'Category', type: 'categorical' },
     };
 
     expect(
       crossClassPickErrors({
-        values: { highlight: { variable: 'category' } },
-        initialValues: { highlight: { variable: 'previous' } },
+        values: { highlight: { variable: CATEGORY } },
+        initialValues: { highlight: { variable: PREVIOUS } },
         picks: [{ path: 'highlight.variable', writerClass: 'unvalidated' }],
         subject: SUBJECT,
         roleMap,
@@ -445,11 +460,11 @@ describe('draft writer roles and cross-class picks', () => {
   });
 
   it('allows an unchanged pre-existing cross-class conflict', () => {
-    const key = variableRoleKey(SUBJECT, 'category');
+    const key = variableRoleKey(SUBJECT, CATEGORY);
     const roleMap = Object.fromEntries([
       [key, { validated: 1, unvalidated: 0 }],
     ]);
-    const row = { highlight: { variable: 'category' } };
+    const row = { highlight: { variable: CATEGORY } };
 
     expect(
       crossClassPickErrors({
@@ -459,7 +474,7 @@ describe('draft writer roles and cross-class picks', () => {
         subject: SUBJECT,
         roleMap,
         allVariables: {
-          category: { name: 'Category', type: 'categorical' },
+          [CATEGORY]: { name: 'Category', type: 'categorical' },
         },
       }),
     ).toBeUndefined();
@@ -485,8 +500,12 @@ describe('the rule-map gate that reads a stage and the codebook', () => {
 
   it('names the codebook record when only the form’s controls accept the rule', () => {
     const allVariables = {
-      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('1990', '1995') },
-      bornOn: {
+      [MET_ON]: {
+        name: 'metOn',
+        type: 'datetime',
+        ...dateWindow('1990', '1995'),
+      },
+      [BORN_ON]: {
         name: 'bornOn',
         type: 'datetime',
         ...dateWindow('2020', '2025'),
@@ -497,11 +516,11 @@ describe('the rule-map gate that reads a stage and the codebook', () => {
     // satisfiable in front of the researcher — and the codebook's own windows,
     // which are what the write is judged by, are disjoint.
     const issue = ruleMapIssueForWrite(
-      { sameAs: 'bornOn' },
-      { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+      { sameAs: BORN_ON },
+      { allVariables, currentVariableId: MET_ON, variableType: 'datetime' },
       {
         ...dateWindow('2020', '2025'),
-        overlay: { bornOn: dateWindow('2020', '2025') },
+        overlay: { [BORN_ON]: dateWindow('2020', '2025') },
       },
     );
 
@@ -512,8 +531,12 @@ describe('the rule-map gate that reads a stage and the codebook', () => {
 
   it('states the form’s own contradiction in its own words, unprefixed', () => {
     const allVariables = {
-      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('1990', '1995') },
-      bornOn: {
+      [MET_ON]: {
+        name: 'metOn',
+        type: 'datetime',
+        ...dateWindow('1990', '1995'),
+      },
+      [BORN_ON]: {
         name: 'bornOn',
         type: 'datetime',
         ...dateWindow('1990', '1995'),
@@ -524,8 +547,8 @@ describe('the rule-map gate that reads a stage and the codebook', () => {
     // field puts on it. The researcher can act on that where they stand, so
     // the sentence is not about the record at all.
     const issue = ruleMapIssueForWrite(
-      { sameAs: 'bornOn' },
-      { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+      { sameAs: BORN_ON },
+      { allVariables, currentVariableId: MET_ON, variableType: 'datetime' },
       { ...dateWindow('2020', '2025') },
     );
 
@@ -536,8 +559,12 @@ describe('the rule-map gate that reads a stage and the codebook', () => {
 
   it('accepts a rule both readings can hold', () => {
     const allVariables = {
-      metOn: { name: 'metOn', type: 'datetime', ...dateWindow('2020', '2025') },
-      bornOn: {
+      [MET_ON]: {
+        name: 'metOn',
+        type: 'datetime',
+        ...dateWindow('2020', '2025'),
+      },
+      [BORN_ON]: {
         name: 'bornOn',
         type: 'datetime',
         ...dateWindow('2020', '2025'),
@@ -546,8 +573,8 @@ describe('the rule-map gate that reads a stage and the codebook', () => {
 
     expect(
       ruleMapIssueForWrite(
-        { sameAs: 'bornOn' },
-        { allVariables, currentVariableId: 'metOn', variableType: 'datetime' },
+        { sameAs: BORN_ON },
+        { allVariables, currentVariableId: MET_ON, variableType: 'datetime' },
         { ...dateWindow('2020', '2025') },
       ),
     ).toBeUndefined();

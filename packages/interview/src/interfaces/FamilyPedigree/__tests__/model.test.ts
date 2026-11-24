@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
+import { testVariableId } from '../../../__tests__/testIds';
 import {
   type AdditionPlan,
   type Family,
@@ -143,7 +144,7 @@ describe('readFamily', () => {
       {
         ...config,
         genderIdentity: {
-          attribute: 'gender',
+          attribute: testVariableId('gender'),
           terms: [
             ...(config.genderIdentity?.terms ?? []),
             { value: 'removedOption', words: 'masculine' },
@@ -181,7 +182,9 @@ describe('readFamily', () => {
     // The same words, typed for someone with no saved label.
     expect(family.byId.get('typed')?.name).toBe('Sister');
     // The attribute itself is untouched.
-    expect(family.byId.get('saved')?.attributes.name).toBe('Sister');
+    expect(family.byId.get('saved')?.attributes[config.nameAttribute]).toBe(
+      'Sister',
+    );
   });
 
   test('re-entry follows the record, not the label text: an encrypted label is still unnamed', () => {
@@ -227,57 +230,6 @@ describe('readFamily', () => {
         hasUnreadableName: true,
       });
     }
-  });
-});
-
-describe('readFamily with an attribute named __proto__', () => {
-  // `CodebookIdSchema` admits `__proto__`, and a plain object answers a read
-  // of it with Object.prototype when it holds no such value of its own.
-  const protoConfig = {
-    ...config,
-    nameAttribute: '__proto__',
-    relativesNotRecordedAttribute: 'constructor',
-  };
-
-  test('reads a person with no name as unnamed, not as an unreadable name', () => {
-    const family = readFamily(
-      [person('ego', { isEgo: true })],
-      [],
-      protoConfig,
-    );
-    expect(family.byId.get('ego')).toMatchObject({
-      name: undefined,
-      hasUnreadableName: false,
-      relativesNotRecorded: [],
-    });
-  });
-
-  test('reads a name stored under it', () => {
-    const family = readFamily(
-      [person('ego', Object.fromEntries([['__proto__', 'Ada']]))],
-      [],
-      protoConfig,
-    );
-    expect(family.byId.get('ego')?.name).toBe('Ada');
-  });
-
-  test('finds a required field under it missing until it is answered', () => {
-    const family = readFamily(
-      [
-        person('a', { gender: ['man'], sex: ['male'] }),
-        person('b', {
-          gender: ['man'],
-          sex: ['male'],
-          ...Object.fromEntries([['__proto__', 40]]),
-        }),
-      ],
-      [],
-      config,
-    );
-    expect(missingDetailsFor(family.byId.get('a')!, ['__proto__'])).toEqual([
-      { variable: '__proto__' },
-    ]);
-    expect(missingDetailsFor(family.byId.get('b')!, ['__proto__'])).toEqual([]);
   });
 });
 
@@ -404,9 +356,12 @@ describe('missingDetailsFor', () => {
       [],
       config,
     );
-    expect(missingDetailsFor(family.byId.get('a')!, ['age', 'notes'])).toEqual([
-      { variable: 'notes' },
-    ]);
+    expect(
+      missingDetailsFor(family.byId.get('a')!, [
+        testVariableId('age'),
+        testVariableId('notes'),
+      ]),
+    ).toEqual([{ variable: testVariableId('notes') }]);
   });
 });
 
@@ -535,8 +490,12 @@ describe('planAddRelative', () => {
     });
     expect(result.people.map((p) => p.id)).toEqual(['added', 'new-1', 'new-2']);
     // An egg parent and a sperm parent.
-    expect(result.people[1]!.details).toEqual({ sex: ['female'] });
-    expect(result.people[2]!.details).toEqual({ sex: ['male'] });
+    expect(result.people[1]!.details).toEqual({
+      [config.sexAssignedAtBirthAttribute]: ['female'],
+    });
+    expect(result.people[2]!.details).toEqual({
+      [config.sexAssignedAtBirthAttribute]: ['male'],
+    });
     // Their parents, and nothing more: the two added are not recorded as
     // partners, which the participant was never asked.
     expect(result.links).toEqual([
@@ -640,7 +599,10 @@ describe('planAddRelative', () => {
     // are recorded with different genetic parents.
     expect(result.people).toEqual([
       { id: 'added', details: { name: 'New' } },
-      { id: 'new-1', details: { sex: ['male'] } },
+      {
+        id: 'new-1',
+        details: { [config.sexAssignedAtBirthAttribute]: ['male'] },
+      },
     ]);
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
@@ -1152,7 +1114,9 @@ describe('planAddRelative', () => {
       biologicalParent: 'both',
       carrier: 'otherParent',
     });
-    expect(result.people[1]!.details).toEqual({ sex: ['female'] });
+    expect(result.people[1]!.details).toEqual({
+      [config.sexAssignedAtBirthAttribute]: ['female'],
+    });
     expect(result.links).toEqual([
       {
         source: 'donor',
@@ -1407,7 +1371,7 @@ describe('no addition gives anyone more than two genetic parents', () => {
     // sibling, who does not share the egg donor, is given a stand-in of
     // their own for their egg parent (ruling 25).
     expect(result.people.slice(1).map((p) => p.details)).toEqual([
-      { sex: ['female'] },
+      { [config.sexAssignedAtBirthAttribute]: ['female'] },
     ]);
     expect(result.links).toEqual([
       {
@@ -1478,7 +1442,7 @@ describe('no addition gives anyone more than two genetic parents', () => {
       family,
       anchorId: 'ego',
       newPersonId: 'added',
-      details: { sex: ['male'] },
+      details: { [config.sexAssignedAtBirthAttribute]: ['male'] },
       request: {
         relation: 'parent',
         parentKind: 'biological',
@@ -1527,7 +1491,7 @@ describe('a new parent of the anchor’s siblings', () => {
       family: family(),
       anchorId: 'ego',
       newPersonId: 'added',
-      details: { sex: ['female'] },
+      details: { [config.sexAssignedAtBirthAttribute]: ['female'] },
       request: {
         relation: 'parent',
         parentKind: 'surrogate',
@@ -1590,7 +1554,7 @@ describe('a new parent of the anchor’s siblings', () => {
       family: withCarrier,
       anchorId: 'ego',
       newPersonId: 'added',
-      details: { sex: ['female'] },
+      details: { [config.sexAssignedAtBirthAttribute]: ['female'] },
       request: {
         relation: 'parent',
         parentKind: 'biological',

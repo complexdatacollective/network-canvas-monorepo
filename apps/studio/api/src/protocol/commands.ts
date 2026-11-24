@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
+import { createEmptyProtocol } from '@codaco/protocol-builder-core/empty-protocol';
 import {
   escapeMessageText,
   headingMarkdown,
@@ -40,7 +41,6 @@ import {
   moveStage,
 } from './draft-structure.ts';
 import { PROTOCOL_TABLES } from './schema.ts';
-import { emptyProtocol } from './sectionize.ts';
 import { createProtocol, ProtocolStoreError } from './store.ts';
 
 const { protocols, protocolDrafts } = PROTOCOL_TABLES;
@@ -216,7 +216,7 @@ export const createAuditedProtocol: (
         actorUserId: principal.userId,
       });
       const result = yield* createProtocol(access.teamId, cipher, {
-        protocol: emptyProtocol(Redacted.value(protocolName)),
+        protocol: createEmptyProtocol({ name: Redacted.value(protocolName) }),
         protocolId: input.protocolId,
         draftId: input.draftId,
       });

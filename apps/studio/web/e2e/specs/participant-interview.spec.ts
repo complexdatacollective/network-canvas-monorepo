@@ -79,7 +79,7 @@ async function interviewToFinish(page: Page, link: string): Promise<void> {
   ).toBeVisible();
   await next(page);
 
-  const egoName = page.locator('[data-field-name="ego_name"] input');
+  const egoName = page.getByRole('textbox', { name: 'What is your name?' });
   await egoName.fill('Ada');
   await egoName.blur();
   await expect(page.getByTestId('next-button')).toHaveAccessibleDescription(

@@ -3,27 +3,34 @@ import { describe, expect, it } from 'vitest';
 import type { Variable } from '@codaco/protocol-validation';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../__tests__/testIds';
 import { encryptionFor } from './__tests__/encryptionFixtures';
 import { generateSecureAttributes, writesEncryptedValue } from './utils';
 
+const SECRET = testVariableId('secret');
+const NAME = testVariableId('name');
+const NICKNAME = testVariableId('nickname');
+
 describe('generateSecureAttributes', () => {
-  it('preserves encrypted __proto__ attributes and their metadata as own properties', async () => {
+  // A roster column that names no codebook variable is stored under its own
+  // heading, which may be `__proto__`.
+  it('keeps a __proto__ attribute beside an encrypted one as an own property', async () => {
     const prototypeDescriptor = Object.getOwnPropertyDescriptor(
       Object.prototype,
       '__proto__',
     );
     const attributes: NcNode[EntityAttributesProperty] = Object.fromEntries([
-      ['__proto__', 'secret value'],
+      ['__proto__', 'column value'],
+      [SECRET, 'secret value'],
     ]);
-    const encryptedVariable: Variable = {
-      component: 'Text',
-      encrypted: true,
-      name: '__proto__',
-      type: 'text',
+    const codebookVariables: Record<string, Variable> = {
+      [SECRET]: {
+        component: 'Text',
+        encrypted: true,
+        name: 'secret',
+        type: 'text',
+      },
     };
-    const codebookVariables: Record<string, Variable> = Object.fromEntries([
-      ['__proto__', encryptedVariable],
-    ]);
 
     const { key } = await encryptionFor('test passphrase');
     const { encryptedAttributes, secureAttributes } =
@@ -33,15 +40,13 @@ describe('generateSecureAttributes', () => {
     if (!secureAttributes) {
       throw new Error('Expected encrypted attribute metadata');
     }
-    expect(Object.hasOwn(secureAttributes, '__proto__')).toBe(true);
-    expect(Object.hasOwn(encryptedAttributes, '__proto__')).toBe(true);
-    expect(secureAttributes['__proto__']).toEqual({
-      iv: expect.arrayContaining([expect.any(Number)]),
-    });
-    expect(secureAttributes['__proto__']?.iv).toHaveLength(12);
-    expect(encryptedAttributes['__proto__']).toEqual(
+    expect(Object.keys(secureAttributes)).toEqual([SECRET]);
+    expect(secureAttributes[SECRET]?.iv).toHaveLength(12);
+    expect(encryptedAttributes[SECRET]).toEqual(
       expect.arrayContaining([expect.any(Number)]),
     );
+    expect(Object.hasOwn(encryptedAttributes, '__proto__')).toBe(true);
+    expect(encryptedAttributes['__proto__']).toBe('column value');
     expect(Object.getPrototypeOf(secureAttributes)).toBe(Object.prototype);
     expect(Object.getPrototypeOf(encryptedAttributes)).toBe(Object.prototype);
     expect(
@@ -52,13 +57,13 @@ describe('generateSecureAttributes', () => {
 
 describe('writesEncryptedValue', () => {
   const variables: Record<string, Variable> = {
-    name: {
+    [NAME]: {
       name: 'name',
       type: 'text',
       component: 'Text',
       encrypted: true,
     },
-    nickname: {
+    [NICKNAME]: {
       name: 'nickname',
       type: 'text',
       component: 'Text',
@@ -66,9 +71,9 @@ describe('writesEncryptedValue', () => {
   };
 
   it.each([
-    [{ name: 'Alice' }, true],
-    [{ nickname: 'Al' }, false],
-    [{ name: undefined, nickname: 'Al' }, false],
+    [{ [NAME]: 'Alice' }, true],
+    [{ [NICKNAME]: 'Al' }, false],
+    [{ [NAME]: undefined, [NICKNAME]: 'Al' }, false],
     [{ unknown: 'value' }, false],
   ])(
     'agrees with generateSecureAttributes for %o',

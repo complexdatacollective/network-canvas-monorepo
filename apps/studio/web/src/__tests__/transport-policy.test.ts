@@ -247,6 +247,9 @@ describe('the protocol editor', () => {
     expect(staticImporters(ofModule('runtime/hostSession.ts'))).toEqual([
       'routes/Editor.tsx',
     ]);
+    expect(staticImporters(ofModule('editor/useFieldFocus.ts'))).toEqual([
+      'routes/Editor.tsx',
+    ]);
     expect(staticImporters(ofModule('runtime/hostClient.ts'))).toEqual([
       'routes/Editor.tsx',
       'runtime/hostSession.ts',
@@ -266,6 +269,7 @@ describe('the protocol editor', () => {
           specifier !== '@codaco/protocol-builder/locales',
       ),
     ).toEqual([
+      'editor/useFieldFocus.ts',
       'routes/Editor.tsx',
       'runtime/hostClient.ts',
       'runtime/hostFaults.ts',

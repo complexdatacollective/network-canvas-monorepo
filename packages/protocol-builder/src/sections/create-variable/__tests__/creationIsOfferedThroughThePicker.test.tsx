@@ -28,8 +28,14 @@ import {
   offersCreation,
   openAttributePicker,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
 vi.mock('../../../fields/RichTextField.tsx', () => ({
@@ -227,27 +233,27 @@ const expectNoInventControl = (where: string): void => {
  * below.
  */
 const PICKERS_REACHED: Readonly<Record<string, number>> = {
-  'alter-edge-form-1': 1,
-  'alter-form-1': 2,
-  'anonymisation-1': 0,
-  'categorical-bin-1': 1,
-  'dyad-census-1': 0,
-  'ego-form-1': 1,
-  'family-pedigree-1': 8,
-  'finish': 0,
-  'geospatial-1': 1,
-  'information-1': 0,
-  'language-chooser-1': 0,
-  'name-generator-1': 1,
-  'name-generator-quick-add-1': 1,
-  'name-generator-roster-1': 0,
-  'narrative-1': 2,
-  'narrative-pedigree-1': 1,
-  'network-composer-1': 3,
-  'one-to-many-dyad-census-1': 0,
-  'ordinal-bin-1': 1,
-  'sociogram-1': 3,
-  'tie-strength-census-1': 1,
+  [fixtureStageId('alter-edge-form-1')]: 1,
+  [fixtureStageId('alter-form-1')]: 2,
+  [fixtureStageId('anonymisation-1')]: 0,
+  [fixtureStageId('categorical-bin-1')]: 1,
+  [fixtureStageId('dyad-census-1')]: 0,
+  [fixtureStageId('ego-form-1')]: 1,
+  [fixtureStageId('family-pedigree-1')]: 8,
+  [fixtureStageId('finish')]: 0,
+  [fixtureStageId('geospatial-1')]: 1,
+  [fixtureStageId('information-1')]: 0,
+  [fixtureStageId('language-chooser-1')]: 0,
+  [fixtureStageId('name-generator-1')]: 1,
+  [fixtureStageId('name-generator-quick-add-1')]: 1,
+  [fixtureStageId('name-generator-roster-1')]: 0,
+  [fixtureStageId('narrative-1')]: 2,
+  [fixtureStageId('narrative-pedigree-1')]: 1,
+  [fixtureStageId('network-composer-1')]: 3,
+  [fixtureStageId('one-to-many-dyad-census-1')]: 0,
+  [fixtureStageId('ordinal-bin-1')]: 1,
+  [fixtureStageId('sociogram-1')]: 3,
+  [fixtureStageId('tie-strength-census-1')]: 1,
 };
 
 const pickerTriggersIn = (scope: ParentNode): number =>
@@ -558,7 +564,9 @@ describe('the sites Architect refused creation at stay creation-free', () => {
    * rather than about a window that never draws a create row.
    */
   it('refuses creation on a narrative preset’s grouping attribute, beside a slot that offers it', async () => {
-    const harness = renderStageEditor({ stageId: 'narrative-1' });
+    const harness = renderStageEditor({
+      stageId: fixtureStageId('narrative-1'),
+    });
     await harness.opened();
     const dialog = await openRowDialog(
       harness,
@@ -590,7 +598,9 @@ describe('the sites Architect refused creation at stay creation-free', () => {
    * port a dead affordance.
    */
   it('refuses creation on a narrative pedigree’s affected-status attribute', async () => {
-    const harness = renderStageEditor({ stageId: 'narrative-pedigree-1' });
+    const harness = renderStageEditor({
+      stageId: fixtureStageId('narrative-pedigree-1'),
+    });
     await harness.opened();
     const dialog = await openRowDialog(
       harness,
@@ -630,7 +640,7 @@ describe('a categorical bin invents its attributes from the picker', () => {
 
   it('escalates the bins attribute to the codebook’s editor, on the typed name', async () => {
     const harness = renderStageEditor({
-      stageId: 'categorical-bin-1',
+      stageId: fixtureStageId('categorical-bin-1'),
       registry: categoricalBinStageEditor,
     });
     const dialog = await openPrompt(harness);
@@ -648,7 +658,7 @@ describe('a categorical bin invents its attributes from the picker', () => {
 
   it('keeps the follow-up attribute in the stage draft, and writes it with the stage', async () => {
     const harness = renderStageEditor({
-      stageId: 'categorical-bin-1',
+      stageId: fixtureStageId('categorical-bin-1'),
       registry: categoricalBinStageEditor,
     });
     const dialog = await openPrompt(harness);
@@ -677,7 +687,7 @@ describe('a categorical bin invents its attributes from the picker', () => {
     );
 
     const namedSomethingElse = (codebook: Codebook) =>
-      Object.values(codebook.node?.person?.variables ?? {}).some(
+      Object.values(codebook.node?.[PERSON]?.variables ?? {}).some(
         (variable) =>
           variable.name === 'somethingElse' && variable.type === 'text',
       );
@@ -710,7 +720,7 @@ describe('a categorical bin invents its attributes from the picker', () => {
    */
   it('takes the follow-up attribute back when the prompt is closed without saving', async () => {
     const harness = renderStageEditor({
-      stageId: 'categorical-bin-1',
+      stageId: fixtureStageId('categorical-bin-1'),
       registry: categoricalBinStageEditor,
     });
     const dialog = await openPrompt(harness);
@@ -729,7 +739,7 @@ describe('a categorical bin invents its attributes from the picker', () => {
     await closeRowDialog(harness);
 
     const names = (codebook: Codebook) =>
-      Object.values(codebook.node?.person?.variables ?? {}).map(
+      Object.values(codebook.node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       );
     expect(names(harness.editorCodebook())).not.toContain('somethingElse');

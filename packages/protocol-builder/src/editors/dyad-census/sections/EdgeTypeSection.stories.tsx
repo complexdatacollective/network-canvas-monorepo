@@ -6,13 +6,23 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../../../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../testing/protocolFixture.ts';
 import EdgeTypeSection, { CREATE_EDGE_FIELD } from './EdgeTypeSection.tsx';
 
 /** The stage whose every question records a connection between a pair. */
-const DYAD_CENSUS = sectionId({ kind: 'stage', stageId: 'dyad-census-1' });
+const DYAD_CENSUS = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('dyad-census-1'),
+});
 
 /** The connection type the fixture's prompt was saved pointing at. */
-const KNOWS = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
+const KNOWS = sectionId({
+  kind: 'codebookEdge',
+  typeId: fixtureTypeId('edge', 'knows'),
+});
 
 /**
  * A Dyad Census's own words for this control.
@@ -61,7 +71,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'dyad-census-1',
+    stageId: fixtureStageId('dyad-census-1'),
     // What the host stands in for is the row dialog that edits one question,
     // which is where this control is met.
     sectionTitle: 'One question this stage asks',
@@ -78,7 +88,7 @@ export const ANewQuestion: Story = {};
 
 /** The question as the protocol holds it, recording the connection it names. */
 export const AConnectionAlreadyChosen: Story = {
-  args: { seedEdit: choseConnection('knows') },
+  args: { seedEdit: choseConnection(fixtureTypeId('edge', 'knows')) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     // The stage arrives from the host over a promise, so the editor — and
@@ -100,7 +110,10 @@ export const AConnectionAlreadyChosen: Story = {
  * be chosen.
  */
 export const ASpectator: Story = {
-  args: { readOnly: true, seedEdit: choseConnection('knows') },
+  args: {
+    readOnly: true,
+    seedEdit: choseConnection(fixtureTypeId('edge', 'knows')),
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -147,7 +160,7 @@ export const AConnectionThatMustBeChosen: Story = {
 export const AConnectionTypeThatWasDeleted: Story = {
   args: {
     seedEdit: (host) => {
-      choseConnection('knows')(host);
+      choseConnection(fixtureTypeId('edge', 'knows'))(host);
       host.store.applyAsCollaborator(KNOWS, undefined);
     },
   },

@@ -1986,6 +1986,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property} — cet attribut ne peut pas servir au tri",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "Cette règle désigne un attribut qui ne peut pas servir au tri. Choisissez-en un autre ou supprimez la règle.",
   "protocolBuilder.stageEdit.addFailed": "Cette étape n’a pas pu être ajoutée. Patientez un instant et réessayez.",
+  "protocolBuilder.stageEdit.addInvalidShape": "Cette étape n’a pas pu être ajoutée, car une partie de son contenu n’est pas valide. Vos modifications sont toujours là. Corrigez le problème, puis réessayez d’ajouter l’étape.",
   "protocolBuilder.stageEdit.blockedBy": "{holder} modifie une autre partie du protocole dont cet enregistrement a besoin : rien n’a donc été enregistré, et vos modifications sont toujours là. Réessayez d’enregistrer dans un instant.",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} modifient d’autres parties du protocole dont cet enregistrement a besoin : rien n’a donc été enregistré, et vos modifications sont toujours là. Réessayez d’enregistrer dans un instant.",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "Une autre partie du protocole dont cet enregistrement a besoin est en cours de modification : rien n’a donc été enregistré, et vos modifications sont toujours là. Réessayez d’enregistrer dans un instant.",

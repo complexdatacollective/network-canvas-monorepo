@@ -1,8 +1,12 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import SubjectSection from '../../subject-picker/SubjectSection.tsx';
 import { background } from '../background.tsx';
 import {
@@ -15,13 +19,13 @@ import {
 const Background = background();
 
 const openCircles = () => ({
-  stageId: 'sociogram-1' as const,
+  stageId: fixtureStageId('sociogram-1'),
   sections: <Background />,
   assets: canvasImageAssets,
 });
 
 const openImage = () => ({
-  stage: stageWithImageBackground('sociogram-1'),
+  stage: stageWithImageBackground(fixtureStageId('sociogram-1')),
   sections: <Background />,
   assets: canvasImageAssets,
 });
@@ -35,7 +39,7 @@ const openCirclesWithoutSkew = () => {
   const { type, fields } = loadFixtureStage('sociogram-1');
   return {
     stage: {
-      id: 'sociogram-1-unsaid-skew',
+      id: testId('sociogram-1-unsaid-skew'),
       type,
       fields: { ...fields, background: { concentricCircles: 3 } },
     },

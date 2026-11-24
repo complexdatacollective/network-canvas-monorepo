@@ -1,6 +1,5 @@
 import { isEqual } from 'es-toolkit/compat';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
-import { v4 as uuid } from 'uuid';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
@@ -16,6 +15,7 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
 import {
   type Codebook,
+  createProtocolObjectId,
   EdgeCountComparisons,
   edgeCountNeedsValue,
   type VariableType,
@@ -33,6 +33,7 @@ import DialogForm, {
   type DialogFormErrors,
   type DialogFormProps,
 } from '../form/DialogForm.tsx';
+import { rowId } from '../form/rowDialog.tsx';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useHasProtocolBuilderHost } from '../state/context.ts';
@@ -1718,29 +1719,19 @@ export default function RuleEditorDialog({
   });
 
   /**
-   * The id this session's rule will be filed under.
+   * The id this session's rule will be filed under, decided once so the draft
+   * the dialog validates is the rule it would save.
    *
-   * Decided once per editing session rather than at submit time, so the draft
-   * the dialog VALIDATES is the rule it would save. A rule arriving with no id
-   * — or with something that is not a string, which the protocol schema
-   * refuses just as flatly — is repaired here, and would otherwise be refused
-   * by the very dialog that repairs it: nothing on screen asks for an id, so
-   * there would be no control to answer.
-   *
-   * A string another rule in the same set is already filed under mints too,
-   * and for the same reason: `findDuplicateId` refuses a filter holding one id
-   * twice, so keeping it would save a rule the protocol schema goes on
-   * rejecting. That is the only case in which a rule's own string id is
-   * replaced, and it happens because the researcher opened this rule and
-   * saved it — never behind their back.
-   *
-   * Any other string the rule already has is its identity, and is kept: the
-   * schema accepts it, the row is keyed by it, and replacing one would quietly
-   * rewrite the researcher's protocol.
+   * A new rule arrives with the id the list gave it, and a stored rule keeps
+   * its own. A rule with no id, or with one another rule in the same set is
+   * already filed under, is given a new one: `findDuplicateProtocolObjectIds`
+   * refuses a protocol holding one id twice, and nothing on screen asks for an
+   * id, so there would be no control to answer. That happens only because the
+   * researcher opened this rule and saved it.
    */
   const ruleId = useRef<string | undefined>(undefined);
   ruleId.current ??=
-    typeof seed.id === 'string' && !idIsShared ? seed.id : uuid({});
+    (idIsShared ? undefined : rowId(seed)) ?? createProtocolObjectId();
 
   const validate = useCallback(
     (values: Record<string, FieldValue>): DialogFormErrors | undefined => {

@@ -13,9 +13,11 @@ import {
   type HandlerOverrides,
   type InMemoryHost,
 } from '../../../testing/host/createInMemoryHost.ts';
+import { testId, testTypeId } from '../../../testing/testId.ts';
 import type { ResourceKind } from '../../types.ts';
 
-export const STAGE_SECTION = sectionId({ kind: 'stage', stageId: 'stage-1' });
+const STAGE_ID = testId('resource-host-stage');
+export const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
 const ASSETS_SECTION = sectionId({ kind: 'assets' });
 
 /**
@@ -102,14 +104,14 @@ export function createResourceHost(seed: ResourceHostSeed = {}): InMemoryHost {
         schemaVersion: 9,
         localization: { defaultLocale: 'en-US', locales: ['en-US'] },
       },
-      [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-1'] },
+      [sectionId({ kind: 'stageOrder' })]: { stages: [STAGE_ID] },
       [STAGE_SECTION]: {
-        id: 'stage-1',
+        id: STAGE_ID,
         type: seed.stageType ?? 'Information',
         ...(seed.fields ?? DEFAULT_INFORMATION_FIELDS),
       },
       [ASSETS_SECTION]: assets,
-      [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+      [sectionId({ kind: 'codebookNode', typeId: testTypeId('person') })]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },

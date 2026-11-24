@@ -1,10 +1,9 @@
 import { type Dispatch } from '@reduxjs/toolkit';
-import { v4 as uuid } from 'uuid';
 import { navigate } from 'wouter/use-browser-location';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
+import { createEmptyProtocol } from '@codaco/protocol-builder-core/empty-protocol';
 import {
-  createDefaultFinishSessionStage,
   type CurrentProtocol,
   type ExtractedAsset,
   extractProtocolFromZip,
@@ -644,26 +643,12 @@ export const createNetcanvas = createAppAsyncThunk(
     { name, description, localization }: CreateNetcanvasParams,
     { dispatch },
   ) => {
-    // It holds none of the wording Network Canvas supplies: the interview
-    // shows that for a protocol that does not hold it.
-    const newProtocol: CurrentProtocol = {
-      name,
-      description,
-      schemaVersion: APP_SCHEMA_VERSION,
-      localization,
-      // A new protocol starts with the screen that ends the interview, with
-      // the closing text Network Canvas supplies in each of its languages.
-      stages: [createDefaultFinishSessionStage({ id: uuid(), localization })],
-      codebook: {
-        node: {},
-        edge: {},
-        ego: {},
-      },
-      assetManifest: {},
-    };
-
     await instantiateProtocol(
-      { protocol: newProtocol, name, description },
+      {
+        protocol: createEmptyProtocol({ name, description, localization }),
+        name,
+        description,
+      },
       dispatch,
     );
   },

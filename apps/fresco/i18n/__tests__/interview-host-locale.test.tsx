@@ -15,6 +15,7 @@ import type { CatalogMessages } from '@codaco/app-i18n/locales';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { InterviewPayload } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import InterviewClient from '~/app/(interview)/interview/[interviewId]/InterviewClient';
 import ParticipantLayout from '~/app/(interview)/layout';
 import { FrescoI18nProvider } from '~/i18n/FrescoI18nProvider';
@@ -90,7 +91,7 @@ const payload: InterviewPayload = {
     assets: [],
     stages: [
       {
-        id: 'authored',
+        id: createProtocolObjectId(),
         type: 'Information',
         label: { 'en': 'Original stage label', 'fr-CA': 'Étape originale' },
         content: {

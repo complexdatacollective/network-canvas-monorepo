@@ -1986,6 +1986,7 @@
   "protocolBuilder.sortOrder.unsortableProperty": "{property} — este atributo não pode ser usado para ordenar",
   "protocolBuilder.sortOrder.unsortablePropertyRefusal": "Esta regra aponta para um atributo que não pode ser usado para ordenar. Escolha outro ou exclua a regra.",
   "protocolBuilder.stageEdit.addFailed": "Não foi possível adicionar esta etapa. Aguarde um momento e tente novamente.",
+  "protocolBuilder.stageEdit.addInvalidShape": "Não foi possível adicionar esta etapa porque parte dela não é válida. Suas alterações continuam aqui. Corrija o problema e tente adicionar a etapa novamente.",
   "protocolBuilder.stageEdit.blockedBy": "{holder} está editando outra parte do protocolo de que este salvamento precisa, então nada foi salvo e suas alterações continuam aqui. Tente salvar novamente daqui a pouco.",
   "protocolBuilder.stageEdit.blockedBySeveral": "{holders} estão editando outras partes do protocolo de que este salvamento precisa, então nada foi salvo e suas alterações continuam aqui. Tente salvar novamente daqui a pouco.",
   "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": "Outra parte do protocolo de que este salvamento precisa está sendo editada, então nada foi salvo e suas alterações continuam aqui. Tente salvar novamente daqui a pouco.",

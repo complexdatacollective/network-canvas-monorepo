@@ -45,13 +45,14 @@ const countTagged = (
 // completeness attribute (relatives not recorded) and each nomination
 // prompt's boolean `variable` — and NarrativePedigree diseases[].attribute,
 // plus the two node shape-mapping `variable` fields (discrete and breakpoints arms), plus
-// #1392's four existence-unchecked sites: the shared sort rule `property`
-// (SortRuleSchema, reached by every prompt-level sort order and the roster's
-// stage-level one) and the roster's three data-source column fields
+// #1392's existence-unchecked sites: the shared sort rule `property`
+// (SortRuleSchema, reached by every prompt-level sort order), the roster's
+// stage-level sort rule `property` (DataSourceSortOrderSchema, a column of the
+// roster's data source), and the roster's three data-source column fields
 // (cardOptions.additionalProperties[].variable,
 // sortOptions.sortableProperties[].variable, searchOptions.matchProperties[]).
 // The value is verified against the runtime count computed below.
-const EXPECTED_TAGGED_FIELD_COUNT = 41;
+const EXPECTED_TAGGED_FIELD_COUNT = 42;
 
 // Every slot an interface owns outright, and every slot whose OPTION SET it
 // owns, and every slot whose option LIST a stage manages. All drive
@@ -141,14 +142,20 @@ describe('entity-attribute reference coverage', () => {
     const unchecked = collectDescriptors(CurrentProtocolSchema).filter(
       (descriptor) => descriptor.existence === 'unchecked',
     );
-    // The shared sort rule `property`, and the roster's three column fields.
-    expect(unchecked).toHaveLength(4);
-    // Only the sort rule admits a magic key, and `'*'` is the only one.
+    // The shared sort rule `property`, the roster's own sort rule `property`,
+    // and the roster's three column fields.
+    expect(unchecked).toHaveLength(5);
+    // Only the sort rules admit a magic key, and `'*'` is the only one.
     expect(
       unchecked
         .map((descriptor) => descriptor.ignoreValues)
         .filter((values) => values !== undefined),
-    ).toEqual([['*']]);
+    ).toEqual([['*'], ['*']]);
+    // The roster's four name columns of its data source, which a migration
+    // renaming variables leaves as they are.
+    expect(
+      unchecked.filter((descriptor) => descriptor.dataSourceColumn),
+    ).toHaveLength(4);
   });
 
   it('declares exactly the expected interface-owned option sets', () => {

@@ -12,7 +12,11 @@ import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import type { NodeDefinition } from '@codaco/protocol-validation';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import QuickAddField from './QuickAddField';
+
+const PERSON_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
 
 const customIconOptions = ['add-a-person', 'add-a-place'];
 
@@ -27,13 +31,13 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
   id: 'test-protocol',
   codebook: {
     node: {
-      person: {
+      [PERSON_TYPE]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon,
         variables: {
-          name: {
+          [NAME_VAR]: {
             name: 'Name',
             type: 'text',
           },
@@ -48,7 +52,7 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
       label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
-        type: 'person',
+        type: PERSON_TYPE,
       },
       ...(maxNodes > 0 ? { behaviours: { maxNodes } } : {}),
       prompts: [
@@ -216,7 +220,7 @@ const formSubmitAction = fn().mockName('form-submitted');
 
 export const Default: Story = {
   args: {
-    name: 'name',
+    name: NAME_VAR,
     placeholder: 'Type a name and press enter...',
     disabled: false,
   },
@@ -235,7 +239,7 @@ export const Default: Story = {
 
 export const WithLucideIcon: Story = {
   args: {
-    name: 'name',
+    name: NAME_VAR,
     placeholder: 'Type a name and press enter...',
     disabled: false,
     icon: 'Smartphone',
@@ -255,7 +259,7 @@ export const WithLucideIcon: Story = {
 
 export const WithValidation: Story = {
   args: {
-    name: 'name',
+    name: NAME_VAR,
     placeholder: 'Enter at least 2 characters...',
     disabled: false,
     required: true,
@@ -296,7 +300,7 @@ async function showSettledHint(canvasElement: HTMLElement) {
 
 export const UsageHint: Story = {
   args: {
-    name: 'name',
+    name: NAME_VAR,
     placeholder: 'Type a name and press enter...',
     disabled: false,
     maxNodes: 1,
@@ -321,7 +325,7 @@ export const UsageHint: Story = {
 
 export const Disabled: Story = {
   args: {
-    name: 'name',
+    name: NAME_VAR,
     placeholder: 'Type a name...',
     disabled: true,
   },
@@ -344,14 +348,14 @@ const slowRefusal: FormSubmitHandler = async () => {
   return {
     success: false,
     fieldErrors: {
-      name: [createMessageError(formMessages.submitFailed)],
+      [NAME_VAR]: [createMessageError(formMessages.submitFailed)],
     },
   };
 };
 
 export const ClosingWhileAdding: Story = {
   args: {
-    name: 'name',
+    name: NAME_VAR,
     placeholder: 'Type a name and press enter...',
     disabled: false,
   },

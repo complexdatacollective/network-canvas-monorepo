@@ -4,6 +4,10 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import {
+  fixtureStageId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { informationStageEditor } from './InformationStageEditor.ts';
 
@@ -11,7 +15,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Information',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'information-1',
+    stageId: fixtureStageId('information-1'),
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
@@ -95,7 +99,9 @@ export const ShowingAValue: Story = {
         canvas.getByRole('region', {
           name: 'What the host was asked to commit',
         }),
-      ).toHaveTextContent('"path": "ego.ego_name"');
+      ).toHaveTextContent(
+        `"egoName": { "path": "ego.${fixtureVariableId('ego', 'ego_name')}" }`,
+      );
     });
   },
 };

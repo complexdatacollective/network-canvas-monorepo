@@ -7,6 +7,7 @@ import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   createDefaultFinishSessionStage,
+  createProtocolObjectId,
   type FilterOperator,
   filterRuleSchema,
   filterValueSchema,
@@ -21,6 +22,7 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../testing/attributePicker.ts';
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import {
   canAuthorRuleForType,
   type OperandControl,
@@ -34,6 +36,17 @@ import RuleEditorDialog, { type RuleTypeOption } from '../RuleEditorDialog.tsx';
 import { ruleSetTargets } from '../ruleSet.ts';
 import { RuleEditorHost, STAGE_SECTION } from './ruleEditorHost.tsx';
 
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
+const AGE = testVariableId('age');
+const BAND = testVariableId('band');
+const BORN = testVariableId('born');
+const CLOSENESS = testVariableId('closeness');
+const MOOD = testVariableId('mood');
+const NOTE = testVariableId('note');
+const FLAG = testVariableId('flag');
+const SPOT = testVariableId('spot');
+
 /**
  * One attribute of every type the schema has, so the sweep below covers the
  * catalogue rather than a selection from it.
@@ -41,44 +54,44 @@ import { RuleEditorHost, STAGE_SECTION } from './ruleEditorHost.tsx';
  * The names are what the picker shows; the ids are what a rule stores.
  */
 const ATTRIBUTES: Readonly<Record<VariableType, string>> = Object.freeze({
-  boolean: 'flag',
-  text: 'note',
-  number: 'age',
-  scalar: 'closeness',
-  datetime: 'born',
-  ordinal: 'band',
-  categorical: 'mood',
-  location: 'place',
-  layout: 'spot',
+  boolean: FLAG,
+  text: NOTE,
+  number: AGE,
+  scalar: CLOSENESS,
+  datetime: BORN,
+  ordinal: BAND,
+  categorical: MOOD,
+  location: PLACE,
+  layout: SPOT,
 });
 
 const personVariables: SectionDoc['variables'] = {
-  flag: {
+  [FLAG]: {
     name: 'Flag',
     type: 'boolean',
     component: 'Boolean',
   },
-  note: {
+  [NOTE]: {
     name: 'Note',
     type: 'text',
     component: 'Text',
   },
-  age: {
+  [AGE]: {
     name: 'Age',
     type: 'number',
     component: 'Number',
   },
-  closeness: {
+  [CLOSENESS]: {
     name: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
   },
-  born: {
+  [BORN]: {
     name: 'Born',
     type: 'datetime',
     component: 'DatePicker',
   },
-  band: {
+  [BAND]: {
     name: 'Band',
     type: 'ordinal',
     component: 'RadioGroup',
@@ -87,7 +100,7 @@ const personVariables: SectionDoc['variables'] = {
       { label: { en: 'High' }, value: 2 },
     ],
   },
-  mood: {
+  [MOOD]: {
     name: 'Mood',
     type: 'categorical',
     component: 'CheckboxGroup',
@@ -98,8 +111,8 @@ const personVariables: SectionDoc['variables'] = {
   },
   // The two the schema calls non-renderable: they are recorded by the stage
   // that captures them rather than by a form control, so they carry none.
-  place: { name: 'Place', type: 'location' },
-  spot: { name: 'Spot', type: 'layout' },
+  [PLACE]: { name: 'Place', type: 'location' },
+  [SPOT]: { name: 'Spot', type: 'layout' },
 };
 
 const personDefinition = {
@@ -111,14 +124,20 @@ const personDefinition = {
 
 const settingsSection = sectionId({ kind: 'settings' });
 const stageOrderSection = sectionId({ kind: 'stageOrder' });
-const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const personSection = sectionId({ kind: 'codebookNode', typeId: PERSON });
+
+const STAGE_ID = createProtocolObjectId();
 
 const stageFields: SectionDoc = {
   label: { en: 'Details' },
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: PERSON },
   form: {
     fields: [
-      { id: 'field-1', variable: 'age', prompt: { en: 'How old are they?' } },
+      {
+        id: createProtocolObjectId(),
+        variable: AGE,
+        prompt: { en: 'How old are they?' },
+      },
     ],
   },
 };
@@ -129,12 +148,12 @@ const baseSections: Record<string, SectionDoc> = {
     schemaVersion: 9,
     localization: { defaultLocale: 'en', locales: ['en'] },
   },
-  [stageOrderSection]: { stages: ['stage-1'] },
-  [STAGE_SECTION]: { id: 'stage-1', type: 'AlterForm', ...stageFields },
+  [stageOrderSection]: { stages: [STAGE_ID] },
+  [STAGE_SECTION]: { id: STAGE_ID, type: 'AlterForm', ...stageFields },
   [personSection]: personDefinition,
 };
 
-const codebook = { node: { person: personDefinition } };
+const codebook = { node: { [PERSON]: personDefinition } };
 
 const RULE_TYPES: readonly RuleTypeOption[] = [
   {
@@ -289,12 +308,15 @@ const protocolWith = (rule: RuleDraft): unknown =>
     codebook,
     stages: [
       {
-        id: 'stage-1',
+        id: STAGE_ID,
         type: 'AlterForm',
         ...stageFields,
         filter: { rules: [rule] },
       },
-      createDefaultFinishSessionStage({ id: 'finish', localization }),
+      createDefaultFinishSessionStage({
+        id: createProtocolObjectId(),
+        localization,
+      }),
     ],
   });
 
@@ -479,11 +501,11 @@ describe('an operand the rule already holds', () => {
  */
 describe('an ordinal rule already comparing against a set of options', () => {
   const storedSet: RuleDraft = {
-    id: 'rule-a',
+    id: createProtocolObjectId(),
     type: 'node',
     options: {
-      type: 'person',
-      attribute: 'band',
+      type: PERSON,
+      attribute: BAND,
       operator: 'INCLUDES',
       value: [1, 2],
     },

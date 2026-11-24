@@ -2,10 +2,17 @@ import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import SummaryContext from '../../SummaryContext';
 import NarrativePedigree from '../NarrativePedigree';
+
+const PERSON = testTypeId('person');
+const HAS_CONDITION = testVariableId('has_condition');
 
 const protocol = {
   schemaVersion: 9,
@@ -13,12 +20,12 @@ const protocol = {
   localization: { defaultLocale: 'en', locales: ['en'] },
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          has_condition: {
+          [HAS_CONDITION]: {
             name: 'has_condition',
             type: 'boolean',
           },
@@ -35,18 +42,18 @@ const protocol = {
       type: 'FamilyPedigree',
       wording: familyPedigreeWordingIn(),
       label: { en: 'Your family' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       prompt: { en: 'Draw your family.' },
       nodeConfiguration: {
-        nameAttribute: 'name',
-        sexAssignedAtBirthAttribute: 'sex',
-        egoAttribute: 'is_ego',
+        nameAttribute: testVariableId('name'),
+        sexAssignedAtBirthAttribute: testVariableId('sex'),
+        egoAttribute: testVariableId('is_ego'),
       },
       edgeConfiguration: {
-        type: 'family',
-        kindAttribute: 'kind',
-        gestationalCarrierAttribute: 'carrier',
-        currentPartnerAttribute: 'current',
+        type: testTypeId('family'),
+        kindAttribute: testVariableId('kind'),
+        gestationalCarrierAttribute: testVariableId('carrier'),
+        currentPartnerAttribute: testVariableId('current'),
       },
     },
   ],
@@ -54,7 +61,7 @@ const protocol = {
 
 const index = [
   {
-    id: 'has_condition',
+    id: HAS_CONDITION,
     name: 'has_condition',
     type: 'boolean',
     stages: [],
@@ -76,7 +83,7 @@ const renderSummary = (
             id: 'condition',
             label: { en: 'This condition' },
             color: 'node-color-seq-3',
-            attribute: 'has_condition',
+            attribute: HAS_CONDITION,
             inheritancePattern: 'xLinkedRecessive',
           },
         ]}

@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "living_situation": {
+        "8fd5b021-f996-5753-af9a-b7ebd82d0e0a": {
           "name": "living_situation",
           "type": "categorical",
           "component": "ToggleButtonGroup",
@@ -56,7 +56,7 @@
             "required": true
           }
         },
-        "self_rated_health": {
+        "cf649b45-7f25-53d7-a1b0-48204851eb9d": {
           "name": "self_rated_health",
           "type": "ordinal",
           "component": "LikertScale",
@@ -96,7 +96,7 @@
             "required": true
           }
         },
-        "ucla_1": {
+        "598c5bf2-a20f-59e2-bf83-aa3efe3dad0d": {
           "name": "ucla_1",
           "type": "ordinal",
           "component": "LikertScale",
@@ -124,7 +124,7 @@
             "required": true
           }
         },
-        "ucla_2": {
+        "e911117f-3511-538d-a285-7f57cce1f4d5": {
           "name": "ucla_2",
           "type": "ordinal",
           "component": "LikertScale",
@@ -152,7 +152,7 @@
             "required": true
           }
         },
-        "ucla_3": {
+        "a1449591-0ad8-58e6-aa39-50bb319e9ba6": {
           "name": "ucla_3",
           "type": "ordinal",
           "component": "LikertScale",
@@ -180,7 +180,7 @@
             "required": true
           }
         },
-        "djg_1": {
+        "7381ec9d-332f-503e-90ca-4e073c0ca358": {
           "name": "djg_1",
           "type": "ordinal",
           "component": "LikertScale",
@@ -208,7 +208,7 @@
             "required": true
           }
         },
-        "djg_2": {
+        "f6db20d6-40a1-5317-834c-c8e0efbb0e2a": {
           "name": "djg_2",
           "type": "ordinal",
           "component": "LikertScale",
@@ -236,7 +236,7 @@
             "required": true
           }
         },
-        "djg_3": {
+        "c4ef2909-0dfd-59df-ba69-7c93cafee300": {
           "name": "djg_3",
           "type": "ordinal",
           "component": "LikertScale",
@@ -264,7 +264,7 @@
             "required": true
           }
         },
-        "djg_4": {
+        "270990b2-e00a-53e7-b8ad-deb507fc0163": {
           "name": "djg_4",
           "type": "ordinal",
           "component": "LikertScale",
@@ -292,7 +292,7 @@
             "required": true
           }
         },
-        "djg_5": {
+        "e8a745e4-fd90-5e92-8062-df53a4c6a259": {
           "name": "djg_5",
           "type": "ordinal",
           "component": "LikertScale",
@@ -320,7 +320,7 @@
             "required": true
           }
         },
-        "djg_6": {
+        "eb01f03c-86ad-5532-a578-320fb89d35f5": {
           "name": "djg_6",
           "type": "ordinal",
           "component": "LikertScale",
@@ -348,7 +348,7 @@
             "required": true
           }
         },
-        "lsns_1": {
+        "0e2e25d5-6278-533b-b308-03c87adff6e3": {
           "name": "lsns_1",
           "type": "ordinal",
           "component": "LikertScale",
@@ -394,7 +394,7 @@
             "required": true
           }
         },
-        "lsns_2": {
+        "8fdb112b-aa56-5307-b338-91dcc5397cbc": {
           "name": "lsns_2",
           "type": "ordinal",
           "component": "LikertScale",
@@ -440,7 +440,7 @@
             "required": true
           }
         },
-        "lsns_3": {
+        "83f3b409-6578-52fa-8974-4666243a371c": {
           "name": "lsns_3",
           "type": "ordinal",
           "component": "LikertScale",
@@ -486,7 +486,7 @@
             "required": true
           }
         },
-        "lsns_4": {
+        "86ff189f-008a-5c80-ac8d-b532c6c0b3f5": {
           "name": "lsns_4",
           "type": "ordinal",
           "component": "LikertScale",
@@ -532,7 +532,7 @@
             "required": true
           }
         },
-        "lsns_5": {
+        "bb57bf34-b3f4-52dd-b2d7-c59de7aa2862": {
           "name": "lsns_5",
           "type": "ordinal",
           "component": "LikertScale",
@@ -578,7 +578,7 @@
             "required": true
           }
         },
-        "lsns_6": {
+        "700e979c-9de3-5ef3-8970-d616a8e06bff": {
           "name": "lsns_6",
           "type": "ordinal",
           "component": "LikertScale",
@@ -627,7 +627,7 @@
       }
     },
     "node": {
-      "person": {
+      "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44": {
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -635,7 +635,7 @@
           "default": "circle"
         },
         "variables": {
-          "alter_name": {
+          "e7f01cc2-dd54-5b6d-b763-39861a3b048d": {
             "name": "alter_name",
             "type": "text",
             "component": "Text",
@@ -644,7 +644,7 @@
               "unique": true
             }
           },
-          "relationship": {
+          "a255a742-3ffd-5bd8-baca-3b2146a3c83f": {
             "name": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -687,7 +687,7 @@
               }
             ]
           },
-          "contact_frequency": {
+          "1a72056d-4728-52cf-8da3-0ef35af4ced4": {
             "name": "contact_frequency",
             "type": "ordinal",
             "component": "LikertScale",
@@ -724,7 +724,7 @@
               }
             ]
           },
-          "contact_mode": {
+          "7a252a26-6e00-5fb2-8cab-7851fd9b7e89": {
             "name": "contact_mode",
             "type": "categorical",
             "component": "CheckboxGroup",
@@ -761,7 +761,7 @@
               }
             ]
           },
-          "lives_with": {
+          "ad68b917-01b5-5ca5-9ff2-ec2d87909937": {
             "name": "lives_with",
             "type": "boolean",
             "component": "Boolean",
@@ -780,7 +780,7 @@
               }
             ]
           },
-          "support_emotional": {
+          "ab49bdab-8214-51da-87f2-a7d2118c5c94": {
             "name": "support_emotional",
             "type": "boolean",
             "component": "Boolean",
@@ -799,7 +799,7 @@
               }
             ]
           },
-          "support_practical": {
+          "47b0e635-3e85-5690-90e1-6a1f41cf3f3d": {
             "name": "support_practical",
             "type": "boolean",
             "component": "Boolean",
@@ -818,7 +818,7 @@
               }
             ]
           },
-          "age_band": {
+          "0168c451-d54d-59a3-a730-ecbf8a722e50": {
             "name": "age_band",
             "type": "ordinal",
             "component": "LikertScale",
@@ -861,7 +861,7 @@
               }
             ]
           },
-          "closeness": {
+          "99588212-bd4c-502f-af82-e3135ddee321": {
             "name": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
@@ -896,7 +896,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "f6ec9722-15d9-5b94-a240-8464ac326315": {
         "name": "Knows",
         "color": "edge-color-seq-1"
       }
@@ -904,7 +904,7 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "565fc637-65db-51ad-a80c-83a7acad8cba",
       "type": "Information",
       "label": {
         "en": "Template notes (delete before fielding)"
@@ -914,7 +914,7 @@
       }
     },
     {
-      "id": "information-intro",
+      "id": "c4f60092-2ee6-5079-9569-e5faf5e7ec87",
       "type": "Information",
       "label": {
         "en": "Welcome"
@@ -924,7 +924,7 @@
       }
     },
     {
-      "id": "ego-form-demographics",
+      "id": "d079a547-616d-5d45-86d7-d5ecd9baa0f4",
       "type": "EgoForm",
       "label": {
         "en": "About You"
@@ -940,15 +940,15 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "living_situation",
+            "id": "0a8d0024-ce5f-5847-bca0-4c3e6ed3a2ee",
+            "variable": "8fd5b021-f996-5753-af9a-b7ebd82d0e0a",
             "prompt": {
               "en": "Which of the following best describes your current living situation?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "self_rated_health",
+            "id": "5a0dfc9c-2a96-5d4d-a200-10b1a550d78c",
+            "variable": "cf649b45-7f25-53d7-a1b0-48204851eb9d",
             "prompt": {
               "en": "In general, how would you rate your health?"
             }
@@ -957,7 +957,7 @@
       }
     },
     {
-      "id": "name-generator-confidants",
+      "id": "7c48a912-1080-56e4-a7f1-aa5340f19428",
       "type": "NameGenerator",
       "label": {
         "en": "People You Discuss Important Matters With"
@@ -965,7 +965,7 @@
       "interviewScript": "Use the standard General Social Survey 'important matters' confidant generator. Allow the respondent to name as many or as few people as they wish; do not prompt for a target number.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
       },
       "form": {
         "title": {
@@ -973,8 +973,8 @@
         },
         "fields": [
           {
-            "id": "field-1",
-            "variable": "alter_name",
+            "id": "9770e7b6-ce55-5c6f-84b0-b8064e76d341",
+            "variable": "e7f01cc2-dd54-5b6d-b763-39861a3b048d",
             "prompt": {
               "en": "What is this person's first name or initials?"
             }
@@ -983,7 +983,7 @@
       },
       "prompts": [
         {
-          "id": "gss-important-matters",
+          "id": "b4c69670-b40b-5823-b7fb-bed8890fcc9e",
           "text": {
             "en": "Looking back over the last six months, who are the people with whom you discussed matters important to you?"
           }
@@ -991,7 +991,7 @@
       ]
     },
     {
-      "id": "ordinal-bin-closeness",
+      "id": "b9467f7f-235e-53d7-8ff8-bdbf5109e98c",
       "behaviours": {
         "interactionMode": "select"
       },
@@ -1001,21 +1001,21 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
       },
       "prompts": [
         {
-          "id": "closeness-bands",
+          "id": "6322db56-1879-58c0-9fb8-24e5378c1052",
           "text": {
             "en": "For each person, tap the band that best describes how close you feel to them, from **not close** to **very close**."
           },
-          "variable": "closeness",
+          "variable": "99588212-bd4c-502f-af82-e3135ddee321",
           "color": "ord-color-seq-1"
         }
       ]
     },
     {
-      "id": "alter-form-attributes-introduction",
+      "id": "de0b2776-f090-5204-bb8a-7ed205bd2062",
       "type": "Information",
       "label": {
         "en": "A little more about each person"
@@ -1025,7 +1025,7 @@
       }
     },
     {
-      "id": "alter-form-attributes",
+      "id": "70b1bafd-951c-5c2a-bb45-c7b25e4f2de9",
       "dynamicValues": {
         "nodeLabel": {
           "path": "node.$label"
@@ -1037,34 +1037,34 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "relationship",
+            "id": "c925e462-eefb-5676-bbf3-d560fff51054",
+            "variable": "a255a742-3ffd-5bd8-baca-3b2146a3c83f",
             "prompt": {
               "en": "What is {nodeLabel}'s relationship to you?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "age_band",
+            "id": "74530d6a-8b2d-57e2-9d47-bbe2b80ae362",
+            "variable": "0168c451-d54d-59a3-a730-ecbf8a722e50",
             "prompt": {
               "en": "Roughly how old is {nodeLabel}?"
             }
           },
           {
-            "id": "field-3",
-            "variable": "contact_frequency",
+            "id": "b60cfc0e-0172-5c00-8be8-3f96a699d7e2",
+            "variable": "1a72056d-4728-52cf-8da3-0ef35af4ced4",
             "prompt": {
               "en": "How often are you in contact with {nodeLabel}?"
             }
           },
           {
-            "id": "field-4",
-            "variable": "contact_mode",
+            "id": "c6d1f5b6-bbfd-5f19-ac25-9fa9c70e03a3",
+            "variable": "7a252a26-6e00-5fb2-8cab-7851fd9b7e89",
             "prompt": {
               "en": "How do you usually keep in contact with {nodeLabel}?"
             },
@@ -1073,15 +1073,15 @@
             }
           },
           {
-            "id": "field-5",
-            "variable": "lives_with",
+            "id": "657599fe-a1b0-5657-914f-ecb7a1629b09",
+            "variable": "ad68b917-01b5-5ca5-9ff2-ec2d87909937",
             "prompt": {
               "en": "Does {nodeLabel} live with you?"
             }
           },
           {
-            "id": "field-6",
-            "variable": "support_emotional",
+            "id": "08fe5f14-c7f8-56ea-bdab-0b3b5d50d9b3",
+            "variable": "ab49bdab-8214-51da-87f2-a7d2118c5c94",
             "prompt": {
               "en": "Could you turn to {nodeLabel} for **emotional** support?"
             },
@@ -1090,8 +1090,8 @@
             }
           },
           {
-            "id": "field-7",
-            "variable": "support_practical",
+            "id": "e754b3b4-a18c-56a7-a4e6-cd5e37df3801",
+            "variable": "47b0e635-3e85-5690-90e1-6a1f41cf3f3d",
             "prompt": {
               "en": "Could you turn to {nodeLabel} for **practical** support?"
             },
@@ -1103,7 +1103,7 @@
       }
     },
     {
-      "id": "dyad-census-knows",
+      "id": "5fc74b33-bdd9-51c3-9921-7a64ec459d04",
       "dynamicValues": {
         "focalLabel": {
           "path": "one_to_many.focal.$label"
@@ -1116,23 +1116,23 @@
       "interviewScript": "For each person in turn, the respondent taps everyone else that person knows. This systematically elicits the complete set of alter-alter ties — more reliably than a free-draw sociogram, which tends to under-capture them — giving the density and fragmentation measures that isolation analysis depends on. It is also lower-burden than an all-pairs dyad census.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
       },
       "behaviours": {
         "removeAfterConsideration": true
       },
       "prompts": [
         {
-          "id": "p-knows",
+          "id": "5f545490-7a1e-5d85-b5f2-ad857b1728d0",
           "text": {
             "en": "Tap **everyone else who knows {focalLabel}**, as far as you are aware."
           },
-          "createEdge": "knows"
+          "createEdge": "f6ec9722-15d9-5b94-a240-8464ac326315"
         }
       ]
     },
     {
-      "id": "ego-form-scales",
+      "id": "36bb21b9-e6d7-5eca-92ad-a8fe4e093b19",
       "type": "EgoForm",
       "label": {
         "en": "Your Feelings About Connection"
@@ -1148,106 +1148,106 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "ucla_1",
+            "id": "7c666129-db86-533c-9173-fb7560671fa9",
+            "variable": "598c5bf2-a20f-59e2-bf83-aa3efe3dad0d",
             "prompt": {
               "en": "How often do you feel that you lack companionship?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "ucla_2",
+            "id": "195ebb04-487c-58e4-a6b5-d72d4bca4ec3",
+            "variable": "e911117f-3511-538d-a285-7f57cce1f4d5",
             "prompt": {
               "en": "How often do you feel left out?"
             }
           },
           {
-            "id": "field-3",
-            "variable": "ucla_3",
+            "id": "d391946b-f0c6-5b7f-9a39-38917cfcfe35",
+            "variable": "a1449591-0ad8-58e6-aa39-50bb319e9ba6",
             "prompt": {
               "en": "How often do you feel isolated from others?"
             }
           },
           {
-            "id": "field-4",
-            "variable": "djg_1",
+            "id": "48ad402c-46e9-5e55-81f8-d537d419e807",
+            "variable": "7381ec9d-332f-503e-90ca-4e073c0ca358",
             "prompt": {
               "en": "I experience a general sense of emptiness."
             }
           },
           {
-            "id": "field-5",
-            "variable": "djg_2",
+            "id": "3578e9ab-5f3e-517e-b391-849ed23621fd",
+            "variable": "f6db20d6-40a1-5317-834c-c8e0efbb0e2a",
             "prompt": {
               "en": "I miss having people around me."
             }
           },
           {
-            "id": "field-6",
-            "variable": "djg_3",
+            "id": "eda179ea-ad0f-5040-ad26-62b6627bfb76",
+            "variable": "c4ef2909-0dfd-59df-ba69-7c93cafee300",
             "prompt": {
               "en": "I often feel rejected."
             }
           },
           {
-            "id": "field-7",
-            "variable": "djg_4",
+            "id": "0b3d95ec-4f80-5a4e-ae6e-e84cc199dd15",
+            "variable": "270990b2-e00a-53e7-b8ad-deb507fc0163",
             "prompt": {
               "en": "There are plenty of people I can rely on when I have problems."
             }
           },
           {
-            "id": "field-8",
-            "variable": "djg_5",
+            "id": "6a213ca0-b424-5707-bd93-5da25a038d0d",
+            "variable": "e8a745e4-fd90-5e92-8062-df53a4c6a259",
             "prompt": {
               "en": "There are many people I can trust completely."
             }
           },
           {
-            "id": "field-9",
-            "variable": "djg_6",
+            "id": "c2c2e7ee-2eac-5def-a608-1a03f7058e42",
+            "variable": "eb01f03c-86ad-5532-a578-320fb89d35f5",
             "prompt": {
               "en": "There are enough people I feel close to."
             }
           },
           {
-            "id": "field-10",
-            "variable": "lsns_1",
+            "id": "eda49843-928a-559b-b2ec-0dbbca6424f4",
+            "variable": "0e2e25d5-6278-533b-b308-03c87adff6e3",
             "prompt": {
               "en": "Thinking about your relatives, how many do you see or hear from at least once a month?"
             }
           },
           {
-            "id": "field-11",
-            "variable": "lsns_2",
+            "id": "9e1608ca-a402-5f74-8ce9-d508a5e345c6",
+            "variable": "8fdb112b-aa56-5307-b338-91dcc5397cbc",
             "prompt": {
               "en": "How many relatives do you feel close enough to that you can talk to them about private matters?"
             }
           },
           {
-            "id": "field-12",
-            "variable": "lsns_3",
+            "id": "1e8551c6-e745-5a38-b97c-c0f103d6ce73",
+            "variable": "83f3b409-6578-52fa-8974-4666243a371c",
             "prompt": {
               "en": "How many relatives do you feel close enough to that you could call on them for help?"
             }
           },
           {
-            "id": "field-13",
-            "variable": "lsns_4",
+            "id": "6cdbf93d-2b60-54b3-9980-0d1d7040d0bf",
+            "variable": "86ff189f-008a-5c80-ac8d-b532c6c0b3f5",
             "prompt": {
               "en": "Thinking about your friends, how many do you see or hear from at least once a month?"
             }
           },
           {
-            "id": "field-14",
-            "variable": "lsns_5",
+            "id": "342d515a-b4a0-5fe6-8e1b-e16a943b0d0d",
+            "variable": "bb57bf34-b3f4-52dd-b2d7-c59de7aa2862",
             "prompt": {
               "en": "How many friends do you feel close enough to that you can talk to them about private matters?"
             }
           },
           {
-            "id": "field-15",
-            "variable": "lsns_6",
+            "id": "02f857c1-1d15-54bd-bc64-7174c6bcb589",
+            "variable": "700e979c-9de3-5ef3-8970-d616a8e06bff",
             "prompt": {
               "en": "How many friends do you feel close enough to that you could call on them for help?"
             }
@@ -1256,7 +1256,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "33da0db7-03d6-53d9-a47d-1519b7db6722",
       "finishLabel": {
         "en": "Finish"
       },

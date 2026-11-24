@@ -5,6 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import GenderIdentityWordsSummaryField from './GenderIdentityWordsSummaryField.tsx';
 
 /**
@@ -67,7 +68,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     sectionTitle: 'Person attributes',
     children: <GenderIdentityWordsSummary />,
   },

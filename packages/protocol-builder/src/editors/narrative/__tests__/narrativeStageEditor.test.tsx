@@ -6,12 +6,23 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import {
   expectOpenedAsANewStage,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { addPreset, narrativeEditor, presetsOf } from './narrativeFixtures.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
 
 const openFixture = () =>
   renderStageEditor({ stageId: 'narrative-1', editor: narrativeEditor });
@@ -20,7 +31,7 @@ const openFixture = () =>
 const openNewStage = () =>
   renderStageEditor({
     stage: {
-      id: 'narrative-new',
+      id: testId('narrative-new'),
       type: 'Narrative',
       fields: getInterfaceTemplate('Narrative'),
     },
@@ -85,7 +96,7 @@ describe('the narrative stage editor', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Layout attribute'),
-      'layout',
+      LAYOUT,
     );
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
@@ -98,7 +109,7 @@ describe('the narrative stage editor', () => {
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
       label: { 'en-US': 'Story' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       background: { concentricCircles: 4 },
     });
     expect(presetsOf(saved?.stageDocument ?? {})).toHaveLength(1);
@@ -178,13 +189,13 @@ describe('the narrative stage editor', () => {
         type: 'Narrative',
         fields: {
           label: { 'en-US': 'Story' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           behaviours: { automaticLayout: true },
           presets: [
             {
-              id: 'preset-1',
+              id: testId('preset-1'),
               label: { 'en-US': 'Default' },
-              layoutVariable: 'layout',
+              layoutVariable: LAYOUT,
             },
           ],
         },

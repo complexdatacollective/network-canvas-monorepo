@@ -6,6 +6,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import EdgeTypeSection from '../editors/dyad-census/sections/EdgeTypeSection.tsx';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import { PromptTextField, PromptTextPreview } from './PromptTextField.tsx';
 
 /**
@@ -77,7 +78,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'dyad-census-1',
+    stageId: fixtureStageId('dyad-census-1'),
     // What the host stands in for is the row dialog that edits one question.
     sectionTitle: 'One question this stage asks',
     children: <TheQuestion item={{}} />,

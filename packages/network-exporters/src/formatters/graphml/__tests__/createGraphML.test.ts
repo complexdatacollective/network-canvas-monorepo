@@ -16,6 +16,7 @@ import {
   ncUUIDProperty,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { ExportOptions } from '../../../options';
 import {
   mockCodebook,
@@ -55,10 +56,10 @@ const buildXML = async (
 };
 
 describe('buildGraphML', () => {
-  const edgeTypeDef = mockCodebook.edge?.['mock-edge-type'] as
+  const edgeTypeDef = mockCodebook.edge?.[testTypeId('mock-edge-type')] as
     | { name: string }
     | undefined;
-  const nodeTypeDef = mockCodebook.node?.['mock-node-type'] as
+  const nodeTypeDef = mockCodebook.node?.[testTypeId('mock-node-type')] as
     | { name: string }
     | undefined;
   if (!edgeTypeDef || !nodeTypeDef)
@@ -142,9 +143,9 @@ describe('buildGraphML', () => {
 
       expect(graphData).toMatchObject({
         [ncUUIDProperty]: 'ego-id-1',
-        'mock-uuid-1': 'Enzo',
-        'mock-uuid-2': '40',
-        'mock-uuid-3': 'false',
+        [testVariableId('mock-uuid-1')]: 'Enzo',
+        [testVariableId('mock-uuid-2')]: '40',
+        [testVariableId('mock-uuid-3')]: 'false',
       });
     });
   });
@@ -152,16 +153,22 @@ describe('buildGraphML', () => {
   it('infers int types', () => {
     // This indicates that transposition worked for nodes
     expect(
-      xml.getElementById('mock-uuid-2')?.getAttribute('attr.type'),
+      xml
+        .getElementById(testVariableId('mock-uuid-2'))
+        ?.getAttribute('attr.type'),
     ).toEqual('int');
   });
 
   it('converts layout types', () => {
     expect(
-      xml.getElementById('mock-uuid-3_X')?.getAttribute('attr.type'),
+      xml
+        .getElementById(`${testVariableId('mock-uuid-3')}_X`)
+        ?.getAttribute('attr.type'),
     ).toEqual('double');
     expect(
-      xml.getElementById('mock-uuid-3_Y')?.getAttribute('attr.type'),
+      xml
+        .getElementById(`${testVariableId('mock-uuid-3')}_Y`)
+        ?.getAttribute('attr.type'),
     ).toEqual('double');
   });
 
@@ -179,11 +186,11 @@ describe('buildGraphML', () => {
 
     const zeroValue = getDataElementByKey(
       Array.from(carl.getElementsByTagName('data')),
-      'mock-uuid-2',
+      testVariableId('mock-uuid-2'),
     );
     const falseValue = getDataElementByKey(
       Array.from(carl.getElementsByTagName('data')),
-      'mock-uuid-4',
+      testVariableId('mock-uuid-4'),
     );
 
     expect(zeroValue?.textContent).toEqual('0');
@@ -217,17 +224,17 @@ describe('buildGraphML', () => {
     const deeData = Array.from(dee.getElementsByTagName('data'));
 
     expect(deeData.length).toEqual(10);
-    expect(getDataElementByKey(deeData, 'mock-uuid-5')?.textContent).toEqual(
-      undefined,
-    );
+    expect(
+      getDataElementByKey(deeData, testVariableId('mock-uuid-5'))?.textContent,
+    ).toEqual(undefined);
 
     const carl = getNodeById(nodes, '2');
     if (!carl) throw new Error('Missing carl node');
     const carlData = Array.from(carl.getElementsByTagName('data'));
     expect(carlData.length).toEqual(10);
-    expect(getDataElementByKey(carlData, 'mock-uuid-5')?.textContent).toEqual(
-      undefined,
-    );
+    expect(
+      getDataElementByKey(carlData, testVariableId('mock-uuid-5'))?.textContent,
+    ).toEqual(undefined);
 
     const jumbo = getNodeById(nodes, '3');
     if (!jumbo) throw new Error('Missing jumbo node');
@@ -238,10 +245,12 @@ describe('buildGraphML', () => {
     const francisData = Array.from(francis.getElementsByTagName('data'));
     expect(francis.getElementsByTagName('data').length).toEqual(9);
     expect(
-      getDataElementByKey(francisData, 'mock-uuid-5')?.textContent,
+      getDataElementByKey(francisData, testVariableId('mock-uuid-5'))
+        ?.textContent,
     ).toEqual(undefined);
     expect(
-      getDataElementByKey(francisData, 'mock-uuid-4')?.textContent,
+      getDataElementByKey(francisData, testVariableId('mock-uuid-4'))
+        ?.textContent,
     ).toEqual(undefined);
   });
 
@@ -252,14 +261,14 @@ describe('buildGraphML', () => {
 
     expect(graphKeys).toEqual(
       expect.arrayContaining([
-        'mock-uuid-1',
-        'mock-uuid-2',
-        'mock-uuid-3_X',
-        'mock-uuid-3_screenSpaceY',
-        'mock-uuid-3_screenSpaceX',
-        'mock-uuid-3_Y',
-        'mock-uuid-4',
-        'mock-uuid-5',
+        testVariableId('mock-uuid-1'),
+        testVariableId('mock-uuid-2'),
+        `${testVariableId('mock-uuid-3')}_X`,
+        `${testVariableId('mock-uuid-3')}_screenSpaceY`,
+        `${testVariableId('mock-uuid-3')}_screenSpaceX`,
+        `${testVariableId('mock-uuid-3')}_Y`,
+        testVariableId('mock-uuid-4'),
+        testVariableId('mock-uuid-5'),
       ]),
     );
   });
@@ -277,9 +286,13 @@ describe('buildGraphML', () => {
 
     expect(emptyNodeXml.getElementById(ncUUIDProperty)).not.toBeNull();
     expect(emptyNodeXml.getElementById(ncTypeProperty)).not.toBeNull();
-    expect(emptyNodeXml.getElementById('mock-uuid-1')).not.toBeNull();
     expect(
-      emptyNodeXml.getElementById('unrepresented-node-variable'),
+      emptyNodeXml.getElementById(testVariableId('mock-uuid-1')),
+    ).not.toBeNull();
+    expect(
+      emptyNodeXml.getElementById(
+        testVariableId('unrepresented-node-variable'),
+      ),
     ).not.toBeNull();
   });
 
@@ -297,29 +310,36 @@ describe('buildGraphML', () => {
     expect(emptyEdgeXml.getElementById(ncSourceUUID)).not.toBeNull();
     expect(emptyEdgeXml.getElementById(ncTargetUUID)).not.toBeNull();
     expect(
-      emptyEdgeXml.getElementById('unrepresented-edge-variable'),
+      emptyEdgeXml.getElementById(
+        testVariableId('unrepresented-edge-variable'),
+      ),
     ).not.toBeNull();
   });
 
   it('includes declarations from unrepresented node types', () => {
-    const key = xml.getElementById('unrepresented-node-variable');
+    const key = xml.getElementById(
+      testVariableId('unrepresented-node-variable'),
+    );
 
     expect(key?.getAttribute('for')).toBe('node');
     expect(key?.getAttribute('attr.name')).toBe('unrepresentedNodeVariable');
   });
 
   it('includes declarations from unrepresented edge types', () => {
-    const key = xml.getElementById('unrepresented-edge-variable');
+    const key = xml.getElementById(
+      testVariableId('unrepresented-edge-variable'),
+    );
 
     expect(key?.getAttribute('for')).toBe('edge');
     expect(key?.getAttribute('attr.name')).toBe('unrepresentedEdgeVariable');
   });
 
   it('includes fully unanswered declared keys without emitting data', () => {
-    expect(xml.getElementById('mock-uuid-6')).not.toBeNull();
+    expect(xml.getElementById(testVariableId('mock-uuid-6'))).not.toBeNull();
     expect(
       Array.from(xml.getElementsByTagName('data')).some(
-        (element) => element.getAttribute('key') === 'mock-uuid-6',
+        (element) =>
+          element.getAttribute('key') === testVariableId('mock-uuid-6'),
       ),
     ).toBe(false);
   });
@@ -328,22 +348,22 @@ describe('buildGraphML', () => {
     const processedNetworks = processMockNetworks([mockNetwork]);
     const protocolNetwork = processedNetworks['protocol-uid-1']?.[0];
     if (!protocolNetwork) throw new Error('Missing protocol network');
-    const representedNodeType = codebook.node?.['mock-node-type'];
+    const representedNodeType = codebook.node?.[testTypeId('mock-node-type')];
     if (!representedNodeType) throw new Error('Missing represented node type');
 
     const unansweredCodebook: Codebook = {
       ...codebook,
       node: {
         ...codebook.node,
-        'mock-node-type': {
+        [testTypeId('mock-node-type')]: {
           ...representedNodeType,
           variables: {
             ...representedNodeType.variables,
-            unansweredNumber: {
+            [testVariableId('unansweredNumber')]: {
               name: 'unansweredNumber',
               type: 'number',
             },
-            unansweredNumericOrdinal: {
+            [testVariableId('unansweredNumericOrdinal')]: {
               name: 'unansweredNumericOrdinal',
               type: 'ordinal',
               options: [
@@ -353,16 +373,16 @@ describe('buildGraphML', () => {
             },
           },
         },
-        'unanswered': {
+        [testTypeId('unanswered')]: {
           name: 'unanswered',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            unrepresentedNumber: {
+            [testVariableId('unrepresentedNumber')]: {
               name: 'unrepresentedNumber',
               type: 'number',
             },
-            unrepresentedNumericOrdinal: {
+            [testVariableId('unrepresentedNumericOrdinal')]: {
               name: 'unrepresentedNumericOrdinal',
               type: 'ordinal',
               options: [
@@ -370,7 +390,7 @@ describe('buildGraphML', () => {
                 { label: { en: 'Two' }, value: 2 },
               ],
             },
-            stringOrdinal: {
+            [testVariableId('stringOrdinal')]: {
               name: 'stringOrdinal',
               type: 'ordinal',
               options: [
@@ -378,17 +398,17 @@ describe('buildGraphML', () => {
                 { label: { en: 'Two' }, value: 'two' },
               ],
             },
-            emptyOrdinal: {
+            [testVariableId('emptyOrdinal')]: {
               name: 'emptyOrdinal',
               type: 'ordinal',
               options: [],
             },
-            text: { name: 'text', type: 'text' },
-            boolean: {
+            [testVariableId('text')]: { name: 'text', type: 'text' },
+            [testVariableId('boolean')]: {
               name: 'boolean',
               type: 'boolean',
             },
-            categorical: {
+            [testVariableId('categorical')]: {
               name: 'categorical',
               type: 'categorical',
               options: [
@@ -409,35 +429,43 @@ describe('buildGraphML', () => {
 
     expect(
       unansweredXml
-        .getElementById('unansweredNumber')
+        .getElementById(testVariableId('unansweredNumber'))
         ?.getAttribute('attr.type'),
     ).toBe('double');
     expect(
       unansweredXml
-        .getElementById('unansweredNumericOrdinal')
+        .getElementById(testVariableId('unansweredNumericOrdinal'))
         ?.getAttribute('attr.type'),
     ).toBe('int');
     expect(
       unansweredXml
-        .getElementById('unrepresentedNumber')
+        .getElementById(testVariableId('unrepresentedNumber'))
         ?.getAttribute('attr.type'),
     ).toBe('double');
     expect(
       unansweredXml
-        .getElementById('unrepresentedNumericOrdinal')
+        .getElementById(testVariableId('unrepresentedNumericOrdinal'))
         ?.getAttribute('attr.type'),
     ).toBe('int');
     expect(
-      unansweredXml.getElementById('stringOrdinal')?.getAttribute('attr.type'),
+      unansweredXml
+        .getElementById(testVariableId('stringOrdinal'))
+        ?.getAttribute('attr.type'),
     ).toBe('string');
     expect(
-      unansweredXml.getElementById('emptyOrdinal')?.getAttribute('attr.type'),
+      unansweredXml
+        .getElementById(testVariableId('emptyOrdinal'))
+        ?.getAttribute('attr.type'),
     ).toBe('string');
     expect(
-      unansweredXml.getElementById('text')?.getAttribute('attr.type'),
+      unansweredXml
+        .getElementById(testVariableId('text'))
+        ?.getAttribute('attr.type'),
     ).toBe('string');
     expect(
-      unansweredXml.getElementById('boolean')?.getAttribute('attr.type'),
+      unansweredXml
+        .getElementById(testVariableId('boolean'))
+        ?.getAttribute('attr.type'),
     ).toBe('boolean');
 
     const categoricalKeys = Array.from(
@@ -504,7 +532,7 @@ describe('buildGraphML', () => {
       ...codebook,
       node: {
         ...codebook.node,
-        'declared-shared-node': {
+        [testTypeId('declared-shared-node')]: {
           name: 'declared shared node',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },

@@ -6,6 +6,7 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import { ContractProvider } from '../../../contract/context';
 import type { InterviewPayload } from '../../../contract/types';
@@ -16,7 +17,7 @@ import { SyncFlushProvider } from '../../../store/SyncFlushContext';
 import FinishSession from '../FinishSession';
 
 const finishStage = {
-  id: 'finish',
+  id: testId('finish'),
   type: 'FinishSession',
   mode: 'automatic',
   label: { en: 'Finish' },

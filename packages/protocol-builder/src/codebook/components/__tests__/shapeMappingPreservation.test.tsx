@@ -6,10 +6,14 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
+import { testTypeId, testVariableId } from '../../../testing/testId.ts';
 import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { documentWithEntityProperties } from '../../editing.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
+
+const PERSON_TYPE = testTypeId('person');
+const ETHNICITY = testVariableId('ethnicity');
 
 /**
  * A node type whose shape already follows one of its attributes keeps that
@@ -21,11 +25,11 @@ import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
  * forward. That is one spread, in one function, and this is what says so.
  */
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const SUBJECT = { entity: 'node', type: PERSON_TYPE } as const;
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
 
 const MAPPING = {
-  variable: 'ethnicity',
+  variable: ETHNICITY,
   type: 'discrete',
   map: [{ value: 'asian', shape: 'square' }],
 } as const;
@@ -36,7 +40,7 @@ const PERSON: SectionDoc = {
   icon: 'add-a-person',
   shape: { default: 'circle', dynamic: MAPPING },
   variables: {
-    ethnicity: {
+    [ETHNICITY]: {
       name: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',

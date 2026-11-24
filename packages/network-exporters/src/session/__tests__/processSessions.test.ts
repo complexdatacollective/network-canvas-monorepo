@@ -6,6 +6,7 @@ import {
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import { DatabaseError } from '../../errors';
 import type { InterviewExportInput, ProtocolExportInput } from '../../input';
 import type { ExportOptions } from '../../options';
@@ -154,9 +155,13 @@ describe('processSessions', () => {
         nodes: [
           {
             _uid: 'node-1',
-            type: 'person',
-            [entityAttributesProperty]: { 'p-name': [201, 17, 93, 4] },
-            [entitySecureAttributesMeta]: { 'p-name': metadata },
+            type: testTypeId('person'),
+            [entityAttributesProperty]: {
+              [testVariableId('p-name')]: [201, 17, 93, 4],
+            },
+            [entitySecureAttributesMeta]: {
+              [testVariableId('p-name')]: metadata,
+            },
           },
         ],
         edges: [],
@@ -170,10 +175,10 @@ describe('processSessions', () => {
 
       expect(failures).toEqual([]);
       expect(grouped.hA?.[0]?.nodes[0]?.[entityAttributesProperty]).toEqual({
-        'p-name': [201, 17, 93, 4],
+        [testVariableId('p-name')]: [201, 17, 93, 4],
       });
       expect(grouped.hA?.[0]?.nodes[0]?.[entitySecureAttributesMeta]).toEqual({
-        'p-name': metadata,
+        [testVariableId('p-name')]: metadata,
       });
     },
   );

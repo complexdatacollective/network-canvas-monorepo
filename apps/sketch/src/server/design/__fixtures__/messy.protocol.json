@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "ego_consent": {
+        "4634d252-92b4-5021-8357-a938e4707844": {
           "name": "consent",
           "type": "boolean",
           "component": "Boolean",
@@ -33,7 +33,7 @@
             "required": true
           }
         },
-        "ego_age": {
+        "06910208-e57b-5e3d-84e9-c7c717e5e864": {
           "name": "age",
           "type": "number",
           "component": "Number",
@@ -42,12 +42,12 @@
             "maxValue": 99
           }
         },
-        "ego_age_2": {
+        "0851a23b-7fdc-5eaa-9546-5423f9fe838a": {
           "name": "age_2",
           "type": "text",
           "component": "Text"
         },
-        "ego_smokes": {
+        "29b46118-fb69-5eba-9922-df3e74d3b09b": {
           "name": "smokes",
           "type": "boolean",
           "component": "Boolean",
@@ -67,12 +67,12 @@
             }
           ]
         },
-        "ego_mood": {
+        "910780cd-55d3-54d5-9950-75b07cf09c11": {
           "name": "mood",
           "type": "text",
           "component": "Text"
         },
-        "ego_scale": {
+        "41b09c96-13ba-5a57-9e96-7ebf0f1edcb2": {
           "name": "scale",
           "type": "ordinal",
           "component": "LikertScale",
@@ -100,7 +100,7 @@
       }
     },
     "node": {
-      "person": {
+      "bf5284c0-cbf4-5fae-92ea-30a42a4bce93": {
         "name": "Person",
         "icon": "add-a-person",
         "color": "node-color-seq-1",
@@ -108,7 +108,7 @@
           "default": "circle"
         },
         "variables": {
-          "person_name": {
+          "55b32df7-dde1-5409-99d3-0dfac466b7ba": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -117,16 +117,16 @@
               "unique": true
             }
           },
-          "person_layout": {
+          "f9fc70bb-bcc4-5094-9477-6a4a9ade1890": {
             "name": "layout",
             "type": "layout"
           },
-          "person_first_name": {
+          "e8a7e81e-1135-5734-9936-9398943783d8": {
             "name": "person_first_name",
             "type": "text",
             "component": "Text"
           },
-          "person_closeness": {
+          "bbbd234d-bae3-579c-a04c-b65254bf336f": {
             "name": "person_closeness",
             "type": "ordinal",
             "component": "RadioGroup",
@@ -145,12 +145,12 @@
               }
             ]
           },
-          "person_close": {
+          "ec8cd860-e64b-5c67-9a4e-e10248b31055": {
             "name": "close",
             "type": "boolean",
             "component": "Toggle"
           },
-          "person_helper": {
+          "bd9c31f6-291c-52cb-90c3-76d05a5dc54c": {
             "name": "helper",
             "type": "boolean",
             "component": "Toggle"
@@ -159,7 +159,7 @@
       }
     },
     "edge": {
-      "person_2": {
+      "4d1d275a-e891-5234-a960-1811ef4dd2c6": {
         "name": "Person (tie)",
         "color": "edge-color-seq-1"
       }
@@ -167,7 +167,7 @@
   },
   "stages": [
     {
-      "id": "researcher_notes",
+      "id": "df8e9aba-e67f-53fa-b421-e9a758d11bd0",
       "type": "Information",
       "label": {
         "en": "Researcher notes (delete before fielding)"
@@ -177,7 +177,7 @@
       }
     },
     {
-      "id": "welcome",
+      "id": "3df253b7-4ccd-5881-a528-d057f91fdd6b",
       "type": "Information",
       "label": {
         "en": "Welcome"
@@ -187,7 +187,7 @@
       }
     },
     {
-      "id": "consent",
+      "id": "87a045da-9641-5946-a8f2-275d956422af",
       "type": "EgoForm",
       "label": {
         "en": "Consent"
@@ -203,8 +203,8 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_consent",
-            "variable": "ego_consent",
+            "id": "55495839-aa92-58cc-83e7-8b79017016d4",
+            "variable": "4634d252-92b4-5021-8357-a938e4707844",
             "prompt": {
               "en": "Do you agree to take part in this study?"
             }
@@ -213,7 +213,7 @@
       }
     },
     {
-      "id": "about",
+      "id": "44c307b5-5dbe-5f68-9b8a-97448f5da5a8",
       "type": "EgoForm",
       "label": {
         "en": "About"
@@ -229,15 +229,15 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_age",
-            "variable": "ego_age",
+            "id": "67623001-2822-583a-9707-8a133967987a",
+            "variable": "06910208-e57b-5e3d-84e9-c7c717e5e864",
             "prompt": {
               "en": "Age?"
             }
           },
           {
-            "id": "field-ego_smokes",
-            "variable": "ego_smokes",
+            "id": "acf41636-d774-5d7d-a73d-e953bf43aefe",
+            "variable": "29b46118-fb69-5eba-9922-df3e74d3b09b",
             "prompt": {
               "en": "Do you smoke?"
             }
@@ -249,10 +249,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_1",
+              "id": "b7b6b01b-34d5-5d05-8403-7452e665e5ac",
               "type": "ego",
               "options": {
-                "attribute": "ego_consent",
+                "attribute": "4634d252-92b4-5021-8357-a938e4707844",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -261,12 +261,12 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "consent_declined"
+          "stageId": "360cbe92-4d2c-5fb4-88a6-275315a71b41"
         }
       }
     },
     {
-      "id": "names_intro",
+      "id": "b5ddec87-8b60-54d9-9b06-7fc527c837eb",
       "type": "Information",
       "label": {
         "en": "Names (introduction)"
@@ -276,24 +276,25 @@
       }
     },
     {
-      "id": "names",
+      "id": "0cbc662e-7993-5e27-9d4f-ef5dacdea247",
       "type": "NameGenerator",
       "label": {
         "en": "Names"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "45ca72bb-0a8b-5cbe-83ab-3301a8609917",
           "text": {
             "en": "Who?"
           },
           "additionalAttributes": [
             {
-              "variable": "person_close",
+              "id": "e3bf9688-d92d-52ec-ab3b-e3c9fa82e0c2",
+              "variable": "ec8cd860-e64b-5c67-9a4e-e10248b31055",
               "value": true
             }
           ]
@@ -309,15 +310,15 @@
         },
         "fields": [
           {
-            "id": "field-person_name",
-            "variable": "person_name",
+            "id": "8cf3d98f-9710-5505-87cd-380962b9a703",
+            "variable": "55b32df7-dde1-5409-99d3-0dfac466b7ba",
             "prompt": {
               "en": "What is the name of this person?"
             }
           },
           {
-            "id": "field-person_first_name",
-            "variable": "person_first_name",
+            "id": "274bf81e-550a-599c-b6dc-9aac9c98219f",
+            "variable": "e8a7e81e-1135-5734-9936-9398943783d8",
             "prompt": {
               "en": "Name?"
             }
@@ -326,7 +327,7 @@
       }
     },
     {
-      "id": "bins_intro",
+      "id": "ed10df16-8430-5898-939c-439cc58833e8",
       "type": "Information",
       "label": {
         "en": "Bins (introduction)"
@@ -336,28 +337,28 @@
       }
     },
     {
-      "id": "bins",
+      "id": "e02e40b7-f013-5caf-a2b6-1bb594b6e71c",
       "type": "OrdinalBin",
       "label": {
         "en": "Bins"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "da94d4cf-e9a0-5735-a500-b41f8164096b",
           "text": {
             "en": "Closeness"
           },
-          "variable": "person_closeness",
+          "variable": "bbbd234d-bae3-579c-a04c-b65254bf336f",
           "color": "ord-color-seq-1"
         }
       ]
     },
     {
-      "id": "map_intro",
+      "id": "00bf0596-dca0-5a49-9753-98f2e9272e75",
       "type": "Information",
       "label": {
         "en": "Map (introduction)"
@@ -367,14 +368,14 @@
       }
     },
     {
-      "id": "map",
+      "id": "70083a68-2b6f-5b70-885c-59620f1b8fd0",
       "type": "Sociogram",
       "label": {
         "en": "Map"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "background": {
         "concentricCircles": 4,
@@ -385,22 +386,22 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "5f575ca6-1da5-5e0d-8be8-3bb76de3e3cf",
           "text": {
             "en": "Mark helpers"
           },
           "layout": {
-            "layoutVariable": "person_layout"
+            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "person_helper"
+            "variable": "bd9c31f6-291c-52cb-90c3-76d05a5dc54c"
           }
         }
       ]
     },
     {
-      "id": "mood_form",
+      "id": "db98d4ed-ef77-5ccb-a6e5-f719eda921d1",
       "type": "EgoForm",
       "label": {
         "en": "Mood form"
@@ -416,15 +417,15 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_mood",
-            "variable": "ego_mood",
+            "id": "ea47b2f1-5ef0-50ef-8d8f-8bf387835b0e",
+            "variable": "910780cd-55d3-54d5-9950-75b07cf09c11",
             "prompt": {
               "en": "Mood?"
             }
           },
           {
-            "id": "field-ego_scale",
-            "variable": "ego_scale",
+            "id": "c1cefedb-a6ff-56e5-ab29-5df5a9844596",
+            "variable": "41b09c96-13ba-5a57-9e96-7ebf0f1edcb2",
             "prompt": {
               "en": "Scale?"
             }
@@ -433,7 +434,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "af898428-02c5-5ce8-a117-44999877bc18",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
@@ -448,7 +449,7 @@
       "outcome": "completed"
     },
     {
-      "id": "consent_declined",
+      "id": "360cbe92-4d2c-5fb4-88a6-275315a71b41",
       "type": "FinishSession",
       "mode": "automatic",
       "label": {

@@ -21,6 +21,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import * as attributePatch from '../../../forms/formValuesToAttributePatch';
 import protocol from '../../../store/modules/protocol';
@@ -81,10 +82,11 @@ beforeAll(() => {
 });
 
 const FORM_ID = 'person-form';
-const NICKNAME = 'nickname';
+const NICKNAME = testVariableId('nickname');
+const GENDER = testVariableId('gender');
 
 const nicknameField: FormField = {
-  id: 'field-nickname',
+  id: testId('field-nickname'),
   variable: asEntityAttributeReference(NICKNAME),
   prompt: { en: 'Nickname' },
 };
@@ -149,23 +151,27 @@ function renderPersonForm(
         localization: { defaultLocale: 'en', locales: ['en'] },
         codebook: {
           node: {
-            person: {
+            [config.personType]: {
               name: 'person',
               variables: {
-                name: {
+                [config.nameAttribute]: {
                   name: 'name',
                   type: 'text',
                   component: 'Text',
                   ...(nameValidation ? { validation: nameValidation } : {}),
                 },
                 [NICKNAME]: {
-                  name: NICKNAME,
+                  name: 'nickname',
                   type: 'text',
                   component: 'Text',
                   ...nicknameVariable,
                 },
-                sex: { name: 'sex', type: 'categorical', options: [] },
-                gender: { name: 'gender', type: 'categorical', options: [] },
+                [config.sexAssignedAtBirthAttribute]: {
+                  name: 'sex',
+                  type: 'categorical',
+                  options: [],
+                },
+                [GENDER]: { name: 'gender', type: 'categorical', options: [] },
               },
             },
           },
@@ -174,7 +180,7 @@ function renderPersonForm(
           {
             id: 'pedigree',
             type: 'FamilyPedigree',
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', type: config.personType },
           },
         ],
       } as never,
@@ -351,7 +357,7 @@ describe('the person form', () => {
       await save(user);
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-      expect(onSubmit.mock.calls[0]?.[0].set.name).toBe(typed);
+      expect(onSubmit.mock.calls[0]?.[0].set[config.nameAttribute]).toBe(typed);
     },
   );
 
@@ -414,7 +420,7 @@ describe('the person form', () => {
     await save(user);
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     const [result] = onSubmit.mock.calls[0] ?? [];
-    expect(result?.set).toHaveProperty('gender', ['man']);
+    expect(result?.set).toHaveProperty([GENDER], ['man']);
   });
 
   it('leaves a name of only spaces unnamed', async () => {
@@ -427,8 +433,8 @@ describe('the person form', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     const [result] = onSubmit.mock.calls[0] ?? [];
-    expect(result?.set).not.toHaveProperty('name');
-    expect(result?.unset).toContain('name');
+    expect(result?.set).not.toHaveProperty([config.nameAttribute]);
+    expect(result?.unset).toContain(config.nameAttribute);
   });
 
   it('compares a name with the unique rule against the others decrypted', async () => {
@@ -462,7 +468,7 @@ describe('the person form', () => {
           { [NICKNAME]: nickname },
           {
             [NICKNAME]: {
-              name: NICKNAME,
+              name: 'nickname',
               type: 'text',
               component: 'Text',
               encrypted: true,

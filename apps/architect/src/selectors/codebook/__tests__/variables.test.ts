@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import type { Stage } from '@codaco/protocol-validation';
 import {
   closeStageDraft,
@@ -28,14 +32,26 @@ const openStageDraft = (fields: Record<string, unknown>) => {
   });
 };
 
-const variable1 = '1234-1234-1234-1';
-const variable2 = '1234-1234-1234-2';
-const variable3 = '1234-1234-1234-3';
-const variable4 = '1234-1234-1234-4';
-const variable5 = '1234-1234-1234-5';
-const variable6 = '1234-1234-1234-6';
-const variable7 = '1234-1234-1234-7';
-const variable8 = '1234-1234-1234-8';
+const PERSON = testTypeId('person');
+const variable1 = testVariableId('v1');
+const variable2 = testVariableId('v2');
+const variable3 = testVariableId('v3');
+const variable4 = testVariableId('v4');
+const variable5 = testVariableId('v5');
+const variable6 = testVariableId('v6');
+const variable7 = testVariableId('v7');
+const variable8 = testVariableId('v8');
+
+const personType = {
+  name: 'Person',
+  color: 'node-color-seq-1' as const,
+  variables: {
+    [variable1]: { name: 'v1', type: 'text' as const },
+    [variable2]: { name: 'v2', type: 'text' as const },
+    [variable3]: { name: 'v3', type: 'text' as const },
+    [variable4]: { name: 'v4', type: 'text' as const },
+  },
+};
 
 const mockCodebookWithoutUse = {
   ego: {
@@ -45,19 +61,10 @@ const mockCodebookWithoutUse = {
     },
   },
   node: {
-    person: {
-      name: 'Person',
-      color: 'node-color-seq-1' as const,
-      variables: {
-        [variable1]: { name: 'v1', type: 'text' as const },
-        [variable2]: { name: 'v2', type: 'text' as const },
-        [variable3]: { name: 'v3', type: 'text' as const },
-        [variable4]: { name: 'v4', type: 'text' as const },
-      },
-    },
+    [PERSON]: personType,
   },
   edge: {
-    friendship: {
+    [testTypeId('friendship')]: {
       name: 'Friendship',
       color: 'edge-color-seq-1' as const,
       variables: {
@@ -118,7 +125,7 @@ describe('getIsUsed', () => {
               id: 's1',
               label: 'AlterForm stage',
               type: 'AlterForm',
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON },
               form: {
                 fields: [
                   { id: 'field-1', variable: variable1, prompt: 'prompt 1' },
@@ -130,7 +137,7 @@ describe('getIsUsed', () => {
               id: 's2',
               label: 'OrdinalBin stage',
               type: 'OrdinalBin',
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', type: PERSON },
               prompts: [{ id: 'p1', text: 'choose', variable: variable3 }],
             },
           ],
@@ -196,10 +203,10 @@ describe('getIsUsed', () => {
             ...mockCodebookWithoutUse,
             node: {
               ...mockCodebookWithoutUse.node,
-              person: {
-                ...mockCodebookWithoutUse.node.person,
+              [PERSON]: {
+                ...personType,
                 variables: {
-                  ...mockCodebookWithoutUse.node.person.variables,
+                  ...personType.variables,
                   [variable1]: {
                     name: 'v1',
                     type: 'number' as const,

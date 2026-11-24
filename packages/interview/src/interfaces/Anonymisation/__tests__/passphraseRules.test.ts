@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Stage } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testIds';
 import {
   passphraseLengthRules,
   protocolPassphraseLengthRules,
@@ -72,7 +73,7 @@ describe('passphraseLengthRules', () => {
 
 describe('protocolPassphraseLengthRules', () => {
   const anonymisation = {
-    id: 'anonymisation',
+    id: testId('anonymisation'),
     type: 'Anonymisation',
     label: { en: 'Anonymisation' },
     explanationText: { en: '# Privacy\n\nChoose a passphrase.' },

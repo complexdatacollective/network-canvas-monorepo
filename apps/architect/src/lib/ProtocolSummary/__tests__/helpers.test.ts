@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+
 import { getCodebookIndex } from '../helpers';
 
 type ShippedProtocol = Parameters<typeof getCodebookIndex>[0];
@@ -59,13 +64,14 @@ describe('getCodebookIndex "Used In" stages', () => {
   });
 
   it('keeps every distinct reference path while collapsing the stage link', () => {
-    const AGE = 'age-variable-id';
+    const AGE = testVariableId('age');
+    const PERSON = testTypeId('person');
     const protocol = {
       schemaVersion: 9,
       name: 'p',
       codebook: {
         node: {
-          person: {
+          [PERSON]: {
             name: 'Person',
             color: 'node-color-seq-1',
             variables: { [AGE]: { name: 'age', type: 'number' } },
@@ -77,7 +83,7 @@ describe('getCodebookIndex "Used In" stages', () => {
           id: 'ordinal-bin-stage',
           type: 'OrdinalBin',
           label: 'Bin',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           prompts: [
             {
               id: 'p1',

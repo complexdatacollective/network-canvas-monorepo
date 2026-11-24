@@ -20,7 +20,8 @@ import { affectedSet, type Status } from '../genetics/status';
 // inheriting her nuclear genome. Runs the real engine on the seeded fixture,
 // read as the Narrative Pedigree reads it.
 
-// Conditions by the Narrative Pedigree's disease ids.
+// Conditions by name, with the inheritance pattern that identifies each one in
+// the fixture.
 const CONDITIONS: { disease: string; pattern: InheritancePattern }[] = [
   { disease: 'huntingtons', pattern: 'autosomalDominant' },
   { disease: 'cysticFibrosis', pattern: 'autosomalRecessive' },
@@ -52,9 +53,13 @@ function buildEngine() {
   const gametes = inferGametes(family);
   const resolveSexFn = geneticSexResolver(family, gametes);
   const graph = buildGeneticGraph(family, resolveSexFn, gameteLookup(gametes));
+  // Each condition in the fixture has its own inheritance pattern.
   const attributeOf = (disease: string) => {
+    const pattern = CONDITIONS.find(
+      (condition) => condition.disease === disease,
+    )?.pattern;
     const attribute = narrative.diseases.find(
-      (candidate) => candidate.id === disease,
+      (candidate) => candidate.inheritancePattern === pattern,
     )?.attribute;
     if (!attribute) throw new Error(`No disease ${disease}`);
     return attribute;

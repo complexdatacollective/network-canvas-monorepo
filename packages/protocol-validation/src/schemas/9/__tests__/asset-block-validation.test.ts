@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { testId, withTestIds } from '../../../__tests__/testIds.ts';
 import { localizedTextShapeAt } from '../../../utils/collectLocalizedStrings.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
@@ -9,7 +10,7 @@ import { completeProtocol } from './complete-localized-protocol.ts';
 type Fields = Record<string, unknown>;
 
 const withManifest = (protocol: ReturnType<typeof completeProtocol>) => ({
-  ...protocol,
+  ...withTestIds(protocol),
   assetManifest: {
     ...protocol.assetManifest,
     clip: { id: 'clip', type: 'video', name: 'c.mp4', source: 'c.mp4' },
@@ -19,7 +20,7 @@ const withManifest = (protocol: ReturnType<typeof completeProtocol>) => ({
 
 const informationIndex = (protocol: ReturnType<typeof completeProtocol>) =>
   (protocol.stages as Fields[]).findIndex(
-    (stage) => stage.id === 'information',
+    (stage) => stage.id === testId('information'),
   );
 
 /** The complete protocol with the Information page set to the given content. */
@@ -263,7 +264,7 @@ describe('files shown as blocks in an Information page', () => {
   it('raises nothing for an asset image in text not declared to hold blocks', () => {
     const protocol = withManifest(completeProtocol());
     const stages = protocol.stages as Fields[];
-    const index = stages.findIndex((stage) => stage.id === 'egoForm');
+    const index = stages.findIndex((stage) => stage.id === testId('egoForm'));
     stages[index] = {
       ...stages[index],
       introductionPanel: {

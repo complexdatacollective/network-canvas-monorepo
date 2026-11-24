@@ -10,8 +10,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { attributeField } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testTypeId, testVariableId } from '../../../testing/testId.ts';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorStageEditor } from '../NameGeneratorStageEditor.ts';
 import { addInterviewNetworkPanel, chooseNodeType } from './addSidePanel.ts';
@@ -45,6 +51,10 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+
 /**
  * The editor as a host reaches it: through its own registry entry, so every
  * mount here also says this interface is dispatched to THIS editor.
@@ -58,7 +68,9 @@ const mountFixture = () =>
   });
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf('name-generator-1');
+const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('name-generator-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'NameGenerator' as const, position: NAME_GENERATOR_INDEX },
@@ -205,7 +217,12 @@ describe('the name generator editor', () => {
       'Add a person',
     );
     const field = await openDialog(harness, 'Create new form field');
-    await choosePickerOption(harness, field, 'Attribute', 'name');
+    await choosePickerOption(
+      harness,
+      field,
+      'Attribute',
+      personVariable('name'),
+    );
     await writeInto(
       harness,
       field.getByRole('textbox', { name: 'Question text' }),
@@ -230,13 +247,13 @@ describe('the name generator editor', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       label: { 'en-US': 'Close friends' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         title: { 'en-US': 'Add a person' },
         fields: [
           {
             id: expect.any(String),
-            variable: 'name',
+            variable: personVariable('name'),
             prompt: { 'en-US': 'What is their name?' },
           },
         ],
@@ -408,13 +425,13 @@ describe('the name generator editor', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        colleague: {
+        [testTypeId('colleague')]: {
           name: 'colleague',
           color: 'node-color-seq-3',
           icon: 'add-a-person',
           shape: { default: 'circle' },
           variables: {
-            colleague_name: {
+            [testVariableId('colleague_name')]: {
               name: 'colleague_name',
               type: 'text',
               component: 'Text',
@@ -462,23 +479,23 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
    * protocol already exercises those rules elsewhere. So the test needs one
    * free attribute, added the way a collaborator would add it.
    */
-  const FREE_ATTRIBUTE = 'nominated_early';
+  const FREE_ATTRIBUTE = testVariableId('nominated_early');
 
   const addFreeAttribute = (harness: ReturnType<typeof renderStageEditor>) => {
     const person =
       harness.protocolSections()[
-        sectionId({ kind: 'codebookNode', typeId: 'person' })
+        sectionId({ kind: 'codebookNode', typeId: PERSON })
       ];
     if (person === undefined) throw new Error('the person type is gone');
 
     harness.receiveCodebookUpdate({
       node: {
-        person: {
+        [PERSON]: {
           ...person,
           variables: {
             ...(person.variables as Record<string, unknown>),
             [FREE_ATTRIBUTE]: {
-              name: FREE_ATTRIBUTE,
+              name: 'nominated_early',
               type: 'boolean',
               component: 'Boolean',
             },
@@ -546,7 +563,7 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     const offered = await offeredAttributes(harness, after);
     // Not the empty picker: everything else about this node type is still
     // offered, so the section is filtering rather than failing.
-    expect(offered).toContain('flagged');
+    expect(offered).toContain(personVariable('flagged'));
     expect(offered).not.toContain(FREE_ATTRIBUTE);
   });
 });

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { preflight } from '../build.ts';
 import { estimateBurden } from '../burden.ts';
+import { sketchTypeId } from '../objectIds.ts';
 import type { DesignStage, StudyDesign } from '../schema.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
@@ -182,9 +183,9 @@ describe('family and narrative pedigrees', () => {
     );
     expect(narrative?.sourceStageId).toBe(pedigree?.id);
     expect(narrative?.showAtRiskStatuses).toBe(true);
-    const names = Object.values(protocol.codebook.node.relative!.variables).map(
-      (v) => v.name,
-    );
+    const names = Object.values(
+      protocol.codebook.node[sketchTypeId('relative')]!.variables,
+    ).map((v) => v.name);
     expect(names).toEqual(
       expect.arrayContaining([
         'name',

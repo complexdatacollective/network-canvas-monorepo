@@ -1,7 +1,10 @@
 import path from 'node:path';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import { FilterSchema } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  FilterSchema,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -9,7 +12,25 @@ import {
 
 import type { SessionPayload } from '../../src/contract/types.js';
 import { expect } from '../fixtures/matrix-test.js';
+import { e2eVariableId } from '../helpers/codebook-ids.js';
 import type { InterfaceScenarios } from './types.js';
+
+// The ids of the variables these scenarios name.
+const AGE = e2eVariableId('age');
+const ALTER_ID = e2eVariableId('alterId');
+const CLOSE_FRIEND = e2eVariableId('close-friend');
+const IS_COLLEAGUE = e2eVariableId('is-colleague');
+const NOTE = e2eVariableId('note');
+const PERSON_NAME = e2eVariableId('person-name');
+const V_AREA = e2eVariableId('v-area');
+const V_BOOL = e2eVariableId('v-bool');
+const V_CHECK = e2eVariableId('v-check');
+const V_DATE = e2eVariableId('v-date');
+const V_NUM = e2eVariableId('v-num');
+const V_RADIO = e2eVariableId('v-radio');
+const V_RELDATE = e2eVariableId('v-reldate');
+const V_TEXT = e2eVariableId('v-text');
+const V_VAS = e2eVariableId('v-vas');
 
 const FIXTURES_DIR = path.resolve(import.meta.dirname, '../helpers/fixtures');
 
@@ -61,7 +82,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // the validation) that still contains "name", so getNodeLabel resolves
         // the node label from it (rule 2 of getNodeLabelAttribute).
         person.addVariable({
-          id: 'person-name',
+          id: PERSON_NAME,
           name: 'personName',
           type: 'text',
           component: 'Text',
@@ -76,7 +97,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           form: { title: 'Add a friend', fields: [] },
         });
         stage.addFormField({
-          variable: 'person-name',
+          variable: PERSON_NAME,
           component: 'Text',
           prompt: 'What is their name?',
           hint: 'First name is fine',
@@ -99,13 +120,13 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         ).toBeVisible();
 
         // Below minLength: field error visible, dialog stays open on submit.
-        await stage.form.fillText('person-name', 'A');
+        await stage.form.fillText(PERSON_NAME, 'A');
         await page.getByRole('button', { name: 'Done', exact: true }).click();
-        await expect(stage.form.getFieldError('person-name')).toBeVisible();
+        await expect(stage.form.getFieldError(PERSON_NAME)).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
 
         // Meets minLength: submit succeeds.
-        await stage.form.fillText('person-name', 'Al');
+        await stage.form.fillText(PERSON_NAME, 'Al');
         await stage.nameGenerator.submitForm();
 
         const node = stage.getNode('Al');
@@ -138,7 +159,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
-          id: 'person-name',
+          id: PERSON_NAME,
           name: 'personName',
           type: 'text',
           component: 'Text',
@@ -149,7 +170,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
-          variable: 'person-name',
+          variable: PERSON_NAME,
           component: 'Text',
           prompt: 'Their name',
         });
@@ -159,7 +180,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       run: async ({ page, stage, protocol, interview }) => {
         // First add: 'Bob'.
         await stage.nameGenerator.openAddForm();
-        await stage.form.fillText('person-name', 'Bob');
+        await stage.form.fillText(PERSON_NAME, 'Bob');
         await stage.nameGenerator.submitForm();
 
         const afterAdd = await protocol.getNetworkState(interview.interviewId);
@@ -179,9 +200,9 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
         // A NEW node named 'Bob' is blocked by uniqueness.
         await stage.nameGenerator.openAddForm();
-        await stage.form.fillText('person-name', 'Bob');
+        await stage.form.fillText(PERSON_NAME, 'Bob');
         await page.getByRole('button', { name: 'Done', exact: true }).click();
-        await expect(stage.form.getFieldError('person-name')).toBeVisible();
+        await expect(stage.form.getFieldError(PERSON_NAME)).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
         const afterDup = await protocol.getNetworkState(interview.interviewId);
         expect(afterDup?.nodes).toHaveLength(1);
@@ -197,7 +218,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // (getNodeLabel returns the codebook name when no "name" var is set).
         const contact = synth.addNodeType({ name: 'Contact' });
         contact.addVariable({
-          id: 'age',
+          id: AGE,
           name: 'age',
           type: 'number',
           component: 'Number',
@@ -208,7 +229,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
-          variable: 'age',
+          variable: AGE,
           component: 'Number',
           prompt: 'Their age',
         });
@@ -218,20 +239,20 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       run: async ({ page, stage, protocol, interview }) => {
         // Above maxValue: submit blocked, no node created.
         await stage.nameGenerator.openAddForm();
-        await stage.form.fillNumber('age', '200');
+        await stage.form.fillNumber(AGE, '200');
         await page.getByRole('button', { name: 'Done', exact: true }).click();
-        await expect(stage.form.getFieldError('age')).toBeVisible();
+        await expect(stage.form.getFieldError(AGE)).toBeVisible();
         const afterBlocked = await protocol.getNetworkState(
           interview.interviewId,
         );
         expect(afterBlocked?.nodes ?? []).toHaveLength(0);
 
         // Valid value: submit succeeds and stores a real number (coerced).
-        await stage.form.fillNumber('age', '30');
+        await stage.form.fillNumber(AGE, '30');
         await stage.nameGenerator.submitForm();
         const afterAdd = await protocol.getNetworkState(interview.interviewId);
         expect(afterAdd?.nodes).toHaveLength(1);
-        const storedAge = afterAdd!.nodes[0]![entityAttributesProperty].age;
+        const storedAge = afterAdd!.nodes[0]![entityAttributesProperty][AGE];
         expect(typeof storedAge).toBe('number');
         expect(storedAge).toBe(30);
 
@@ -254,7 +275,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const contact = synth.addNodeType({ name: 'Contact' });
         contact.addVariable({
-          id: 'alterId',
+          id: ALTER_ID,
           name: 'alterId',
           type: 'number',
           component: 'Number',
@@ -265,7 +286,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
-          variable: 'alterId',
+          variable: ALTER_ID,
           component: 'Number',
           prompt: 'Alter ID',
         });
@@ -275,7 +296,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       run: async ({ page, stage, protocol, interview }) => {
         // The first alter takes ID 12, stored as a number.
         await stage.nameGenerator.openAddForm();
-        await stage.form.fillNumber('alterId', '12');
+        await stage.form.fillNumber(ALTER_ID, '12');
         await stage.nameGenerator.submitForm();
         const afterFirst = await protocol.getNetworkState(
           interview.interviewId,
@@ -286,9 +307,9 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // '12' as a string while the first alter stores the number 12; the
         // uniqueness rule has to treat them as the same ID.
         await stage.nameGenerator.openAddForm();
-        await stage.form.fillNumber('alterId', '12');
+        await stage.form.fillNumber(ALTER_ID, '12');
         await page.getByRole('button', { name: 'Done', exact: true }).click();
-        await expect(stage.form.getFieldError('alterId')).toBeVisible();
+        await expect(stage.form.getFieldError(ALTER_ID)).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
         const afterDuplicate = await protocol.getNetworkState(
           interview.interviewId,
@@ -296,14 +317,14 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         expect(afterDuplicate?.nodes).toHaveLength(1);
 
         // A distinct ID is accepted and stored as a number.
-        await stage.form.fillNumber('alterId', '13');
+        await stage.form.fillNumber(ALTER_ID, '13');
         await stage.nameGenerator.submitForm();
         const afterSecond = await protocol.getNetworkState(
           interview.interviewId,
         );
         expect(
           afterSecond?.nodes.map(
-            (node) => node[entityAttributesProperty].alterId,
+            (node) => node[entityAttributesProperty][ALTER_ID],
           ),
         ).toEqual([12, 13]);
       },
@@ -318,31 +339,31 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
 
         person.addVariable({
-          id: 'v-text',
+          id: V_TEXT,
           name: 'freeText',
           type: 'text',
           component: 'Text',
         });
         person.addVariable({
-          id: 'v-area',
+          id: V_AREA,
           name: 'notes',
           type: 'text',
           component: 'TextArea',
         });
         person.addVariable({
-          id: 'v-num',
+          id: V_NUM,
           name: 'age',
           type: 'number',
           component: 'Number',
         });
         person.addVariable({
-          id: 'v-radio',
+          id: V_RADIO,
           name: 'agreement',
           type: 'ordinal',
           component: 'RadioGroup',
         });
         person.addVariable({
-          id: 'v-check',
+          id: V_CHECK,
           name: 'contexts',
           type: 'categorical',
           component: 'CheckboxGroup',
@@ -357,27 +378,27 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           ],
         });
         person.addVariable({
-          id: 'v-bool',
+          id: V_BOOL,
           name: 'isActive',
           type: 'boolean',
           component: 'Boolean',
         });
         person.addVariable({
-          id: 'v-vas',
+          id: V_VAS,
           name: 'closeness',
           type: 'scalar',
           component: 'VisualAnalogScale',
           parameters: { minLabel: 'Not at all', maxLabel: 'Extremely' },
         });
         person.addVariable({
-          id: 'v-date',
+          id: V_DATE,
           name: 'birthYear',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'year' },
         });
         person.addVariable({
-          id: 'v-reldate',
+          id: V_RELDATE,
           name: 'recentContact',
           type: 'datetime',
           component: 'RelativeDatePicker',
@@ -389,47 +410,47 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           form: { title: 'About this person', fields: [] },
         });
         stage.addFormField({
-          variable: 'v-text',
+          variable: V_TEXT,
           component: 'Text',
           prompt: 'Free text',
         });
         stage.addFormField({
-          variable: 'v-area',
+          variable: V_AREA,
           component: 'TextArea',
           prompt: 'Notes',
         });
         stage.addFormField({
-          variable: 'v-num',
+          variable: V_NUM,
           component: 'Number',
           prompt: 'Age',
         });
         stage.addFormField({
-          variable: 'v-radio',
+          variable: V_RADIO,
           component: 'RadioGroup',
           prompt: 'Agreement',
         });
         stage.addFormField({
-          variable: 'v-check',
+          variable: V_CHECK,
           component: 'CheckboxGroup',
           prompt: 'Contexts',
         });
         stage.addFormField({
-          variable: 'v-bool',
+          variable: V_BOOL,
           component: 'Boolean',
           prompt: 'Active tie',
         });
         stage.addFormField({
-          variable: 'v-vas',
+          variable: V_VAS,
           component: 'VisualAnalogScale',
           prompt: 'Closeness',
         });
         stage.addFormField({
-          variable: 'v-date',
+          variable: V_DATE,
           component: 'DatePicker',
           prompt: 'Birth year',
         });
         stage.addFormField({
-          variable: 'v-reldate',
+          variable: V_RELDATE,
           component: 'RelativeDatePicker',
           prompt: 'Recent contact',
         });
@@ -439,24 +460,24 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       run: async ({ stage, protocol, interview }) => {
         await stage.nameGenerator.openAddForm();
 
-        await stage.form.fillText('v-text', 'Hello there');
-        await stage.form.fillText('v-area', 'A longer note about them.');
-        await stage.form.fillNumber('v-num', '42');
-        await stage.form.selectRadio('v-radio', 'Agree');
+        await stage.form.fillText(V_TEXT, 'Hello there');
+        await stage.form.fillText(V_AREA, 'A longer note about them.');
+        await stage.form.fillNumber(V_NUM, '42');
+        await stage.form.selectRadio(V_RADIO, 'Agree');
 
         // CheckboxGroup with 7 options renders every option (columns layout).
-        const checkField = stage.form.field('v-check');
+        const checkField = stage.form.field(V_CHECK);
         await expect(checkField.getByRole('checkbox')).toHaveCount(7);
-        await stage.form.selectCheckbox('v-check', 'Family');
+        await stage.form.selectCheckbox(V_CHECK, 'Family');
 
         // Boolean renders Yes/No as radios.
         await stage.form
-          .field('v-bool')
+          .field(V_BOOL)
           .getByRole('radio', { name: 'Yes' })
           .click();
 
         // VisualAnalogScale parameters render as min/max labels.
-        const vasField = stage.form.field('v-vas');
+        const vasField = stage.form.field(V_VAS);
         await expect(vasField.getByText('Not at all')).toBeVisible();
         await expect(vasField.getByText('Extremely')).toBeVisible();
         const slider = vasField.getByRole('slider');
@@ -466,8 +487,8 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         }
 
         // Parameter-bearing datetime pickers render their field containers.
-        await expect(stage.form.field('v-date')).toBeVisible();
-        await expect(stage.form.field('v-reldate')).toBeVisible();
+        await expect(stage.form.field(V_DATE)).toBeVisible();
+        await expect(stage.form.field(V_RELDATE)).toBeVisible();
 
         await stage.nameGenerator.submitForm();
 
@@ -475,13 +496,13 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         expect(network?.nodes).toHaveLength(1);
         const attrs = network!.nodes[0]![entityAttributesProperty];
 
-        expect(typeof attrs['v-text']).toBe('string');
-        expect(typeof attrs['v-area']).toBe('string');
-        expect(typeof attrs['v-num']).toBe('number');
-        expect(typeof attrs['v-radio']).toBe('number');
-        expect(Array.isArray(attrs['v-check'])).toBe(true);
-        expect(attrs['v-bool']).toBe(true);
-        const vas = attrs['v-vas'];
+        expect(typeof attrs[V_TEXT]).toBe('string');
+        expect(typeof attrs[V_AREA]).toBe('string');
+        expect(typeof attrs[V_NUM]).toBe('number');
+        expect(typeof attrs[V_RADIO]).toBe('number');
+        expect(Array.isArray(attrs[V_CHECK])).toBe(true);
+        expect(attrs[V_BOOL]).toBe(true);
+        const vas = attrs[V_VAS];
         expect(typeof vas).toBe('number');
         if (typeof vas === 'number') {
           expect(vas).toBeGreaterThanOrEqual(0);
@@ -497,7 +518,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
-          id: 'person-name',
+          id: PERSON_NAME,
           name: 'personName',
           type: 'text',
           component: 'Text',
@@ -507,7 +528,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
-          variable: 'person-name',
+          variable: PERSON_NAME,
           component: 'Text',
           prompt: 'Their name',
         });
@@ -519,7 +540,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       },
       run: async ({ page, stage, protocol, interview }) => {
         await stage.nameGenerator.openAddForm();
-        await stage.form.fillText('person-name', 'Carol');
+        await stage.form.fillText(PERSON_NAME, 'Carol');
         await stage.nameGenerator.submitForm();
 
         await expect(
@@ -560,13 +581,13 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
-          id: 'person-name',
+          id: PERSON_NAME,
           name: 'personName',
           type: 'text',
           component: 'Text',
         });
         person.addVariable({
-          id: 'close-friend',
+          id: CLOSE_FRIEND,
           name: 'closeFriend',
           type: 'boolean',
         });
@@ -575,13 +596,13 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
-          variable: 'person-name',
+          variable: PERSON_NAME,
           component: 'Text',
           prompt: 'Their name',
         });
         stage.addPrompt({
           text: 'Who are your close friends?',
-          additionalAttributes: [{ variable: 'close-friend', value: true }],
+          additionalAttributes: [{ variable: CLOSE_FRIEND, value: true }],
         });
         stage.addPrompt({ text: 'Who else do you know?' });
         return synth;
@@ -589,7 +610,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       run: async ({ stage, protocol, interview }) => {
         // Prompt 1: Dana gets closeFriend = true.
         await stage.nameGenerator.openAddForm();
-        await stage.form.fillText('person-name', 'Dana');
+        await stage.form.fillText(PERSON_NAME, 'Dana');
         await stage.nameGenerator.submitForm();
 
         // Advance to prompt 2 (prompt advance, not stage advance).
@@ -598,7 +619,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
         // Prompt 2: Eve gets no additionalAttributes.
         await stage.nameGenerator.openAddForm();
-        await stage.form.fillText('person-name', 'Eve');
+        await stage.form.fillText(PERSON_NAME, 'Eve');
         await stage.nameGenerator.submitForm();
 
         const network = await protocol.getNetworkState(interview.interviewId);
@@ -609,8 +630,8 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
         // Dana carries the prompt-1 boolean; Eve does not (it stays at its
         // creation-time default of null — never the prompt-1 `true`).
-        expect(dana![entityAttributesProperty]['close-friend']).toBe(true);
-        expect(eve![entityAttributesProperty]['close-friend']).not.toBe(true);
+        expect(dana![entityAttributesProperty][CLOSE_FRIEND]).toBe(true);
+        expect(eve![entityAttributesProperty][CLOSE_FRIEND]).not.toBe(true);
       },
     },
 
@@ -621,7 +642,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
-          id: 'person-name',
+          id: PERSON_NAME,
           name: 'personName',
           type: 'text',
           component: 'Text',
@@ -632,7 +653,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           behaviours: { minNodes: 2 },
         });
         stage.addFormField({
-          variable: 'person-name',
+          variable: PERSON_NAME,
           component: 'Text',
           prompt: 'Their name',
         });
@@ -657,7 +678,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // Add two nodes, then advancing succeeds.
         for (const name of ['Anna', 'Ben']) {
           await stage.nameGenerator.openAddForm();
-          await stage.form.fillText('person-name', name);
+          await stage.form.fillText(PERSON_NAME, name);
           await stage.nameGenerator.submitForm();
         }
 
@@ -676,7 +697,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
-          id: 'person-name',
+          id: PERSON_NAME,
           name: 'personName',
           type: 'text',
           component: 'Text',
@@ -687,7 +708,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           behaviours: { maxNodes: 2 },
         });
         stage.addFormField({
-          variable: 'person-name',
+          variable: PERSON_NAME,
           component: 'Text',
           prompt: 'Their name',
         });
@@ -697,7 +718,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
       run: async ({ page, stage, interview }) => {
         for (const name of ['Anna', 'Ben']) {
           await stage.nameGenerator.openAddForm();
-          await stage.form.fillText('person-name', name);
+          await stage.form.fillText(PERSON_NAME, name);
           await stage.nameGenerator.submitForm();
         }
 
@@ -761,7 +782,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
             join: 'AND',
             rules: [
               {
-                id: 'edge-exists',
+                id: createProtocolObjectId(),
                 type: 'edge',
                 options: { type: colleague.id, operator: 'EXISTS' },
               },
@@ -826,7 +847,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // label mapping; the boolean drives the panel filter.
         const person = synth.addNodeType({ name: 'Person' });
         person.addVariable({
-          id: 'is-colleague',
+          id: IS_COLLEAGUE,
           name: 'isColleague',
           type: 'boolean',
         });
@@ -834,7 +855,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // adapter drops the field-level component, so the codebook variable
         // must carry it). The form itself is never used in this scenario.
         const formVar = person.addVariable({
-          id: 'note',
+          id: NOTE,
           name: 'note',
           type: 'text',
           component: 'Text',
@@ -865,11 +886,11 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
             join: 'AND',
             rules: [
               {
-                id: 'is-colleague-rule',
+                id: createProtocolObjectId(),
                 type: 'node',
                 options: {
                   type: person.id,
-                  attribute: 'is-colleague',
+                  attribute: IS_COLLEAGUE,
                   operator: 'EXACTLY',
                   value: true,
                 },
@@ -909,7 +930,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         const alice = findNodeByLabel(afterDragIn!, 'Alice');
         expect(alice).toBeDefined();
         // The colleague attribute came across from the external record.
-        expect(alice![entityAttributesProperty]['is-colleague']).toBe(true);
+        expect(alice![entityAttributesProperty][IS_COLLEAGUE]).toBe(true);
 
         await stage.nodePanel.dragNodeFromMainListToPanel(
           'Alice',
@@ -937,7 +958,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // adapter drops the field-level component, so the codebook variable
         // must carry it).
         const formVar = person.addVariable({
-          id: 'note',
+          id: NOTE,
           name: 'note',
           type: 'text',
           component: 'Text',

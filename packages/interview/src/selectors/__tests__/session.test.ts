@@ -3,17 +3,37 @@ import { describe, expect, it } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  type CurrentProtocol,
   type NodeDefinition,
 } from '@codaco/protocol-validation';
-import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
+import {
+  type DyadCensusMetadataItem,
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { createInitialNetwork } from '../../contract/network';
+import type { ProtocolPayload } from '../../contract/types';
 import protocolReducer from '../../store/modules/protocol';
 import sessionReducer, {
   updateStageMetadata,
 } from '../../store/modules/session';
 import uiReducer from '../../store/modules/ui';
-import { getStageMetadata, resolveNodeShape } from '../session';
+import {
+  getNetworkNodesForPrompt,
+  getStageMetadata,
+  resolveNodeShape,
+} from '../session';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
+const ETHNICITY = testVariableId('ethnicity');
+const ROLE = testVariableId('role');
+const AGE = testVariableId('age');
+const IS_PERSON = testVariableId('is_person');
+const KIND = testVariableId('kind');
 
 const rootReducer = combineReducers({
   session: sessionReducer,
@@ -68,6 +88,75 @@ describe('getStageMetadata', () => {
   });
 });
 
+describe('getNetworkNodesForPrompt', () => {
+  it('keeps the nodes named on one stage off the prompt of another stage', () => {
+    const nameGenerator = (stage: string) => ({
+      id: testId(stage),
+      type: 'NameGeneratorQuickAdd' as const,
+      label: { en: stage },
+      subject: { entity: 'node' as const, type: PERSON },
+      quickAdd: asEntityAttributeReference(NAME),
+      prompts: [{ id: testId(`${stage}-prompt`), text: { en: stage } }],
+    });
+    const protocolState: ProtocolPayload = {
+      id: 'protocol',
+      hash: 'hash',
+      importedAt: '2026-08-12T00:00:00.000Z',
+      assets: [],
+      name: 'Test protocol',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: {
+        node: {
+          [PERSON]: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: { [NAME]: { name: 'Name', type: 'text' } },
+          },
+        },
+        edge: {},
+        ego: { variables: {} },
+      },
+      stages: [
+        nameGenerator('friends'),
+        nameGenerator('family'),
+      ] satisfies CurrentProtocol['stages'],
+    };
+    const person = (id: string, stage: string): NcNode => ({
+      [entityPrimaryKeyProperty]: id,
+      type: PERSON,
+      [entityAttributesProperty]: {},
+      promptIDs: [testId(`${stage}-prompt`)],
+    });
+    const store = configureStore({
+      reducer: rootReducer,
+      preloadedState: {
+        session: {
+          id: 'session',
+          startTime: '2026-08-12T00:00:00.000Z',
+          finishTime: null,
+          exportTime: null,
+          lastUpdated: '2026-08-12T00:00:00.000Z',
+          promptIndex: 0,
+          network: {
+            ...createInitialNetwork(),
+            nodes: [person('alex', 'friends'), person('sam', 'family')],
+          },
+        },
+        protocol: protocolState,
+      },
+    });
+    const namedOn = (step: number) =>
+      getNetworkNodesForPrompt(store.getState(), step).map(
+        (node) => node[entityPrimaryKeyProperty],
+      );
+
+    expect(namedOn(0)).toEqual(['alex']);
+    expect(namedOn(1)).toEqual(['sam']);
+  });
+});
+
 describe('resolveNodeShape', () => {
   it('matches an array-valued categorical attribute against a discrete map entry', () => {
     // Categorical (multi-select) variables store their value as an array, e.g.
@@ -76,7 +165,7 @@ describe('resolveNodeShape', () => {
     const shape: NodeDefinition['shape'] = {
       default: 'circle',
       dynamic: {
-        variable: asEntityAttributeReference('ethnicity'),
+        variable: asEntityAttributeReference(ETHNICITY),
         type: 'discrete',
         map: [
           { value: 'asian', shape: 'square' },
@@ -86,7 +175,7 @@ describe('resolveNodeShape', () => {
     };
 
     expect(
-      resolveNodeShape({ shape: shape }, { ethnicity: ['asian'] }, {}),
+      resolveNodeShape({ shape: shape }, { [ETHNICITY]: ['asian'] }, {}),
     ).toBe('square');
   });
 
@@ -94,13 +183,13 @@ describe('resolveNodeShape', () => {
     const shape: NodeDefinition['shape'] = {
       default: 'circle',
       dynamic: {
-        variable: asEntityAttributeReference('role'),
+        variable: asEntityAttributeReference(ROLE),
         type: 'discrete',
         map: [{ value: 'lead', shape: 'diamond' }],
       },
     };
 
-    expect(resolveNodeShape({ shape: shape }, { role: 'lead' }, {})).toBe(
+    expect(resolveNodeShape({ shape: shape }, { [ROLE]: 'lead' }, {})).toBe(
       'diamond',
     );
   });
@@ -119,7 +208,7 @@ describe('resolveNodeShape', () => {
     const shape = (thresholds: Thresholds): NodeDefinition['shape'] => ({
       default: 'circle',
       dynamic: {
-        variable: asEntityAttributeReference('age'),
+        variable: asEntityAttributeReference(AGE),
         type: 'breakpoints',
         thresholds,
       },
@@ -128,10 +217,10 @@ describe('resolveNodeShape', () => {
     it('treats a threshold as an inclusive lower bound', () => {
       const definition = shape([{ value: 18, shape: 'square' }]);
 
-      expect(resolveNodeShape({ shape: definition }, { age: 18 }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: 18 }, {})).toBe(
         'square',
       );
-      expect(resolveNodeShape({ shape: definition }, { age: 19 }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: 19 }, {})).toBe(
         'square',
       );
     });
@@ -139,7 +228,7 @@ describe('resolveNodeShape', () => {
     it('falls back to the default below the lowest threshold', () => {
       const definition = shape([{ value: 18, shape: 'square' }]);
 
-      expect(resolveNodeShape({ shape: definition }, { age: 17 }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: 17 }, {})).toBe(
         'circle',
       );
     });
@@ -150,19 +239,19 @@ describe('resolveNodeShape', () => {
         { value: 65, shape: 'diamond' },
       ]);
 
-      expect(resolveNodeShape({ shape: definition }, { age: 0 }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: 0 }, {})).toBe(
         'circle',
       );
-      expect(resolveNodeShape({ shape: definition }, { age: 18 }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: 18 }, {})).toBe(
         'square',
       );
-      expect(resolveNodeShape({ shape: definition }, { age: 64 }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: 64 }, {})).toBe(
         'square',
       );
-      expect(resolveNodeShape({ shape: definition }, { age: 65 }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: 65 }, {})).toBe(
         'diamond',
       );
-      expect(resolveNodeShape({ shape: definition }, { age: 120 }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: 120 }, {})).toBe(
         'diamond',
       );
     });
@@ -173,10 +262,10 @@ describe('resolveNodeShape', () => {
       // Including the string form of a number the threshold would otherwise
       // meet: the comparison is numeric, and a coerced string would make a
       // text answer silently change a node's shape.
-      expect(resolveNodeShape({ shape: definition }, { age: '20' }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: '20' }, {})).toBe(
         'circle',
       );
-      expect(resolveNodeShape({ shape: definition }, { age: null }, {})).toBe(
+      expect(resolveNodeShape({ shape: definition }, { [AGE]: null }, {})).toBe(
         'circle',
       );
       expect(resolveNodeShape({ shape: definition }, {}, {})).toBe('circle');
@@ -187,20 +276,20 @@ describe('resolveNodeShape', () => {
     const shape: NodeDefinition['shape'] = {
       default: 'square',
       dynamic: {
-        variable: asEntityAttributeReference('is_person'),
+        variable: asEntityAttributeReference(IS_PERSON),
         type: 'discrete',
         map: [{ value: true, shape: 'circle' }],
       },
     };
 
-    expect(resolveNodeShape({ shape: shape }, { is_person: true }, {})).toBe(
+    expect(resolveNodeShape({ shape: shape }, { [IS_PERSON]: true }, {})).toBe(
       'circle',
     );
-    expect(resolveNodeShape({ shape: shape }, { is_person: false }, {})).toBe(
+    expect(resolveNodeShape({ shape: shape }, { [IS_PERSON]: false }, {})).toBe(
       'square',
     );
     expect(resolveNodeShape({ shape: shape }, {}, {})).toBe('square');
-    expect(resolveNodeShape({ shape: shape }, { is_person: null }, {})).toBe(
+    expect(resolveNodeShape({ shape: shape }, { [IS_PERSON]: null }, {})).toBe(
       'square',
     );
   });
@@ -243,7 +332,7 @@ describe('resolveNodeShape with custom shapes', () => {
       shape: {
         default: 'circle',
         dynamic: {
-          variable: asEntityAttributeReference('kind'),
+          variable: asEntityAttributeReference(KIND),
           type: 'discrete',
           map: [
             { value: 'home', shape: 'custom:home' },
@@ -254,16 +343,16 @@ describe('resolveNodeShape with custom shapes', () => {
     };
 
     expect(
-      resolveNodeShape(definition, { kind: 'home' }, shapeSvgs),
+      resolveNodeShape(definition, { [KIND]: 'home' }, shapeSvgs),
     ).toMatchObject({
       svg: homeSvg,
     });
     expect(
-      resolveNodeShape(definition, { kind: 'park' }, shapeSvgs),
+      resolveNodeShape(definition, { [KIND]: 'park' }, shapeSvgs),
     ).toMatchObject({
       svg: treeSvg,
     });
-    expect(resolveNodeShape(definition, { kind: 'other' }, shapeSvgs)).toBe(
+    expect(resolveNodeShape(definition, { [KIND]: 'other' }, shapeSvgs)).toBe(
       'circle',
     );
   });
@@ -274,7 +363,7 @@ describe('resolveNodeShape with custom shapes', () => {
       shape: {
         default: 'custom:home',
         dynamic: {
-          variable: asEntityAttributeReference('age'),
+          variable: asEntityAttributeReference(AGE),
           type: 'breakpoints',
           thresholds: [
             { value: 18, shape: 'custom:tree' },
@@ -284,13 +373,17 @@ describe('resolveNodeShape with custom shapes', () => {
       },
     };
 
-    expect(resolveNodeShape(definition, { age: 10 }, shapeSvgs)).toMatchObject({
+    expect(
+      resolveNodeShape(definition, { [AGE]: 10 }, shapeSvgs),
+    ).toMatchObject({
       svg: homeSvg,
     });
-    expect(resolveNodeShape(definition, { age: 30 }, shapeSvgs)).toMatchObject({
+    expect(
+      resolveNodeShape(definition, { [AGE]: 30 }, shapeSvgs),
+    ).toMatchObject({
       svg: treeSvg,
     });
-    expect(resolveNodeShape(definition, { age: 70 }, shapeSvgs)).toBe(
+    expect(resolveNodeShape(definition, { [AGE]: 70 }, shapeSvgs)).toBe(
       'diamond',
     );
   });

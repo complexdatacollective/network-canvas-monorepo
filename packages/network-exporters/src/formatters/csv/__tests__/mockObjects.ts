@@ -15,6 +15,7 @@ import {
   sessionStartTimeProperty,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { FormattedSession } from '../../../input';
 import type { ExportOptions } from '../../../options';
 import { insertEgoIntoSessionNetwork } from '../../../session/insertEgoIntoSessionNetworks';
@@ -26,29 +27,35 @@ import { resequenceSessionIds } from '../../../session/resequenceIds';
 export const mockCodebook = {
   ego: {
     variables: {
-      'mock-uuid-1': { name: 'egoName', type: 'text' },
-      'mock-uuid-2': { name: 'egoAge', type: 'number' },
-      'mock-uuid-3': { name: 'boolVar', type: 'boolean' },
+      [testVariableId('mock-uuid-1')]: { name: 'egoName', type: 'text' },
+      [testVariableId('mock-uuid-2')]: { name: 'egoAge', type: 'number' },
+      [testVariableId('mock-uuid-3')]: { name: 'boolVar', type: 'boolean' },
     },
   },
   node: {
-    'mock-node-type': {
+    [testTypeId('mock-node-type')]: {
       name: 'person',
       color: 'color',
       variables: {
-        'mock-uuid-1': { name: 'firstName', type: 'text' },
-        'mock-uuid-2': { name: 'age', type: 'number' },
-        'mock-uuid-3': { name: 'layout', type: 'layout' },
-        'mock-uuid-4': { name: 'boolWithValues', type: 'boolean' },
-        'mock-uuid-5': { name: 'nullBool', type: 'boolean' },
-        'mock-uuid-6': { name: 'unusedBool', type: 'boolean' },
+        [testVariableId('mock-uuid-1')]: { name: 'firstName', type: 'text' },
+        [testVariableId('mock-uuid-2')]: { name: 'age', type: 'number' },
+        [testVariableId('mock-uuid-3')]: { name: 'layout', type: 'layout' },
+        [testVariableId('mock-uuid-4')]: {
+          name: 'boolWithValues',
+          type: 'boolean',
+        },
+        [testVariableId('mock-uuid-5')]: { name: 'nullBool', type: 'boolean' },
+        [testVariableId('mock-uuid-6')]: {
+          name: 'unusedBool',
+          type: 'boolean',
+        },
       },
     },
-    'mock-node-type-2': {
+    [testTypeId('mock-node-type-2')]: {
       name: 'organization',
       color: 'color',
       variables: {
-        'unrepresented-node-variable': {
+        [testVariableId('unrepresented-node-variable')]: {
           name: 'unrepresentedNodeVariable',
           type: 'text',
         },
@@ -56,11 +63,11 @@ export const mockCodebook = {
     },
   },
   edge: {
-    'mock-edge-type': {
+    [testTypeId('mock-edge-type')]: {
       name: 'peer',
       color: 'color',
       variables: {
-        'relationship-uuid': {
+        [testVariableId('relationship-uuid')]: {
           name: 'RelationshipType',
           type: 'categorical',
           options: [
@@ -71,11 +78,11 @@ export const mockCodebook = {
         },
       },
     },
-    'mock-edge-type-2': {
+    [testTypeId('mock-edge-type-2')]: {
       name: 'likes',
       color: 'color',
       variables: {
-        'unrepresented-edge-variable': {
+        [testVariableId('unrepresented-edge-variable')]: {
           name: 'unrepresentedEdgeVariable',
           type: 'boolean',
         },
@@ -98,40 +105,40 @@ export const mockNetwork: FormattedSession = {
   nodes: [
     {
       [entityPrimaryKeyProperty]: '1',
-      type: 'mock-node-type',
+      type: testTypeId('mock-node-type'),
       [entityAttributesProperty]: {
-        'mock-uuid-1': 'Dee',
-        'mock-uuid-2': 40,
-        'mock-uuid-3': { x: 0, y: 0 },
-        'mock-uuid-4': true,
+        [testVariableId('mock-uuid-1')]: 'Dee',
+        [testVariableId('mock-uuid-2')]: 40,
+        [testVariableId('mock-uuid-3')]: { x: 0, y: 0 },
+        [testVariableId('mock-uuid-4')]: true,
       },
     },
     {
       [entityPrimaryKeyProperty]: '2',
-      type: 'mock-node-type',
+      type: testTypeId('mock-node-type'),
       [entityAttributesProperty]: {
-        'mock-uuid-1': 'Carl',
-        'mock-uuid-2': 0,
-        'mock-uuid-3': { x: 0, y: 0 },
-        'mock-uuid-4': false,
+        [testVariableId('mock-uuid-1')]: 'Carl',
+        [testVariableId('mock-uuid-2')]: 0,
+        [testVariableId('mock-uuid-3')]: { x: 0, y: 0 },
+        [testVariableId('mock-uuid-4')]: false,
       },
     },
     {
       [entityPrimaryKeyProperty]: '3',
-      type: 'mock-node-type',
+      type: testTypeId('mock-node-type'),
       [entityAttributesProperty]: {
-        'mock-uuid-1': 'Jumbo',
-        'mock-uuid-2': 50,
-        'mock-uuid-4': true,
+        [testVariableId('mock-uuid-1')]: 'Jumbo',
+        [testVariableId('mock-uuid-2')]: 50,
+        [testVariableId('mock-uuid-4')]: true,
       },
     },
     {
       [entityPrimaryKeyProperty]: '4',
-      type: 'mock-node-type',
+      type: testTypeId('mock-node-type'),
       [entityAttributesProperty]: {
-        'mock-uuid-1': 'Francis',
-        'mock-uuid-2': 10,
-        'mock-uuid-3': { x: 0, y: 0 },
+        [testVariableId('mock-uuid-1')]: 'Francis',
+        [testVariableId('mock-uuid-2')]: 10,
+        [testVariableId('mock-uuid-3')]: { x: 0, y: 0 },
       },
     },
   ],
@@ -140,18 +147,18 @@ export const mockNetwork: FormattedSession = {
       [entityPrimaryKeyProperty]: 'edge-1',
       from: '1',
       to: '2',
-      type: 'mock-edge-type',
+      type: testTypeId('mock-edge-type'),
       [entityAttributesProperty]: {
-        'relationship-uuid': 'partner',
+        [testVariableId('relationship-uuid')]: 'partner',
       },
     },
   ],
   ego: {
     [entityPrimaryKeyProperty]: 'ego-id-1',
     [entityAttributesProperty]: {
-      'mock-uuid-1': 'Enzo',
-      'mock-uuid-2': 40,
-      'mock-uuid-3': false,
+      [testVariableId('mock-uuid-1')]: 'Enzo',
+      [testVariableId('mock-uuid-2')]: 40,
+      [testVariableId('mock-uuid-3')]: false,
     },
   },
   sessionVariables: {
@@ -173,20 +180,20 @@ export const mockNetwork2: FormattedSession = {
   nodes: [
     {
       [entityPrimaryKeyProperty]: '10',
-      type: 'mock-node-type',
+      type: testTypeId('mock-node-type'),
       [entityAttributesProperty]: {
-        'mock-uuid-1': 'Jimbo',
-        'mock-uuid-2': 20,
-        'mock-uuid-3': { x: 10, y: 50 },
+        [testVariableId('mock-uuid-1')]: 'Jimbo',
+        [testVariableId('mock-uuid-2')]: 20,
+        [testVariableId('mock-uuid-3')]: { x: 10, y: 50 },
       },
     },
     {
       [entityPrimaryKeyProperty]: '20',
-      type: 'mock-node-type',
+      type: testTypeId('mock-node-type'),
       [entityAttributesProperty]: {
-        'mock-uuid-1': 'Jambo',
-        'mock-uuid-2': 30,
-        'mock-uuid-3': { x: 20, y: 20 },
+        [testVariableId('mock-uuid-1')]: 'Jambo',
+        [testVariableId('mock-uuid-2')]: 30,
+        [testVariableId('mock-uuid-3')]: { x: 20, y: 20 },
       },
     },
   ],
@@ -195,16 +202,16 @@ export const mockNetwork2: FormattedSession = {
       [entityPrimaryKeyProperty]: 'edge-10',
       from: '10',
       to: '20',
-      type: 'mock-edge-type',
+      type: testTypeId('mock-edge-type'),
       [entityAttributesProperty]: {},
     },
   ],
   ego: {
     [entityPrimaryKeyProperty]: 'ego-id-10',
     [entityAttributesProperty]: {
-      'mock-uuid-1': 'Enzo',
-      'mock-uuid-2': 40,
-      'mock-uuid-3': true,
+      [testVariableId('mock-uuid-1')]: 'Enzo',
+      [testVariableId('mock-uuid-2')]: 40,
+      [testVariableId('mock-uuid-3')]: true,
     },
   },
   sessionVariables: {

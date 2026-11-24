@@ -15,7 +15,13 @@ test('edits the finish stage a new protocol starts with', async ({
   architectPage,
   seed,
 }) => {
-  await seed(emptyProtocol());
+  const protocol = emptyProtocol();
+  const seeded = protocol.stages.find(
+    (stage) => stage.type === 'FinishSession',
+  );
+  if (!seeded)
+    throw new Error('Expected a new protocol to have a finish stage');
+  await seed(protocol);
   await gotoProtocol(architectPage);
   await new Timeline(architectPage).openStage('Finish Interview');
 
@@ -56,7 +62,7 @@ test('edits the finish stage a new protocol starts with', async ({
     throw new Error(`expected FinishSession stage, got ${stage.type}`);
   }
   expect(stage).toMatchObject({
-    id: 'finish',
+    id: seeded.id,
     label: { en: 'Not eligible' },
     mode: 'confirmation',
     // The text was a heading, and typing over it keeps it one.

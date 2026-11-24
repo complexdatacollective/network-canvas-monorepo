@@ -3,12 +3,12 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
-import type { EntityAttributeReferenceHit } from '../../utils/collectEntityAttributeReferences.ts';
 import {
   collectLocalizedStrings,
   type LocalizedStringHit,
 } from '../../utils/collectLocalizedStrings.ts';
 import { findInterfaceOwnedOptionBindings } from '../../utils/findExclusiveVariableConflicts.ts';
+import type { EntityAttributeReferenceHit } from '../../utils/schemaReferenceWalk.ts';
 import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
 import type { LocalizedString } from './localized-string.ts';
 import { wordingPresent } from './protocol-wording.ts';

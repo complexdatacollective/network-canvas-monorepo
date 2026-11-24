@@ -114,7 +114,7 @@ export const isAttributeDynamicValueRole = (
 ): role is AttributeDynamicValueRole =>
   role !== 'edgeFrom' && role !== 'edgeTo';
 
-// Codebook ids are letters, digits and `._:-`, so no attribute is named this.
+// Variable ids are UUIDs, so no attribute is named this.
 const LABEL_PATH_SEGMENT = '$label';
 const PARTICIPANT_PATH_SEGMENT = '$isParticipant';
 

@@ -1,11 +1,11 @@
 import { isEqual } from 'es-toolkit';
 import { useCallback, useMemo } from 'react';
-import { v4 as uuid } from 'uuid';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
+  createVariableId,
   type Codebook,
   VARIABLE_TYPE_COMPONENTS,
   type VariableType,
@@ -376,7 +376,7 @@ export function useCreateCodebookVariable(
       // The record id is minted here and never shown: a researcher renames an
       // attribute, and a protocol whose references were its old name would
       // break on the rename.
-      const variableId = uuid();
+      const variableId = createVariableId();
       const draft = {
         name: variable.name,
         type: variable.type,

@@ -6,9 +6,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import { DynamicTextPreview } from './DynamicTextPreview.tsx';
 
-const STAGE_ID = 'anonymisation-1';
+const STAGE_ID = fixtureStageId('anonymisation-1');
 const STAGE = sectionId({ kind: 'stage', stageId: STAGE_ID });
 
 /** The stage binds today's date under `today`, as inserting it would. */

@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import SummaryPage from '../SummaryPage';
@@ -21,13 +22,13 @@ const bilingualProtocol: CurrentProtocol = {
   assetManifest: {},
   stages: [
     {
-      id: 'welcome',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
       content: { en: '# Hello', fr: '# Bonjour' },
     },
     {
-      id: 'thanks',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Thanks', fr: 'Merci' },
       content: { en: 'Written in English' },
@@ -83,7 +84,7 @@ describe('<SummaryPage /> language', () => {
       localization: { defaultLocale: 'ar', locales: ['ar'] },
       stages: [
         {
-          id: 'welcome',
+          id: createProtocolObjectId(),
           type: 'Information',
           label: { ar: 'مرحبا' },
           content: { ar: '# أهلا' },

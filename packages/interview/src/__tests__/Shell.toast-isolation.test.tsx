@@ -37,6 +37,10 @@ import {
   InterviewToastViewport,
 } from '../toast/InterviewToast';
 import { interviewToastManager } from '../toast/interviewToastManager';
+import { testId, testTypeId, testVariableId } from './testIds';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
 
 // Keep the actual NameGenerator, node-limit validation, Navigation, Shell,
 // Redux store, toast providers and toast UI. Avoid importing unrelated WebGL
@@ -117,7 +121,9 @@ function makePayload(id: string): InterviewPayload {
       network: {
         ego: {
           [entityPrimaryKeyProperty]: `${id}-ego`,
-          [entityAttributesProperty]: { original: 'Authored_Á1' },
+          [entityAttributesProperty]: {
+            [testVariableId('original')]: 'Authored_Á1',
+          },
         },
         nodes: [],
         edges: [],
@@ -133,13 +139,13 @@ function makePayload(id: string): InterviewPayload {
       codebook: {
         ego: { variables: {} },
         node: {
-          person: {
+          [PERSON]: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             icon: 'add-a-person',
             variables: {
-              name: { name: 'Name', type: 'text' },
+              [NAME]: { name: 'Name', type: 'text' },
             },
           },
         },
@@ -148,22 +154,25 @@ function makePayload(id: string): InterviewPayload {
       assets: [],
       stages: [
         {
-          id: `${id}-names`,
+          id: testId(`${id}-names`),
           type: 'NameGeneratorQuickAdd',
           minNodesNotice: {
             en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
           },
           addNamePlaceholder: { en: 'Type a name, then press Enter' },
           label: { en: `Original_${id}` },
-          subject: { entity: 'node', type: 'person' },
-          quickAdd: asEntityAttributeReference('name'),
+          subject: { entity: 'node', type: PERSON },
+          quickAdd: asEntityAttributeReference(NAME),
           prompts: [
-            { id: `${id}-prompt`, text: { en: `Original prompt ${id}` } },
+            {
+              id: testId(`${id}-prompt`),
+              text: { en: `Original prompt ${id}` },
+            },
           ],
           behaviours: { minNodes: 1 },
         },
         {
-          id: `${id}-finish`,
+          id: testId(`${id}-finish`),
           type: 'FinishSession',
           mode: 'confirmation',
           label: { en: 'Finish' },
@@ -388,7 +397,7 @@ describe('Shell toast ownership', () => {
       firstStore.getState().session.network.nodes[0]?.[
         entityAttributesProperty
       ],
-    ).toMatchObject({ name: 'Álvaro & <first>' });
+    ).toMatchObject({ [NAME]: 'Álvaro & <first>' });
     await waitFor(() => expect(firstSync).toHaveBeenCalled());
     expect(secondStore.getState().session).toEqual(beforeSecond);
     expect(secondSync).not.toHaveBeenCalled();
@@ -504,17 +513,17 @@ describe('Shell stage portal ownership', () => {
     firstPayload.session.network.nodes = [
       {
         [entityPrimaryKeyProperty]: 'same-node-id',
-        type: 'person',
-        [entityAttributesProperty]: { name: 'Álvaro first' },
-        promptIDs: ['first-prompt'],
+        type: PERSON,
+        [entityAttributesProperty]: { [NAME]: 'Álvaro first' },
+        promptIDs: [testId('first-prompt')],
       },
     ];
     secondPayload.session.network.nodes = [
       {
         [entityPrimaryKeyProperty]: 'same-node-id',
-        type: 'person',
-        [entityAttributesProperty]: { name: 'Íñigo second' },
-        promptIDs: ['second-prompt'],
+        type: PERSON,
+        [entityAttributesProperty]: { [NAME]: 'Íñigo second' },
+        promptIDs: [testId('second-prompt')],
       },
     ];
     const originalFirst = structuredClone(firstPayload);

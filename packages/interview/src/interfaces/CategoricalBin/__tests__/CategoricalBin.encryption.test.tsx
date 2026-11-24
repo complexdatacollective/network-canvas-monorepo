@@ -25,6 +25,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
@@ -35,6 +36,8 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import {
   createEncryptionStore,
   encryptionFor,
+  NAME_VARIABLE,
+  NODE_TYPE,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import {
@@ -89,20 +92,22 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const STAGE_ID = 'categorical-bin-stage';
-const PROMPT_ID = 'prompt-1';
+const STAGE_ID = testId('categorical-bin-stage');
+const PROMPT_ID = testId('prompt-1');
 // One option, so the "other" bin is the second.
 const OTHER_BIN_INDEX = 1;
+const CATEGORY_VARIABLE = testVariableId('category');
+const OTHER_REASON_VARIABLE = testVariableId('otherReason');
 
 const variables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text' },
-  category: {
+  [NAME_VARIABLE]: { name: 'name', type: 'text', component: 'Text' },
+  [CATEGORY_VARIABLE]: {
     name: 'Category',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [{ label: { en: 'Family' }, value: 1 }],
   },
-  otherReason: {
+  [OTHER_REASON_VARIABLE]: {
     name: 'Other reason',
     type: 'text',
     component: 'Text',
@@ -114,13 +119,13 @@ const stage: StageProps<'CategoricalBin'>['stage'] = {
   id: STAGE_ID,
   type: 'CategoricalBin',
   label: { en: 'Categorise people' },
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
     {
       id: PROMPT_ID,
       text: { en: 'Which category?' },
-      variable: asEntityAttributeReference('category'),
-      otherVariable: asEntityAttributeReference('otherReason'),
+      variable: asEntityAttributeReference(CATEGORY_VARIABLE),
+      otherVariable: asEntityAttributeReference(OTHER_REASON_VARIABLE),
       otherVariablePrompt: { en: 'Please specify' },
       otherOptionLabel: { en: 'Other' },
     },
@@ -129,8 +134,8 @@ const stage: StageProps<'CategoricalBin'>['stage'] = {
 
 const person: NcNode = {
   [entityPrimaryKeyProperty]: 'n1',
-  type: 'person',
-  [entityAttributesProperty]: { name: 'Alice' },
+  type: NODE_TYPE,
+  [entityAttributesProperty]: { [NAME_VARIABLE]: 'Alice' },
 };
 
 function CaptureDndStore({
@@ -259,7 +264,7 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     const stored = await waitFor(() => {
       const [saved] = store.getState().session.network.nodes;
       const attribute = saved
-        ? readEncryptedAttribute(saved, 'otherReason', variables)
+        ? readEncryptedAttribute(saved, OTHER_REASON_VARIABLE, variables)
         : undefined;
       if (attribute?.status !== 'encrypted') {
         throw new Error('Expected the answer to be stored encrypted');
@@ -274,7 +279,7 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
   it('shows the decrypted answer when it is asked again', async () => {
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(
-        { otherReason: 'Cousin' },
+        { [OTHER_REASON_VARIABLE]: 'Cousin' },
         variables,
         (await encryptionFor('pw')).key,
         person[entityPrimaryKeyProperty],
@@ -304,7 +309,7 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
         ...person,
         [entityAttributesProperty]: {
           ...person[entityAttributesProperty],
-          otherReason: 'Cousin',
+          [OTHER_REASON_VARIABLE]: 'Cousin',
         },
       },
     });
@@ -323,8 +328,8 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
         ...person,
         [entityAttributesProperty]: {
           ...person[entityAttributesProperty],
-          category: [1],
-          otherReason: unreadable,
+          [CATEGORY_VARIABLE]: [1],
+          [OTHER_REASON_VARIABLE]: unreadable,
         },
       },
     });
@@ -335,20 +340,22 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
 
     await waitFor(() =>
       expect(
-        store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-          .category,
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+          CATEGORY_VARIABLE
+        ],
       ).toBeUndefined(),
     );
     expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-        .otherReason,
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        OTHER_REASON_VARIABLE
+      ],
     ).toEqual(unreadable);
   });
 
   it('shows the person by their decrypted name while asking', async () => {
     const namedVariables: Record<string, Variable> = {
       ...variables,
-      name: {
+      [NAME_VARIABLE]: {
         name: 'name',
         type: 'text',
         component: 'Text',
@@ -357,7 +364,7 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     };
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(
-        { name: 'Alice' },
+        { [NAME_VARIABLE]: 'Alice' },
         namedVariables,
         (await encryptionFor('pw')).key,
         person[entityPrimaryKeyProperty],
@@ -382,7 +389,7 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
   it('names the person in the question once their name has decrypted', async () => {
     const namedVariables: Record<string, Variable> = {
       ...variables,
-      name: {
+      [NAME_VARIABLE]: {
         name: 'name',
         type: 'text',
         component: 'Text',
@@ -391,7 +398,7 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     };
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(
-        { name: 'Alice' },
+        { [NAME_VARIABLE]: 'Alice' },
         namedVariables,
         (await encryptionFor('pw')).key,
         person[entityPrimaryKeyProperty],
@@ -411,8 +418,8 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
           {
             id: PROMPT_ID,
             text: { en: 'Which category?' },
-            variable: asEntityAttributeReference('category'),
-            otherVariable: asEntityAttributeReference('otherReason'),
+            variable: asEntityAttributeReference(CATEGORY_VARIABLE),
+            otherVariable: asEntityAttributeReference(OTHER_REASON_VARIABLE),
             otherVariablePrompt: { en: 'Why {who}?' },
             otherOptionLabel: { en: 'Other' },
           },
@@ -435,7 +442,7 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
   it('rejects an answer another person already gave', async () => {
     const uniqueVariables: Record<string, Variable> = {
       ...variables,
-      otherReason: {
+      [OTHER_REASON_VARIABLE]: {
         name: 'Other reason',
         type: 'text',
         component: 'Text',
@@ -445,14 +452,14 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
     };
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(
-        { otherReason: 'Neighbour' },
+        { [OTHER_REASON_VARIABLE]: 'Neighbour' },
         uniqueVariables,
         (await encryptionFor('pw')).key,
         'n2',
       );
     const neighbour: NcNode = {
       [entityPrimaryKeyProperty]: 'n2',
-      type: 'person',
+      type: NODE_TYPE,
       [entityAttributesProperty]: encryptedAttributes,
       [entitySecureAttributesMeta]: secureAttributes,
     };
@@ -472,8 +479,9 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
 
     await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
     expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-        .otherReason,
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        OTHER_REASON_VARIABLE
+      ],
     ).toBeUndefined();
   });
 
@@ -482,22 +490,24 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
     // which is.
     const comparedVariables: Record<string, Variable> = {
       ...variables,
-      name: {
+      [NAME_VARIABLE]: {
         name: 'name',
         type: 'text',
         component: 'Text',
         encrypted: true,
       },
-      otherReason: {
+      [OTHER_REASON_VARIABLE]: {
         name: 'Other reason',
         type: 'text',
         component: 'Text',
-        validation: { differentFrom: asEntityAttributeReference('name') },
+        validation: {
+          differentFrom: asEntityAttributeReference(NAME_VARIABLE),
+        },
       },
     };
     const { encryptedAttributes, secureAttributes } =
       await generateSecureAttributes(
-        { name: 'Alice' },
+        { [NAME_VARIABLE]: 'Alice' },
         comparedVariables,
         (await encryptionFor('pw')).key,
         person[entityPrimaryKeyProperty],
@@ -549,8 +559,9 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
     fireEvent.click(submit);
     await waitFor(() =>
       expect(
-        store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-          .otherReason,
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+          OTHER_REASON_VARIABLE
+        ],
       ).toBe('Cousin'),
     );
   });

@@ -5,6 +5,7 @@ import type { LocaleTag } from '@codaco/protocol-validation';
 
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
+import { testVariableId } from '../../testing/testId.ts';
 import { DynamicMessageEditor } from '../DynamicTextField.tsx';
 
 const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
@@ -35,7 +36,7 @@ describe('DynamicMessageEditor', () => {
           locale={LOCALE}
           site={{
             context: { roles: new Set(['ego']), variablesFor: () => ({}) },
-            bindings: { gone: { path: 'ego.deleted' } },
+            bindings: { gone: { path: `ego.${testVariableId('deleted')}` } },
           }}
         />
       </ProtocolLocalizationProvider>,

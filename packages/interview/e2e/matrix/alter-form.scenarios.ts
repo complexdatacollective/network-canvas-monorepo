@@ -7,7 +7,41 @@ import {
 
 import { expect } from '../fixtures/matrix-test.js';
 import { SlidesFormFixture } from '../fixtures/slides-form-fixture.js';
+import { e2eVariableId } from '../helpers/codebook-ids.js';
 import type { InterfaceScenarios } from './types.js';
+
+// The ids of the variables these scenarios name.
+const AGE = e2eVariableId('age');
+const BIO = e2eVariableId('bio');
+const BOOLEAN = e2eVariableId('boolean');
+const CAP = e2eVariableId('cap');
+const CAP_EQ = e2eVariableId('capEq');
+const CEILING = e2eVariableId('ceiling');
+const CHECKBOX = e2eVariableId('checkbox');
+const CLOSENESS = e2eVariableId('closeness');
+const CODE_NAME = e2eVariableId('codeName');
+const DATE_PICKER = e2eVariableId('datePicker');
+const END = e2eVariableId('end');
+const FIELD_A = e2eVariableId('fieldA');
+const FIELD_B = e2eVariableId('fieldB');
+const FIELD_C = e2eVariableId('fieldC');
+const FLOOR = e2eVariableId('floor');
+const FULL_NAME = e2eVariableId('fullName');
+const INTERESTS = e2eVariableId('interests');
+const LIKERT = e2eVariableId('likert');
+const NICKNAME = e2eVariableId('nickname');
+const NUMBER = e2eVariableId('number');
+const PERSON_LABEL = e2eVariableId('personLabel');
+const RADIO = e2eVariableId('radio');
+const RELATIVE_DATE_PICKER = e2eVariableId('relativeDatePicker');
+const SECRET = e2eVariableId('secret');
+const START = e2eVariableId('start');
+const TEXT = e2eVariableId('text');
+const TEXT_AREA = e2eVariableId('textArea');
+const TOGGLE = e2eVariableId('toggle');
+const TOGGLE_BUTTONS = e2eVariableId('toggleButtons');
+const TRUST = e2eVariableId('trust');
+const VAS = e2eVariableId('vas');
 
 const HEADER_SELECTOR =
   '[data-stage-section="form"] [data-slide-header] button[aria-label]';
@@ -26,7 +60,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         const nickname = person.addVariable({
-          id: 'nickname',
+          id: NICKNAME,
           name: 'Nickname',
           type: 'text',
           component: 'Text',
@@ -57,9 +91,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         // The stage opens directly on the first person's questions.
         await interview.waitForForm();
         await expect(slides.getCurrentItemLabel()).resolves.not.toBeNull();
-        await expect(
-          stage.form.field('nickname').locator('input'),
-        ).toBeVisible();
+        await expect(stage.form.field(NICKNAME).locator('input')).toBeVisible();
         // label is menu-only (no stages menu here); interviewScript never renders.
         await expect(page.getByText('Menu-only label')).toHaveCount(0);
         await expect(page.getByText('Ask gently')).toHaveCount(0);
@@ -93,7 +125,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         // node gets a distinct header label (used to detect slide advance).
         const personName = person.addVariable({ name: 'name', type: 'text' });
         const nickname = person.addVariable({
-          id: 'nickname',
+          id: NICKNAME,
           name: 'Nickname',
           type: 'text',
           component: 'Text',
@@ -132,22 +164,22 @@ export const alterFormScenarios: InterfaceScenarios = {
         await expect(header).toHaveClass(/outline-node-3/);
         await expect(header).toHaveClass(/rounded-full/);
 
-        await stage.form.fillText('nickname', 'Ziggy');
+        await stage.form.fillText(NICKNAME, 'Ziggy');
         await slides.nextSlide(label1);
 
         // Slide 2 (Grace): its own nickname is unset.
-        await expect(stage.form.field('nickname').locator('input')).toHaveValue(
+        await expect(stage.form.field(NICKNAME).locator('input')).toHaveValue(
           '',
         );
 
         // Back to slide 1: Ada's typed value was persisted and restored.
         await slides.previousSlide();
-        await expect(stage.form.field('nickname').locator('input')).toHaveValue(
+        await expect(stage.form.field(NICKNAME).locator('input')).toHaveValue(
           'Ziggy',
         );
 
         await slides.nextSlide('Ada');
-        await stage.form.fillText('nickname', 'Moss');
+        await stage.form.fillText(NICKNAME, 'Moss');
         // The third advance leaves the stage: only 2 Person slides exist.
         await slides.nextSlide('Grace');
         await expect(
@@ -161,9 +193,9 @@ export const alterFormScenarios: InterfaceScenarios = {
         const office = nodes.find(
           (n) => n[entityPrimaryKeyProperty] === 'place1',
         );
-        expect(ada?.attributes.nickname).toBe('Ziggy');
-        expect(grace?.attributes.nickname).toBe('Moss');
-        expect(office?.attributes).not.toHaveProperty('nickname');
+        expect(ada?.attributes[NICKNAME]).toBe('Ziggy');
+        expect(grace?.attributes[NICKNAME]).toBe('Moss');
+        expect(office?.attributes).not.toHaveProperty(NICKNAME);
       },
     },
 
@@ -179,14 +211,14 @@ export const alterFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         const fullName = person.addVariable({
-          id: 'fullName',
+          id: FULL_NAME,
           name: 'FullName',
           type: 'text',
           component: 'Text',
           validation: { required: true },
         });
         const nickname = person.addVariable({
-          id: 'nickname',
+          id: NICKNAME,
           name: 'Nickname',
           type: 'text',
           component: 'Text',
@@ -224,16 +256,16 @@ export const alterFormScenarios: InterfaceScenarios = {
         // Submitting with the required field empty is blocked and stays put.
         const labelBefore = await slides.getCurrentItemLabel();
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('fullName')).toBeVisible();
+        await expect(stage.form.getFieldError(FULL_NAME)).toBeVisible();
         await expect(page.locator('[data-stage-section="form"]')).toBeVisible();
         await expect(slides.getCurrentItemLabel()).resolves.toBe(labelBefore);
         // focusFirstError moves focus into the required field on the commit
         // that renders the error (#1385) — read it immediately, since a
         // polling assertion would also pass on the deferred focus that used to
         // leave the participant on `document.body` for up to two seconds.
-        expect(await stage.form.focusIsInside('fullName')).toBe(true);
+        expect(await stage.form.focusIsInside(FULL_NAME)).toBe(true);
 
-        await stage.form.fillText('fullName', 'Ada Lovelace');
+        await stage.form.fillText(FULL_NAME, 'Ada Lovelace');
         await slides.nextSlide(labelBefore);
         await expect(
           page.getByRole('heading', { name: 'Next stage' }),
@@ -255,14 +287,14 @@ export const alterFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         const bio = person.addVariable({
-          id: 'bio',
+          id: BIO,
           name: 'Bio',
           type: 'text',
           component: 'TextArea',
           validation: { minLength: 5, maxLength: 200 },
         });
         const age = person.addVariable({
-          id: 'age',
+          id: AGE,
           name: 'Age',
           type: 'number',
           component: 'Number',
@@ -289,15 +321,15 @@ export const alterFormScenarios: InterfaceScenarios = {
         const slides = new SlidesFormFixture(page);
         await interview.waitForForm();
 
-        await stage.form.fillText('bio', 'abc');
-        await stage.form.fillNumber('age', '200');
+        await stage.form.fillText(BIO, 'abc');
+        await stage.form.fillNumber(AGE, '200');
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('bio')).toBeVisible();
-        await expect(stage.form.getFieldError('age')).toBeVisible();
+        await expect(stage.form.getFieldError(BIO)).toBeVisible();
+        await expect(stage.form.getFieldError(AGE)).toBeVisible();
         await expect(page.locator('[data-stage-section="form"]')).toBeVisible();
 
-        await stage.form.fillText('bio', 'A longer bio');
-        await stage.form.fillNumber('age', '42');
+        await stage.form.fillText(BIO, 'A longer bio');
+        await stage.form.fillNumber(AGE, '42');
         const label = await slides.getCurrentItemLabel();
         await slides.nextSlide(label);
         await expect(
@@ -306,10 +338,10 @@ export const alterFormScenarios: InterfaceScenarios = {
 
         const state = await protocol.getNetworkState(interview.interviewId);
         const attrs = state?.nodes[0]?.attributes ?? {};
-        expect(attrs.bio).toBe('A longer bio');
-        expect(typeof attrs.bio).toBe('string');
-        expect(attrs.age).toBe(42);
-        expect(typeof attrs.age).toBe('number');
+        expect(attrs[BIO]).toBe('A longer bio');
+        expect(typeof attrs[BIO]).toBe('string');
+        expect(attrs[AGE]).toBe(42);
+        expect(typeof attrs[AGE]).toBe('number');
       },
     },
 
@@ -325,7 +357,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         const interests = person.addVariable({
-          id: 'interests',
+          id: INTERESTS,
           name: 'Interests',
           type: 'categorical',
           component: 'CheckboxGroup',
@@ -353,15 +385,15 @@ export const alterFormScenarios: InterfaceScenarios = {
         const slides = new SlidesFormFixture(page);
         await interview.waitForForm();
 
-        await stage.form.selectCheckbox('interests', 'Reading');
-        await stage.form.selectCheckbox('interests', 'Sport');
-        await stage.form.selectCheckbox('interests', 'Music');
+        await stage.form.selectCheckbox(INTERESTS, 'Reading');
+        await stage.form.selectCheckbox(INTERESTS, 'Sport');
+        await stage.form.selectCheckbox(INTERESTS, 'Music');
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('interests')).toBeVisible();
+        await expect(stage.form.getFieldError(INTERESTS)).toBeVisible();
 
         // Deselect Music to satisfy maxSelected: 2.
         const music = stage.form
-          .field('interests')
+          .field(INTERESTS)
           .getByRole('checkbox', { name: 'Music', exact: true });
         await music.click();
         await expect(music).not.toBeChecked();
@@ -374,7 +406,7 @@ export const alterFormScenarios: InterfaceScenarios = {
 
         const state = await protocol.getNetworkState(interview.interviewId);
         // Categorical values persist as an array of the selected option values.
-        expect(state?.nodes[0]?.attributes.interests).toEqual([
+        expect(state?.nodes[0]?.attributes[INTERESTS]).toEqual([
           'reading',
           'sport',
         ]);
@@ -394,27 +426,27 @@ export const alterFormScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const personName = person.addVariable({ name: 'name', type: 'text' });
         const codeName = person.addVariable({
-          id: 'codeName',
+          id: CODE_NAME,
           name: 'CodeName',
           type: 'text',
           component: 'Text',
           validation: { unique: true },
         });
         const fieldA = person.addVariable({
-          id: 'fieldA',
+          id: FIELD_A,
           name: 'FieldA',
           type: 'text',
           component: 'Text',
         });
         const fieldB = person.addVariable({
-          id: 'fieldB',
+          id: FIELD_B,
           name: 'FieldB',
           type: 'text',
           component: 'Text',
           validation: { differentFrom: fieldA.id },
         });
         const fieldC = person.addVariable({
-          id: 'fieldC',
+          id: FIELD_C,
           name: 'FieldC',
           type: 'text',
           component: 'Text',
@@ -459,27 +491,27 @@ export const alterFormScenarios: InterfaceScenarios = {
         const label1 = await slides.getCurrentItemLabel();
 
         // Slide 1: satisfy sameAs/differentFrom, pick a codeName.
-        await stage.form.fillText('codeName', 'same');
-        await stage.form.fillText('fieldA', 'alpha');
-        await stage.form.fillText('fieldB', 'beta'); // differs from fieldA: OK
-        await stage.form.fillText('fieldC', 'alpha'); // sameAs fieldA: OK
+        await stage.form.fillText(CODE_NAME, 'same');
+        await stage.form.fillText(FIELD_A, 'alpha');
+        await stage.form.fillText(FIELD_B, 'beta'); // differs from fieldA: OK
+        await stage.form.fillText(FIELD_C, 'alpha'); // sameAs fieldA: OK
         await slides.nextSlide(label1);
 
         // Slide 2: reuse codeName 'same' (blocked by unique), and violate
         // differentFrom/sameAs.
-        await stage.form.fillText('codeName', 'same');
-        await stage.form.fillText('fieldA', 'alpha');
-        await stage.form.fillText('fieldB', 'alpha'); // == fieldA: violates differentFrom
-        await stage.form.fillText('fieldC', 'zzz'); // != fieldA: violates sameAs
+        await stage.form.fillText(CODE_NAME, 'same');
+        await stage.form.fillText(FIELD_A, 'alpha');
+        await stage.form.fillText(FIELD_B, 'alpha'); // == fieldA: violates differentFrom
+        await stage.form.fillText(FIELD_C, 'zzz'); // != fieldA: violates sameAs
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('codeName')).toBeVisible();
-        await expect(stage.form.getFieldError('fieldB')).toBeVisible();
-        await expect(stage.form.getFieldError('fieldC')).toBeVisible();
+        await expect(stage.form.getFieldError(CODE_NAME)).toBeVisible();
+        await expect(stage.form.getFieldError(FIELD_B)).toBeVisible();
+        await expect(stage.form.getFieldError(FIELD_C)).toBeVisible();
 
         // Fix all three.
-        await stage.form.fillText('codeName', 'different');
-        await stage.form.fillText('fieldB', 'gamma');
-        await stage.form.fillText('fieldC', 'alpha');
+        await stage.form.fillText(CODE_NAME, 'different');
+        await stage.form.fillText(FIELD_B, 'gamma');
+        await stage.form.fillText(FIELD_C, 'alpha');
         await slides.nextSlide(await slides.getCurrentItemLabel());
 
         await expect(
@@ -487,10 +519,10 @@ export const alterFormScenarios: InterfaceScenarios = {
         ).toBeVisible();
         const state = await protocol.getNetworkState(interview.interviewId);
         const [n1, n2] = state?.nodes ?? [];
-        expect(n1?.attributes.codeName).toBe('same');
-        expect(n2?.attributes.codeName).toBe('different');
-        expect(n2?.attributes.fieldB).toBe('gamma');
-        expect(n2?.attributes.fieldC).toBe('alpha');
+        expect(n1?.attributes[CODE_NAME]).toBe('same');
+        expect(n2?.attributes[CODE_NAME]).toBe('different');
+        expect(n2?.attributes[FIELD_B]).toBe('gamma');
+        expect(n2?.attributes[FIELD_C]).toBe('alpha');
       },
     },
 
@@ -507,44 +539,44 @@ export const alterFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         const start = person.addVariable({
-          id: 'start',
+          id: START,
           name: 'Start',
           type: 'number',
           component: 'Number',
         });
         const end = person.addVariable({
-          id: 'end',
+          id: END,
           name: 'End',
           type: 'number',
           component: 'Number',
-          validation: { greaterThanVariable: 'start' },
+          validation: { greaterThanVariable: START },
         });
         const floor = person.addVariable({
-          id: 'floor',
+          id: FLOOR,
           name: 'Floor',
           type: 'number',
           component: 'Number',
         });
         const ceiling = person.addVariable({
-          id: 'ceiling',
+          id: CEILING,
           name: 'Ceiling',
           type: 'number',
           component: 'Number',
-          validation: { greaterThanOrEqualToVariable: 'floor' },
+          validation: { greaterThanOrEqualToVariable: FLOOR },
         });
         const cap = person.addVariable({
-          id: 'cap',
+          id: CAP,
           name: 'Cap',
           type: 'number',
           component: 'Number',
-          validation: { lessThanVariable: 'end' },
+          validation: { lessThanVariable: END },
         });
         const capEq = person.addVariable({
-          id: 'capEq',
+          id: CAP_EQ,
           name: 'CapEqual',
           type: 'number',
           component: 'Number',
-          validation: { lessThanOrEqualToVariable: 'end' },
+          validation: { lessThanOrEqualToVariable: END },
         });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
@@ -569,20 +601,20 @@ export const alterFormScenarios: InterfaceScenarios = {
 
         // end < start and ceiling < floor are invalid; cap/capEq are valid
         // (both already below end).
-        await stage.form.fillNumber('start', '10');
-        await stage.form.fillNumber('end', '5');
-        await stage.form.fillNumber('floor', '10');
-        await stage.form.fillNumber('ceiling', '9');
-        await stage.form.fillNumber('cap', '3');
-        await stage.form.fillNumber('capEq', '5');
+        await stage.form.fillNumber(START, '10');
+        await stage.form.fillNumber(END, '5');
+        await stage.form.fillNumber(FLOOR, '10');
+        await stage.form.fillNumber(CEILING, '9');
+        await stage.form.fillNumber(CAP, '3');
+        await stage.form.fillNumber(CAP_EQ, '5');
         await interview.nextButton.click();
-        await expect(stage.form.getFieldError('end')).toBeVisible();
-        await expect(stage.form.getFieldError('ceiling')).toBeVisible();
-        await expect(stage.form.getFieldError('cap')).toHaveCount(0);
-        await expect(stage.form.getFieldError('capEq')).toHaveCount(0);
+        await expect(stage.form.getFieldError(END)).toBeVisible();
+        await expect(stage.form.getFieldError(CEILING)).toBeVisible();
+        await expect(stage.form.getFieldError(CAP)).toHaveCount(0);
+        await expect(stage.form.getFieldError(CAP_EQ)).toHaveCount(0);
 
-        await stage.form.fillNumber('end', '15');
-        await stage.form.fillNumber('ceiling', '10');
+        await stage.form.fillNumber(END, '15');
+        await stage.form.fillNumber(CEILING, '10');
         const label = await slides.getCurrentItemLabel();
         await slides.nextSlide(label);
         await expect(
@@ -592,12 +624,12 @@ export const alterFormScenarios: InterfaceScenarios = {
         const state = await protocol.getNetworkState(interview.interviewId);
         const attrs = state?.nodes[0]?.attributes ?? {};
         for (const [key, value] of [
-          ['start', 10],
-          ['end', 15],
-          ['floor', 10],
-          ['ceiling', 10],
-          ['cap', 3],
-          ['capEq', 5],
+          [START, 10],
+          [END, 15],
+          [FLOOR, 10],
+          [CEILING, 10],
+          [CAP, 3],
+          [CAP_EQ, 5],
         ] as const) {
           expect(attrs[key]).toBe(value);
           expect(typeof attrs[key]).toBe('number');
@@ -620,37 +652,37 @@ export const alterFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         const text = person.addVariable({
-          id: 'text',
+          id: TEXT,
           name: 'Text',
           type: 'text',
           component: 'Text',
         });
         const textArea = person.addVariable({
-          id: 'textArea',
+          id: TEXT_AREA,
           name: 'Bio',
           type: 'text',
           component: 'TextArea',
         });
         const number = person.addVariable({
-          id: 'number',
+          id: NUMBER,
           name: 'Age',
           type: 'number',
           component: 'Number',
         });
         const boolean = person.addVariable({
-          id: 'boolean',
+          id: BOOLEAN,
           name: 'Confirmed',
           type: 'boolean',
           component: 'Boolean',
         });
         const toggle = person.addVariable({
-          id: 'toggle',
+          id: TOGGLE,
           name: 'Consent',
           type: 'boolean',
           component: 'Toggle',
         });
         const radio = person.addVariable({
-          id: 'radio',
+          id: RADIO,
           name: 'Closeness',
           type: 'ordinal',
           component: 'RadioGroup',
@@ -661,7 +693,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           ],
         });
         const likert = person.addVariable({
-          id: 'likert',
+          id: LIKERT,
           name: 'Frequency',
           type: 'ordinal',
           component: 'LikertScale',
@@ -672,7 +704,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           ],
         });
         const checkbox = person.addVariable({
-          id: 'checkbox',
+          id: CHECKBOX,
           name: 'Interests',
           type: 'categorical',
           component: 'CheckboxGroup',
@@ -682,7 +714,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           ],
         });
         const toggleButtons = person.addVariable({
-          id: 'toggleButtons',
+          id: TOGGLE_BUTTONS,
           name: 'Traits',
           type: 'categorical',
           component: 'ToggleButtonGroup',
@@ -692,21 +724,21 @@ export const alterFormScenarios: InterfaceScenarios = {
           ],
         });
         const vas = person.addVariable({
-          id: 'vas',
+          id: VAS,
           name: 'ClosenessScale',
           type: 'scalar',
           component: 'VisualAnalogScale',
           parameters: { minLabel: 'Not at all', maxLabel: 'Extremely' },
         });
         const datePicker = person.addVariable({
-          id: 'datePicker',
+          id: DATE_PICKER,
           name: 'MetOn',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'month' },
         });
         const relativeDatePicker = person.addVariable({
-          id: 'relativeDatePicker',
+          id: RELATIVE_DATE_PICKER,
           name: 'LastContact',
           type: 'datetime',
           component: 'RelativeDatePicker',
@@ -786,7 +818,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await interview.waitForForm();
 
         // Scalar values use the protocol's normalized 0-1 range.
-        const vasSlider = stage.form.field('vas').getByRole('slider');
+        const vasSlider = stage.form.field(VAS).getByRole('slider');
         await expect(vasSlider).toHaveAttribute('min', '0');
         await expect(vasSlider).toHaveAttribute('max', '1');
         await expect(page.getByText('Not at all')).toBeVisible();
@@ -795,16 +827,16 @@ export const alterFormScenarios: InterfaceScenarios = {
         // Not scrolled to the bottom yet: no pulse.
         await interview.expectNotReadyToContinue();
 
-        await stage.form.fillText('text', 'Hello');
-        await stage.form.fillText('textArea', 'A bio');
-        await stage.form.fillNumber('number', '42');
-        await stage.form.selectRadio('boolean', 'Yes');
+        await stage.form.fillText(TEXT, 'Hello');
+        await stage.form.fillText(TEXT_AREA, 'A bio');
+        await stage.form.fillNumber(NUMBER, '42');
+        await stage.form.selectRadio(BOOLEAN, 'Yes');
         // Toggle: fresco-ui ToggleField renders role="switch".
-        await stage.form.field('toggle').getByRole('switch').click();
-        await stage.form.selectRadio('radio', 'Very close');
-        await stage.form.selectLikert('likert', 'Often');
-        await stage.form.selectCheckbox('checkbox', 'Reading');
-        await stage.form.selectToggleButton('toggleButtons', 'Kind');
+        await stage.form.field(TOGGLE).getByRole('switch').click();
+        await stage.form.selectRadio(RADIO, 'Very close');
+        await stage.form.selectLikert(LIKERT, 'Often');
+        await stage.form.selectCheckbox(CHECKBOX, 'Reading');
+        await stage.form.selectToggleButton(TOGGLE_BUTTONS, 'Kind');
 
         // VAS -> max via keyboard (End), same pattern as selectLikert.
         await vasSlider.focus();
@@ -820,11 +852,11 @@ export const alterFormScenarios: InterfaceScenarios = {
         await vasSlider.blur();
 
         // Month-resolution DatePicker: two native <select>s (year, then month).
-        const dateSelects = stage.form.field('datePicker').locator('select');
+        const dateSelects = stage.form.field(DATE_PICKER).locator('select');
         await dateSelects.nth(0).selectOption('2024');
         await dateSelects.nth(1).selectOption('06');
 
-        await stage.form.fillDate('relativeDatePicker', '2025-12-15');
+        await stage.form.fillDate(RELATIVE_DATE_PICKER, '2025-12-15');
 
         // Date fields register invalid until they validate (formStore.ts:138),
         // and validation runs on blur (useField.ts:274). selectOption does not
@@ -833,7 +865,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         // so the whole form reads valid (a prerequisite for the pulse).
         await dateSelects.nth(1).focus();
         await dateSelects.nth(1).blur();
-        await stage.form.field('relativeDatePicker').locator('input').blur();
+        await stage.form.field(RELATIVE_DATE_PICKER).locator('input').blur();
 
         // Scroll the slide's ScrollArea to the bottom so the
         // useScrolledToBottom sentinel intersects, satisfying the
@@ -855,19 +887,19 @@ export const alterFormScenarios: InterfaceScenarios = {
 
         const state = await protocol.getNetworkState(interview.interviewId);
         const attrs = state?.nodes[0]?.attributes ?? {};
-        expect(attrs.text).toBe('Hello');
-        expect(attrs.textArea).toBe('A bio');
-        expect(attrs.number).toBe(42);
-        expect(typeof attrs.number).toBe('number');
-        expect(attrs.boolean).toBe(true);
-        expect(attrs.toggle).toBe(true);
-        expect(attrs.radio).toBe(3);
-        expect(attrs.likert).toBe(3);
-        expect(attrs.checkbox).toEqual(['reading']);
-        expect(attrs.toggleButtons).toEqual(['kind']);
-        expect(attrs.vas).toBe(1);
-        expect(attrs.datePicker).toBe('2024-06');
-        expect(attrs.relativeDatePicker).toBe('2025-12-15');
+        expect(attrs[TEXT]).toBe('Hello');
+        expect(attrs[TEXT_AREA]).toBe('A bio');
+        expect(attrs[NUMBER]).toBe(42);
+        expect(typeof attrs[NUMBER]).toBe('number');
+        expect(attrs[BOOLEAN]).toBe(true);
+        expect(attrs[TOGGLE]).toBe(true);
+        expect(attrs[RADIO]).toBe(3);
+        expect(attrs[LIKERT]).toBe(3);
+        expect(attrs[CHECKBOX]).toEqual(['reading']);
+        expect(attrs[TOGGLE_BUTTONS]).toEqual(['kind']);
+        expect(attrs[VAS]).toBe(1);
+        expect(attrs[DATE_PICKER]).toBe('2024-06');
+        expect(attrs[RELATIVE_DATE_PICKER]).toBe('2025-12-15');
       },
     },
 
@@ -880,7 +912,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         const person = synth.addNodeType({ name: 'Person' });
         const personName = person.addVariable({ name: 'name', type: 'text' });
         const age = person.addVariable({
-          id: 'age',
+          id: AGE,
           name: 'Age',
           type: 'number',
           component: 'Number',
@@ -912,7 +944,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await slides.nextSlide(label1); // slide 1 (Ada, valid) -> slide 2 (Grace)
 
         // Slide 2: enter an invalid value, go back — expect the discard dialog.
-        await stage.form.fillNumber('age', '999');
+        await stage.form.fillNumber(AGE, '999');
         const dialog = await slides.previousSlideExpectingDiscardDialog();
         await expect(
           dialog.getByRole('heading', { name: 'Discard changes?' }),
@@ -921,9 +953,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         // Cancel: stays on slide 2, typed value intact.
         await slides.discardCancelButton.click();
         await expect(dialog).toBeHidden();
-        await expect(stage.form.field('age').locator('input')).toHaveValue(
-          '999',
-        );
+        await expect(stage.form.field(AGE).locator('input')).toHaveValue('999');
 
         // Go back again and confirm this time.
         await slides.previousSlideExpectingDiscardDialog();
@@ -931,16 +961,16 @@ export const alterFormScenarios: InterfaceScenarios = {
         await expect(slides.getCurrentItemLabel()).resolves.toBe(label1);
 
         let state = await protocol.getNetworkState(interview.interviewId);
-        expect(state?.nodes[1]?.attributes.age).toBe(40); // invalid 999 NOT persisted
+        expect(state?.nodes[1]?.attributes[AGE]).toBe(40); // invalid 999 NOT persisted
 
         // Forward again, enter a VALID value, go back (autosave, no dialog).
         await slides.nextSlide(label1);
-        await stage.form.fillNumber('age', '55');
+        await stage.form.fillNumber(AGE, '55');
         await slides.previousSlide();
         await expect(slides.getCurrentItemLabel()).resolves.toBe(label1);
 
         state = await protocol.getNetworkState(interview.interviewId);
-        expect(state?.nodes[1]?.attributes.age).toBe(55); // valid dirty value autosaved
+        expect(state?.nodes[1]?.attributes[AGE]).toBe(55); // valid dirty value autosaved
       },
     },
 
@@ -952,7 +982,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         const name = person.addVariable({
-          id: 'personLabel',
+          id: PERSON_LABEL,
           name: 'Label',
           type: 'text',
           component: 'Text',
@@ -1007,7 +1037,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
         const secret = person.addVariable({
-          id: 'secret',
+          id: SECRET,
           name: 'Secret',
           type: 'text',
           component: 'Text',
@@ -1042,7 +1072,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await interview.next(); // -> AlterForm (step 1)
 
         await interview.waitForForm();
-        await stage.form.fillText('secret', 'Secret');
+        await stage.form.fillText(SECRET, 'Secret');
         await slides.nextSlide(await slides.getCurrentItemLabel());
         await expect(
           page.getByRole('heading', { name: 'Next stage' }),
@@ -1052,14 +1082,14 @@ export const alterFormScenarios: InterfaceScenarios = {
         // decrypt it alongside, never the plaintext.
         const state = await protocol.getNetworkState(interview.interviewId);
         const node = state?.nodes[0];
-        const stored = node?.[entityAttributesProperty].secret;
+        const stored = node?.[entityAttributesProperty][SECRET];
         expect(Array.isArray(stored)).toBe(true);
-        expect(node?.[entitySecureAttributesMeta]?.secret).toBeDefined();
+        expect(node?.[entitySecureAttributesMeta]?.[SECRET]).toBeDefined();
 
         // Returning to the form decrypts the answer back into its field.
         await page.getByTestId('previous-button').click();
         await interview.waitForForm();
-        await expect(stage.form.field('secret').locator('input')).toHaveValue(
+        await expect(stage.form.field(SECRET).locator('input')).toHaveValue(
           'Secret',
         );
         await slides.nextSlide(await slides.getCurrentItemLabel());
@@ -1082,14 +1112,14 @@ export const alterFormScenarios: InterfaceScenarios = {
           { label: 'Very close', value: 2 },
         ];
         const closeness = person.addVariable({
-          id: 'closeness',
+          id: CLOSENESS,
           name: 'Closeness',
           type: 'ordinal',
           component: 'RadioGroup',
           options,
         });
         const trust = person.addVariable({
-          id: 'trust',
+          id: TRUST,
           name: 'Trust',
           type: 'ordinal',
           component: 'RadioGroup',
@@ -1125,18 +1155,18 @@ export const alterFormScenarios: InterfaceScenarios = {
         // A question still waiting keeps the person on screen. Nothing marks
         // a move that never happens, so this waits out the pause before a
         // move (350ms) with room to spare.
-        await stage.form.selectRadio('closeness', 'Very close');
+        await stage.form.selectRadio(CLOSENESS, 'Very close');
         await page.waitForTimeout(800);
         await expect(slides.getCurrentItemLabel()).resolves.toBe('Ada');
 
         // Answering the last one moves on to the next person by itself.
-        await stage.form.selectRadio('trust', 'Not close');
+        await stage.form.selectRadio(TRUST, 'Not close');
         await expect.poll(() => slides.getCurrentItemLabel()).toBe('Grace');
         await expect(page).toHaveURL(/step=0/);
 
         // The last person's answers leave the stage, as Next would.
-        await stage.form.selectRadio('trust', 'Very close');
-        await stage.form.selectRadio('closeness', 'Not close');
+        await stage.form.selectRadio(TRUST, 'Very close');
+        await stage.form.selectRadio(CLOSENESS, 'Not close');
         await expect(
           page.getByRole('heading', { name: 'Next stage' }),
         ).toBeVisible();
@@ -1146,12 +1176,12 @@ export const alterFormScenarios: InterfaceScenarios = {
         const ada = nodes.find((n) => n[entityPrimaryKeyProperty] === 'p1');
         const grace = nodes.find((n) => n[entityPrimaryKeyProperty] === 'p2');
         expect(ada?.attributes).toMatchObject({
-          closeness: 2,
-          trust: 1,
+          [CLOSENESS]: 2,
+          [TRUST]: 1,
         });
         expect(grace?.attributes).toMatchObject({
-          closeness: 1,
-          trust: 2,
+          [CLOSENESS]: 1,
+          [TRUST]: 2,
         });
       },
     },

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type {
-  CurrentProtocol,
-  LocalizedString,
+import { testTypeId } from '@codaco/protocol-builder/testing/testId';
+import {
+  createProtocolObjectId,
+  type CurrentProtocol,
+  type LocalizedString,
 } from '@codaco/protocol-validation';
 import { testProtocol } from '~/__tests__/helpers';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -34,7 +36,7 @@ const stateWith = (stages: Stage[]): RootState =>
   );
 
 const information = (content: LocalizedString): Stage => ({
-  id: 'info',
+  id: createProtocolObjectId(),
   type: 'Information',
   label: { en: 'Info' },
   content,
@@ -74,7 +76,7 @@ describe('assets shown as blocks in the text of an Information stage', () => {
   it('counts a file shown twice, and a file shown in two stages', () => {
     const state = stateWith([
       information({ en: '![](asset:a)\n\n![](asset:a)' }),
-      { ...information({ en: '![](asset:a)' }), id: 'other' },
+      { ...information({ en: '![](asset:a)' }), id: createProtocolObjectId() },
     ]);
 
     expect(new Set(Object.values(getAssetIndex(state)))).toEqual(
@@ -97,12 +99,16 @@ describe('assets shown as blocks in the text of an Information stage', () => {
   it('does not count a file named in the text of a stage that is not an Information stage', () => {
     const state = stateWith([
       {
-        id: 'names',
+        id: createProtocolObjectId(),
         type: 'DyadCensus',
         label: { en: 'Names' },
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', type: testTypeId('person') },
         prompts: [
-          { id: 'p1', text: { en: '![](asset:a)' }, createEdge: 'knows' },
+          {
+            id: createProtocolObjectId(),
+            text: { en: '![](asset:a)' },
+            createEdge: testTypeId('knows'),
+          },
         ],
       },
     ]);

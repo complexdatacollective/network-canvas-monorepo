@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { readOwnProperty, writeOwnProperty } from '../ownProperty';
 
-// `CodebookIdSchema` admits `__proto__` as an attribute id.
+// A roster column that matches no variable is stored under its heading, which
+// may be `__proto__`.
 describe('an attribute named __proto__', () => {
   it('is written as the object’s own property, leaving its prototype alone', () => {
     const target: Record<string, string> = {};

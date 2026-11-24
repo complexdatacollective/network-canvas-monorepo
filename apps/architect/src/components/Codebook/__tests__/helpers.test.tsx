@@ -266,13 +266,14 @@ describe('Codebook in-use status and Used In content agree', () => {
   });
 });
 
-// A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
-// (`CodebookIdSchema`, which keys the node/edge and variable records alike),
-// so a dot inside one is legal protocol content. Joining a reference path into
-// a dotted string and splitting it apart again cannot round-trip that: the
-// display used to read the first fragment of the id and, finding no codebook
-// entry for it, name the reference site "unknown". Reading the collector's own
-// path array names it.
+// A schema 9 codebook record key is a UUID (`EntityTypeIdSchema` for node and
+// edge types, `VariableIdSchema` for variables), so a valid protocol has no
+// dot inside one. These keys have one anyway, to show that the display does
+// not depend on that: joining a reference path into a dotted string and
+// splitting it apart again cannot round-trip a dotted key, and the display
+// used to read the first fragment of the id and, finding no codebook entry
+// for it, name the reference site "unknown". Reading the collector's own path
+// array names it.
 describe('Codebook usage labels survive a dot inside a codebook record key', () => {
   it('names the owning variable of a validation reference whose id contains a dot', () => {
     const testState = getMockState({

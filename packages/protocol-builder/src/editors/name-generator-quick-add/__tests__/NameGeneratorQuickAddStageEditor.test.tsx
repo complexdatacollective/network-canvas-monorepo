@@ -5,7 +5,12 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import {
@@ -14,8 +19,13 @@ import {
 } from '../../name-generator/__tests__/addSidePanel.ts';
 import { nameGeneratorQuickAddStageEditor } from '../NameGeneratorQuickAddStageEditor.ts';
 
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const QUICK_ADD_INDEX = fixtureStageIds().indexOf('name-generator-quick-add-1');
+const QUICK_ADD_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('name-generator-quick-add-1'),
+);
 
 const stageNameInput = (): HTMLElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
@@ -50,7 +60,7 @@ describe('creating a quick-add name generator', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Select an attribute'),
-      'name',
+      NAME,
     );
 
     await harness.user.click(
@@ -69,8 +79,8 @@ describe('creating a quick-add name generator', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'NameGeneratorQuickAdd',
-      subject: { entity: 'node', type: 'person' },
-      quickAdd: 'name',
+      subject: { entity: 'node', type: PERSON },
+      quickAdd: NAME,
     });
     expect(request?.stageDocument.prompts).toEqual([
       {

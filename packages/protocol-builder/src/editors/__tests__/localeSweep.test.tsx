@@ -8,6 +8,10 @@ import {
   protocolStrings,
 } from '../../testing/localeSweep.ts';
 import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
@@ -45,15 +49,18 @@ import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEd
  * sections say. Seeded rather than switched on by clicking, so what is swept
  * is a configured stage at rest rather than a stage mid-edit.
  */
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+
 const PANELLED_NAME_GENERATOR: SectionDoc = {
   label: 'Name Generator',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
   form: {
     title: 'Add a person',
     fields: [
       {
         id: 'field-1',
-        variable: 'name',
+        variable: personVariable('name'),
         prompt: "What is this person's name?",
       },
     ],
@@ -62,7 +69,9 @@ const PANELLED_NAME_GENERATOR: SectionDoc = {
     {
       id: 'prompt-1',
       text: 'Who are the people you know?',
-      additionalAttributes: [{ variable: 'flagged', value: true }],
+      additionalAttributes: [
+        { variable: personVariable('flagged'), value: true },
+      ],
     },
   ],
   panels: [

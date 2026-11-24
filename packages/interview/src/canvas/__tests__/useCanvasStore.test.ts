@@ -7,8 +7,11 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import { edgeInsetForNode, FALLBACK_NODE_RADIUS } from '../layoutGeometry';
 import { createCanvasStore } from '../useCanvasStore';
+
+const LAYOUT = testVariableId('layout');
 
 const DIMS = { width: 1000, height: 500 };
 
@@ -76,8 +79,9 @@ describe('useCanvasStore boundary clamp', () => {
 describe('useCanvasStore syncFromNodes', () => {
   const nodeWith = (id: string, layout: VariableValue | undefined): NcNode => ({
     [entityPrimaryKeyProperty]: id,
-    [entityAttributesProperty]: layout === undefined ? {} : { layout },
-    type: 'person',
+    [entityAttributesProperty]:
+      layout === undefined ? {} : { [LAYOUT]: layout },
+    type: testTypeId('person'),
     promptIDs: [],
     stageId: '',
   });
@@ -98,7 +102,7 @@ describe('useCanvasStore syncFromNodes', () => {
         } as unknown as VariableValue),
         nodeWith('none', undefined),
       ],
-      'layout',
+      LAYOUT,
     );
 
     expect([...store.getState().positions.keys()]).toEqual(['placed']);
@@ -115,7 +119,7 @@ describe('useCanvasStore syncFromNodes', () => {
           nodeWith('text', 'x'),
           nodeWith('half', { x: 0.5 } as unknown as VariableValue),
         ],
-        'layout',
+        LAYOUT,
       );
 
     expect([...store.getState().positions.keys()]).toEqual(['placed']);

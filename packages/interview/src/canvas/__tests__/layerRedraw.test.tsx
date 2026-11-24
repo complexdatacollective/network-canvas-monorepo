@@ -15,9 +15,12 @@ vi.mock('react-redux', () => ({
   useSelector: () => edgeCodebook,
 }));
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import ConvexHullLayer from '../ConvexHullLayer';
 import EdgeLayer from '../EdgeLayer';
 import { type CanvasStoreApi, createCanvasStore } from '../useCanvasStore';
+
+const GROUP = testVariableId('group');
 
 // Frames run only when a test flushes them, so a test can count the frames a
 // layer asks for. A cancelled frame never runs, as in a browser.
@@ -49,8 +52,8 @@ function flushFrames() {
 function makeNode(id: string, group: string): NcNode {
   return {
     [entityPrimaryKeyProperty]: id,
-    [entityAttributesProperty]: { group },
-    type: 'person',
+    [entityAttributesProperty]: { [GROUP]: group },
+    type: testTypeId('person'),
     promptIDs: [],
     stageId: '',
   };
@@ -59,7 +62,7 @@ function makeNode(id: string, group: string): NcNode {
 const EDGE: NcEdge = {
   [entityPrimaryKeyProperty]: 'a-b',
   [entityAttributesProperty]: {},
-  type: 'friend',
+  type: testTypeId('friend'),
   from: 'a',
   to: 'b',
 };
@@ -93,7 +96,7 @@ describe.each([
       <ConvexHullLayer
         store={store}
         nodes={[makeNode('a', 'g'), makeNode('b', 'g')]}
-        groupVariable="group"
+        groupVariable={GROUP}
         categoricalOptions={[{ value: 'g' }]}
       />
     ),

@@ -10,6 +10,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { buildDatePickerBoundProps } from '../buildDatePickerBoundProps';
 
 /**
@@ -121,7 +122,7 @@ function renderedWindow(parameters: {
   return window;
 }
 
-const variableId = 'lastSeen';
+const variableId = testVariableId('lastSeen');
 
 function egoCodebook(parameters: {
   anchor: string;
@@ -145,14 +146,14 @@ function egoCodebook(parameters: {
 
 const egoStages: Stage[] = [
   {
-    id: 'stage-ego',
+    id: testId('stage-ego'),
     type: 'EgoForm',
     label: { en: 'About you' },
     introductionPanel: { title: { en: 'About you' } },
     form: {
       fields: [
         {
-          id: 'field-1',
+          id: testId('field-1'),
           variable: asEntityAttributeReference(variableId),
           prompt: { en: 'When did you last see them?' },
         },

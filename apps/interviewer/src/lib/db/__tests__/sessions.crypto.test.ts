@@ -10,7 +10,10 @@ import {
   vi,
 } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
@@ -104,8 +107,10 @@ type FinishStage = Extract<
   { type: 'FinishSession' }
 >;
 
+const FINISH_STAGE_ID = createProtocolObjectId();
+
 const finishStage: FinishStage = {
-  id: 'finish',
+  id: FINISH_STAGE_ID,
   type: 'FinishSession',
   mode: 'confirmation',
   label: { en: 'Finish' },
@@ -119,14 +124,14 @@ const finishStage: FinishStage = {
   outcome: 'completed',
 };
 
-const finish = { stageId: 'finish', outcome: 'completed' } as const;
+const finish = { stageId: FINISH_STAGE_ID, outcome: 'completed' } as const;
 
-function informationStage(id: string): InformationStage {
+function informationStage(name: string): InformationStage {
   return {
-    id,
+    id: createProtocolObjectId(),
     type: 'Information',
-    label: { en: id },
-    content: { en: `# ${id}` },
+    label: { en: name },
+    content: { en: `# ${name}` },
   };
 }
 
@@ -658,7 +663,7 @@ describe('sessions repo — finish stage and outcome', () => {
     await updateSession(created.id, { network: initialNetwork });
 
     const session = await getSession(created.id);
-    expect(session?.finishStageId).toBe('finish');
+    expect(session?.finishStageId).toBe(FINISH_STAGE_ID);
     expect(session?.finishOutcome).toBe('completed');
   });
 
@@ -705,7 +710,7 @@ describe('sessions repo — finish stage and outcome', () => {
     await markSessionFinished(created.id, finish);
     const raw = await db.sessions.get(created.id);
     expect(raw?._enc).toBeUndefined();
-    expect(raw?.finishStageId).toBe('finish');
+    expect(raw?.finishStageId).toBe(FINISH_STAGE_ID);
     expect(raw?.finishOutcome).toBe('completed');
     expect((await getSession(created.id))?.finishOutcome).toBe('completed');
 

@@ -101,7 +101,7 @@ function arabicInterview() {
   });
   const home = person.addVariable({ name: 'home', type: 'location' });
   const friendship = synth.addEdgeType({ name: 'صداقة' });
-  friendship.addVariable({
+  const strength = friendship.addVariable({
     id: 'strength',
     name: 'strength',
     type: 'ordinal',
@@ -239,7 +239,7 @@ function arabicInterview() {
   synth.addStage('TieStrengthCensus', { subject }).addPrompt({
     text: 'ما مدى قوة صداقتهما؟',
     createEdge: friendship.id,
-    edgeVariable: 'strength',
+    edgeVariable: strength.id,
     negativeLabel: 'لا صداقة بينهما',
   });
   stages.push({ name: 'TieStrengthCensus', shows: 'ما مدى قوة صداقتهما؟' });

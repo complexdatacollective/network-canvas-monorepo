@@ -3,7 +3,10 @@ import { Exit, Redacted, Schema } from 'effect';
 import * as RpcSchema from 'effect/rpc/RpcSchema';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
-import { assetSourceSchema } from '@codaco/protocol-validation';
+import {
+  assetSourceSchema,
+  createProtocolObjectId,
+} from '@codaco/protocol-validation';
 import {
   sectionId,
   type ProtocolSectionId,
@@ -102,6 +105,34 @@ describe('a revision sequence on the wire', () => {
       present: [],
     });
     expect(presence.wire).toEqual({ type: 'presence', present: [] });
+  });
+});
+
+describe('a section issue on the wire', () => {
+  const objectId = createProtocolObjectId();
+  const issue = {
+    path: ['prompts', 0, 'sortOrder', 0, 'direction'],
+    message: 'Invalid option',
+    objectId,
+  };
+
+  it('keeps the id of the object it is about', () => {
+    const { wire, decoded } = overJson(
+      InvalidShape,
+      new InvalidShape({ sectionId: stage, issues: [issue] }),
+    );
+    expect(wire).toMatchObject({ issues: [issue] });
+    expect(decoded.issues).toEqual([issue]);
+  });
+
+  it('refuses an object id that is not a UUID', () => {
+    expect(
+      accepts(InvalidShape, {
+        _tag: 'InvalidShape',
+        sectionId: stage,
+        issues: [{ ...issue, objectId: 'sort-rule-1' }],
+      }),
+    ).toBe(false);
   });
 });
 

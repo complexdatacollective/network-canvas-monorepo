@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { VariableValue } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../../../__tests__/testIds';
 import { affectedSet, mergeStatus } from '../status';
 
 const makePerson = (id: string, attributes: Record<string, VariableValue>) => ({
@@ -52,7 +53,7 @@ describe('mergeStatus', () => {
 });
 
 describe('affectedSet', () => {
-  const DISEASE = 'hasDisease';
+  const DISEASE = testVariableId('hasDisease');
 
   it('includes only people whose disease attribute is strictly true', () => {
     const people = [
