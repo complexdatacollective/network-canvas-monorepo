@@ -47,6 +47,24 @@ describe('UpdatesList', () => {
     ).toEqual(parts);
   });
 
+  // An update is the site's own text, which links to the site's own pages.
+  it('keeps a link to a page of the site', () => {
+    renderWithIntl(
+      <UpdatesList
+        updates={[
+          {
+            ...update,
+            summary: 'A collection. [Browse the gallery](/protocol-gallery).',
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Browse the gallery', hidden: true }),
+    ).toHaveAttribute('href', '/protocol-gallery');
+  });
+
   it('does not match words that only appear in a link address', () => {
     renderWithIntl(<UpdatesList updates={[update]} />);
 
@@ -77,7 +95,7 @@ describe('UpdatesList', () => {
     expect(screen.queryAllByRole('article', { hidden: true })).toHaveLength(0);
   });
 
-  it('matches words inside raw HTML the card displays', () => {
+  it('shows HTML in an update as typed, and matches words inside it', () => {
     renderWithIntl(
       <UpdatesList
         updates={[
@@ -89,7 +107,9 @@ describe('UpdatesList', () => {
       />,
     );
 
-    expect(screen.getByText('localisation')).toBeInTheDocument();
+    expect(
+      screen.getByText('<p>New <em>localisation</em> support</p>'),
+    ).toBeInTheDocument();
 
     search('localisation');
     expect(screen.getAllByRole('article', { hidden: true })).toHaveLength(1);

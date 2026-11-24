@@ -51,7 +51,7 @@ const FinishScreen = ({
           title={intl.formatMessage(finishSessionMessages.closingTextLabel)}
         >
           <div className="my-5">
-            <SummaryMarkdown value={content} />
+            <SummaryMarkdown value={content} multiline />
           </div>
         </SectionFrame>
       )}
@@ -60,7 +60,7 @@ const FinishScreen = ({
           title={intl.formatMessage(finishSessionMessages.finishedTextLabel)}
         >
           <div className="my-5">
-            <SummaryMarkdown value={finishedContent} />
+            <SummaryMarkdown value={finishedContent} multiline />
           </div>
         </SectionFrame>
       )}

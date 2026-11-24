@@ -343,7 +343,11 @@ const AfterFixBox = ({
             />
           )
         ) : (
-          <FixText text={edit.after} markdown={edit.markdown} />
+          <FixText
+            text={edit.after}
+            markdown={edit.markdown}
+            singleLine={edit.singleLine}
+          />
         )}
       </div>
       {invalid && (

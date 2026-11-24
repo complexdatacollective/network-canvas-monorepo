@@ -7,6 +7,7 @@ import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  applicationTextUrlTransform,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 
@@ -35,7 +36,10 @@ function TaskErrorDescription() {
   const intl = useAppIntl();
   return (
     <div>
-      <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      <RenderMarkdown
+        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        urlTransform={applicationTextUrlTransform}
+      >
         {intl.formatMessage(messages.taskErrorDescription)}
       </RenderMarkdown>
     </div>

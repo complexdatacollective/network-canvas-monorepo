@@ -16,7 +16,10 @@ import {
   type RichTextAssetBlocks,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  markdownElementsFor,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import {
   AssetBlockLine,
   createAssetBlockImages,
@@ -52,6 +55,7 @@ import {
   type MessageArguments,
 } from '@codaco/protocol-validation';
 import { lineBreaksAsSpaces } from '@codaco/shared-consts';
+import { LineInParagraph } from '~/components/LineInParagraph';
 import { useAppSelector } from '~/ducks/hooks';
 import type { TranslationRow } from '~/selectors/issues';
 import { getDisplayAssetManifest, getProtocol } from '~/selectors/protocol';
@@ -151,28 +155,19 @@ const headingAsParagraph = ({ children }: { children?: ReactNode }) => (
   <p className="mb-2 font-semibold last:mb-0">{children}</p>
 );
 
-// Headings would add to the page's outline from inside a table cell, and a
-// link would add a stop to the Tab order between cells, so a cell draws
-// headings as bold lines and links as their text.
-const CELL_MARKDOWN_ELEMENTS = [
-  'p',
-  'br',
-  'em',
-  'strong',
-  'ul',
-  'ol',
-  'li',
-  'hr',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-];
+// What a cell draws text with: what the interview draws it with, but for
+// links. Headings would add to the page's outline from inside a table cell,
+// and a link would add a stop to the Tab order between cells, so a cell
+// draws headings as bold lines and links as their text.
+const cellMarkdownElements = (singleLine: boolean) =>
+  markdownElementsFor(singleLine).filter((element) => element !== 'a');
+
+const CellParagraph = ({ children }: { children?: ReactNode }) => (
+  <p className="mb-2 last:mb-0">{children}</p>
+);
 
 const cellMarkdownComponents = {
-  p: ({ children }: { children?: ReactNode }) => (
-    <p className="mb-2 last:mb-0">{children}</p>
-  ),
+  p: CellParagraph,
   h1: headingAsParagraph,
   h2: headingAsParagraph,
   h3: headingAsParagraph,
@@ -200,7 +195,7 @@ const CELL_ASSET_BLOCKS: RichTextAssetBlocks = {
 
 /** The same rules for text that shows values. */
 const CELL_BLOCK_MARKDOWN: BlockMarkdown = {
-  allowedElements: CELL_MARKDOWN_ELEMENTS,
+  allowedElements: cellMarkdownElements(false),
   components: cellMarkdownComponents,
 };
 const CELL_ASSET_BLOCK_MARKDOWN: BlockMarkdown = {
@@ -211,19 +206,27 @@ const CELL_ASSET_BLOCK_MARKDOWN: BlockMarkdown = {
 const CellMarkdown = ({
   children,
   assetBlocks,
+  singleLine,
 }: {
   children: string;
   /** Whether the text holds files as blocks, which a cell then names. */
   assetBlocks: boolean;
+  /**
+   * Whether the text is one line, which is drawn with only what the editor
+   * offers for one line (bold and italics), as the interview draws it.
+   */
+  singleLine: boolean;
 }) => (
-  <RenderMarkdown
-    allowedElements={CELL_MARKDOWN_ELEMENTS}
-    components={cellMarkdownComponents}
-    blockImages={assetBlocks ? CELL_BLOCK_IMAGES : undefined}
-    unwrapDisallowed
-  >
-    {children}
-  </RenderMarkdown>
+  <LineInParagraph singleLine={singleLine} paragraph={CellParagraph}>
+    <RenderMarkdown
+      allowedElements={cellMarkdownElements(singleLine)}
+      components={cellMarkdownComponents}
+      blockImages={assetBlocks ? CELL_BLOCK_IMAGES : undefined}
+      unwrapDisallowed
+    >
+      {children}
+    </RenderMarkdown>
+  </LineInParagraph>
 );
 
 /**
@@ -270,12 +273,15 @@ const Fallback = ({
   messageArguments,
   dynamic,
   assetBlocks = false,
+  singleLine = false,
 }: {
   id: string;
   value: LocalizedString | undefined;
   format: LocalizedStringFormat;
   /** Whether the text holds files as blocks (see `CellMarkdown`). */
   assetBlocks?: boolean;
+  /** Whether the text is one line (see `CellMarkdown`). */
+  singleLine?: boolean;
   locale: LocaleTag;
   localization: ProtocolLocalization;
   messageArguments?: MessageArguments;
@@ -337,7 +343,9 @@ const Fallback = ({
             locale={shown.lang}
           />
         ) : format === 'markdown' ? (
-          <CellMarkdown assetBlocks={assetBlocks}>{shown.text}</CellMarkdown>
+          <CellMarkdown assetBlocks={assetBlocks} singleLine={singleLine}>
+            {shown.text}
+          </CellMarkdown>
         ) : (
           shown.text
         )}
@@ -476,6 +484,7 @@ const PlainTextCell = ({
             id={fallbackId}
             value={rowValueWithCell(row, locale, text)}
             format={row.format}
+            singleLine={singleLine}
             locale={locale}
             localization={localization}
           />
@@ -765,6 +774,7 @@ const RichTextCell = ({
                 value={value}
                 format={row.format}
                 assetBlocks={assetBlocks}
+                singleLine={singleLine}
                 locale={locale}
                 localization={localization}
               />
@@ -796,6 +806,7 @@ const RichTextCell = ({
                 value={value}
                 format={row.format}
                 assetBlocks={assetBlocks}
+                singleLine={singleLine}
                 locale={locale}
                 localization={localization}
               />
@@ -804,7 +815,9 @@ const RichTextCell = ({
                 id={contentId}
                 className={cx(CELL_TEXT_CLASSES, 'col-start-1 row-start-1')}
               >
-                <CellMarkdown assetBlocks={assetBlocks}>{text}</CellMarkdown>
+                <CellMarkdown assetBlocks={assetBlocks} singleLine={singleLine}>
+                  {text}
+                </CellMarkdown>
               </div>
             )}
           </div>

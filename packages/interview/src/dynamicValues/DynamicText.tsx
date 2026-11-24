@@ -11,7 +11,6 @@ import {
 
 import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
-  DEFAULT_MARKDOWN_REHYPE_PLUGINS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import { DYNAMIC_VALUE_MARKER } from '@codaco/protocol-validation';
@@ -67,21 +66,18 @@ export function DynamicTextParts({
 const MARKER = DYNAMIC_VALUE_MARKER;
 const MARKED_VALUE = new RegExp(`${MARKER}(\\d+)${MARKER}`, 'g');
 /**
- * A marked value inside an attribute, with the empty comments that
- * `joinMarkdownParts` may set around it. Markdown percent-encodes a link
- * destination, so a marker or comment there arrives escaped.
+ * A marked value inside an attribute. Markdown percent-encodes a link
+ * destination, so a marker there arrives escaped.
  */
-const BOUNDARY_IN_ATTRIBUTE = '(?:<!---->|%3C!----%3E)*';
 const MARKED_IN_ATTRIBUTE = new RegExp(
-  `${BOUNDARY_IN_ATTRIBUTE}(?:${MARKER}|%EE%80%80)\\d+(?:${MARKER}|%EE%80%80)${BOUNDARY_IN_ATTRIBUTE}|${MARKER}`,
+  `(?:${MARKER}|%EE%80%80)\\d+(?:${MARKER}|%EE%80%80)|${MARKER}`,
   'gi',
 );
 
 /**
- * Text with each marked value taken out, with its index and the comments set
- * around it: for text a renderer reads out of the markdown itself rather than
- * out of the rendered elements, such as an image's description. A value is
- * never part of an attribute.
+ * Text with each marked value taken out, with its index: for text a renderer
+ * reads out of the markdown itself rather than out of the rendered elements,
+ * such as an image's description. A value is never part of an attribute.
  */
 export const withoutMarkedValues = (text: string): string =>
   text.replace(MARKED_IN_ATTRIBUTE, '');
@@ -141,9 +137,8 @@ const replaceMarkers = (node: HastNode) => {
 
 /**
  * Replaces each value's marker with an empty element standing for it. Runs
- * after sanitizing, on the finished structure, so a value can only ever
- * become text: a value that looks like markdown or HTML was never parsed as
- * either.
+ * on the finished structure, so a value can only ever become text: a value
+ * that looks like markdown or HTML was never parsed as either.
  */
 const rehypeDynamicValues = () => (tree: unknown) => {
   if (isHastNode(tree)) replaceMarkers(tree);
@@ -172,6 +167,7 @@ function DynamicValueSpan({
 }
 
 const DYNAMIC_MARKDOWN_COMPONENTS = { span: DynamicValueSpan };
+const DYNAMIC_MARKDOWN_REHYPE_PLUGINS = [rehypeDynamicValues];
 
 type MarkdownOptions = Omit<
   ComponentProps<typeof RenderMarkdown>,
@@ -210,10 +206,7 @@ export function DynamicMarkdown({
           ...(allowedElements ?? ALLOWED_MARKDOWN_LABEL_TAGS),
           'span',
         ]}
-        rehypePlugins={[
-          ...DEFAULT_MARKDOWN_REHYPE_PLUGINS,
-          rehypeDynamicValues,
-        ]}
+        rehypePlugins={DYNAMIC_MARKDOWN_REHYPE_PLUGINS}
         components={DYNAMIC_MARKDOWN_COMPONENTS}
       >
         {markdown}

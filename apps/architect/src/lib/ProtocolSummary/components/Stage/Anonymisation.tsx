@@ -137,7 +137,7 @@ const Anonymisation = ({
       {hasExplanation && (
         <SectionFrame title={intl.formatMessage(messages.explanationText)}>
           <div className="my-5">
-            <SummaryMarkdown value={explanationText} />
+            <SummaryMarkdown value={explanationText} multiline />
           </div>
         </SectionFrame>
       )}

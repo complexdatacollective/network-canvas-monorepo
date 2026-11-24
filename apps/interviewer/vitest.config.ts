@@ -129,10 +129,7 @@ export default defineConfig({
             '@codaco/fresco-ui > nanoid',
             '@codaco/fresco-ui > react-best-merge-refs',
             '@codaco/fresco-ui > react-markdown',
-            '@codaco/fresco-ui > rehype-raw',
-            '@codaco/fresco-ui > rehype-sanitize',
             '@codaco/fresco-ui > gemoji',
-            '@codaco/fresco-ui > remark-gemoji',
             '@codaco/fresco-ui > remark-gfm',
             '@codaco/fresco-ui > saxes',
             '@codaco/fresco-ui > tailwind-merge',
@@ -155,13 +152,16 @@ export default defineConfig({
             '@codaco/interview > react-redux',
             '@codaco/interview > redux-logger',
             '@codaco/protocol-validation > csvtojson',
-            // The markdown parser that finds the files an Information page
-            // shows as blocks (`assetBlocksInMarkdown`) and reads formatted
-            // text for validation as the interview and the editor read it.
+            // The markdown parser every reader of stored text uses
+            // (`markdownTree`), and what the migration from schema 8 reads
+            // legacy text with (`legacyMarkdownAsStandard`).
+            '@codaco/protocol-validation > decode-named-character-reference',
+            '@codaco/protocol-validation > gemoji',
             '@codaco/protocol-validation > mdast-util-from-markdown',
-            '@codaco/protocol-validation > mdast-util-gfm',
+            '@codaco/protocol-validation > mdast-util-gfm-autolink-literal',
             '@codaco/protocol-validation > mdast-util-to-markdown',
-            '@codaco/protocol-validation > micromark-extension-gfm',
+            '@codaco/protocol-validation > micromark-extension-gfm-autolink-literal',
+            '@codaco/protocol-validation > micromark-util-decode-numeric-character-reference',
             'chromatic/isChromatic',
             'jszip',
             // Reached through @codaco/interview: OnlineStatusProvider imports

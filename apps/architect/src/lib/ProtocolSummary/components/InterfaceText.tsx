@@ -10,6 +10,7 @@ import {
   INTERFACE_TEXT_MESSAGES,
   type LocalizedString,
   type LocalizedStringFormat,
+  type LocalizedTextLines,
   type MessageArguments,
 } from '@codaco/protocol-validation';
 
@@ -40,7 +41,11 @@ const interfaceTextSites = (
   interfaceText: unknown,
 ): ReadonlyMap<
   string,
-  Readonly<{ format: LocalizedStringFormat; arguments?: MessageArguments }>
+  Readonly<{
+    format: LocalizedStringFormat;
+    lines: LocalizedTextLines;
+    arguments?: MessageArguments;
+  }>
 > =>
   new Map(
     collectLocalizedStrings({ interfaceText }).flatMap((site) =>
@@ -116,7 +121,11 @@ const InterfaceText = () => {
                 namesOf(group, key).entry,
                 declaration === undefined ? (
                   site?.format === 'markdown' ? (
-                    <SummaryMarkdown key={key} value={value} />
+                    <SummaryMarkdown
+                      key={key}
+                      value={value}
+                      multiline={site.lines === 'multiple'}
+                    />
                   ) : (
                     <SummaryText key={key} value={value} />
                   )

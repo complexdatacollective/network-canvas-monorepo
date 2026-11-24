@@ -19,6 +19,7 @@ import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  applicationTextUrlTransform,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
@@ -475,6 +476,7 @@ function Block({ block }: Readonly<{ block: WalkthroughBlock }>) {
   return (
     <RenderMarkdown
       allowedElements={MARKDOWN_TAGS}
+      urlTransform={applicationTextUrlTransform}
       render={<div lang="en" dir="ltr" />}
     >
       {block.text}
