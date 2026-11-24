@@ -179,14 +179,6 @@ describe('the page’s heading and text', () => {
     expect(screen.getByText('Some words.').tagName).toBe('P');
   });
 
-  it('centres a heading that opens the page', () => {
-    renderInformation(makeStage('# Before you begin\n\nSome words.'));
-
-    const heading = screen.getByRole('heading', { name: 'Before you begin' });
-    expect(heading.parentElement).toHaveClass('[&>h1:first-child]:text-center');
-    expect(heading.matches('h1:first-child')).toBe(true);
-  });
-
   it('formats the text as a message before rendering it as markdown', () => {
     renderInformation(
       makeStage("# Title\n\nPress '{'Next'}' when you are **ready**."),

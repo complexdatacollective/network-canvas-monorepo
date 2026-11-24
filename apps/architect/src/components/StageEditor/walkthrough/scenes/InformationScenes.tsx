@@ -37,9 +37,8 @@ const INNER = { x: PAGE.x + 30, width: PAGE.width - 60 } as const;
 function Heading({ text, y }: { text: string; y: number }) {
   return (
     <text
-      x={STAGE_CENTER_X}
+      x={INNER.x}
       y={y}
-      textAnchor="middle"
       fontSize={26}
       fontWeight={900}
       className="fill-white"
