@@ -9,7 +9,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import {
-  ALLOWED_MARKDOWN_SECTION_TAGS,
+  markdownElementsFor,
   type MarkdownBlockImages,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -33,6 +33,7 @@ import {
   messageText,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
+import { LineInParagraph } from '~/components/LineInParagraph';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 
 import SummaryContext from './SummaryContext';
@@ -85,7 +86,12 @@ type SummaryTextProps = {
   value: LocalizedString | undefined;
 };
 
-type Format = 'plain' | 'markdown';
+/**
+ * How a text is written: plain, or markdown of one line or of several. One
+ * line is drawn with what the editor offers for one line (bold and italics),
+ * as the interview draws it.
+ */
+type Format = 'plain' | 'markdown-line' | 'markdown-lines';
 
 /** How markdown that holds files as blocks is drawn where it shows values. */
 const blockMarkdownWith = (
@@ -93,7 +99,7 @@ const blockMarkdownWith = (
 ): BlockMarkdown | undefined =>
   blockImages === undefined
     ? undefined
-    : { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS, blockImages };
+    : { allowedElements: markdownElementsFor(false), blockImages };
 
 /** Whether the protocol has more than one language. */
 export const useMultilingualSummary = () => {
@@ -194,16 +200,16 @@ const TranslationText = ({
   }
   if (dynamicSite !== undefined && showsValues(text)) {
     return (
-      <DynamicMessageSummary
-        message={text}
-        markdown={format === 'markdown'}
-        // The summary draws all markdown with its blocks, as it does text
-        // without values (`Markdown`), whatever lines the text holds today.
-        multiline
-        blockMarkdown={blockMarkdownWith(blockImages)}
-        locale={locale}
-        site={dynamicSite}
-      />
+      <LineInParagraph singleLine={format === 'markdown-line'}>
+        <DynamicMessageSummary
+          message={text}
+          markdown={format !== 'plain'}
+          multiline={format === 'markdown-lines'}
+          blockMarkdown={blockMarkdownWith(blockImages)}
+          locale={locale}
+          site={dynamicSite}
+        />
+      </LineInParagraph>
     );
   }
   const literal = messageText(text);
@@ -212,14 +218,16 @@ const TranslationText = ({
   // is already escaped by whatever wrote it, so rewriting it here could only
   // make the summary read differently from the participant's screen (a file
   // whose address is written between angle brackets read as its source).
-  return format === 'markdown' ? (
-    <RenderMarkdown
-      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-      blockImages={blockImages}
-      render={<span />}
-    >
-      {literal}
-    </RenderMarkdown>
+  return format !== 'plain' ? (
+    <LineInParagraph singleLine={format === 'markdown-line'}>
+      <RenderMarkdown
+        allowedElements={markdownElementsFor(format !== 'markdown-lines')}
+        blockImages={blockImages}
+        render={<span />}
+      >
+        {literal}
+      </RenderMarkdown>
+    </LineInParagraph>
   ) : (
     literal
   );
@@ -368,12 +376,19 @@ export const SummaryText = ({ value }: SummaryTextProps) => (
 
 export const SummaryMarkdown = ({
   value,
+  multiline = false,
   blockImages,
 }: SummaryTextProps & {
+  /** Whether the text's field holds several lines, as its schema declares. */
+  multiline?: boolean;
   /** How a file the text holds as a block is drawn; without it, it is not. */
   blockImages?: MarkdownBlockImages;
 }) => (
-  <LocalizedText value={value} format="markdown" blockImages={blockImages} />
+  <LocalizedText
+    value={value}
+    format={multiline ? 'markdown-lines' : 'markdown-line'}
+    blockImages={blockImages}
+  />
 );
 
 /** A message that reads differently by what it is about: its versions. */

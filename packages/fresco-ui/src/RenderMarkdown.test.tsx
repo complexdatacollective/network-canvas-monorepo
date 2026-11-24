@@ -1,12 +1,16 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import remarkGfm from 'remark-gfm';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { escapeMarkdownText } from '@codaco/protocol-validation';
 
 import {
+  ALLOWED_MARKDOWN_LABEL_TAGS,
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  applicationTextUrlTransform,
   getMarkdownAttributeValues,
   getMarkdownLabelText,
+  markdownElementsFor,
   RenderMarkdown,
 } from './RenderMarkdown';
 
@@ -16,12 +20,15 @@ it.each([
   ['plain', 'Isabel', 'Isabel'],
   ['emphasis', '*Isabel*', 'Isabel'],
   ['strong', '**Isabel**', 'Isabel'],
-  ['GFM strike', '~~Isabel~~', 'Isabel'],
-  ['GFM single strike', '~Isabel~', 'Isabel'],
-  ['raw emphasis', '<em>Isabel</em>', 'Isabel'],
-  ['unwrapped HTML', '<span>Isabel</span>', 'Isabel'],
-  ['sanitized script', '<script>ignored</script>Isabel', 'Isabel'],
-  ['unwrapped style', '<style>ignored</style>Isabel', 'ignoredIsabel'],
+  ['tildes', '~~Isabel~~', '~~Isabel~~'],
+  ['one tilde on each side', '~Isabel~', '~Isabel~'],
+  ['inline HTML', '<em>Isabel</em>', '<em>Isabel</em>'],
+  ['an HTML element', '<span>Isabel</span>', '<span>Isabel</span>'],
+  [
+    'a script element',
+    '<script>ignored</script>Isabel',
+    '<script>ignored</script>Isabel',
+  ],
   ['numeric entity', '&#73;sabel', 'Isabel'],
   ['named entity', 'Isabel &amp; Irene', 'Isabel & Irene'],
   ['link', '[Isabel](https://example.org)', 'Isabel'],
@@ -30,7 +37,11 @@ it.each([
     '[Isabel][person]\n\n[person]: https://example.org',
     'Isabel',
   ],
-  ['raw link', '<a href="https://example.org">Isabel</a>', 'Isabel'],
+  [
+    'an HTML link',
+    '<a href="https://example.org">Isabel</a>',
+    '<a href="https://example.org">Isabel</a>',
+  ],
   ['unsafe link', '[Isabel](javascript:ignored)', 'Isabel'],
   [
     'image removal',
@@ -38,16 +49,17 @@ it.each([
     'Isabel',
   ],
   [
-    'raw image removal',
-    '<img src="/image.png" alt="unspoken">Isabel',
-    'Isabel',
+    'an HTML image',
+    '<img src="/image.png" alt="x">Isabel',
+    '<img src="/image.png" alt="x">Isabel',
   ],
   ['unwrapped code', '`Isabel`', 'Isabel'],
-  ['emoji', ':heart: Isabel', '❤️ Isabel'],
+  ['an emoji', '❤️ Isabel', '❤️ Isabel'],
+  ['an emoji shortcode', ':smile: Isabel', ':smile: Isabel'],
   ['escaped syntax', '\\~\\~Isabel\\~\\~', '~~Isabel~~'],
   ['paragraphs', 'Isabel\n\nZelda', 'Isabel\nZelda'],
 ] as const)(
-  'extracts %s through the same default label dialect that is actually rendered',
+  'extracts %s as the renderer shows it with its default options',
   (_kind, markdown, expected) => {
     // Invoke the synchronous helper outside React before mounting the actual
     // renderer. A hook-dependent implementation cannot satisfy this contract.
@@ -61,13 +73,30 @@ it.each([
 // The whitespace between blocks is whatever the markdown pipeline emits; the
 // contract is only that the label text and the rendered text agree on it.
 it.each([
-  ['GFM table', '| Name |\n| --- |\n| Isabel |', 'NameIsabel'],
-  ['GFM task list', '- [x] Isabel\n- [ ] Zelda', 'Isabel Zelda'],
+  [
+    'a table written with pipes',
+    '| Name |\n| --- |\n| Isabel |',
+    '| Name | | --- | | Isabel |',
+  ],
+  [
+    'list items that look like tasks',
+    '- [x] Isabel\n- [ ] Zelda',
+    '[x] Isabel [ ] Zelda',
+  ],
+  ['a block quote', '> Isabel', 'Isabel'],
   ['ordered list', '1. Isabel\n2. Zelda', 'Isabel Zelda'],
-  ['nested inline content', '**[~~Isabel~~](https://example.org)**', 'Isabel'],
+  [
+    'nested inline content',
+    '**[~~Isabel~~](https://example.org)**',
+    '~~Isabel~~',
+  ],
   ['line break', 'Isabel  \nZelda', 'Isabel Zelda'],
-  ['comment removal', '<!-- hidden -->Isabel', 'Isabel'],
-  ['GFM autolink', 'Isabel https://example.org', 'Isabel https://example.org'],
+  ['an HTML comment', '<!-- hidden -->Isabel', '<!-- hidden -->Isabel'],
+  [
+    'a bare address',
+    'Isabel https://example.org',
+    'Isabel https://example.org',
+  ],
 ] as const)(
   'agrees with the renderer, whitespace included, on %s',
   (_kind, markdown, words) => {
@@ -112,29 +141,229 @@ it.each([
   },
 );
 
-it('strips style and class attributes from raw HTML', () => {
+it('shows inline HTML as the characters typed, in place', () => {
   const { container } = render(
-    <RenderMarkdown>
-      {'<em style="color: red" class="injected">Isabel</em>'}
+    <RenderMarkdown>{'Before <em class="x">Isabel</em> after'}</RenderMarkdown>,
+  );
+
+  expect(container.querySelector('em')).toBeNull();
+  expect(container.textContent).toBe('Before <em class="x">Isabel</em> after');
+});
+
+it('shows a block of HTML as a paragraph of the characters typed, with a line break at each newline', () => {
+  const { container } = render(
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'Before\n\n<div>\n<b>Isabel</b>\n</div>\n\nAfter'}
     </RenderMarkdown>,
   );
 
-  const emphasis = container.querySelector('em');
-  expect(emphasis).toHaveTextContent('Isabel');
-  expect(emphasis).not.toHaveAttribute('style');
-  expect(emphasis).not.toHaveAttribute('class');
+  expect(container.querySelector('div, b')).toBeNull();
+  const paragraphs = [...container.querySelectorAll('p')];
+  expect(paragraphs.map((paragraph) => paragraph.textContent)).toEqual([
+    'Before',
+    // A line break is drawn as a `br` followed by the newline.
+    '<div>\n<b>Isabel</b>\n</div>',
+    'After',
+  ]);
+  expect(paragraphs[1]?.querySelectorAll('br')).toHaveLength(2);
 });
 
-it('renders a javascript: link as text with no href', () => {
-  // Both react-markdown's default urlTransform and rehypeSanitize strip the
-  // href, so this fails only when both are removed.
+it('draws a block quote as its content', () => {
   const { container } = render(
-    <RenderMarkdown>{'[Isabel](javascript:alert(1))'}</RenderMarkdown>,
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'> Isabel\n>\n> Zelda'}
+    </RenderMarkdown>,
   );
 
-  expect(container).toHaveTextContent('Isabel');
+  expect(container.querySelector('blockquote')).toBeNull();
+  expect(
+    [...container.querySelectorAll('p')].map((p) => p.textContent),
+  ).toEqual(['Isabel', 'Zelda']);
+});
+
+it('draws an emoji character, and a shortcode as typed', () => {
+  const { container } = render(
+    <RenderMarkdown>{'😄 and :smile:'}</RenderMarkdown>,
+  );
+
+  expect(container.textContent).toBe('😄 and :smile:');
+});
+
+it('draws tildes as typed, not as struck-through words', () => {
+  const { container } = render(<RenderMarkdown>{'~~Isabel~~'}</RenderMarkdown>);
+
+  expect(container.querySelector('del, s')).toBeNull();
+  expect(container.textContent).toBe('~~Isabel~~');
+});
+
+it('makes an explicit link a link, and leaves a bare address as words', () => {
+  render(
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'[Isabel](https://example.org) and https://example.com'}
+    </RenderMarkdown>,
+  );
+
+  expect(screen.getAllByRole('link')).toHaveLength(1);
+  expect(screen.getByRole('link', { name: 'Isabel' })).toHaveAttribute(
+    'href',
+    'https://example.org',
+  );
+});
+
+it('opens a link outside the app', () => {
+  const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+  render(
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'Visit [docs](https://example.com)'}
+    </RenderMarkdown>,
+  );
+
+  fireEvent.click(screen.getByRole('link', { name: 'docs' }));
+
+  expect(open).toHaveBeenCalledWith(
+    'https://example.com',
+    '_blank',
+    'noopener,noreferrer',
+  );
+  open.mockRestore();
+});
+
+// One line is drawn with what the editor offers for one line: bold and
+// italics. A link, an address between angle brackets and a list are words.
+it('draws a link and a list in one line as their words', () => {
+  const { container, rerender } = render(
+    <RenderMarkdown>
+      {'**Ask** [Isabel](https://example.org) at <https://example.com>'}
+    </RenderMarkdown>,
+  );
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  expect(container.querySelector('[href]')).toBeNull();
+  expect(container.querySelector('strong')).toHaveTextContent('Ask');
+  expect(container.textContent).toBe('Ask Isabel at https://example.com');
+
+  rerender(<RenderMarkdown>{'- [ ] first'}</RenderMarkdown>);
+  expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  expect(container.textContent?.trim()).toBe('[ ] first');
+});
+
+/**
+ * A link is drawn only where its address passes `linkAddress`, the rule the
+ * editor shares; any other is drawn as its words, with no address at all.
+ */
+describe('which link addresses are links', () => {
+  it.each([
+    ['a web address', 'https://example.org/a'],
+    ['an email address', 'mailto:help@example.org'],
+    ['a telephone number', 'tel:+15555550123'],
+  ])('draws %s as a link', (_kind, address) => {
+    render(
+      <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+        {`[Isabel](${address})`}
+      </RenderMarkdown>,
+    );
+    expect(screen.getByRole('link', { name: 'Isabel' })).toHaveAttribute(
+      'href',
+      address,
+    );
+  });
+
+  it.each([
+    ['a relative address', '/docs/page'],
+    ['an address with no scheme', 'example.org'],
+    ['an address only starting with //', '//example.org'],
+    ['a web scheme not followed by //', 'https:example.org'],
+    ['an address the URL parser rejects', 'https://example.com"\\>a'],
+    ['a script', 'javascript:alert(1)'],
+    ['a data address', 'data:text/html,hi'],
+  ])('draws a link to %s as its words', (_kind, address) => {
+    const { container } = render(
+      <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+        {`[Isabel](${address})`}
+      </RenderMarkdown>,
+    );
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(container.querySelector('[href]')).toBeNull();
+    expect(container).toHaveTextContent('Isabel');
+  });
+});
+
+describe('text the application wrote itself', () => {
+  it.each([
+    ['a page of the site', '/protocol-gallery'],
+    ['a place on the page', '#anchor'],
+    ['a web address', 'https://example.org/a'],
+  ])('keeps a link to %s', (_kind, address) => {
+    render(
+      <RenderMarkdown
+        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        urlTransform={applicationTextUrlTransform}
+      >
+        {`[Isabel](${address})`}
+      </RenderMarkdown>,
+    );
+    expect(screen.getByRole('link', { name: 'Isabel' })).toHaveAttribute(
+      'href',
+      address,
+    );
+  });
+
+  it('draws no link that could run code', () => {
+    render(
+      <RenderMarkdown
+        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+        urlTransform={applicationTextUrlTransform}
+      >
+        {'[Isabel](javascript:alert(1))'}
+      </RenderMarkdown>,
+    );
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+});
+
+describe('getMarkdownAttributeValues', () => {
+  // It asks where the parser put text, not what is drawn, so an address that
+  // would be drawn as words is still found.
+  it.each([
+    '[x](/a/page)',
+    '[x](\uE0000\uE000)',
+    '[x](https:\uE0000\uE000)',
+    '[x](javascript:alert)',
+  ])('finds the address of %j', (markdown) => {
+    const address = /\]\((.*)\)/.exec(markdown)?.[1] ?? '';
+    const found = getMarkdownAttributeValues(markdown).map((value) =>
+      decodeURIComponent(value),
+    );
+    expect(found).toContain(address);
+  });
+});
+
+it('draws text of one line and of several lines with what the editor offers', () => {
+  expect(markdownElementsFor(true)).toBe(ALLOWED_MARKDOWN_LABEL_TAGS);
+  expect(markdownElementsFor(false)).toBe(ALLOWED_MARKDOWN_SECTION_TAGS);
+});
+
+it('reads a line ending in HTML inside a paragraph as a space', () => {
+  const { container } = render(
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'Words <span\nclass="x">across</span> lines'}
+    </RenderMarkdown>,
+  );
+  expect(container.querySelector('br')).toBeNull();
+  expect(container.textContent).toBe(
+    'Words <span\nclass="x">across</span> lines',
+  );
+  const label = render(
+    <RenderMarkdown>{'Words <span\nclass="x">across</span>'}</RenderMarkdown>,
+  ).container;
+  expect(label.textContent).toBe('Words <span\nclass="x">across</span>');
+});
+
+it('draws each line of a block of HTML on a line of its own', () => {
+  const { container } = render(
+    <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+      {'<div>\nA block\n</div>'}
+    </RenderMarkdown>,
+  );
+  expect(container.querySelectorAll('br')).toHaveLength(2);
 });
 
 it('retains custom components and wrapper props', () => {
@@ -153,15 +382,23 @@ it('retains custom components and wrapper props', () => {
   ).toHaveTextContent('Custom Isabel');
 });
 
-it('retains explicit empty remark and rehype plugin overrides', () => {
-  const { container, rerender } = render(
-    <RenderMarkdown remarkPlugins={[]}>{'~~Isabel~~ :heart:'}</RenderMarkdown>,
+it('adds a caller’s remark plugins, and still shows HTML as typed', () => {
+  const { container } = render(
+    <RenderMarkdown
+      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      remarkPlugins={[remarkGfm]}
+    >
+      {'~~Isabel~~ https://example.org <em>Zelda</em>'}
+    </RenderMarkdown>,
   );
-  expect(container.textContent).toBe('~~Isabel~~ :heart:');
-  rerender(
-    <RenderMarkdown rehypePlugins={[]}>{'<em>Isabel</em>'}</RenderMarkdown>,
+
+  expect(
+    screen.getByRole('link', { name: 'https://example.org' }),
+  ).toBeVisible();
+  expect(container.querySelector('em')).toBeNull();
+  expect(container.textContent).toBe(
+    'Isabel https://example.org <em>Zelda</em>',
   );
-  expect(container.textContent).toBe('<em>Isabel</em>');
 });
 
 it('retains section tag and explicit disallowed-unwrapping options', () => {

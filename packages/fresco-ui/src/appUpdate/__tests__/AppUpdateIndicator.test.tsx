@@ -9,7 +9,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import AppUpdateIndicator from '../AppUpdateIndicator';
 
-const renderAvailableUpdate = (onInstall: () => Promise<boolean>) => {
+const renderAvailableUpdate = (
+  onInstall: () => Promise<boolean>,
+  body = "## What's new\n\n- Faster protocol loading",
+) => {
   render(
     <AppUpdateIndicator
       status="available"
@@ -19,7 +22,7 @@ const renderAvailableUpdate = (onInstall: () => Promise<boolean>) => {
       availableVersion="8.0.0-beta.2"
       releaseNotes={{
         version: '8.0.0-beta.2',
-        body: "## What's new\n\n- Faster protocol loading",
+        body,
       }}
       onInstall={onInstall}
       unsavedWorkCaveat="Saved responses are kept."
@@ -72,6 +75,19 @@ describe('AppUpdateIndicator', () => {
     expect(
       screen.getByRole('region', { name: 'Interviewer changelog' }),
     ).toBeInTheDocument();
+  });
+
+  // Release notes are GitHub markdown, so GitHub's additions apply to them,
+  // unlike protocol text.
+  it('makes a bare web address in the release notes a link', () => {
+    renderAvailableUpdate(
+      vi.fn().mockResolvedValue(true),
+      'See https://example.org/changes for details.',
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'https://example.org/changes' }),
+    ).toHaveAttribute('href', 'https://example.org/changes');
   });
 
   it('shows progress while the update activates', async () => {

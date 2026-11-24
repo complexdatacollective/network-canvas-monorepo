@@ -1,11 +1,26 @@
 /**
  * Schema 8 Information pages, for tests: what the 8 to 9 migration joins
  * into one text, and what any other writer of an Information page (a
- * synthetic interview) must join the same way. One table, so the two are
+ * synthetic interview) must join the same way once the text is in schema 9
+ * form. The migration first rewrites each schema 8 text item as standard
+ * markdown with `legacyMarkdownAsStandard`, as `schema8MarkdownAsStandard`
+ * does here; from there the two join a page alike. One table, so the two are
  * checked against the same pages.
  */
 
+import { legacyMarkdownAsStandard } from '../schemas/9/legacy-markdown.ts';
+
 type Fields = Readonly<Record<string, unknown>>;
+
+/**
+ * Schema 8 markdown as the migration rewrites it for a field of one line or
+ * several (see `legacyMarkdownAsStandard`): an Information page's text item
+ * is text of several lines.
+ */
+export const schema8MarkdownAsStandard = (
+  text: string,
+  lines: 'single' | 'multiple',
+): string => legacyMarkdownAsStandard(text, { lines });
 
 /** The files the pages name: an image, a video and an audio recording. */
 export const INFORMATION_PAGE_ASSETS = {
@@ -76,49 +91,6 @@ export const TEXTS_LEFT_OPEN: readonly (readonly [string, string, string])[] = [
   ['a processing instruction', '<?php echo 1', '?>'],
 ];
 
-/**
- * Texts whose raw HTML leaves an element open, each with the text it is
- * ended in: what, the text, the text ended.
- */
-export const TEXTS_LEAVING_HTML_OPEN: readonly (readonly [
-  string,
-  string,
-  string,
-])[] = [
-  [
-    'a link, after its last words',
-    '<a href="https://example.com">First',
-    '<a href="https://example.com">First</a>',
-  ],
-  [
-    'bold and italics, innermost first',
-    'Read <strong>this <em>now',
-    'Read <strong>this <em>now</em></strong>',
-  ],
-  ['a heading, in its own HTML', '<h2>A heading', '<h2>A heading</h2>'],
-  [
-    'a list, in its own HTML',
-    '<ul><li>A raw list',
-    '<ul><li>A raw list</li></ul>',
-  ],
-  ['a paragraph, in its own HTML', '<p>Raw', '<p>Raw</p>'],
-  [
-    'emphasis the blocks below were drawn inside, after them',
-    '<em>First\n\nand second',
-    '<em>First\n\nand second\n\n</em>',
-  ],
-  [
-    'a raw block the markdown below was drawn inside, after it',
-    '<div>\n\nInside',
-    '<div>\n\nInside\n\n</div>',
-  ],
-  [
-    'several ends after the item, behind an empty comment that makes them HTML',
-    '<strong>a <em>b\n\nc',
-    '<strong>a <em>b\n\nc\n\n<!----></em></strong>',
-  ],
-];
-
 /** A schema 8 Information page: its title, its items and its stage's name. */
 export type InformationPageFixture = Readonly<{
   name: string;
@@ -144,7 +116,7 @@ export const INFORMATION_PAGES: readonly InformationPageFixture[] = [
     title: 'T',
     items: [textItem('t', piece), MAP],
   })),
-  ...[...TEXTS_LEFT_OPEN, ...TEXTS_LEAVING_HTML_OPEN].map(([what, open]) => ({
+  ...TEXTS_LEFT_OPEN.map(([what, open]) => ({
     name: `text leaving ${what} open above a file`,
     title: 'T',
     items: [textItem('t', open), MAP],

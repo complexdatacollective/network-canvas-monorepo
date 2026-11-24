@@ -30,6 +30,7 @@ import {
 import { extractProtocol } from '../../../utils/extractProtocol.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
+import { legacyMarkdownAsStandard } from '../legacy-markdown.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
 import { withoutUnshownWording } from '../protocol-wording.ts';
@@ -369,6 +370,95 @@ describe('v8 to v9 localization migration', () => {
     }
   });
 
+  // Schema 8 read a typed `>` or `<` as a character, `<br>` as a line
+  // break, a bare address as a link and a shortcode as its emoji. Markdown
+  // is written as standard markdown that shows the same, before it is
+  // escaped as a message; plain text is kept as it was.
+  it('writes legacy markdown as standard markdown, and keeps plain text as it was', () => {
+    const legacy = (text: string) =>
+      `> ${text} <b>{x}</b> it's '<'<br>www.example.org :smile:`;
+    const document = schema8Protocol(legacy);
+    const migrated = migrateProtocol(document, 9);
+    const hits = collectLocalizedStrings(migrated).filter(
+      ({ path: at, arguments: declared }) =>
+        at[0] !== 'interfaceText' &&
+        declared === undefined &&
+        typeof getAt(document, at) === 'string',
+    );
+    const markdown = hits.filter(({ format }) => format === 'markdown');
+    expect(markdown.some(({ lines }) => lines === 'single')).toBe(true);
+    expect(markdown.some(({ lines }) => lines === 'multiple')).toBe(true);
+    expect(hits.some(({ format }) => format === 'plain')).toBe(true);
+    for (const { path: at, value, format, lines } of hits) {
+      const source = getAt(document, at) as string;
+      expect({ at, message: value.en }).toEqual({
+        at,
+        message: escapeMessageText(
+          format === 'markdown'
+            ? legacyMarkdownAsStandard(source, { lines })
+            : source,
+        ),
+      });
+    }
+    // One text in full, for what the participant is shown.
+    const page = markdown.find(({ lines }) => lines === 'multiple');
+    const source =
+      page === undefined ? '' : (getAt(document, page.path) as string);
+    const words = source.slice(2, source.indexOf(' <b>'));
+    expect(messageText(page?.value.en ?? '')).toBe(
+      `&gt; ${words} &lt;b&gt;{x}&lt;/b&gt; it's '&lt;'\\\n[www.example.org](http://www.example.org) 😄`,
+    );
+  });
+
+  // The migration writes some markdown itself from plain text: a heading
+  // from a title, a caption from an attribute's name, an option label from
+  // its value, a page's heading from its stage's name. It records each as
+  // standard markdown (`textsWrittenAsStandard`), so that it is not read
+  // again the way schema 8 markdown was. A writer that did not record its
+  // text would turn the shortcode below into its emoji or the address into
+  // a link.
+  it('never reads text it wrote from plain text as schema 8 markdown', () => {
+    const plain = 'Plain :smile: www.example.org';
+    const document = schema8Protocol();
+    const stages = getAt(document, ['stages']);
+    if (!Array.isArray(stages)) throw new Error('Fixture has no stages');
+    const kinds = new Set<unknown>();
+    for (const stage of stages) {
+      if (!isRecord(stage)) continue;
+      kinds.add(stage.type);
+      stage.label = plain;
+      if (typeof stage.title === 'string') stage.title = plain;
+      for (const titled of [stage.introductionPanel, stage.explanationText]) {
+        if (isRecord(titled)) titled.title = plain;
+      }
+    }
+    expect(kinds).toContain('Information');
+    expect(kinds).toContain('Anonymisation');
+    stages.push({
+      id: 'empty-page',
+      type: 'Information',
+      label: plain,
+      items: [],
+    });
+    const composer = stagePath(document, 'composer');
+    const field = getAt(document, [...composer, 'nodeForm', 'fields', 1]);
+    if (!isRecord(field)) throw new Error('Fixture has no composer field');
+    delete field.label;
+    setAt(
+      document,
+      ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+      plain,
+    );
+    const option = ['codebook', 'node', 'person', 'variables', 'category'];
+    setAt(document, [...option, 'options', 0, 'label'], '');
+    setAt(document, [...option, 'options', 0, 'value'], plain);
+
+    const migrated = JSON.stringify(migrateStep(document));
+    expect(migrated).toContain(':smile: www.example.org');
+    expect(migrated).not.toContain('😄');
+    expect(migrated).not.toContain('(http://www.example.org)');
+  });
+
   it('joins the lines of text declared one line, and leaves text of several lines as it was', () => {
     const broken = (text: string) => `${text} \n\n second\r\nthird\u2028\n`;
     const document = schema8Protocol(broken);
@@ -702,6 +792,20 @@ describe('v8 to v9 localization migration', () => {
       expect(getAt(migrated, [...named, 'label'])).toEqual({ en: 'nickname' });
       expect(getAt(migrated, [...missing, 'label'])).toEqual({
         en: 'removed',
+      });
+    });
+
+    it('keeps a caption the migration writes from an attribute name as written', () => {
+      const document = schema8Protocol();
+      const field = nodeFieldPath(document, 1);
+      removeCaption(document, field);
+      setAt(
+        document,
+        ['codebook', 'node', 'person', 'variables', 'nickname', 'name'],
+        ':smile: www.example.org',
+      );
+      expect(getAt(migrateStep(document), [...field, 'label'])).toEqual({
+        en: ':smile: www.example.org',
       });
     });
 
@@ -1071,15 +1175,19 @@ describe('committed schema 8 protocols', () => {
         Object.keys(getAt(schema8, ['codebook', 'node']) ?? {}),
       );
 
-      for (const { path: at, value, lines } of collectLocalizedStrings(
+      for (const { path: at, value, format, lines } of collectLocalizedStrings(
         migrated,
       )) {
         expect(Object.keys(value)).toEqual(['en']);
         const source = getAt(schema8, schema8PathOf(migrated, schema8, at));
         if (typeof source === 'string') {
-          // Text declared one line has its lines joined.
+          // Text declared one line has its lines joined, and markdown is
+          // written as standard markdown.
+          const joined = lines === 'single' ? asOneLine(source) : source;
           expect(messageText(value.en ?? '')).toBe(
-            lines === 'single' ? asOneLine(source) : source,
+            format === 'markdown'
+              ? legacyMarkdownAsStandard(joined, { lines })
+              : joined,
           );
         }
       }

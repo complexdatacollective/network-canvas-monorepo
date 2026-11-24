@@ -4,6 +4,11 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import OptionMappingField, {
   type OptionMappingRow,
 } from '@codaco/fresco-ui/form/fields/OptionMappingField';
+import {
+  ALLOWED_MARKDOWN_LABEL_TAGS,
+  applicationTextUrlTransform,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import type { NodeShapeReference } from '@codaco/protocol-validation';
 
 import { type CustomShapes, shapeAssetIds } from '../codebook/customShapes.ts';
@@ -77,9 +82,19 @@ export default function ShapeMappingField<V>({
         <UnconnectedField
           name={name}
           label={label}
-          hint={intl.formatMessage(messages.hint, {
-            url: `${DOCS_BASE_URL}/design-protocols/tutorials/custom-node-shapes`,
-          })}
+          // Text the application wrote, with a link to the documentation:
+          // drawn here with the elements it uses, since a hint given as a
+          // string is drawn as protocol text, which shows no links.
+          hint={
+            <RenderMarkdown
+              allowedElements={[...ALLOWED_MARKDOWN_LABEL_TAGS, 'a']}
+              urlTransform={applicationTextUrlTransform}
+            >
+              {intl.formatMessage(messages.hint, {
+                url: `${DOCS_BASE_URL}/design-protocols/tutorials/custom-node-shapes`,
+              })}
+            </RenderMarkdown>
+          }
           component={OptionMappingField<ShapeTileOption>}
           rows={answers.map((answer, index) => ({
             id: String(index),

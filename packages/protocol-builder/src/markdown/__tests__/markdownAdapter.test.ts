@@ -125,12 +125,12 @@ describe('RichText markdown adapter', () => {
   /**
    * Text the researcher typed is text, whatever characters it contains.
    *
-   * The renderer every interview runs passes raw HTML through and then
-   * sanitises it, so an unescaped `<IRB OR ETHICS BOARD HERE>` reached the
-   * participant as an unknown element and was dropped outright: the consent
-   * form read "received ethics clearance through, today." Each case is read
-   * back by that renderer, so the assertion is about what the participant is
-   * shown rather than about one spelling of the escape.
+   * The interview's renderer once read raw HTML and sanitised it, so an
+   * unescaped `<IRB OR ETHICS BOARD HERE>` reached the participant as an
+   * unknown element and was dropped outright: the consent form read
+   * "received ethics clearance through, today." Each case is read back by
+   * the renderer, so the assertion is about what the participant is shown
+   * rather than about one spelling of the escape.
    */
   describe('characters the renderer would read as markup', () => {
     const paragraph = (text: string): RichTextContent => ({
@@ -302,12 +302,14 @@ describe('RichText markdown adapter', () => {
       ],
     };
 
+    // Written so that it reads back as exactly the address and title.
     expect(richTextContentToMarkdown(content)).toBe(
-      '[Example](https://example.com/a%20path/%28x%29%3E "A \\"quoted\\" title")',
+      '[Example](<https://example.com/a path/(x)\\>> "A \\"quoted\\" title")',
     );
   });
 
-  it('drops unsafe markdown link schemes while keeping safe and relative URLs', () => {
+  // The rule is fresco-ui's `linkAddress`, which the interview draws with.
+  it('keeps links to whole web, email and telephone addresses, and shows any other as its words', () => {
     expect(
       roundTrip(
         [
@@ -315,12 +317,13 @@ describe('RichText markdown adapter', () => {
           '[Data](data:text/html,Hello)',
           '[HTTP](https://example.com/a%20path)',
           '[Mail](mailto:team@example.com)',
+          '[Phone](tel:+15555550123)',
           '[Protocol](//example.com/x)',
           '[Relative](/docs/a%20path)',
         ].join(' '),
       ),
     ).toBe(
-      'Unsafe Data [HTTP](https://example.com/a%20path) [Mail](mailto:team@example.com) [Protocol](//example.com/x) [Relative](/docs/a%20path)',
+      'Unsafe Data [HTTP](https://example.com/a%20path) [Mail](mailto:team@example.com) [Phone](tel:+15555550123) Protocol Relative',
     );
   });
 

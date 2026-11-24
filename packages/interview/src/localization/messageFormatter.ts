@@ -43,7 +43,7 @@ const cacheFor = <Value>(
 };
 
 // Tags stay literal text, matching how protocol validation parses the
-// message: markdown fields legitimately contain `<br>` and similar.
+// message: markdown text may hold `<` as a character.
 const parse = (locale: LocaleTag, message: string) =>
   new IntlMessageFormat(message, locale, undefined, { ignoreTag: true });
 

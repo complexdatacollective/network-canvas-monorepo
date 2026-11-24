@@ -3,6 +3,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { type ComponentPropsWithoutRef, Fragment, type ReactNode } from 'react';
 
+import { linkAddress } from './linkAddress';
 import { NativeLink } from './NativeLink';
 import { headingVariants } from './typography/Heading';
 import { paragraphVariants } from './typography/Paragraph';
@@ -37,64 +38,6 @@ const linkAttributeWithDefault = (
   }
 
   return value ?? undefined;
-};
-
-const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
-const LINK_PROTOCOL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
-const SCHEME_DELIMITER_PATTERN = /[/?#]/;
-
-const hasUnsafeSchemeCharacters = (href: string): boolean => {
-  const colonIndex = href.indexOf(':');
-
-  if (colonIndex === -1) {
-    return false;
-  }
-
-  const delimiterIndex = href.search(SCHEME_DELIMITER_PATTERN);
-
-  if (delimiterIndex !== -1 && delimiterIndex < colonIndex) {
-    return false;
-  }
-
-  return /\s/.test(href.slice(0, colonIndex));
-};
-
-const hasControlCharacter = (href: string): boolean =>
-  Array.from(href).some((character) => {
-    const code = character.charCodeAt(0);
-    return code <= 0x1f || code === 0x7f;
-  });
-
-const sanitizeLinkHref = (value: string | undefined): string | undefined => {
-  const href = value?.trim();
-
-  if (!href) {
-    return undefined;
-  }
-
-  if (hasControlCharacter(href) || hasUnsafeSchemeCharacters(href)) {
-    return undefined;
-  }
-
-  if (href.startsWith('//')) {
-    try {
-      const url = new URL(href, 'https://networkcanvas.local');
-      return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-
-  if (!LINK_PROTOCOL_PATTERN.test(href)) {
-    return href;
-  }
-
-  try {
-    const url = new URL(href);
-    return SAFE_LINK_PROTOCOLS.has(url.protocol) ? href : undefined;
-  } catch {
-    return undefined;
-  }
 };
 
 type TextMark = NonNullable<JSONContent['marks']>[number];
@@ -139,7 +82,7 @@ function renderMarks(text: string, marks?: TextMark[]): ReactNode {
         return <u key={key}>{acc}</u>;
       case 'link': {
         const attrs = mark.attrs;
-        const href = sanitizeLinkHref(stringAttr(attrs?.href));
+        const href = linkAddress(stringAttr(attrs?.href));
 
         return href ? (
           <NativeLink

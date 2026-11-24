@@ -12,8 +12,10 @@ import { RenderMarkdown } from '../RenderMarkdown';
  * A hint written as a plain string is researcher- or author-supplied markdown,
  * as is the text of a `PresentationalText` object, which is shown inside an
  * inline element carrying its `lang`/`dir` so it keeps flowing into the
- * validation summary. Anything else is already a rendered tree and is shown
- * as it is.
+ * validation summary. Both are drawn as protocol text of one line, which shows
+ * no links or lists. Anything else is already a rendered tree and is shown
+ * as it is: a caller whose own hint has a link draws it, with the elements it
+ * uses, and passes the result.
  *
  * Decided per part rather than over the two together, because a field can
  * carry both at once, and markdown run across the pair would read the end of

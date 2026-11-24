@@ -1,6 +1,9 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Markdown from '~/components/Markdown';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 
 import SectionFrame from './SectionFrame';
 const messages = defineMessages({
@@ -24,7 +27,14 @@ const InterviewScript = ({ interviewScript = null }: InterviewScriptProps) => {
       wrapperClassName="break-inside-avoid"
       contentClassName="min-h-[25rem]"
     >
-      {interviewScript && <Markdown label={interviewScript} />}
+      {interviewScript && (
+        <RenderMarkdown
+          allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+          render={<span />}
+        >
+          {interviewScript}
+        </RenderMarkdown>
+      )}
     </SectionFrame>
   );
 };

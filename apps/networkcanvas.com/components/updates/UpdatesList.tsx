@@ -17,6 +17,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  applicationTextUrlTransform,
   getMarkdownLabelText,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -293,6 +294,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                           <RenderMarkdown
                             allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
                             components={markdownComponents}
+                            urlTransform={applicationTextUrlTransform}
                           >
                             {update.summary}
                           </RenderMarkdown>
@@ -304,6 +306,7 @@ export function UpdatesList({ updates }: { updates: readonly Update[] }) {
                             <RenderMarkdown
                               allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
                               components={markdownComponents}
+                              urlTransform={applicationTextUrlTransform}
                             >
                               {update.details}
                             </RenderMarkdown>
