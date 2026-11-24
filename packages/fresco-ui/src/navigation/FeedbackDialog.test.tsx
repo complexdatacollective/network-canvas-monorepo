@@ -122,15 +122,14 @@ describe('FeedbackDialog', () => {
     url = new URL(forum().getAttribute('href') ?? '');
     expect(url.searchParams.get('category')).toBe('general');
 
+    // The form stays as it is, so the draft can be opened again after the
+    // forum asks the person to sign in.
     forum().addEventListener('click', (event) => event.preventDefault());
     await user.click(forum());
-
+    expect(forum()).toHaveAttribute('href', url.toString());
     expect(
-      await screen.findByText(/The forum is open in a new tab/),
-    ).toHaveFocus();
-    expect(
-      screen.getByRole('link', { name: 'Open the forum again' }),
-    ).toHaveAttribute('href', url.toString());
+      screen.getByRole('textbox', { name: 'Your post' }),
+    ).toHaveTextContent('It stops & says nothing.');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

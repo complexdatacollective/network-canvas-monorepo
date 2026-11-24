@@ -332,20 +332,12 @@
     "description": "Label of the large text box in the feedback dialog where the user writes feedback for the Network Canvas team. It can hold lists and bold or italic text."
   },
   "frescoUi.feedbackDialog.feedbackPlaceholder": {
-    "defaultMessage": "Tell us what’s on your mind…",
+    "defaultMessage": "Describe the problem, idea or question…",
     "description": "Placeholder text in the empty text box where the user writes their feedback or forum post."
   },
   "frescoUi.feedbackDialog.forumNext": {
     "defaultMessage": "The forum opens in a new tab with a draft of your post for {category}. Posting it needs a forum account.",
     "description": "Note at the foot of the feedback dialog when the user is posting on the community forum, explaining what happens next. category is the name of a section of the forum, such as \"Help & Support\", and stays in English."
-  },
-  "frescoUi.feedbackDialog.forumOpened": {
-    "defaultMessage": "The forum is open in a new tab with a draft of your post. Check it and post it there.",
-    "description": "Replaces the feedback form once the community forum has been opened in a new tab. The post is not shared until the user posts it on the forum."
-  },
-  "frescoUi.feedbackDialog.openForumAgain": {
-    "defaultMessage": "Open the forum again",
-    "description": "Link shown after the forum was opened, in case its tab was closed or blocked. Opens the same new topic in a new tab again."
   },
   "frescoUi.feedbackDialog.postLabel": {
     "defaultMessage": "Your post",
@@ -356,7 +348,7 @@
     "description": "Label of the field for the title of the new topic, shown when the user is posting on the community forum."
   },
   "frescoUi.feedbackDialog.postTitlePlaceholder": {
-    "defaultMessage": "Sum it up in a few words",
+    "defaultMessage": "A short summary",
     "description": "Placeholder text in the empty \"Post title\" field."
   },
   "frescoUi.feedbackDialog.sectionFeedback": {

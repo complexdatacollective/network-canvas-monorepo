@@ -120,12 +120,12 @@ const messages = defineMessages({
   },
   postTitlePlaceholder: {
     id: 'frescoUi.feedbackDialog.postTitlePlaceholder',
-    defaultMessage: 'Sum it up in a few words',
+    defaultMessage: 'A short summary',
     description: 'Placeholder text in the empty "Post title" field.',
   },
   feedbackPlaceholder: {
     id: 'frescoUi.feedbackDialog.feedbackPlaceholder',
-    defaultMessage: 'Tell us what’s on your mind…',
+    defaultMessage: 'Describe the problem, idea or question…',
     description:
       'Placeholder text in the empty text box where the user writes their feedback or forum post.',
   },
@@ -179,19 +179,6 @@ const messages = defineMessages({
     description:
       'Replaces the feedback form once the feedback has been sent to the Network Canvas team.',
   },
-  forumOpened: {
-    id: 'frescoUi.feedbackDialog.forumOpened',
-    defaultMessage:
-      'The forum is open in a new tab with a draft of your post. Check it and post it there.',
-    description:
-      'Replaces the feedback form once the community forum has been opened in a new tab. The post is not shared until the user posts it on the forum.',
-  },
-  openForumAgain: {
-    id: 'frescoUi.feedbackDialog.openForumAgain',
-    defaultMessage: 'Open the forum again',
-    description:
-      'Link shown after the forum was opened, in case its tab was closed or blocked. Opens the same new topic in a new tab again.',
-  },
 });
 
 const TRIGGER_NAME = 'Feedback';
@@ -231,7 +218,7 @@ const EMPTY_DRAFT: Draft = {
   email: '',
 };
 
-type Status = 'idle' | 'sending' | 'failed' | 'sent' | 'forum';
+type Status = 'idle' | 'sending' | 'failed' | 'sent';
 
 /** The first message a shared validation rule gives for `value`, if any. */
 function firstIssue(schema: ZodMiniType, value: unknown) {
@@ -355,26 +342,15 @@ function FeedbackTrigger({
 }
 
 /** A link to the forum's new-topic composer, dressed as a button. */
-function ForumLink({
-  href,
-  primary,
-  onOpen,
-  children,
-}: {
-  href: string;
-  primary: boolean;
-  onOpen: () => void;
-  children: ReactNode;
-}) {
+function ForumLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Button
       asChild
-      variant={primary ? 'default' : 'text'}
-      color={primary ? 'primary' : undefined}
+      color="primary"
       icon={<ExternalLink aria-hidden />}
       iconPosition="right"
     >
-      <a href={href} target="_blank" rel="noopener noreferrer" onClick={onOpen}>
+      <a href={href} target="_blank" rel="noopener noreferrer">
         {children}
       </a>
     </Button>
@@ -435,19 +411,21 @@ export default function FeedbackDialog({
   const hasFeedback = feedback !== '';
   const toForum = draft.audience === 'forum';
   const sending = status === 'sending';
-  const finished = status === 'sent' || status === 'forum';
+  const sent = status === 'sent';
+  const title = draft.title.trim();
   const forumUrl = forumTopicUrl({
     section: draft.section,
-    title: draft.title.trim(),
+    title,
     body: feedback,
   });
 
   const openDialog = () => {
-    // A form that was sent, or handed to the forum, starts again, and only on
-    // opening, so what replaced it does not turn back into the form while the
-    // dialog is still closing. A draft, a send still under way and a failed
-    // send are all kept.
-    if (finished) {
+    // A form that was sent starts again, and only on opening, so the thanks
+    // does not turn back into the form while the dialog is still closing. A
+    // draft, a send still under way and a failed send are all kept, and so is
+    // a draft handed to the forum, which may need opening again after the
+    // forum asks the person to sign in.
+    if (sent) {
       setDraft(EMPTY_DRAFT);
       setEditorKey((key) => key + 1);
       setEmailChecked(false);
@@ -457,7 +435,6 @@ export default function FeedbackDialog({
     onShown?.();
   };
   const close = () => setOpen(false);
-  const markForumOpened = () => setStatus('forum');
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
@@ -474,47 +451,35 @@ export default function FeedbackDialog({
     }
   };
 
-  const closeButton = (
+  const footer = sent ? (
     <Button color="primary" onClick={close}>
       {intl.formatMessage(commonMessages.close)}
     </Button>
-  );
-
-  const footer =
-    status === 'sent' ? (
-      closeButton
-    ) : status === 'forum' ? (
-      <>
-        <ForumLink href={forumUrl} primary={false} onOpen={markForumOpened}>
-          {intl.formatMessage(messages.openForumAgain)}
+  ) : (
+    <>
+      <Button onClick={close}>
+        {intl.formatMessage(commonMessages.cancel)}
+      </Button>
+      {toForum && hasFeedback && !lengthError ? (
+        <ForumLink href={forumUrl}>
+          {intl.formatMessage(messages.continueOnForum)}
         </ForumLink>
-        {closeButton}
-      </>
-    ) : (
-      <>
-        <Button onClick={close}>
-          {intl.formatMessage(commonMessages.cancel)}
+      ) : (
+        <Button
+          type="submit"
+          form={formId}
+          color="primary"
+          disabled={!hasFeedback || sending || toForum}
+          icon={toForum ? <ExternalLink aria-hidden /> : <Send aria-hidden />}
+          iconPosition="right"
+        >
+          {intl.formatMessage(
+            toForum ? messages.continueOnForum : messages.send,
+          )}
         </Button>
-        {toForum && hasFeedback && !lengthError ? (
-          <ForumLink href={forumUrl} primary onOpen={markForumOpened}>
-            {intl.formatMessage(messages.continueOnForum)}
-          </ForumLink>
-        ) : (
-          <Button
-            type="submit"
-            form={formId}
-            color="primary"
-            disabled={!hasFeedback || sending || toForum}
-            icon={toForum ? <ExternalLink aria-hidden /> : <Send aria-hidden />}
-            iconPosition="right"
-          >
-            {intl.formatMessage(
-              toForum ? messages.continueOnForum : messages.send,
-            )}
-          </Button>
-        )}
-      </>
-    );
+      )}
+    </>
+  );
 
   return (
     <>
@@ -536,7 +501,7 @@ export default function FeedbackDialog({
         }
         title={intl.formatMessage(messages.title)}
         description={
-          finished ? undefined : (
+          sent ? undefined : (
             <AppMessage
               message={messages.description}
               values={{ link: communityForumLink }}
@@ -545,17 +510,15 @@ export default function FeedbackDialog({
         }
         footer={footer}
       >
-        {finished ? (
+        {sent ? (
           <Paragraph
-            // What happened replaces the form, so focus moves to it.
+            // The thanks replaces the form, so focus moves to it.
             ref={(done: HTMLElement | null) => done?.focus()}
             tabIndex={-1}
             margin="none"
             className="focus:outline-none"
           >
-            {intl.formatMessage(
-              status === 'sent' ? messages.thanks : messages.forumOpened,
-            )}
+            {intl.formatMessage(messages.thanks)}
           </Paragraph>
         ) : (
           <form
@@ -616,7 +579,7 @@ export default function FeedbackDialog({
                     messages.postTitlePlaceholder,
                   )}
                   value={draft.title}
-                  onChange={(title) => update({ title: title ?? '' })}
+                  onChange={(next) => update({ title: next ?? '' })}
                 />
               </>
             )}
