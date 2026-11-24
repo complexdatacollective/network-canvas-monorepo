@@ -51,7 +51,7 @@ Read the full [Information documentation](https://documentation.networkcanvas.co
 <!-- section: page-content -->
 <!-- field: content -->
 
-The page has no separate heading field. To give it a heading, place the cursor in the first line of the **Rich Text** editor and choose **Heading 1** from the text styles in its toolbar. A heading that opens the page is shown large and centered at the top of the page.
+The page has no separate heading field. To give it a heading, place the cursor in the first line of the **Rich Text** editor and choose **Heading 1** from the text styles in its toolbar.
 
 ## Build the page
 
