@@ -11,29 +11,41 @@ import {
 import {
   cloneElement,
   type ReactElement,
+  type ReactNode,
   type SyntheticEvent,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react';
-import { z } from 'zod';
+import type { ZodMiniType } from 'zod/mini';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 
+import { Alert, AlertDescription } from '../Alert';
 import { Button, type ButtonProps, IconButton } from '../Button';
 import Dialog from '../dialogs/Dialog';
 import UnconnectedField from '../form/Field/UnconnectedField';
 import InputField from '../form/fields/InputField';
 import RadioGroupField from '../form/fields/RadioGroup';
 import RichTextEditorField from '../form/fields/RichTextEditor';
+import FormErrors from '../form/FormErrors';
 import { formMessages } from '../form/hooks/useForm';
-import { messages as validationMessages } from '../form/validation/functions';
+import { validations } from '../form/validation/functions';
 import { NativeLink } from '../NativeLink';
 import SegmentedSwitcherField from '../SegmentedSwitcher/SegmentedSwitcherField';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import Paragraph from '../typography/Paragraph';
+import {
+  COMMUNITY_FORUM_URL,
+  FORUM_SECTION_IDS,
+  FORUM_SECTIONS,
+  type ForumSection,
+  forumTopicUrl,
+  isForumSection,
+} from './communityForum';
 import { feedbackMarkdown } from './feedbackMarkdown';
 
 const messages = defineMessages({
@@ -183,11 +195,15 @@ const messages = defineMessages({
 });
 
 const TRIGGER_NAME = 'Feedback';
-const COMMUNITY_FORUM_URL = 'https://community.networkcanvas.com/';
 const EMPTY_DOCUMENT: JSONContent = { type: 'doc', content: [] };
-const emailAddress = z.email();
 
-const communityForumLink = (chunks: React.ReactNode) => (
+const SECTION_DESCRIPTIONS = {
+  feedback: messages.sectionFeedback,
+  help: messages.sectionHelp,
+  general: messages.sectionGeneral,
+} satisfies Record<ForumSection, (typeof messages)[keyof typeof messages]>;
+
+const communityForumLink = (chunks: ReactNode) => (
   <NativeLink
     href={COMMUNITY_FORUM_URL}
     target="_blank"
@@ -199,48 +215,28 @@ const communityForumLink = (chunks: React.ReactNode) => (
 
 type Audience = 'team' | 'forum';
 
-/**
- * The community forum's sections a person can post in, by slug and by the
- * name it shows; Announcements is the team's own. The names stay in English,
- * as the forum shows them.
- */
-const FORUM_SECTIONS = {
-  feedback: {
-    slug: 'feedback-and-feature-requests',
-    name: 'Feedback & Feature Requests',
-    description: messages.sectionFeedback,
-  },
-  help: {
-    slug: 'help-support',
-    name: 'Help & Support',
-    description: messages.sectionHelp,
-  },
-  general: {
-    slug: 'general',
-    name: 'General Conversation',
-    description: messages.sectionGeneral,
-  },
-} as const;
-type ForumSection = keyof typeof FORUM_SECTIONS;
-const SECTIONS = [
-  'feedback',
-  'help',
-  'general',
-] as const satisfies readonly ForumSection[];
-const isSection = (value: unknown): value is ForumSection =>
-  SECTIONS.some((section) => section === value);
+type Draft = {
+  audience: Audience;
+  section: ForumSection;
+  title: string;
+  document: JSONContent;
+  email: string;
+};
 
-/**
- * The forum's new-topic composer, in the chosen section, with the title and
- * the feedback filled in. The person posts it there under their own account; nothing is
- * sent from here.
- */
-function forumTopicUrl(title: string, feedback: string, section: ForumSection) {
-  const url = new URL('new-topic', COMMUNITY_FORUM_URL);
-  url.searchParams.set('category', FORUM_SECTIONS[section].slug);
-  if (title !== '') url.searchParams.set('title', title);
-  if (feedback !== '') url.searchParams.set('body', feedback);
-  return url.toString();
+const EMPTY_DRAFT: Draft = {
+  audience: 'team',
+  section: 'feedback',
+  title: '',
+  document: EMPTY_DOCUMENT,
+  email: '',
+};
+
+type Status = 'idle' | 'sending' | 'failed' | 'sent' | 'forum';
+
+/** The first message a shared validation rule gives for `value`, if any. */
+function firstIssue(schema: ZodMiniType, value: unknown) {
+  const result = schema.safeParse(value);
+  return result.success ? undefined : result.error.issues[0]?.message;
 }
 
 export type FeedbackResponse = {
@@ -250,11 +246,19 @@ export type FeedbackResponse = {
   email?: string;
 };
 
+type TriggerElementProps = {
+  'onClick'?: () => void;
+  'aria-haspopup'?: 'dialog';
+  'aria-label'?: string;
+  'lang'?: string;
+  'children'?: ReactNode;
+};
+
 export type FeedbackDialogProps = {
   /**
-   * Called with the response when the user sends it. A returned promise is
-   * awaited: Send waits for it, and if it rejects the form stays, with what the
-   * user wrote, under a line saying it could not be sent.
+   * Called with the response when the user sends it privately. A returned
+   * promise is awaited: Send waits for it, and if it rejects the form stays,
+   * with what the user wrote, under a line saying it could not be sent.
    */
   onSubmit: (response: FeedbackResponse) => void | Promise<void>;
   /** Called each time the dialog opens. */
@@ -278,22 +282,111 @@ export type FeedbackDialogProps = {
    * controls. The icon, and the label unless `display` is `icon`, are its
    * children.
    */
-  renderTrigger?: ReactElement<{
-    'onClick'?: () => void;
-    'aria-haspopup'?: 'dialog';
-    'aria-label'?: string;
-    'lang'?: string;
-    'children'?: React.ReactNode;
-  }>;
+  renderTrigger?: ReactElement<TriggerElementProps>;
   /** Open on first render; for documentation, hosts never need it. */
   defaultOpen?: boolean;
 };
 
+type FeedbackTriggerProps = Pick<
+  FeedbackDialogProps,
+  'display' | 'variant' | 'color' | 'size' | 'className' | 'renderTrigger'
+> & { onOpen: () => void };
+
+/** The button that opens the dialog, named in a tooltip when icon-only. */
+function FeedbackTrigger({
+  display,
+  variant,
+  color,
+  size,
+  className,
+  renderTrigger,
+  onOpen,
+}: FeedbackTriggerProps) {
+  const intl = useAppIntl();
+  const label = intl.formatMessage(messages.trigger);
+  const icon = <MessageSquareText aria-hidden />;
+  const opens = { 'onClick': onOpen, 'aria-haspopup': 'dialog' } as const;
+
+  if (display !== 'icon') {
+    return renderTrigger ? (
+      cloneElement(renderTrigger, {
+        ...opens,
+        children: (
+          <>
+            {icon}
+            <span>{label}</span>
+          </>
+        ),
+      })
+    ) : (
+      <Button
+        {...opens}
+        variant={variant}
+        color={color}
+        size={size}
+        icon={icon}
+        className={className}
+      >
+        {label}
+      </Button>
+    );
+  }
+
+  const named = { ...opens, 'aria-label': TRIGGER_NAME, 'lang': 'en' };
+  const trigger = renderTrigger ? (
+    cloneElement(renderTrigger, { ...named, children: icon })
+  ) : (
+    <IconButton
+      {...named}
+      variant={variant}
+      color={color}
+      size={size}
+      icon={icon}
+      className={className}
+    />
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={trigger} />
+      <TooltipContent side="bottom">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** A link to the forum's new-topic composer, dressed as a button. */
+function ForumLink({
+  href,
+  primary,
+  onOpen,
+  children,
+}: {
+  href: string;
+  primary: boolean;
+  onOpen: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Button
+      asChild
+      variant={primary ? 'default' : 'text'}
+      color={primary ? 'primary' : undefined}
+      icon={<ExternalLink aria-hidden />}
+      iconPosition="right"
+    >
+      <a href={href} target="_blank" rel="noopener noreferrer" onClick={onOpen}>
+        {children}
+      </a>
+    </Button>
+  );
+}
+
 /**
  * A button that opens a dialog for feedback about the app. It goes privately
  * to the team, with an optional email for a reply, unless the person switches
- * it to the community forum, where it opens as a new topic for them to post. Hosts own where a private response goes and the button's
- * look; the copy is shared.
+ * it to the community forum, where it opens as a new topic for them to post.
+ * Hosts own where a private response goes and the button's look; the copy is
+ * shared.
  */
 export default function FeedbackDialog({
   onSubmit,
@@ -311,158 +404,107 @@ export default function FeedbackDialog({
   const formId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const [open, setOpen] = useState(defaultOpen);
-  const [audience, setAudience] = useState<Audience>('team');
-  const [section, setSection] = useState<ForumSection>('feedback');
-  const [postTitle, setPostTitle] = useState('');
-  const [document, setDocument] = useState<JSONContent>(EMPTY_DOCUMENT);
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   // The editor keeps its own content once mounted; a new key empties it.
   const [editorKey, setEditorKey] = useState(0);
-  const [email, setEmail] = useState('');
   const [emailChecked, setEmailChecked] = useState(false);
-  const [status, setStatus] = useState<
-    'idle' | 'sending' | 'failed' | 'sent' | 'forum'
-  >('idle');
+  const [status, setStatus] = useState<Status>('idle');
 
-  const feedback = feedbackMarkdown(document);
-  const address = email.trim();
-  const tooLong = maxLength !== undefined && feedback.length > maxLength;
-  const emailInvalid =
-    address !== '' && !emailAddress.safeParse(address).success;
+  const update = (patch: Partial<Draft>) =>
+    setDraft((current) => ({ ...current, ...patch }));
+
+  const emailRule = useMemo(
+    () => validations.email(undefined, undefined, intl)(),
+    [intl],
+  );
+  const lengthRule = useMemo(
+    () =>
+      maxLength === undefined
+        ? undefined
+        : validations.maxLength(maxLength, undefined, intl)({}),
+    [maxLength, intl],
+  );
+
+  const feedback = useMemo(
+    () => feedbackMarkdown(draft.document),
+    [draft.document],
+  );
+  const address = draft.email.trim();
+  const lengthError = lengthRule && firstIssue(lengthRule, feedback);
+  const emailError = firstIssue(emailRule, address || undefined);
   const hasFeedback = feedback !== '';
-  const toForum = audience === 'forum';
-  const forumUrl = forumTopicUrl(postTitle.trim(), feedback, section);
-
-  const label = intl.formatMessage(messages.trigger);
-  const iconOnly = display === 'icon';
-  const icon = <MessageSquareText aria-hidden />;
+  const toForum = draft.audience === 'forum';
+  const sending = status === 'sending';
+  const finished = status === 'sent' || status === 'forum';
+  const forumUrl = forumTopicUrl({
+    section: draft.section,
+    title: draft.title.trim(),
+    body: feedback,
+  });
 
   const openDialog = () => {
     // A form that was sent, or handed to the forum, starts again, and only on
     // opening, so what replaced it does not turn back into the form while the
     // dialog is still closing. A draft, a send still under way and a failed
     // send are all kept.
-    if (status === 'sent' || status === 'forum') {
-      setDocument(EMPTY_DOCUMENT);
+    if (finished) {
+      setDraft(EMPTY_DRAFT);
       setEditorKey((key) => key + 1);
-      setSection('feedback');
-      setPostTitle('');
-      setEmail('');
       setEmailChecked(false);
       setStatus('idle');
     }
     setOpen(true);
     onShown?.();
   };
+  const close = () => setOpen(false);
+  const markForumOpened = () => setStatus('forum');
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
-    if (toForum) return;
     setEmailChecked(true);
-    if (!hasFeedback || status === 'sending' || tooLong || emailInvalid) {
-      return;
-    }
+    if (toForum || !hasFeedback || sending || lengthError || emailError) return;
     setStatus('sending');
     try {
-      await onSubmit({
-        feedback,
-        ...(address === '' ? {} : { email: address }),
-      });
+      await onSubmit(
+        address === '' ? { feedback } : { feedback, email: address },
+      );
       setStatus('sent');
     } catch {
       setStatus('failed');
     }
   };
 
-  const triggerProps = {
-    'onClick': openDialog,
-    'aria-haspopup': 'dialog' as const,
-  };
-
-  const trigger = renderTrigger ? (
-    cloneElement(renderTrigger, {
-      ...triggerProps,
-      ...(iconOnly
-        ? { 'aria-label': TRIGGER_NAME, 'lang': 'en', 'children': icon }
-        : {
-            children: (
-              <>
-                {icon}
-                <span>{label}</span>
-              </>
-            ),
-          }),
-    })
-  ) : iconOnly ? (
-    <IconButton
-      {...triggerProps}
-      variant={variant}
-      color={color}
-      size={size}
-      icon={icon}
-      aria-label={TRIGGER_NAME}
-      lang="en"
-      className={className}
-    />
-  ) : (
-    <Button
-      {...triggerProps}
-      variant={variant}
-      color={color}
-      size={size}
-      icon={icon}
-      className={className}
-    >
-      {label}
+  const closeButton = (
+    <Button color="primary" onClick={close}>
+      {intl.formatMessage(commonMessages.close)}
     </Button>
   );
-
-  const forumLink = (text: string, buttonVariant: ButtonProps['variant']) => (
-    <Button
-      asChild
-      variant={buttonVariant}
-      color={buttonVariant === 'default' ? 'primary' : undefined}
-      icon={<ExternalLink aria-hidden />}
-      iconPosition="right"
-    >
-      <a
-        href={forumUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => setStatus('forum')}
-      >
-        {text}
-      </a>
-    </Button>
-  );
-
-  const finished = status === 'sent' || status === 'forum';
-  const close = () => setOpen(false);
 
   const footer =
     status === 'sent' ? (
-      <Button color="primary" onClick={close}>
-        {intl.formatMessage(commonMessages.close)}
-      </Button>
+      closeButton
     ) : status === 'forum' ? (
       <>
-        {forumLink(intl.formatMessage(messages.openForumAgain), 'text')}
-        <Button color="primary" onClick={close}>
-          {intl.formatMessage(commonMessages.close)}
-        </Button>
+        <ForumLink href={forumUrl} primary={false} onOpen={markForumOpened}>
+          {intl.formatMessage(messages.openForumAgain)}
+        </ForumLink>
+        {closeButton}
       </>
     ) : (
       <>
         <Button onClick={close}>
           {intl.formatMessage(commonMessages.cancel)}
         </Button>
-        {toForum && hasFeedback && !tooLong ? (
-          forumLink(intl.formatMessage(messages.continueOnForum), 'default')
+        {toForum && hasFeedback && !lengthError ? (
+          <ForumLink href={forumUrl} primary onOpen={markForumOpened}>
+            {intl.formatMessage(messages.continueOnForum)}
+          </ForumLink>
         ) : (
           <Button
             type="submit"
             form={formId}
             color="primary"
-            disabled={!hasFeedback || status === 'sending' || toForum}
+            disabled={!hasFeedback || sending || toForum}
             icon={toForum ? <ExternalLink aria-hidden /> : <Send aria-hidden />}
             iconPosition="right"
           >
@@ -476,14 +518,15 @@ export default function FeedbackDialog({
 
   return (
     <>
-      {iconOnly ? (
-        <Tooltip>
-          <TooltipTrigger render={trigger} />
-          <TooltipContent side="bottom">{label}</TooltipContent>
-        </Tooltip>
-      ) : (
-        trigger
-      )}
+      <FeedbackTrigger
+        display={display}
+        variant={variant}
+        color={color}
+        size={size}
+        className={className}
+        renderTrigger={renderTrigger}
+        onOpen={openDialog}
+      />
       <Dialog
         open={open}
         closeDialog={close}
@@ -527,11 +570,9 @@ export default function FeedbackDialog({
               label={intl.formatMessage(messages.audienceLabel)}
               component={SegmentedSwitcherField<Audience>}
               size="sm"
-              value={audience}
-              onChange={(next) => {
-                if (next !== undefined) setAudience(next);
-              }}
-              readOnly={status === 'sending'}
+              value={draft.audience}
+              onChange={(audience) => audience && update({ audience })}
+              readOnly={sending}
               options={[
                 {
                   value: 'team',
@@ -550,15 +591,15 @@ export default function FeedbackDialog({
                 <UnconnectedField
                   name="section"
                   label={intl.formatMessage(messages.sectionLabel)}
-                  hint={intl.formatMessage(FORUM_SECTIONS[section].description)}
+                  hint={intl.formatMessage(SECTION_DESCRIPTIONS[draft.section])}
                   component={RadioGroupField}
                   orientation="horizontal"
                   size="sm"
-                  value={section}
-                  onChange={(next) => {
-                    if (isSection(next)) setSection(next);
+                  value={draft.section}
+                  onChange={(section) => {
+                    if (isForumSection(section)) update({ section });
                   }}
-                  options={SECTIONS.map((value) => ({
+                  options={FORUM_SECTION_IDS.map((value) => ({
                     value,
                     label: {
                       text: FORUM_SECTIONS[value].name,
@@ -574,8 +615,8 @@ export default function FeedbackDialog({
                   placeholder={intl.formatMessage(
                     messages.postTitlePlaceholder,
                   )}
-                  value={postTitle}
-                  onChange={(next) => setPostTitle(next ?? '')}
+                  value={draft.title}
+                  onChange={(title) => update({ title: title ?? '' })}
                 />
               </>
             )}
@@ -586,8 +627,10 @@ export default function FeedbackDialog({
                 toForum ? messages.postLabel : messages.feedbackLabel,
               )}
               component={RichTextEditorField}
-              value={document}
-              onChange={(next) => setDocument(next ?? EMPTY_DOCUMENT)}
+              value={draft.document}
+              onChange={(document) =>
+                update({ document: document ?? EMPTY_DOCUMENT })
+              }
               changeMode="input"
               placeholder={intl.formatMessage(messages.feedbackPlaceholder)}
               emojiMenu={false}
@@ -596,30 +639,19 @@ export default function FeedbackDialog({
                 links: false,
                 thematicBreak: false,
               }}
-              readOnly={status === 'sending'}
+              readOnly={sending}
               className="[&_.ProseMirror]:min-h-40"
-              errors={
-                tooLong
-                  ? [
-                      intl.formatMessage(validationMessages.maxLengthError, {
-                        max: maxLength,
-                      }),
-                    ]
-                  : undefined
-              }
-              showErrors={tooLong}
+              errors={lengthError ? [lengthError] : undefined}
+              showErrors={Boolean(lengthError)}
             />
             {toForum ? (
-              <Paragraph
-                intent="smallText"
-                margin="none"
-                className="bg-surface-1-contrast/5 flex items-center gap-2 rounded px-4 py-3"
-              >
-                <ExternalLink aria-hidden className="size-4 shrink-0" />
-                {intl.formatMessage(messages.forumNext, {
-                  category: FORUM_SECTIONS[section].name,
-                })}
-              </Paragraph>
+              <Alert density="compact" icon={ExternalLink}>
+                <AlertDescription>
+                  {intl.formatMessage(messages.forumNext, {
+                    category: FORUM_SECTIONS[draft.section].name,
+                  })}
+                </AlertDescription>
+              </Alert>
             ) : (
               <UnconnectedField
                 name="email"
@@ -628,27 +660,18 @@ export default function FeedbackDialog({
                 component={InputField}
                 type="email"
                 autoComplete="email"
-                value={email}
-                onChange={(next) => setEmail(next ?? '')}
+                value={draft.email}
+                onChange={(email) => update({ email: email ?? '' })}
                 onBlur={() => setEmailChecked(true)}
-                readOnly={status === 'sending'}
-                errors={
-                  emailInvalid && emailChecked
-                    ? [intl.formatMessage(validationMessages.emailError)]
-                    : undefined
-                }
-                showErrors={emailInvalid && emailChecked}
+                readOnly={sending}
+                errors={emailError && emailChecked ? [emailError] : undefined}
+                showErrors={Boolean(emailError && emailChecked)}
               />
             )}
             {status === 'failed' && !toForum && (
-              <Paragraph
-                role="alert"
-                intent="smallText"
-                margin="none"
-                className="text-destructive-ink"
-              >
-                {intl.formatMessage(formMessages.submitFailed)}
-              </Paragraph>
+              <FormErrors
+                errors={[intl.formatMessage(formMessages.submitFailed)]}
+              />
             )}
           </form>
         )}

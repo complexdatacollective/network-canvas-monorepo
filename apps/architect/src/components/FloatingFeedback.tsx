@@ -13,15 +13,20 @@ const survey = appFeedbackSurvey((event, properties) =>
 const ownWidth = (element: HTMLElement): number =>
   element.getBoundingClientRect().width;
 
-// Below tablet-landscape width the action toolbar needs the room the label
-// takes, so the button keeps only its icon, named in a tooltip.
-const WIDE = '(min-width: 1024px)';
+// Below the tablet-landscape breakpoint the action toolbar needs the room the
+// label takes, so the button keeps only its icon, named in a tooltip. Where
+// there is no `matchMedia` (a test document), it keeps its label.
+const WIDE_QUERY = '(min-width: 1024px)';
+const wideQuery = () =>
+  typeof window.matchMedia === 'function'
+    ? window.matchMedia(WIDE_QUERY)
+    : undefined;
 const subscribeToWidth = (onChange: () => void) => {
-  const query = window.matchMedia(WIDE);
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
+  const query = wideQuery();
+  query?.addEventListener('change', onChange);
+  return () => query?.removeEventListener('change', onChange);
 };
-const isWide = () => window.matchMedia(WIDE).matches;
+const isWide = () => wideQuery()?.matches ?? true;
 
 /** Feedback about Architect, floating in the bottom corner at the start edge. */
 export default function FloatingFeedback() {
