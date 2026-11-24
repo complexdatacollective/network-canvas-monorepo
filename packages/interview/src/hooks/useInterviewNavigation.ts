@@ -125,9 +125,26 @@ export default function useInterviewNavigation(
     commitDisplayedStep,
   } = useCurrentStep();
   const currentStepRef = useRef(currentStep);
+  const displayedStepRef = useRef(displayedStep);
   useLayoutEffect(() => {
     currentStepRef.current = currentStep;
+    displayedStepRef.current = displayedStep;
   });
+
+  // Only the stage on screen can move the interview, and only while no other
+  // navigation has left it. A stage that has been left stays mounted while its
+  // exit animation runs, and something of its own, such as an answer that
+  // moves on by itself after a short pause, can still ask to navigate from
+  // there; and Next can be pressed while such a request is under way. If
+  // either were allowed, it would move on from the stage that was just
+  // reached, and the participant would never see that stage. So a navigation
+  // checks this when it starts and again just before it acts, after every
+  // wait.
+  const isStillOnScreen = useCallback(
+    (step: number) =>
+      currentStepRef.current === step && displayedStepRef.current === step,
+    [],
+  );
 
   const [forceNavigationDisabled, setForceNavigationDisabled] = useState(false);
   const [beforeNextHandlerCount, setBeforeNextHandlerCount] = useState(0);
@@ -247,7 +264,8 @@ export default function useInterviewNavigation(
   ) as RegisterBeforeNext;
 
   const moveForward = useCallback(async () => {
-    if (blocksForward) return;
+    const fromStep = displayedStepRef.current;
+    if (blocksForward || !isStillOnScreen(fromStep)) return;
     setHasAttemptedStageNavigation(true);
 
     await whileNavigating(setForceNavigationDisabled, async () => {
@@ -269,6 +287,7 @@ export default function useInterviewNavigation(
         setReviewBoundaryReached(false);
         return;
       }
+      if (!isStillOnScreen(fromStep)) return;
 
       // Advance the prompt if we're not at the last one.
       if (stageAllowsNavigation !== 'FORCE' && !isLastPrompt) {
@@ -300,6 +319,7 @@ export default function useInterviewNavigation(
     blocksForward,
     dispatch,
     isLastPrompt,
+    isStillOnScreen,
     promptIndex,
     registerBeforeNext,
     protocolStages,
@@ -311,7 +331,8 @@ export default function useInterviewNavigation(
   ]);
 
   const moveBackward = useCallback(async () => {
-    if (blocksBackward) return;
+    const fromStep = displayedStepRef.current;
+    if (blocksBackward || !isStillOnScreen(fromStep)) return;
     setHasAttemptedStageNavigation(true);
 
     await whileNavigating(setForceNavigationDisabled, async () => {
@@ -332,6 +353,7 @@ export default function useInterviewNavigation(
 
       setReviewBoundaryReached(false);
       if (!(await allStored(writesSettled()))) return;
+      if (!isStillOnScreen(fromStep)) return;
       if (stageAllowsNavigation !== 'FORCE' && !isFirstPrompt) {
         dispatch(updatePrompt(promptIndex - 1));
         return;
@@ -359,6 +381,7 @@ export default function useInterviewNavigation(
     setStep,
     dispatch,
     isFirstPrompt,
+    isStillOnScreen,
     promptIndex,
     registerBeforeNext,
     protocolStages,
@@ -371,9 +394,8 @@ export default function useInterviewNavigation(
       targetIndex: number,
       confirmUnavailable?: (availability: UnavailableStage) => Promise<boolean>,
     ): Promise<void> => {
-      if (targetIndex === currentStep || currentStep !== displayedStep) {
-        return;
-      }
+      const fromStep = displayedStepRef.current;
+      if (targetIndex === fromStep || !isStillOnScreen(fromStep)) return;
       // A review never reaches a finish stage: finishing is not something a
       // review can do.
       if (reviewMode && targetIndex >= reviewEnd) return;
@@ -417,17 +439,19 @@ export default function useInterviewNavigation(
         const targetAvailability = getStageAvailabilityMap(
           interviewStore.getState(),
         )[targetIndex];
-        if (targetAvailability && targetAvailability.kind !== 'available') {
+        const targetIsUnavailable =
+          targetAvailability !== undefined &&
+          targetAvailability.kind !== 'available';
+        if (targetIsUnavailable) {
           const confirmed =
             confirmedUnavailable ||
             ((await confirmUnavailable?.(targetAvailability)) ?? false);
           if (!confirmed) {
             return;
           }
-          setForcedStep(targetIndex);
-        } else {
-          setForcedStep(null);
         }
+        if (!isStillOnScreen(fromStep)) return;
+        setForcedStep(targetIsUnavailable ? targetIndex : null);
 
         const meta = getInterviewProgress(protocolStages, targetIndex);
         setReviewBoundaryReached(false);
@@ -440,7 +464,7 @@ export default function useInterviewNavigation(
       blocksBackward,
       blocksForward,
       currentStep,
-      displayedStep,
+      isStillOnScreen,
       protocolStages,
       registerBeforeNext,
       reviewEnd,
@@ -467,6 +491,11 @@ export default function useInterviewNavigation(
   // stale promptIndex from the previous stage and may crash trying to
   // access a prompt that doesn't exist on the new stage type.
   const handleExitComplete = useCallback(() => {
+    // The stage that was reached is on screen from here. Say so now rather
+    // than in the layout effect above: the stage mounts in the same commit,
+    // and its own layout effects run before this hook's, so a stage that
+    // navigates as it mounts would otherwise be taken for the one that left.
+    displayedStepRef.current = currentStepRef.current;
     commitDisplayedStep();
     dispatch(transitionStage());
     beforeNextHandlers.current.clear();
