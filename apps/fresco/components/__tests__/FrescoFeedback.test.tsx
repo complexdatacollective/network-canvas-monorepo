@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const captureClientEvent = vi.hoisted(() => vi.fn());
@@ -8,6 +8,41 @@ vi.mock('~/lib/posthog-client', () => ({ captureClientEvent }));
 vi.mock('~/fresco.config', () => ({
   POSTHOG_APP_PROPERTIES: { app: 'Fresco', $app_name: 'Fresco' },
 }));
+
+// The dialog has its own tests; these cover where its response goes. The
+// stand-in opens on the trigger, as the dialog does, and sends what is typed.
+vi.mock('@codaco/fresco-ui/navigation/FeedbackDialog', async () => {
+  const { useState } = await import('react');
+  return {
+    default: function FeedbackDialog({
+      onSubmit,
+      onShown,
+    }: {
+      onSubmit: (response: { feedback: string }) => unknown;
+      onShown?: () => void;
+    }) {
+      const [text, setText] = useState('');
+      return (
+        <>
+          <button type="button" onClick={() => onShown?.()}>
+            Feedback
+          </button>
+          <textarea
+            aria-label="Your feedback"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => void onSubmit({ feedback: text })}
+          >
+            Send
+          </button>
+        </>
+      );
+    },
+  };
+});
 
 import FrescoFeedback from '../FrescoFeedback';
 
@@ -20,10 +55,11 @@ const fetchMock = vi.fn<typeof fetch>(() =>
 async function sendFeedback(text: string) {
   render(<FrescoFeedback />);
   fireEvent.click(screen.getByRole('button', { name: 'Feedback' }));
-  fireEvent.change(await screen.findByRole('textbox'), {
+  fireEvent.change(screen.getByRole('textbox', { name: 'Your feedback' }), {
     target: { value: text },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
 }
 
 describe('FrescoFeedback', () => {
@@ -41,7 +77,6 @@ describe('FrescoFeedback', () => {
   it('reports the form opening through analytics only', async () => {
     render(<FrescoFeedback />);
     fireEvent.click(screen.getByRole('button', { name: 'Feedback' }));
-    await screen.findByRole('textbox');
 
     expect(captureClientEvent).toHaveBeenCalledExactlyOnceWith('survey shown', {
       $survey_id: '01a20a16-0382-0000-64b9-70293a6eed37',

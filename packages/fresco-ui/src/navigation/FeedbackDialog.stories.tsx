@@ -1,0 +1,136 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, fn, screen, userEvent, waitFor } from 'storybook/test';
+
+import FeedbackDialog from './FeedbackDialog';
+
+const documentation = `
+The feedback control shared by Architect, Interviewer and Fresco: a button
+that opens a dialog where the person chooses who should see their feedback.
+
+- **Our team** (the default) sends it privately through \`onSubmit\`, with an
+  optional email for a reply. Sending replaces the form with a line of thanks.
+- **Community forum** asks for a forum section and a title, and opens the
+  forum's new-topic composer in a new tab with the post filled in, for the
+  person to post under their own account. Nothing goes through \`onSubmit\`.
+
+The text box takes lists and bold or italic text, sent as markdown. The next
+opening after a send, or after the forum was opened, starts with an empty
+form. Hosts own where a private response goes; the copy is shared and
+translated once.
+
+\`\`\`tsx
+import FeedbackDialog from '@codaco/fresco-ui/navigation/FeedbackDialog';
+import { appFeedbackSurvey } from '@codaco/shared-consts';
+
+<FeedbackDialog {...appFeedbackSurvey(capture)} />
+\`\`\`
+
+- **\`onSubmit\`** — called with \`{ feedback, email? }\` when the user sends
+  it privately: the feedback as markdown, and the address if one was left.
+  Send is disabled while the feedback is empty. A returned promise is awaited: if it
+  rejects, the form stays with what the user wrote, under a line saying it
+  could not be sent.
+- **\`onShown\`** — called each time the dialog opens.
+- **\`maxLength\`** — the most characters the feedback may run to, as markdown.
+- **\`display\`** — \`label\` (the default) shows "Feedback" beside the icon;
+  \`icon\` renders an \`IconButton\` named "Feedback", with a tooltip.
+- **\`variant\`** / **\`color\`** / **\`size\`** / **\`className\`** — the
+  trigger's \`Button\` look, so it matches the controls beside it.
+- **\`renderTrigger\`** — an element to render the trigger as instead of that
+  \`Button\`, for a host whose bar dresses its own controls. The icon, and the
+  label unless \`display\` is \`icon\`, are its children.
+`;
+
+const meta = {
+  title: 'Navigation/FeedbackDialog',
+  component: FeedbackDialog,
+  tags: ['autodocs'],
+  parameters: {
+    layout: 'centered',
+    docs: { description: { component: documentation } },
+  },
+  argTypes: {
+    display: { control: 'radio', options: ['label', 'icon'] },
+    variant: {
+      control: 'select',
+      options: ['default', 'raised', 'text', 'glass'],
+    },
+    color: {
+      control: 'select',
+      options: ['default', 'dynamic', 'primary', 'secondary'],
+    },
+    size: { control: 'radio', options: ['sm', 'md', 'lg'] },
+    renderTrigger: { control: false },
+  },
+  args: {
+    onSubmit: fn(),
+    onShown: fn(),
+    maxLength: 5000,
+  },
+} satisfies Meta<typeof FeedbackDialog>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
+
+export const IconOnly: Story = {
+  args: { display: 'icon' },
+};
+
+export const Open: Story = {
+  args: { defaultOpen: true },
+};
+
+/** A host's own navigation item as the trigger. */
+export const HostTrigger: Story = {
+  args: {
+    renderTrigger: (
+      // Named by the label the dialog puts inside it.
+      // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+      <button
+        type="button"
+        className="focusable hover:text-accent inline-flex cursor-pointer items-center gap-2 font-semibold [&>.lucide]:size-4"
+      />
+    ),
+  },
+};
+
+export const SendsFeedback: Story = {
+  play: async ({ args, canvas, step }) => {
+    await step('Open the dialog', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: 'Feedback' }));
+      await expect(args.onShown).toHaveBeenCalledOnce();
+    });
+
+    const box = await screen.findByRole('textbox', { name: 'Your feedback' });
+    const send = screen.getByRole('button', { name: 'Send to our team' });
+
+    await step('Send is disabled until something is written', async () => {
+      await expect(send).toBeDisabled();
+      await userEvent.click(box);
+      await userEvent.keyboard('Add a dark theme.');
+      await expect(send).toBeEnabled();
+    });
+
+    await step('Sending replaces the form with the thanks', async () => {
+      await userEvent.type(
+        screen.getByRole('textbox', { name: /^Email/ }),
+        'someone@example.org',
+      );
+      await userEvent.click(send);
+      await expect(args.onSubmit).toHaveBeenCalledOnce();
+      await expect(args.onSubmit).toHaveBeenCalledWith({
+        feedback: 'Add a dark theme.',
+        email: 'someone@example.org',
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByText(
+            'Thanks for your feedback. It has been sent to our team.',
+          ),
+        ).toHaveFocus(),
+      );
+    });
+  },
+};

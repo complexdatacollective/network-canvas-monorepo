@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,6 +16,41 @@ vi.mock('~/components/ViewSwitcher', () => ({ ViewSwitcher: () => null }));
 
 vi.mock('~/i18n/InterviewerLocaleSwitcher', () => ({ default: () => null }));
 
+// The dialog has its own tests; these cover where its response goes. The
+// stand-in opens on the trigger, as the dialog does, and sends what is typed.
+vi.mock('@codaco/fresco-ui/navigation/FeedbackDialog', async () => {
+  const { useState } = await import('react');
+  return {
+    default: function FeedbackDialog({
+      onSubmit,
+      onShown,
+    }: {
+      onSubmit: (response: { feedback: string }) => unknown;
+      onShown?: () => void;
+    }) {
+      const [text, setText] = useState('');
+      return (
+        <>
+          <button type="button" onClick={() => onShown?.()}>
+            Feedback
+          </button>
+          <textarea
+            aria-label="Your feedback"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => void onSubmit({ feedback: text })}
+          >
+            Send
+          </button>
+        </>
+      );
+    },
+  };
+});
+
 import { TopActionBar } from '../TopActionBar';
 
 const SURVEY_ID = '01a20a16-0382-0000-64b9-70293a6eed37';
@@ -32,12 +67,16 @@ const fetchMock = vi.fn<typeof fetch>(() =>
 );
 
 async function sendFeedback(text: string): Promise<CaptureBody> {
+  const user = userEvent.setup();
   render(<TopActionBar onOpenSettings={vi.fn()} />);
-  await userEvent.click(screen.getByRole('button', { name: 'Feedback' }));
-  await userEvent.type(await screen.findByRole('textbox'), text);
-  await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+  await user.click(screen.getByRole('button', { name: 'Feedback' }));
+  await user.type(
+    await screen.findByRole('textbox', { name: 'Your feedback' }),
+    text,
+  );
+  await user.click(screen.getByRole('button', { name: 'Send' }));
 
-  expect(fetchMock).toHaveBeenCalledOnce();
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
   const [url, init] = fetchMock.mock.calls[0]!;
   expect(url).toBe('https://ph-relay.networkcanvas.com/i/v0/e/');
   if (typeof init?.body !== 'string') throw new Error('Expected a JSON body');

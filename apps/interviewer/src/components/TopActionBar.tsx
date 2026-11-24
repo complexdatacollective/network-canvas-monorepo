@@ -4,9 +4,9 @@ import { motion } from 'motion/react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
-import FeedbackPopover, {
-  type FeedbackPopoverProps,
-} from '@codaco/fresco-ui/navigation/FeedbackPopover';
+import FeedbackDialog, {
+  type FeedbackDialogProps,
+} from '@codaco/fresco-ui/navigation/FeedbackDialog';
 import { appFeedbackSurvey } from '@codaco/shared-consts';
 import { ViewSwitcher } from '~/components/ViewSwitcher';
 import InterviewerLocaleSwitcher from '~/i18n/InterviewerLocaleSwitcher';
@@ -49,7 +49,7 @@ export function TopActionBarView({
   onLock,
   onOpenSettings,
 }: {
-  feedback: Pick<FeedbackPopoverProps, 'onSubmit' | 'onShown' | 'maxLength'>;
+  feedback: Pick<FeedbackDialogProps, 'onSubmit' | 'onShown' | 'maxLength'>;
   showLock: boolean;
   onLock: () => void;
   onOpenSettings: () => void;
@@ -72,7 +72,7 @@ export function TopActionBarView({
         whileTap={{ scale: 0.94 }}
         className="inline-flex"
       >
-        <FeedbackPopover
+        <FeedbackDialog
           {...feedback}
           display="icon"
           variant="glass"

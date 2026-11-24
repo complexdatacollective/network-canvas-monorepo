@@ -189,7 +189,7 @@
     "./layout/Surface": "./src/layout/Surface.tsx",
     "./locales": "./src/locales/catalogs.ts",
     "./navigation/EverythingBar": "./src/navigation/EverythingBar.tsx",
-    "./navigation/FeedbackPopover": "./src/navigation/FeedbackPopover.tsx",
+    "./navigation/FeedbackDialog": "./src/navigation/FeedbackDialog.tsx",
     "./navigation/LocaleSwitcher": "./src/navigation/LocaleSwitcher.tsx",
     "./navigation/NavDrawer": "./src/navigation/NavDrawer.tsx",
     "./navigation/NavItem": "./src/navigation/NavItem.tsx",
@@ -919,9 +919,9 @@
         "types": "./dist/navigation/EverythingBar.d.ts",
         "default": "./dist/navigation/EverythingBar.js"
       },
-      "./navigation/FeedbackPopover": {
-        "types": "./dist/navigation/FeedbackPopover.d.ts",
-        "default": "./dist/navigation/FeedbackPopover.js"
+      "./navigation/FeedbackDialog": {
+        "types": "./dist/navigation/FeedbackDialog.d.ts",
+        "default": "./dist/navigation/FeedbackDialog.js"
       },
       "./navigation/LocaleSwitcher": {
         "types": "./dist/navigation/LocaleSwitcher.d.ts",

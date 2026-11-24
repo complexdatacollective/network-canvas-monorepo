@@ -17,7 +17,9 @@ describe('appFeedbackSurvey', () => {
 
   it('sends the feedback as a complete response to the one question', async () => {
     const capture = vi.fn();
-    await appFeedbackSurvey(capture).onSubmit('Add a dark theme.');
+    await appFeedbackSurvey(capture).onSubmit({
+      feedback: 'Add a dark theme.',
+    });
 
     expect(capture).toHaveBeenCalledExactlyOnceWith('survey sent', {
       $survey_id: SURVEY_ID,
@@ -27,12 +29,28 @@ describe('appFeedbackSurvey', () => {
     });
   });
 
+  it('sends an email left for a reply as the second answer', async () => {
+    const capture = vi.fn();
+    await appFeedbackSurvey(capture).onSubmit({
+      feedback: 'Add a dark theme.',
+      email: 'researcher@example.org',
+    });
+
+    expect(capture).toHaveBeenCalledExactlyOnceWith(
+      'survey sent',
+      expect.objectContaining({
+        [`$survey_response_${QUESTION_ID}`]: 'Add a dark theme.',
+        $survey_response_1: 'researcher@example.org',
+      }),
+    );
+  });
+
   it('sends each feedback as its own response', async () => {
     const capture =
       vi.fn<(event: string, properties: Record<string, unknown>) => void>();
     const { onSubmit } = appFeedbackSurvey(capture);
-    await onSubmit('First.');
-    await onSubmit('Second.');
+    await onSubmit({ feedback: 'First.' });
+    await onSubmit({ feedback: 'Second.' });
 
     const [first, second] = capture.mock.calls.map(
       ([, properties]) => properties.$survey_submission_id,
@@ -45,7 +63,7 @@ describe('appFeedbackSurvey', () => {
     const captureResponse = vi.fn();
     const survey = appFeedbackSurvey(capture, captureResponse);
     survey.onShown();
-    await survey.onSubmit('Add a dark theme.');
+    await survey.onSubmit({ feedback: 'Add a dark theme.' });
 
     expect(capture).toHaveBeenCalledExactlyOnceWith(
       'survey shown',

@@ -1,8 +1,8 @@
 'use client';
 
-import FeedbackPopover, {
-  type FeedbackPopoverProps,
-} from '@codaco/fresco-ui/navigation/FeedbackPopover';
+import FeedbackDialog, {
+  type FeedbackDialogProps,
+} from '@codaco/fresco-ui/navigation/FeedbackDialog';
 import {
   appFeedbackSurvey,
   sendAnonymousPostHogEvent,
@@ -22,11 +22,11 @@ const survey = appFeedbackSurvey(captureClientEvent, (event, properties) =>
 );
 
 type FrescoFeedbackProps = Pick<
-  FeedbackPopoverProps,
+  FeedbackDialogProps,
   'display' | 'renderTrigger'
 >;
 
 /** The dashboard's feedback control. */
 export default function FrescoFeedback(props: FrescoFeedbackProps) {
-  return <FeedbackPopover {...survey} {...props} />;
+  return <FeedbackDialog {...survey} {...props} />;
 }

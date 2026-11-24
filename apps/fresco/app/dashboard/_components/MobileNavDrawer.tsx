@@ -220,13 +220,13 @@ export function MobileNavDrawer() {
               <li>
                 <FrescoFeedback
                   renderTrigger={
-                    // Named by the popover, which puts the label inside it.
+                    // Named by the label the dialog puts inside it.
                     // oxlint-disable-next-line jsx-a11y/control-has-associated-label
                     <button
                       type="button"
                       className={cx(
                         mobileNavItemClassName,
-                        'hover:bg-surface-1-contrast/10 data-popup-open:bg-surface-1-contrast/10 cursor-pointer [&>svg]:size-5',
+                        'hover:bg-surface-1-contrast/10 cursor-pointer [&>svg]:size-5',
                       )}
                     />
                   }

@@ -176,7 +176,14 @@ const ActionToolbar = ({
       transition={toolbarTransition}
       className="phone-landscape:px-6 pointer-events-none fixed inset-x-0 bottom-5 z-20 px-4 print:hidden"
     >
-      <div className="mx-auto flex max-w-7xl min-w-0 items-end justify-between gap-2">
+      <div
+        className={cx(
+          'mx-auto flex max-w-7xl min-w-0 items-end justify-between gap-2',
+          // The floating Feedback button holds the corner at the start edge.
+          // Where the row reaches into that corner, it starts after it.
+          'ps-[max(0px,calc(var(--architect-floating-feedback-width,0px)+0.5rem-max(0px,(100%-80rem)/2)))]',
+        )}
+      >
         <AnimatePresence>
           {hasLeadingActions ? (
             <motion.div

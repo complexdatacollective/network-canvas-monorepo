@@ -221,13 +221,13 @@ export function NavigationBar() {
             <FrescoFeedback
               display="icon"
               renderTrigger={
-                // Named by the popover.
+                // Named by the dialog, which gives it an aria-label.
                 // oxlint-disable-next-line jsx-a11y/control-has-associated-label
                 <button
                   type="button"
                   className={cx(
                     navItemClassName,
-                    'hover:text-sea-green data-popup-open:text-sea-green flex cursor-pointer items-center',
+                    'hover:text-sea-green flex cursor-pointer items-center',
                   )}
                 />
               }

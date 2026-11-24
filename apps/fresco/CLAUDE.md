@@ -464,7 +464,8 @@ The one deliberate exception is the dashboard's Feedback control
 (`components/FrescoFeedback.tsx`). When a researcher writes feedback and
 presses Send, the browser posts that one response straight to the relay,
 without posthog-js and without the installation ID, whether or not the
-deployment has analytics disabled. Nothing is sent until they press Send, so
+deployment has analytics disabled. It carries an email address only if the
+researcher typed one into the form's optional email field. Nothing is sent until they press Send, so
 the lanes above, which never do, still see silence.
 
 Server-side capture is watched separately, because a browser network log
