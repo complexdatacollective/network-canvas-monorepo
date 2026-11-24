@@ -144,9 +144,9 @@ it.each(['default', 'summary'] as const)(
         expect(token).toBe(tokens[index]);
       });
       expect(second.querySelector('strong')).toHaveTextContent('Bravo');
-      expect(
-        within(third).getByRole('link', { name: 'Isabel' }),
-      ).toHaveAttribute('href', 'https://example.org/authored');
+      // An option label is one line, which shows a link as its words.
+      expect(within(third).queryByRole('link')).not.toBeInTheDocument();
+      expect(third).toHaveTextContent('Isabel');
       expect(rule).toEqual(original);
     }
   },
@@ -198,11 +198,17 @@ it('retains literal numeric option operands while formatting their surrounding l
 });
 
 it.each([
-  ['GFM strike', '~~Isabel~~', 'Isabel', 'e'],
-  ['GFM single strike', '~Isabel~', 'Isabel', 'e'],
-  ['raw emphasis', '<em>Isabel</em>', 'Isabel', 'e'],
-  ['unwrapped HTML', '<span>Isabel</span>', 'Isabel', 'e'],
-  ['sanitized script', '<script>Zulu</script>Isabel', 'Isabel', 'e'],
+  ['tildes', '~~Isabel~~', '~~Isabel~~', 'y'],
+  ['one tilde on each side', '~Isabel~', '~Isabel~', 'y'],
+  ['inline HTML', '<em>Isabel</em>', '<em>Isabel</em>', 'y'],
+  ['an HTML element', '<span>Isabel</span>', '<span>Isabel</span>', 'y'],
+  [
+    'a script element',
+    '<script>Zulu</script>Isabel',
+    '<script>Zulu</script>Isabel',
+    'y',
+  ],
+  ['emphasis', '*Isabel*', 'Isabel', 'e'],
   ['numeric entity', '&#73;sabel', 'Isabel', 'e'],
   ['named entity', 'Isabel &amp; Irene', 'Isabel & Irene', 'e'],
   [
@@ -218,7 +224,8 @@ it.each([
     'e',
   ],
   ['unwrapped code', '`Isabel`', 'Isabel', 'e'],
-  ['emoji', ':heart: Isabel', '❤️ Isabel', 'y'],
+  ['emoji', '❤️ Isabel', '❤️ Isabel', 'y'],
+  ['emoji shortcode', ':heart: Isabel', ':heart: Isabel', 'y'],
   ['escaped syntax', '\\~\\~Isabel\\~\\~', '~~Isabel~~', 'y'],
 ])(
   'uses the displayed %s label for both rule-list variants without rewriting its source',

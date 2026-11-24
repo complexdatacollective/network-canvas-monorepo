@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
   getMarkdownLabelText,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -28,6 +29,9 @@ const BORN = testVariableId('born');
 const CLOSENESS = testVariableId('closeness');
 const LANGUAGES = testVariableId('languages');
 const SMOKES = testVariableId('smokes');
+/** The text a page shows for `html`, read from the parsed document. */
+const drawnText = (html: string): string =>
+  new DOMParser().parseFromString(html, 'text/html').body.textContent;
 
 const VARIABLES: Record<string, Variable> = {
   [NAME]: { name: 'name', type: 'text' },
@@ -342,8 +346,16 @@ describe('resolveDynamicText', () => {
   });
 });
 
-/** Authored text and a value that, joined, would read as a bare link. */
+/**
+ * Authored text and a value that, joined, could read as a link: an autolink
+ * written in angle brackets, or a bare address, which standard markdown leaves
+ * as words.
+ */
 const AUTOLINK_SPLITS: readonly (readonly [string, string, string])[] = [
+  ['See <https:', '//evil.example', '>'],
+  ['See <', 'https://evil.example', '>'],
+  ['See <https://a.example/', 'evil', '>'],
+  ['Write to <ada', '@evil.example', '>'],
   ['See https:', '//evil.example', ''],
   ['See https://', 'evil.example', ''],
   ['See www.', 'evil.example', ''],
@@ -355,13 +367,29 @@ const AUTOLINK_SPLITS: readonly (readonly [string, string, string])[] = [
 ];
 
 const hrefs = (html: string): string[] =>
-  [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? '');
+  Array.from(
+    new DOMParser()
+      .parseFromString(html, 'text/html')
+      .querySelectorAll('[href]'),
+    (link) => link.getAttribute('href') ?? '',
+  );
+
+/**
+ * Markdown as text of several lines draws it, links included, so that a
+ * test of where links lead can fail.
+ */
+const drawnWithLinks = (markdown: string): string =>
+  renderToStaticMarkup(
+    createElement(
+      RenderMarkdown,
+      { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS },
+      markdown,
+    ),
+  );
 
 /** The links the researcher's words make on their own. */
 const authoredHrefs = (before: string, after: string): string[] =>
-  [before, after].flatMap((text) =>
-    hrefs(renderToStaticMarkup(createElement(RenderMarkdown, null, text))),
-  );
+  [before, after].flatMap((text) => hrefs(drawnWithLinks(text)));
 
 describe('markdownSource', () => {
   const HOSTILE =
@@ -380,28 +408,25 @@ describe('markdownSource', () => {
     for (const element of ['<a', '<img', '<h1', '<pre', '<code']) {
       expect(html).not.toContain(element);
     }
-    // Word joiners keep autolinks from forming; they are not seen.
-    expect(getMarkdownLabelText(source).replaceAll('\u2060', '')).toBe(
+    expect(getMarkdownLabelText(source)).toBe(
       `Decline for ${HOSTILE.replace(/\s+/g, ' ')}.`,
     );
   });
 
-  it('never puts a value in a link destination', () => {
-    for (const destination of ['', 'https:']) {
-      const source = markdownSource({
-        text: '',
-        parts: [
-          `[details](${destination}`,
-          { name: 'name', text: '//evil.example' },
-          ')',
-        ],
-      });
-      const html = renderToStaticMarkup(
-        createElement(RenderMarkdown, null, source),
-      );
-      expect(html).not.toContain('evil');
-      expect(html).not.toMatch(/href="[^"]*(?:evil|%3C)/);
-    }
+  it.each([
+    ['[details](', '//evil.example'],
+    ['[details](https:', '//evil.example'],
+    ['[details](', 'https://evil.example'],
+    ['[details](https://', 'evil.example'],
+    ['[details](mailto:', 'evil@x.example'],
+  ])('never puts a value in a link destination: %j %j', (before, value) => {
+    const source = markdownSource({
+      text: '',
+      parts: [before, { name: 'name', text: value }, ')'],
+    });
+    const html = drawnWithLinks(source);
+    expect(html).not.toContain('evil');
+    expect(html).not.toMatch(/href="[^"]*(?:evil|%3C)/);
   });
 
   it('keeps a value in a link’s text, and the researcher’s destination', () => {
@@ -409,8 +434,13 @@ describe('markdownSource', () => {
       text: '',
       parts: ['[About ', { name: 'name', text: 'Ada' }, '](https://a.example)'],
     });
+    // Text of several lines, which is drawn with its links.
     const html = renderToStaticMarkup(
-      createElement(RenderMarkdown, null, source),
+      createElement(
+        RenderMarkdown,
+        { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS },
+        source,
+      ),
     );
     expect(html).toContain('href="https://a.example"');
     expect(html).toContain('>About Ada<');
@@ -434,7 +464,9 @@ describe('markdownSource', () => {
       const label = JSON.stringify([before, value, after]);
       expect(html, label).not.toContain('©');
       expect(html, label).not.toContain('<em>');
-      expect(html, label).toContain(value);
+      expect(getMarkdownLabelText(source), label).toBe(
+        `${before}${value}${after}`,
+      );
     }
   });
 
@@ -455,9 +487,7 @@ describe('markdownSource', () => {
         text: '',
         parts: [before, { name: 'name', text: value }, `${after}${definition}`],
       });
-      const html = renderToStaticMarkup(
-        createElement(RenderMarkdown, null, source),
-      );
+      const html = drawnWithLinks(source);
       const label = JSON.stringify([before, after]);
       expect(html, label).not.toContain('friend.example');
       expect(html, label).toContain('friend');
@@ -470,28 +500,49 @@ describe('markdownSource', () => {
         text: '',
         parts: [before, { name: 'name', text: value }, after],
       });
-      const html = renderToStaticMarkup(
-        createElement(RenderMarkdown, null, source),
-      );
+      const html = drawnWithLinks(source);
       expect(hrefs(html), JSON.stringify([before, value, after])).toEqual(
         authoredHrefs(before, after),
       );
-      expect(getMarkdownLabelText(source).replaceAll('\u2060', '')).toBe(
-        `${before}${value}${after}`,
-      );
+      expect(getMarkdownLabelText(source)).toBe(`${before}${value}${after}`);
     }
   });
 
-  it('keeps the researcher’s emphasis around a value kept apart from a link', () => {
+  // What markdown shows as typed (code, an address in angle brackets) is
+  // never changed by a value beside it, and a value in it shows as itself.
+  it.each([
+    [
+      'an address in angle brackets just before a value',
+      'See <https://a.example/?a=1&b=2>',
+      'Ada',
+      '',
+      // The address as a link, its `&` as typed, then the value.
+      'See https://a.example/?a=1&b=2Ada',
+      ['https://a.example/?a=1&b=2'],
+    ],
+    ['an `&` in code', 'Type `AT&T`', 'Ada', '', 'Type AT&TAda', []],
+    ['a `<` in code around a value', '`<', 'Ada', '>`', '<Ada>', []],
+    ['a `[` in code around a value', 'Type `[', 'Ada', ']`', 'Type [Ada]', []],
+  ])('leaves %s as typed', (_case, before, value, after, shown, links) => {
     const source = markdownSource({
       text: '',
-      parts: ['Ask **', { name: 'name', text: 'Ada' }, '**: see a.example'],
+      parts: [before, { name: 'name', text: value }, after],
+    });
+    const html = drawnWithLinks(source);
+    expect(drawnText(html)).toBe(shown);
+    expect(hrefs(html)).toEqual(links);
+  });
+
+  it('keeps the researcher’s emphasis around a value after an escaped `<`', () => {
+    const source = markdownSource({
+      text: '',
+      parts: ['Ask **<', { name: 'name', text: 'Ada' }, '**'],
     });
     const html = renderToStaticMarkup(
       createElement(RenderMarkdown, null, source),
     );
-    expect(source).toContain('<!---->');
-    expect(html).toContain('<strong>Ada</strong>');
+    expect(source).toBe('Ask **\\<Ada**');
+    expect(html).toContain('<strong>&lt;Ada</strong>');
   });
 
   it('never lets a value finish a block marker the researcher wrote', () => {
@@ -509,6 +560,33 @@ describe('markdownSource', () => {
       );
       expect(html).not.toContain(element);
       expect(getMarkdownLabelText(source)).toBe(`${marker} heading`);
+    }
+  });
+
+  it('shows a value that opens a line as typed, never as a block', () => {
+    for (const value of [
+      '~~~example~~~',
+      '```',
+      '+ item',
+      '1) one',
+      '#',
+      '===',
+      '***',
+      '    indented',
+    ]) {
+      const source = markdownSource({
+        text: '',
+        parts: ['Before\n', { name: 'name', text: value }, '\nAfter'],
+      });
+      const page = new DOMParser().parseFromString(
+        drawnWithLinks(source),
+        'text/html',
+      ).body;
+      expect(
+        Array.from(page.children, (child) => child.tagName),
+        value,
+      ).toEqual(['P']);
+      expect(page.textContent, value).toBe(`Before\n${value.trim()}\nAfter`);
     }
   });
 

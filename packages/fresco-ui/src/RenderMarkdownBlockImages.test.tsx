@@ -206,7 +206,12 @@ describe('where a block may be written', () => {
     ['an item of a numbered list', '1. ![Map](asset:a)\n2. two'],
     ['an item of a list in a list', '1. one\n   - ![Map](asset:a)'],
     ['an item of a list of tasks', '- [ ] ![Map](asset:a)'],
-    ['a paragraph beside words struck through', '~~old~~ ![Map](asset:a)'],
+    ['a paragraph beside tildes', '~~old~~ ![Map](asset:a)'],
+    // Standard markdown has no struck-through words and no tables: these are
+    // a paragraph holding the image.
+    ['a paragraph between two tildes on each side', '~~![Map](asset:a)~~'],
+    ['a paragraph between one tilde on each side', '~![Map](asset:a)~'],
+    ['a paragraph written as a table', '| File |\n| - |\n| ![Map](asset:a) |'],
   ])('is drawn, and accepted, in %s', (_where, markdown) => {
     renderBlocks(markdown);
     expect(blocks()).toEqual([{ url: 'asset:a', alt: 'Map' }]);
@@ -217,21 +222,18 @@ describe('where a block may be written', () => {
     ['a heading', '# ![Map](asset:a)'],
     ['a link', '[![Map](asset:a)](https://example.com)'],
     ['emphasis', '*![Map](asset:a)*'],
-    ['words struck through', '~~![Map](asset:a)~~'],
-    ['words struck through with one tilde', '~![Map](asset:a)~'],
-    ['a cell of a table', '| File |\n| - |\n| ![Map](asset:a) |'],
   ])('is not drawn, and is reported, in %s', (_where, markdown) => {
     renderBlocks(markdown);
     expect(blocks()).toEqual([]);
     expect(accepted(markdown)).toBe(false);
   });
 
-  // The check is the stricter of the two here: these would be drawn, but the
-  // editor has nowhere to keep a block inside them, so it is reported.
-  it.each([
-    ['a quotation', '> ![Map](asset:a)'],
-    ['a footnote', 'Words[^1]\n\n[^1]: ![Map](asset:a)'],
-  ])('is reported in %s', (_where, markdown) => {
-    expect(accepted(markdown)).toBe(false);
-  });
+  // The check is the stricter of the two here: this would be drawn, but the
+  // editor has nowhere to keep a block inside a quotation, so it is reported.
+  it.each([['a quotation', '> ![Map](asset:a)']])(
+    'is reported in %s',
+    (_where, markdown) => {
+      expect(accepted(markdown)).toBe(false);
+    },
+  );
 });

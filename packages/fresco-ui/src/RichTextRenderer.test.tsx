@@ -47,7 +47,7 @@ describe('RichTextRenderer', () => {
     expect(container.textContent).toBe('Safe unsafe');
   });
 
-  it('allows relative, protocol-relative, and mailto links', () => {
+  it('links only whole addresses, such as mailto, and shows a relative one as its words', () => {
     const { container } = render(
       <RichTextRenderer
         content={{
@@ -87,11 +87,9 @@ describe('RichTextRenderer', () => {
       link.getAttribute('href'),
     );
 
-    expect(hrefs).toEqual([
-      '/docs',
-      '//example.com/x',
-      'mailto:team@example.com',
-    ]);
+    // A relative address would point into whichever app shows the text.
+    expect(hrefs).toEqual(['mailto:team@example.com']);
+    expect(container).toHaveTextContent('Relative Protocol Mail');
   });
 
   it.each([

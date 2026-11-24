@@ -4,10 +4,18 @@ import { motion } from 'motion/react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  ALLOWED_MARKDOWN_LABEL_TAGS,
+  applicationTextUrlTransform,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import type { Practice } from './parseWalkthrough';
+
+// A practice is one line of the walkthrough's own text, which may link to
+// the documentation.
+const PRACTICE_ELEMENTS = [...ALLOWED_MARKDOWN_LABEL_TAGS, 'a'];
 
 const messages = defineMessages({
   do: {
@@ -116,7 +124,13 @@ export default function Practices({
                       bullet,
                     )}
                   />
-                  <RenderMarkdown render={<span />}>{text}</RenderMarkdown>
+                  <RenderMarkdown
+                    allowedElements={PRACTICE_ELEMENTS}
+                    urlTransform={applicationTextUrlTransform}
+                    render={<span />}
+                  >
+                    {text}
+                  </RenderMarkdown>
                 </li>
               ))}
             </ul>

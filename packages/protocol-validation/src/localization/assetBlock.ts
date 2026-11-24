@@ -307,9 +307,8 @@ const blocksInMarkdown = (markdown: string): Found[] =>
  * with what is wrong with its address and with where it is written. Found
  * with a markdown parser rather than a pattern, so that an address inside a
  * code span or behind an escaped bracket is the text it reads as, not a
- * block; and with the interview's markdown (see `markdownTree`), so that an
- * image it reads as struck through or in a table cell, and draws nothing
- * for, is not taken for one in a paragraph.
+ * block; and with the one parser every reader of stored text uses (see
+ * `markdownTree`), so that what is checked is what the participant is shown.
  */
 export const assetBlocksInMarkdown = (
   markdown: string,

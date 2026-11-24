@@ -3,12 +3,13 @@ import type { ReactNode } from 'react';
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
-  ALLOWED_MARKDOWN_SECTION_TAGS,
+  markdownElementsFor,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 import { getValidationLabel } from '@codaco/protocol-builder/codebook/variableValidation';
 import { nameLocalizedText } from '@codaco/protocol-builder/localization/localizedTextNames';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { LineInParagraph } from '~/components/LineInParagraph';
 import { useLanguageName } from '~/components/Localization/useLanguageName';
 import { useAppSelector } from '~/ducks/hooks';
 import type { FixTextEdit } from '~/protocolReview/describeFix';
@@ -81,18 +82,22 @@ export const fixEditMessages = defineMessages({
 export const FixText = ({
   text,
   markdown,
+  singleLine,
 }: {
   text: string;
   markdown: boolean;
+  /** The text is one line, drawn with what the editor offers for one line. */
+  singleLine: boolean;
 }) =>
   markdown ? (
     // As the interview reads it: the stored markdown, unchanged.
-    <RenderMarkdown
-      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-      render={<span className="wrap-break-word" />}
-    >
-      {text}
-    </RenderMarkdown>
+    <span className="wrap-break-word">
+      <LineInParagraph singleLine={singleLine}>
+        <RenderMarkdown allowedElements={markdownElementsFor(singleLine)}>
+          {text}
+        </RenderMarkdown>
+      </LineInParagraph>
+    </span>
   ) : (
     <span className="wrap-break-word whitespace-pre-wrap">{text}</span>
   );
@@ -224,7 +229,11 @@ export const NowBox = ({
         {edit.now === null ? (
           <span>{intl.formatMessage(fixEditMessages.notSet)}</span>
         ) : (
-          <FixText text={edit.now} markdown={edit.markdown} />
+          <FixText
+            text={edit.now}
+            markdown={edit.markdown}
+            singleLine={edit.singleLine}
+          />
         )}
       </div>
     </div>

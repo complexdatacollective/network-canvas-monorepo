@@ -4,14 +4,13 @@ import {
   type ParserOptions,
   TYPE,
 } from '@formatjs/icu-messageformat-parser';
-import { fromMarkdown } from 'mdast-util-from-markdown';
 
 import { holdsLineBreak } from '@codaco/shared-consts';
 
 import { isBlankText } from './blankText.ts';
 import type { LocaleTag } from './localeTag.ts';
 import { versionLineMarkdown } from './markdownText.ts';
-import { markdownAsEdited } from './markdownTree.ts';
+import { markdownTree } from './markdownTree.ts';
 import type { MessagePart } from './messageArguments.ts';
 
 /**
@@ -280,7 +279,7 @@ const versionHoldsLineBreak = (
         ),
   );
 
-type MarkdownTree = ReturnType<typeof fromMarkdown>;
+type MarkdownTree = ReturnType<typeof markdownTree>;
 type MarkdownNode = MarkdownTree | MarkdownTree['children'][number];
 
 const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
@@ -296,10 +295,8 @@ const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
 /**
  * Whether a link's address or title holds a value or a choice of versions:
  * both are fixed text. The text and each of its versions is read as markdown
- * of its own, twice: as written, which is how the interview renders it, and
- * as the editor reads it (`markdownAsEdited`, with a version behind
- * `versionLineMarkdown`). The two differ where a `>`, a `<` or a version's
- * leading spaces decide what is a link, and a link in either reading counts.
+ * of its own (`markdownTree`), a version as it reads inside the line it sits
+ * in (`versionLineMarkdown`).
  */
 const linkHoldsValue = (
   nodes: readonly MessageFormatElement[],
@@ -310,13 +307,11 @@ const linkHoldsValue = (
       node.type === TYPE.literal ? node.value : DYNAMIC_VALUE_MARKER,
     )
     .join('');
-  const readings = () => [
-    fromMarkdown(markdown),
-    markdownAsEdited(inVersion ? versionLineMarkdown(markdown) : markdown),
-  ];
   return (
     (markdown.includes(DYNAMIC_VALUE_MARKER) &&
-      readings().some(linkAddressHoldsValue)) ||
+      linkAddressHoldsValue(
+        markdownTree(inVersion ? versionLineMarkdown(markdown) : markdown),
+      )) ||
     nodes.some((node) =>
       versionsOf(node).some((version) => linkHoldsValue(version, true)),
     )

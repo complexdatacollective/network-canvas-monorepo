@@ -2144,9 +2144,9 @@ describe('addInformationStage content', () => {
       expect(shown(page({ title: { en: '1. *A*_b_ #\nnext' } }))).toBe(
         '# 1\\. \\*A\\*\\_b\\_ \\# next',
       );
-      // Two tildes strike through what is between them, a value included.
+      // Standard markdown strikes nothing through, so a tilde is words.
       expect(shown(page({ title: { en: '~{name}~' } }), { name: 'Ana' })).toBe(
-        '# \\~Ana\\~',
+        '# ~Ana~',
       );
     });
 
@@ -2164,7 +2164,9 @@ describe('addInformationStage content', () => {
         "# Rock 'n' roll {live}",
       );
       expect(shown(page({ title: 'Item #3 *x*' }))).toBe('# Item #3 \\*x\\*');
-      expect(shown(page({ title: '##' }))).toBe('# \\##');
+      // Each `#` of a run that opens a line is escaped, as a run that a
+      // space follows is anywhere.
+      expect(shown(page({ title: '##' }))).toBe('# \\#\\#');
     });
 
     it('keeps the text as the markdown it is written in', () => {
@@ -2266,21 +2268,23 @@ describe('addInformationStage content', () => {
       ]);
     });
 
-    // The interview reads a page's raw HTML as one document, where an
-    // element left open holds what follows and bold is opened again in
-    // every block below.
+    // Raw HTML is shown as the characters typed, so an element it opens
+    // holds nothing below it, and no end is written for it.
     it.each([
-      ['bold', 'Read <strong>this', 'Read <strong>this</strong>'],
-      ['a raw block', '<div>\n\nInside', '<div>\n\nInside\n\n</div>'],
-    ])('ends %s the text left open before the file', (_what, text, ended) => {
-      expect(
-        page({
-          title: 'T',
-          text,
-          blocks: [{ assetId: 'photo' }],
-        }),
-      ).toBe(`# T\n\n${ended}\n\n![](asset:photo)`);
-    });
+      ['bold', 'Read <strong>this'],
+      ['a raw block', '<div>\n\nInside'],
+    ])(
+      'writes no end for %s the text left open before the file',
+      (_what, text) => {
+        expect(
+          page({
+            title: 'T',
+            text,
+            blocks: [{ assetId: 'photo' }],
+          }),
+        ).toBe(`# T\n\n${text}\n\n![](asset:photo)`);
+      },
+    );
   });
 
   it('takes the stage label as the heading of a page with nothing else', () => {

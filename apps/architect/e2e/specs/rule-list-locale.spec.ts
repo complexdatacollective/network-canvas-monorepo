@@ -11,12 +11,37 @@ import { readProtocolJson } from '../helpers/read-store.js';
 
 test.use({ locale: 'es-MX' });
 
-for (const { kind, label } of [
-  { kind: 'GFM and HTML', label: '~~<em>Isabel</em>~~' },
-  { kind: 'raw HTML', label: '<em>Isabel</em>' },
+// An option label is standard markdown: emphasis is drawn, while tildes and
+// HTML are shown as typed. The Spanish conjunction is chosen from what is
+// shown ("e" before a sound of "i", otherwise "y").
+for (const { kind, label, shown, conjunction, emphasised } of [
   {
-    kind: 'sanitized HTML',
+    kind: 'emphasis',
+    label: '*Isabel*',
+    shown: 'Isabel',
+    conjunction: 'e',
+    emphasised: true,
+  },
+  {
+    kind: 'tildes around emphasis',
+    label: '~~*Isabel*~~',
+    shown: '~~Isabel~~',
+    conjunction: 'y',
+    emphasised: true,
+  },
+  {
+    kind: 'raw HTML',
+    label: '<em>Isabel</em>',
+    shown: '<em>Isabel</em>',
+    conjunction: 'y',
+    emphasised: false,
+  },
+  {
+    kind: 'a script element',
     label: '<script>Zulu</script><em>Isabel</em>',
+    shown: '<script>Zulu</script><em>Isabel</em>',
+    conjunction: 'y',
+    emphasised: false,
   },
 ]) {
   test(`updates the actual rule editor and printed operand lists for ${kind} without changing authored values`, async ({
@@ -88,9 +113,9 @@ for (const { kind, label } of [
       'en-GB': /^English \(UK\)/,
     } as const;
     for (const [locale, expected] of [
-      ['es', 'Bravo, Zulu e Isabel'],
-      ['en', 'Bravo, Zulu, and Isabel'],
-      ['en-GB', 'Bravo, Zulu and Isabel'],
+      ['es', `Bravo, Zulu ${conjunction} ${shown}`],
+      ['en', `Bravo, Zulu, and ${shown}`],
+      ['en-GB', `Bravo, Zulu and ${shown}`],
     ] as const) {
       await switcher.click();
       await language.getByRole('option', { name: optionNames[locale] }).click();
@@ -98,13 +123,17 @@ for (const { kind, label } of [
       for (const surface of [page, summary]) {
         await expect(surface.locator('html')).toHaveAttribute('lang', locale);
         const values = surface.locator('[data-rule-part="value"]');
-        await expect(values).toHaveText(['Bravo', 'Zulu', 'Isabel']);
+        await expect(values).toHaveText(['Bravo', 'Zulu', shown]);
         // The operand list names itself, because the editor's own rule card
         // and the printable summary wrap it in different markup.
         await expect(surface.locator('[data-rule-part="operand"]')).toHaveText(
           expected,
         );
-        await expect(values.last().locator('em')).toHaveText('Isabel');
+        if (emphasised) {
+          await expect(values.last().locator('em')).toHaveText('Isabel');
+        } else {
+          await expect(values.last().locator('em')).toHaveCount(0);
+        }
         expect(await readProtocolJson(surface)).toEqual(before);
       }
     }

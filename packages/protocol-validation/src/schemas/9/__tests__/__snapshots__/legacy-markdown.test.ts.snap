@@ -1,0 +1,2192 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`legacyMarkdownAsStandard > repairs a \`<\` beside a delimiter, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a \`<\` beside a delimiter, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a \`<\` beside a delimiter, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a \`>\` beside a delimiter, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a \`>\` beside a delimiter, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a \`>\` beside a delimiter, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a bare address beside a delimiter, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [
+    "multiple: # _a_www.example.orgx",
+    "multiple: # _a_www.example.org1",
+    "multiple: # _a_www.example.org ",
+    "multiple: # _a_www.example.org.",
+    "multiple: # _a_www.example.org",
+    "multiple: # __a__www.example.orgx",
+    "multiple: # __a__www.example.org1",
+    "multiple: # __a__www.example.org ",
+    "multiple: # __a__www.example.org.",
+    "multiple: # __a__www.example.org",
+  ],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a bare address beside a delimiter, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a bare address beside a delimiter, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [
+    "multiple: _a_www.example.orgx",
+    "multiple: _a_www.example.org1",
+    "multiple: _a_www.example.org ",
+    "multiple: _a_www.example.org.",
+    "multiple: _a_www.example.org",
+    "multiple: __a__www.example.orgx",
+    "multiple: __a__www.example.org1",
+    "multiple: __a__www.example.org ",
+    "multiple: __a__www.example.org.",
+    "multiple: __a__www.example.org",
+  ],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a code span after a run, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a code span after a run, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a code span after a run, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a definition after a run, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a definition after a run, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "single: <br>[Contact]: https://example.org
+and more",
+    "single: **<br>**[Contact]: https://example.org",
+    "single: <br>[Contact]: https://example.org",
+    "single: <br>[Contact]: https://example.org
+and more
+
+See [Contact].",
+    "single: **<br>**[Contact]: https://example.org
+
+See [Contact].",
+    "single: <br>[Contact]: https://example.org
+
+See [Contact].",
+    "single: [Contact]: https://example.net
+
+<br>[Contact]: https://example.org
+and more",
+    "single: [Contact]: https://example.net
+
+**<br>**[Contact]: https://example.org",
+    "single: [Contact]: https://example.net
+
+<br>[Contact]: https://example.org",
+    "single: [Contact]: https://example.net
+
+<br>[Contact]: https://example.org
+and more
+
+See [Contact].",
+    "single: [Contact]: https://example.net
+
+**<br>**[Contact]: https://example.org
+
+See [Contact].",
+    "single: [Contact]: https://example.net
+
+<br>[Contact]: https://example.org
+
+See [Contact].",
+    "single: <br>[Contact]: <https://example.org> "title"
+and more",
+    "single: **<br>**[Contact]: <https://example.org> "title"",
+    "single: <br>[Contact]: <https://example.org> "title"",
+    "single: <br>[Contact]: <https://example.org> "title"
+and more
+
+See [Contact].",
+    "single: **<br>**[Contact]: <https://example.org> "title"
+
+See [Contact].",
+    "single: <br>[Contact]: <https://example.org> "title"
+
+See [Contact].",
+    "single: [Contact]: https://example.net
+
+<br>[Contact]: <https://example.org> "title"
+and more",
+    "single: [Contact]: https://example.net
+
+**<br>**[Contact]: <https://example.org> "title"",
+    "single: [Contact]: https://example.net
+
+<br>[Contact]: <https://example.org> "title"",
+    "single: [Contact]: https://example.net
+
+<br>[Contact]: <https://example.org> "title"
+and more
+
+See [Contact].",
+    "single: [Contact]: https://example.net
+
+**<br>**[Contact]: <https://example.org> "title"
+
+See [Contact].",
+    "single: [Contact]: https://example.net
+
+<br>[Contact]: <https://example.org> "title"
+
+See [Contact].",
+    "single: <br>[^1]: note
+and more",
+    "single: **<br>**[^1]: note",
+    "single: <br>[^1]: note",
+    "single: <br>[^1]: note
+and more
+
+See [^1].",
+    "single: **<br>**[^1]: note
+
+See [^1].",
+    "single: <br>[^1]: note
+
+See [^1].",
+    "single: [^1]: https://example.net
+
+<br>[^1]: note
+and more",
+    "single: [^1]: https://example.net
+
+**<br>**[^1]: note",
+    "single: [^1]: https://example.net
+
+<br>[^1]: note",
+    "single: [^1]: https://example.net
+
+<br>[^1]: note
+and more
+
+See [^1].",
+    "single: [^1]: https://example.net
+
+**<br>**[^1]: note
+
+See [^1].",
+    "single: [^1]: https://example.net
+
+<br>[^1]: note
+
+See [^1].",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a definition after a run, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: <br>[Contact]: https://example.org
+and more",
+    "multiple: **<br>**[Contact]: https://example.org",
+    "multiple: <br>[Contact]: https://example.org",
+    "multiple: <br>[Contact]: https://example.org
+and more
+
+See [Contact].",
+    "multiple: **<br>**[Contact]: https://example.org
+
+See [Contact].",
+    "multiple: <br>[Contact]: https://example.org
+
+See [Contact].",
+    "multiple: [Contact]: https://example.net
+
+<br>[Contact]: https://example.org
+and more",
+    "multiple: [Contact]: https://example.net
+
+**<br>**[Contact]: https://example.org",
+    "multiple: [Contact]: https://example.net
+
+<br>[Contact]: https://example.org",
+    "multiple: [Contact]: https://example.net
+
+<br>[Contact]: https://example.org
+and more
+
+See [Contact].",
+    "multiple: [Contact]: https://example.net
+
+**<br>**[Contact]: https://example.org
+
+See [Contact].",
+    "multiple: [Contact]: https://example.net
+
+<br>[Contact]: https://example.org
+
+See [Contact].",
+    "multiple: <br>[Contact]: <https://example.org> "title"
+and more",
+    "multiple: **<br>**[Contact]: <https://example.org> "title"",
+    "multiple: <br>[Contact]: <https://example.org> "title"",
+    "multiple: <br>[Contact]: <https://example.org> "title"
+and more
+
+See [Contact].",
+    "multiple: **<br>**[Contact]: <https://example.org> "title"
+
+See [Contact].",
+    "multiple: <br>[Contact]: <https://example.org> "title"
+
+See [Contact].",
+    "multiple: [Contact]: https://example.net
+
+<br>[Contact]: <https://example.org> "title"
+and more",
+    "multiple: [Contact]: https://example.net
+
+**<br>**[Contact]: <https://example.org> "title"",
+    "multiple: [Contact]: https://example.net
+
+<br>[Contact]: <https://example.org> "title"",
+    "multiple: [Contact]: https://example.net
+
+<br>[Contact]: <https://example.org> "title"
+and more
+
+See [Contact].",
+    "multiple: [Contact]: https://example.net
+
+**<br>**[Contact]: <https://example.org> "title"
+
+See [Contact].",
+    "multiple: [Contact]: https://example.net
+
+<br>[Contact]: <https://example.org> "title"
+
+See [Contact].",
+    "multiple: <br>[^1]: note
+and more",
+    "multiple: **<br>**[^1]: note",
+    "multiple: <br>[^1]: note",
+    "multiple: <br>[^1]: note
+and more
+
+See [^1].",
+    "multiple: **<br>**[^1]: note
+
+See [^1].",
+    "multiple: <br>[^1]: note
+
+See [^1].",
+    "multiple: [^1]: https://example.net
+
+<br>[^1]: note
+and more",
+    "multiple: [^1]: https://example.net
+
+**<br>**[^1]: note",
+    "multiple: [^1]: https://example.net
+
+<br>[^1]: note",
+    "multiple: [^1]: https://example.net
+
+<br>[^1]: note
+and more
+
+See [^1].",
+    "multiple: [^1]: https://example.net
+
+**<br>**[^1]: note
+
+See [^1].",
+    "multiple: [^1]: https://example.net
+
+<br>[^1]: note
+
+See [^1].",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside ***, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside ***, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside ***, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside **, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside **, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside **, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside *, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside *, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside *, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside _, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside _, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside _, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside __, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside __, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside __, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a code span, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a code span, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a code span, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a link, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a link, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a link, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a shortcode, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a shortcode, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a shortcode, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a www. address, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a www. address, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside a www. address, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a closing bracket, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a closing bracket, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a closing bracket, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a comma, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a comma, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a comma, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a full stop, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a full stop, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a full stop, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a question mark, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a question mark, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address and a question mark, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address in angle brackets, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address in angle brackets, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address in angle brackets, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an address, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an email address, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an email address, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a line break beside an email address, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run after an opener of a link's label, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run after an opener of a link's label, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run after an opener of a link's label, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run after an opener of emphasis, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run after an opener of emphasis, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run after an opener of emphasis, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run alone in a container of a link's label, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run alone in a container of a link's label, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run alone in a container of a link's label, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: x [<br>](https://example.org)- b",
+    "multiple: x [*<br>*](https://example.org)- b",
+    "multiple: x [ <br> ](https://example.org)- b",
+    "multiple: x [<br>](https://example.org)- b",
+    "multiple: x [*<br>*](https://example.org)- b",
+    "multiple: x [ <br> ](https://example.org)- b",
+    "multiple: x [<br/>](https://example.org)- b",
+    "multiple: x [*<br/>*](https://example.org)- b",
+    "multiple: x [ <br/> ](https://example.org)- b",
+    "multiple: x [<br/>](https://example.org)- b",
+    "multiple: x [*<br/>*](https://example.org)- b",
+    "multiple: x [ <br/> ](https://example.org)- b",
+    "multiple: x [<br />](https://example.org)- b",
+    "multiple: x [*<br />*](https://example.org)- b",
+    "multiple: x [ <br /> ](https://example.org)- b",
+    "multiple: x [<br />](https://example.org)- b",
+    "multiple: x [*<br />*](https://example.org)- b",
+    "multiple: x [ <br /> ](https://example.org)- b",
+    "multiple: x [<br><br>](https://example.org)- b",
+    "multiple: x [*<br><br>*](https://example.org)- b",
+    "multiple: x [ <br><br> ](https://example.org)- b",
+    "multiple: x [<br> <br>](https://example.org)- b",
+    "multiple: x [*<br> <br>*](https://example.org)- b",
+    "multiple: x [ <br> <br> ](https://example.org)- b",
+    "multiple: x [<br/><br/>](https://example.org)- b",
+    "multiple: x [*<br/><br/>*](https://example.org)- b",
+    "multiple: x [ <br/><br/> ](https://example.org)- b",
+    "multiple: x [<br/> <br/>](https://example.org)- b",
+    "multiple: x [*<br/> <br/>*](https://example.org)- b",
+    "multiple: x [ <br/> <br/> ](https://example.org)- b",
+    "multiple: x [<br /><br />](https://example.org)- b",
+    "multiple: x [*<br /><br />*](https://example.org)- b",
+    "multiple: x [ <br /><br /> ](https://example.org)- b",
+    "multiple: x [<br /> <br />](https://example.org)- b",
+    "multiple: x [*<br /> <br />*](https://example.org)- b",
+    "multiple: x [ <br /> <br /> ](https://example.org)- b",
+    "multiple: x [<br><br><br>](https://example.org)- b",
+    "multiple: x [*<br><br><br>*](https://example.org)- b",
+    "multiple: x [ <br><br><br> ](https://example.org)- b",
+    "multiple: x [<br> <br> <br>](https://example.org)- b",
+    "multiple: x [*<br> <br> <br>*](https://example.org)- b",
+    "multiple: x [ <br> <br> <br> ](https://example.org)- b",
+    "multiple: x [<br/><br/><br/>](https://example.org)- b",
+    "multiple: x [*<br/><br/><br/>*](https://example.org)- b",
+    "multiple: x [ <br/><br/><br/> ](https://example.org)- b",
+    "multiple: x [<br/> <br/> <br/>](https://example.org)- b",
+    "multiple: x [*<br/> <br/> <br/>*](https://example.org)- b",
+    "multiple: x [ <br/> <br/> <br/> ](https://example.org)- b",
+    "multiple: x [<br /><br /><br />](https://example.org)- b",
+    "multiple: x [*<br /><br /><br />*](https://example.org)- b",
+    "multiple: x [ <br /><br /><br /> ](https://example.org)- b",
+    "multiple: x [<br /> <br /> <br />](https://example.org)- b",
+    "multiple: x [*<br /> <br /> <br />*](https://example.org)- b",
+    "multiple: x [ <br /> <br /> <br /> ](https://example.org)- b",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run alone in a container of emphasis, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run alone in a container of emphasis, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "single: * <br> *",
+    "single: ** <br> **",
+    "single: __ <br> __",
+    "single: *** <br> ***",
+    "single: * <br> *",
+    "single: ** <br> **",
+    "single: __ <br> __",
+    "single: *** <br> ***",
+    "single: * <br/> *",
+    "single: ** <br/> **",
+    "single: __ <br/> __",
+    "single: *** <br/> ***",
+    "single: * <br/> *",
+    "single: ** <br/> **",
+    "single: __ <br/> __",
+    "single: *** <br/> ***",
+    "single: * <br /> *",
+    "single: ** <br /> **",
+    "single: __ <br /> __",
+    "single: *** <br /> ***",
+    "single: * <br /> *",
+    "single: ** <br /> **",
+    "single: __ <br /> __",
+    "single: *** <br /> ***",
+    "single: * <br><br> *",
+    "single: ** <br><br> **",
+    "single: __ <br><br> __",
+    "single: *** <br><br> ***",
+    "single: * <br> <br> *",
+    "single: ** <br> <br> **",
+    "single: __ <br> <br> __",
+    "single: *** <br> <br> ***",
+    "single: * <br/><br/> *",
+    "single: ** <br/><br/> **",
+    "single: __ <br/><br/> __",
+    "single: *** <br/><br/> ***",
+    "single: * <br/> <br/> *",
+    "single: ** <br/> <br/> **",
+    "single: __ <br/> <br/> __",
+    "single: *** <br/> <br/> ***",
+    "single: * <br /><br /> *",
+    "single: ** <br /><br /> **",
+    "single: __ <br /><br /> __",
+    "single: *** <br /><br /> ***",
+    "single: * <br /> <br /> *",
+    "single: ** <br /> <br /> **",
+    "single: __ <br /> <br /> __",
+    "single: *** <br /> <br /> ***",
+    "single: * <br><br><br> *",
+    "single: ** <br><br><br> **",
+    "single: __ <br><br><br> __",
+    "single: *** <br><br><br> ***",
+    "single: * <br> <br> <br> *",
+    "single: ** <br> <br> <br> **",
+    "single: __ <br> <br> <br> __",
+    "single: *** <br> <br> <br> ***",
+    "single: * <br/><br/><br/> *",
+    "single: ** <br/><br/><br/> **",
+    "single: __ <br/><br/><br/> __",
+    "single: *** <br/><br/><br/> ***",
+    "single: * <br/> <br/> <br/> *",
+    "single: ** <br/> <br/> <br/> **",
+    "single: __ <br/> <br/> <br/> __",
+    "single: *** <br/> <br/> <br/> ***",
+    "single: * <br /><br /><br /> *",
+    "single: ** <br /><br /><br /> **",
+    "single: __ <br /><br /><br /> __",
+    "single: *** <br /><br /><br /> ***",
+    "single: * <br /> <br /> <br /> *",
+    "single: ** <br /> <br /> <br /> **",
+    "single: __ <br /> <br /> <br /> __",
+    "single: *** <br /> <br /> <br /> ***",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run alone in a container of emphasis, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: x *<br>*- b",
+    "multiple: x _<br>_- b",
+    "multiple: x **<br>**- b",
+    "multiple: x __<br>__- b",
+    "multiple: x ***<br>***- b",
+    "multiple: x **_<br>_**- b",
+    "multiple: x _**<br>**_- b",
+    "multiple: x * <br> * y",
+    "multiple: * <br> *",
+    "multiple: *z* * <br> * *z*",
+    "multiple: *** <br> ***",
+    "multiple: x *<br>*- b",
+    "multiple: x _<br>_- b",
+    "multiple: x **<br>**- b",
+    "multiple: x __<br>__- b",
+    "multiple: x ***<br>***- b",
+    "multiple: x **_<br>_**- b",
+    "multiple: x _**<br>**_- b",
+    "multiple: x * <br> * y",
+    "multiple: * <br> *",
+    "multiple: *z* * <br> * *z*",
+    "multiple: *** <br> ***",
+    "multiple: x *<br/>*- b",
+    "multiple: x _<br/>_- b",
+    "multiple: x **<br/>**- b",
+    "multiple: x __<br/>__- b",
+    "multiple: x ***<br/>***- b",
+    "multiple: x **_<br/>_**- b",
+    "multiple: x _**<br/>**_- b",
+    "multiple: x * <br/> * y",
+    "multiple: * <br/> *",
+    "multiple: *z* * <br/> * *z*",
+    "multiple: *** <br/> ***",
+    "multiple: x *<br/>*- b",
+    "multiple: x _<br/>_- b",
+    "multiple: x **<br/>**- b",
+    "multiple: x __<br/>__- b",
+    "multiple: x ***<br/>***- b",
+    "multiple: x **_<br/>_**- b",
+    "multiple: x _**<br/>**_- b",
+    "multiple: x * <br/> * y",
+    "multiple: * <br/> *",
+    "multiple: *z* * <br/> * *z*",
+    "multiple: *** <br/> ***",
+    "multiple: x *<br />*- b",
+    "multiple: x _<br />_- b",
+    "multiple: x **<br />**- b",
+    "multiple: x __<br />__- b",
+    "multiple: x ***<br />***- b",
+    "multiple: x **_<br />_**- b",
+    "multiple: x _**<br />**_- b",
+    "multiple: x * <br /> * y",
+    "multiple: * <br /> *",
+    "multiple: *z* * <br /> * *z*",
+    "multiple: *** <br /> ***",
+    "multiple: x *<br />*- b",
+    "multiple: x _<br />_- b",
+    "multiple: x **<br />**- b",
+    "multiple: x __<br />__- b",
+    "multiple: x ***<br />***- b",
+    "multiple: x **_<br />_**- b",
+    "multiple: x _**<br />**_- b",
+    "multiple: x * <br /> * y",
+    "multiple: * <br /> *",
+    "multiple: *z* * <br /> * *z*",
+    "multiple: *** <br /> ***",
+    "multiple: x *<br><br>*- b",
+    "multiple: x _<br><br>_- b",
+    "multiple: x **<br><br>**- b",
+    "multiple: x __<br><br>__- b",
+    "multiple: x ***<br><br>***- b",
+    "multiple: x **_<br><br>_**- b",
+    "multiple: x _**<br><br>**_- b",
+    "multiple: x * <br><br> * y",
+    "multiple: * <br><br> *",
+    "multiple: *z* * <br><br> * *z*",
+    "multiple: *** <br><br> ***",
+    "multiple: x *<br> <br>*- b",
+    "multiple: x _<br> <br>_- b",
+    "multiple: x **<br> <br>**- b",
+    "multiple: x __<br> <br>__- b",
+    "multiple: x ***<br> <br>***- b",
+    "multiple: x **_<br> <br>_**- b",
+    "multiple: x _**<br> <br>**_- b",
+    "multiple: x * <br> <br> * y",
+    "multiple: * <br> <br> *",
+    "multiple: *z* * <br> <br> * *z*",
+    "multiple: *** <br> <br> ***",
+    "multiple: x *<br/><br/>*- b",
+    "multiple: x _<br/><br/>_- b",
+    "multiple: x **<br/><br/>**- b",
+    "multiple: x __<br/><br/>__- b",
+    "multiple: x ***<br/><br/>***- b",
+    "multiple: x **_<br/><br/>_**- b",
+    "multiple: x _**<br/><br/>**_- b",
+    "multiple: x * <br/><br/> * y",
+    "multiple: * <br/><br/> *",
+    "multiple: *z* * <br/><br/> * *z*",
+    "multiple: *** <br/><br/> ***",
+    "multiple: x *<br/> <br/>*- b",
+    "multiple: x _<br/> <br/>_- b",
+    "multiple: x **<br/> <br/>**- b",
+    "multiple: x __<br/> <br/>__- b",
+    "multiple: x ***<br/> <br/>***- b",
+    "multiple: x **_<br/> <br/>_**- b",
+    "multiple: x _**<br/> <br/>**_- b",
+    "multiple: x * <br/> <br/> * y",
+    "multiple: * <br/> <br/> *",
+    "multiple: *z* * <br/> <br/> * *z*",
+    "multiple: *** <br/> <br/> ***",
+    "multiple: x *<br /><br />*- b",
+    "multiple: x _<br /><br />_- b",
+    "multiple: x **<br /><br />**- b",
+    "multiple: x __<br /><br />__- b",
+    "multiple: x ***<br /><br />***- b",
+    "multiple: x **_<br /><br />_**- b",
+    "multiple: x _**<br /><br />**_- b",
+    "multiple: x * <br /><br /> * y",
+    "multiple: * <br /><br /> *",
+    "multiple: *z* * <br /><br /> * *z*",
+    "multiple: *** <br /><br /> ***",
+    "multiple: x *<br /> <br />*- b",
+    "multiple: x _<br /> <br />_- b",
+    "multiple: x **<br /> <br />**- b",
+    "multiple: x __<br /> <br />__- b",
+    "multiple: x ***<br /> <br />***- b",
+    "multiple: x **_<br /> <br />_**- b",
+    "multiple: x _**<br /> <br />**_- b",
+    "multiple: x * <br /> <br /> * y",
+    "multiple: * <br /> <br /> *",
+    "multiple: *z* * <br /> <br /> * *z*",
+    "multiple: *** <br /> <br /> ***",
+    "multiple: x *<br><br><br>*- b",
+    "multiple: x _<br><br><br>_- b",
+    "multiple: x **<br><br><br>**- b",
+    "multiple: x __<br><br><br>__- b",
+    "multiple: x ***<br><br><br>***- b",
+    "multiple: x **_<br><br><br>_**- b",
+    "multiple: x _**<br><br><br>**_- b",
+    "multiple: x * <br><br><br> * y",
+    "multiple: * <br><br><br> *",
+    "multiple: *z* * <br><br><br> * *z*",
+    "multiple: *** <br><br><br> ***",
+    "multiple: x *<br> <br> <br>*- b",
+    "multiple: x _<br> <br> <br>_- b",
+    "multiple: x **<br> <br> <br>**- b",
+    "multiple: x __<br> <br> <br>__- b",
+    "multiple: x ***<br> <br> <br>***- b",
+    "multiple: x **_<br> <br> <br>_**- b",
+    "multiple: x _**<br> <br> <br>**_- b",
+    "multiple: x * <br> <br> <br> * y",
+    "multiple: * <br> <br> <br> *",
+    "multiple: *z* * <br> <br> <br> * *z*",
+    "multiple: *** <br> <br> <br> ***",
+    "multiple: x *<br/><br/><br/>*- b",
+    "multiple: x _<br/><br/><br/>_- b",
+    "multiple: x **<br/><br/><br/>**- b",
+    "multiple: x __<br/><br/><br/>__- b",
+    "multiple: x ***<br/><br/><br/>***- b",
+    "multiple: x **_<br/><br/><br/>_**- b",
+    "multiple: x _**<br/><br/><br/>**_- b",
+    "multiple: x * <br/><br/><br/> * y",
+    "multiple: * <br/><br/><br/> *",
+    "multiple: *z* * <br/><br/><br/> * *z*",
+    "multiple: *** <br/><br/><br/> ***",
+    "multiple: x *<br/> <br/> <br/>*- b",
+    "multiple: x _<br/> <br/> <br/>_- b",
+    "multiple: x **<br/> <br/> <br/>**- b",
+    "multiple: x __<br/> <br/> <br/>__- b",
+    "multiple: x ***<br/> <br/> <br/>***- b",
+    "multiple: x **_<br/> <br/> <br/>_**- b",
+    "multiple: x _**<br/> <br/> <br/>**_- b",
+    "multiple: x * <br/> <br/> <br/> * y",
+    "multiple: * <br/> <br/> <br/> *",
+    "multiple: *z* * <br/> <br/> <br/> * *z*",
+    "multiple: *** <br/> <br/> <br/> ***",
+    "multiple: x *<br /><br /><br />*- b",
+    "multiple: x _<br /><br /><br />_- b",
+    "multiple: x **<br /><br /><br />**- b",
+    "multiple: x __<br /><br /><br />__- b",
+    "multiple: x ***<br /><br /><br />***- b",
+    "multiple: x **_<br /><br /><br />_**- b",
+    "multiple: x _**<br /><br /><br />**_- b",
+    "multiple: x * <br /><br /><br /> * y",
+    "multiple: * <br /><br /><br /> *",
+    "multiple: *z* * <br /><br /><br /> * *z*",
+    "multiple: *** <br /><br /><br /> ***",
+    "multiple: x *<br /> <br /> <br />*- b",
+    "multiple: x _<br /> <br /> <br />_- b",
+    "multiple: x **<br /> <br /> <br />**- b",
+    "multiple: x __<br /> <br /> <br />__- b",
+    "multiple: x ***<br /> <br /> <br />***- b",
+    "multiple: x **_<br /> <br /> <br />_**- b",
+    "multiple: x _**<br /> <br /> <br />**_- b",
+    "multiple: x * <br /> <br /> <br /> * y",
+    "multiple: * <br /> <br /> <br /> *",
+    "multiple: *z* * <br /> <br /> <br /> * *z*",
+    "multiple: *** <br /> <br /> <br /> ***",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run before a closer of a link's label, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run before a closer of a link's label, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run before a closer of a link's label, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: x [a<br>](https://example.org)- b",
+    "multiple: x [*a<br>*](https://example.org)- b",
+    "multiple: x [a <br> ](https://example.org)- b",
+    "multiple: x [a<br>](https://example.org)- b",
+    "multiple: x [*a<br>*](https://example.org)- b",
+    "multiple: x [a <br> ](https://example.org)- b",
+    "multiple: x [a<br/>](https://example.org)- b",
+    "multiple: x [*a<br/>*](https://example.org)- b",
+    "multiple: x [a <br/> ](https://example.org)- b",
+    "multiple: x [a<br/>](https://example.org)- b",
+    "multiple: x [*a<br/>*](https://example.org)- b",
+    "multiple: x [a <br/> ](https://example.org)- b",
+    "multiple: x [a<br />](https://example.org)- b",
+    "multiple: x [*a<br />*](https://example.org)- b",
+    "multiple: x [a <br /> ](https://example.org)- b",
+    "multiple: x [a<br />](https://example.org)- b",
+    "multiple: x [*a<br />*](https://example.org)- b",
+    "multiple: x [a <br /> ](https://example.org)- b",
+    "multiple: x [a<br><br>](https://example.org)- b",
+    "multiple: x [*a<br><br>*](https://example.org)- b",
+    "multiple: x [a <br><br> ](https://example.org)- b",
+    "multiple: x [a<br> <br>](https://example.org)- b",
+    "multiple: x [*a<br> <br>*](https://example.org)- b",
+    "multiple: x [a <br> <br> ](https://example.org)- b",
+    "multiple: x [a<br/><br/>](https://example.org)- b",
+    "multiple: x [*a<br/><br/>*](https://example.org)- b",
+    "multiple: x [a <br/><br/> ](https://example.org)- b",
+    "multiple: x [a<br/> <br/>](https://example.org)- b",
+    "multiple: x [*a<br/> <br/>*](https://example.org)- b",
+    "multiple: x [a <br/> <br/> ](https://example.org)- b",
+    "multiple: x [a<br /><br />](https://example.org)- b",
+    "multiple: x [*a<br /><br />*](https://example.org)- b",
+    "multiple: x [a <br /><br /> ](https://example.org)- b",
+    "multiple: x [a<br /> <br />](https://example.org)- b",
+    "multiple: x [*a<br /> <br />*](https://example.org)- b",
+    "multiple: x [a <br /> <br /> ](https://example.org)- b",
+    "multiple: x [a<br><br><br>](https://example.org)- b",
+    "multiple: x [*a<br><br><br>*](https://example.org)- b",
+    "multiple: x [a <br><br><br> ](https://example.org)- b",
+    "multiple: x [a<br> <br> <br>](https://example.org)- b",
+    "multiple: x [*a<br> <br> <br>*](https://example.org)- b",
+    "multiple: x [a <br> <br> <br> ](https://example.org)- b",
+    "multiple: x [a<br/><br/><br/>](https://example.org)- b",
+    "multiple: x [*a<br/><br/><br/>*](https://example.org)- b",
+    "multiple: x [a <br/><br/><br/> ](https://example.org)- b",
+    "multiple: x [a<br/> <br/> <br/>](https://example.org)- b",
+    "multiple: x [*a<br/> <br/> <br/>*](https://example.org)- b",
+    "multiple: x [a <br/> <br/> <br/> ](https://example.org)- b",
+    "multiple: x [a<br /><br /><br />](https://example.org)- b",
+    "multiple: x [*a<br /><br /><br />*](https://example.org)- b",
+    "multiple: x [a <br /><br /><br /> ](https://example.org)- b",
+    "multiple: x [a<br /> <br /> <br />](https://example.org)- b",
+    "multiple: x [*a<br /> <br /> <br />*](https://example.org)- b",
+    "multiple: x [a <br /> <br /> <br /> ](https://example.org)- b",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run before a closer of emphasis, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run before a closer of emphasis, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run before a closer of emphasis, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: x *a<br>*- b",
+    "multiple: x _a<br>_- b",
+    "multiple: x **a<br>**- b",
+    "multiple: x __a<br>__- b",
+    "multiple: x ***a<br>***- b",
+    "multiple: x **_a<br>_**- b",
+    "multiple: x _**a<br>**_- b",
+    "multiple: x *a <br> * y",
+    "multiple: *z* *a <br> * *z*",
+    "multiple: ***a <br> ***",
+    "multiple: x *a<br>*- b",
+    "multiple: x _a<br>_- b",
+    "multiple: x **a<br>**- b",
+    "multiple: x __a<br>__- b",
+    "multiple: x ***a<br>***- b",
+    "multiple: x **_a<br>_**- b",
+    "multiple: x _**a<br>**_- b",
+    "multiple: x *a <br> * y",
+    "multiple: *z* *a <br> * *z*",
+    "multiple: ***a <br> ***",
+    "multiple: x *a<br/>*- b",
+    "multiple: x _a<br/>_- b",
+    "multiple: x **a<br/>**- b",
+    "multiple: x __a<br/>__- b",
+    "multiple: x ***a<br/>***- b",
+    "multiple: x **_a<br/>_**- b",
+    "multiple: x _**a<br/>**_- b",
+    "multiple: x *a <br/> * y",
+    "multiple: *z* *a <br/> * *z*",
+    "multiple: ***a <br/> ***",
+    "multiple: x *a<br/>*- b",
+    "multiple: x _a<br/>_- b",
+    "multiple: x **a<br/>**- b",
+    "multiple: x __a<br/>__- b",
+    "multiple: x ***a<br/>***- b",
+    "multiple: x **_a<br/>_**- b",
+    "multiple: x _**a<br/>**_- b",
+    "multiple: x *a <br/> * y",
+    "multiple: *z* *a <br/> * *z*",
+    "multiple: ***a <br/> ***",
+    "multiple: x *a<br />*- b",
+    "multiple: x _a<br />_- b",
+    "multiple: x **a<br />**- b",
+    "multiple: x __a<br />__- b",
+    "multiple: x ***a<br />***- b",
+    "multiple: x **_a<br />_**- b",
+    "multiple: x _**a<br />**_- b",
+    "multiple: x *a <br /> * y",
+    "multiple: *z* *a <br /> * *z*",
+    "multiple: ***a <br /> ***",
+    "multiple: x *a<br />*- b",
+    "multiple: x _a<br />_- b",
+    "multiple: x **a<br />**- b",
+    "multiple: x __a<br />__- b",
+    "multiple: x ***a<br />***- b",
+    "multiple: x **_a<br />_**- b",
+    "multiple: x _**a<br />**_- b",
+    "multiple: x *a <br /> * y",
+    "multiple: *z* *a <br /> * *z*",
+    "multiple: ***a <br /> ***",
+    "multiple: x *a<br><br>*- b",
+    "multiple: x _a<br><br>_- b",
+    "multiple: x **a<br><br>**- b",
+    "multiple: x __a<br><br>__- b",
+    "multiple: x ***a<br><br>***- b",
+    "multiple: x **_a<br><br>_**- b",
+    "multiple: x _**a<br><br>**_- b",
+    "multiple: x *a <br><br> * y",
+    "multiple: *z* *a <br><br> * *z*",
+    "multiple: ***a <br><br> ***",
+    "multiple: x *a<br> <br>*- b",
+    "multiple: x _a<br> <br>_- b",
+    "multiple: x **a<br> <br>**- b",
+    "multiple: x __a<br> <br>__- b",
+    "multiple: x ***a<br> <br>***- b",
+    "multiple: x **_a<br> <br>_**- b",
+    "multiple: x _**a<br> <br>**_- b",
+    "multiple: x *a <br> <br> * y",
+    "multiple: *z* *a <br> <br> * *z*",
+    "multiple: ***a <br> <br> ***",
+    "multiple: x *a<br/><br/>*- b",
+    "multiple: x _a<br/><br/>_- b",
+    "multiple: x **a<br/><br/>**- b",
+    "multiple: x __a<br/><br/>__- b",
+    "multiple: x ***a<br/><br/>***- b",
+    "multiple: x **_a<br/><br/>_**- b",
+    "multiple: x _**a<br/><br/>**_- b",
+    "multiple: x *a <br/><br/> * y",
+    "multiple: *z* *a <br/><br/> * *z*",
+    "multiple: ***a <br/><br/> ***",
+    "multiple: x *a<br/> <br/>*- b",
+    "multiple: x _a<br/> <br/>_- b",
+    "multiple: x **a<br/> <br/>**- b",
+    "multiple: x __a<br/> <br/>__- b",
+    "multiple: x ***a<br/> <br/>***- b",
+    "multiple: x **_a<br/> <br/>_**- b",
+    "multiple: x _**a<br/> <br/>**_- b",
+    "multiple: x *a <br/> <br/> * y",
+    "multiple: *z* *a <br/> <br/> * *z*",
+    "multiple: ***a <br/> <br/> ***",
+    "multiple: x *a<br /><br />*- b",
+    "multiple: x _a<br /><br />_- b",
+    "multiple: x **a<br /><br />**- b",
+    "multiple: x __a<br /><br />__- b",
+    "multiple: x ***a<br /><br />***- b",
+    "multiple: x **_a<br /><br />_**- b",
+    "multiple: x _**a<br /><br />**_- b",
+    "multiple: x *a <br /><br /> * y",
+    "multiple: *z* *a <br /><br /> * *z*",
+    "multiple: ***a <br /><br /> ***",
+    "multiple: x *a<br /> <br />*- b",
+    "multiple: x _a<br /> <br />_- b",
+    "multiple: x **a<br /> <br />**- b",
+    "multiple: x __a<br /> <br />__- b",
+    "multiple: x ***a<br /> <br />***- b",
+    "multiple: x **_a<br /> <br />_**- b",
+    "multiple: x _**a<br /> <br />**_- b",
+    "multiple: x *a <br /> <br /> * y",
+    "multiple: *z* *a <br /> <br /> * *z*",
+    "multiple: ***a <br /> <br /> ***",
+    "multiple: x *a<br><br><br>*- b",
+    "multiple: x _a<br><br><br>_- b",
+    "multiple: x **a<br><br><br>**- b",
+    "multiple: x __a<br><br><br>__- b",
+    "multiple: x ***a<br><br><br>***- b",
+    "multiple: x **_a<br><br><br>_**- b",
+    "multiple: x _**a<br><br><br>**_- b",
+    "multiple: x *a <br><br><br> * y",
+    "multiple: *z* *a <br><br><br> * *z*",
+    "multiple: ***a <br><br><br> ***",
+    "multiple: x *a<br> <br> <br>*- b",
+    "multiple: x _a<br> <br> <br>_- b",
+    "multiple: x **a<br> <br> <br>**- b",
+    "multiple: x __a<br> <br> <br>__- b",
+    "multiple: x ***a<br> <br> <br>***- b",
+    "multiple: x **_a<br> <br> <br>_**- b",
+    "multiple: x _**a<br> <br> <br>**_- b",
+    "multiple: x *a <br> <br> <br> * y",
+    "multiple: *z* *a <br> <br> <br> * *z*",
+    "multiple: ***a <br> <br> <br> ***",
+    "multiple: x *a<br/><br/><br/>*- b",
+    "multiple: x _a<br/><br/><br/>_- b",
+    "multiple: x **a<br/><br/><br/>**- b",
+    "multiple: x __a<br/><br/><br/>__- b",
+    "multiple: x ***a<br/><br/><br/>***- b",
+    "multiple: x **_a<br/><br/><br/>_**- b",
+    "multiple: x _**a<br/><br/><br/>**_- b",
+    "multiple: x *a <br/><br/><br/> * y",
+    "multiple: *z* *a <br/><br/><br/> * *z*",
+    "multiple: ***a <br/><br/><br/> ***",
+    "multiple: x *a<br/> <br/> <br/>*- b",
+    "multiple: x _a<br/> <br/> <br/>_- b",
+    "multiple: x **a<br/> <br/> <br/>**- b",
+    "multiple: x __a<br/> <br/> <br/>__- b",
+    "multiple: x ***a<br/> <br/> <br/>***- b",
+    "multiple: x **_a<br/> <br/> <br/>_**- b",
+    "multiple: x _**a<br/> <br/> <br/>**_- b",
+    "multiple: x *a <br/> <br/> <br/> * y",
+    "multiple: *z* *a <br/> <br/> <br/> * *z*",
+    "multiple: ***a <br/> <br/> <br/> ***",
+    "multiple: x *a<br /><br /><br />*- b",
+    "multiple: x _a<br /><br /><br />_- b",
+    "multiple: x **a<br /><br /><br />**- b",
+    "multiple: x __a<br /><br /><br />__- b",
+    "multiple: x ***a<br /><br /><br />***- b",
+    "multiple: x **_a<br /><br /><br />_**- b",
+    "multiple: x _**a<br /><br /><br />**_- b",
+    "multiple: x *a <br /><br /><br /> * y",
+    "multiple: *z* *a <br /><br /><br /> * *z*",
+    "multiple: ***a <br /><br /><br /> ***",
+    "multiple: x *a<br /> <br /> <br />*- b",
+    "multiple: x _a<br /> <br /> <br />_- b",
+    "multiple: x **a<br /> <br /> <br />**- b",
+    "multiple: x __a<br /> <br /> <br />__- b",
+    "multiple: x ***a<br /> <br /> <br />***- b",
+    "multiple: x **_a<br /> <br /> <br />_**- b",
+    "multiple: x _**a<br /> <br /> <br />**_- b",
+    "multiple: x *a <br /> <br /> <br /> * y",
+    "multiple: *z* *a <br /> <br /> <br /> * *z*",
+    "multiple: ***a <br /> <br /> <br /> ***",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in ***…***, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in ***…***, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in ***…***, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in **_…_**, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in **_…_**, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in **_…_**, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in **…**, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in **…**, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in **…**, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in *…*, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in *…*, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in *…*, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in [*…*](https://example.org), in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in [*…*](https://example.org), in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in [*…*](https://example.org), in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in […](https://example.org), in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in […](https://example.org), in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in […](https://example.org), in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in _**…**_, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in _**…**_, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in _**…**_, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in __…__, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in __…__, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in __…__, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in _…_, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in _…_, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending in _…_, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes ***…***, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes ***…***, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes ***…***, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes **_…_**, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes **_…_**, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes **_…_**, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes **…**, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes **…**, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes **…**, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes *…*, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes *…*, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes *…*, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes [*…*](https://example.org), in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes [*…*](https://example.org), in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes [*…*](https://example.org), in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes […](https://example.org), in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes […](https://example.org), in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes […](https://example.org), in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes _**…**_, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes _**…**_, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes _**…**_, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes __…__, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes __…__, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes __…__, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes _…_, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes _…_, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending that closes _…_, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a run beside a line ending, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a shortcode beside a delimiter, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [
+    "multiple: # x:smile:_a_",
+    "multiple: # _a_:smile:x",
+    "multiple: # 1:smile:_a_",
+    "multiple: # _a_:smile:1",
+    "multiple: #  :smile:_a_",
+    "multiple: # _a_:smile: ",
+    "multiple: # .:smile:_a_",
+    "multiple: # _a_:smile:.",
+    "multiple: # :smile:_a_",
+    "multiple: # _a_:smile:",
+    "multiple: # x:smile:__a__",
+    "multiple: # __a__:smile:x",
+    "multiple: # 1:smile:__a__",
+    "multiple: # __a__:smile:1",
+    "multiple: #  :smile:__a__",
+    "multiple: # __a__:smile: ",
+    "multiple: # .:smile:__a__",
+    "multiple: # __a__:smile:.",
+    "multiple: # :smile:__a__",
+    "multiple: # __a__:smile:",
+  ],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a shortcode beside a delimiter, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [
+    "single: x:smile:_a_",
+    "single: _a_:smile:x",
+    "single: 1:smile:_a_",
+    "single: _a_:smile:1",
+    "single:  :smile:_a_",
+    "single: _a_:smile: ",
+    "single: .:smile:_a_",
+    "single: _a_:smile:.",
+    "single: :smile:_a_",
+    "single: _a_:smile:",
+    "single: x:smile:__a__",
+    "single: __a__:smile:x",
+    "single: 1:smile:__a__",
+    "single: __a__:smile:1",
+    "single:  :smile:__a__",
+    "single: __a__:smile: ",
+    "single: .:smile:__a__",
+    "single: __a__:smile:.",
+    "single: :smile:__a__",
+    "single: __a__:smile:",
+  ],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs a shortcode beside a delimiter, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [
+    "multiple: x:smile:_a_",
+    "multiple: _a_:smile:x",
+    "multiple: 1:smile:_a_",
+    "multiple: _a_:smile:1",
+    "multiple:  :smile:_a_",
+    "multiple: _a_:smile: ",
+    "multiple: .:smile:_a_",
+    "multiple: _a_:smile:.",
+    "multiple: :smile:_a_",
+    "multiple: _a_:smile:",
+    "multiple: x:smile:__a__",
+    "multiple: __a__:smile:x",
+    "multiple: 1:smile:__a__",
+    "multiple: __a__:smile:1",
+    "multiple:  :smile:__a__",
+    "multiple: __a__:smile: ",
+    "multiple: .:smile:__a__",
+    "multiple: __a__:smile:.",
+    "multiple: :smile:__a__",
+    "multiple: __a__:smile:",
+  ],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs an emoji, a link or an escaped bracket at an edge, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs an emoji, a link or an escaped bracket at an edge, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs an emoji, a link or an escaped bracket at an edge, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs an underline or a table row after a run, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs an underline or a table row after a run, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs an underline or a table row after a run, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: a<br>===",
+    "multiple: a<br>---",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a leading run, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: # <br>#",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a leading run, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "single: <br># word",
+    "single: <br>#",
+    "single: <br>* word",
+    "single: <br>*",
+    "single: <br>+ word",
+    "single: <br>+",
+    "single: <br>- word",
+    "single: <br>-",
+    "single: <br>1. word",
+    "single: <br>1.",
+    "single: <br>1) word",
+    "single: <br>1)",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a leading run, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: <br># word",
+    "multiple: <br>#",
+    "multiple: <br>* word",
+    "multiple: <br>*",
+    "multiple: <br>+ word",
+    "multiple: <br>+",
+    "multiple: <br>- word",
+    "multiple: <br>-",
+    "multiple: <br>1. word",
+    "multiple: <br>1.",
+    "multiple: <br>1) word",
+    "multiple: <br>1)",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a run in the middle of a paragraph, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: # a<br>#",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a run in the middle of a paragraph, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a run in the middle of a paragraph, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: a<br># word",
+    "multiple: a<br>#",
+    "multiple: a<br>* word",
+    "multiple: a<br>+ word",
+    "multiple: a<br>- word",
+    "multiple: a<br>-",
+    "multiple: a<br>=",
+    "multiple: a<br>1. word",
+    "multiple: a<br>1) word",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a run moved out of emphasis, in a heading only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: # **a<br>**#",
+  ],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a run moved out of emphasis, in one line only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [],
+}
+`;
+
+exports[`legacyMarkdownAsStandard > repairs each first character after a run moved out of emphasis, in several lines only where it needs one 1`] = `
+{
+  "delimiter": [],
+  "emoji": [],
+  "line start": [
+    "multiple: **a<br>**# word",
+    "multiple: **a<br>**#",
+    "multiple: **a<br>*** word",
+    "multiple: **a<br>**+ word",
+    "multiple: **a<br>**- word",
+    "multiple: **a<br>**-",
+    "multiple: **a<br>**=",
+  ],
+}
+`;

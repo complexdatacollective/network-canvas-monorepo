@@ -116,4 +116,25 @@ describe('protocol text in the printable summary', () => {
       expect(strong.closest('[lang]')).toHaveAttribute('lang', lang);
     }
   });
+
+  it('draws one-line markdown in a paragraph, as each paragraph of several lines', () => {
+    const localization = { defaultLocale: 'en', locales: ['en'] };
+    const SeveralLines: typeof SummaryMarkdown = (props) => (
+      <SummaryMarkdown {...props} multiline />
+    );
+    renderText({ en: 'Several lines' }, localization, SeveralLines);
+    const several = screen.getByText('Several lines').closest('p');
+    expect(several).not.toBeNull();
+    cleanup();
+
+    renderText(
+      { en: 'What is your *name*? [Help](https://example.org)' },
+      localization,
+      SummaryMarkdown,
+    );
+    const line = screen.getByText('What is your', { exact: false });
+    expect(line.closest('p')?.className).toBe(several?.className);
+    // A link in one line is drawn as its words.
+    expect(screen.queryByRole('link')).toBeNull();
+  });
 });

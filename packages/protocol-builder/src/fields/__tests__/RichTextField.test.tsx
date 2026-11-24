@@ -1,9 +1,20 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { FieldLabel } from '@codaco/fresco-ui/form/FieldLabel';
 import Form from '@codaco/fresco-ui/form/Form';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
 
 import RichTextField from '../RichTextField.tsx';
@@ -278,4 +289,52 @@ describe('angle brackets in a rich text field', () => {
       prompt: `I understand it ${STORED}`,
     });
   });
+});
+
+/**
+ * An emoji put in with the editor's emoji suggestions is stored as the
+ * emoji character itself, never as a `:name:` shortcode, so the interview,
+ * which reads stored text as standard markdown with no shortcodes, draws it.
+ */
+describe('an emoji put in with the editor', () => {
+  it.each([
+    ['a one-line', true],
+    ['a several-line', false],
+  ])(
+    'is stored as the emoji in %s field, and the interview draws it',
+    async (_shape, singleLine) => {
+      const field = renderField({ singleLine });
+      const editor = await field.editor();
+
+      await field.user.click(editor);
+      await field.user.keyboard('Hello :smil');
+      const list = await screen.findByRole('listbox', {
+        name: 'Emoji suggestions',
+      });
+      const highlighted = within(list)
+        .getAllByRole('option')
+        .find((option) => option.getAttribute('aria-selected') === 'true');
+      // The option shows the emoji, then the name typed for it.
+      const emoji = highlighted?.textContent?.split(':')[0] ?? '';
+      expect(emoji).toMatch(/^\p{Extended_Pictographic}/u);
+      await field.user.keyboard('{Enter}');
+      await waitFor(() => expect(editor.textContent).toBe(`Hello ${emoji}`));
+
+      const saved = await field.save();
+      const stored = singleLine ? saved?.negativeLabel : saved?.prompt;
+      expect(stored).toBe(`Hello ${emoji}`);
+      expect(stored).not.toMatch(/:\w+:/);
+
+      const { container } = render(
+        singleLine ? (
+          <FieldLabel>{stored}</FieldLabel>
+        ) : (
+          <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+            {stored}
+          </RenderMarkdown>
+        ),
+      );
+      expect(container.textContent).toBe(`Hello ${emoji}`);
+    },
+  );
 });

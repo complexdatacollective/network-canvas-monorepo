@@ -8,6 +8,7 @@ import {
   INFORMATION_PAGE_ASSETS,
   INFORMATION_PAGES,
   type InformationPageFixture,
+  schema8MarkdownAsStandard,
 } from '@codaco/protocol-validation/testing/information-pages';
 
 import { SyntheticInterview } from '../SyntheticInterview.ts';
@@ -24,7 +25,10 @@ const isTextInput = (value: unknown): value is TextInput =>
 
 /**
  * A schema 8 page as an Information stage's parts: its title, its text
- * item, and each file as a block. The one difference is the block's
+ * item, and each file as a block. A synthetic interview is given schema 9
+ * text, so a text item written as a string is given as the migration reads
+ * it, rewritten as standard markdown (`schema8MarkdownAsStandard`); one already in
+ * schema 9 form is given as it is. The other difference is the block's
  * settings: a block takes the settings it is given, where the migration
  * gives each item those it was shown with (an audio recording at the start
  * of the line, played once; no size for one).
@@ -50,7 +54,9 @@ const stageInput = (page: InformationPageFixture) => {
   });
   return {
     title: isTextInput(page.title) ? page.title : '',
-    ...(isTextInput(text) && { text }),
+    ...(typeof text === 'string'
+      ? { text: schema8MarkdownAsStandard(text, 'multiple') }
+      : isTextInput(text) && { text }),
     blocks,
     label: page.label ?? 'Intro',
   };
@@ -91,6 +97,9 @@ const migrated = () => {
   });
 };
 
+// The two writers of a page join its parts alike once its text is in
+// schema 9 form: what the migration writes from a schema 8 page is what a
+// synthetic interview writes from the same parts in that form.
 describe('an Information stage written as the 8 to 9 migration writes its page', () => {
   const cases = migrated();
 
