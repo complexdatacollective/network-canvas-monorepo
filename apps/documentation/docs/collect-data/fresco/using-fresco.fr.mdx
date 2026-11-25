@@ -2,7 +2,7 @@
 title: Utiliser Fresco
 date: 7th October 2026
 navOrder: 2
-translatedFrom: cd2c8be2c9f737a0e60193dc7d03da20f7f6a256
+translatedFrom: 08b677773c9ceaa0faff2f3adba99b3e29997bd1
 ---
 
 Ce guide vous présente pas à pas le flux de travail de base pour mener votre étude avec Fresco.
@@ -265,6 +265,19 @@ Pour désactiver cette fonctionnalité :
 Ce paramètre est distinct de [Limiter les entretiens](#limit-interviews). Limiter les entretiens empêche une personne participante de commencer un _nouvel_ entretien une fois qu’elle en a terminé un, tandis que figer les entretiens terminés empêche l’enregistrement des modifications apportées à un entretien qu’elle a _déjà_ terminé. Selon les besoins de votre étude, vous pouvez activer l’un des deux, les deux ou aucun.
 
 </TipBox>
+
+### Émettre des sons pendant les entretiens {#play-sounds-during-interviews}
+
+Fresco peut émettre de courts sons pendant un entretien. Si cette option est activée, un son est émis lorsqu’une personne participante modifie son réseau (ajoute, supprime, relie ou met en évidence des nœuds, ou classe des nœuds dans des catégories), choisit une réponse dans un formulaire (sélectionne une option, coche ou décoche une case, ou active ou désactive un interrupteur), ou tente d’envoyer un formulaire qui contient des erreurs. Lorsqu’une personne participante fait glisser un nœud, un son est émis au moment où elle le saisit, puis un autre au moment où elle le dépose à un endroit qui l’accepte. Ce second son dépend de l’endroit où le nœud est déposé : par exemple, déposer un nœud dans la corbeille ne produit pas le même son que de le déposer dans une case pour le classer. Un son est aussi émis lorsque l’entretien passe à l’écran suivant ou précédent, ainsi qu’à la fin de l’entretien. Pendant qu’une personne participante relie deux nœuds sur un sociogramme, un son se répète jusqu’à ce qu’elle choisisse le second nœud.
+
+Cette option est désactivée par défaut. Les fichiers audio (environ 150 Ko) ne sont téléchargés dans le navigateur de la personne participante que lorsque cette option est activée.
+
+Les sons sont émis au volume réglé sur l’appareil de la personne participante : si le son est coupé sur son appareil, elle n’entend rien. Les navigateurs n’autorisent une page à émettre du son qu’après une première interaction avec celle-ci : aucun son n’est donc émis avant que la personne participante touche l’écran, clique ou appuie sur une touche pour la première fois.
+
+Pour activer les sons :
+
+1. Rendez-vous sur la page des paramètres du tableau de bord.
+2. Activez l’interrupteur **Émettre des sons pendant les entretiens**.
 
 ### Désactiver l’avertissement pour les petits écrans {#disable-small-screen-warning}
 

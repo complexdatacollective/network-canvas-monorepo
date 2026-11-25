@@ -85,6 +85,8 @@ export default defineConfig({
             // stories open now pulls in fresco-ui's `Section` and the
             // Collapsible it is built on.
             '@base-ui/react/collapsible',
+            // The navigation's interview language list.
+            '@base-ui/react/combobox',
             '@base-ui/react/dialog',
             '@base-ui/react/direction-provider',
             '@base-ui/react/menu',
@@ -93,6 +95,9 @@ export default defineConfig({
             '@base-ui/react/radio',
             '@base-ui/react/slider',
             '@base-ui/react/switch',
+            // The navigation's text size choice.
+            '@base-ui/react/toggle',
+            '@base-ui/react/toggle-group',
             '@base-ui/react/toolbar',
             '@base-ui/react/tooltip',
             '@codaco/app-i18n > @formatjs/icu-messageformat-parser',

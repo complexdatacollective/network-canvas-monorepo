@@ -15,6 +15,7 @@ import {
 } from '../../styles/controlVariants';
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import { RadioItem } from './RadioGroup';
@@ -76,6 +77,9 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
   // anything but a row list renders as unanswered.
   const current = isControlled ? (Array.isArray(value) ? value : []) : internal;
 
+  const { onOptionToggle } = useFormFeedback();
+
+  // Base UI calls this only for the person's own choice in a row.
   const handleRowChange = (rowId: string, next: string) => {
     if (readOnly) return;
     // Emit one entry per row that has a value: the changed row, any
@@ -93,6 +97,7 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
     });
     if (isControlled) onChange(nextValue);
     else setInternal(nextValue);
+    onOptionToggle(true);
   };
 
   const headingId = useId();

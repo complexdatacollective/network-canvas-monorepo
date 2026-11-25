@@ -265,6 +265,19 @@ This setting is distinct from [Limit Interviews](#limit-interviews). Limiting in
 
 </TipBox>
 
+### Play sounds during interviews
+
+Fresco can play short sounds during an interview. When this option is enabled, a sound plays when a participant changes their network (adds, removes, connects or highlights nodes, or sorts nodes into categories), chooses an answer in a form (selects an option, ticks or unticks a box, or turns a toggle on or off), or tries to submit a form that has errors. When a participant drags a node, a sound plays as they pick it up, and another plays when they drop it in a place that accepts it. This second sound depends on where the node is dropped: for example, dropping a node on the trash sounds different from dropping it into a bin to sort it. A sound also plays when the interview moves forwards or backwards to another screen, and when the interview ends. While a participant is connecting two nodes on a sociogram, a sound repeats until they choose the second node.
+
+This option is off by default. The sound files (about 150 KB) are downloaded to the participant's browser only when this option is enabled.
+
+Sounds play at the volume set on the participant's device, so a participant whose device is muted hears nothing. Browsers do not let a page play sound until the user has interacted with it, so no sound plays until the participant first taps, clicks or presses a key.
+
+To enable sounds:
+
+1. Navigate to the settings page in the dashboard.
+2. Toggle the **Play Sounds During Interviews** switch to on.
+
 ### Disable small screen warning
 
 Network Canvas interviews are designed to be completed on a device with a reasonably large screen, such as a laptop, desktop, or tablet. When a participant opens an interview on a small screen (for example, a mobile phone in portrait orientation), Fresco displays a warning that the screen may be too small for a good interview experience.

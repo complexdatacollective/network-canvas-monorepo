@@ -2627,6 +2627,10 @@
     "defaultMessage": "If anonymous recruitment is enabled, you may generate an anonymous participation URL. This URL can be shared with participants to allow them to self-enroll in your study.",
     "description": "Hint under the anonymous recruitment toggle in Interview Settings, explaining that enabling it lets the researcher generate one shared link that participants use to enrol themselves."
   },
+  "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledShortSoundsPlay": {
+    "defaultMessage": "If this option is enabled, short sounds play when participants change their network, choose an answer, move between stages or try to submit a form that has errors, and when the interview ends.",
+    "description": "Hint under the Play Sounds During Interviews toggle in Interview Settings; lists the moments in an interview when a sound plays. Changing their network means adding, removing, connecting or highlighting the people or other entries in the participant's network, sorting them into categories, or placing them on a sociogram. Choosing an answer means selecting an option, ticking or unticking a box, or turning a toggle on or off in a question. Moving between stages means going to the next or previous screen with the Back or Next button. A form has errors when a required answer is missing or an answer is not valid. Interviewer shows the same sentence without \"If this option is enabled,\"; keep the two translations the same, including the words for \"choose an answer\"."
+  },
   "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledTheWarning": {
     "defaultMessage": "If this option is enabled, the warning about using Fresco on a small screen will be disabled.",
     "description": "Hint under the disable small screen warning toggle in Interview Settings. Fresco is the product name and is not translated."
@@ -2638,6 +2642,10 @@
   "fresco.settings.InterviewSettingsSection.limitInterviews": {
     "defaultMessage": "Limit Interviews",
     "description": "Label of the toggle in Interview Settings that limits each participant to one completed interview per protocol. Also the toggle's accessible name."
+  },
+  "fresco.settings.InterviewSettingsSection.playSoundsDuringInterviews": {
+    "defaultMessage": "Play Sounds During Interviews",
+    "description": "Label of the toggle in Interview Settings that controls whether participants' devices play short sounds while they take an interview. Off by default. Also the toggle's accessible name. English uses title case for these labels; follow the usual capitalisation of your language."
   },
   "fresco.settings.InterviewSettingsSection.whenEnabledCompletedInterviewsWillSilentlyReject": {
     "defaultMessage": "When enabled, completed interviews will silently reject any further data sync updates. This prevents modifications to submitted data if an interview is re-opened.",

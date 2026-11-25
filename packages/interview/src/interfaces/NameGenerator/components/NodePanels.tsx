@@ -10,6 +10,7 @@ import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import Panels from '../../../components/Panels';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
+import { writeSucceeded } from '../../../forms/writeSubmissionResult';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getPanelConfiguration } from '../../../selectors/name-generator';
 import {
@@ -58,17 +59,20 @@ function NodePanels(props: NodePanelsProps) {
     [dispatch],
   );
 
+  // Each resolves whether the person was taken off the question.
   const createDropHandler = useCallback(
-    (dataSource: string) => (metadata?: Record<string, unknown>) => {
+    (dataSource: string) => async (metadata?: Record<string, unknown>) => {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dropped node, set by the Node drag source (fresco-ui types it as a record)
       const droppedNode = metadata as NcNode | undefined;
-      if (!droppedNode) return;
+      if (!droppedNode) return false;
 
       if (dataSource === 'existing') {
-        void removeNodeFromPrompt(droppedNode[entityPrimaryKeyProperty]);
-      } else {
-        deleteNode(droppedNode[entityPrimaryKeyProperty]);
+        return writeSucceeded(
+          await removeNodeFromPrompt(droppedNode[entityPrimaryKeyProperty]),
+        );
       }
+      deleteNode(droppedNode[entityPrimaryKeyProperty]);
+      return true;
     },
     [deleteNode, removeNodeFromPrompt],
   );

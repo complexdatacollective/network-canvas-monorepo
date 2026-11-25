@@ -58,10 +58,9 @@ export class InterviewNav {
       .not.toBe(before);
   }
 
-  // Exits an in-progress interview through the Shell's settings popover and its
-  // confirm dialog, landing back on Home.
+  // Exits an in-progress interview through the navigation's exit button and
+  // its confirm dialog, landing back on Home.
   async exitInterview(locale: 'en' | 'en-GB' | 'es' = 'en'): Promise<void> {
-    await this.page.getByTestId('settings-button').click();
     await this.page.getByTestId('exit-button').click();
     const exitDialog = this.page.getByRole('dialog', {
       name: locale === 'es' ? 'Salir de la entrevista' : 'Exit interview',

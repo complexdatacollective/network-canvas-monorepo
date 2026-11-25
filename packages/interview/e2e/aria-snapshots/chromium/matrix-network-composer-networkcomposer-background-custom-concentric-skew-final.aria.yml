@@ -3,7 +3,7 @@
     - group "Editing tools":
       - button "Select"
       - button "Add node" [expanded] [pressed]
-      - dialog:
+      - dialog "Add node":
         - textbox "Type a name, then press Enter"
     - separator
     - group "Layout tools":
@@ -14,8 +14,9 @@
       - button "Redo" [disabled]
   - application
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
+    - status
   - region "Interview notifications"

@@ -3,6 +3,7 @@
     - 'heading "Stage A: please add a person from this list." [level=2]'
   - button "Available to add":
     - heading "Available to add" [level=3]
+  - status
   - searchbox "Filter"
   - listbox "Available Roster Nodes":
     - option "John":
@@ -32,8 +33,9 @@
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
+    - status: You can continue to the next step.
   - region "Interview notifications"

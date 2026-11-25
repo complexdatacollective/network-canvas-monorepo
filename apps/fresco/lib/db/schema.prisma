@@ -159,6 +159,7 @@ enum AppSetting {
   uploadThingToken
   freezeInterviewsAfterCompletion
   enableInterviewDataApi
+  interactionSounds
   storageProvider
   s3Endpoint
   s3PublicUrl

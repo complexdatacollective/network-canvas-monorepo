@@ -23,6 +23,10 @@ function refusalMessage(
     : formMessages.submitFailed;
 }
 
+/** Whether a dispatched network write was stored. */
+export const writeSucceeded = (result: WriteResult): boolean =>
+  result.meta.requestStatus === 'fulfilled';
+
 /** Why a write was refused, in words the participant can act on. */
 export function writeFailureMessage(
   result: WriteResult,

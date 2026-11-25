@@ -3,13 +3,14 @@
   - button "Alex"
   - button "Sam"
   - status:
-    - 'heading "Do Alex and Sam know each other?" [level=2]'
-  - 'radiogroup "Alex and Sam Do Alex and Sam know each other?"':
+    - heading "Do Alex and Sam know each other?" [level=2]
+  - radiogroup "Alex and Sam Do Alex and Sam know each other?":
     - radio "Yes"
     - radio "No"
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
+    - status
   - region "Interview notifications"

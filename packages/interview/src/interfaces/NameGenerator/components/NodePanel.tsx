@@ -186,6 +186,8 @@ function NodePanel(props: NodePanelProps) {
           id={id}
           itemType="NEW_NODE"
           onDrop={onDrop}
+          // A person dropped back on a panel is taken off the question.
+          dropSound="toggle-off"
           accepts={accepts}
           acceptsFilter={acceptsFilter}
           nodeSize="sm"

@@ -6,7 +6,7 @@ import type { StoreApi } from 'zustand';
 import { type DndStore, DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 
-import { useCanvasDrag } from '../useCanvasDrag';
+import { type CanvasNodeDragEnd, useCanvasDrag } from '../useCanvasDrag';
 import { type CanvasStoreApi, createCanvasStore } from '../useCanvasStore';
 
 // jsdom implements no hit testing; the DnD store's position updates probe it.
@@ -20,7 +20,7 @@ type Captured = ReturnType<typeof useCanvasDrag>;
 
 type DragNodeProps = {
   store: CanvasStoreApi;
-  onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
+  onDragEnd?: CanvasNodeDragEnd;
   onRemove?: (nodeId: string) => void;
   withDndItem?: boolean;
   onApi?: (api: Captured) => void;
@@ -125,7 +125,9 @@ describe('useCanvasDrag', () => {
 
     const pos = store.getState().positions.get(NODE_ID)!;
     expect(pos.x).toBeCloseTo(0.52);
-    expect(onDragEnd).toHaveBeenCalledWith(NODE_ID, pos);
+    expect(onDragEnd).toHaveBeenCalledWith(NODE_ID, pos, {
+      source: 'keyboard',
+    });
   });
 
   it('reports dragging while a drag is live', async () => {
@@ -206,7 +208,9 @@ describe('useCanvasDrag', () => {
 
     await drive(api, screen.getByTestId('drag-node'));
 
-    expect(onDragEnd).toHaveBeenCalledWith(NODE_ID, expect.any(Object));
+    expect(onDragEnd).toHaveBeenCalledWith(NODE_ID, expect.any(Object), {
+      source: 'pointer',
+    });
   });
 
   it('does not commit a drop when the drag is cancelled', async () => {

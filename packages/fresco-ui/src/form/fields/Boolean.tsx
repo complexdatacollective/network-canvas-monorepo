@@ -24,6 +24,7 @@ import {
 import { headingVariants } from '../../typography/Heading';
 import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 
 export const messages = defineMessages({
@@ -197,13 +198,17 @@ export default function BooleanField(props: BooleanFieldProps) {
   } = props;
 
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const { onOptionToggle } = useFormFeedback();
 
+  // The person's own choice. Choosing the answer already chosen changes
+  // nothing, so it is not reported as a choice.
   const handleSelect = useCallback(
     (optionValue: boolean) => {
       if (readOnly || !onChange) return;
       onChange(optionValue);
+      if (optionValue !== value) onOptionToggle(true);
     },
-    [onChange, readOnly],
+    [onChange, onOptionToggle, readOnly, value],
   );
 
   const handleKeyDown = useCallback(
@@ -359,7 +364,10 @@ export default function BooleanField(props: BooleanFieldProps) {
         <Button
           variant="link"
           size="sm"
-          onClick={() => onChange?.(undefined)}
+          onClick={() => {
+            onChange?.(undefined);
+            onOptionToggle(false);
+          }}
           disabled={Boolean(disabled) || Boolean(readOnly)}
         >
           {intl.formatMessage(messages.resetAnswer)}

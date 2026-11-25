@@ -145,6 +145,7 @@ function Host({
           requestedLocales={serializedRequest}
           installationId="test-installation"
           disableAnalytics
+          interactionSounds={false}
           view="active"
         />
       </ParticipantLayout>

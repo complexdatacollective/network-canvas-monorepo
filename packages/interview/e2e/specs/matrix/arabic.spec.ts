@@ -127,11 +127,11 @@ function arabicInterview() {
     shows: 'مرحبا بكم في الدراسة',
     opens: [
       {
-        name: 'the interview settings',
+        name: 'the text size control',
         open: async (page) => {
-          await page.getByTestId('settings-button').click();
+          await page.getByTestId('text-size-button').click();
           await expect(
-            page.getByRole('dialog', { name: 'Interview settings' }),
+            page.getByRole('dialog', { name: 'Text size' }),
           ).toBeVisible();
         },
       },

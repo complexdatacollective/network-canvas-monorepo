@@ -191,7 +191,6 @@ export default function InterviewClient({
       analytics={analytics}
       posthogClient={posthog}
       disableAnalytics={disableAnalytics}
-      allowUserScaling
     />
   );
 }

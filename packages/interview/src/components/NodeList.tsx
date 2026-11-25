@@ -21,6 +21,7 @@ import { readNodeLabelSource } from '../interfaces/Anonymisation/nodeLabel';
 import { useDecryptedOutcomes } from '../interfaces/Anonymisation/useDecryptionScope';
 import { useNodeLabeller } from '../interfaces/Anonymisation/useNodeLabel';
 import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
+import type { DropSound } from '../sounds/InteractionSounds';
 import Node from './ConnectedNode';
 
 // Props that NodeList always provides internally — consumers can't override these
@@ -39,6 +40,13 @@ type NodeListProps = Omit<CollectionProps<NcNode>, InternalCollectionProps> & {
   accepts?: string[];
   acceptsFilter?: (metadata: DragMetadata | undefined) => boolean;
   onDrop?: DropCallback;
+  /**
+   * The sound of a drop on the list, by what `onDrop` does with the person
+   * (see `DropSound`), or a function that chooses it for each drop from the
+   * dropped person's drag metadata, for a list whose drops do different
+   * things for different people.
+   */
+  dropSound?: DropSound | ((metadata: DragMetadata | undefined) => DropSound);
   onItemClick?: (node: NcNode) => void;
   /**
    * False turns off drag and drop for the list entirely: its people cannot be
@@ -66,6 +74,7 @@ const NodeList = memo(
     accepts,
     acceptsFilter,
     onDrop,
+    dropSound,
     onItemClick,
     dragAndDrop = true,
     selectedItemId,
@@ -210,11 +219,11 @@ const NodeList = memo(
       getItems: (keys) => [{ type: itemType, keys }],
       acceptTypes: accepts,
       acceptsFilter,
+      dropFeedback: dropSound,
       onDrop: onDrop
-        ? (e) => {
-            // Map Collection's DropEvent to the old metadata format
-            onDrop(e.metadata);
-          }
+        ? // Map Collection's DropEvent to the old metadata format, and say
+          // whether the list's handler took the drop.
+          (e) => onDrop(e.metadata)
         : undefined,
       getItemMetadata: (key) => {
         const node = items.find(

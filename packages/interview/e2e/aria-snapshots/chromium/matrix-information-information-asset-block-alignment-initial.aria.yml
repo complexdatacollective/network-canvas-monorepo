@@ -1,12 +1,13 @@
 - main:
   - heading "Alignment" [level=1]
+  - paragraph: The page is as wide as its widest line, so this paragraph is long enough to give the page its full width, which leaves a recording room to sit at the start, the centre or the end of it.
   - img "Image at the start"
   - img "Image at the centre"
   - img "Image at the end"
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
     - status
   - region "Interview notifications"

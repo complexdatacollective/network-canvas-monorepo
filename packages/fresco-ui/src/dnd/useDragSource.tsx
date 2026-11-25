@@ -16,6 +16,7 @@ import {
 import { DRAG_DISTANCE } from '../hooks/useNodeGestures';
 import type { Prettify } from '../utils/prettify';
 import { useDndStore, useDndStoreApi } from './DndStoreProvider';
+import { useDragFeedback } from './DragFeedbackListener';
 import type { DragMetadata } from './types';
 import {
   getDropTargetDescription,
@@ -100,6 +101,7 @@ export function useDragSource(
   });
 
   const { announce } = useAccessibilityAnnouncements();
+  const { onDragStart } = useDragFeedback();
 
   const [dragMode, setDragMode] = useState<'none' | 'pointer' | 'keyboard'>(
     'none',
@@ -192,13 +194,14 @@ export function useDragSource(
       const dragPreview = createPreview(element);
 
       startDrag(dragItem, dragPosition, dragPreview);
+      onDragStart();
 
       // Only hide the element during pointer drag
       if (mode === 'pointer') {
         element.style.visibility = 'hidden';
       }
     },
-    [dragId, createPreview, startDrag],
+    [dragId, createPreview, startDrag, onDragStart],
   );
 
   // Unified drag end logic

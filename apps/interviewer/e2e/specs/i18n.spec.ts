@@ -139,7 +139,7 @@ test.describe('a Spanish browser', () => {
     await expect(interview).toHaveAttribute('dir', 'ltr');
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(
-      interview.getByRole('button', { name: 'Settings', exact: true }),
+      interview.getByRole('button', { name: 'Exit interview', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText('Thanks for taking part.', { exact: true }),
@@ -180,7 +180,7 @@ test.describe('a Spanish browser', () => {
     await expect(interview).toHaveAttribute('dir', 'ltr');
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
     await expect(
-      interview.getByRole('button', { name: 'Settings', exact: true }),
+      interview.getByRole('button', { name: 'Exit interview', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByText('Thanks for taking part.', { exact: true }),
@@ -306,7 +306,7 @@ test.describe('the language chooser stage', () => {
     ).toBeVisible();
     await expect(interview).toHaveAttribute('lang', 'es');
     await expect(
-      interview.getByRole('button', { name: 'Settings', exact: true }),
+      interview.getByRole('button', { name: 'Exit interview', exact: true }),
     ).toBeVisible();
     // The participant's choice never changes Interviewer's own language.
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');

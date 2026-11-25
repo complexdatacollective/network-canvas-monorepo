@@ -1,5 +1,6 @@
 - main:
   - application "Placement area":
+    - img
     - button "Node0"
     - button "Node2"
     - button "Node4"
@@ -15,9 +16,9 @@
       - button "Next preset"
   - status
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
     - status
   - region "Interview notifications"

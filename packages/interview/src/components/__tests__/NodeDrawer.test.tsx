@@ -343,6 +343,7 @@ describe('NodeDrawer', () => {
       dropTarget: {
         accepts: ['PLACED_NODE'],
         announcedName: 'Drawer',
+        dropSound: 'toggle-off',
         onDrop: vi.fn(),
       },
     });
@@ -365,6 +366,7 @@ describe('NodeDrawer', () => {
       dropTarget: {
         accepts: ['PLACED_NODE'],
         announcedName: 'Drawer',
+        dropSound: 'toggle-off',
         onDrop: vi.fn(),
       },
     });
@@ -423,6 +425,7 @@ describe('NodeDrawer', () => {
       dropTarget: {
         accepts: ['PLACED_NODE'],
         announcedName: 'Drawer',
+        dropSound: 'toggle-off',
         onDrop,
       },
     });
@@ -463,6 +466,7 @@ describe('NodeDrawer', () => {
       dropTarget: {
         accepts: ['PLACED_NODE'],
         announcedName: 'Drawer',
+        dropSound: 'toggle-off',
         onDrop,
       },
     });

@@ -16,6 +16,7 @@ import {
 import { type CSSVariablesStyle } from '../../utils/cssVariables';
 import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 
 const messages = defineMessages({
@@ -313,6 +314,7 @@ export default function ColorPickerField({
 }: ColorPickerFieldProps) {
   const intl = useAppIntl();
   const isRequired = required || Boolean(ariaRequired);
+  const { onOptionToggle } = useFormFeedback();
 
   return (
     <RadioGroup
@@ -320,7 +322,10 @@ export default function ColorPickerField({
       name={name}
       value={value ?? ''}
       onValueChange={(nextValue) => {
-        if (!readOnly && typeof nextValue === 'string') onChange?.(nextValue);
+        if (!readOnly && typeof nextValue === 'string') {
+          onChange?.(nextValue);
+          onOptionToggle(true);
+        }
       }}
       disabled={disabled}
       readOnly={readOnly}

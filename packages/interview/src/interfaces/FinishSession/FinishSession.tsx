@@ -33,6 +33,7 @@ import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { useStageWording } from '../../localization/useStageWording';
 import { getInterviewId } from '../../selectors/session';
+import { useInteractionSound } from '../../sounds/InteractionSounds';
 import { getStages } from '../../store/modules/protocol';
 import { useSyncFlush } from '../../store/SyncFlushContext';
 import { useInterviewToast } from '../../toast/useInterviewToast';
@@ -132,6 +133,12 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
   const [state, setState] = useState<FinishState>('idle');
   // In automatic mode the Finish button appears only once a finish has failed.
   const [failed, setFailed] = useState(false);
+
+  // Reaching the end of the interview is heard once, as the stage is shown.
+  const { play } = useInteractionSound();
+  useEffect(() => {
+    play('finish-interview');
+  }, [play]);
 
   // Aborted when the stage is torn down (the Shell unmounting), so an
   // interview being left is not handed over afterwards.

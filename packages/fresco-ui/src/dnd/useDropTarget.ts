@@ -11,10 +11,12 @@ import {
 
 import type { Prettify } from '../utils/prettify';
 import { useDndStore, useDndStoreApi } from './DndStoreProvider';
+import { useDragFeedback } from './DragFeedbackListener';
 import type {
   DragItem,
   DragMetadata,
   DropCallback,
+  DropFeedback,
   UseDropTargetReturn,
 } from './types';
 import { getElementBounds, rafThrottle } from './utils';
@@ -27,6 +29,11 @@ type DropTargetOptions = {
   acceptsFilter?: (metadata: DragMetadata | undefined) => boolean;
   announcedName: string; // Human-readable name for screen reader announcements
   onDrop?: DropCallback;
+  /**
+   * What a drop here means, for an enclosing `DragFeedbackListener`, passed
+   * to the listener with each drop: see `DropFeedback`.
+   */
+  dropFeedback?: DropFeedback;
   onDragEnter?: (metadata?: DragMetadata) => void;
   onDragLeave?: (metadata?: DragMetadata) => void;
   disabled?: boolean;
@@ -46,6 +53,7 @@ export function useDropTarget(
     acceptsFilter,
     announcedName,
     onDrop,
+    dropFeedback,
     onDragEnter,
     onDragLeave,
     disabled = false,
@@ -58,6 +66,11 @@ export function useDropTarget(
   const intersectionObserverRef = useRef<IntersectionObserver | null>(null);
   const lastDragItemRef = useRef<DragItem | null>(null);
   const dropOccurredRef = useRef<boolean>(false);
+  const { onDrop: reportDrop } = useDragFeedback();
+  // Read as the drop happens, so a new value does not resubscribe the drop
+  // handling below.
+  const dropFeedbackRef = useRef(dropFeedback);
+  dropFeedbackRef.current = dropFeedback;
 
   // Use selective subscriptions for better performance
   const dragItem = useDndStore((state) => state.dragItem);
@@ -335,10 +348,16 @@ export function useDropTarget(
             }
             // 'none' - no automatic focus management
 
-            // Call user's onDrop callback
-            if (onDrop) {
-              onDrop(draggedItem.metadata);
-            }
+            // Call user's onDrop callback, through the feedback listener,
+            // which carries it out as part of the drop it reports and is
+            // told whether it took the drop.
+            const feedback = dropFeedbackRef.current;
+            reportDrop(
+              typeof feedback === 'function'
+                ? feedback(draggedItem.metadata)
+                : feedback,
+              () => onDrop?.(draggedItem.metadata),
+            );
           }
         }
       },
@@ -348,6 +367,7 @@ export function useDropTarget(
   }, [
     canDrop,
     onDrop,
+    reportDrop,
     updateBoundsImmediate,
     storeApi,
     focusBehaviorOnDrop,

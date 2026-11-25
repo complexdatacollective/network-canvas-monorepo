@@ -781,3 +781,30 @@ describe('SettingsDialog synthetic tab — delete failure', () => {
     ).toBeEnabled();
   });
 });
+
+describe('SettingsDialog Interview tab — interaction sounds', () => {
+  it('starts off and saves the choice when it is turned on', async () => {
+    const { updateSettings } = await import('~/lib/db/api');
+    vi.mocked(updateSettings).mockResolvedValueOnce({
+      ...DEFAULT_SETTINGS,
+      interactionSounds: true,
+    });
+    const user = userEvent.setup();
+    render(<SettingsDialog open onClose={vi.fn()} />);
+
+    await user.click(await screen.findByRole('tab', { name: 'Interview' }));
+    const toggle = await screen.findByRole('switch', {
+      name: 'Play sounds during interviews',
+    });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+    await user.click(toggle);
+
+    expect(updateSettings).toHaveBeenCalledWith({ interactionSounds: true });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Play sounds during interviews' }),
+      ).toHaveAttribute('aria-checked', 'true'),
+    );
+  });
+});
