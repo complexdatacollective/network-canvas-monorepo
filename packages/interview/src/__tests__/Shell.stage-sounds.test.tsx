@@ -23,13 +23,11 @@ import Shell from '../Shell';
 import {
   FakeAudioContext,
   settle,
+  fileNameOf,
+  SOUND_FILE_NAMES,
   soundBytes,
   soundOf,
 } from '../sounds/__tests__/fakeAudioContext';
-import {
-  INTERACTION_SOUND_FILES,
-  type InteractionSoundName,
-} from '../sounds/interactionSoundFiles';
 import { testId, testTypeId, testVariableId } from './testIds';
 
 // The sounds the interview's own stages ask for, heard through the real
@@ -325,10 +323,6 @@ function payloadWith(
   };
 }
 
-const SOUND_NAMES = Object.keys(INTERACTION_SOUND_FILES);
-const isSoundName = (name: string): name is InteractionSoundName =>
-  SOUND_NAMES.includes(name);
-
 const contexts: FakeAudioContext[] = [];
 
 class StubObserver {
@@ -353,9 +347,9 @@ beforeEach(() => {
     'fetch',
     vi.fn((url: string) => {
       if (url === ROSTER_URL) return Promise.resolve(Response.json(ROSTER));
-      const name = /\/([^/]+)\.mp3$/.exec(url)?.[1] ?? '';
+      const name = fileNameOf(url);
       return Promise.resolve(
-        isSoundName(name)
+        SOUND_FILE_NAMES.includes(name)
           ? new Response(soundBytes(name))
           : new Response(null, { status: 404 }),
       );
@@ -651,7 +645,7 @@ describe('the sound of dragging a person on a name generator', () => {
     expect(await heard()).toEqual([]);
 
     expect(await pointerDrag(heard, alex, dropZone('node-bin'))).toEqual({
-      pickedUp: ['tap-button'],
+      pickedUp: ['pick-up'],
       dropped: ['discard'],
     });
     await waitFor(() => expect(stageNodes()).toHaveLength(1));
@@ -670,7 +664,7 @@ describe('the sound of dragging a person on a name generator', () => {
     // Adding a person from the panel adds them to the network, which on its
     // own sounds like a person created.
     expect(await keyboardDrag(heard, dana, 'Added Nodes')).toEqual({
-      pickedUp: ['tap-button'],
+      pickedUp: ['pick-up'],
       dropped: ['toggle-on'],
     });
     await waitFor(() => expect(stageNodes()).toHaveLength(2));
@@ -679,7 +673,7 @@ describe('the sound of dragging a person on a name generator', () => {
     // sounds like a person deleted.
     const added = await personNamed('Dana', screen.getByTestId('node-list'));
     expect(await keyboardDrag(heard, added, 'People you might know')).toEqual({
-      pickedUp: ['tap-button'],
+      pickedUp: ['pick-up'],
       dropped: ['toggle-off'],
     });
     await waitFor(() => expect(stageNodes()).toHaveLength(1));
@@ -696,11 +690,11 @@ describe('the sound of dragging a person on a name generator', () => {
 
     expect(
       await keyboardDrag(heard, await personNamed('Alex', list), null),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: [] });
 
     expect(
       await pointerDrag(heard, await personNamed('Alex', list), null),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: [] });
     expect(stageNodes()).toHaveLength(1);
 
     const alex = await personNamed('Alex', list);
@@ -747,7 +741,7 @@ describe('the sound of a drop that needs the passphrase', () => {
         await personNamed('Alex'),
         'Category: Some other way',
       ),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: [] });
     const lock = await screen.findByRole('button', { name: 'Passphrase' });
     expect(otherQuestion()).toBeNull();
 
@@ -778,7 +772,7 @@ describe('the sound of a drop that needs the passphrase', () => {
         await personNamed('Alex'),
         'Category: Some other way',
       ),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: [] });
     // The bin's sound waits until the answer is protected and stored, and is
     // heard once.
     const question = await screen.findByRole('dialog', {
@@ -803,7 +797,7 @@ describe('the sound of dragging a person into a bin', () => {
     const alex = await personNamed('Alex');
     expect(
       await keyboardDrag(heard, alex, "Container for the value 'Often'"),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: ['drop-node'] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: ['toggle-on'] });
   });
 
   it('plays the drop sound for a person dropped in a categorical bin, and for one dropped in "other" only once the answer is saved', async () => {
@@ -811,7 +805,7 @@ describe('the sound of dragging a person into a bin', () => {
 
     expect(
       await keyboardDrag(heard, await personNamed('Alex'), 'Category: Work'),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: ['drop-node'] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: ['drop-node'] });
 
     expect(
       await keyboardDrag(
@@ -819,7 +813,7 @@ describe('the sound of dragging a person into a bin', () => {
         await personNamed('Blake'),
         'Category: Some other way',
       ),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: [] });
     const dialog = await screen.findByRole('dialog');
     fireEvent.change(within(dialog).getByRole('textbox'), {
       target: { value: 'Neighbours' },
@@ -836,7 +830,7 @@ describe('the sound of dragging a person into a bin', () => {
         await personNamed('Casey'),
         'Category: Some other way',
       ),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: [] });
     const cancelled = await screen.findByRole('dialog');
     await act(async () => {
       fireEvent.click(
@@ -863,12 +857,12 @@ describe('the sound of dragging a person on the sociogram', () => {
 
     expect(
       await keyboardDrag(heard, await personNamed('Blake'), 'Placement area'),
-    ).toEqual({ pickedUp: ['tap-button'], dropped: ['drop-node'] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: ['toggle-on'] });
 
     const alex = await personNamed('Alex', canvasArea);
     expect(await pointerDrag(heard, alex, canvasArea)).toEqual({
-      pickedUp: ['tap-button'],
-      dropped: ['drop-node'],
+      pickedUp: ['pick-up'],
+      dropped: ['toggle-on'],
     });
 
     await act(async () => {
@@ -878,7 +872,7 @@ describe('the sound of dragging a person on the sociogram', () => {
     expect(await heard()).toEqual([]);
 
     expect(await pointerDrag(heard, alex, dropZone('node-drawer'))).toEqual({
-      pickedUp: ['tap-button'],
+      pickedUp: ['pick-up'],
       dropped: ['toggle-off'],
     });
     await waitFor(() =>

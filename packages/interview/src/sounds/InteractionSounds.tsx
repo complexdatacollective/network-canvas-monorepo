@@ -34,10 +34,12 @@ const DROP_SOUNDS = [
 /**
  * The sound of a drop, which the drop target declares as its `dropFeedback`
  * by what a drop on it does: `discard` for deleting the person (the bin),
- * `drop-node` for placing them (in a bin, on the sociogram), `toggle-on` for
- * adding them to the question (a name generator's main list), `toggle-off`
- * for taking them off it (back to a side panel or the roster, or to the
- * sociogram's drawer). It plays only once the target's drop handler says it
+ * `drop-node` for placing them in a category (a categorical bin), `toggle-on`
+ * for adding them to the question (a name generator's main list) or placing
+ * them in an ordinal bin or on a canvas (the sociogram's, or another
+ * interface's), which is also the sound of the sociogram highlighting a
+ * person, and `toggle-off` for taking them off the question (back to a side
+ * panel or the roster, or to the sociogram's drawer). It plays only once the target's drop handler says it
  * took the drop (see `DropOutcome`): when the change is stored, or, for the
  * "other" bin, when its question is answered. A drop the handler refuses (a
  * write that fails, a passphrase that is needed first, a question that is
@@ -57,7 +59,7 @@ const isDropSound = (feedback: string | undefined): feedback is DropSound =>
  * network, such as an answer that makes a connection, asks for both sounds
  * at once, and the engine plays only the more important.
  *
- * So is dragging: `tap-button` whenever a drag picks a person up (by pointer
+ * So is dragging: `pick-up` whenever a drag picks a person up (by pointer
  * or keyboard, never for a tap), and the drop target's `DropSound` whenever
  * one is dropped and the target takes them. That sound is the only one heard
  * for the drop: what the drop changes in the network makes no sound of its
@@ -81,7 +83,7 @@ export function InteractionSoundsProvider({
         }
       >
         <DragFeedbackListener
-          onDragStart={() => engine.play('tap-button', { standalone: true })}
+          onDragStart={() => engine.play('pick-up', { standalone: true })}
           onDrop={(feedback, drop) =>
             engine.drop(isDropSound(feedback) ? feedback : null, drop)
           }

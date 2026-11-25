@@ -12,7 +12,7 @@ import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import {
   FakeAudioContext,
   settle,
-  soundBytes,
+  fileBytes,
   soundOf,
 } from '../../../sounds/__tests__/fakeAudioContext';
 import {
@@ -312,7 +312,7 @@ describe('interaction sounds heard through the engine', () => {
     const context = new FakeAudioContext();
     const engine = createSoundEngine({
       createAudioContext: () => context,
-      loadSound: (name) => Promise.resolve(soundBytes(name)),
+      loadSound: (url) => Promise.resolve(fileBytes(url)),
       document,
       window,
     });

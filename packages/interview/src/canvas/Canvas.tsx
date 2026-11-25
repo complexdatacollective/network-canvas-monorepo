@@ -161,7 +161,7 @@ export default function Canvas({
     id: 'sociogram-canvas',
     accepts: ['UNPOSITIONED_NODE'],
     announcedName: 'Placement area',
-    dropFeedback: 'drop-node' satisfies DropSound,
+    dropFeedback: 'toggle-on' satisfies DropSound,
     onDrop: handleDrop,
     focusBehaviorOnDrop: 'follow-item',
     disabled,

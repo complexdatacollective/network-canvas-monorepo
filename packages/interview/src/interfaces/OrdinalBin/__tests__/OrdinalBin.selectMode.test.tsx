@@ -342,7 +342,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(2));
     await announcement('Ben');
 
-    expect(sounds.play.mock.calls).toEqual([['drop-node']]);
+    expect(sounds.play.mock.calls).toEqual([['toggle-on']]);
   });
 
   it('places the focal person in the tapped bin and moves on to the next', async () => {
@@ -427,7 +427,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     );
     // The drop is heard as it lands, through the bin's drop sound, and the
     // placement it saves adds no second sound.
-    expect(sounds.play.mock.calls).toEqual([['drop-node']]);
+    expect(sounds.play.mock.calls).toEqual([['toggle-on']]);
   });
 
   it('makes no sound for a drop whose placement is refused', async () => {

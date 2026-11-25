@@ -167,7 +167,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     // sound, once the drop resolves that the placement was saved, and a
     // selection here. The answer behind it is an ordinary update, which makes
     // no sound of its own.
-    if (select) playSound('drop-node');
+    if (select) playSound('toggle-on');
     if (previousIndex === -1) {
       track('node_binned', {
         node_id: nodeId,
@@ -317,7 +317,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
             }
           : {
               onDrop: handleDrop,
-              dropSound: 'drop-node' as const,
+              dropSound: 'toggle-on' as const,
               accepts: ['NODE'],
             })}
       />

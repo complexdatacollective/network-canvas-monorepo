@@ -12,13 +12,11 @@ import Shell from '../Shell';
 import {
   FakeAudioContext,
   settle,
+  fileNameOf,
+  SOUND_FILE_NAMES,
   soundBytes,
   soundOf,
 } from '../sounds/__tests__/fakeAudioContext';
-import {
-  INTERACTION_SOUND_FILES,
-  type InteractionSoundName,
-} from '../sounds/interactionSoundFiles';
 import { deleteEdge, deleteNode } from '../store/modules/session';
 import { testId, testTypeId } from './testIds';
 
@@ -101,16 +99,12 @@ const payload = {
   },
 } satisfies InterviewPayload;
 
-const SOUND_NAMES = Object.keys(INTERACTION_SOUND_FILES).toSorted();
-const isSoundName = (name: string): name is InteractionSoundName =>
-  SOUND_NAMES.includes(name);
-
 const contexts: FakeAudioContext[] = [];
-// Serves each sound's file by the name in its URL.
+// Serves each sound file by the name in its URL.
 const fetchSound = vi.fn((url: string) => {
-  const name = /\/([^/]+)\.mp3$/.exec(url)?.[1] ?? '';
+  const name = fileNameOf(url);
   return Promise.resolve(
-    isSoundName(name)
+    SOUND_FILE_NAMES.includes(name)
       ? new Response(soundBytes(name))
       : new Response(null, { status: 404 }),
   );
@@ -187,7 +181,7 @@ describe('Shell interaction sounds', () => {
       a.localeCompare(b),
     );
     expect(calls).toEqual(
-      SOUND_NAMES.map((name) => [
+      SOUND_FILE_NAMES.map((name) => [
         expect.stringMatching(new RegExp(`/${name}\\.mp3$`)),
       ]),
     );

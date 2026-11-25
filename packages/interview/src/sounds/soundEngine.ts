@@ -108,8 +108,8 @@ export type AudioContextLike = {
 
 type EngineEnvironment = {
   createAudioContext: () => AudioContextLike;
-  /** Resolves with one sound file's bytes. */
-  loadSound: (name: InteractionSoundName) => Promise<ArrayBuffer>;
+  /** Resolves with the bytes of the sound file at `url`. */
+  loadSound: (url: string) => Promise<ArrayBuffer>;
   /** Milliseconds; only differences are used. */
   now: () => number;
   /** In [0, 1). */
@@ -130,7 +130,8 @@ type EngineEnvironment = {
 export const MASTER_GAIN = 0.5;
 
 /**
- * The most a varied sound's playback rate moves either way: ±1.5% is about a
+ * The most a varied sound's playback rate moves either way, as a fraction of
+ * the sound's own rate (see `INTERACTION_SOUND_FILES`): ±1.5% is about a
  * quarter of a semitone, enough that a sound repeated in quick succession
  * does not sound mechanical, too little to be heard as a change of pitch.
  */
@@ -145,6 +146,7 @@ const VARIED_SOUNDS: ReadonlySet<OneShotSoundName> = new Set<OneShotSoundName>([
   'create-edge',
   'drop-node',
   'tap-button',
+  'pick-up',
 ]);
 
 /**
@@ -161,6 +163,7 @@ export const MIN_INTERVAL_MS: Readonly<Record<OneShotSoundName, number>> = {
   'create-edge': 150,
   'drop-node': 150,
   'tap-button': 100,
+  'pick-up': 100,
   'error': 400,
   // Longer than the sound itself, so a remounted finish stage does not play
   // it again over itself.
@@ -170,7 +173,7 @@ export const MIN_INTERVAL_MS: Readonly<Record<OneShotSoundName, number>> = {
 /**
  * Which sound wins when one action asks for several, most important first.
  * Removing a person removes their connections, and only the removal of the
- * person is heard. Every sound a drop can make outranks `tap-button`, the
+ * person is heard. Every sound a drop can make outranks `pick-up`, the
  * sound of picking an item up, so a drop that follows a pick-up within the
  * burst window is still heard.
  */
@@ -183,6 +186,7 @@ const PRIORITY: readonly OneShotSoundName[] = [
   'create-edge',
   'toggle-on',
   'toggle-off',
+  'pick-up',
   'tap-button',
 ];
 
@@ -200,16 +204,29 @@ const isMoreImportant = (a: OneShotSoundName, b: OneShotSoundName) =>
 const isSoundName = (key: string): key is InteractionSoundName =>
   Object.hasOwn(INTERACTION_SOUND_FILES, key);
 
-const SOUND_NAMES: readonly InteractionSoundName[] = Object.keys(
-  INTERACTION_SOUND_FILES,
-).filter(isSoundName);
+/** The URL of the file a sound plays. */
+const fileOf = (name: InteractionSoundName): string =>
+  INTERACTION_SOUND_FILES[name].url;
 
-async function fetchSound(name: InteractionSoundName): Promise<ArrayBuffer> {
+/** The rate a sound plays its file at, before any variation. */
+const baseRateOf = (name: InteractionSoundName): number => {
+  const sound = INTERACTION_SOUND_FILES[name];
+  return 'rate' in sound ? sound.rate : 1;
+};
+
+/** Every sound file, once each, though more than one sound may play it. */
+const SOUND_FILES: readonly string[] = [
+  ...new Set(
+    Object.keys(INTERACTION_SOUND_FILES).filter(isSoundName).map(fileOf),
+  ),
+];
+
+async function fetchSound(url: string): Promise<ArrayBuffer> {
   // A plain request for exactly the emitted URL, so that a service worker
   // that precached the file answers it while offline.
-  const response = await fetch(INTERACTION_SOUND_FILES[name].url);
+  const response = await fetch(url);
   if (!response.ok)
-    throw new Error(`Sound request failed (${name}): ${response.status}`);
+    throw new Error(`Sound request failed (${url}): ${response.status}`);
   return response.arrayBuffer();
 }
 
@@ -249,9 +266,9 @@ type WantedLoop = { name: LoopingSoundName; source: SourceNodeLike | null };
  * A small Web Audio player for the interview's interaction sounds.
  *
  * Nothing is fetched, decoded or created while sound is off. Turning it on
- * creates one audio context and loads every sound's file once, all at the
- * same time; each sound then plays from its own decoded buffer without
- * delay. A browser keeps a page's audio context suspended until the person
+ * creates one audio context and loads every sound file once, all at the
+ * same time, a file that two sounds play included; each sound then plays
+ * its file's decoded buffer, at its own rate, without delay. A browser keeps a page's audio context suspended until the person
  * interacts with the page, so the engine resumes it on the first pointer or
  * key press. A sound that plays once and cannot play at the moment it is
  * asked for (sound off, its file not loaded, context not yet running, page
@@ -274,9 +291,10 @@ type WantedLoop = { name: LoopingSoundName; source: SourceNodeLike | null };
  * changes in the network is heard as the drop's sound and nothing else, and
  * plays that sound only for a drop the target takes.
  *
- * Each file loads on its own, and a sound plays once its own file is
- * decoded: one request that fails (a dropped connection, say) silences only
- * that sound, and trying again fetches only the files that failed. A failed
+ * Each file loads on its own, and a sound plays once its file is decoded:
+ * one request that fails (a dropped connection, say) silences only the
+ * sounds that play that file, and trying again fetches only the files that
+ * failed. A failed
  * file is silent. It is tried again once on the next turn on, or on the
  * first gesture after the device comes back online, never in a loop.
  */
@@ -288,9 +306,10 @@ export function createSoundEngine(
   let enabled = false;
   let context: AudioContextLike | null = null;
   let master: GainNodeLike | null = null;
-  const buffers = new Map<InteractionSoundName, object>();
-  const loadStates = new Map<InteractionSoundName, LoadState>(
-    SOUND_NAMES.map((name) => [name, 'idle']),
+  // Each keyed by a sound file's URL.
+  const buffers = new Map<string, object>();
+  const loadStates = new Map<string, LoadState>(
+    SOUND_FILES.map((url) => [url, 'idle']),
   );
   let retryArmed = false;
   // The context was suspended because the page was hidden, and is resumed
@@ -310,10 +329,10 @@ export function createSoundEngine(
   const isHidden = () => env.document?.visibilityState === 'hidden';
 
   const anyFailed = () =>
-    SOUND_NAMES.some((name) => loadStates.get(name) === 'failed');
+    SOUND_FILES.some((url) => loadStates.get(url) === 'failed');
 
-  const loadAndDecode = async (name: InteractionSoundName) => {
-    const bytes = await env.loadSound(name);
+  const loadAndDecode = async (url: string) => {
+    const bytes = await env.loadSound(url);
     // Decoded by whichever context is open once the bytes arrive: a decoded
     // buffer can be played by any context.
     if (!context) throw new Error('The audio context was closed');
@@ -323,19 +342,19 @@ export function createSoundEngine(
   // Loads every file that has not loaded and is not loading.
   const load = () => {
     retryArmed = false;
-    for (const name of SOUND_NAMES) {
-      const state = loadStates.get(name);
+    for (const url of SOUND_FILES) {
+      const state = loadStates.get(url);
       if (state === 'loading' || state === 'loaded') continue;
-      loadStates.set(name, 'loading');
-      loadAndDecode(name).then(
+      loadStates.set(url, 'loading');
+      loadAndDecode(url).then(
         (decoded) => {
-          buffers.set(name, decoded);
-          loadStates.set(name, 'loaded');
+          buffers.set(url, decoded);
+          loadStates.set(url, 'loaded');
           startWantedLoops();
           return undefined;
         },
         () => {
-          loadStates.set(name, 'failed');
+          loadStates.set(url, 'failed');
         },
       );
     }
@@ -414,18 +433,19 @@ export function createSoundEngine(
   const ready = (): boolean =>
     enabled && master !== null && context?.state === 'running' && !isHidden();
 
-  // Starts a sound from the beginning of its own buffer, if it is loaded.
+  // Starts a sound from the beginning of its file's buffer, if that is
+  // loaded, at its own rate times `variation`.
   const startSource = (
     name: InteractionSoundName,
-    rate: number,
+    variation: number,
     loop: boolean,
   ) => {
-    const buffer = buffers.get(name);
+    const buffer = buffers.get(fileOf(name));
     if (!context || !master || !buffer) return null;
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.loop = loop;
-    source.playbackRate.value = rate;
+    source.playbackRate.value = baseRateOf(name) * variation;
     source.connect(master);
     source.start(0);
     return source;
@@ -463,10 +483,10 @@ export function createSoundEngine(
       return;
     }
 
-    const rate = VARIED_SOUNDS.has(name)
+    const variation = VARIED_SOUNDS.has(name)
       ? 1 + (env.random() * 2 - 1) * PITCH_VARIATION
       : 1;
-    const source = startSource(name, rate, false);
+    const source = startSource(name, variation, false);
     if (!source) return;
     source.addEventListener(
       'ended',

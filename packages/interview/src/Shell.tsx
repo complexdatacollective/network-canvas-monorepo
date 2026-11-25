@@ -683,8 +683,8 @@ type ShellProps = {
    * waiting to be connected to another, when they choose or clear an answer
    * option, when Back, Next or the list of screens moves the interview (not
    * when the move is refused), when a form cannot be submitted, and when the
-   * interview reaches its end. One action makes one sound. Off by default. The sound files (ten MP3 files, about
-   * 160 KB in total) are downloaded the first time this is turned on, and
+   * interview reaches its end. One action makes one sound. Off by default. The sound files (nine MP3 files, about
+   * 150 KB in total) are downloaded the first time this is turned on, and
    * never while it is off; turning it off stops any sound that is playing.
    * A browser lets a page play sound only once the participant has
    * interacted with it, so no sound plays before their first tap, click or

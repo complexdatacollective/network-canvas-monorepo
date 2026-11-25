@@ -179,7 +179,7 @@ export function useCanvasDrag({
           // Released on the canvas, the node is dropped there. A cancelled
           // drag stays where it was last moved to, but nobody dropped it.
           if (cancelled) void settle();
-          else dragFeedback.onDrop('drop-node' satisfies DropSound, settle);
+          else dragFeedback.onDrop('toggle-on' satisfies DropSound, settle);
         }
       }
 

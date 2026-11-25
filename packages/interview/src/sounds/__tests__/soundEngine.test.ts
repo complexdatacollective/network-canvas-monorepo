@@ -1,9 +1,8 @@
+import { readdirSync } from 'node:fs';
+import path from 'node:path';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  INTERACTION_SOUND_FILES,
-  type InteractionSoundName,
-} from '../interactionSoundFiles';
 import {
   BURST_WINDOW_MS,
   createSoundEngine,
@@ -13,17 +12,25 @@ import {
 } from '../soundEngine';
 import {
   FakeAudioContext,
+  fileBytes,
+  fileNameOf,
   settle,
-  soundBytes,
+  SOUND_FILE_NAMES,
   soundOf,
 } from './fakeAudioContext';
 
-type LoadSound = (name: InteractionSoundName) => Promise<ArrayBuffer>;
+type LoadSound = (url: string) => Promise<ArrayBuffer>;
 
-const ALL_SOUNDS = Object.keys(INTERACTION_SOUND_FILES).toSorted();
+/** The name of every file in the sound folder. */
+const ASSET_FILE_NAMES = readdirSync(
+  path.join(import.meta.dirname, '..', 'assets'),
+)
+  .filter((file) => file.endsWith('.mp3'))
+  .map((file) => file.slice(0, -'.mp3'.length))
+  .toSorted();
 
 function setup({
-  loadSound = (name) => Promise.resolve(soundBytes(name)),
+  loadSound = (url) => Promise.resolve(fileBytes(url)),
 }: { loadSound?: LoadSound } = {}) {
   const contexts: FakeAudioContext[] = [];
   const load = vi.fn(loadSound);
@@ -63,17 +70,17 @@ function setup({
 
 /** The names of the sound files that were requested, in order. */
 const requested = (harness: ReturnType<typeof setup>) =>
-  harness.load.mock.calls.map(([name]) => name);
+  harness.load.mock.calls.map(([url]) => fileNameOf(url));
 
 /** A loader whose files arrive only when the test says so. */
 function deferredLoads() {
-  const waiting = new Map<InteractionSoundName, () => void>();
-  const loadSound: LoadSound = (name) =>
+  const waiting = new Map<string, () => void>();
+  const loadSound: LoadSound = (url) =>
     new Promise((resolve) => {
-      waiting.set(name, () => resolve(soundBytes(name)));
+      waiting.set(fileNameOf(url), () => resolve(fileBytes(url)));
     });
-  const arrive = (...names: InteractionSoundName[]) => {
-    for (const name of names) waiting.get(name)?.();
+  const arrive = (...fileNames: string[]) => {
+    for (const name of fileNames) waiting.get(name)?.();
   };
   return {
     loadSound,
@@ -123,18 +130,52 @@ describe('sound engine turned on', () => {
   it('creates one context and loads each sound file once', async () => {
     const harness = tracked(setup());
     harness.engine.setEnabled(true);
-    // Every file is asked for at once, not one after another.
-    expect(requested(harness).toSorted()).toEqual(ALL_SOUNDS);
+    // Every file in the sound folder is asked for at once, not one after
+    // another, and a file that two sounds play only once.
+    expect(ASSET_FILE_NAMES).toHaveLength(9);
+    expect(requested(harness).toSorted()).toEqual(ASSET_FILE_NAMES);
     await settle();
     harness.engine.setEnabled(false);
     harness.engine.setEnabled(true);
     await settle();
     expect(harness.createAudioContext).toHaveBeenCalledTimes(1);
-    expect(requested(harness).toSorted()).toEqual(ALL_SOUNDS);
+    expect(requested(harness).toSorted()).toEqual(ASSET_FILE_NAMES);
     expect(harness.context().decodeAudioData).toHaveBeenCalledTimes(
-      ALL_SOUNDS.length,
+      ASSET_FILE_NAMES.length,
     );
     expect(harness.context().master.gain.value).toBe(MASTER_GAIN);
+  });
+
+  it('plays the one decoded buffer of a file that two sounds play', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    for (const sound of [
+      'pick-up',
+      'tap-button',
+      'create-node',
+      'create-edge',
+    ] as const) {
+      harness.advance(1000);
+      harness.engine.play(sound);
+      await settle();
+    }
+    const [pickUp, tapButton, createNode, createEdge] =
+      harness.context().played;
+    expect(harness.context().played.map(soundOf)).toEqual([
+      'pick-up',
+      'tap-button',
+      'create-node',
+      'create-edge',
+    ]);
+    expect(pickUp?.buffer).toBe(tapButton?.buffer);
+    expect(createNode?.buffer).toBe(createEdge?.buffer);
+    expect(requested(harness).filter((name) => name === 'tap-button')).toEqual([
+      'tap-button',
+    ]);
+    expect(requested(harness).filter((name) => name === 'create-edge')).toEqual(
+      ['create-edge'],
+    );
+    expect(requested(harness)).not.toContain('create-node');
   });
 
   it('plays a sound from the start of its own file, once', async () => {
@@ -302,18 +343,42 @@ describe('sound engine drags', () => {
     harness.engine.play('create-node');
     await settle();
     harness.advance(BURST_WINDOW_MS - 1);
-    harness.engine.play('tap-button', { standalone: true });
+    harness.engine.play('pick-up', { standalone: true });
     await settle();
     expect(harness.context().played.map(soundOf)).toEqual([
       'create-node',
-      'tap-button',
+      'pick-up',
+    ]);
+  });
+
+  it('plays a canvas or ordinal bin drop just after the pick-up, and only the drop when both are asked for in one task', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.play('pick-up', { standalone: true });
+    await settle();
+    harness.advance(1);
+    harness.engine.drop('toggle-on', () => undefined);
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual([
+      'pick-up',
+      'toggle-on',
+    ]);
+
+    harness.advance(1000);
+    harness.engine.play('pick-up', { standalone: true });
+    harness.engine.drop('toggle-on', () => undefined);
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual([
+      'pick-up',
+      'toggle-on',
+      'toggle-on',
     ]);
   });
 
   it('plays a drop just after the pick-up, and a drop sound within the burst window of an earlier, more important sound', async () => {
     const harness = tracked(setup());
     await ready(harness);
-    harness.engine.play('tap-button', { standalone: true });
+    harness.engine.play('pick-up', { standalone: true });
     await settle();
     harness.advance(1);
     harness.engine.drop('toggle-off', () => undefined);
@@ -326,7 +391,7 @@ describe('sound engine drags', () => {
     harness.engine.drop('drop-node', () => undefined);
     await settle();
     expect(harness.context().played.map(soundOf)).toEqual([
-      'tap-button',
+      'pick-up',
       'toggle-off',
       'discard',
       'drop-node',
@@ -420,6 +485,36 @@ describe('sound engine pitch', () => {
     expect(PITCH_VARIATION).toBe(0.015);
     expect(rates[0]).toBeCloseTo(0.985, 6);
     expect(rates[1]).toBeCloseTo(1.015, 4);
+  });
+
+  it('plays pick-up a fifth above tap-button, and create-node a fourth below create-edge, each varied around its own rate', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    const sounds = [
+      'pick-up',
+      'tap-button',
+      'create-node',
+      'create-edge',
+    ] as const;
+    for (const random of [0, 0.999_999]) {
+      harness.setRandom(random);
+      for (const sound of sounds) {
+        harness.advance(1000);
+        harness.engine.play(sound);
+        await settle();
+      }
+    }
+    const rates = harness
+      .context()
+      .played.map((source) => source.playbackRate.value);
+    expect(rates).toHaveLength(8);
+    const [low, high] = [1 - PITCH_VARIATION, 1 + PITCH_VARIATION];
+    [1.5 * low, low, 0.75 * low, low].forEach((rate, index) => {
+      expect(rates[index]).toBeCloseTo(rate, 6);
+    });
+    [1.5 * high, high, 0.75 * high, high].forEach((rate, index) => {
+      expect(rates[index + 4]).toBeCloseTo(rate, 4);
+    });
   });
 
   it('does not vary the error or finish sounds', async () => {
@@ -526,7 +621,7 @@ describe('sound engine looping sound that is still wanted', () => {
     expect(harness.context().played).toHaveLength(0);
 
     // The other files do not start it.
-    loads.arrive('create-node', 'discard', 'finish-interview');
+    loads.arrive('create-edge', 'discard', 'finish-interview');
     await settle();
     expect(harness.context().played).toHaveLength(0);
 
@@ -640,7 +735,7 @@ describe('sound engine after dispose', () => {
     harness.engine.play('drop-node');
     await settle();
     expect(harness.contexts).toHaveLength(2);
-    expect(harness.load).toHaveBeenCalledTimes(ALL_SOUNDS.length);
+    expect(harness.load).toHaveBeenCalledTimes(ASSET_FILE_NAMES.length);
     expect(harness.context().played).toHaveLength(1);
   });
 
@@ -656,14 +751,17 @@ describe('sound engine after dispose', () => {
 
 describe('sound engine when sound files fail to load', () => {
   // The first request for each of `names` fails; every other succeeds.
-  const failingOnce = (names: readonly string[] = ALL_SOUNDS): LoadSound => {
+  const failingOnce = (
+    fileNames: readonly string[] = SOUND_FILE_NAMES,
+  ): LoadSound => {
     const failed = new Set<string>();
-    return (name) => {
-      if (names.includes(name) && !failed.has(name)) {
+    return (url) => {
+      const name = fileNameOf(url);
+      if (fileNames.includes(name) && !failed.has(name)) {
         failed.add(name);
         return Promise.reject(new Error('offline'));
       }
-      return Promise.resolve(soundBytes(name));
+      return Promise.resolve(fileBytes(url));
     };
   };
 
@@ -674,7 +772,7 @@ describe('sound engine when sound files fail to load', () => {
     document.dispatchEvent(new Event('pointerdown'));
     await settle();
     expect(harness.context().played).toHaveLength(0);
-    expect(harness.load).toHaveBeenCalledTimes(ALL_SOUNDS.length);
+    expect(harness.load).toHaveBeenCalledTimes(ASSET_FILE_NAMES.length);
   });
 
   it('tries again when sound is next turned on', async () => {
@@ -686,12 +784,13 @@ describe('sound engine when sound files fail to load', () => {
     harness.context().state = 'running';
     harness.engine.play('create-node');
     await settle();
-    expect(harness.load).toHaveBeenCalledTimes(2 * ALL_SOUNDS.length);
+    expect(harness.load).toHaveBeenCalledTimes(2 * ASSET_FILE_NAMES.length);
     expect(harness.context().played.map(soundOf)).toEqual(['create-node']);
   });
 
   it('plays the sounds whose files loaded, and tries again only the files that failed', async () => {
-    const harness = tracked(setup({ loadSound: failingOnce(['create-node']) }));
+    // The file create-node plays.
+    const harness = tracked(setup({ loadSound: failingOnce(['create-edge']) }));
     await ready(harness);
     harness.engine.play('create-node');
     await settle();
@@ -703,8 +802,8 @@ describe('sound engine when sound files fail to load', () => {
     harness.engine.setEnabled(false);
     harness.engine.setEnabled(true);
     await settle();
-    expect(requested(harness).slice(ALL_SOUNDS.length)).toEqual([
-      'create-node',
+    expect(requested(harness).slice(ASSET_FILE_NAMES.length)).toEqual([
+      'create-edge',
     ]);
     harness.advance(1000);
     harness.engine.play('create-node');
@@ -721,11 +820,11 @@ describe('sound engine when sound files fail to load', () => {
     );
     await ready(harness);
     window.dispatchEvent(new Event('online'));
-    expect(harness.load).toHaveBeenCalledTimes(ALL_SOUNDS.length);
+    expect(harness.load).toHaveBeenCalledTimes(ASSET_FILE_NAMES.length);
     document.dispatchEvent(new Event('pointerdown'));
     await settle();
     document.dispatchEvent(new Event('pointerdown'));
     await settle();
-    expect(harness.load).toHaveBeenCalledTimes(2 * ALL_SOUNDS.length);
+    expect(harness.load).toHaveBeenCalledTimes(2 * ASSET_FILE_NAMES.length);
   });
 });
