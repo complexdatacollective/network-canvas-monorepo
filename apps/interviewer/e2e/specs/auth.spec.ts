@@ -127,8 +127,7 @@ test.describe('vault lifecycle', () => {
     await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
     await interviewNav.waitForStage();
 
-    // Exit through the in-interview settings menu.
-    await page.getByTestId('settings-button').click();
+    // Exit through the interview navigation.
     await page.getByTestId('exit-button').click();
     const exitDialog = page.getByRole('dialog', {
       name: 'Exit interview',

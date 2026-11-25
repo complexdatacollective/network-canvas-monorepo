@@ -349,12 +349,11 @@ describe('Shell interview languages', () => {
       }),
     ).toBeVisible();
     // The interview's own message shows, not the host's override of it.
-    await userEvent.click(
-      within(region).getByRole('button', { name: 'Settings' }),
-    );
-    const exit = await screen.findByTestId('exit-button');
-    expect(exit).not.toHaveTextContent('Wrong host message');
-    expect(exit).toHaveTextContent('Salir de la entrevista');
+    await userEvent.click(within(region).getByTestId('exit-button'));
+    const confirmation = await screen.findByRole('dialog', {
+      name: 'Salir de la entrevista',
+    });
+    expect(confirmation).not.toHaveTextContent('Wrong host message');
   });
 
   it('applies a stated preference at once without writing to the host', async () => {
@@ -486,7 +485,7 @@ describe('Shell interview languages', () => {
     expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
   });
 
-  it('has no language control in the settings menu', async () => {
+  it('has no language control in the text size popover', async () => {
     render(
       <Shell
         {...handlers}
@@ -498,16 +497,16 @@ describe('Shell interview languages', () => {
       />,
     );
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Settings' }));
-    const settings = await screen.findByRole('dialog', {
-      name: 'Interview settings',
-    });
+    await user.click(await screen.findByRole('button', { name: 'Text size' }));
+    const textSize = await screen.findByRole('dialog', { name: 'Text size' });
     expect(
-      within(settings).getByRole('button', { name: 'Exit interview' }),
+      within(textSize).getByRole('spinbutton', {
+        name: 'Text size percentage',
+      }),
     ).toBeVisible();
     // The language is changed from its own control in the navigation.
-    expect(within(settings).queryByRole('combobox')).not.toBeInTheDocument();
-    expect(within(settings).queryByText(/language/i)).not.toBeInTheDocument();
+    expect(within(textSize).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(within(textSize).queryByText(/language/i)).not.toBeInTheDocument();
   });
 
   it('updates an already-open confirmation while retaining its action and cancel behavior', async () => {
@@ -522,10 +521,7 @@ describe('Shell interview languages', () => {
       />,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
-    await user.click(
-      await screen.findByRole('button', { name: 'Exit interview' }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Exit interview' }));
     const dialog = await screen.findByRole('dialog', {
       name: 'Exit interview',
     });

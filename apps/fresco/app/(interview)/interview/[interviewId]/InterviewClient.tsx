@@ -156,7 +156,6 @@ export default function InterviewClient({
       posthogClient={posthog}
       disableAnalytics={disableAnalytics}
       openFinishedAsActive={view === 'editable-finished'}
-      allowUserScaling
     />
   );
 }

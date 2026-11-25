@@ -195,23 +195,22 @@ export const HorizontalStageNavigation: Story = {
   },
 };
 
-const openSettingsPopover = async (canvasElement: HTMLElement) => {
+const openTextSizePopover = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
-  const settingsButton = await canvas.findByRole('button', {
-    name: /settings/i,
+  const textSizeButton = await canvas.findByRole('button', {
+    name: 'Text size',
   });
-  await userEvent.click(settingsButton);
+  await userEvent.click(textSizeButton);
 
-  return canvas.findByRole('dialog', { name: /interview settings/i });
+  return canvas.findByRole('dialog', { name: 'Text size' });
 };
 
 const exitAndAssertConfirmation = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
 
-  const popover = await openSettingsPopover(canvasElement);
   await userEvent.click(
-    within(popover).getByRole('button', { name: /exit interview/i }),
+    await canvas.findByRole('button', { name: 'Exit interview' }),
   );
 
   const dialog = await canvas.findByRole('dialog', {
@@ -287,10 +286,7 @@ export const ReviewMode: Story = {
       await canvas.findByRole('button', { name: /next step/i }),
     ).toBeDisabled();
 
-    const popover = await openSettingsPopover(canvasElement);
-    await userEvent.click(
-      within(popover).getByRole('button', { name: /exit review/i }),
-    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Exit review' }));
 
     const dialog = await canvas.findByRole('dialog', {
       name: /exit this review/i,
@@ -351,6 +347,7 @@ const chooseInterviewLanguage = async (canvasElement: HTMLElement) => {
  * With more than one language in the protocol, a globe in the bar changes the
  * interview language from any screen, as a Language Chooser stage does. It is
  * not shown on a Language Chooser stage, nor for a protocol in one language.
+ * Interviewer's default bar: exit, text size, language, then the steps.
  */
 export const InterviewLanguage: Story = {
   name: 'Interview language (vertical rail)',
@@ -360,6 +357,7 @@ export const InterviewLanguage: Story = {
       <StoryInterviewShell
         rawPayload={getSeveralLanguagesPayload()}
         navigationOrientation="vertical"
+        allowUserScaling
         onExit={() => {
           console.log('Exited the interview.');
         }}
@@ -379,6 +377,7 @@ export const HorizontalInterviewLanguage: Story = {
       <StoryInterviewShell
         rawPayload={getSeveralLanguagesPayload()}
         navigationOrientation="horizontal"
+        allowUserScaling
         onExit={() => {
           console.log('Exited the interview.');
         }}
@@ -391,7 +390,7 @@ export const HorizontalInterviewLanguage: Story = {
 };
 
 export const TextSize: Story = {
-  name: 'Text size (settings popover)',
+  name: 'Text size',
   render: ({ stageCount }) => (
     <div className="flex h-dvh w-full">
       <StoryInterviewShell
@@ -405,7 +404,7 @@ export const TextSize: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const popover = await openSettingsPopover(canvasElement);
+    const popover = await openTextSizePopover(canvasElement);
     const group = within(popover).getByRole('group', { name: /text size/i });
     const decrease = within(group).getByRole('button', {
       name: /decrease text size/i,
@@ -426,21 +425,14 @@ export const TextSize: Story = {
     await expect(decrease).toBeEnabled();
     await expect(increase).toBeEnabled();
 
-    // Text size is the first setting, so opening the popover focuses its
-    // native number field (the steppers are out of the tab order), and Tab
-    // moves on to the exit action. Arrow-key stepping then proves scaling
-    // works without a pointer.
+    // Opening the popover focuses its native number field (the steppers are
+    // out of the tab order). Arrow-key stepping then proves scaling works
+    // without a pointer.
     //
     // Waited for rather than read once: the popover moves focus itself, a
     // frame or more after it opens, and until it does focus is still on the
     // trigger.
     await waitFor(() => expect(input).toHaveFocus());
-    await userEvent.tab();
-    await expect(
-      within(popover).getByRole('button', { name: /exit interview/i }),
-    ).toHaveFocus();
-    await userEvent.tab({ shift: true });
-    await expect(input).toHaveFocus();
     await userEvent.keyboard('{ArrowUp}{ArrowUp}');
     await expect(input).toHaveValue(120);
     await expect(currentSize).toHaveTextContent('120%');
@@ -502,15 +494,15 @@ export const TextSize: Story = {
     const canvas = within(canvasElement);
     await waitFor(() =>
       expect(
-        canvas.queryByRole('dialog', { name: /interview settings/i }),
+        canvas.queryByRole('dialog', { name: 'Text size' }),
       ).not.toBeInTheDocument(),
     );
-    const settingsButton = canvas.getByRole('button', { name: /settings/i });
-    await waitFor(() => expect(settingsButton).toHaveFocus());
+    const textSizeButton = canvas.getByRole('button', { name: 'Text size' });
+    await waitFor(() => expect(textSizeButton).toHaveFocus());
 
     // Reopen so the visual snapshot captures the control with the enlarged
     // scale applied and 120% displayed.
-    await openSettingsPopover(canvasElement);
+    await openTextSizePopover(canvasElement);
   },
 };
 
@@ -584,7 +576,9 @@ const expectBarFits = async (navigation: HTMLElement) => {
   const nav = within(navigation);
   const navRect = await settledRect(navigation);
   const buttons = [
-    nav.getByRole('button', { name: /settings/i }),
+    ...nav.queryAllByRole('button', {
+      name: /^(Exit interview|Exit review|Text size)$/,
+    }),
     ...nav.queryAllByRole('button', { name: 'Passphrase' }),
     nav.getByRole('button', { name: /previous step/i }),
     nav.getByRole('button', { name: /next step/i }),
@@ -619,13 +613,13 @@ const expectBarFitsAtEveryTextSize = async (
   navigation: HTMLElement,
 ) => {
   const nav = within(navigation);
-  const settings = nav.getByRole('button', { name: /settings/i });
+  const textSize = nav.getByRole('button', { name: 'Text size' });
   // Keyboard throughout, so the tooltip later opens on focus as it does for a
   // keyboard user.
-  settings.focus();
+  textSize.focus();
   await userEvent.keyboard('{Enter}');
   const popover = await within(canvasElement).findByRole('dialog', {
-    name: /interview settings/i,
+    name: 'Text size',
   });
   const input = within(popover).getByRole('spinbutton', {
     name: /text size percentage/i,
@@ -810,7 +804,7 @@ export const HorizontalPassphrasePrompt: Story = {
   },
 };
 
-export const SettingsMenuScalingOnly: Story = {
+export const TextSizeWithoutExit: Story = {
   name: 'Text size without exit handler',
   render: ({ stageCount }) => (
     <div className="flex h-dvh w-full">
@@ -822,15 +816,44 @@ export const SettingsMenuScalingOnly: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    const popover = await openSettingsPopover(canvasElement);
-
-    // Without an exit handler the popover holds only the text-size control.
-    await expect(
-      within(popover).queryByRole('button', { name: /exit/i }),
-    ).not.toBeInTheDocument();
+    const popover = await openTextSizePopover(canvasElement);
     await expect(
       within(popover).getByRole('group', { name: /text size/i }),
     ).toBeInTheDocument();
+
+    // Without an exit handler there is no exit button.
+    const nav = within(await within(canvasElement).findByRole('navigation'));
+    await expect(
+      nav.queryByRole('button', { name: /exit/i }),
+    ).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * A host that leaves text size to the browser, as Fresco does, shows only the
+ * exit button.
+ */
+export const ExitWithoutTextSize: Story = {
+  name: 'Exit without text size',
+  render: ({ stageCount }) => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getRawPayload(stageCount)}
+        navigationOrientation="vertical"
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const nav = within(await within(canvasElement).findByRole('navigation'));
+    const exit = await nav.findByRole('button', { name: 'Exit interview' });
+    // The bar's controls fade in.
+    await waitFor(() => expect(exit).toBeVisible());
+    await expect(
+      nav.queryByRole('button', { name: 'Text size' }),
+    ).not.toBeInTheDocument();
   },
 };
 

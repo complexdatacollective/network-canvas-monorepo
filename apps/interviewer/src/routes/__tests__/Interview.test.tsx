@@ -172,6 +172,8 @@ vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
 
 type CapturedShellProps = {
   currentStep: number;
+  allowUserScaling?: boolean;
+  initialTextScale?: number;
   disableAnalytics: boolean;
   posthogClient?: unknown;
   finishConfirmationDescription: ReactNode;
@@ -469,6 +471,27 @@ describe('InterviewRoute enter gate', () => {
     expect(requireFreshUnlockMock).not.toHaveBeenCalled();
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
   });
+
+  it.each([true, false])(
+    'offers participants the text size control only when the device allows it (%s)',
+    async (allowTextSizeChange) => {
+      sessionStorage.setItem('interview-text-scale:s1', '1.2');
+      getSettingsMock.mockResolvedValue({
+        requireUnlockOnEnter: false,
+        allowTextSizeChange,
+      });
+
+      render(<InterviewRoute sessionId="s1" />);
+
+      expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+      expect(lastShellProps().allowUserScaling).toBe(allowTextSizeChange);
+      // A size chosen earlier in the tab applies only while it may be changed.
+      expect(lastShellProps().initialTextScale).toBe(
+        allowTextSizeChange ? 1.2 : undefined,
+      );
+      sessionStorage.removeItem('interview-text-scale:s1');
+    },
+  );
 
   it('hydrates the Shell payload with the canonical persisted network', async () => {
     getSettingsMock.mockResolvedValue({
