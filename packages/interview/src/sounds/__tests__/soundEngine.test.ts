@@ -158,6 +158,20 @@ describe('sound engine turned on', () => {
     expect(harness.context().state).toBe('running');
   });
 
+  // A touch grants user activation only as it lifts, so a resume tried on
+  // pointerdown alone can be refused and must be tried again then.
+  it.each(['pointerup', 'touchend', 'click'])(
+    'resumes a suspended context on %s, when a touch grants activation',
+    async (type) => {
+      const harness = tracked(setup());
+      harness.engine.setEnabled(true);
+      await settle();
+      document.dispatchEvent(new Event(type));
+      expect(harness.context().resume).toHaveBeenCalledTimes(1);
+      expect(harness.context().state).toBe('running');
+    },
+  );
+
   it('drops a sound asked for while the context is suspended instead of playing it later', async () => {
     const harness = tracked(setup());
     harness.engine.setEnabled(true);

@@ -225,6 +225,22 @@ const defaultEnvironment = (): EngineEnvironment => ({
   window: typeof window === 'undefined' ? undefined : window,
 });
 
+/**
+ * The events on which the engine tries to start audio. A browser lets a page
+ * start audio only during a user activation, and which event grants one
+ * depends on the input: a mouse button or a key grants it as it goes down, but
+ * a touch or pen grants it only as it lifts (`pointerup`, `touchend`, then
+ * `click`), so a resume tried on a touch's `pointerdown` can be refused. Trying
+ * on each of them means the first event that does grant activation starts it.
+ */
+const GESTURE_EVENTS = [
+  'pointerdown',
+  'pointerup',
+  'touchend',
+  'click',
+  'keydown',
+] as const;
+
 type LoadState = 'idle' | 'loading' | 'loaded' | 'failed';
 
 type WantedLoop = { name: LoopingSoundName; source: SourceNodeLike | null };
@@ -387,8 +403,9 @@ export function createSoundEngine(
     if (listening === on) return;
     listening = on;
     const method = on ? 'addEventListener' : 'removeEventListener';
-    env.document?.[method]('pointerdown', onGesture, true);
-    env.document?.[method]('keydown', onGesture, true);
+    for (const type of GESTURE_EVENTS) {
+      env.document?.[method](type, onGesture, true);
+    }
     env.document?.[method]('visibilitychange', onVisibilityChange);
     env.window?.[method]('online', onOnline);
   };
