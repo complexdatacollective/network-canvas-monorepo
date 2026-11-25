@@ -23,6 +23,7 @@ import {
 import { cva, cx, type VariantProps } from '../../utils/cva';
 import { isRightToLeft } from '../../utils/horizontalOverflow';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 
 const richSelectGroupOwnVariants = cva({
@@ -258,6 +259,10 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const { onOptionToggle } = useFormFeedback();
+
+  // The person's own choice. Choosing the one option already chosen changes
+  // nothing, so it is not reported as a choice.
   const handleSelect = useCallback(
     (optionValue: string | number) => {
       if (readOnly || !onChange) return;
@@ -269,11 +274,13 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
           ? arr.filter((v) => v !== optionValue)
           : [...arr, optionValue];
         onChange(newValues);
+        onOptionToggle(!isAlreadySelected);
       } else {
         onChange(optionValue);
+        if (optionValue !== value) onOptionToggle(true);
       }
     },
-    [multiple, onChange, readOnly, value],
+    [multiple, onChange, onOptionToggle, readOnly, value],
   );
 
   const handleKeyDown = useCallback(

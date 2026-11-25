@@ -10,7 +10,9 @@ import { useDispatch } from 'react-redux';
 
 import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
 import type { InterviewPayload, SyncHandler } from '../contract/types';
+import type { SoundEngine } from '../sounds/soundEngine';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
+import { createInteractionSoundListenerMiddleware } from './middleware/interactionSoundListener';
 import { createInterviewLogger } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
 import { createWritesInFlightMiddleware } from './middleware/writesInFlight';
@@ -30,6 +32,13 @@ type StoreOptions = {
   isDevelopment?: boolean;
   extraMiddleware?: Middleware[];
   tracker?: Tracker;
+  /**
+   * Plays an interaction sound for a change to the network, and says whether
+   * a drop is being carried out, whose own sound is the only one heard for
+   * what it changes. Called whether or not sounds are on: the player decides,
+   * at the moment of each change.
+   */
+  interactionSounds?: Pick<SoundEngine, 'play' | 'isHandlingDrop'>;
 };
 
 export const store = (
@@ -59,6 +68,12 @@ export const store = (
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
+  const soundMiddleware = options.interactionSounds
+    ? [
+        createInteractionSoundListenerMiddleware(options.interactionSounds)
+          .middleware,
+      ]
+    : [];
   // The protocol, and so which variables are encrypted, never changes during
   // an interview.
   const redaction = createEncryptedValueRedaction(protocolPayload.codebook);
@@ -78,6 +93,7 @@ export const store = (
           writesInFlightMiddleware,
           syncMiddleware,
           analyticsMiddleware,
+          ...soundMiddleware,
           ...(options.extraMiddleware ?? []),
         ),
       // Anyone with the extension could otherwise read an interview's state

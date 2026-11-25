@@ -298,7 +298,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       }
 
       setPairIndex((i) => i + 1);
-      return false;
+      return 'MOVED_WITHIN_STAGE';
     }
 
     if (direction === 'backwards') {
@@ -306,7 +306,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 
       if (pairIndex > 0) {
         setPairIndex((i) => i - 1);
-        return false;
+        return 'MOVED_WITHIN_STAGE';
       }
 
       // pairIndex === 0: step back to the previous prompt's last pair, or

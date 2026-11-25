@@ -306,6 +306,8 @@
   "interviewer.settingsDialog.offlineStorage": "Offline-Speicher",
   "interviewer.settingsDialog.persisted": "Dauerhaft",
   "interviewer.settingsDialog.pixels": "Pixel",
+  "interviewer.settingsDialog.playSoundsDuringInterviews": "Töne während Interviews abspielen",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "Spielt kurze Töne ab, wenn die Teilnehmenden ihr Netzwerk ändern, eine Antwort auswählen, zwischen Abschnitten wechseln oder versuchen, ein Formular mit Fehlern abzusenden, und wenn das Interview endet.",
   "interviewer.settingsDialog.privacy": "Datenschutz",
   "interviewer.settingsDialog.protocol": "Protokoll",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "Zeigt die Karte zur Ein-Klick-Installation des Beispielprotokolls wieder neben der Importkarte an.",

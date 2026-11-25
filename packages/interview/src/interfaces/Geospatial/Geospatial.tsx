@@ -45,7 +45,12 @@ import type { AttributePatch } from '../../store/entityAttributePatch';
 import { updateNode as updateNodeAction } from '../../store/modules/session';
 import type { RootState } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
-import type { Direction, NavigationIntent, StageProps } from '../../types';
+import type {
+  BeforeNextResult,
+  Direction,
+  NavigationIntent,
+  StageProps,
+} from '../../types';
 import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
@@ -409,7 +414,10 @@ export default function GeospatialInterface({
     });
   }, [navState.activeIndex]);
 
-  const beforeNext = (direction: Direction, intent: NavigationIntent) => {
+  const beforeNext = (
+    direction: Direction,
+    intent: NavigationIntent,
+  ): BeforeNextResult => {
     // Leave the stage if there are no nodes
     if (stageNodes.length === 0) {
       return true;
@@ -427,7 +435,7 @@ export default function GeospatialInterface({
       }
 
       previousNode();
-      return false;
+      return 'MOVED_WITHIN_STAGE';
     }
 
     // We are moving forwards.
@@ -435,7 +443,7 @@ export default function GeospatialInterface({
       return true;
     }
     nextNode();
-    return false;
+    return 'MOVED_WITHIN_STAGE';
   };
 
   useBeforeNext(beforeNext);

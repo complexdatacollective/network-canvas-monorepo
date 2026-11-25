@@ -20,6 +20,7 @@ import {
 } from '../../styles/controlVariants';
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import ScaleLabel from './scale/ScaleLabel';
@@ -98,6 +99,10 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   // that press has already chosen an option.
   const pointerPressRef = useRef({ started: false, movedValue: false });
 
+  const { onOptionToggle } = useFormFeedback();
+
+  // Each option the person moves the scale to is chosen, as on a scale of
+  // separate answers: dragging across three options chooses each in turn.
   const handleValueChange = (newValue: number | number[]) => {
     if (readOnly) return;
     const index = Array.isArray(newValue) ? newValue[0] : newValue;
@@ -106,6 +111,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
       if (selectedOption) {
         pointerPressRef.current.movedValue = true;
         onChange?.(selectedOption.value);
+        if (selectedOption.value !== value) onOptionToggle(true);
       }
     }
   };
@@ -119,6 +125,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
     const restingOption = options[sliderValue];
     if (restingOption) {
       onChange?.(restingOption.value);
+      onOptionToggle(true);
     }
   };
 
@@ -145,6 +152,7 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
       const midpointOption = options[midpoint];
       if (midpointOption) {
         onChange?.(midpointOption.value);
+        onOptionToggle(true);
       }
     }
   };

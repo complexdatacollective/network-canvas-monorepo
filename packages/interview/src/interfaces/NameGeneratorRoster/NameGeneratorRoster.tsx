@@ -42,7 +42,10 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { DynamicTextParts } from '../../dynamicValues/DynamicText';
-import { writeFailureMessage } from '../../forms/writeSubmissionResult';
+import {
+  writeFailureMessage,
+  writeSucceeded,
+} from '../../forms/writeSubmissionResult';
 import { useCustomShapeSvgs } from '../../hooks/useCustomShapeSvgs';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -69,12 +72,14 @@ import {
   getStageNodeCount,
   resolveNodeShape,
 } from '../../selectors/session';
+import type { DropSound } from '../../sounds/InteractionSounds';
 import { addNode, deleteNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
+import { promptListDropSound } from '../promptListDrop';
 import { buildRosterSortConfig } from './buildRosterSortConfig';
 import DataCard from './DataCard';
 import DropOverlay from './DropOverlay';
@@ -297,18 +302,20 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const addingRef = useRef(new Set<string>());
   const [adding, setAdding] = useState<ReadonlySet<string>>(() => new Set());
 
+  // Resolves whether the person was added: a drop that needs the passphrase
+  // first, repeats an add under way, or whose write is refused adds nobody.
   const handleAddNode = async (metadata?: Record<string, unknown>) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged roster item, set by this component's drag source (fresco-ui types it as a record)
     const meta = metadata as UseItemElement | undefined;
-    if (!meta) return;
+    if (!meta) return false;
 
     if (encryptionLocked) {
       requirePassphrase();
-      return;
+      return false;
     }
 
     const { id, data } = meta;
-    if (addingRef.current.has(id)) return;
+    if (addingRef.current.has(id)) return false;
     addingRef.current.add(id);
     setAdding(new Set(addingRef.current));
 
@@ -340,14 +347,16 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         anchor: 'forward',
       });
     }
+    return writeSucceeded(result);
   };
 
+  // Says whether the person was taken off the question.
   const handleRemoveNode = useCallback(
     (metadata: Record<string, unknown>) => {
       const uid = metadata[entityPrimaryKeyProperty];
-      if (typeof uid === 'string' && uid) {
-        dispatch(deleteNode(uid));
-      }
+      if (typeof uid !== 'string' || !uid) return false;
+      dispatch(deleteNode(uid));
+      return true;
     },
     [dispatch],
   );
@@ -406,9 +415,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     announcedName: 'Available Roster Nodes',
     getItems: (keys) => [{ type: 'SOURCE_NODES', keys }],
     acceptTypes: ['ADDED_NODES'],
-    onDrop: (e) => {
-      if (e.metadata) handleRemoveNode(e.metadata);
-    },
+    // A person dropped back on the roster is taken off the question.
+    dropFeedback: 'toggle-off' satisfies DropSound,
+    onDrop: (e) => handleRemoveNode(e.metadata),
     getItemMetadata: (key) => {
       const item = filteredItems.find((i) => i.id === String(key));
       return item
@@ -563,6 +572,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           itemType="ADDED_NODES"
           accepts={['SOURCE_NODES']}
           onDrop={handleAddNode}
+          dropSound={promptListDropSound}
           items={nodesForPrompt}
           announcedName="Added Nodes"
         />

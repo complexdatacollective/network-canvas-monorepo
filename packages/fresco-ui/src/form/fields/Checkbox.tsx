@@ -11,6 +11,7 @@ import {
   stateVariants,
 } from '../../styles/controlVariants';
 import { cva, type VariantProps } from '../../utils/cva';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 
 const checkboxRootOwnVariants = cva({
@@ -87,6 +88,11 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
     const [internalChecked, setInternalChecked] = useState(defaultChecked);
     const isChecked = isControlled ? controlledChecked : internalChecked;
 
+    const { onOptionToggle } = useFormFeedback();
+
+    // Base UI calls this only for the person's own tick or untick. Every
+    // option of a CheckboxGroup is one of these, so the group reports
+    // nothing of its own.
     const handleCheckedChange: NonNullable<
       ComponentPropsWithoutRef<typeof BaseCheckbox.Root>['onCheckedChange']
     > = (newChecked, eventDetails) => {
@@ -95,6 +101,7 @@ const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>(
         setInternalChecked(newChecked);
       }
       resolvedOnCheckedChange?.(newChecked, eventDetails);
+      onOptionToggle(newChecked);
     };
 
     return (

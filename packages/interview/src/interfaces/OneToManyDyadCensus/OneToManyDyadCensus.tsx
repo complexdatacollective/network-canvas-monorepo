@@ -136,7 +136,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
       if (currentStep < lastStep) {
         setStep((prev) => ({ ...prev, index: prev.index + 1 }));
         setIsTransitioning(true);
-        return false;
+        return 'MOVED_WITHIN_STAGE';
       }
 
       setCrossingDirection('forwards');
@@ -147,7 +147,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
       if (currentStep > 0) {
         setStep((prev) => ({ ...prev, index: prev.index - 1 }));
         setIsTransitioning(true);
-        return false;
+        return 'MOVED_WITHIN_STAGE';
       }
 
       setCrossingDirection('backwards');

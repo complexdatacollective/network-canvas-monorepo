@@ -196,6 +196,10 @@ export type StoredSettings = {
   // Shows the text size button in the interview navigation. Defaults to true;
   // a row written before this setting existed takes the default.
   allowTextSizeChange: boolean;
+  // Short sounds during interviews (see the Shell's `interactionSounds`).
+  // Off by default; a row written before this field existed reads as off
+  // because `getSettings` merges it over `DEFAULT_SETTINGS`.
+  interactionSounds: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {
@@ -218,4 +222,5 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   analyticsEnabled: true,
   allowStageNavigation: true,
   allowTextSizeChange: true,
+  interactionSounds: false,
 };

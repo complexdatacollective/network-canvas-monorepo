@@ -9,7 +9,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import Node from '../components/ConnectedNode';
-import { useCanvasDrag } from './useCanvasDrag';
+import { type CanvasNodeDragEnd, useCanvasDrag } from './useCanvasDrag';
 import { type CanvasStoreApi, useCanvasStore } from './useCanvasStore';
 
 /**
@@ -27,7 +27,7 @@ type CanvasNodeProps = {
   node: NcNode;
   canvasRef: RefObject<HTMLElement | null>;
   store: CanvasStoreApi;
-  onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
+  onDragEnd?: CanvasNodeDragEnd;
   /**
    * Activation. Omit it when activating a node does nothing (a display-only
    * prompt): the node then renders as no kind of toggle, takes no pointer

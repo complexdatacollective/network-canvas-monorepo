@@ -122,6 +122,10 @@ const barFeatureIconClassName = cx(
 // Button already caps its width at the wrapper's; this caps its height too.
 const barIconButtonClassName = 'max-h-full';
 
+/**
+ * The back and forward buttons. Their press is heard once the interview has
+ * moved (see `useInterviewNavigation`), so a press that is refused is not.
+ */
 const NavigationButton = ({
   disabled,
   className,

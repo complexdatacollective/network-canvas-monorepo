@@ -39,7 +39,18 @@ describe('App Settings Schema Validators', () => {
         disableSmallScreenOverlay: false,
         freezeInterviewsAfterCompletion: true,
         enableInterviewDataApi: false,
+        interactionSounds: false,
       });
+    });
+
+    it('reads interaction sounds as off unless the stored value turns them on', () => {
+      const { interactionSounds } = appSettingPreprocessedSchema.shape;
+
+      // An installation that never saved the setting has no row for it.
+      expect(interactionSounds.parse(undefined)).toBe(false);
+      expect(interactionSounds.parse('true')).toBe(true);
+      expect(interactionSounds.parse('false')).toBe(false);
+      expect(interactionSounds.parse('not-a-boolean')).toBe(false);
     });
   });
   describe('UPLOADTHING_TOKEN Parsing through Schema', () => {

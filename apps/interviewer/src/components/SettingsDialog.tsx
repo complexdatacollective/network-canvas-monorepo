@@ -206,6 +206,19 @@ const messages = defineMessages({
     description:
       'Hint under the Allow text size changes toggle; the button is in the interview navigation.',
   },
+  playSoundsDuringInterviews: {
+    id: 'interviewer.settingsDialog.playSoundsDuringInterviews',
+    defaultMessage: 'Play sounds during interviews',
+    description:
+      'Toggle label in Settings, Interview section; controls whether the device plays short sounds while a participant completes an interview. Off by default.',
+  },
+  playsShortSoundsWhenParticipantsChangeTheir: {
+    id: 'interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir',
+    defaultMessage:
+      'Plays short sounds when participants change their network, choose an answer, move between stages or try to submit a form that has errors, and when the interview ends.',
+    description:
+      'Hint under the Play sounds during interviews toggle; lists the moments in an interview when a sound plays. Changing their network means adding, removing, connecting or highlighting the people or other entries in the participant\'s network, sorting them into categories, or placing them on a sociogram. Choosing an answer means selecting an option, ticking or unticking a box, or turning a toggle on or off in a question. Moving between stages means going to the next or previous screen with the Back or Next button. A form has errors when a required answer is missing or an answer is not valid. Fresco shows the same sentence after "If this option is enabled,"; keep the two translations the same, including the words for "choose an answer".',
+  },
   exportGraphML: {
     id: 'interviewer.settingsDialog.exportGraphML',
     defaultMessage: 'Export GraphML',
@@ -1108,6 +1121,21 @@ export function SettingsDialog({
                   value={settings.allowTextSizeChange}
                   onChange={(next: boolean | undefined) =>
                     void persist({ allowTextSizeChange: next === true })
+                  }
+                />
+                <UnconnectedField
+                  name="interactionSounds"
+                  label={intl.formatMessage(
+                    messages.playSoundsDuringInterviews,
+                  )}
+                  hint={intl.formatMessage(
+                    messages.playsShortSoundsWhenParticipantsChangeTheir,
+                  )}
+                  inline
+                  component={ToggleField}
+                  value={settings.interactionSounds}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ interactionSounds: next === true })
                   }
                 />
               </>

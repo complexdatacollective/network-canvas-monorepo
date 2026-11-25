@@ -306,6 +306,8 @@
   "interviewer.settingsDialog.offlineStorage": "Almacenamiento sin conexión",
   "interviewer.settingsDialog.persisted": "Persistente",
   "interviewer.settingsDialog.pixels": "Píxeles",
+  "interviewer.settingsDialog.playSoundsDuringInterviews": "Reproducir sonidos durante las entrevistas",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "Se reproducen sonidos breves cuando quienes participan modifican su red, eligen una respuesta, pasan de una etapa a otra o intentan enviar un formulario con errores, y cuando termina la entrevista.",
   "interviewer.settingsDialog.privacy": "Privacidad",
   "interviewer.settingsDialog.protocol": "Protocolo",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "Vuelve a mostrar la tarjeta del protocolo de ejemplo, que se instala con un clic, junto a la tarjeta Importar.",

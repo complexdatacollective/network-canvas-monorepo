@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
 import {
   asEntityAttributeReference,
   type Variable,
@@ -27,13 +28,10 @@ import { decryptValue } from '../../Anonymisation/encryptionFormat';
 
 // The main list's drop handler is the subject; everything else the stage
 // renders is stubbed.
-const mainListDrops: ((metadata?: Record<string, unknown>) => void)[] = [];
+const mainListDrops: DropCallback[] = [];
 
 vi.mock('../../../components/NodeList', () => ({
-  default: (props: {
-    id?: string;
-    onDrop?: (metadata?: Record<string, unknown>) => void;
-  }) => {
+  default: (props: { id?: string; onDrop?: DropCallback }) => {
     if (props.id === 'MAIN_NODE_LIST' && props.onDrop) {
       mainListDrops.push(props.onDrop);
     }
@@ -141,9 +139,13 @@ describe('NameGenerator with an encrypted variable in panel data', () => {
     const store = await makeStore({ unlocked: true });
     const drop = renderStage(store);
 
-    act(() => {
-      drop(externalNode);
+    // The list says it took the drop once the person is stored, which is
+    // when its drop sound plays.
+    let taken: Awaited<ReturnType<DropCallback>> = undefined;
+    await act(async () => {
+      taken = await drop(externalNode);
     });
+    expect(taken).toBe(true);
 
     await waitFor(() => {
       expect(store.getState().session.network.nodes).toHaveLength(1);
@@ -169,11 +171,14 @@ describe('NameGenerator with an encrypted variable in panel data', () => {
     const before = store.getState().session.network;
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
 
+    let taken: Awaited<ReturnType<DropCallback>> = undefined;
     await act(async () => {
-      drop(externalNode);
+      taken = await drop(externalNode);
       await encryptionFor(PASSPHRASE);
     });
 
+    // Refused, so the list's drop sound does not play.
+    expect(taken).toBe(false);
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
     expect(store.getState().session.network).toBe(before);
   });

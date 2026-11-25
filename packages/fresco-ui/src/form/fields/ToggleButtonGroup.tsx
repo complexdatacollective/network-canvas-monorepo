@@ -18,6 +18,7 @@ import {
 } from '../../styles/controlVariants';
 import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 
@@ -156,6 +157,8 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
     ...fieldsetProps
   } = props;
 
+  const { onOptionToggle } = useFormFeedback();
+
   const handleToggleOption = (optionValue: string | number) => {
     if (readOnly) return;
     if (onChange) {
@@ -165,6 +168,7 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
         ? currentValues.filter((v) => v !== optionValue)
         : [...currentValues, optionValue];
       onChange(newValues);
+      onOptionToggle(!isSelected);
     }
   };
 

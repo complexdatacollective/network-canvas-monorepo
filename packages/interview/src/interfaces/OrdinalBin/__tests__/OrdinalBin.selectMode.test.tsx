@@ -31,6 +31,8 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { createSoundSpy } from '../../../sounds/__tests__/soundSpy';
+import { InteractionSoundsProvider } from '../../../sounds/InteractionSounds';
 import protocol from '../../../store/modules/protocol';
 import session, {
   type SessionState,
@@ -243,7 +245,12 @@ function CaptureDndStore({
   return null;
 }
 
-function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
+function renderStage(
+  mode: Mode,
+  nodes?: NcNode[],
+  options?: StageOptions,
+  sounds = createSoundSpy(),
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -251,7 +258,9 @@ function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
       protocol: buildProtocol(mode, options),
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
+      getDefaultMiddleware({ serializableCheck: false }).concat(
+        sounds.middleware,
+      ),
   });
 
   let dndStore: StoreApi<DndStore> | null = null;
@@ -264,20 +273,22 @@ function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
             <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
               <DialogProvider>
                 <DndStoreProvider>
-                  <CaptureDndStore
-                    onStore={(s) => {
-                      dndStore = s;
-                    }}
-                  />
-                  <StageDynamicValues stage={buildStage(mode, options)}>
-                    <OrdinalBin
-                      stage={buildStage(mode, options)}
-                      getNavigationHelpers={() => ({
-                        moveForward: () => {},
-                        moveBackward: () => {},
-                      })}
+                  <InteractionSoundsProvider engine={sounds.engine}>
+                    <CaptureDndStore
+                      onStore={(s) => {
+                        dndStore = s;
+                      }}
                     />
-                  </StageDynamicValues>
+                    <StageDynamicValues stage={buildStage(mode, options)}>
+                      <OrdinalBin
+                        stage={buildStage(mode, options)}
+                        getNavigationHelpers={() => ({
+                          moveForward: () => {},
+                          moveBackward: () => {},
+                        })}
+                      />
+                    </StageDynamicValues>
+                  </InteractionSoundsProvider>
                 </DndStoreProvider>
               </DialogProvider>
             </CurrentStepProvider>
@@ -317,6 +328,23 @@ const announcement = (name: string) =>
   screen.findAllByText(`Choose where ${name} belongs.`);
 
 describe('OrdinalBin in select mode (#1652)', () => {
+  it('plays the drop sound once when a person is placed, and nothing else', async () => {
+    const sounds = createSoundSpy();
+    const { attributesOf } = renderStage(
+      'select',
+      undefined,
+      undefined,
+      sounds,
+    );
+
+    await announcement('Ann');
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
+    await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(2));
+    await announcement('Ben');
+
+    expect(sounds.play.mock.calls).toEqual([['toggle-on']]);
+  });
+
   it('places the focal person in the tapped bin and moves on to the next', async () => {
     const { attributesOf } = renderStage('select');
 
@@ -377,7 +405,8 @@ describe('OrdinalBin in select mode (#1652)', () => {
     const selectedNodes = selected.store.getState().session.network?.nodes;
     selected.view.unmount();
 
-    const dragged = renderStage('drag');
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, undefined, sounds);
     startDragOf(dragged.getDndStore, person('a', 'Ann'));
     await waitFor(() =>
       expect(
@@ -396,6 +425,30 @@ describe('OrdinalBin in select mode (#1652)', () => {
     expect(dragged.store.getState().session.network?.nodes).toEqual(
       selectedNodes,
     );
+    // The drop is heard as it lands, through the bin's drop sound, and the
+    // placement it saves adds no second sound.
+    expect(sounds.play.mock.calls).toEqual([['toggle-on']]);
+  });
+
+  it('makes no sound for a drop whose placement is refused', async () => {
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, undefined, sounds);
+    // Someone the session does not have cannot be given an answer.
+    startDragOf(dragged.getDndStore, person('z', 'Zed'));
+    await waitFor(() =>
+      expect(
+        dragged.getDndStore().getState().getDropTargetState(binListZone(1))
+          ?.canDrop,
+      ).toBe(true),
+    );
+    await act(async () => {
+      dragged.getDndStore().getState().setActiveDropTarget(binListZone(1));
+      dragged.getDndStore().getState().endDrag();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(dragged.attributesOf('z')).toBeUndefined();
+    expect(sounds.play).not.toHaveBeenCalled();
   });
 
   it.each([

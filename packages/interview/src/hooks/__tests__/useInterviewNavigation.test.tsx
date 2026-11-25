@@ -12,6 +12,8 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import { testId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { createSoundSpy } from '../../sounds/__tests__/soundSpy';
+import { InteractionSoundsProvider } from '../../sounds/InteractionSounds';
 import { createWritesInFlightMiddleware } from '../../store/middleware/writesInFlight';
 import protocol from '../../store/modules/protocol';
 import session, { updateEgo, updatePrompt } from '../../store/modules/session';
@@ -1251,5 +1253,146 @@ describe('useInterviewNavigation requests from a stage that has been left', () =
     });
 
     expect(steps(onStepChange)).toEqual([1]);
+  });
+});
+
+describe('useInterviewNavigation button sound', () => {
+  // Stage 0 has two prompts, so a move can be to another prompt or stage.
+  const stages = (): TestStage[] => [
+    {
+      id: 's0',
+      type: 'Information',
+      label: 'Stage 0',
+      items: [],
+      prompts: [
+        { id: 'p0', text: 'Prompt 0' },
+        { id: 'p1', text: 'Prompt 1' },
+      ],
+    },
+    ...makeStages(2).slice(1),
+  ];
+
+  function renderWithSounds(initialStep = 0) {
+    const store = makeStore(stages());
+    const sounds = createSoundSpy();
+    const onStepChange = vi.fn();
+    function Wrapper({ children }: { children: ReactNode }) {
+      const [step, setStep] = useState(initialStep);
+      return (
+        <Provider store={store}>
+          <InteractionSoundsProvider engine={sounds.engine}>
+            <CurrentStepProvider
+              currentStep={step}
+              onStepChange={(nextStep) => {
+                onStepChange(nextStep);
+                setStep(nextStep);
+              }}
+            >
+              {children}
+            </CurrentStepProvider>
+          </InteractionSoundsProvider>
+        </Provider>
+      );
+    }
+    const { result } = renderHook(() => useInterviewNavigation(), {
+      wrapper: Wrapper,
+    });
+    const played = () => sounds.play.mock.calls.map(([name]) => name);
+    return { result, store, onStepChange, played };
+  }
+
+  it('plays it when Next moves to the next prompt, and when Back moves back', async () => {
+    const { result, store, played } = renderWithSounds();
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    expect(store.getState().session.promptIndex).toBe(1);
+    expect(played()).toEqual(['tap-button']);
+
+    await act(async () => {
+      await result.current.moveBackward();
+    });
+    expect(store.getState().session.promptIndex).toBe(0);
+    expect(played()).toEqual(['tap-button', 'tap-button']);
+  });
+
+  it('plays it when Next moves to the next stage', async () => {
+    const { result, store, onStepChange, played } = renderWithSounds();
+    act(() => {
+      store.dispatch(updatePrompt(1));
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    expect(onStepChange).toHaveBeenCalledWith(1);
+    expect(played()).toEqual(['tap-button']);
+  });
+
+  it('does not play it when the stage refuses the move', async () => {
+    const { result, store, onStepChange, played } = renderWithSounds();
+    act(() => {
+      result.current.registerBeforeNext(() => false);
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    expect(store.getState().session.promptIndex).toBe(0);
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(played()).toEqual([]);
+  });
+
+  it('plays it when the stage moves within itself, without moving the interview', async () => {
+    const { result, store, onStepChange, played } = renderWithSounds();
+    act(() => {
+      result.current.registerBeforeNext(() => 'MOVED_WITHIN_STAGE');
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    expect(store.getState().session.promptIndex).toBe(0);
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(played()).toEqual(['tap-button']);
+  });
+
+  it('does not play it when Back has nowhere to go', async () => {
+    const { result, onStepChange, played } = renderWithSounds();
+
+    await act(async () => {
+      await result.current.moveBackward();
+    });
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(played()).toEqual([]);
+  });
+
+  it('does not play it for a move the stage makes by itself', async () => {
+    const { result, store, onStepChange, played } = renderWithSounds();
+
+    await act(async () => {
+      await result.current.getNavigationHelpers().moveForward();
+    });
+    expect(store.getState().session.promptIndex).toBe(1);
+
+    act(() => {
+      result.current.registerBeforeNext(() => 'MOVED_WITHIN_STAGE');
+    });
+    await act(async () => {
+      await result.current.getNavigationHelpers().moveBackward();
+    });
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(played()).toEqual([]);
+  });
+
+  it('plays it when the list of screens moves the interview', async () => {
+    const { result, onStepChange, played } = renderWithSounds();
+
+    await act(async () => {
+      await result.current.goToStage(2);
+    });
+    expect(onStepChange).toHaveBeenCalledWith(2);
+    expect(played()).toEqual(['tap-button']);
   });
 });

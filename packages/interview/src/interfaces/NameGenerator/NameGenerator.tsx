@@ -1,6 +1,5 @@
 'use client';
 
-import { has } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -23,6 +22,7 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import {
   writeFailureMessage,
   writeSubmissionResult,
+  writeSucceeded,
 } from '../../forms/writeSubmissionResult';
 import useMediaQuery from '../../hooks/useMediaQuery';
 import useNodeLimits from '../../hooks/useNodeLimits';
@@ -45,6 +45,7 @@ import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { writesEncryptedValue } from '../Anonymisation/utils';
+import { isNetworkNode, promptListDropSound } from '../promptListDrop';
 import NodeForm from './components/NodeForm';
 import NodePanels from './components/NodePanels';
 import QuickNodeForm from './components/QuickNodeForm';
@@ -192,16 +193,22 @@ const NameGenerator = (props: NameGeneratorProps) => {
   /**
    * Drop node handler
    * Adds prompt attributes to existing nodes, or adds new nodes to the network.
+   * Resolves whether the person was added: a drop that needs the passphrase
+   * first, or whose write is refused, adds nobody.
    */
   const handleDropNode = async (metadata?: Record<string, unknown>) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dropped node, set by the Node drag source (fresco-ui types it as a record)
     const node = metadata as NcNode | undefined;
-    if (!node) return;
+    if (!node) return false;
 
     // Test if we are updating an existing network node, or adding it to the network
-    if (has(node, 'promptIDs')) {
-      void addNodeToPrompt(node[entityPrimaryKeyProperty], newNodeAttributes);
-      return;
+    if (isNetworkNode(node)) {
+      return writeSucceeded(
+        await addNodeToPrompt(
+          node[entityPrimaryKeyProperty],
+          newNodeAttributes,
+        ),
+      );
     }
 
     // Panel nodes may come from external data with attributes not in the codebook
@@ -214,7 +221,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
       (writesEncryptedValue(attributes, codebookForNodeType) && !unlocked)
     ) {
       requirePassphrase();
-      return;
+      return false;
     }
 
     const result = await dispatchAddNode(attributes, {
@@ -231,6 +238,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
         anchor: 'forward',
       });
     }
+    return !failure;
   };
 
   // When a node is tapped, trigger editing. The form decrypts what it shows,
@@ -299,6 +307,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               accepts={['NEW_NODE']}
               itemType="EXISTING_NODE"
               onDrop={handleDropNode}
+              dropSound={promptListDropSound}
               onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
@@ -314,6 +323,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               accepts={['NEW_NODE']}
               itemType="EXISTING_NODE"
               onDrop={handleDropNode}
+              dropSound={promptListDropSound}
               onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"

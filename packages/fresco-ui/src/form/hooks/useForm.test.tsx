@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import Field from '../Field/Field';
 import FieldNamespace from '../FieldNamespace';
 import InputField from '../fields/InputField';
+import { FormFeedbackListener } from '../FormFeedbackListener';
 import FormStoreProvider from '../store/formStoreProvider';
 import type { FormSubmissionResult, FormSubmitHandler } from '../store/types';
 import { focusFirstError } from '../utils/focusFirstError';
@@ -327,6 +328,75 @@ describe('useForm invalid-submit focus', () => {
     expect(
       document.activeElement?.closest('[data-field-name="first"]'),
     ).not.toBeNull();
+  });
+});
+
+describe('useForm with a FormFeedbackListener', () => {
+  function Harness({
+    onSubmit,
+  }: {
+    onSubmit: () => Promise<FormSubmissionResult>;
+  }) {
+    const { formProps } = useForm({ onSubmit });
+    return (
+      <form onSubmit={formProps.onSubmit}>
+        <Field name="name" label="Name" component={InputField} required />
+        <button type="submit">Submit</button>
+      </form>
+    );
+  }
+
+  const renderWithListener = (
+    onSubmit: () => Promise<FormSubmissionResult>,
+  ) => {
+    const onInvalidSubmit = vi.fn();
+    render(
+      <FormFeedbackListener onInvalidSubmit={onInvalidSubmit}>
+        <FormStoreProvider>
+          <Harness onSubmit={onSubmit} />
+        </FormStoreProvider>
+      </FormFeedbackListener>,
+    );
+    return onInvalidSubmit;
+  };
+
+  it('tells the listener once for each submission refused by validation', async () => {
+    const onSubmit = vi.fn(async () => ({ success: true as const }));
+    const onInvalidSubmit = renderWithListener(onSubmit);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    await screen.findByText(/must answer this question/);
+    expect(onInvalidSubmit).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    await waitFor(() => expect(onInvalidSubmit).toHaveBeenCalledTimes(2));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('tells the listener when the submit handler returns errors, and not when it succeeds', async () => {
+    let succeed = false;
+    const onInvalidSubmit = renderWithListener(async () =>
+      succeed
+        ? { success: true as const }
+        : {
+            success: false as const,
+            fieldErrors: { name: ['Choose another name'] },
+          },
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: /Name/ }), {
+      target: { value: 'Ann' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    await screen.findByText('Choose another name');
+    expect(onInvalidSubmit).toHaveBeenCalledTimes(1);
+
+    succeed = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    await waitFor(() =>
+      expect(screen.queryByText('Choose another name')).toBeNull(),
+    );
+    expect(onInvalidSubmit).toHaveBeenCalledTimes(1);
   });
 });
 

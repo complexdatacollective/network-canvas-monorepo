@@ -4,7 +4,7 @@ navOrder: 2
 wip: false
 toc: true
 date: 7th October 2026
-translatedFrom: 722ea8e02752702aee29f2c429c4e2e3a9c03b2c
+translatedFrom: 2728d908b26f7b6582fc6399f60aca59ca97f74b
 ---
 
 <SummaryCard duration="30 minutes">
@@ -121,7 +121,9 @@ L’écran **Paramètres** vous permet de gérer les préférences de l’applic
 
 **Langue** contient la liste déroulante **Langue de l’application**, qui définit la langue des écrans d’Interviewer lui-même sur cet appareil. Choisissez une langue, ou **Automatique** pour suivre les préférences linguistiques de votre navigateur ; cette entrée indique aussi la langue qui en découle actuellement, par exemple _Automatique (Français)_. Voir [Langue de l’interface](#interface-language) ci-dessous.
 
-**Entretien** comporte un seul interrupteur, **Autoriser la navigation entre les étapes**, activé par défaut. Tant qu’il est activé, toucher la barre de progression pendant un entretien ouvre un menu des étapes, à partir duquel vous pouvez accéder directement à n’importe quelle étape. Lorsqu’il est désactivé, la barre de progression n’ouvre plus ce menu ; les flèches vers le haut et vers le bas permettent toujours de se déplacer d’un écran à la fois, ce qui, sur une étape comportant plusieurs consignes, signifie une consigne et non une étape entière. Pouvoir accéder directement à n’importe quelle étape est utile pendant l’étude pilote d’un protocole, mais cette option est généralement désactivée pour les entretiens réels.
+Dans **Entretien**, **Autoriser la navigation entre les étapes** est activé par défaut. Tant qu’il est activé, toucher la barre de progression pendant un entretien ouvre un menu des étapes, à partir duquel vous pouvez accéder directement à n’importe quelle étape. Lorsqu’il est désactivé, la barre de progression n’ouvre plus ce menu ; les flèches vers le haut et vers le bas permettent toujours de se déplacer d’un écran à la fois, ce qui, sur une étape comportant plusieurs consignes, signifie une consigne et non une étape entière. Pouvoir accéder directement à n’importe quelle étape est utile pendant l’étude pilote d’un protocole, mais cette option est généralement désactivée pour les entretiens réels.
+
+L’option **Émettre des sons pendant les entretiens** est désactivée par défaut. Si cette option est activée, un son bref est émis lorsque la personne participante modifie son réseau (ajoute, supprime, relie ou met en évidence des nœuds, ou classe des nœuds dans des catégories), choisit une réponse dans un formulaire (sélectionne une option, coche ou décoche une case, ou active ou désactive un interrupteur), ou tente d’envoyer un formulaire qui contient des erreurs. Lorsque la personne participante fait glisser un nœud, un son est émis au moment où elle le saisit, puis un autre au moment où elle le dépose à un endroit qui l’accepte. Ce second son dépend de l’endroit où le nœud est déposé : par exemple, déposer un nœud dans la corbeille ne produit pas le même son que de le déposer dans une case pour le classer. Un son est aussi émis lorsque l’entretien passe à l’écran suivant ou précédent, ainsi qu’à la fin de l’entretien. Pendant que la personne participante relie deux nœuds sur un sociogramme, un son se répète jusqu’à ce qu’elle choisisse le second nœud. Les sons sont émis au volume réglé sur l’appareil : si l’appareil est en sourdine, aucun son n’est émis. Les navigateurs n’autorisent une page à émettre du son qu’après une première interaction avec celle-ci : aucun son n’est donc émis avant que la personne participante touche l’écran, clique ou appuie sur une touche pour la première fois. Interviewer stocke les fichiers audio avec l’application : les sons sont donc aussi émis hors ligne, même si vous activez cette option pour la première fois alors que l’appareil est hors ligne.
 
 **Exportation des données** détermine le contenu de chaque exportation. Vous le réglez ici, une seule fois, au lieu de choisir à chaque exportation :
 

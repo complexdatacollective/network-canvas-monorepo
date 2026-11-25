@@ -306,6 +306,8 @@
   "interviewer.settingsDialog.offlineStorage": "Offline opslag",
   "interviewer.settingsDialog.persisted": "Permanent",
   "interviewer.settingsDialog.pixels": "Pixels",
+  "interviewer.settingsDialog.playSoundsDuringInterviews": "Geluiden afspelen tijdens interviews",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "Speelt korte geluiden af wanneer deelnemers hun netwerk wijzigen, een antwoord kiezen, tussen fasen wisselen of een formulier met fouten proberen te verzenden, en wanneer het interview eindigt.",
   "interviewer.settingsDialog.privacy": "Privacy",
   "interviewer.settingsDialog.protocol": "Protocol",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "Toont de kaart van het voorbeeldprotocol, dat je met één klik installeert, weer naast de importkaart.",

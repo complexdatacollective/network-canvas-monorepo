@@ -10,6 +10,7 @@ import {
 import { nativeSelectVariants } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
+import { useFormFeedback } from '../../FormFeedbackListener';
 import { getInputState } from '../../utils/getInputState';
 import {
   flattenSelectOptions,
@@ -63,12 +64,17 @@ export default function SelectField(props: SelectProps) {
   // grouped, so every lookup below runs against the flattened list.
   const selectableOptions = flattenSelectOptions(options);
 
+  const { onOptionToggle } = useFormFeedback();
+
+  // A change event comes only from the person's own choice. Choosing the
+  // placeholder clears the answer.
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = event.target.value;
     const selectedOption = selectableOptions.find(
       (option) => String(option.value) === selectedValue,
     );
     onChange?.(selectedOption?.value ?? selectedValue);
+    onOptionToggle(selectedValue !== '');
   };
 
   const valueMatchesOption = selectableOptions.some(

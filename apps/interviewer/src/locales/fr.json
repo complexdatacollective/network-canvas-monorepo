@@ -306,6 +306,8 @@
   "interviewer.settingsDialog.offlineStorage": "Stockage hors ligne",
   "interviewer.settingsDialog.persisted": "Persistant",
   "interviewer.settingsDialog.pixels": "Pixels",
+  "interviewer.settingsDialog.playSoundsDuringInterviews": "Émettre des sons pendant les entretiens",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "Émet de courts sons lorsque les personnes participantes modifient leur réseau, choisissent une réponse, passent d’une étape à l’autre ou tentent d’envoyer un formulaire qui contient des erreurs, ainsi qu’à la fin de l’entretien.",
   "interviewer.settingsDialog.privacy": "Confidentialité",
   "interviewer.settingsDialog.protocol": "Protocole",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "Affiche à nouveau la carte du protocole d’exemple installable en un clic, à côté de la carte Importer.",

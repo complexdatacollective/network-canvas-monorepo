@@ -28,6 +28,7 @@ import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { useContentFormat } from '../../../localization/useContentFormat';
 import { getCurrentStageId } from '../../../selectors/session';
+import type { DropSound } from '../../../sounds/InteractionSounds';
 import { interfaceMessages } from '../../messages';
 import BinSummary from './BinSummary';
 
@@ -241,6 +242,9 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     const node = metadata as NcNode;
     const committed = await onDropNode(node);
     if (committed) celebrate();
+    // The bin's drop sound plays only for a placement that was saved: not
+    // for a refused write, nor for an "other" question that was cancelled.
+    return committed;
   };
 
   const handleSelect = async () => {
@@ -260,6 +264,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     id: getCatBinDropTargetId(stageId, promptId, index),
     accepts: ['NODE'],
     announcedName: `Category: ${spokenLabel}`,
+    dropFeedback: 'toggle-on' satisfies DropSound,
     onDrop: handleDrop,
     disabled: !!select,
   });
