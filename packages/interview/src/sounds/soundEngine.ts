@@ -1,13 +1,13 @@
 import {
-  INTERACTION_SOUND_SPRITE,
+  INTERACTION_SOUND_FILES,
   type InteractionSoundName,
-} from './interactionSoundSprite';
+} from './interactionSoundFiles';
 
 /** A sound that plays once. */
 export type OneShotSoundName = {
   [
     Name in InteractionSoundName
-  ]: (typeof INTERACTION_SOUND_SPRITE)[Name] extends {
+  ]: (typeof INTERACTION_SOUND_FILES)[Name] extends {
     loop: true;
   }
     ? never
@@ -26,25 +26,25 @@ export type StopSound = () => void;
 export type SoundEngine = {
   /**
    * Turns sound on or off. Turning it on for the first time creates the audio
-   * context and loads the sprite; turning it off stops every sound that is
-   * playing.
+   * context and loads every sound file; turning it off stops every sound that
+   * is playing.
    */
   setEnabled: (enabled: boolean) => void;
   /** Plays a sound now, or not at all. */
   play: (name: OneShotSoundName) => void;
   /**
    * Asks for a looping sound until the returned function is called. The
-   * sound plays whenever it can be heard: at once if sound is on, the sprite
-   * is loaded, the context is running and the page is shown, or else as soon
-   * as all of these are true. Turning sound off stops it, and turning sound
+   * sound plays whenever it can be heard: at once if sound is on, its file is
+   * loaded, the context is running and the page is shown, or else as soon as
+   * all of these are true. Turning sound off stops it, and turning sound
    * on again starts it again.
    */
   startLoop: (name: LoopingSoundName) => StopSound;
   /**
    * Stops every sound, closes the audio context and stops listening to the
-   * document. The decoded sprite is kept, so turning sound on again does not
-   * load it again, and so are the looping sounds that are still wanted, which
-   * start again once sound is turned on again.
+   * document. The decoded sounds are kept, so turning sound on again does not
+   * load them again, and so are the looping sounds that are still wanted,
+   * which start again once sound is turned on again.
    */
   dispose: () => void;
 };
@@ -55,8 +55,6 @@ type AudioParamLike = { value: number };
 type SourceNodeLike = {
   buffer: object | null;
   loop: boolean;
-  loopStart: number;
-  loopEnd: number;
   readonly playbackRate: AudioParamLike;
   addEventListener(
     type: 'ended',
@@ -65,7 +63,7 @@ type SourceNodeLike = {
   ): void;
   connect(destination: object): unknown;
   disconnect(): void;
-  start(when?: number, offset?: number, duration?: number): void;
+  start(when?: number): void;
   stop(when?: number): void;
 };
 type GainNodeLike = {
@@ -87,8 +85,8 @@ export type AudioContextLike = {
 
 type EngineEnvironment = {
   createAudioContext: () => AudioContextLike;
-  /** Resolves with the sprite file's bytes. */
-  loadSprite: () => Promise<ArrayBuffer>;
+  /** Resolves with one sound file's bytes. */
+  loadSound: (name: InteractionSoundName) => Promise<ArrayBuffer>;
   /** Milliseconds; only differences are used. */
   now: () => number;
   /** In [0, 1). */
@@ -97,16 +95,6 @@ type EngineEnvironment = {
   document: Document | undefined;
   window: Window | undefined;
 };
-
-/**
- * The interview's sprite. A static `new URL('./file', import.meta.url)` so
- * that every bundler emits the file at build time whether or not it is ever
- * played, which is what lets an installed app precache it.
- */
-const INTERACTION_SOUND_SPRITE_URL = new URL(
-  './interaction-sounds.wav',
-  import.meta.url,
-).href;
 
 /**
  * The level of every sound. The sounds are normalised to a peak of 0 dBFS
@@ -181,18 +169,25 @@ export const BURST_WINDOW_MS = 150;
 const isMoreImportant = (a: OneShotSoundName, b: OneShotSoundName) =>
   PRIORITY.indexOf(a) < PRIORITY.indexOf(b);
 
-async function fetchSprite(): Promise<ArrayBuffer> {
+const isSoundName = (key: string): key is InteractionSoundName =>
+  Object.hasOwn(INTERACTION_SOUND_FILES, key);
+
+const SOUND_NAMES: readonly InteractionSoundName[] = Object.keys(
+  INTERACTION_SOUND_FILES,
+).filter(isSoundName);
+
+async function fetchSound(name: InteractionSoundName): Promise<ArrayBuffer> {
   // A plain request for exactly the emitted URL, so that a service worker
   // that precached the file answers it while offline.
-  const response = await fetch(INTERACTION_SOUND_SPRITE_URL);
+  const response = await fetch(INTERACTION_SOUND_FILES[name].url);
   if (!response.ok)
-    throw new Error(`Sprite request failed: ${response.status}`);
+    throw new Error(`Sound request failed (${name}): ${response.status}`);
   return response.arrayBuffer();
 }
 
 const defaultEnvironment = (): EngineEnvironment => ({
   createAudioContext: () => new AudioContext(),
-  loadSprite: fetchSprite,
+  loadSound: fetchSound,
   now: () => performance.now(),
   random: Math.random,
   document: typeof document === 'undefined' ? undefined : document,
@@ -207,14 +202,14 @@ type WantedLoop = { name: LoopingSoundName; source: SourceNodeLike | null };
  * A small Web Audio player for the interview's interaction sounds.
  *
  * Nothing is fetched, decoded or created while sound is off. Turning it on
- * creates one audio context and loads the sprite once; every sound then plays
- * from the decoded sprite without delay. A browser keeps a page's audio
- * context suspended until the person interacts with the page, so the engine
- * resumes it on the first pointer or key press. A sound that plays once and
- * cannot play at the moment it is asked for (sound off, sprite not loaded,
- * context not yet running, page hidden) is dropped, never played later. For
- * the same reason, hiding the page or turning sound off stops such a sound
- * part-way through.
+ * creates one audio context and loads every sound's file once, all at the
+ * same time; each sound then plays from its own decoded buffer without
+ * delay. A browser keeps a page's audio context suspended until the person
+ * interacts with the page, so the engine resumes it on the first pointer or
+ * key press. A sound that plays once and cannot play at the moment it is
+ * asked for (sound off, its file not loaded, context not yet running, page
+ * hidden) is dropped, never played later. For the same reason, hiding the
+ * page or turning sound off stops such a sound part-way through.
  *
  * A looping sound is different: it accompanies something that lasts (a node
  * waiting to be connected), so it plays whenever it can be heard for as long
@@ -223,8 +218,11 @@ type WantedLoop = { name: LoopingSoundName; source: SourceNodeLike | null };
  * hiding the page pauses it with the context, and showing the page again
  * resumes it.
  *
- * A failed load is silent. It is tried again once on the next turn on, or on
- * the first gesture after the device comes back online, never in a loop.
+ * Each file loads on its own, and a sound plays once its own file is
+ * decoded: one request that fails (a dropped connection, say) silences only
+ * that sound, and trying again fetches only the files that failed. A failed
+ * file is silent. It is tried again once on the next turn on, or on the
+ * first gesture after the device comes back online, never in a loop.
  */
 export function createSoundEngine(
   environment: Partial<EngineEnvironment> = {},
@@ -234,8 +232,10 @@ export function createSoundEngine(
   let enabled = false;
   let context: AudioContextLike | null = null;
   let master: GainNodeLike | null = null;
-  let sprite: object | null = null;
-  let loadState: LoadState = 'idle';
+  const buffers = new Map<InteractionSoundName, object>();
+  const loadStates = new Map<InteractionSoundName, LoadState>(
+    SOUND_NAMES.map((name) => [name, 'idle']),
+  );
   let retryArmed = false;
   // The context was suspended because the page was hidden, and is resumed
   // when it is shown again.
@@ -251,29 +251,36 @@ export function createSoundEngine(
 
   const isHidden = () => env.document?.visibilityState === 'hidden';
 
-  const loadAndDecode = async () => {
-    const bytes = await env.loadSprite();
+  const anyFailed = () =>
+    SOUND_NAMES.some((name) => loadStates.get(name) === 'failed');
+
+  const loadAndDecode = async (name: InteractionSoundName) => {
+    const bytes = await env.loadSound(name);
     // Decoded by whichever context is open once the bytes arrive: a decoded
     // buffer can be played by any context.
     if (!context) throw new Error('The audio context was closed');
     return context.decodeAudioData(bytes);
   };
 
+  // Loads every file that has not loaded and is not loading.
   const load = () => {
-    if (loadState === 'loading' || loadState === 'loaded') return;
-    loadState = 'loading';
     retryArmed = false;
-    loadAndDecode().then(
-      (decoded) => {
-        sprite = decoded;
-        loadState = 'loaded';
-        startWantedLoops();
-        return undefined;
-      },
-      () => {
-        loadState = 'failed';
-      },
-    );
+    for (const name of SOUND_NAMES) {
+      const state = loadStates.get(name);
+      if (state === 'loading' || state === 'loaded') continue;
+      loadStates.set(name, 'loading');
+      loadAndDecode(name).then(
+        (decoded) => {
+          buffers.set(name, decoded);
+          loadStates.set(name, 'loaded');
+          startWantedLoops();
+          return undefined;
+        },
+        () => {
+          loadStates.set(name, 'failed');
+        },
+      );
+    }
   };
 
   const stopSource = (source: SourceNodeLike) => {
@@ -309,7 +316,7 @@ export function createSoundEngine(
   const onGesture = () => {
     if (!enabled) return;
     resume();
-    if (loadState === 'failed' && retryArmed) load();
+    if (retryArmed && anyFailed()) load();
   };
 
   const onVisibilityChange = () => {
@@ -330,7 +337,7 @@ export function createSoundEngine(
   };
 
   const onOnline = () => {
-    if (loadState === 'failed') retryArmed = true;
+    if (anyFailed()) retryArmed = true;
   };
 
   let listening = false;
@@ -344,22 +351,25 @@ export function createSoundEngine(
     env.window?.[method]('online', onOnline);
   };
 
-  /** Whether a sound started now would be heard now. */
+  /** Whether a sound whose file is loaded, started now, would be heard now. */
   const ready = (): boolean =>
-    enabled &&
-    sprite !== null &&
-    master !== null &&
-    context?.state === 'running' &&
-    !isHidden();
+    enabled && master !== null && context?.state === 'running' && !isHidden();
 
-  const startSource = (name: InteractionSoundName, rate: number) => {
-    if (!context || !master || !sprite) return null;
-    const { start, duration } = INTERACTION_SOUND_SPRITE[name];
+  // Starts a sound from the beginning of its own buffer, if it is loaded.
+  const startSource = (
+    name: InteractionSoundName,
+    rate: number,
+    loop: boolean,
+  ) => {
+    const buffer = buffers.get(name);
+    if (!context || !master || !buffer) return null;
     const source = context.createBufferSource();
-    source.buffer = sprite;
+    source.buffer = buffer;
+    source.loop = loop;
     source.playbackRate.value = rate;
     source.connect(master);
-    return { source, start, duration };
+    source.start(0);
+    return source;
   };
 
   // Starts every wanted loop that is not playing, if it would be heard. A
@@ -368,15 +378,8 @@ export function createSoundEngine(
   function startWantedLoops() {
     if (!ready()) return;
     for (const loop of wantedLoops) {
-      if (loop.source) continue;
-      const started = startSource(loop.name, 1);
-      if (!started) return;
-      const { source, start, duration } = started;
-      source.loop = true;
-      source.loopStart = start;
-      source.loopEnd = start + duration;
-      source.start(0, start);
-      loop.source = source;
+      // The whole buffer repeats: the file is exactly one cycle.
+      loop.source ??= startSource(loop.name, 1, true);
     }
   }
 
@@ -402,9 +405,8 @@ export function createSoundEngine(
     const rate = VARIED_SOUNDS.has(name)
       ? 1 + (env.random() * 2 - 1) * PITCH_VARIATION
       : 1;
-    const started = startSource(name, rate);
-    if (!started) return;
-    const { source } = started;
+    const source = startSource(name, rate, false);
+    if (!source) return;
     source.addEventListener(
       'ended',
       () => {
@@ -412,7 +414,6 @@ export function createSoundEngine(
       },
       { once: true },
     );
-    source.start(0, started.start, started.duration);
     oneShots.add(source);
     lastPlayed.set(name, now);
     lastSound = { name, at: now };
@@ -452,8 +453,8 @@ export function createSoundEngine(
         // resumes it.
         resume();
       }
-      // The next turn on is the moment a failed load is tried again.
-      if (loadState === 'idle' || loadState === 'failed') load();
+      // The next turn on is the moment a failed file is tried again.
+      load();
       // The context may still be running from before sound was turned off.
       startWantedLoops();
     },

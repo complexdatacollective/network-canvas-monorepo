@@ -189,11 +189,12 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
             // run its first offline interview in that script in a system
             // font.
             '**/*.woff2',
-            // The interview's sound sprite (Shell `interactionSounds`). The
-            // interview fetches it only once the setting is on, which can be
-            // first turned on while the device is offline, so it must already
-            // be in the precache rather than in a runtime cache filled on use.
-            '**/*.wav',
+            // The interview's sound files (Shell `interactionSounds`). The
+            // interview fetches them only once the setting is on, which can be
+            // first turned on while the device is offline, so they must
+            // already be in the precache rather than in a runtime cache filled
+            // on use.
+            '**/*.mp3',
           ],
           // Nothing of this app is left out. The Sample protocol's chunk
           // (bundledSampleProtocol.ts) is lazy but must stay precached so the
@@ -303,14 +304,14 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
               // skipWaiting activation advances every already-controlled tab,
               // including an interview that deliberately did not request the
               // update. If its old bundle later requests an old lazy chunk,
-              // responsive stage preview or sound sprite, the new worker can
+              // responsive stage preview or sound file, the new worker can
               // read that exact content-hashed URL from the retained precache.
               // Stable HTML and image URLs such as index.html and PWA icons
               // stay excluded.
               urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin &&
                 url.pathname.startsWith('/assets/') &&
-                (/\.(?:js|css|wav)$/i.test(url.pathname) ||
+                (/\.(?:js|css|mp3)$/i.test(url.pathname) ||
                   /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
               handler: matchRetainedPwaAsset,
             },
@@ -409,6 +410,12 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
     // no catalogs of its own: what it shows in another language comes from
     // its protocol. assert-pwa-build.mjs checks that every one is precached.
     build: {
+      // The interview's sound files must stay files: each is precached on its
+      // own (see `globPatterns`) and fetched by its URL, and the smallest is
+      // barely above Vite's 4 KB default limit for inlining an asset into a
+      // chunk as a data URL. Every other asset keeps the default.
+      assetsInlineLimit: (filePath: string) =>
+        filePath.endsWith('.mp3') ? false : undefined,
       rollupOptions: {
         input: { main: resolve(here, 'index.html') },
         output: {

@@ -72,12 +72,13 @@ const interfaceImagesNoInlinePlugin = (): Plugin => ({
   enforce: 'pre',
   transform(code, id) {
     const p = id.replace(/\\/g, '/');
-    // The interaction-sound sprite (`src/sounds/`, ~1.8 MB) is emitted the
-    // same way, so the interview fetches it only when sounds are turned on.
+    // The interaction sounds (`src/sounds/assets/*.mp3`, 4–62 KB each) are
+    // emitted the same way, so the interview fetches them only when sounds
+    // are turned on, and an installed app can precache each file.
     const extension = p.startsWith(`${interfaceImagesRoot}/`)
       ? 'webp'
       : p.startsWith(`${pkgRoot}/src/sounds/`)
-        ? 'wav'
+        ? 'mp3'
         : null;
     if (!extension) return null;
     if (!code.includes('import.meta.url')) return null;

@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { INTERACTION_SOUND_SPRITE } from '../interactionSoundSprite';
+import {
+  INTERACTION_SOUND_FILES,
+  type InteractionSoundName,
+} from '../interactionSoundFiles';
 import {
   BURST_WINDOW_MS,
   createSoundEngine,
@@ -8,13 +11,22 @@ import {
   MIN_INTERVAL_MS,
   PITCH_VARIATION,
 } from '../soundEngine';
-import { FakeAudioContext, settle } from './fakeAudioContext';
+import {
+  FakeAudioContext,
+  settle,
+  soundBytes,
+  soundOf,
+} from './fakeAudioContext';
+
+type LoadSound = (name: InteractionSoundName) => Promise<ArrayBuffer>;
+
+const ALL_SOUNDS = Object.keys(INTERACTION_SOUND_FILES).toSorted();
 
 function setup({
-  loadSprite = () => Promise.resolve(new ArrayBuffer(8)),
-}: { loadSprite?: () => Promise<ArrayBuffer> } = {}) {
+  loadSound = (name) => Promise.resolve(soundBytes(name)),
+}: { loadSound?: LoadSound } = {}) {
   const contexts: FakeAudioContext[] = [];
-  const load = vi.fn(loadSprite);
+  const load = vi.fn(loadSound);
   const createAudioContext = vi.fn(() => {
     const context = new FakeAudioContext();
     contexts.push(context);
@@ -24,7 +36,7 @@ function setup({
   let random = 0.5;
   const engine = createSoundEngine({
     createAudioContext,
-    loadSprite: load,
+    loadSound: load,
     now: () => now,
     random: () => random,
     document,
@@ -49,7 +61,28 @@ function setup({
   };
 }
 
-/** Turns sound on, loads the sprite and lets the context run. */
+/** The names of the sound files that were requested, in order. */
+const requested = (harness: ReturnType<typeof setup>) =>
+  harness.load.mock.calls.map(([name]) => name);
+
+/** A loader whose files arrive only when the test says so. */
+function deferredLoads() {
+  const waiting = new Map<InteractionSoundName, () => void>();
+  const loadSound: LoadSound = (name) =>
+    new Promise((resolve) => {
+      waiting.set(name, () => resolve(soundBytes(name)));
+    });
+  const arrive = (...names: InteractionSoundName[]) => {
+    for (const name of names) waiting.get(name)?.();
+  };
+  return {
+    loadSound,
+    arrive,
+    arriveAll: () => arrive(...waiting.keys()),
+  };
+}
+
+/** Turns sound on, loads the sound files and lets the context run. */
 async function ready(harness: ReturnType<typeof setup>) {
   harness.engine.setEnabled(true);
   await settle();
@@ -87,28 +120,32 @@ describe('sound engine while off', () => {
 });
 
 describe('sound engine turned on', () => {
-  it('creates one context and loads the sprite once', async () => {
+  it('creates one context and loads each sound file once', async () => {
     const harness = tracked(setup());
     harness.engine.setEnabled(true);
+    // Every file is asked for at once, not one after another.
+    expect(requested(harness).toSorted()).toEqual(ALL_SOUNDS);
     await settle();
     harness.engine.setEnabled(false);
     harness.engine.setEnabled(true);
     await settle();
     expect(harness.createAudioContext).toHaveBeenCalledTimes(1);
-    expect(harness.load).toHaveBeenCalledTimes(1);
-    expect(harness.context().decodeAudioData).toHaveBeenCalledTimes(1);
+    expect(requested(harness).toSorted()).toEqual(ALL_SOUNDS);
+    expect(harness.context().decodeAudioData).toHaveBeenCalledTimes(
+      ALL_SOUNDS.length,
+    );
     expect(harness.context().master.gain.value).toBe(MASTER_GAIN);
   });
 
-  it('plays a sound from its place in the sprite', async () => {
+  it('plays a sound from the start of its own file, once', async () => {
     const harness = tracked(setup());
     await ready(harness);
     harness.engine.play('error');
     await settle();
     const [source] = harness.context().played;
-    const { start, duration } = INTERACTION_SOUND_SPRITE.error;
-    expect(source?.buffer).toBe(harness.context().decoded);
-    expect(source?.started).toEqual([0, start, duration]);
+    expect(harness.context().played.map(soundOf)).toEqual(['error']);
+    expect(source?.started).toEqual({ when: 0 });
+    expect(source?.loop).toBe(false);
   });
 
   it('resumes a suspended context on the first pointer or key press', async () => {
@@ -136,23 +173,34 @@ describe('sound engine turned on', () => {
     expect(harness.context().played).toHaveLength(1);
   });
 
-  it('drops a sound asked for before the sprite has loaded', async () => {
-    let resolveLoad: (bytes: ArrayBuffer) => void = () => undefined;
-    const harness = tracked(
-      setup({
-        loadSprite: () =>
-          new Promise((resolve) => {
-            resolveLoad = resolve;
-          }),
-      }),
-    );
+  it('drops a sound asked for before its file has loaded', async () => {
+    const loads = deferredLoads();
+    const harness = tracked(setup({ loadSound: loads.loadSound }));
     harness.engine.setEnabled(true);
     harness.context().state = 'running';
     harness.engine.play('discard');
     await settle();
-    resolveLoad(new ArrayBuffer(8));
+    loads.arriveAll();
     await settle();
     expect(harness.context().played).toHaveLength(0);
+  });
+
+  it('plays a sound whose file has loaded while others are still loading', async () => {
+    const loads = deferredLoads();
+    const harness = tracked(setup({ loadSound: loads.loadSound }));
+    harness.engine.setEnabled(true);
+    harness.context().state = 'running';
+    loads.arrive('discard');
+    await settle();
+    harness.engine.play('error');
+    await settle();
+    harness.engine.play('discard');
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual(['discard']);
+
+    loads.arrive('error');
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual(['discard']);
   });
 
   it('plays nothing while the document is hidden', async () => {
@@ -195,10 +243,7 @@ describe('sound engine timing', () => {
     harness.engine.play('toggle-off');
     await settle();
     const { played } = harness.context();
-    expect(played).toHaveLength(1);
-    expect(played[0]?.started?.[1]).toBe(
-      INTERACTION_SOUND_SPRITE.discard.start,
-    );
+    expect(played.map(soundOf)).toEqual(['discard']);
   });
 
   it('drops a less important sound that follows within the burst window, but not a more important one', async () => {
@@ -256,16 +301,16 @@ describe('sound engine pitch', () => {
 });
 
 describe('sound engine looping sound', () => {
-  it('loops its span of the sprite until stopped', async () => {
+  it('loops its whole file until stopped', async () => {
     const harness = tracked(setup());
     await ready(harness);
     const stop = harness.engine.startLoop('node-linking-mode');
     const [source] = harness.context().played;
-    const { start, duration } = INTERACTION_SOUND_SPRITE['node-linking-mode'];
+    expect(harness.context().played.map(soundOf)).toEqual([
+      'node-linking-mode',
+    ]);
     expect(source?.loop).toBe(true);
-    expect(source?.loopStart).toBe(start);
-    expect(source?.loopEnd).toBe(start + duration);
-    expect(source?.started).toEqual([0, start, undefined]);
+    expect(source?.started).toEqual({ when: 0 });
     expect(source?.playbackRate.value).toBe(1);
     stop();
     expect(source?.stopped).toBe(true);
@@ -334,25 +379,23 @@ describe('sound engine looping sound that is still wanted', () => {
     expect(playing(harness)).toHaveLength(1);
   });
 
-  it('starts when the sprite finishes loading', async () => {
-    let resolveLoad: (bytes: ArrayBuffer) => void = () => undefined;
-    const harness = tracked(
-      setup({
-        loadSprite: () =>
-          new Promise((resolve) => {
-            resolveLoad = resolve;
-          }),
-      }),
-    );
+  it('starts when its own file finishes loading', async () => {
+    const loads = deferredLoads();
+    const harness = tracked(setup({ loadSound: loads.loadSound }));
     harness.engine.setEnabled(true);
     harness.context().state = 'running';
     await settle();
     harness.engine.startLoop('node-linking-mode');
     expect(harness.context().played).toHaveLength(0);
 
-    resolveLoad(new ArrayBuffer(8));
+    // The other files do not start it.
+    loads.arrive('create-node', 'discard', 'finish-interview');
     await settle();
-    expect(playing(harness)).toHaveLength(1);
+    expect(harness.context().played).toHaveLength(0);
+
+    loads.arrive('node-linking-mode');
+    await settle();
+    expect(playing(harness).map(soundOf)).toEqual(['node-linking-mode']);
   });
 
   it('starts when the context starts running', async () => {
@@ -451,7 +494,7 @@ describe('sound engine sound in progress', () => {
 });
 
 describe('sound engine after dispose', () => {
-  it('opens a new context when turned on again, without loading the sprite again', async () => {
+  it('opens a new context when turned on again, without loading the files again', async () => {
     const harness = tracked(setup());
     await ready(harness);
     harness.engine.dispose();
@@ -460,7 +503,7 @@ describe('sound engine after dispose', () => {
     harness.engine.play('drop-node');
     await settle();
     expect(harness.contexts).toHaveLength(2);
-    expect(harness.load).toHaveBeenCalledTimes(1);
+    expect(harness.load).toHaveBeenCalledTimes(ALL_SOUNDS.length);
     expect(harness.context().played).toHaveLength(1);
   });
 
@@ -474,29 +517,31 @@ describe('sound engine after dispose', () => {
   });
 });
 
-describe('sound engine when the sprite fails to load', () => {
-  const failingOnce = () => {
-    let calls = 0;
-    return () => {
-      calls += 1;
-      return calls === 1
-        ? Promise.reject(new Error('offline'))
-        : Promise.resolve(new ArrayBuffer(8));
+describe('sound engine when sound files fail to load', () => {
+  // The first request for each of `names` fails; every other succeeds.
+  const failingOnce = (names: readonly string[] = ALL_SOUNDS): LoadSound => {
+    const failed = new Set<string>();
+    return (name) => {
+      if (names.includes(name) && !failed.has(name)) {
+        failed.add(name);
+        return Promise.reject(new Error('offline'));
+      }
+      return Promise.resolve(soundBytes(name));
     };
   };
 
   it('stays silent and does not try again on its own', async () => {
-    const harness = tracked(setup({ loadSprite: failingOnce() }));
+    const harness = tracked(setup({ loadSound: failingOnce() }));
     await ready(harness);
     harness.engine.play('create-node');
     document.dispatchEvent(new Event('pointerdown'));
     await settle();
     expect(harness.context().played).toHaveLength(0);
-    expect(harness.load).toHaveBeenCalledTimes(1);
+    expect(harness.load).toHaveBeenCalledTimes(ALL_SOUNDS.length);
   });
 
   it('tries again when sound is next turned on', async () => {
-    const harness = tracked(setup({ loadSprite: failingOnce() }));
+    const harness = tracked(setup({ loadSound: failingOnce() }));
     await ready(harness);
     harness.engine.setEnabled(false);
     harness.engine.setEnabled(true);
@@ -504,21 +549,46 @@ describe('sound engine when the sprite fails to load', () => {
     harness.context().state = 'running';
     harness.engine.play('create-node');
     await settle();
-    expect(harness.load).toHaveBeenCalledTimes(2);
-    expect(harness.context().played).toHaveLength(1);
+    expect(harness.load).toHaveBeenCalledTimes(2 * ALL_SOUNDS.length);
+    expect(harness.context().played.map(soundOf)).toEqual(['create-node']);
+  });
+
+  it('plays the sounds whose files loaded, and tries again only the files that failed', async () => {
+    const harness = tracked(setup({ loadSound: failingOnce(['create-node']) }));
+    await ready(harness);
+    harness.engine.play('create-node');
+    await settle();
+    harness.advance(1000);
+    harness.engine.play('discard');
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual(['discard']);
+
+    harness.engine.setEnabled(false);
+    harness.engine.setEnabled(true);
+    await settle();
+    expect(requested(harness).slice(ALL_SOUNDS.length)).toEqual([
+      'create-node',
+    ]);
+    harness.advance(1000);
+    harness.engine.play('create-node');
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual([
+      'discard',
+      'create-node',
+    ]);
   });
 
   it('tries again once, on the first gesture after the device comes online', async () => {
     const harness = tracked(
-      setup({ loadSprite: () => Promise.reject(new Error('offline')) }),
+      setup({ loadSound: () => Promise.reject(new Error('offline')) }),
     );
     await ready(harness);
     window.dispatchEvent(new Event('online'));
-    expect(harness.load).toHaveBeenCalledTimes(1);
+    expect(harness.load).toHaveBeenCalledTimes(ALL_SOUNDS.length);
     document.dispatchEvent(new Event('pointerdown'));
     await settle();
     document.dispatchEvent(new Event('pointerdown'));
     await settle();
-    expect(harness.load).toHaveBeenCalledTimes(2);
+    expect(harness.load).toHaveBeenCalledTimes(2 * ALL_SOUNDS.length);
   });
 });

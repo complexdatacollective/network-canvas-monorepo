@@ -12,8 +12,9 @@ import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import {
   FakeAudioContext,
   settle,
+  soundBytes,
+  soundOf,
 } from '../../../sounds/__tests__/fakeAudioContext';
-import { INTERACTION_SOUND_SPRITE } from '../../../sounds/interactionSoundSprite';
 import {
   createSoundEngine,
   type OneShotSoundName,
@@ -244,7 +245,7 @@ describe('interaction sounds heard through the engine', () => {
     const context = new FakeAudioContext();
     const engine = createSoundEngine({
       createAudioContext: () => context,
-      loadSprite: () => Promise.resolve(new ArrayBuffer(8)),
+      loadSound: (name) => Promise.resolve(soundBytes(name)),
       document,
       window,
     });
@@ -252,13 +253,7 @@ describe('interaction sounds heard through the engine', () => {
     await settle();
     context.state = 'running';
     const { store } = buildStore(network, engine.play);
-    const heard = () =>
-      context.played.map((source) => {
-        const offset = source.started?.[1];
-        return Object.entries(INTERACTION_SOUND_SPRITE).find(
-          ([, span]) => span.start === offset,
-        )?.[0];
-      });
+    const heard = () => context.played.map(soundOf);
     return { store, engine, heard };
   }
 

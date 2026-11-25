@@ -1,15 +1,27 @@
 import { vi } from 'vitest';
 
+import type { InteractionSoundName } from '../interactionSoundFiles';
 import type { AudioContextLike } from '../soundEngine';
+
+/** The bytes a test serves for a sound's file; the fake decodes the name. */
+export const soundBytes = (name: InteractionSoundName): ArrayBuffer =>
+  new TextEncoder().encode(name).buffer;
+
+/** What the fake decodes a sound's file to. */
+class FakeBuffer {
+  readonly sound: string;
+  constructor(sound: string) {
+    this.sound = sound;
+  }
+}
 
 class FakeSource {
   buffer: object | null = null;
   loop = false;
-  loopStart = 0;
-  loopEnd = 0;
   readonly playbackRate = { value: 1 };
   private readonly endedListeners: (() => void)[] = [];
-  started: (number | undefined)[] | null = null;
+  /** The `when` that `start` was called with, or null if it was not. */
+  started: { when: number | undefined } | null = null;
   stopped = false;
   /** How many times `stop` was called. */
   stopCalls = 0;
@@ -20,8 +32,8 @@ class FakeSource {
     return undefined;
   }
   disconnect() {}
-  start(when?: number, offset?: number, duration?: number) {
-    this.started = [when, offset, duration];
+  start(when?: number) {
+    this.started = { when };
   }
   stop() {
     this.stopped = true;
@@ -59,7 +71,6 @@ export class FakeAudioContext implements AudioContextLike {
   readonly destination = {};
   readonly master = { gain: { value: 1 }, connect: () => undefined };
   readonly sources: FakeSource[] = [];
-  readonly decoded = { sprite: true };
   resume = vi.fn(() => {
     this.state = 'running';
     return Promise.resolve();
@@ -72,7 +83,9 @@ export class FakeAudioContext implements AudioContextLike {
     this.state = 'closed';
     return Promise.resolve();
   });
-  decodeAudioData = vi.fn(() => Promise.resolve(this.decoded));
+  decodeAudioData = vi.fn((data: ArrayBuffer) =>
+    Promise.resolve(new FakeBuffer(new TextDecoder().decode(data))),
+  );
   createGain() {
     return this.master;
   }
@@ -87,7 +100,11 @@ export class FakeAudioContext implements AudioContextLike {
   }
 }
 
-/** Lets a sprite load, and sounds gathered for one action play. */
+/** The sound whose decoded file a source plays. */
+export const soundOf = (source: { buffer: object | null }) =>
+  source.buffer instanceof FakeBuffer ? source.buffer.sound : undefined;
+
+/** Lets the sound files load, and sounds gathered for one action play. */
 export const settle = () =>
   new Promise((resolve) => {
     setTimeout(resolve, 0);

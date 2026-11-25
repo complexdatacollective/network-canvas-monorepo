@@ -677,9 +677,10 @@ type ShellProps = {
    * removing or connecting nodes, selecting them, placing them in bins),
    * while a node is waiting to be connected to another, when they press the
    * Back or Next button, when a form cannot be submitted, and when the
-   * interview reaches its end. Off by default. The sound file (one WAV
-   * file, about 1.8 MB) is downloaded the first time this is turned on, and
-   * never while it is off; turning it off stops any sound that is playing.
+   * interview reaches its end. Off by default. The sound files (ten MP3
+   * files, about 160 KB in total) are downloaded the first time this is
+   * turned on, and never while it is off; turning it off stops any sound that
+   * is playing.
    * A browser lets a page play sound only once the participant has
    * interacted with it, so no sound plays before their first tap, click or
    * key press. Can be changed at any time.

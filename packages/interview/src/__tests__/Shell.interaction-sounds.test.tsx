@@ -9,8 +9,16 @@ import {
 
 import type { InterviewPayload } from '../contract/types';
 import Shell from '../Shell';
-import { FakeAudioContext, settle } from '../sounds/__tests__/fakeAudioContext';
-import { INTERACTION_SOUND_SPRITE } from '../sounds/interactionSoundSprite';
+import {
+  FakeAudioContext,
+  settle,
+  soundBytes,
+  soundOf,
+} from '../sounds/__tests__/fakeAudioContext';
+import {
+  INTERACTION_SOUND_FILES,
+  type InteractionSoundName,
+} from '../sounds/interactionSoundFiles';
 import { deleteEdge, deleteNode } from '../store/modules/session';
 import { testId, testTypeId } from './testIds';
 
@@ -93,10 +101,20 @@ const payload = {
   },
 } satisfies InterviewPayload;
 
+const SOUND_NAMES = Object.keys(INTERACTION_SOUND_FILES).toSorted();
+const isSoundName = (name: string): name is InteractionSoundName =>
+  SOUND_NAMES.includes(name);
+
 const contexts: FakeAudioContext[] = [];
-const fetchSprite = vi.fn(() =>
-  Promise.resolve(new Response(new ArrayBuffer(8))),
-);
+// Serves each sound's file by the name in its URL.
+const fetchSound = vi.fn((url: string) => {
+  const name = /\/([^/]+)\.mp3$/.exec(url)?.[1] ?? '';
+  return Promise.resolve(
+    isSoundName(name)
+      ? new Response(soundBytes(name))
+      : new Response(null, { status: 404 }),
+  );
+});
 
 function ShellWithSounds({ on }: { on?: boolean }) {
   return (
@@ -123,8 +141,8 @@ function liveStore() {
 
 beforeEach(() => {
   contexts.length = 0;
-  fetchSprite.mockClear();
-  vi.stubGlobal('fetch', fetchSprite);
+  fetchSound.mockClear();
+  vi.stubGlobal('fetch', fetchSound);
   vi.stubGlobal(
     'AudioContext',
     class extends FakeAudioContext {
@@ -149,10 +167,10 @@ describe('Shell interaction sounds', () => {
     });
     await act(settle);
     expect(contexts).toHaveLength(0);
-    expect(fetchSprite).not.toHaveBeenCalled();
+    expect(fetchSound).not.toHaveBeenCalled();
   });
 
-  it('fetches the sprite once, by its plain emitted URL, when the prop is turned on', async () => {
+  it('fetches each sound file once, by its plain emitted URL, when the prop is turned on', async () => {
     const view = render(<ShellWithSounds on={false} />);
     await act(settle);
     const storeBefore = liveStore();
@@ -165,9 +183,14 @@ describe('Shell interaction sounds', () => {
 
     // Exactly the URL the bundler emitted, with no request options, so a
     // service worker that precached it answers while offline.
-    expect(fetchSprite.mock.calls).toEqual([
-      [expect.stringMatching(/\/interaction-sounds\.wav$/)],
-    ]);
+    const calls = fetchSound.mock.calls.toSorted(([a], [b]) =>
+      a.localeCompare(b),
+    );
+    expect(calls).toEqual(
+      SOUND_NAMES.map((name) => [
+        expect.stringMatching(new RegExp(`/${name}\\.mp3$`)),
+      ]),
+    );
     expect(contexts).toHaveLength(1);
     // Turning sounds on and off never recreates the interview's store.
     expect(liveStore()).toBe(storeBefore);
@@ -184,9 +207,7 @@ describe('Shell interaction sounds', () => {
       liveStore().dispatch(deleteEdge('e'));
     });
     await act(settle);
-    expect(context.played.map((source) => source.started?.[1])).toEqual([
-      INTERACTION_SOUND_SPRITE['toggle-off'].start,
-    ]);
+    expect(context.played.map(soundOf)).toEqual(['toggle-off']);
 
     // A different, more important sound, which neither the repeat interval
     // nor the burst window would hold back.

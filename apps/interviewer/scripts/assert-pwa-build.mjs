@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Post-build assertion: a production PWA build must emit the SW + manifest +
 // icons, every critical chunk (the interview engine, the entry), every
-// lazily loaded locale chunk, every responsive stage-preview image and the
-// interview's sound sprite must be precached. A missing critical asset breaks
+// lazily loaded locale chunk, every responsive stage-preview image and every
+// interview sound file must be precached. A missing critical asset breaks
 // either the offline boot, an offline language switch, the first offline
 // opening of the menu, or sounds first turned on offline.
 // Chunks loaded on demand (each UI language, the bundled sample protocol, the
@@ -234,21 +234,39 @@ if (missingMarks.length > 0) {
   );
 }
 
-// The interview's sound sprite is fetched only once the Interaction sounds
+// The interview's sound files are fetched only once the Interaction sounds
 // setting is on, which may first happen while the device is offline. Only the
-// precache can supply it then: nothing fetched it while the device was online.
-const soundSprites = assetFiles
-  .filter((f) => f.endsWith('.wav'))
-  .map((f) => `assets/${f}`);
-if (soundSprites.length === 0) {
-  fail('no .wav interaction sound sprite emitted to dist/assets');
-}
-const missingSoundSprites = soundSprites.filter(
-  (url) => !manifestUrls.has(url),
+// precache can supply them then: nothing fetched them while the device was
+// online. Every file in the interview's sound folder must be emitted as a file
+// of its own (one inlined into a chunk as a data URL would never be fetched
+// from the precache) and precached.
+const soundSourceDir = path.resolve(
+  appRoot,
+  '../../packages/interview/src/sounds/assets',
 );
-if (missingSoundSprites.length > 0) {
+const soundNames = readdirSync(soundSourceDir)
+  .filter((f) => f.endsWith('.mp3'))
+  .map((f) => f.slice(0, -'.mp3'.length));
+if (soundNames.length === 0) {
+  fail(`no .mp3 interaction sound files found in ${soundSourceDir}`);
+}
+const soundFiles = assetFiles
+  .filter((f) => f.endsWith('.mp3'))
+  .map((f) => `assets/${f}`);
+// Emitted as `assets/<name>-<hash>.mp3`; a hash may itself contain `-`, and
+// no sound's name is another's followed by `-`.
+const notEmittedSounds = soundNames.filter(
+  (name) => !soundFiles.some((url) => url.startsWith(`assets/${name}-`)),
+);
+if (notEmittedSounds.length > 0) {
   fail(
-    `sound sprite(s) excluded from precache, so interaction sounds turned on offline stay silent: ${missingSoundSprites.join(', ')}`,
+    `interaction sound file(s) not emitted to dist/assets, so they cannot be precached: ${notEmittedSounds.join(', ')}`,
+  );
+}
+const missingSoundFiles = soundFiles.filter((url) => !manifestUrls.has(url));
+if (missingSoundFiles.length > 0) {
+  fail(
+    `sound file(s) excluded from precache, so interaction sounds turned on offline stay silent: ${missingSoundFiles.join(', ')}`,
   );
 }
 
@@ -609,7 +627,7 @@ if (
 if (
   !/\/assets\//.test(assetHandoffRouteSource) ||
   !/js\|css/.test(assetHandoffRouteSource) ||
-  !/wav/.test(assetHandoffRouteSource) ||
+  !/mp3/.test(assetHandoffRouteSource) ||
   !/4x3/.test(assetHandoffRouteSource) ||
   !/webp/.test(assetHandoffRouteSource) ||
   !/caches\.match|Reflect\.get\(globalThis,"caches"\)/.test(
@@ -618,7 +636,7 @@ if (
   !/fetch\(/.test(assetHandoffRouteSource)
 ) {
   fail(
-    'old-bundle JS/CSS, sound sprites and stage-preview WebPs cannot fall back to retained precaches',
+    'old-bundle JS/CSS, sound files and stage-preview WebPs cannot fall back to retained precaches',
   );
 }
 if (/index\.html/.test(assetHandoffRouteSource)) {
@@ -626,5 +644,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s), ${stagePreviewAssets.length} stage-preview asset(s), ${fontAssets.length} font face(s) and ${soundSprites.length} sound sprite(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s), ${stagePreviewAssets.length} stage-preview asset(s), ${fontAssets.length} font face(s) and ${soundFiles.length} sound file(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );
