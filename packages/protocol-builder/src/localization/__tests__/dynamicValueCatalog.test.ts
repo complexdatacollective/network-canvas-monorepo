@@ -1,21 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type AttributeDynamicValueRole,
   type DynamicValueSiteContext,
   dynamicValueContextFor,
+  dynamicValueNameFor,
   dynamicValueParticipantRolesAt,
   dynamicValueRolesAt,
-  type MessageNode,
+  type LabelledDynamicValueRole,
   nodeLabelValueContext,
+  optionCaseKey,
 } from '@codaco/protocol-validation';
 
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
 import {
-  bindingFor,
-  isFlagChoice,
-  bindingRecordedFor,
   dynamicValueChoices,
   dynamicValueNamesUsedIn,
+  isFlagChoice,
 } from '../dynamicValueCatalog';
 
 const PERSON = testTypeId('person');
@@ -32,6 +33,14 @@ const NODE_NAME = testVariableId('node-name');
 const CLOSENESS = testVariableId('closeness');
 const NAME_VAR = testVariableId('nameVar');
 const NODE_SECRET = testVariableId('node-secret');
+const VERY_CLOSE = testId('option/very-close');
+const NOT_CLOSE = testId('option/not-close');
+const IS_OLD = testId('condition/is-old');
+
+const attribute = (role: AttributeDynamicValueRole, variableId: string) =>
+  dynamicValueNameFor({ kind: 'attribute', role, variableId });
+const labelOf = (role: LabelledDynamicValueRole) =>
+  dynamicValueNameFor({ kind: 'label', role });
 
 const EGO = {
   [NAME]: { name: 'Name', type: 'text' },
@@ -57,8 +66,8 @@ const NODE = {
     name: 'Closeness',
     type: 'ordinal',
     options: [
-      { value: 1, label: { en: 'Very close' } },
-      { value: 'not close', label: { en: 'Not close' } },
+      { id: VERY_CLOSE, value: 1, label: { en: 'Very close' } },
+      { id: NOT_CLOSE, value: 'not close', label: { en: 'Not close' } },
     ],
   },
 } as const;
@@ -81,62 +90,52 @@ const contextFor = (
         : undefined,
 });
 
-const labelText = (label: unknown) =>
-  typeof label === 'object' && label !== null && 'en' in label
-    ? String(label.en)
-    : '';
+const namesAt = (context: DynamicValueSiteContext) =>
+  dynamicValueChoices(context).map((choice) => choice.name);
 
 describe('dynamicValueChoices', () => {
   it('offers today’s date and the attributes text can show, and nothing else', () => {
-    const paths = dynamicValueChoices(
-      contextFor('Information', 'stageText'),
-    ).map((choice) => choice.path);
-    expect(paths).toEqual([
-      `ego.${NAME}`,
-      `ego.${CHILDREN}`,
-      `ego.${SMOKES}`,
-      `ego.${VAPES}`,
-      `ego.${DRINKS}`,
+    expect(namesAt(contextFor('Information', 'stageText'))).toEqual([
+      attribute('ego', NAME),
+      attribute('ego', CHILDREN),
+      attribute('ego', SMOKES),
+      attribute('ego', VAPES),
+      attribute('ego', DRINKS),
       'now',
     ]);
   });
 
-  it('lists what the text is about first, then the participant, then the interview', () => {
-    const paths = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).map(
-      (choice) => choice.path,
+  it('names each value as the text writes it, by its id', () => {
+    expect(attribute('ego', NAME)).toBe(`ego_${NAME.replaceAll('-', '_')}`);
+    expect(namesAt(contextFor('Information', 'stageText'))).toContain(
+      attribute('ego', NAME),
     );
-    const firstEgo = paths.findIndex((path) => path.startsWith('ego.'));
-    expect(
-      paths.slice(0, firstEgo).every((path) => path.startsWith('dyad.')),
-    ).toBe(true);
-    expect(
-      paths.slice(firstEgo, -1).every((path) => path.startsWith('ego.')),
-    ).toBe(true);
-    expect(paths.at(-1)).toBe('now');
   });
 
-  it('adds the pair on a dyad prompt', () => {
-    const paths = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).map(
-      (choice) => choice.path,
-    );
-    expect(paths).toContain(`dyad.source.${CLOSENESS}`);
-    expect(paths).toContain(`dyad.target.${NODE_NAME}`);
+  it('lists what the text is about first, then the participant, then the interview', () => {
+    const names = namesAt(contextFor('DyadCensus', 'prompt'));
+    const firstEgo = names.findIndex((name) => name.startsWith('ego_'));
+    expect(
+      names.slice(0, firstEgo).every((name) => name.startsWith('dyad')),
+    ).toBe(true);
+    expect(
+      names.slice(firstEgo, -1).every((name) => name.startsWith('ego_')),
+    ).toBe(true);
+    expect(names.at(-1)).toBe('now');
   });
 
   it('offers each node on screen by its label, before its attributes', () => {
-    const paths = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).map(
-      (choice) => choice.path,
-    );
-    expect(paths.filter((path) => path.startsWith('dyad.'))).toEqual([
-      'dyad.source.$label',
-      `dyad.source.${NODE_NAME}`,
-      `dyad.source.${CLOSENESS}`,
-      'dyad.target.$label',
-      `dyad.target.${NODE_NAME}`,
-      `dyad.target.${CLOSENESS}`,
+    const names = namesAt(contextFor('DyadCensus', 'prompt'));
+    expect(names.filter((name) => name.startsWith('dyad'))).toEqual([
+      labelOf('dyadSource'),
+      attribute('dyadSource', NODE_NAME),
+      attribute('dyadSource', CLOSENESS),
+      labelOf('dyadTarget'),
+      attribute('dyadTarget', NODE_NAME),
+      attribute('dyadTarget', CLOSENESS),
     ]);
     const label = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).find(
-      (choice) => choice.path === 'dyad.source.$label',
+      (choice) => choice.name === labelOf('dyadSource'),
     );
     expect(label).toMatchObject({ kind: 'label', optional: false });
   });
@@ -154,35 +153,30 @@ describe('dynamicValueChoices', () => {
     const choices = dynamicValueChoices(pedigree);
     expect(
       choices
-        .map((choice) => choice.path)
-        .filter((path) => path.startsWith('node.')),
+        .map((choice) => choice.name)
+        .filter((name) => name.startsWith('node_')),
     ).toEqual([
-      'node.$label',
-      'node.$isParticipant',
-      `node.${NODE_NAME}`,
-      `node.${CLOSENESS}`,
+      'node_label',
+      'node_isParticipant',
+      attribute('node', NODE_NAME),
+      attribute('node', CLOSENESS),
     ]);
     const participant = choices.find(
-      (choice) => choice.path === 'node.$isParticipant',
+      (choice) => choice.name === 'node_isParticipant',
     );
     expect(participant).toMatchObject({
       kind: 'participant',
       optional: false,
       unshowable: 'switch',
     });
-    expect(bindingFor(participant!, {}, {}, labelText)).toEqual({
-      name: 'isParticipant',
-      binding: {
-        path: 'node.$isParticipant',
-        cases: { participant: true },
-      },
-    });
+    // It is worded for by whether it is true.
+    expect(participant?.options.map((option) => option.caseKey)).toEqual([
+      'true',
+    ]);
     // Any other node form has no participant among its nodes.
-    expect(
-      dynamicValueChoices(contextFor('AlterForm', 'formField', true)).map(
-        (choice) => choice.path,
-      ),
-    ).not.toContain('node.$isParticipant');
+    expect(namesAt(contextFor('AlterForm', 'formField', true))).not.toContain(
+      'node_isParticipant',
+    );
   });
 
   it('offers an edge form both ends of its edge by label alone', () => {
@@ -193,10 +187,10 @@ describe('dynamicValueChoices', () => {
       }),
       variablesFor: (role) => (role === 'ego' ? EGO : undefined),
     };
-    const paths = dynamicValueChoices(context).map((choice) => choice.path);
-    expect(paths).toContain('edge.from.$label');
-    expect(paths).toContain('edge.to.$label');
-    expect(paths.some((path) => path.startsWith('node.'))).toBe(false);
+    const names = namesAt(context);
+    expect(names).toContain(labelOf('edgeFrom'));
+    expect(names).toContain(labelOf('edgeTo'));
+    expect(names.some((name) => name.startsWith('node_'))).toBe(false);
   });
 
   it('offers a bin prompt in tap-to-place mode the node being placed, whose label can be missing', () => {
@@ -214,238 +208,69 @@ describe('dynamicValueChoices', () => {
       site: 'prompt',
     });
     const label = dynamicValueChoices(context).find(
-      (choice) => choice.path === 'node.$label',
+      (choice) => choice.name === 'node_label',
     );
     expect(label).toMatchObject({ kind: 'label', optional: true });
   });
 
   it('offers no label where no single node is on screen', () => {
-    const paths = dynamicValueChoices(contextFor('Sociogram', 'prompt')).map(
-      (choice) => choice.path,
-    );
-    expect(paths.some((path) => path.endsWith('$label'))).toBe(false);
+    expect(
+      namesAt(contextFor('Sociogram', 'prompt')).some((name) =>
+        name.endsWith('_label'),
+      ),
+    ).toBe(false);
   });
 
-  it('gives a yes-or-no attribute without labels its two answers', () => {
-    const smokes = dynamicValueChoices(
-      contextFor('Information', 'stageText'),
-    ).find((choice) => choice.path === `ego.${SMOKES}`);
-    expect(smokes?.options.map((option) => option.value)).toEqual([
-      true,
-      false,
+  it('chooses an option of a categorical or ordinal attribute by its id', () => {
+    const closeness = dynamicValueChoices(
+      contextFor('DyadCensus', 'prompt'),
+    ).find((choice) => choice.name === attribute('dyadSource', CLOSENESS));
+    expect(closeness?.options).toEqual([
+      {
+        caseKey: optionCaseKey(VERY_CLOSE),
+        value: 1,
+        label: { en: 'Very close' },
+      },
+      {
+        caseKey: optionCaseKey(NOT_CLOSE),
+        value: 'not close',
+        label: { en: 'Not close' },
+      },
     ]);
   });
+
+  it('gives a yes-or-no attribute its two answers, labelled where its options label them', () => {
+    const choices = dynamicValueChoices(contextFor('Information', 'stageText'));
+    const smokes = choices.find(
+      (choice) => choice.name === attribute('ego', SMOKES),
+    );
+    expect(smokes?.options).toEqual([
+      { caseKey: 'true', value: true, label: undefined },
+      { caseKey: 'false', value: false, label: undefined },
+    ]);
+    const drinks = choices.find(
+      (choice) => choice.name === attribute('ego', DRINKS),
+    );
+    expect(drinks?.options).toEqual([
+      { caseKey: 'true', value: true, label: { en: 'Drinks' } },
+      { caseKey: 'false', value: false, label: { en: 'Does not drink' } },
+    ]);
+  });
+
   it('offers a yes-or-no attribute as words only once both answers have labels', () => {
     const unshowable = Object.fromEntries(
       dynamicValueChoices(contextFor('Information', 'stageText')).map(
-        (choice) => [choice.path, choice.unshowable],
+        (choice) => [choice.name, choice.unshowable],
       ),
     );
     expect(unshowable).toEqual({
       now: undefined,
-      [`ego.${NAME}`]: undefined,
-      [`ego.${CHILDREN}`]: undefined,
-      [`ego.${SMOKES}`]: 'needsLabels',
-      [`ego.${VAPES}`]: 'switch',
-      [`ego.${DRINKS}`]: undefined,
+      [attribute('ego', NAME)]: undefined,
+      [attribute('ego', CHILDREN)]: undefined,
+      [attribute('ego', SMOKES)]: 'needsLabels',
+      [attribute('ego', VAPES)]: 'switch',
+      [attribute('ego', DRINKS)]: undefined,
     });
-  });
-});
-
-describe('bindingFor', () => {
-  const choices = dynamicValueChoices(contextFor('DyadCensus', 'prompt'));
-  const choice = (path: string) => {
-    const found = choices.find((each) => each.path === path);
-    if (found === undefined) throw new Error(path);
-    return found;
-  };
-
-  it('names a binding for the attribute, prefixed for each person of a pair', () => {
-    expect(bindingFor(choice(`ego.${NAME}`), {}, {}, labelText).name).toBe(
-      'name',
-    );
-    expect(
-      bindingFor(choice(`dyad.source.${NODE_NAME}`), {}, {}, labelText).name,
-    ).toBe('firstName');
-    expect(
-      bindingFor(choice(`dyad.target.${NODE_NAME}`), {}, {}, labelText).name,
-    ).toBe('secondName');
-    expect(bindingFor(choice('now'), {}, {}, labelText).name).toBe('today');
-  });
-
-  it('names a binding for each node of a pair’s label', () => {
-    expect(bindingFor(choice('dyad.source.$label'), {}, {}, labelText)).toEqual(
-      { name: 'firstLabel', binding: { path: 'dyad.source.$label' } },
-    );
-    expect(
-      bindingFor(choice('dyad.target.$label'), {}, {}, labelText).name,
-    ).toBe('secondLabel');
-  });
-
-  it('numbers a name the stage already uses for something else', () => {
-    expect(
-      bindingFor(
-        choice(`ego.${NAME}`),
-        { name: { path: `ego.${CHILDREN}` } },
-        {},
-        labelText,
-      ).name,
-    ).toBe('name2');
-  });
-
-  it('reuses the stage’s binding for the same value', () => {
-    expect(
-      bindingFor(
-        choice(`ego.${NAME}`),
-        { you: { path: `ego.${NAME}` } },
-        {},
-        labelText,
-      ),
-    ).toEqual({ name: 'you', binding: { path: `ego.${NAME}` } });
-  });
-
-  it('names a case for each answer, from its value or its label', () => {
-    expect(
-      bindingFor(choice(`dyad.source.${CLOSENESS}`), {}, {}, labelText).binding,
-    ).toEqual({
-      path: `dyad.source.${CLOSENESS}`,
-      cases: { veryClose: 1, notClose: 'not close' },
-    });
-    expect(
-      bindingFor(choice(`ego.${SMOKES}`), {}, {}, labelText).binding,
-    ).toEqual({
-      path: `ego.${SMOKES}`,
-      cases: { yes: true, no: false },
-    });
-  });
-});
-
-describe('the cases recorded for a value with answers', () => {
-  const closeness = {
-    path: `dyad.source.${CLOSENESS}`,
-    cases: { veryClose: 1, notClose: 'not close' },
-  } as const;
-  const shown: MessageNode[] = [
-    { kind: 'text', text: 'You are ' },
-    { kind: 'argument', name: 'firstCloseness' },
-  ];
-  const byAnswer: MessageNode[] = [
-    {
-      kind: 'switch',
-      argument: 'firstCloseness',
-      type: 'select',
-      versions: [
-        { key: 'veryClose', nodes: [{ kind: 'text', text: 'close' }] },
-        { key: 'other', nodes: [] },
-      ],
-    },
-  ];
-
-  it('binds a value shown only as itself without cases', () => {
-    expect(
-      bindingRecordedFor('firstCloseness', closeness, undefined, shown),
-    ).toEqual({ path: `dyad.source.${CLOSENESS}` });
-  });
-
-  it('binds a value shown by answer with its cases', () => {
-    expect(
-      bindingRecordedFor('firstCloseness', closeness, undefined, byAnswer),
-    ).toEqual(closeness);
-  });
-
-  it('finds a by-answer version inside another set of versions', () => {
-    const nested: MessageNode[] = [
-      {
-        kind: 'switch',
-        argument: 'name',
-        type: 'select',
-        versions: [{ key: 'other', nodes: byAnswer }],
-      },
-    ];
-    expect(
-      bindingRecordedFor('firstCloseness', closeness, undefined, nested),
-    ).toEqual(closeness);
-  });
-
-  it('adds the cases to a binding once the text shows a version by answer', () => {
-    const plain = { path: `dyad.source.${CLOSENESS}` };
-    expect(
-      bindingRecordedFor('firstCloseness', closeness, plain, shown),
-    ).toBeUndefined();
-    expect(
-      bindingRecordedFor('firstCloseness', closeness, plain, byAnswer),
-    ).toEqual(closeness);
-  });
-
-  it('keeps the name of a binding recording some of the answers, offering the rest', () => {
-    const choice = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).find(
-      (each) => each.path === `dyad.source.${CLOSENESS}`,
-    );
-    if (choice === undefined) throw new Error('no choice');
-    expect(
-      bindingFor(
-        choice,
-        { close: { path: `dyad.source.${CLOSENESS}`, cases: { near: 1 } } },
-        {},
-        labelText,
-      ),
-    ).toEqual({
-      name: 'close',
-      binding: {
-        path: `dyad.source.${CLOSENESS}`,
-        cases: { near: 1, notClose: 'not close' },
-      },
-    });
-  });
-
-  it('changes a binding only for a version by an answer it does not record yet', () => {
-    const partial = {
-      path: `dyad.source.${CLOSENESS}`,
-      cases: { veryClose: 1 },
-    };
-    const onRecorded: MessageNode[] = [
-      {
-        kind: 'switch',
-        argument: 'firstCloseness',
-        type: 'select',
-        versions: [
-          { key: 'veryClose', nodes: [] },
-          { key: 'other', nodes: [] },
-        ],
-      },
-    ];
-    expect(
-      bindingRecordedFor('firstCloseness', closeness, partial, onRecorded),
-    ).toBeUndefined();
-    const onAdded: MessageNode[] = [
-      {
-        kind: 'switch',
-        argument: 'firstCloseness',
-        type: 'select',
-        versions: [
-          { key: 'notClose', nodes: [] },
-          { key: 'other', nodes: [] },
-        ],
-      },
-    ];
-    expect(
-      bindingRecordedFor('firstCloseness', closeness, partial, onAdded),
-    ).toEqual(closeness);
-  });
-
-  it('offers cases under the name of a binding recorded without them', () => {
-    const choice = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).find(
-      (each) => each.path === `dyad.source.${CLOSENESS}`,
-    );
-    if (choice === undefined) throw new Error('no choice');
-    expect(
-      bindingFor(
-        choice,
-        { close: { path: `dyad.source.${CLOSENESS}` } },
-        {},
-        labelText,
-      ),
-    ).toEqual({ name: 'close', binding: closeness });
   });
 });
 
@@ -455,11 +280,11 @@ describe('dynamicValueNamesUsedIn', () => {
       [
         ...dynamicValueNamesUsedIn({
           title: { en: 'Hi {name, select, missing {there} other {{name}}}' },
-          prompts: [{ text: { en: 'Since {today}', fr: "Depuis '{today}'" } }],
+          prompts: [{ text: { en: 'Since {now}', fr: "Depuis '{now}'" } }],
           label: 'Literal {braces} in a label',
         }),
       ].toSorted(),
-    ).toEqual(['braces', 'name', 'today']);
+    ).toEqual(['braces', 'name', 'now']);
   });
 });
 
@@ -479,11 +304,11 @@ describe('what a node type’s own label can show', () => {
     },
     nodeType: PERSON,
     conditions: {
-      isOld: {
+      [IS_OLD]: {
         about: 'node',
         rules: [
           {
-            id: 'r1',
+            id: testId('rule/is-old'),
             type: 'node',
             options: {
               type: PERSON,
@@ -503,8 +328,8 @@ describe('what a node type’s own label can show', () => {
         .filter(
           (choice) => choice.kind === 'label' || choice.kind === 'attribute',
         )
-        .map((choice) => choice.path),
-    ).toEqual(['node.$label', `node.${NAME_VAR}`]);
+        .map((choice) => choice.name),
+    ).toEqual(['node_label', attribute('node', NAME_VAR)]);
     expect(
       choices.find((choice) => choice.kind === 'label')?.defaultLabel,
     ).toBe(true);
@@ -514,16 +339,10 @@ describe('what a node type’s own label can show', () => {
 
   it('offers each condition the label declares, to be tested and never shown', () => {
     const conditions = choices.filter((choice) => choice.kind === 'condition');
-    expect(conditions.map((choice) => choice.path)).toEqual([
-      '$condition.isOld',
+    expect(conditions.map((choice) => choice.name)).toEqual([
+      dynamicValueNameFor({ kind: 'condition', conditionId: IS_OLD }),
     ]);
     expect(conditions.every(isFlagChoice)).toBe(true);
     expect(conditions[0]?.unshowable).toBe('switch');
-  });
-
-  it('offers nothing about how the node is connected: that is a rule of a condition', () => {
-    expect(choices.some((choice) => choice.path.includes('onnected'))).toBe(
-      false,
-    );
   });
 });

@@ -74,8 +74,16 @@ const sections = (): Record<string, SectionDoc> => ({
         name: 'Category',
         type: 'categorical',
         options: [
-          { label: { en: 'One' }, value: 'one' },
-          { label: { en: 'Two' }, value: 'two' },
+          {
+            id: testId('option/Category/one'),
+            label: { en: 'One' },
+            value: 'one',
+          },
+          {
+            id: testId('option/Category/two'),
+            label: { en: 'Two' },
+            value: 'two',
+          },
         ],
       },
     },
@@ -339,18 +347,32 @@ describe('variable role helpers', () => {
       [SEX_ASSIGNED_AT_BIRTH]: {
         name: 'sexAssignedAtBirth',
         type: 'categorical' as const,
-        options: [{ label: { en: 'Drifted' }, value: 'drifted' }],
+        options: [
+          {
+            id: testId('option/sexAssignedAtBirth/drifted'),
+            label: { en: 'Drifted' },
+            value: 'drifted',
+          },
+        ],
       },
       [STAMPED]: {
         name: 'stamped',
         type: 'ordinal' as const,
         readOnly: true,
-        options: [{ label: { en: 'Low' }, value: 1 }],
+        options: [
+          { id: testId('option/stamped/1'), label: { en: 'Low' }, value: 1 },
+        ],
       },
       [ORDINARY]: {
         name: 'ordinary',
         type: 'categorical' as const,
-        options: [{ label: { en: 'Yes' }, value: 'yes' }],
+        options: [
+          {
+            id: testId('option/ordinary/yes'),
+            label: { en: 'Yes' },
+            value: 'yes',
+          },
+        ],
       },
       [PLAIN]: { name: 'plain', type: 'text' as const },
     };
@@ -366,7 +388,7 @@ describe('variable role helpers', () => {
       ),
     ).toEqual(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS);
     expect(lockedVariableOptions(variables, STAMPED)).toEqual([
-      { label: { en: 'Low' }, value: 1 },
+      { id: testId('option/stamped/1'), label: { en: 'Low' }, value: 1 },
     ]);
     expect(lockedVariableOptions(variables, ORDINARY)).toBeUndefined();
     // An attribute with no option list at all cannot have one locked.

@@ -1360,10 +1360,12 @@ describe('processProtocolSortRule', () => {
         name: 'category',
         options: [
           {
+            id: testId('createSorter option 1'),
             label: { en: 'One' },
             value: 'one',
           },
           {
+            id: testId('createSorter option 2'),
             label: { en: 'Two' },
             value: 'two',
           },
@@ -1374,10 +1376,12 @@ describe('processProtocolSortRule', () => {
         type: 'ordinal',
         options: [
           {
+            id: testId('createSorter option 3'),
             label: { en: 'One' },
             value: 'one',
           },
           {
+            id: testId('createSorter option 4'),
             label: { en: 'Two' },
             value: 'two',
           },
@@ -1679,22 +1683,27 @@ describe('processProtocolSortRule', () => {
         type: 'ordinal',
         options: [
           {
+            id: testId('createSorter option 5'),
             label: { en: 'Every day' },
             value: 4,
           },
           {
+            id: testId('createSorter option 6'),
             label: { en: 'Every other day' },
             value: 3,
           },
           {
+            id: testId('createSorter option 7'),
             label: { en: 'Every week' },
             value: 2,
           },
           {
+            id: testId('createSorter option 8'),
             label: { en: 'Sometimes' },
             value: 1,
           },
           {
+            id: testId('createSorter option 9'),
             label: { en: 'Never' },
             value: -1,
           },

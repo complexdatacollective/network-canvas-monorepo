@@ -116,6 +116,8 @@ describe('two options of one attribute that read the same', () => {
       {
         code: DUPLICATE_LABEL,
         path: [...CATEGORY_PATH, 'options', 1, 'label'],
+        // The problem is the option's, so it carries the option's id.
+        objectId: expect.any(String),
         message:
           'Options 1 and 2 of attribute "Category" have labels that read the same: "Friend" and " friend" (en). Each option needs a label participants can tell apart.',
         params: {
@@ -301,8 +303,8 @@ describe('migrating options whose labels read the same from schema 8', () => {
       original,
     ).codebook.node?.person?.variables?.category;
     expect(variable?.type === 'categorical' ? variable.options : null).toEqual([
-      { label: { en: 'Friend' }, value: 'friend' },
-      { label: { en: 'Family' }, value: 'family' },
+      { id: expect.any(String), label: { en: 'Friend' }, value: 'friend' },
+      { id: expect.any(String), label: { en: 'Family' }, value: 'family' },
     ]);
   });
 });

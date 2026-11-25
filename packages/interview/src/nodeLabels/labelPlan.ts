@@ -1,6 +1,6 @@
 import {
+  dynamicValueReferencesIn,
   type NodeLabel,
-  parseDynamicValuePath,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -42,8 +42,12 @@ export const nodeLabelPlanFor = (label: NodeLabel): NodeLabelPlan => {
   let readsNetwork = false;
   const seen = new Set<string>();
   const conditions = label.conditions ?? {};
-  for (const binding of Object.values(label.dynamicValues ?? {})) {
-    const parsed = parseDynamicValuePath(binding.path);
+  // The conditions the label's text chooses its wording by, in any of its
+  // languages.
+  const parsedNames = Object.values(label.text).flatMap((message) =>
+    dynamicValueReferencesIn(message).map(({ parsed }) => parsed),
+  );
+  for (const parsed of parsedNames) {
     if (parsed?.kind !== 'condition' || seen.has(parsed.conditionId)) continue;
     const { conditionId } = parsed;
     seen.add(conditionId);

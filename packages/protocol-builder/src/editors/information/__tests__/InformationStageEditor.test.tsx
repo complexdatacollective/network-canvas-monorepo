@@ -1,14 +1,18 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { memo, useLayoutEffect, useSyncExternalStore } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { withMod } from '@codaco/fresco-ui/testing/modKey';
+import { dynamicValueNameFor } from '@codaco/protocol-validation';
 
 import PageContentSection from '../../../sections/page-content/PageContentSection.tsx';
+import type { StageEditorActionContext } from '../../../stage-editor-contract.ts';
 import {
   fixtureStageIds,
   fixtureStageId,
+  fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
@@ -78,6 +82,42 @@ function DirtyFlag() {
  * composes, and the round trip over its fixture stage, are asked of all four
  * form editors together in `editors/__tests__/formEditors.test.tsx`.
  */
+/**
+ * A host's list of the sections and their status, drawn from the store the
+ * action slot is given and redrawn only when that store says so.
+ */
+const SectionStatus = memo(function SectionStatus({
+  sections,
+}: Pick<StageEditorActionContext, 'sections'>) {
+  const listed = useSyncExternalStore(sections.subscribe, sections.getSnapshot);
+  return (
+    <ul aria-label="Section status">
+      {listed.map((section) => (
+        <li key={section.id}>{`${section.title}: ${section.status}`}</li>
+      ))}
+    </ul>
+  );
+});
+
+/**
+ * Another part of a host's page that reads the stage's own problems whenever
+ * the page changes, before the editor has said what the change was.
+ */
+function StageProblemsReader({
+  problems,
+}: Pick<StageEditorActionContext, 'problems'>) {
+  useLayoutEffect(() => {
+    const observer = new MutationObserver(() => problems.getSnapshot());
+    observer.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-invalid'],
+    });
+    return () => observer.disconnect();
+  }, [problems]);
+  return null;
+}
+
 describe('the editor for a page of content', () => {
   it('opens on the stage the protocol holds', async () => {
     renderStageEditor(openFixture());
@@ -212,6 +252,85 @@ describe('the editor for a page of content', () => {
     );
     const request = await harness.submit();
     expect(request?.stageDocument.content).toEqual(en('![](asset:map-1)'));
+  });
+
+  /**
+   * A host draws the sections' status from the store the action slot is
+   * given, and redraws when it is told to. The text is judged against the
+   * codebook, which can be incomplete for a moment (while the protocol is
+   * still being read, or while a collaborator's change arrives), so the
+   * host must hear about the text becoming valid again, as well as about it
+   * becoming invalid.
+   */
+  it('shows no problem for a page that shows a participant’s attribute once the attribute is back', async () => {
+    const egoName = fixtureVariableId('ego', 'ego_name');
+    const name = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: egoName,
+    });
+    const harness = renderStageEditor({
+      ...openPage(`Hello{${name}, select, missing {} other { {${name}}}}`),
+      actions: (context) => (
+        <>
+          <SectionStatus sections={context.sections} />
+          <StageProblemsReader problems={context.problems} />
+        </>
+      ),
+    });
+    const editor = await pageEditor();
+    await harness.opened();
+    const status = screen.getByRole('list', { name: 'Section status' });
+    await waitFor(() => expect(status).toHaveTextContent('Content: complete'));
+
+    const ego = harness.hostCodebook().ego;
+    if (ego === undefined) throw new Error('No ego');
+    const { [egoName]: _gone, ...others } = ego.variables ?? {};
+    harness.receiveCodebookUpdate({ ego: { ...ego, variables: others } });
+    await waitFor(() => expect(status).toHaveTextContent('Content: error'));
+
+    harness.receiveCodebookUpdate({ ego });
+    await waitFor(() => expect(editor).not.toHaveAttribute('aria-invalid'));
+    await waitFor(() => expect(status).toHaveTextContent('Content: complete'));
+  });
+
+  /**
+   * Text names an attribute by its id, so renaming the attribute changes what
+   * its pill reads and leaves the stored text exactly as it was.
+   */
+  it('reads a renamed attribute by its new name, and saves the text unchanged', async () => {
+    const egoName = fixtureVariableId('ego', 'ego_name');
+    const name = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: egoName,
+    });
+    const text = `Hello{${name}, select, missing {} other { {${name}}}}`;
+    const harness = renderStageEditor(openPage(text));
+    const editor = await pageEditor();
+    await harness.opened();
+    const ego = harness.hostCodebook().ego;
+    const variable = ego?.variables?.[egoName];
+    if (ego === undefined || variable === undefined) throw new Error('No ego');
+    await waitFor(() => expect(editor).toHaveTextContent(variable.name));
+    expect(editor).not.toHaveTextContent('first_name_renamed');
+
+    harness.receiveCodebookUpdate({
+      ego: {
+        ...ego,
+        variables: {
+          ...ego.variables,
+          [egoName]: { ...variable, name: 'first_name_renamed' },
+        },
+      },
+    });
+
+    // The editor is drawn again with the new name.
+    await waitFor(async () =>
+      expect(await pageEditor()).toHaveTextContent('first_name_renamed'),
+    );
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.content).toEqual(en(text));
   });
 
   it('refuses an empty page, and says which section is at fault', async () => {

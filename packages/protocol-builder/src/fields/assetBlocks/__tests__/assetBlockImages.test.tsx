@@ -17,9 +17,8 @@ const UNUSABLE = messages.unusable.defaultMessage;
 
 const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 const LOCALE: LocaleTag = 'en';
-const SITE: Pick<DynamicMessageSite, 'context' | 'bindings'> = {
+const SITE: Pick<DynamicMessageSite, 'context'> = {
   context: { roles: new Set(), variablesFor: () => undefined },
-  bindings: {},
 };
 
 const ASSETS = {

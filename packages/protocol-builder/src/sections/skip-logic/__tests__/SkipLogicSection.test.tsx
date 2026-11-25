@@ -704,8 +704,16 @@ describe('a rule set the researcher cannot save', () => {
           name: 'contactType',
           type: 'categorical',
           options: [
-            { label: { 'en-US': 'Not working' }, value: 'not-working' },
-            { label: { 'en-US': 'Text message' }, value: 'text' },
+            {
+              id: testId('option/contactType/not-working'),
+              label: { 'en-US': 'Not working' },
+              value: 'not-working',
+            },
+            {
+              id: testId('option/contactType/text'),
+              label: { 'en-US': 'Text message' },
+              value: 'text',
+            },
           ],
         },
       }),

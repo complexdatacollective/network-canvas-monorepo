@@ -41,24 +41,28 @@
           "component": "RadioGroup",
           "options": [
             {
+              "id": "7cf4e65f-8693-5b58-abe6-a43cb637cefc",
               "label": {
                 "en": "Secondary school or less"
               },
               "value": 1
             },
             {
+              "id": "3c8d93b2-e2aa-54ae-b508-ceca4b0d01b5",
               "label": {
                 "en": "Post-secondary or vocational training"
               },
               "value": 2
             },
             {
+              "id": "75252c9e-6d42-544b-8469-edbe533b842f",
               "label": {
                 "en": "University degree"
               },
               "value": 3
             },
             {
+              "id": "3947febf-2ff8-5b11-830b-56a79661f57c",
               "label": {
                 "en": "Postgraduate degree"
               },
@@ -136,36 +140,42 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "3bddef72-47fb-5907-8ece-1f071ce912d5",
                 "label": {
                   "en": "Close friend"
                 },
                 "value": "close_friend"
               },
               {
+                "id": "aeb6bba4-bc58-55c0-b384-49cd379d5a4d",
                 "label": {
                   "en": "Friend"
                 },
                 "value": "friend"
               },
               {
+                "id": "94d44c0f-2da0-5c75-b21d-90060c38987a",
                 "label": {
                   "en": "Colleague or classmate"
                 },
                 "value": "colleague"
               },
               {
+                "id": "de2d9176-e591-51f9-a777-6f17b95fd355",
                 "label": {
                   "en": "Neighbour"
                 },
                 "value": "neighbour"
               },
               {
+                "id": "b8fcbb96-47cf-5d55-9aa4-f49539729aca",
                 "label": {
                   "en": "Faith community"
                 },
                 "value": "faith"
               },
               {
+                "id": "95ad5959-99e4-54bd-819f-1fc248708b7c",
                 "label": {
                   "en": "Health professional"
                 },
@@ -197,18 +207,21 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "fa0e0aff-c6d0-50ba-857c-9d5163cf914d",
                 "label": {
                   "en": "Living"
                 },
                 "value": "living"
               },
               {
+                "id": "b76b2ed5-d2ba-50a8-8bb1-38af9d001ed0",
                 "label": {
                   "en": "Deceased"
                 },
                 "value": "deceased"
               },
               {
+                "id": "d2e894ac-7b74-5f6f-bd22-3cb4ce3a0228",
                 "label": {
                   "en": "Don’t know"
                 },
@@ -227,24 +240,28 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "fe75d89a-c4fb-5b4b-9d9d-ec445ed5f869",
                 "label": {
                   "en": "Not close"
                 },
                 "value": 1
               },
               {
+                "id": "5428552b-b376-5eac-817a-103787b7bbbb",
                 "label": {
                   "en": "A little close"
                 },
                 "value": 2
               },
               {
+                "id": "40bb0c77-a8ca-5e6c-bee7-63d515271d2d",
                 "label": {
                   "en": "Quite close"
                 },
                 "value": 3
               },
               {
+                "id": "4db36bbc-e9ce-5ebe-9fef-8a903c9b4a6d",
                 "label": {
                   "en": "Very close"
                 },
@@ -258,36 +275,42 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "89dff09e-a3d4-5815-9317-35858e68ac90",
                 "label": {
                   "en": "No contact"
                 },
                 "value": 1
               },
               {
+                "id": "f3a99356-3aff-50ce-a6fb-0efd9a40981a",
                 "label": {
                   "en": "Less than once a year"
                 },
                 "value": 2
               },
               {
+                "id": "04d4fdc4-0bdb-57a7-a188-e22b75ca4a50",
                 "label": {
                   "en": "A few times a year"
                 },
                 "value": 3
               },
               {
+                "id": "dfc02750-158d-59cf-b2a7-98c62eb91c5f",
                 "label": {
                   "en": "Monthly"
                 },
                 "value": 4
               },
               {
+                "id": "dec526bb-69ea-5e15-9963-7093dd108e12",
                 "label": {
                   "en": "Weekly"
                 },
                 "value": 5
               },
               {
+                "id": "3b92394c-da1b-5cc9-a085-e069500ce19a",
                 "label": {
                   "en": "Daily or almost daily"
                 },
@@ -335,36 +358,42 @@
             "type": "categorical",
             "options": [
               {
+                "id": "5030bed2-c2d6-59ed-aa6c-188fc464001b",
                 "value": "woman",
                 "label": {
                   "en": "Woman"
                 }
               },
               {
+                "id": "a549315a-364d-5f7c-8227-b87f88a76dfb",
                 "value": "man",
                 "label": {
                   "en": "Man"
                 }
               },
               {
+                "id": "d6c95433-54fb-5fa5-a71b-2cdcf8979b9c",
                 "value": "nonBinary",
                 "label": {
                   "en": "Non-binary"
                 }
               },
               {
+                "id": "a98eb818-d128-550a-ad3c-fd6dc912f28c",
                 "value": "differentIdentity",
                 "label": {
                   "en": "A different identity"
                 }
               },
               {
+                "id": "381436a1-6473-5b7d-8289-58d2b11b9079",
                 "value": "unknown",
                 "label": {
                   "en": "Don’t know"
                 }
               },
               {
+                "id": "38692cfe-ed00-58a0-807b-d986661e4f7e",
                 "value": "preferNotToSay",
                 "label": {
                   "en": "Prefer not to say"
@@ -377,30 +406,35 @@
             "type": "categorical",
             "options": [
               {
+                "id": "aa3362d0-8f4e-5eae-9a4f-ecb066a351a0",
                 "value": "female",
                 "label": {
                   "en": "Female"
                 }
               },
               {
+                "id": "44cb31e9-5590-521b-ba10-c2a5f5b67326",
                 "value": "male",
                 "label": {
                   "en": "Male"
                 }
               },
               {
+                "id": "5f8a8d35-1b73-5577-9378-f11a1e52287f",
                 "value": "intersex",
                 "label": {
                   "en": "Intersex"
                 }
               },
               {
+                "id": "07681d99-8fb4-52a4-b85a-b02f885091ba",
                 "value": "unknown",
                 "label": {
                   "en": "Don’t know"
                 }
               },
               {
+                "id": "8dd50a04-2fef-5109-8428-49a60e5657d0",
                 "value": "preferNotToSay",
                 "label": {
                   "en": "Prefer not to say"
@@ -421,54 +455,63 @@
             "type": "categorical",
             "options": [
               {
+                "id": "7015a881-69b3-5385-b1c3-7e3af1d4c0a7",
                 "value": "partner",
                 "label": {
                   "en": "Partner"
                 }
               },
               {
+                "id": "85b70289-6214-546c-a17e-d7b37b5fa5e8",
                 "value": "biological",
                 "label": {
                   "en": "Biological parent"
                 }
               },
               {
+                "id": "9ff7445e-ac78-567e-b10d-70bfdafa1dd9",
                 "value": "adoptive",
                 "label": {
                   "en": "Adoptive parent"
                 }
               },
               {
+                "id": "4253c60d-dcb9-501f-abb7-0bdb3287c043",
                 "value": "social",
                 "label": {
                   "en": "Step or social parent"
                 }
               },
               {
+                "id": "7ba45fe9-43f0-52b5-929d-6a81189e1d8c",
                 "value": "donor",
                 "label": {
                   "en": "Donor"
                 }
               },
               {
+                "id": "006636d0-ffb9-5629-93f7-45e415ad4792",
                 "value": "surrogate",
                 "label": {
                   "en": "Surrogate"
                 }
               },
               {
+                "id": "f16c8709-98c6-5518-a5b9-e4bda0c540e1",
                 "value": "identicalTwin",
                 "label": {
                   "en": "Identical twin"
                 }
               },
               {
+                "id": "02a43fc2-f715-56a9-b134-92d99dae32a3",
                 "value": "fraternalTwin",
                 "label": {
                   "en": "Fraternal twin"
                 }
               },
               {
+                "id": "3cd6041d-fc25-545c-8017-8c8beafc9815",
                 "value": "unknownZygosityTwin",
                 "label": {
                   "en": "Twin, not known if identical"
@@ -859,17 +902,6 @@
         "sexAssignedAtBirthAttribute": "8f931b44-63c5-5c58-8340-fa97fa236d7a",
         "egoAttribute": "85ecf5b7-e347-50de-84aa-82f97631a9a6"
       },
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        },
-        "isParticipant": {
-          "path": "node.$isParticipant",
-          "cases": {
-            "participant": true
-          }
-        }
-      },
       "edgeConfiguration": {
         "type": "ca615c89-8954-5655-bed4-3f5ff538b0ff",
         "kindAttribute": "178d38e7-bcba-5d5e-8ca0-41ab21134608",
@@ -882,14 +914,14 @@
             "id": "27b7efbb-fd25-5a14-8be1-11ec41ba1dd3",
             "variable": "a514cd54-540e-5f78-b0f1-5d4f7bf2c401",
             "prompt": {
-              "en": "{isParticipant, select, participant {Are you living or deceased?} other {Is {nodeLabel} living or deceased?}}"
+              "en": "{node_isParticipant, select, true {Are you living or deceased?} other {Is {node_label} living or deceased?}}"
             }
           },
           {
             "id": "130a76d8-352a-5458-a960-5faac4d8a1a5",
             "variable": "8b12abb5-ac11-5800-b6d7-315a2dab2536",
             "prompt": {
-              "en": "{isParticipant, select, participant {What year were you born?} other {What year was {nodeLabel} born?}}"
+              "en": "{node_isParticipant, select, true {What year were you born?} other {What year was {node_label} born?}}"
             },
             "hint": {
               "en": "Leave this blank if you do not know."
@@ -1030,11 +1062,6 @@
     },
     {
       "id": "345038c0-98cf-5c97-b41a-f87267e177f6",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "type": "CategoricalBin",
       "label": {
         "en": "How you know each person"
@@ -1052,7 +1079,7 @@
           "variable": "4274a5f4-3a85-5a09-ad5c-c62feb516e42",
           "otherVariable": "7da02acd-905b-5a5c-92d3-ceb35b0bd973",
           "otherVariablePrompt": {
-            "en": "How would you describe how you know {nodeLabel}?"
+            "en": "How would you describe how you know {node_label}?"
           },
           "otherOptionLabel": {
             "en": "Something else"

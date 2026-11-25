@@ -41,30 +41,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "452c9790-4743-59ca-a44a-cf6962b7266a",
               "label": {
                 "en": "None of the time"
               },
               "value": 0
             },
             {
+              "id": "0549e1b5-473b-57be-afb5-7ff616dbc520",
               "label": {
                 "en": "A little of the time"
               },
               "value": 1
             },
             {
+              "id": "f2da69c5-982f-58b9-9c3c-3d49316e60d8",
               "label": {
                 "en": "Some of the time"
               },
               "value": 2
             },
             {
+              "id": "6979a128-be06-5099-8df0-f7ca73b94149",
               "label": {
                 "en": "Most of the time"
               },
               "value": 3
             },
             {
+              "id": "bc3794c4-d1c8-5e73-912a-28a7a9aeacfc",
               "label": {
                 "en": "All of the time"
               },
@@ -81,30 +86,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "8085dac3-e99f-5438-8a4a-3d8496cd0797",
               "label": {
                 "en": "None of the time"
               },
               "value": 0
             },
             {
+              "id": "794929de-d907-5fcb-b1f8-41a3056e6e09",
               "label": {
                 "en": "A little of the time"
               },
               "value": 1
             },
             {
+              "id": "9cae8287-490d-5dd9-b54b-a668115769ab",
               "label": {
                 "en": "Some of the time"
               },
               "value": 2
             },
             {
+              "id": "f9443d12-338d-56a7-98d6-5b68867b9d03",
               "label": {
                 "en": "Most of the time"
               },
               "value": 3
             },
             {
+              "id": "28103b2c-6ab5-506d-a026-fedbcf7ae575",
               "label": {
                 "en": "All of the time"
               },
@@ -121,30 +131,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "6ecc7a19-b90c-545f-b3e2-38e4d7cc17f8",
               "label": {
                 "en": "None of the time"
               },
               "value": 0
             },
             {
+              "id": "717aff67-5279-5d15-be7c-f23c696ab2e5",
               "label": {
                 "en": "A little of the time"
               },
               "value": 1
             },
             {
+              "id": "43dc3f4d-d8b7-5a9a-a145-0b70240e9d64",
               "label": {
                 "en": "Some of the time"
               },
               "value": 2
             },
             {
+              "id": "1529c8e6-4749-52f6-a354-9ffbf005df44",
               "label": {
                 "en": "Most of the time"
               },
               "value": 3
             },
             {
+              "id": "8d14a14d-0499-5e6e-aff5-716fb34e39aa",
               "label": {
                 "en": "All of the time"
               },
@@ -161,30 +176,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "7f980e49-be45-571e-a60b-ab086b2ef55f",
               "label": {
                 "en": "None of the time"
               },
               "value": 0
             },
             {
+              "id": "0a466542-793f-58b6-a9a0-785a1e726c7b",
               "label": {
                 "en": "A little of the time"
               },
               "value": 1
             },
             {
+              "id": "582d1064-a72d-5840-bbe7-a666bf00c329",
               "label": {
                 "en": "Some of the time"
               },
               "value": 2
             },
             {
+              "id": "f283e166-9857-5f04-a109-1e33d019d11f",
               "label": {
                 "en": "Most of the time"
               },
               "value": 3
             },
             {
+              "id": "7bc04098-abb4-58a9-80d8-0ac6dc6fe118",
               "label": {
                 "en": "All of the time"
               },
@@ -201,30 +221,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "8d4e752e-b715-506b-acf0-dca4b0070176",
               "label": {
                 "en": "None of the time"
               },
               "value": 0
             },
             {
+              "id": "dea3c19d-1e88-5594-bc40-355ff29bc191",
               "label": {
                 "en": "A little of the time"
               },
               "value": 1
             },
             {
+              "id": "8fc2157d-ee1f-58f4-81fd-a811ea238a6c",
               "label": {
                 "en": "Some of the time"
               },
               "value": 2
             },
             {
+              "id": "7956e01b-1d58-5fc7-93fd-1b539393eca4",
               "label": {
                 "en": "Most of the time"
               },
               "value": 3
             },
             {
+              "id": "016ac5be-b841-5569-97f3-f5468695e055",
               "label": {
                 "en": "All of the time"
               },
@@ -241,30 +266,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "5a3ed806-f5db-5b0e-905c-cfbf43e5c87d",
               "label": {
                 "en": "None of the time"
               },
               "value": 0
             },
             {
+              "id": "91c87c5e-0ed0-594c-8b4e-f8799ec4a3e5",
               "label": {
                 "en": "A little of the time"
               },
               "value": 1
             },
             {
+              "id": "12f1127a-869d-54d6-b2e0-eb79aede7222",
               "label": {
                 "en": "Some of the time"
               },
               "value": 2
             },
             {
+              "id": "61550ba9-5029-5e59-a418-f41b2069a86c",
               "label": {
                 "en": "Most of the time"
               },
               "value": 3
             },
             {
+              "id": "547b4c37-50d0-5bba-91f2-9c3307253cf3",
               "label": {
                 "en": "All of the time"
               },
@@ -281,30 +311,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "fa50a08b-5f90-5b14-8ea0-8307854582cf",
               "label": {
                 "en": "Poor"
               },
               "value": 1
             },
             {
+              "id": "538b7252-d563-55d7-8aff-5c3226aae389",
               "label": {
                 "en": "Fair"
               },
               "value": 2
             },
             {
+              "id": "30c342ac-624c-5608-a3b3-c4afd753ce7c",
               "label": {
                 "en": "Good"
               },
               "value": 3
             },
             {
+              "id": "87a15eea-c2c4-5f89-85b2-c04011a36b1c",
               "label": {
                 "en": "Very good"
               },
               "value": 4
             },
             {
+              "id": "c38cc28f-3f17-5e64-9d65-04f607ad10d7",
               "label": {
                 "en": "Excellent"
               },
@@ -360,66 +395,77 @@
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "15ea86a8-b00f-53c5-aeac-b6667573cf17",
                 "label": {
                   "en": "Partner or spouse"
                 },
                 "value": "partner"
               },
               {
+                "id": "a82b8e5b-de00-5c71-a5fe-32b8074bba8a",
                 "label": {
                   "en": "Parent"
                 },
                 "value": "parent"
               },
               {
+                "id": "094ad490-fc74-58cb-8b06-22edada3cb17",
                 "label": {
                   "en": "Child"
                 },
                 "value": "child"
               },
               {
+                "id": "e5a6cb4f-6022-580a-8aa0-4508fc9be611",
                 "label": {
                   "en": "Sibling"
                 },
                 "value": "sibling"
               },
               {
+                "id": "1bd867e4-3aec-5937-959e-ee6ec9c37467",
                 "label": {
                   "en": "Other family member"
                 },
                 "value": "other_family"
               },
               {
+                "id": "70429a59-11b9-56f2-af0e-11cc4bfcbd6e",
                 "label": {
                   "en": "Friend"
                 },
                 "value": "friend"
               },
               {
+                "id": "dbbfb03e-16e8-5a68-8eb2-a6501a1b1f08",
                 "label": {
                   "en": "Neighbour"
                 },
                 "value": "neighbour"
               },
               {
+                "id": "76c1f079-37cf-548c-92b8-07068bc91447",
                 "label": {
                   "en": "Co-worker or classmate"
                 },
                 "value": "coworker"
               },
               {
+                "id": "5144891e-e463-590d-af7e-a2e6b702b050",
                 "label": {
                   "en": "Health or care professional"
                 },
                 "value": "professional"
               },
               {
+                "id": "1d81e1c3-137b-575d-be40-5e2e516cb028",
                 "label": {
                   "en": "Peer or support-group member"
                 },
                 "value": "peer"
               },
               {
+                "id": "68b33469-eff6-5af3-bc06-7109a782a97a",
                 "label": {
                   "en": "Other"
                 },
@@ -547,12 +593,14 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "c530154a-691d-508a-819e-c1081380640c",
                 "label": {
                   "en": "Informal (family, friends, peers)"
                 },
                 "value": "informal"
               },
               {
+                "id": "495bcbad-249c-57a8-8270-66aa49dcb69b",
                 "label": {
                   "en": "Formal or clinical (professionals, services)"
                 },
@@ -570,30 +618,35 @@
             "component": "RadioGroup",
             "options": [
               {
+                "id": "a2861a49-6af2-5a34-afe6-a8daf8a2bae1",
                 "label": {
                   "en": "Daily"
                 },
                 "value": 5
               },
               {
+                "id": "afe13edd-52cd-52e0-a4d8-5e837880bc84",
                 "label": {
                   "en": "A few times a week"
                 },
                 "value": 4
               },
               {
+                "id": "98c5b733-a726-5473-ad7f-04ca0468ec5d",
                 "label": {
                   "en": "About once a week"
                 },
                 "value": 3
               },
               {
+                "id": "c97bc935-fc8a-5be1-9004-a349856f1f40",
                 "label": {
                   "en": "About once a month"
                 },
                 "value": 2
               },
               {
+                "id": "32eac704-a489-5449-b2e2-b58570bd115c",
                 "label": {
                   "en": "Less than once a month"
                 },
@@ -607,30 +660,35 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "2a2967e5-91b6-574b-9a62-226ec93682ed",
                 "label": {
                   "en": "Not at all close"
                 },
                 "value": 1
               },
               {
+                "id": "81d68b6b-7ca1-5ce8-8a6c-831c4e6df46a",
                 "label": {
                   "en": "A little close"
                 },
                 "value": 2
               },
               {
+                "id": "8f99068b-367f-5d22-8e3b-60a2c694ea3d",
                 "label": {
                   "en": "Fairly close"
                 },
                 "value": 3
               },
               {
+                "id": "d083a058-9c22-508c-bac0-a7c4d5eeda76",
                 "label": {
                   "en": "Very close"
                 },
                 "value": 4
               },
               {
+                "id": "7810ab5f-6ee8-5561-9bfe-3faceb9093de",
                 "label": {
                   "en": "Extremely close"
                 },
@@ -944,11 +1002,6 @@
     },
     {
       "id": "031ef781-b493-5216-970c-1eadaa17b2d3",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "type": "AlterForm",
       "label": {
         "en": "About each person"
@@ -963,14 +1016,14 @@
             "id": "50271127-ce78-5c55-b985-686b22a47a38",
             "variable": "263d1fdb-dd8b-57f4-8671-297adf044058",
             "prompt": {
-              "en": "How is {nodeLabel} related to you?"
+              "en": "How is {node_label} related to you?"
             }
           },
           {
             "id": "1b7e7aa8-6700-5725-a96b-4f3aa57972e9",
             "variable": "b8f20dff-669a-5fe9-ab2d-0e24200c26a4",
             "prompt": {
-              "en": "Does {nodeLabel} **know about your mental health**?"
+              "en": "Does {node_label} **know about your mental health**?"
             },
             "hint": {
               "en": "That is, have you told them about it?"
@@ -980,7 +1033,7 @@
             "id": "21597d2f-d398-5ad4-9bee-e8205450ee53",
             "variable": "7eac5892-6c1e-5991-a566-92cf8f1fbb17",
             "prompt": {
-              "en": "Is {nodeLabel} a **formal or clinical source of help**?"
+              "en": "Is {node_label} a **formal or clinical source of help**?"
             },
             "hint": {
               "en": "For example, a doctor, therapist, counsellor, or other professional."

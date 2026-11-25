@@ -280,10 +280,26 @@ describe('parseExternalNetworkAsset', () => {
               name: 'Closeness',
               type: 'categorical',
               options: [
-                { label: { en: 'Close friend' }, value: 'close friend' },
-                { label: { en: 'Colleague' }, value: '同事' },
-                { label: { en: 'Null' }, value: 'null' },
-                { label: { en: 'One' }, value: 1 },
+                {
+                  id: testId('rosterData option 1'),
+                  label: { en: 'Close friend' },
+                  value: 'close friend',
+                },
+                {
+                  id: testId('rosterData option 2'),
+                  label: { en: 'Colleague' },
+                  value: '同事',
+                },
+                {
+                  id: testId('rosterData option 3'),
+                  label: { en: 'Null' },
+                  value: 'null',
+                },
+                {
+                  id: testId('rosterData option 4'),
+                  label: { en: 'One' },
+                  value: 1,
+                },
               ],
             },
           },

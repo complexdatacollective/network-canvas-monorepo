@@ -34,6 +34,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "8e52cdf4-98ba-50fa-844f-b41b119f9e74",
                 "label": {
                   "en-US": "Work",
                   "es": "Trabajo"
@@ -41,6 +42,7 @@
                 "value": "work"
               },
               {
+                "id": "9037cf60-cafa-583e-8c0e-1c08aca14c85",
                 "label": {
                   "en-US": "Social",
                   "es": "Social"
@@ -48,6 +50,7 @@
                 "value": "social"
               },
               {
+                "id": "01e5d7a1-58e3-5006-88f7-7c61c7ab1b3e",
                 "label": {
                   "en-US": "Family",
                   "es": "Familia"
@@ -61,6 +64,7 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "2aae7ae2-98f4-5f44-8079-9414f6dd52d4",
                 "label": {
                   "en-US": "Very close",
                   "es": "Muy cercana"
@@ -68,6 +72,7 @@
                 "value": 3
               },
               {
+                "id": "54932760-01d4-5134-a6c2-4102e6246299",
                 "label": {
                   "en-US": "Somewhat close",
                   "es": "Algo cercana"
@@ -75,6 +80,7 @@
                 "value": 2
               },
               {
+                "id": "69f6502e-3fcf-572b-97d5-10f2068468e9",
                 "label": {
                   "en-US": "Not close",
                   "es": "Nada cercana"
@@ -116,6 +122,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "05e7f098-ffe7-5139-8cb3-79caea011884",
                 "value": "woman",
                 "label": {
                   "en-US": "Woman",
@@ -123,6 +130,7 @@
                 }
               },
               {
+                "id": "b0571926-1790-5fbd-98fb-ce0bc02b72a9",
                 "value": "man",
                 "label": {
                   "en-US": "Man",
@@ -130,6 +138,7 @@
                 }
               },
               {
+                "id": "3a76bd1a-4c7c-5667-be3c-73b2c0c1fb6e",
                 "value": "nonBinary",
                 "label": {
                   "en-US": "Non-binary",
@@ -137,6 +146,7 @@
                 }
               },
               {
+                "id": "dc300ad6-52e3-5e5a-9241-5c579cd79d00",
                 "value": "differentIdentity",
                 "label": {
                   "en-US": "A different identity",
@@ -144,6 +154,7 @@
                 }
               },
               {
+                "id": "db244558-98ee-588e-9c0b-830485b202ae",
                 "value": "unknown",
                 "label": {
                   "en-US": "Don’t know",
@@ -151,6 +162,7 @@
                 }
               },
               {
+                "id": "60135ef2-2663-5508-8c6d-2076ebea9ea3",
                 "value": "preferNotToSay",
                 "label": {
                   "en-US": "Prefer not to say",
@@ -164,6 +176,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "1bc4127a-ceb1-57a0-97cf-1e237243f299",
                 "value": "female",
                 "label": {
                   "en-US": "Female",
@@ -171,6 +184,7 @@
                 }
               },
               {
+                "id": "24807385-ade7-5b58-ab22-fe9a9c44f117",
                 "value": "male",
                 "label": {
                   "en-US": "Male",
@@ -178,6 +192,7 @@
                 }
               },
               {
+                "id": "8a0e776e-7b1e-5f15-ac61-80b317baa9f9",
                 "value": "intersex",
                 "label": {
                   "en-US": "Intersex",
@@ -185,6 +200,7 @@
                 }
               },
               {
+                "id": "8fa00afb-95ca-5dc4-99a7-e99271da123e",
                 "value": "unknown",
                 "label": {
                   "en-US": "Don’t know",
@@ -192,6 +208,7 @@
                 }
               },
               {
+                "id": "f9df2dd1-07d0-585d-afaf-fa24f80d2e03",
                 "value": "preferNotToSay",
                 "label": {
                   "en-US": "Prefer not to say",
@@ -221,6 +238,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "bf1d1c69-6f88-5bd6-99b7-66e6e70bc1d5",
                 "value": "partner",
                 "label": {
                   "en-US": "Partner",
@@ -228,6 +246,7 @@
                 }
               },
               {
+                "id": "912bc379-3ac3-5345-b4b5-cccabb347dc5",
                 "value": "biological",
                 "label": {
                   "en-US": "Biological parent",
@@ -235,6 +254,7 @@
                 }
               },
               {
+                "id": "eee77493-1e5f-5a4b-84d9-43f1b8056ded",
                 "value": "adoptive",
                 "label": {
                   "en-US": "Adoptive parent",
@@ -242,6 +262,7 @@
                 }
               },
               {
+                "id": "dfff26d4-6337-5324-b09d-47fd6159eec3",
                 "value": "social",
                 "label": {
                   "en-US": "Step or social parent",
@@ -249,6 +270,7 @@
                 }
               },
               {
+                "id": "cec9e9e7-0389-528f-aedb-185aceb632b0",
                 "value": "donor",
                 "label": {
                   "en-US": "Donor",
@@ -256,6 +278,7 @@
                 }
               },
               {
+                "id": "0df69e53-f9e4-540c-98d8-d18fedf75227",
                 "value": "surrogate",
                 "label": {
                   "en-US": "Surrogate",
@@ -263,6 +286,7 @@
                 }
               },
               {
+                "id": "987c20bb-af67-5ac4-8927-c33dd2121b84",
                 "value": "identicalTwin",
                 "label": {
                   "en-US": "Identical twin",
@@ -270,6 +294,7 @@
                 }
               },
               {
+                "id": "abdb8942-b13d-5869-bd00-48337f80658d",
                 "value": "fraternalTwin",
                 "label": {
                   "en-US": "Fraternal twin",
@@ -277,6 +302,7 @@
                 }
               },
               {
+                "id": "6e5d815b-2171-54d4-be36-03b04b00be62",
                 "value": "unknownZygosityTwin",
                 "label": {
                   "en-US": "Twin, not known if identical",
@@ -355,14 +381,9 @@
         "en-US": "Welcome",
         "es": "Bienvenida"
       },
-      "dynamicValues": {
-        "today": {
-          "path": "now"
-        }
-      },
       "content": {
-        "en-US": "# Welcome\n\n# Release smoke\n\nThis short interview exercises every data write path. Today is {today}.",
-        "es": "# Bienvenida\n\n# Prueba de humo\n\nEsta breve entrevista pone a prueba todas las vías de escritura de datos. Hoy es {today}."
+        "en-US": "# Welcome\n\n# Release smoke\n\nThis short interview exercises every data write path. Today is {now}.",
+        "es": "# Bienvenida\n\n# Prueba de humo\n\nEsta breve entrevista pone a prueba todas las vías de escritura de datos. Hoy es {now}."
       }
     },
     {
@@ -463,17 +484,12 @@
         "minNodes": 1,
         "maxNodes": 8
       },
-      "dynamicValues": {
-        "egoName": {
-          "path": "ego.917f97a5-9d39-5de2-a86b-050e8640c920"
-        }
-      },
       "prompts": [
         {
           "id": "7784b696-92fe-521f-99d4-842cb0cb9b81",
           "text": {
-            "en-US": "{egoName, select, missing {Who are the people you know?} other {Who are the people you know, {egoName}?}}",
-            "es": "{egoName, select, missing {¿Quiénes son las personas que conoces?} other {¿Quiénes son las personas que conoces, {egoName}?}}"
+            "en-US": "{ego_917f97a5_9d39_5de2_a86b_050e8640c920, select, missing {Who are the people you know?} other {Who are the people you know, {ego_917f97a5_9d39_5de2_a86b_050e8640c920}?}}",
+            "es": "{ego_917f97a5_9d39_5de2_a86b_050e8640c920, select, missing {¿Quiénes son las personas que conoces?} other {¿Quiénes son las personas que conoces, {ego_917f97a5_9d39_5de2_a86b_050e8640c920}?}}"
           }
         }
       ],
@@ -537,20 +553,12 @@
         "entity": "node",
         "type": "7c6af45e-c013-5fc8-882f-59fa434c4800"
       },
-      "dynamicValues": {
-        "first": {
-          "path": "dyad.source.$label"
-        },
-        "second": {
-          "path": "dyad.target.$label"
-        }
-      },
       "prompts": [
         {
           "id": "ad584752-caa8-57d3-94cc-ac099ff3931a",
           "text": {
-            "en-US": "Are {first} and {second} friends?",
-            "es": "¿{first} y {second} son amigos?"
+            "en-US": "Are {dyadSource_label} and {dyadTarget_label} friends?",
+            "es": "¿{dyadSource_label} y {dyadTarget_label} son amigos?"
           },
           "createEdge": "5807e8b2-f412-541e-a3a5-f048bdfc8608"
         }
@@ -610,19 +618,14 @@
           }
         ]
       },
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "form": {
         "fields": [
           {
             "id": "b213121c-6246-5fca-a33d-a9f7d98e6838",
             "variable": "873f29dc-0d89-50c9-8930-fd9418c1469e",
             "prompt": {
-              "en-US": "Should we follow up with {nodeLabel}?",
-              "es": "¿Deberíamos hacer un seguimiento con {nodeLabel}?"
+              "en-US": "Should we follow up with {node_label}?",
+              "es": "¿Deberíamos hacer un seguimiento con {node_label}?"
             }
           }
         ]

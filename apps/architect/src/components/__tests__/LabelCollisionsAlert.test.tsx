@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Router } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 
+import { testOptionId } from '@codaco/protocol-builder/testing/testId';
 import {
   type CurrentProtocol,
   validateProtocol,
@@ -87,9 +88,14 @@ const trilingual = (): CurrentProtocol => {
   const livingStatus =
     protocol.codebook.node?.[PERSON]?.variables?.[LIVING_STATUS];
   if (livingStatus?.type !== 'categorical') throw new Error('No options');
+  const held = livingStatus.options;
+  // Each option keeps the id the fixture gave it.
+  const idOf = (value: string) =>
+    held.find((option) => option.value === value)?.id ??
+    testOptionId(LIVING_STATUS, value);
   livingStatus.options = [
-    { value: 'living', label: { en: 'A', fr: 'B' } },
-    { value: 'deceased', label: { en: 'C', es: 'B' } },
+    { id: idOf('living'), value: 'living', label: { en: 'A', fr: 'B' } },
+    { id: idOf('deceased'), value: 'deceased', label: { en: 'C', es: 'B' } },
   ];
   return protocol;
 };

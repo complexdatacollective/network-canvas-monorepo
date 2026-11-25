@@ -108,3 +108,51 @@ export const assignCodebookIds = (
     [...sourceMap].map(([path, source]) => [renamedSourcePath(path), source]),
   );
 };
+
+// Variable types whose options text chooses wording by, and which so give
+// each option an id.
+const OPTION_ID_VARIABLE_TYPES: ReadonlySet<unknown> = new Set([
+  'categorical',
+  'ordinal',
+]);
+
+/**
+ * Gives every option of a categorical or ordinal variable of `protocol` an
+ * id named by its variable's id and its value, so compiling one design twice
+ * gives the same ids. Variable ids are unique across the codebook and a
+ * variable's option values are unique within it, so each option has an id
+ * of its own. Runs after `assignCodebookIds`. `protocol` is changed in place.
+ */
+export const assignOptionIds = (protocol: Record<string, unknown>): void => {
+  const { codebook } = protocol;
+  if (!isObject(codebook)) return;
+  const entitiesOf = (entity: unknown): unknown[] =>
+    isObject(entity) ? Object.values(entity) : [];
+  const owners = [
+    codebook.ego,
+    ...entitiesOf(codebook.node),
+    ...entitiesOf(codebook.edge),
+  ];
+  for (const owner of owners) {
+    if (!isObject(owner) || !isObject(owner.variables)) continue;
+    for (const [variableId, variable] of Object.entries(owner.variables)) {
+      if (
+        !isObject(variable) ||
+        !OPTION_ID_VARIABLE_TYPES.has(variable.type) ||
+        !Array.isArray(variable.options)
+      ) {
+        continue;
+      }
+      variable.options = variable.options.map((option: unknown) =>
+        isObject(option)
+          ? {
+              id: sketchObjectId(
+                `option:${variableId}/${JSON.stringify(option.value)}`,
+              ),
+              ...option,
+            }
+          : option,
+      );
+    }
+  }
+};

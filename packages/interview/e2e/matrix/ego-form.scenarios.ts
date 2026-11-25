@@ -1,7 +1,9 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import {
   type ComponentType,
+  createConditionId,
   createProtocolObjectId,
+  dynamicValueNameFor,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
@@ -1726,9 +1728,11 @@ export const egoFormScenarios: InterfaceScenarios = {
         const stage = synth.addStage('EgoForm', {
           introductionPanel: INTRODUCTION,
         });
-        stage.stageEntry.dynamicValues = {
-          name: { path: `ego.${nameVar.id}` },
-        };
+        const name = dynamicValueNameFor({
+          kind: 'attribute',
+          role: 'ego',
+          variableId: nameVar.id,
+        });
         stage.addFormField({
           variable: nameVar.id,
           component: 'Text',
@@ -1738,8 +1742,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           variable: ageVar.id,
           component: 'Number',
           prompt: {
-            'en-US':
-              '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
+            'en-US': `{${name}, select, missing {How old are you?} other {How old are you, {${name}}?}}`,
           },
         });
         return synth;
@@ -1785,8 +1788,9 @@ export const egoFormScenarios: InterfaceScenarios = {
           introductionPanel: INTRODUCTION,
         });
         // An "If" on a rule about the participant: under 18, or anyone else.
+        const minor = createConditionId();
         stage.stageEntry.conditions = {
-          minor: {
+          [minor]: {
             rules: [
               {
                 id: createProtocolObjectId(),
@@ -1800,9 +1804,10 @@ export const egoFormScenarios: InterfaceScenarios = {
             ],
           },
         };
-        stage.stageEntry.dynamicValues = {
-          minor: { path: '$condition.minor', cases: { yes: true } },
-        };
+        const minorName = dynamicValueNameFor({
+          kind: 'condition',
+          conditionId: minor,
+        });
         stage.addFormField({
           variable: ageVar.id,
           component: 'Number',
@@ -1812,8 +1817,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           variable: schoolVar.id,
           component: 'Text',
           prompt: {
-            'en-US':
-              '{minor, select, yes {Which school do you go to?} other {Where did you go to school?}}',
+            'en-US': `{${minorName}, select, true {Which school do you go to?} other {Where did you go to school?}}`,
           },
         });
         return synth;

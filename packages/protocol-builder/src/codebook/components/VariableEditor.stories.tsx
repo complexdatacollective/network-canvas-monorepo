@@ -3,14 +3,14 @@ import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import { Button } from '@codaco/fresco-ui/Button';
-import type { VariableOption } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
+import type { OptionSeed } from '../optionRowChoice.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
 import VariableEditor from './VariableEditor.tsx';
 
@@ -40,7 +40,8 @@ const contextIn = (
   issues: [],
   localization,
 });
-const LOCKED_OPTIONS: readonly VariableOption[] = [
+// The set an interface owns: the attribute created on it gives each its id.
+const LOCKED_OPTIONS: readonly OptionSeed[] = [
   { label: { en: 'Woman' }, value: 'woman' },
   { label: { en: 'Man' }, value: 'man' },
   { label: { en: 'Another identity' }, value: 'another_identity' },
@@ -66,8 +67,8 @@ const CLOSENESS: SectionDoc = {
   name: 'closeness',
   type: 'ordinal',
   options: [
-    { label: { en: 'Not close' }, value: 1 },
-    { label: { en: 'Very close' }, value: 2 },
+    { id: testId('option/closeness/1'), label: { en: 'Not close' }, value: 1 },
+    { id: testId('option/closeness/2'), label: { en: 'Very close' }, value: 2 },
   ],
 };
 
@@ -215,9 +216,21 @@ const SURFACES = {
       name: 'preference',
       type: 'categorical',
       options: [
-        { label: { en: 'Low' }, value: 'low' },
-        { label: { en: 'Middle' }, value: 'middle' },
-        { label: { en: 'High' }, value: 'high' },
+        {
+          id: testId('option/preference/low'),
+          label: { en: 'Low' },
+          value: 'low',
+        },
+        {
+          id: testId('option/preference/middle'),
+          label: { en: 'Middle' },
+          value: 'middle',
+        },
+        {
+          id: testId('option/preference/high'),
+          label: { en: 'High' },
+          value: 'high',
+        },
       ],
       validation: { minSelected: 3 },
     },
@@ -225,9 +238,21 @@ const SURFACES = {
       name: 'preference',
       type: 'categorical',
       options: [
-        { label: { en: 'Low' }, value: 'low' },
-        { label: { en: 'Middle' }, value: 'middle' },
-        { label: { en: 'High' }, value: 'high' },
+        {
+          id: testId('option/preference/low'),
+          label: { en: 'Low' },
+          value: 'low',
+        },
+        {
+          id: testId('option/preference/middle'),
+          label: { en: 'Middle' },
+          value: 'middle',
+        },
+        {
+          id: testId('option/preference/high'),
+          label: { en: 'High' },
+          value: 'high',
+        },
       ],
       validation: { minSelected: 3 },
     },

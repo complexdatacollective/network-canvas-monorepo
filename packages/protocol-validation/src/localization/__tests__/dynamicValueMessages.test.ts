@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type DynamicValueArguments,
+  type DynamicValueLookup,
   type DynamicValueState,
   dynamicMessageParts,
   findDynamicMessageSyntaxProblem,
@@ -10,11 +11,42 @@ import {
 } from '../dynamicValueMessages.ts';
 
 const VALUES: DynamicValueArguments = {
-  name: { cases: [], numeric: false, optional: true },
-  kind: { cases: ['friend', 'family'], numeric: false, optional: true },
-  count: { cases: [], numeric: true, optional: true },
-  id: { cases: [], numeric: false, optional: false },
+  name: {
+    description: 'the "Name" attribute of the participant',
+    cases: [],
+    numeric: false,
+    optional: true,
+  },
+  kind: {
+    description: 'the "Kind" attribute of the participant',
+    cases: ['friend', 'family'],
+    numeric: false,
+    optional: true,
+  },
+  count: {
+    description: 'the "Count" attribute of the participant',
+    cases: [],
+    numeric: true,
+    optional: true,
+  },
+  id: {
+    description: 'the "ID" attribute of the participant',
+    cases: [],
+    numeric: false,
+    optional: false,
+  },
 };
+
+const UNKNOWN = 'This text uses a value that it cannot show.';
+
+/**
+ * A lookup that offers exactly `values`, read as own properties, and refuses
+ * any other name.
+ */
+const lookupOf =
+  (values: DynamicValueArguments): DynamicValueLookup =>
+  (name) =>
+    (Object.hasOwn(values, name) ? values[name] : undefined) ?? UNKNOWN;
 
 describe('findDynamicMessageSyntaxProblem', () => {
   it('accepts arguments, selects and plurals', () => {
@@ -89,10 +121,82 @@ describe('findDynamicMessageSyntaxProblem on blank text', () => {
         `${blank}{g, select, z {{a, select, y {visible} other {}}} other {}}`,
       ),
     ).toBeUndefined();
-    // Choices on one value still agree with each other.
+    // Choices on one value still agree with each other: inside the version
+    // for z, the value is z.
     expect(
       findDynamicMessageSyntaxProblem(
-        `${blank}{g, select, z {{g, select, y {visible} other {}}} other {}}`,
+        `${blank}{g, select, z {{g, select, z {} other {visible}}} other {}}`,
+      ),
+    ).toContain('blank in every version');
+  });
+
+  it('accepts wording that a select inside another chooses by a different case', () => {
+    // A value that can be several cases at once (a categorical answer with
+    // several options) can be z in the outer select and y in the inner one.
+    expect(
+      findDynamicMessageSyntaxProblem(
+        '{g, select, missing {} z {{g, select, y {visible} other {}}} other {}}',
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe('findDynamicValueProblem on a value with several cases at once', () => {
+  const kinds = (
+    cases: readonly string[],
+    more: Partial<DynamicValueArguments[string]> = {},
+  ): DynamicValueLookup =>
+    lookupOf({
+      kind: {
+        description: 'the "Kind" attribute of the participant',
+        cases,
+        numeric: false,
+        optional: true,
+        multiple: true,
+        ...more,
+      },
+    });
+
+  it('reads a case in a select inside one for another case', () => {
+    const message =
+      '{kind, select, missing {} friend {{kind, select, family {Both} other {}}} other {}}';
+    expect(
+      findDynamicValueProblem(message, kinds(['friend', 'family']), 'en'),
+    ).toBeUndefined();
+    // A value that is one case at a time is never both.
+    expect(
+      findDynamicValueProblem(
+        message,
+        kinds(['friend', 'family'], { multiple: false }),
+        'en',
+      ),
+    ).toContain('blank in every version');
+  });
+
+  it('chooses, in each select, the first of its cases in the order of the cases', () => {
+    // A select that reads family when it also gives friend proves the value
+    // is not friend, if friend comes first.
+    const message =
+      '{kind, select, missing {} friend {} family {{kind, select, friend {visible} other {}}} other {}}';
+    expect(
+      findDynamicValueProblem(message, kinds(['friend', 'family']), 'en'),
+    ).toContain('blank in every version');
+    expect(
+      findDynamicValueProblem(message, kinds(['family', 'friend']), 'en'),
+    ).toBeUndefined();
+  });
+
+  it('is at least one of its cases when they are every answer it has', () => {
+    const message =
+      '{kind, select, missing {} friend {} other {{kind, select, family {} other {visible}}}}';
+    expect(
+      findDynamicValueProblem(message, kinds(['friend', 'family']), 'en'),
+    ).toBeUndefined();
+    expect(
+      findDynamicValueProblem(
+        message,
+        kinds(['friend', 'family'], { exhaustive: true }),
+        'en',
       ),
     ).toContain('blank in every version');
   });
@@ -100,9 +204,13 @@ describe('findDynamicMessageSyntaxProblem on blank text', () => {
 
 describe('findDynamicValueProblem', () => {
   const ok = (message: string) =>
-    expect(findDynamicValueProblem(message, VALUES, 'en')).toBeUndefined();
+    expect(
+      findDynamicValueProblem(message, lookupOf(VALUES), 'en'),
+    ).toBeUndefined();
   const refused = (message: string, problem: string) =>
-    expect(findDynamicValueProblem(message, VALUES, 'en')).toContain(problem);
+    expect(findDynamicValueProblem(message, lookupOf(VALUES), 'en')).toContain(
+      problem,
+    );
 
   it('accepts literal text', () => {
     ok("Don't '{'worry'}'");
@@ -113,13 +221,19 @@ describe('findDynamicValueProblem', () => {
   });
 
   it('shows a value that can be missing only where it has one', () => {
-    refused('Hi {name}', '"name" can be missing');
+    refused(
+      'Hi {name}',
+      'The "Name" attribute of the participant can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.',
+    );
     ok('{name, select, missing {Hi} other {Hi {name}}}');
     ok('Hi {name, select, missing {there} other {{name}}}!');
-    refused('{name, select, other {Hi {name}}}', '"name" can be missing');
+    refused(
+      '{name, select, other {Hi {name}}}',
+      '"Name" attribute of the participant can be missing',
+    );
     refused(
       '{name, select, missing {Hi {name}} other {Hi}}',
-      '"name" can be missing',
+      '"Name" attribute of the participant can be missing',
     );
   });
 
@@ -130,7 +244,7 @@ describe('findDynamicValueProblem', () => {
     );
     refused(
       '{name, select, missing {none} other {Hi}} {name, select, other {{name}}}',
-      '"name" can be missing',
+      '"Name" attribute of the participant can be missing',
     );
   });
 
@@ -138,7 +252,10 @@ describe('findDynamicValueProblem', () => {
     ok(
       '{kind, select, friend {Your {kind}} other {{kind, select, missing {Them} other {{kind}}}}}',
     );
-    refused('{kind, select, colleague {x} other {y}}', '"colleague" is not');
+    refused(
+      '{kind, select, colleague {x} other {y}}',
+      'This text has a version that the "Kind" attribute of the participant can never choose.',
+    );
   });
 
   it('allows a version for when the value is missing to be blank', () => {
@@ -154,7 +271,9 @@ describe('findDynamicValueProblem', () => {
     const fewOnly =
       '{count, select, missing {} other {{count, plural, few {visible} other {}}}}';
     refused(fewOnly, 'blank in every version');
-    expect(findDynamicValueProblem(fewOnly, VALUES, 'cs')).toBeUndefined();
+    expect(
+      findDynamicValueProblem(fewOnly, lookupOf(VALUES), 'cs'),
+    ).toBeUndefined();
     // A value the stage always has is never missing.
     ok('{id, select, missing {} other {Interview}}');
     // Cases the binding does not define are never chosen.
@@ -168,7 +287,10 @@ describe('findDynamicValueProblem', () => {
     ok(
       '{count, select, missing {Some} other {{count, plural, one {# year} other {# years}}}}',
     );
-    refused('{count, plural, one {#} other {#}}', '"count" can be missing');
+    refused(
+      '{count, plural, one {#} other {#}}',
+      '"Count" attribute of the participant can be missing',
+    );
     refused(
       '{name, select, missing {x} other {{name, plural, one {#} other {#}}}}',
       'not a number',
@@ -183,24 +305,44 @@ describe('findDynamicValueProblem', () => {
     );
   });
 
-  it('does not take a name from Object.prototype for a value', () => {
-    refused('{constructor}', 'does not exist: "constructor"');
-    refused(
-      '{toString, select, missing {x} other {y}}',
-      'does not exist: "toString"',
-    );
+  it('reports the problem the lookup gives for a name the text cannot use, at the first place it is used', () => {
+    refused('{other}', UNKNOWN);
+    refused('{constructor}', UNKNOWN);
+    refused('{toString, select, missing {x} other {y}}', UNKNOWN);
+    // In the order the message reads: the unguarded value comes first.
+    expect(
+      findDynamicValueProblem('{name} {ghost}', lookupOf(VALUES), 'en'),
+    ).toContain('can be missing');
+    expect(
+      findDynamicValueProblem('{ghost} {name}', lookupOf(VALUES), 'en'),
+    ).toBe(UNKNOWN);
   });
 
-  it('names an unbound value', () => {
-    refused(
-      '{other}',
-      'This text refers to a value that does not exist: "other".',
+  it('names a value by its description in every problem about it, never by its name', () => {
+    expect(
+      findDynamicValueProblem(
+        '{count, select, missing {x} other {{count, plural, offset:1 one {#} other {#}}}}',
+        lookupOf(VALUES),
+        'en',
+      ),
+    ).toBe(
+      'The singular and plural versions for the "Count" attribute of the participant cannot use an offset.',
+    );
+    expect(
+      findDynamicValueProblem(
+        '{name, select, missing {x} other {{name, plural, one {#} other {#}}}}',
+        lookupOf(VALUES),
+        'en',
+      ),
+    ).toBe(
+      'The "Name" attribute of the participant is not a number, so it cannot choose a version of the text by number.',
     );
   });
 
   it('chooses versions by a value it cannot show as words, but never shows it', () => {
     const values: DynamicValueArguments = {
       flag: {
+        description: 'the "Flag" attribute of the participant',
         cases: ['yes'],
         numeric: false,
         optional: true,
@@ -210,17 +352,19 @@ describe('findDynamicValueProblem', () => {
     expect(
       findDynamicValueProblem(
         '{flag, select, missing {Hm.} yes {Good.} other {Hm.}}',
-        values,
+        lookupOf(values),
         'en',
       ),
     ).toBeUndefined();
     expect(
       findDynamicValueProblem(
         '{flag, select, missing {Hm.} yes {Said {flag}.} other {Hm.}}',
-        values,
+        lookupOf(values),
         'en',
       ),
-    ).toBe('"flag" cannot be shown as words: it has no labels.');
+    ).toBe(
+      'The "Flag" attribute of the participant cannot be shown as words. It has no labels.',
+    );
   });
 });
 

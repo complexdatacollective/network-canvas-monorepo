@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import {
+  testOptionId,
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
@@ -41,7 +42,11 @@ const trilingual: CurrentProtocol = {
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { value: 'close', label: { en: 'Close', es: 'Cercano' } },
+              {
+                id: testOptionId(testVariableId('closeness'), 'close'),
+                value: 'close',
+                label: { en: 'Close', es: 'Cercano' },
+              },
             ],
           },
         },

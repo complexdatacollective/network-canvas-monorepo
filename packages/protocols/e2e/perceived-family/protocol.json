@@ -36,24 +36,28 @@
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "a97a0f1d-935b-5759-9f2f-e3db26180b01",
                 "label": {
                   "en-US": "Family I grew up with"
                 },
                 "value": "grew_up"
               },
               {
+                "id": "a48f7a32-d7df-5c51-ae07-2cc29f860f2f",
                 "label": {
                   "en-US": "Chosen family"
                 },
                 "value": "chosen"
               },
               {
+                "id": "d8c4190d-0698-5968-a885-02fd0a028478",
                 "label": {
                   "en-US": "Partner or partner's family"
                 },
                 "value": "partner"
               },
               {
+                "id": "84f91ce7-0bc9-5e3e-814c-461eb88330ae",
                 "label": {
                   "en-US": "Another kind of family"
                 },
@@ -92,18 +96,21 @@
             "component": "RadioGroup",
             "options": [
               {
+                "id": "0cf9f0a4-e6c9-5694-84db-b8d562c9b739",
                 "label": {
                   "en-US": "Not close right now"
                 },
                 "value": 1
               },
               {
+                "id": "fee7c8cc-fcfc-51a4-b423-d925dfb10a4b",
                 "label": {
                   "en-US": "Somewhat close"
                 },
                 "value": 2
               },
               {
+                "id": "6f47ab2d-a3c4-5569-8d50-5f9346574ad3",
                 "label": {
                   "en-US": "Very close"
                 },

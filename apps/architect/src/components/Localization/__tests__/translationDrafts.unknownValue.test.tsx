@@ -5,7 +5,6 @@ import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getTranslationGroups } from '~/selectors/issues';
@@ -14,12 +13,12 @@ import {
   translationFieldName,
   useTranslationDraft,
 } from '../translationDrafts';
-import { dynamicValuesProtocol } from './dynamicValuesProtocol';
+import { dynamicValuesProtocol, FIRST_NAME } from './dynamicValuesProtocol';
 
-const protocol = dynamicValuesProtocol(
-  { en: 'Welcome', fr: 'Bienvenue' },
-  { name: { path: `ego.${testVariableId('firstName')}` } },
-);
+const protocol = dynamicValuesProtocol({
+  en: `Welcome{${FIRST_NAME}, select, missing {} other {, {${FIRST_NAME}}}}`,
+  fr: 'Bienvenue',
+});
 
 const openDraft = () => {
   const store = configureStore({
@@ -45,7 +44,7 @@ const openDraft = () => {
   return { row, ...hook };
 };
 
-describe('a translation that shows a value the stage does not bind', () => {
+describe('a translation that shows a value its place cannot show', () => {
   it('is refused at the cell it was written in, once the cell is left', async () => {
     const { row, result } = openDraft();
 
@@ -59,12 +58,12 @@ describe('a translation that shows a value the stage does not bind', () => {
     expect(result.current.name).toBe(translationFieldName(row.path, 'fr'));
   });
 
-  it('is accepted once it shows only what the stage binds', async () => {
+  it('is accepted once it shows only what its place can show', async () => {
     const { result } = openDraft();
 
     act(() =>
       result.current.change(
-        'Bonjour {name, select, missing {} other {{name}}}',
+        `Bonjour {${FIRST_NAME}, select, missing {} other {{${FIRST_NAME}}}}`,
       ),
     );
     act(() => result.current.leave());

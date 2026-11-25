@@ -36,7 +36,10 @@ import {
   textsWrittenAsStandard,
 } from './legacy-markdown.ts';
 import { assignCodebookIds } from './migration-codebook-ids.ts';
-import { assignProtocolObjectIds } from './migration-object-ids.ts';
+import {
+  assignOptionIds,
+  assignProtocolObjectIds,
+} from './migration-object-ids.ts';
 import { createProtocolObjectId } from './protocol-object-id.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
@@ -1184,6 +1187,9 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   // Last, so that every object the steps above add or move is given its id
   // where it ends up, and every stage reference they wrote is rewritten.
   assignProtocolObjectIds(assembled);
+  // Before the codebook's keys change: each option's id is named by where
+  // its variable is in the codebook the protocol was written with.
+  assignOptionIds(assembled);
   // Last for the same reason: the steps above add variables (a Family
   // Pedigree's relativesNotRecorded) and read and write references by the
   // keys schema 8 gave, so one pass at the end renames each type and

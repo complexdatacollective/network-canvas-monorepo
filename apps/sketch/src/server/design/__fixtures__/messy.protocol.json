@@ -78,18 +78,21 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "822efa26-02cc-5a1f-bc4e-1db261433ed6",
               "label": {
                 "en": "a"
               },
               "value": 1
             },
             {
+              "id": "3e2abccf-b740-5f72-a0d4-6428b245ed36",
               "label": {
                 "en": "b"
               },
               "value": 2
             },
             {
+              "id": "23f7a5fb-9937-5f4f-bf5b-52eb7bcb8323",
               "label": {
                 "en": "c"
               },
@@ -132,12 +135,14 @@
             "component": "RadioGroup",
             "options": [
               {
+                "id": "64f81dca-61bc-538b-aac1-5721f3dc7888",
                 "label": {
                   "en": "Not"
                 },
                 "value": 1
               },
               {
+                "id": "746ff4b3-6ad7-5208-8ae5-63e8865f320e",
                 "label": {
                   "en": "Very"
                 },

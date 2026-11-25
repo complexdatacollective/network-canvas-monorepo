@@ -13,13 +13,12 @@ family.
 
 **Protocols (`@codaco/protocol-validation`)**
 
-- A dynamic value can read `node.$isParticipant`, whether the node a Family
-  Pedigree person form is about is the participant. It is offered only in
-  that form's questions, is never missing, and only chooses wording: its
-  binding has the one case `participant: true`, and everyone else takes the
-  `other` version. It can never be shown as words.
-- Exports `dynamicValueParticipantPathFor`, `dynamicValueParticipantRolesAt`
-  and `PARTICIPANT_CASE`.
+- A message can choose its wording by `node_isParticipant`, whether the
+  node that a Family Pedigree person form is about is the participant. It is
+  offered only in that form's questions and is never missing. It chooses
+  wording and is never shown as words: the message gives a version for
+  `true`, and everyone else takes the `false` or `other` version.
+- Exports `dynamicValueParticipantRolesAt`.
 
 **Interview runtime (`@codaco/interview`)**
 

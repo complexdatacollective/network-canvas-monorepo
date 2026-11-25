@@ -1,3 +1,5 @@
+import type { VariableOption } from '@codaco/protocol-validation';
+
 /**
  * The contract between the codebook's attribute editor and a host that adds a
  * choice of its own to every option row. Types only, in a module of their own,
@@ -51,3 +53,10 @@ export type VariableEditorHostOptions = Readonly<{
   typeFixed?: boolean;
   optionRowChoice?: OptionRowChoice;
 }>;
+
+/**
+ * An option a host seeds a new attribute with, or locks its options to: an
+ * option without its id. The editor gives each attribute it creates fresh
+ * ids, since an option id is unique across the protocol.
+ */
+export type OptionSeed = Omit<VariableOption, 'id'>;

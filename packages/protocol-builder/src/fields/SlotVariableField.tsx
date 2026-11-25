@@ -10,13 +10,13 @@ import {
   type InterfaceOwnedOptionSetKey,
   isSuppliedOptionLabelSet,
   suppliedOptionLabels,
-  type VariableOption,
   type Variables,
   type VariableType,
 } from '@codaco/protocol-validation';
 
 import type {
   OptionRowChoiceValue,
+  OptionSeed,
   VariableEditorHostOptions,
 } from '../codebook/optionRowChoice.ts';
 import CodebookVariableValidationSection from '../codebook/validation/CodebookVariableValidationSection.tsx';
@@ -99,7 +99,7 @@ export type SlotVariableFieldProps = Readonly<{
    * may edit, add to and remove from them, and an existing attribute with other
    * options is still offered.
    */
-  seedOptions?: readonly VariableOption[];
+  seedOptions?: readonly OptionSeed[];
   /**
    * Passed on to the codebook's editor when a create escalates to it: a type
    * shown rather than offered, or a choice of the host's own on every option
@@ -204,7 +204,7 @@ export default function SlotVariableField({
   // protocol's default language. Until the protocol's languages are known
   // they cannot be written, so creating an attribute for an owned set is not
   // offered.
-  const seededOptions = useMemo<readonly VariableOption[] | undefined>(
+  const seededOptions = useMemo<readonly OptionSeed[] | undefined>(
     () =>
       lockedOptions === undefined ||
       ownedOptions === undefined ||

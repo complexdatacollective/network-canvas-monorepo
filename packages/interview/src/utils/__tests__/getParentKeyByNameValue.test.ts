@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EntityDefinition } from '@codaco/protocol-validation';
 
-import { testVariableId } from '../../__tests__/testIds';
+import { testId, testVariableId } from '../../__tests__/testIds';
 import getParentKeyByNameValue from '../getParentKeyByNameValue';
 
 const CAFE = testVariableId('cafe');
@@ -29,19 +29,47 @@ const variables: NonNullable<EntityDefinition['variables']> = {
     name: 'Contacts_kind',
     type: 'categorical',
     options: [
-      { label: { en: 'Close friend' }, value: 'close friend' },
-      { label: { en: 'Colleague' }, value: '同事' },
-      { label: { en: 'Snake' }, value: 'under_score' },
-      { label: { en: 'One' }, value: 1 },
-      { label: { en: 'Cafe' }, value: 'Café' },
+      {
+        id: testId('getParentKeyByNameValue option 1'),
+        label: { en: 'Close friend' },
+        value: 'close friend',
+      },
+      {
+        id: testId('getParentKeyByNameValue option 2'),
+        label: { en: 'Colleague' },
+        value: '同事',
+      },
+      {
+        id: testId('getParentKeyByNameValue option 3'),
+        label: { en: 'Snake' },
+        value: 'under_score',
+      },
+      {
+        id: testId('getParentKeyByNameValue option 4'),
+        label: { en: 'One' },
+        value: 1,
+      },
+      {
+        id: testId('getParentKeyByNameValue option 5'),
+        label: { en: 'Cafe' },
+        value: 'Café',
+      },
     ],
   },
   [RATING]: {
     name: 'Rating',
     type: 'ordinal',
     options: [
-      { label: { en: 'Low' }, value: 1 },
-      { label: { en: 'High' }, value: 2 },
+      {
+        id: testId('getParentKeyByNameValue option 6'),
+        label: { en: 'Low' },
+        value: 1,
+      },
+      {
+        id: testId('getParentKeyByNameValue option 7'),
+        label: { en: 'High' },
+        value: 2,
+      },
     ],
   },
 };
@@ -166,7 +194,13 @@ describe('getParentKeyByNameValue', () => {
         [CAFE]: {
           name: 'Café',
           type: 'categorical',
-          options: [{ label: { en: 'Open' }, value: 'open' }],
+          options: [
+            {
+              id: testId('getParentKeyByNameValue option 8'),
+              label: { en: 'Open' },
+              value: 'open',
+            },
+          ],
         },
       };
 

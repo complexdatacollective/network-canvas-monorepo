@@ -7,7 +7,10 @@ import {
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  dynamicValueNameFor,
+} from '@codaco/protocol-validation';
 
 import SummaryContext from '../../SummaryContext';
 import Stage from '../Stage';
@@ -16,6 +19,17 @@ const KNOWS = testTypeId('knows');
 const PERSON = testTypeId('person');
 const NICK = testVariableId('nick');
 const LAYOUT = testVariableId('layout');
+const HOURS = testVariableId('hours');
+const NODE_NICK = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: NICK,
+});
+const EGO_HOURS = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: HOURS,
+});
 
 const protocol = {
   schemaVersion: 9,
@@ -309,7 +323,8 @@ describe('Protocol Summary stage wording that the interview fills in', () => {
 
     const row = screen.getByRole('row', { name: /Minimum not reached/ });
     // The wording that fits the number folds to the number's pill, which the
-    // declaration names; a stage binding would print `count`.
+    // declaration names; read as a value the stage shows, it would print
+    // `count`.
     const pill = row.querySelector('[data-token="count"]');
     expect(pill).toHaveTextContent('Number');
     expect(within(row).queryByText('count')).not.toBeInTheDocument();
@@ -350,13 +365,12 @@ describe('Protocol Summary form text that shows values', () => {
           type="AlterForm"
           configuration={{
             subject: { entity: 'node', type: PERSON },
-            dynamicValues: { nick: { path: `node.${NICK}` } },
             form: {
               fields: [
                 {
                   id: 'field-1',
                   variable: testVariableId('age'),
-                  prompt: { en: 'How old is {nick}?' },
+                  prompt: { en: `How old is {${NODE_NICK}}?` },
                 },
               ],
             },
@@ -381,7 +395,7 @@ describe('Protocol Summary text that reads by a number answer', () => {
         edge: {},
         ego: {
           variables: {
-            [testVariableId('hours')]: { name: 'Hours', type: 'number' },
+            [HOURS]: { name: 'Hours', type: 'number' },
           },
         },
       },
@@ -401,10 +415,7 @@ describe('Protocol Summary text that reads by a number answer', () => {
           type="Information"
           configuration={{
             content: {
-              cs: '{hours, select, missing {} other {{hours, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}',
-            },
-            dynamicValues: {
-              hours: { path: `ego.${testVariableId('hours')}` },
+              cs: `{${EGO_HOURS}, select, missing {} other {{${EGO_HOURS}, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}`,
             },
           }}
         />
@@ -415,7 +426,7 @@ describe('Protocol Summary text that reads by a number answer', () => {
     // and the numbers each is for, are read in the editor.
     const pills = document.querySelectorAll('[data-token]');
     expect(pills).toHaveLength(1);
-    expect(pills[0]).toHaveAttribute('data-token', 'hours');
+    expect(pills[0]).toHaveAttribute('data-token', EGO_HOURS);
     expect(pills[0]).toHaveTextContent('Hours');
     expect(screen.queryByText(/When it is/)).not.toBeInTheDocument();
     expect(screen.queryByText(/hodin/)).not.toBeInTheDocument();

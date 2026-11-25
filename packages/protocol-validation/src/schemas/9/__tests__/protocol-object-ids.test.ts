@@ -17,7 +17,10 @@ import { hashProtocol } from '../../../utils/hashProtocol.ts';
 import { DUPLICATE_OBJECT_ID } from '../../../utils/protocolObjectIds.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
-import { assignProtocolObjectIds } from '../migration-object-ids.ts';
+import {
+  assignOptionIds,
+  assignProtocolObjectIds,
+} from '../migration-object-ids.ts';
 import {
   isProtocolObjectId,
   PROTOCOL_OBJECT_KINDS,
@@ -322,15 +325,24 @@ describe('protocol object ids in schema 9', () => {
   });
 
   it('marks no id outside an object a researcher edits on its own', () => {
-    // Codebook entries are keyed by their map key and options by their value,
-    // and primitive arrays have nothing to hold an id.
-    const paths = collectProtocolObjectIds(validProtocol()).map(
-      ({ path }) => path,
-    );
-    expect(paths.every((path) => path[0] === 'stages')).toBe(true);
+    // Codebook entries are keyed by their map key, and primitive arrays have
+    // nothing to hold an id. The codebook's one marked object is an option
+    // of a categorical or ordinal attribute, which text chooses a version
+    // for by its id.
+    const locations = collectProtocolObjectIds(validProtocol());
+    const outsideStages = locations.filter(({ path }) => path[0] !== 'stages');
+    expect(outsideStages.length).toBeGreaterThan(0);
     expect(
-      paths.some((path) =>
-        path.some((key) => key === 'options' || key === 'codebook'),
+      outsideStages.every(
+        ({ path, kind }) =>
+          kind === 'option' &&
+          path[0] === 'codebook' &&
+          path.at(-3) === 'options',
+      ),
+    ).toBe(true);
+    expect(
+      locations.some(
+        ({ path, kind }) => path[0] === 'stages' && kind === 'option',
       ),
     ).toBe(false);
   });
@@ -373,20 +385,24 @@ describe('freshenProtocolFragmentIds', () => {
   it('gives every id the destination holds a new one, and keeps the rest', () => {
     const protocol = validProtocol();
     const [first, second] = stagesOf(protocol);
-    const destination = collectProtocolObjectIds({
-      ...protocol,
-      stages: [first],
-    }).map(({ id }) => id);
+    // The fragment is stages, so only the ids on stages are compared: the
+    // codebook's option ids are the destination's own.
+    const onStages = (locations: { id: string; path: Path }[]) =>
+      locations.filter(({ path }) => path[0] === 'stages');
+    const destination = onStages(
+      collectProtocolObjectIds({ ...protocol, stages: [first] }),
+    ).map(({ id }) => id);
 
     const { fragment, idMap } = freshenProtocolFragmentIds(
       [first, second],
       destination,
     );
-    const ids = collectProtocolObjectIds({ ...protocol, stages: fragment });
-    const secondIds = collectProtocolObjectIds({
-      ...protocol,
-      stages: [second],
-    }).map(({ id }) => id);
+    const ids = onStages(
+      collectProtocolObjectIds({ ...protocol, stages: fragment }),
+    );
+    const secondIds = onStages(
+      collectProtocolObjectIds({ ...protocol, stages: [second] }),
+    ).map(({ id }) => id);
 
     expect(ids.filter(({ id }) => destination.includes(id))).toEqual([]);
     expect(ids.map(({ id }) => id).slice(-secondIds.length)).toEqual(secondIds);
@@ -547,6 +563,7 @@ describe('the migration id pass', () => {
         );
         const document = structuredClone(input);
         assignProtocolObjectIds(document);
+        assignOptionIds(document);
         const locations = collectProtocolObjectIds(document);
         const ids = locations.map(({ id }) => id);
         return (

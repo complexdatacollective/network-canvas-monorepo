@@ -8,7 +8,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { testTypeId, testVariableId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { groupNodesByVariable } from '../ConvexHullLayer';
 
 const COLOR = testVariableId('color');
@@ -29,9 +29,21 @@ function makeNode(
 }
 
 const OPTIONS: VariableOption[] = [
-  { value: 'red', label: { en: 'Red' } },
-  { value: 'blue', label: { en: 'Blue' } },
-  { value: 'green', label: { en: 'Green' } },
+  {
+    id: testId('ConvexHullLayer option 1'),
+    value: 'red',
+    label: { en: 'Red' },
+  },
+  {
+    id: testId('ConvexHullLayer option 2'),
+    value: 'blue',
+    label: { en: 'Blue' },
+  },
+  {
+    id: testId('ConvexHullLayer option 3'),
+    value: 'green',
+    label: { en: 'Green' },
+  },
 ];
 
 describe('groupNodesByVariable', () => {
@@ -91,8 +103,16 @@ describe('groupNodesByVariable', () => {
 
   it('handles numeric scalar values', () => {
     const numericOptions: VariableOption[] = [
-      { value: 1, label: { en: 'One' } },
-      { value: 2, label: { en: 'Two' } },
+      {
+        id: testId('ConvexHullLayer option 4'),
+        value: 1,
+        label: { en: 'One' },
+      },
+      {
+        id: testId('ConvexHullLayer option 5'),
+        value: 2,
+        label: { en: 'Two' },
+      },
     ];
     const nodes = [
       makeNode('node-1', { [COLOR]: 1 }),
@@ -159,9 +179,21 @@ describe('groupNodesByVariable', () => {
 
   it('handles array of numeric values (from CheckboxGroup forms)', () => {
     const numericOptions: VariableOption[] = [
-      { value: 1, label: { en: 'One' } },
-      { value: 2, label: { en: 'Two' } },
-      { value: 3, label: { en: 'Three' } },
+      {
+        id: testId('ConvexHullLayer option 6'),
+        value: 1,
+        label: { en: 'One' },
+      },
+      {
+        id: testId('ConvexHullLayer option 7'),
+        value: 2,
+        label: { en: 'Two' },
+      },
+      {
+        id: testId('ConvexHullLayer option 8'),
+        value: 3,
+        label: { en: 'Three' },
+      },
     ];
     const nodes = [
       makeNode('node-a', { [COLOR]: [1] }),

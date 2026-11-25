@@ -22,6 +22,7 @@ export const PROTOCOL_OBJECT_KINDS = [
   'narrativePresetHighlight',
   'disease',
   'composerEdge',
+  'option',
 ] as const;
 
 export type ProtocolObjectKind = (typeof PROTOCOL_OBJECT_KINDS)[number];

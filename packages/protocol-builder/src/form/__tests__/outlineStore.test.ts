@@ -553,3 +553,34 @@ describe('a problem inside a protocol object', () => {
     expect(store.getValidationIssues()).toEqual([]);
   });
 });
+
+describe('a control marked invalid and then cleared', () => {
+  /**
+   * A text field judges its text against the codebook, which may still be
+   * arriving when the stage opens: it is marked invalid, then cleared. The
+   * outline is read by more than one subscriber, and one of them reading in
+   * between must not hide the second change from the others.
+   */
+  it('tells every subscriber of both changes, whoever read in between', () => {
+    const store = storeWith({ content: ['content'] });
+    const control = document.createElement('div');
+    document.querySelector('[data-field-path="content"]')?.append(control);
+    let told = 0;
+    store.subscribe(() => {
+      told += 1;
+    });
+    const invalidNow = () =>
+      store.getSnapshot()[0]?.fields.some((field) => field.invalid);
+
+    control.setAttribute('aria-invalid', 'true');
+    store.revalidate();
+    expect(told).toBe(1);
+    expect(invalidNow()).toBe(true);
+
+    control.removeAttribute('aria-invalid');
+    // Another reader takes a snapshot before the change is announced.
+    expect(invalidNow()).toBe(false);
+    store.revalidate();
+    expect(told).toBe(2);
+  });
+});

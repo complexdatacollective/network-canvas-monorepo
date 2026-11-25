@@ -23,8 +23,9 @@ import {
   isVariableId,
 } from '../codebook-ids.ts';
 import {
-  dynamicValuePathFor,
-  parseDynamicValuePath,
+  dynamicValueNameFor,
+  dynamicValueReferencesIn,
+  parseDynamicValueName,
 } from '../dynamic-values.ts';
 import { renameCodebookIds } from '../migration-codebook-ids.ts';
 import migrationV8toV9 from '../migration.ts';
@@ -190,9 +191,17 @@ const withEveryReference = () => {
       map: [{ value: true, shape: 'square' }],
     },
   };
+  // Text names an attribute by the id `withTestCodebookIds` gives its
+  // readable key.
+  const nickname = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'node',
+    variableId: testVariableId('nickname'),
+  });
   person.dynamicLabel = {
-    text: { en: '{who}' },
-    dynamicValues: { who: { path: 'node.nickname' } },
+    text: {
+      en: `{${nickname}, select, missing {Someone} other {{${nickname}}}}`,
+    },
   };
 
   const nameGenerator = stageNamed(protocol, 'nameGenerator');
@@ -223,7 +232,6 @@ const withEveryReference = () => {
       ],
     },
   };
-  nameGenerator.dynamicValues = { participant: { path: 'ego.egoName' } };
   nameGenerator.conditions = {
     [testId('condition')]: {
       about: 'node',
@@ -256,6 +264,14 @@ const withEveryReference = () => {
   }
   const [prompt] = arrayAt(nameGenerator, ['prompts']);
   if (isRecord(prompt)) {
+    const egoName = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: testVariableId('egoName'),
+    });
+    prompt.text = {
+      en: `Who does {${egoName}, select, missing {the participant} other {{${egoName}}}} know?`,
+    };
     prompt.additionalAttributes = [
       { id: testId('additional'), variable: 'flag', value: true },
     ];
@@ -281,7 +297,7 @@ type Kind = string;
 
 // A reference's place with its indices and codebook keys left out, the
 // stage type it is on, and whether it is a type (T), an attribute (A), a
-// column of a roster's data (D) or an attribute a dynamic value names ($).
+// column of a roster's data (D) or an attribute text names ($).
 const kindOf = (protocol: unknown, path: Path, flag: string): Kind => {
   const stage = path[0] === 'stages' ? valueAt(protocol, path.slice(0, 2)) : 0;
   const stageType =
@@ -291,16 +307,11 @@ const kindOf = (protocol: unknown, path: Path, flag: string): Kind => {
       typeof segment === 'number'
         ? '#'
         : path[0] === 'codebook' &&
-            [
-              'node',
-              'edge',
-              'variables',
-              'conditions',
-              'dynamicValues',
-            ].includes(String(path[index - 1]))
+            ['node', 'edge', 'variables', 'conditions'].includes(
+              String(path[index - 1]),
+            )
           ? '*'
-          : path[index - 1] === 'conditions' ||
-              path[index - 1] === 'dynamicValues'
+          : path[index - 1] === 'conditions'
             ? '*'
             : segment,
     )
@@ -311,7 +322,7 @@ const kindOf = (protocol: unknown, path: Path, flag: string): Kind => {
 // Every place a node or edge type, or a variable, is referred to, as
 // `kindOf` names them.
 const EVERY_REFERENCE_KIND = [
-  'A $ NameGenerator stages.#.dynamicValues.*.path',
+  'A $ NameGenerator stages.#.prompts.#.text.en',
   'A AlterEdgeForm stages.#.form.fields.#.variable',
   'A AlterForm stages.#.form.fields.#.variable',
   'A CategoricalBin stages.#.prompts.#.otherVariable',
@@ -347,7 +358,7 @@ const EVERY_REFERENCE_KIND = [
   'A Sociogram stages.#.prompts.#.layout.layoutVariable',
   'A Sociogram stages.#.prompts.#.sortOrder.#.property',
   'A TieStrengthCensus stages.#.prompts.#.edgeVariable',
-  'A $ codebook.node.*.dynamicLabel.dynamicValues.*.path',
+  'A $ codebook.node.*.dynamicLabel.text.en',
   'A codebook.ego.variables.*.validation.differentFrom',
   'A codebook.ego.variables.*.validation.greaterThanOrEqualToVariable',
   'A codebook.ego.variables.*.validation.greaterThanVariable',
@@ -392,7 +403,8 @@ type Reference = {
   path: Path;
   held: string;
   entity: 'node' | 'edge' | undefined;
-  dynamicValuePath: boolean;
+  /** The name text uses for the attribute, for an attribute text names. */
+  inMessage: string | undefined;
   dataSourceColumn: boolean;
 };
 
@@ -406,24 +418,20 @@ const referencesIn = (protocol: Record<string, unknown>): Reference[] =>
             path: hit.path,
             held: hit.typeId,
             entity: hit.entity,
-            dynamicValuePath: false,
+            inMessage: undefined,
             dataSourceColumn: false,
           },
         ];
       }
       if (!isAttributeHit(hit)) return [];
-      const flag = hit.dataSourceColumn
-        ? 'D'
-        : hit.inDynamicValuePath
-          ? 'A $'
-          : 'A';
+      const flag = hit.dataSourceColumn ? 'D' : hit.inMessage ? 'A $' : 'A';
       return [
         {
           kind: kindOf(protocol, hit.path, flag),
           path: hit.path,
           held: hit.variableId,
           entity: undefined,
-          dynamicValuePath: hit.inDynamicValuePath === true,
+          inMessage: hit.inMessage?.name,
           dataSourceColumn: hit.dataSourceColumn === true,
         },
       ];
@@ -464,92 +472,118 @@ describe('renaming codebook ids', () => {
     );
   });
 
-  it('points every reference at the new id of what it names', () => {
-    const original = withEveryReference();
-    const owners = ownerOfVariable(original);
-    const newTypeId = (type: string, entity: string) =>
-      testTypeId(`new ${entity}/${type}`);
-    const newVariableId = (key: string, owner: string) =>
-      testVariableId(`new ${owner}/${key}`);
+  // Schema 9 text can name only an attribute whose key is a UUID, so only
+  // the codebook keyed by them shows that text follows a rename.
+  it.each([
+    ['readable keys', withEveryReference, 0],
+    [
+      'UUID keys',
+      () => withTestCodebookIds(withEveryReference()),
+      // The node label's and the prompt's.
+      2,
+    ],
+  ])(
+    'points every reference at the new id of what it names, in a codebook with %s',
+    (_, fixture, namedInText) => {
+      const original = fixture();
+      const owners = ownerOfVariable(original);
+      const newTypeId = (type: string, entity: string) =>
+        testTypeId(`new ${entity}/${type}`);
+      const newVariableId = (key: string, owner: string) =>
+        testVariableId(`new ${owner}/${key}`);
 
-    const renamed = structuredClone(original);
-    renameCodebookIds(renamed, {
-      typeId: newTypeId,
-      variableId: (key, owner) =>
-        newVariableId(
-          key,
-          owner.entity === 'ego' ? 'ego' : `${owner.entity}/${owner.type}`,
-        ),
-    });
+      const renamed = structuredClone(original);
+      renameCodebookIds(renamed, {
+        typeId: newTypeId,
+        variableId: (key, owner) =>
+          newVariableId(
+            key,
+            owner.entity === 'ego' ? 'ego' : `${owner.entity}/${owner.type}`,
+          ),
+      });
 
-    // A place inside the codebook moves with the keys it passes through.
-    const renamedPath = (path: Path): Path => {
-      const [root, entity, type, record, key, ...rest] = path;
-      if (root !== 'codebook') return path;
-      if (
-        entity === 'ego' &&
-        type === 'variables' &&
-        typeof record === 'string'
-      ) {
-        return [
-          root,
-          entity,
-          type,
-          newVariableId(record, 'ego'),
-          ...path.slice(4),
-        ];
-      }
-      if (
-        (entity !== 'node' && entity !== 'edge') ||
-        typeof type !== 'string'
-      ) {
-        return path;
-      }
-      const owner = `${entity}/${type}`;
-      return record === 'variables' && typeof key === 'string'
-        ? [
+      // A place inside the codebook moves with the keys it passes through.
+      const renamedPath = (path: Path): Path => {
+        const [root, entity, type, record, key, ...rest] = path;
+        if (root !== 'codebook') return path;
+        if (
+          entity === 'ego' &&
+          type === 'variables' &&
+          typeof record === 'string'
+        ) {
+          return [
             root,
             entity,
-            newTypeId(type, entity),
-            record,
-            newVariableId(key, owner),
-            ...rest,
-          ]
-        : [root, entity, newTypeId(type, entity), ...path.slice(3)];
-    };
+            type,
+            newVariableId(record, 'ego'),
+            ...path.slice(4),
+          ];
+        }
+        if (
+          (entity !== 'node' && entity !== 'edge') ||
+          typeof type !== 'string'
+        ) {
+          return path;
+        }
+        const owner = `${entity}/${type}`;
+        return record === 'variables' && typeof key === 'string'
+          ? [
+              root,
+              entity,
+              newTypeId(type, entity),
+              record,
+              newVariableId(key, owner),
+              ...rest,
+            ]
+          : [root, entity, newTypeId(type, entity), ...path.slice(3)];
+      };
 
-    const references = referencesIn(original);
-    expect(references.length).toBeGreaterThan(0);
-    for (const reference of references) {
-      const now = valueAt(renamed, renamedPath(reference.path));
-      if (reference.entity !== undefined) {
-        expect({ at: reference.kind, now }).toEqual({
+      const references = referencesIn(original);
+      expect(references.length).toBeGreaterThan(0);
+      let renamedInText = 0;
+      for (const reference of references) {
+        const now = valueAt(renamed, renamedPath(reference.path));
+        if (reference.entity !== undefined) {
+          expect({ at: reference.kind, now }).toEqual({
+            at: reference.kind,
+            now: newTypeId(reference.held, reference.entity),
+          });
+          continue;
+        }
+        const owner = owners.get(reference.held);
+        if (reference.dataSourceColumn || owner === undefined) {
+          expect({ at: reference.kind, now }).toEqual({
+            at: reference.kind,
+            now: valueAt(original, reference.path),
+          });
+          continue;
+        }
+        const newId = newVariableId(reference.held, owner);
+        if (reference.inMessage === undefined) {
+          expect({ at: reference.kind, now }).toEqual({
+            at: reference.kind,
+            now: newId,
+          });
+          continue;
+        }
+        // Text names the attribute by its new id, and no longer by its old.
+        const parsed = parseDynamicValueName(reference.inMessage);
+        if (parsed?.kind !== 'attribute') throw new Error('Not an attribute');
+        const names = dynamicValueReferencesIn(String(now)).map(
+          ({ name }) => name,
+        );
+        expect({ at: reference.kind, names }).toEqual({
           at: reference.kind,
-          now: newTypeId(reference.held, reference.entity),
+          names: expect.arrayContaining([
+            dynamicValueNameFor({ ...parsed, variableId: newId }),
+          ]),
         });
-        continue;
+        expect(names).not.toContain(reference.inMessage);
+        renamedInText += 1;
       }
-      const owner = owners.get(reference.held);
-      if (reference.dataSourceColumn || owner === undefined) {
-        expect({ at: reference.kind, now }).toEqual({
-          at: reference.kind,
-          now: valueAt(original, reference.path),
-        });
-        continue;
-      }
-      const newId = newVariableId(reference.held, owner);
-      const parsed = parseDynamicValuePath(
-        String(valueAt(original, reference.path)),
-      );
-      expect({ at: reference.kind, now }).toEqual({
-        at: reference.kind,
-        now:
-          reference.dynamicValuePath && parsed?.kind === 'attribute'
-            ? dynamicValuePathFor(parsed.role, newId)
-            : newId,
-      });
-    }
-  });
+      expect(renamedInText).toBe(namedInText);
+    },
+  );
 
   it('leaves the nomination-order sort key and the roster columns as they are', () => {
     const renamed = withTestCodebookIds(withEveryReference());
@@ -723,11 +757,7 @@ describe('the schema 8 to 9 migration', () => {
     expect(references.length).toBeGreaterThan(50);
     for (const reference of references) {
       if (reference.dataSourceColumn) continue;
-      const parsed = reference.dynamicValuePath
-        ? parseDynamicValuePath(reference.held)
-        : undefined;
-      const held =
-        parsed?.kind === 'attribute' ? parsed.variableId : reference.held;
+      const held = reference.held;
       expect({ at: reference.kind, held }).toEqual({
         at: reference.kind,
         held:
@@ -742,12 +772,7 @@ describe('the schema 8 to 9 migration', () => {
   const schema8WithUuidKeys = () =>
     asSchema8Protocol(withTestCodebookIds(completeProtocol()));
 
-  const heldId = (reference: Reference) => {
-    const parsed = reference.dynamicValuePath
-      ? parseDynamicValuePath(reference.held)
-      : undefined;
-    return parsed?.kind === 'attribute' ? parsed.variableId : reference.held;
-  };
+  const heldId = (reference: Reference) => reference.held;
 
   it('keeps keys that were UUIDs already, and every reference still names them', () => {
     const original = schema8WithUuidKeys();

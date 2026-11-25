@@ -34,7 +34,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Text a participant reads that can show values the interview fills in: the participant’s answers, the people a question is about, today’s date. What it can show depends on where the text sits. The syringe button (“Inject piped text from interview metadata or a network attribute”), or typing `{`, opens a searchable menu of those values; a chosen value shows as a chip among the words, and is bound to the stage under a short name when the stage is saved. A value that can be missing is inserted as a piece of text with one version for when it is known and one for when it is not, so the participant never meets a gap. Fields reach this through `LocalizedInputField` and `LocalizedRichTextField` with `dynamicValues` set.',
+          'Text a participant reads that can show values the interview fills in: the participant’s answers, the people a question is about, today’s date. What it can show depends on where the text sits. The syringe button (“Inject piped text from interview metadata or a network attribute”), or typing `{`, opens a searchable menu of those values; a chosen value shows as a chip among the words, and is written into the text by the name of what it shows: an attribute by its id, never by its name, so renaming the attribute changes no text. A value that can be missing is inserted as a piece of text with one version for when it is known and one for when it is not, so the participant never meets a gap. Fields reach this through `LocalizedInputField` and `LocalizedRichTextField` with `dynamicValues` set.',
       },
     },
   },
@@ -75,7 +75,7 @@ export const InsertingAValue: Story = {
     await waitFor(async () => {
       await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('"dynamicValues":');
+      ).toHaveTextContent('{now}');
     });
   },
 };
@@ -83,8 +83,8 @@ export const InsertingAValue: Story = {
 /**
  * A value that can be missing arrives open, with the version that shows it
  * first and the one for when it is missing below it, in the pill's place.
- * Inserting it binds it to the stage, and undo still takes it back: the
- * editor keeps its history while the values it offers are reordered.
+ * Undo still takes it back: the editor keeps its history while the values
+ * it offers are reordered.
  */
 export const UndoingAValue: Story = {
   play: async ({ canvasElement }) => {

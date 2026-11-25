@@ -5,12 +5,13 @@ import type {
   VariableOption,
 } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testIds';
 import { buildGroupLegend } from '../PresetSwitcher';
 
 const OPTIONS: VariableOption[] = [
-  { value: 'A', label: { en: 'Option A' } },
-  { value: 'B', label: { en: 'Option B' } },
-  { value: 'C', label: { en: 'Option C' } },
+  { id: testId('option A'), value: 'A', label: { en: 'Option A' } },
+  { id: testId('option B'), value: 'B', label: { en: 'Option B' } },
+  { id: testId('option C'), value: 'C', label: { en: 'Option C' } },
 ];
 
 const toEnglish = (label: LocalizedString) => label.en ?? '';

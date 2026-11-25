@@ -707,6 +707,7 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
       await stepped.result.current.moveForward();
     });
     act(() => {
+      stepped.result.current.handleExitComplete();
       stepped.result.current.registerBeforeNext(record);
     });
     await act(async () => {
@@ -1141,4 +1142,114 @@ describe('useInterviewNavigation waiting for writes begun on the stage', () => {
       expect(steps).toHaveLength(1);
     },
   );
+});
+
+// A stage that has been left stays mounted while its exit animation runs, and
+// `handleExitComplete` is what ends that animation. Until a test calls it, the
+// stage that was left is still the one on screen.
+describe('useInterviewNavigation requests from a stage that has been left', () => {
+  type Navigation = ReturnType<typeof useInterviewNavigation>;
+  const steps = (onStepChange: ReturnType<typeof vi.fn>) =>
+    onStepChange.mock.calls.map(([step]) => step);
+
+  it('does not move forward again from a stage that is still leaving', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(makeStages(3));
+
+    await act(async () => result.current.moveForward());
+    await act(async () => result.current.moveForward());
+    expect(steps(onStepChange)).toEqual([1]);
+
+    // The stage that was reached moves on as usual once it is shown.
+    act(() => result.current.handleExitComplete());
+    await act(async () => result.current.moveForward());
+    expect(steps(onStepChange)).toEqual([1, 2]);
+  });
+
+  it('does not move back again from a stage that is still leaving', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(makeStages(3), 2);
+
+    await act(async () => result.current.moveBackward());
+    await act(async () => result.current.moveBackward());
+    expect(steps(onStepChange)).toEqual([1]);
+
+    act(() => result.current.handleExitComplete());
+    await act(async () => result.current.moveBackward());
+    expect(steps(onStepChange)).toEqual([1, 0]);
+  });
+
+  it.each<[string, (navigation: Navigation) => Promise<unknown>, number]>([
+    ['forward', (navigation) => navigation.moveForward(), 1],
+    ['back', (navigation) => navigation.moveBackward(), 2],
+  ])(
+    'moves %s once when two requests to leave the stage are under way at once',
+    async (_direction, navigate, from) => {
+      const { result, onStepChange } = renderStatefulNavigation(
+        makeStages(3),
+        from,
+      );
+      // The stage saves before it lets the interview move on; each request
+      // waits for its own save.
+      const saves: ((allowed: boolean) => void)[] = [];
+      act(() => {
+        result.current.registerBeforeNext(
+          () =>
+            new Promise<boolean>((resolve) => {
+              saves.push(resolve);
+            }),
+        );
+      });
+
+      // Next is pressed while the stage is already moving on by itself.
+      let first: Promise<unknown> = Promise.resolve();
+      let second: Promise<unknown> = Promise.resolve();
+      act(() => {
+        first = navigate(result.current);
+        second = navigate(result.current);
+      });
+      await vi.waitFor(() => expect(saves).toHaveLength(2));
+
+      await act(async () => {
+        saves[0]?.(true);
+        await first;
+      });
+      await act(async () => {
+        saves[1]?.(true);
+        await second;
+      });
+
+      expect(steps(onStepChange)).toHaveLength(1);
+    },
+  );
+
+  it('does not jump from a stage that another navigation left while the jump waited', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(makeStages(4));
+    const saves: ((allowed: boolean) => void)[] = [];
+    act(() => {
+      result.current.registerBeforeNext(
+        () =>
+          new Promise<boolean>((resolve) => {
+            saves.push(resolve);
+          }),
+      );
+    });
+
+    let moving: Promise<unknown> = Promise.resolve();
+    let jumping: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.moveForward();
+      jumping = result.current.goToStage(3);
+    });
+    await vi.waitFor(() => expect(saves).toHaveLength(2));
+
+    await act(async () => {
+      saves[0]?.(true);
+      await moving;
+    });
+    await act(async () => {
+      saves[1]?.(true);
+      await jumping;
+    });
+
+    expect(steps(onStepChange)).toEqual([1]);
+  });
 });

@@ -16,12 +16,14 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "a1ee563d-2642-56a8-8791-2472c5e95210",
               "label": {
                 "en": "Pregnant"
               },
               "value": "pregnant"
             },
             {
+              "id": "21b13eaa-f2f7-5171-a26f-f865f706ccbd",
               "label": {
                 "en": "Postpartum (baby already born)"
               },
@@ -48,24 +50,28 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "f665a59e-e8ce-5e5c-be8f-8d202b673757",
               "label": {
                 "en": "Living with a partner / spouse"
               },
               "value": "with_partner"
             },
             {
+              "id": "2a153b18-d9f9-55fb-a305-312afdc8b841",
               "label": {
                 "en": "Living with other family or relatives"
               },
               "value": "with_family"
             },
             {
+              "id": "76c5ea7e-f93e-5e62-b913-d77df0d3e8eb",
               "label": {
                 "en": "Living with friends or housemates"
               },
               "value": "with_others"
             },
             {
+              "id": "2067e078-2f96-5670-927a-990adfca9590",
               "label": {
                 "en": "Living alone"
               },
@@ -79,24 +85,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "4975af5d-df09-5c4f-a67f-6a0c714953f5",
               "label": {
                 "en": "As much as I always could"
               },
               "value": 0
             },
             {
+              "id": "5541fb2d-d348-5c51-947a-8e1e05ab708e",
               "label": {
                 "en": "Not quite so much now"
               },
               "value": 1
             },
             {
+              "id": "6da62c42-c5dd-5841-b2a8-cfaa8fda3320",
               "label": {
                 "en": "Definitely not so much now"
               },
               "value": 2
             },
             {
+              "id": "5017ba1a-0451-59c2-85cf-279493b394ab",
               "label": {
                 "en": "Not at all"
               },
@@ -110,24 +120,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "12ce3a2b-47d4-540a-b132-5f4fd85e8263",
               "label": {
                 "en": "As much as I ever did"
               },
               "value": 0
             },
             {
+              "id": "44b3de98-216b-5a0b-bae5-d20651fcf85b",
               "label": {
                 "en": "Rather less than I used to"
               },
               "value": 1
             },
             {
+              "id": "550e172e-1978-56e2-9d58-0847d832213b",
               "label": {
                 "en": "Definitely less than I used to"
               },
               "value": 2
             },
             {
+              "id": "dbfea0d9-0d11-510c-aa03-3239fab3454e",
               "label": {
                 "en": "Hardly at all"
               },
@@ -141,24 +155,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "34445dd9-180d-5202-8f54-3f58396913ea",
               "label": {
                 "en": "Yes, most of the time"
               },
               "value": 3
             },
             {
+              "id": "4cea14cc-277c-5bc6-bb8c-19c78e016d0e",
               "label": {
                 "en": "Yes, some of the time"
               },
               "value": 2
             },
             {
+              "id": "ec22945a-d06c-5325-9bc2-435ddfce436d",
               "label": {
                 "en": "Not very often"
               },
               "value": 1
             },
             {
+              "id": "45eae42c-518a-56ca-bad9-f6f383ed50de",
               "label": {
                 "en": "No, never"
               },
@@ -172,24 +190,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "f294294e-1ba4-5c3e-ba2f-999a0602eebd",
               "label": {
                 "en": "No, not at all"
               },
               "value": 0
             },
             {
+              "id": "35c14551-4dd5-5ac0-b3f7-d85d9c965534",
               "label": {
                 "en": "Hardly ever"
               },
               "value": 1
             },
             {
+              "id": "8b7f5e57-c23b-57bf-8bfb-40c2cb252940",
               "label": {
                 "en": "Yes, sometimes"
               },
               "value": 2
             },
             {
+              "id": "f409b205-bad5-550c-9bf1-41182b22afef",
               "label": {
                 "en": "Yes, very often"
               },
@@ -203,24 +225,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "e588a701-8bfa-541b-9cd8-fbfe06a459f4",
               "label": {
                 "en": "Yes, quite a lot"
               },
               "value": 3
             },
             {
+              "id": "46056615-faff-5291-b535-8c3125527b3a",
               "label": {
                 "en": "Yes, sometimes"
               },
               "value": 2
             },
             {
+              "id": "9a378101-29e0-554d-a528-b180512c0b03",
               "label": {
                 "en": "No, not much"
               },
               "value": 1
             },
             {
+              "id": "3ccafa57-ccae-59f8-9fb5-85c4b88ab162",
               "label": {
                 "en": "No, not at all"
               },
@@ -234,24 +260,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "92ded231-d8b6-5d45-bc73-14e21cb768d2",
               "label": {
                 "en": "Yes, most of the time I haven't been able to cope at all"
               },
               "value": 3
             },
             {
+              "id": "b7255612-fcb6-51c2-a74e-be439560f2ea",
               "label": {
                 "en": "Yes, sometimes I haven't been coping as well as usual"
               },
               "value": 2
             },
             {
+              "id": "394268bc-5618-52be-83e8-0608d612a4d7",
               "label": {
                 "en": "No, most of the time I have coped quite well"
               },
               "value": 1
             },
             {
+              "id": "f123051a-2a7e-521a-9bef-e7ee538fe2be",
               "label": {
                 "en": "No, I have been coping as well as ever"
               },
@@ -265,24 +295,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "0f09df57-62a2-5dd2-932c-73f8ff10f4c0",
               "label": {
                 "en": "Yes, most of the time"
               },
               "value": 3
             },
             {
+              "id": "e59b3664-b10c-58db-8fd1-1e32262eed55",
               "label": {
                 "en": "Yes, sometimes"
               },
               "value": 2
             },
             {
+              "id": "acb80e2a-92e3-5950-af4b-4ac23ee3ef9e",
               "label": {
                 "en": "Not very often"
               },
               "value": 1
             },
             {
+              "id": "63f09d0b-833c-568b-b8e3-8a34f6230b10",
               "label": {
                 "en": "No, not at all"
               },
@@ -296,24 +330,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "154fcaa6-53e5-50a3-83ec-619b5aad9c6e",
               "label": {
                 "en": "Yes, most of the time"
               },
               "value": 3
             },
             {
+              "id": "7b97ab0e-fe9e-50c8-ba43-44a5392d4555",
               "label": {
                 "en": "Yes, quite often"
               },
               "value": 2
             },
             {
+              "id": "36cc3c17-649d-50ea-8b28-bd1f52e22bc4",
               "label": {
                 "en": "Not very often"
               },
               "value": 1
             },
             {
+              "id": "a85daf8b-a25d-5ed5-82a6-5dad54b15e2e",
               "label": {
                 "en": "No, not at all"
               },
@@ -327,24 +365,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "567a7e7e-acbc-5fe7-b41a-52c29ec8cb45",
               "label": {
                 "en": "Yes, most of the time"
               },
               "value": 3
             },
             {
+              "id": "1e6f8f9c-2837-5738-9f44-4f8cb28c86f9",
               "label": {
                 "en": "Yes, quite often"
               },
               "value": 2
             },
             {
+              "id": "a33cb00f-e43c-5ba0-99e6-93e24f346c1a",
               "label": {
                 "en": "Only occasionally"
               },
               "value": 1
             },
             {
+              "id": "f6ecb089-cf1e-5929-b0c9-ecfc652ca3e1",
               "label": {
                 "en": "No, never"
               },
@@ -358,24 +400,28 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "8e0e66f5-bfe2-5bd2-a516-fa92284c7e31",
               "label": {
                 "en": "Yes, quite often"
               },
               "value": 3
             },
             {
+              "id": "8feb2a75-20a2-52ee-af3e-567cd440ccc4",
               "label": {
                 "en": "Sometimes"
               },
               "value": 2
             },
             {
+              "id": "fba7f51b-5c5d-521e-a99a-d92eca3a77b1",
               "label": {
                 "en": "Hardly ever"
               },
               "value": 1
             },
             {
+              "id": "885494ce-95eb-5181-bb06-af6a1e35b062",
               "label": {
                 "en": "Never"
               },
@@ -409,42 +455,49 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "bb033b42-544e-593a-b4b7-38869442d489",
                 "label": {
                   "en": "Partner or spouse"
                 },
                 "value": "partner"
               },
               {
+                "id": "c68d406c-fcd0-554a-9c53-06b843df4faa",
                 "label": {
                   "en": "Parent or parent-in-law"
                 },
                 "value": "parent"
               },
               {
+                "id": "03496d15-d0d2-52cd-b23a-1e39c74dab6a",
                 "label": {
                   "en": "Other family member"
                 },
                 "value": "family"
               },
               {
+                "id": "8cfa91c0-518d-5c7c-a2a7-77ee41d6811e",
                 "label": {
                   "en": "Friend"
                 },
                 "value": "friend"
               },
               {
+                "id": "b521f97f-8305-5d68-bce4-83269686dfb2",
                 "label": {
                   "en": "Another parent / peer"
                 },
                 "value": "peer_parent"
               },
               {
+                "id": "3d8a16c2-c7aa-526e-9002-7d891c125824",
                 "label": {
                   "en": "Neighbour"
                 },
                 "value": "neighbour"
               },
               {
+                "id": "1dce69ee-b524-540e-8015-82d95f2b1c80",
                 "label": {
                   "en": "Healthcare or service provider"
                 },
@@ -458,12 +511,14 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "8b685c0d-eff2-5068-b94c-be4f0d897ca2",
                 "label": {
                   "en": "Informal (family, friends, peers)"
                 },
                 "value": "informal"
               },
               {
+                "id": "0a54ed99-91bf-5141-b87c-4d7890642012",
                 "label": {
                   "en": "Formal or professional (clinician, doula, home-visiting nurse, community health worker)"
                 },
@@ -477,24 +532,28 @@
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "5dd12c5b-d595-5f67-a75a-130b7b315b2d",
                 "label": {
                   "en": "Emotional support"
                 },
                 "value": "emotional"
               },
               {
+                "id": "a625c533-c086-5908-8186-0e3eb35be917",
                 "label": {
                   "en": "Information or advice"
                 },
                 "value": "informational"
               },
               {
+                "id": "7c010e81-d4fc-525f-8e4c-695b8ef3f021",
                 "label": {
                   "en": "Practical help or childcare"
                 },
                 "value": "practical"
               },
               {
+                "id": "9ddc7e0b-19e8-5d39-9bfd-e35d0ad23358",
                 "label": {
                   "en": "Financial help"
                 },
@@ -511,24 +570,28 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "1926efc3-84ff-5716-98fe-033c25428b66",
                 "label": {
                   "en": "Same household"
                 },
                 "value": "same_household"
               },
               {
+                "id": "9e37f9ee-c1f4-5d04-968b-65d752b006ec",
                 "label": {
                   "en": "Nearby"
                 },
                 "value": "nearby"
               },
               {
+                "id": "f2ed48fd-75b9-53d4-8e7b-2bd4b4ebd1c6",
                 "label": {
                   "en": "Far away"
                 },
                 "value": "far_away"
               },
               {
+                "id": "71b2eb71-7823-549e-b783-e9b5c44d9397",
                 "label": {
                   "en": "Online only"
                 },
@@ -542,30 +605,35 @@
             "component": "RadioGroup",
             "options": [
               {
+                "id": "2ee0cef6-ea38-513f-b0e8-4bcb679544c8",
                 "label": {
                   "en": "Every day"
                 },
                 "value": 5
               },
               {
+                "id": "54616bf4-660b-5767-b8b5-3b41af60c3ca",
                 "label": {
                   "en": "A few times a week"
                 },
                 "value": 4
               },
               {
+                "id": "8e78016c-d32c-501f-9a1e-3d357d82838d",
                 "label": {
                   "en": "About once a week"
                 },
                 "value": 3
               },
               {
+                "id": "eaedf1ab-6d16-5c36-a9b7-12eed13b5997",
                 "label": {
                   "en": "A few times a month"
                 },
                 "value": 2
               },
               {
+                "id": "c0664bc3-5b30-56af-bb60-5035fc287aa5",
                 "label": {
                   "en": "Less than once a month"
                 },
@@ -579,30 +647,35 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "dc78479a-a02a-51a8-83c8-b23c9c0ce20c",
                 "label": {
                   "en": "Not at all"
                 },
                 "value": 1
               },
               {
+                "id": "b4e232f5-ad51-545f-9bd3-744d3d4f210d",
                 "label": {
                   "en": "A little"
                 },
                 "value": 2
               },
               {
+                "id": "bc2007b8-b92a-5104-8701-3b25438cd287",
                 "label": {
                   "en": "A moderate amount"
                 },
                 "value": 3
               },
               {
+                "id": "83512797-24c6-597a-8356-a2015fe72d08",
                 "label": {
                   "en": "A lot"
                 },
                 "value": 4
               },
               {
+                "id": "fd02294a-998a-5ae5-badf-6fbfc79446da",
                 "label": {
                   "en": "Completely"
                 },
@@ -755,15 +828,6 @@
     },
     {
       "id": "74f0c369-3d21-5171-847b-4c8c992cee2a",
-      "dynamicValues": {
-        "careStage": {
-          "path": "ego.a1eb0482-52ed-584a-bb7f-fb00de2fb832",
-          "cases": {
-            "pregnant": "pregnant",
-            "postpartum": "postpartum"
-          }
-        }
-      },
       "type": "NameGenerator",
       "label": {
         "en": "People who support you"
@@ -809,13 +873,13 @@
         {
           "id": "62530ff9-cccf-5162-b1de-8d6fc4d40755",
           "text": {
-            "en": "Who do you turn to for **information or advice** about {careStage, select, missing {your pregnancy or the baby} pregnant {your pregnancy} postpartum {the baby} other {your pregnancy or the baby}}?"
+            "en": "Who do you turn to for **information or advice** about {ego_a1eb0482_52ed_584a_bb7f_fb00de2fb832, select, missing {your pregnancy or the baby} a1ee563d_2642_56a8_8791_2472c5e95210 {your pregnancy} 21b13eaa_f2f7_5171_a26f_f865f706ccbd {the baby} other {your pregnancy or the baby}}?"
           }
         },
         {
           "id": "51196c1c-f355-5e0d-9241-bb866ce9ecd8",
           "text": {
-            "en": "Who helps you with **practical tasks or childcare** — things like meals, errands, housework, or {careStage, select, missing {looking after the baby} pregnant {getting ready for the baby} postpartum {looking after the baby} other {looking after the baby}}?"
+            "en": "Who helps you with **practical tasks or childcare** — things like meals, errands, housework, or {ego_a1eb0482_52ed_584a_bb7f_fb00de2fb832, select, missing {looking after the baby} a1ee563d_2642_56a8_8791_2472c5e95210 {getting ready for the baby} 21b13eaa_f2f7_5171_a26f_f865f706ccbd {looking after the baby} other {looking after the baby}}?"
           }
         },
         {
@@ -858,11 +922,6 @@
     },
     {
       "id": "556d2d5b-34d1-5aaa-b1dd-82fb906ff1f8",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "type": "AlterForm",
       "label": {
         "en": "About each supporter"
@@ -877,28 +936,28 @@
             "id": "fdfa96db-c2b9-573a-9652-a627f25a12fe",
             "variable": "bd88db63-8775-5d29-9e26-b5b73147dbc2",
             "prompt": {
-              "en": "What is {nodeLabel}'s relationship to you?"
+              "en": "What is {node_label}'s relationship to you?"
             }
           },
           {
             "id": "72419354-c30b-5672-aedd-56a90fc7fb3e",
             "variable": "1dc7ab1f-5471-50e3-949f-abf3e18c6d7f",
             "prompt": {
-              "en": "Where is {nodeLabel}, relative to you, most of the time?"
+              "en": "Where is {node_label}, relative to you, most of the time?"
             }
           },
           {
             "id": "c439a4cd-6369-555f-aac9-b1ab684b8f70",
             "variable": "d39350b2-91ee-549a-a36e-d10f883c7dd0",
             "prompt": {
-              "en": "How often are you in contact with {nodeLabel} at the moment?"
+              "en": "How often are you in contact with {node_label} at the moment?"
             }
           },
           {
             "id": "334ddeb3-4244-5f64-806f-61e207a8487e",
             "variable": "7055e07d-6692-5537-8da3-40c7a2048da0",
             "prompt": {
-              "en": "Which kinds of support does {nodeLabel} give you?"
+              "en": "Which kinds of support does {node_label} give you?"
             },
             "hint": {
               "en": "Select all that apply."
@@ -909,15 +968,6 @@
     },
     {
       "id": "67d1023d-b549-57d7-a996-3cca4770bf57",
-      "dynamicValues": {
-        "careStage": {
-          "path": "ego.a1eb0482-52ed-584a-bb7f-fb00de2fb832",
-          "cases": {
-            "pregnant": "pregnant",
-            "postpartum": "postpartum"
-          }
-        }
-      },
       "type": "OrdinalBin",
       "label": {
         "en": "How much you rely on each person"
@@ -930,7 +980,7 @@
         {
           "id": "bcb8bf48-524a-5df1-81dd-21ffff003575",
           "text": {
-            "en": "Thinking about {careStage, select, missing {your care and the baby} pregnant {your pregnancy} postpartum {your care and the baby} other {your care and the baby}}, **how much do you rely on each person** for support overall? Drag each person into the band that fits best."
+            "en": "Thinking about {ego_a1eb0482_52ed_584a_bb7f_fb00de2fb832, select, missing {your care and the baby} a1ee563d_2642_56a8_8791_2472c5e95210 {your pregnancy} 21b13eaa_f2f7_5171_a26f_f865f706ccbd {your care and the baby} other {your care and the baby}}, **how much do you rely on each person** for support overall? Drag each person into the band that fits best."
           },
           "variable": "9b5bd23d-7323-5177-98d4-7de6202d57e4",
           "color": "ord-color-seq-1"

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type Codebook,
   createEntityTypeId,
+  createOptionId,
   createVariableId,
 } from '@codaco/protocol-validation';
 import { type NcNetwork, NcNetworkSchema } from '@codaco/shared-consts';
@@ -41,8 +42,16 @@ function makeCodebook(): Codebook {
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: { en: 'Family' }, value: 'family' },
-              { label: { en: 'Friend' }, value: 'friend' },
+              {
+                id: createOptionId(),
+                label: { en: 'Family' },
+                value: 'family',
+              },
+              {
+                id: createOptionId(),
+                label: { en: 'Friend' },
+                value: 'friend',
+              },
             ],
           },
           [ORD_NODE]: {
@@ -50,8 +59,8 @@ function makeCodebook(): Codebook {
             type: 'ordinal',
             component: 'LikertScale',
             options: [
-              { label: { en: 'Low' }, value: 1 },
-              { label: { en: 'High' }, value: 2 },
+              { id: createOptionId(), label: { en: 'Low' }, value: 1 },
+              { id: createOptionId(), label: { en: 'High' }, value: 2 },
             ],
           },
           [TEXT_NODE]: {
@@ -72,8 +81,12 @@ function makeCodebook(): Codebook {
             type: 'categorical',
             component: 'ToggleButtonGroup',
             options: [
-              { label: { en: 'Work' }, value: 'work' },
-              { label: { en: 'School' }, value: 'school' },
+              { id: createOptionId(), label: { en: 'Work' }, value: 'work' },
+              {
+                id: createOptionId(),
+                label: { en: 'School' },
+                value: 'school',
+              },
             ],
           },
         },
@@ -86,8 +99,8 @@ function makeCodebook(): Codebook {
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: { en: 'A' }, value: 'a' },
-            { label: { en: 'B' }, value: 'b' },
+            { id: createOptionId(), label: { en: 'A' }, value: 'a' },
+            { id: createOptionId(), label: { en: 'B' }, value: 'b' },
           ],
         },
       },

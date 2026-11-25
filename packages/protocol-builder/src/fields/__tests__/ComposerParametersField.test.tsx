@@ -26,9 +26,6 @@ vi.mock('../../localization/useDynamicValueSite.ts', async (importActual) => {
       roles: new Set(['ego']),
       variablesFor: () => ({}),
     },
-    bindings: {},
-    setBindings: () => undefined,
-    namesInUse: () => new Set(),
     conditions: {
       values: {},
       set: () => undefined,
@@ -36,6 +33,7 @@ vi.mock('../../localization/useDynamicValueSite.ts', async (importActual) => {
       subject: undefined,
       allowEgoRules: true,
     },
+    codebookRead: true,
   };
   return { ...actual, useDynamicValueSite: () => site };
 });

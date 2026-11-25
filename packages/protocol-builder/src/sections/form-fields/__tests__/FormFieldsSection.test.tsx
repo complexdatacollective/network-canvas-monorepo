@@ -30,6 +30,7 @@ import {
   openAttributePicker,
 } from '../../../testing/attributePicker.ts';
 import { fixtureMessage } from '../../../testing/i18n.ts';
+import { MINTED_ID } from '../../../testing/mintedId.ts';
 import {
   loadFixtureStage,
   fixtureStageId,
@@ -1810,8 +1811,16 @@ const seedContactSetting = (
             // the person's attributes rather than complain about this one.
             component: 'CheckboxGroup',
             options: [
-              { label: en('At home'), value: 'home' },
-              { label: en('At work'), value: 'work' },
+              {
+                id: testId('option/contact_setting/home'),
+                label: en('At home'),
+                value: 'home',
+              },
+              {
+                id: testId('option/contact_setting/work'),
+                label: en('At work'),
+                value: 'work',
+              },
             ],
           },
         },
@@ -1910,8 +1919,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(created[1]).toMatchObject({
       type: 'categorical',
       options: [
-        { label: en('At home'), value: 'home' },
-        { label: en('At work'), value: 'work' },
+        { id: MINTED_ID, label: en('At home'), value: 'home' },
+        { id: MINTED_ID, label: en('At work'), value: 'work' },
       ],
     });
 
@@ -2120,8 +2129,16 @@ describe('the codebook an attribute a form field collects lives in', () => {
               component: 'CheckboxGroup',
               readOnly: true,
               options: [
-                { label: en('At home'), value: 'home' },
-                { label: en('At work'), value: 'work' },
+                {
+                  id: testId('option/contact_setting/home'),
+                  label: en('At home'),
+                  value: 'home',
+                },
+                {
+                  id: testId('option/contact_setting/work'),
+                  label: en('At work'),
+                  value: 'work',
+                },
               ],
             },
           },
@@ -2269,9 +2286,17 @@ describe('the codebook an attribute a form field collects lives in', () => {
       ).toHaveLength(3),
     );
     expect(asRecord(personVariables(harness)[variableId]).options).toEqual([
-      { label: en('At home'), value: 'home' },
-      { label: en('At work'), value: 'work' },
-      { label: en('Somewhere else'), value: 'elsewhere' },
+      {
+        id: testId('option/contact_setting/home'),
+        label: en('At home'),
+        value: 'home',
+      },
+      {
+        id: testId('option/contact_setting/work'),
+        label: en('At work'),
+        value: 'work',
+      },
+      { id: MINTED_ID, label: en('Somewhere else'), value: 'elsewhere' },
     ]);
   });
 
@@ -2671,8 +2696,8 @@ describe('the codebook an attribute a form field collects lives in', () => {
     expect(created).toMatchObject({
       type: 'ordinal',
       options: [
-        { label: en('At home'), value: 'home' },
-        { label: en('At work'), value: 'work' },
+        { id: MINTED_ID, label: en('At home'), value: 'home' },
+        { id: MINTED_ID, label: en('At work'), value: 'work' },
       ],
     });
   });
@@ -4117,8 +4142,8 @@ describe('rules for the attribute a field is inventing', () => {
       component: 'CheckboxGroup',
       validation: { required: true },
       options: [
-        { label: en('At home'), value: 'home' },
-        { label: en('At work'), value: 'work' },
+        { id: MINTED_ID, label: en('At home'), value: 'home' },
+        { id: MINTED_ID, label: en('At work'), value: 'work' },
       ],
     });
   });

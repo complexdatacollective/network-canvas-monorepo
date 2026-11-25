@@ -158,8 +158,8 @@ type EditorCase = Readonly<{
   optionalSections: readonly string[];
   /**
    * The top-level stage keys those sections have a field for, and
-   * `dynamicValues`, which every stage editor registers for the values its
-   * text may show.
+   * `conditions`, which every stage editor registers for the "If"s its text
+   * may hold.
    */
   ownedKeys: readonly string[];
   /** A stage of this type using every key its schema allows. */
@@ -339,7 +339,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
-    ownedKeys: ['conditions', 'dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: ['conditions', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full dyad census' },
@@ -376,7 +376,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
-    ownedKeys: ['conditions', 'dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: ['conditions', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full tie-strength census' },
@@ -412,14 +412,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
-    ownedKeys: [
-      'behaviours',
-      'conditions',
-      'dynamicValues',
-      'label',
-      'prompts',
-      'subject',
-    ],
+    ownedKeys: ['behaviours', 'conditions', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full one-to-many dyad census' },
@@ -470,14 +463,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
-    ownedKeys: [
-      'behaviours',
-      'conditions',
-      'dynamicValues',
-      'label',
-      'prompts',
-      'subject',
-    ],
+    ownedKeys: ['behaviours', 'conditions', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full ordinal bin' },
@@ -521,14 +507,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para la persona entrevistadora',
     ],
-    ownedKeys: [
-      'behaviours',
-      'conditions',
-      'dynamicValues',
-      'label',
-      'prompts',
-      'subject',
-    ],
+    ownedKeys: ['behaviours', 'conditions', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full categorical bin' },
@@ -596,7 +575,6 @@ const CASES: readonly EditorCase[] = [
     ownedKeys: [
       'addNamePlaceholder',
       'conditions',
-      'dynamicValues',
       'label',
       'prompts',
       'quickAdd',
@@ -654,7 +632,6 @@ const CASES: readonly EditorCase[] = [
       'cardOptions',
       'conditions',
       'dataSource',
-      'dynamicValues',
       'label',
       'maxNodesNotice',
       'minNodesNotice',

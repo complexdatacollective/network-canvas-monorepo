@@ -31,10 +31,8 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
 import {
   type Codebook,
-  dynamicValueArgumentsAt,
-  type DynamicValues,
   EdgeColorSequence,
-  findDynamicValueProblem,
+  findSiteMessageProblem,
   NodeColorSequence,
   nodeLabelValueContext,
   type NodeShapeReference,
@@ -53,6 +51,7 @@ import type { NodeLabelDraft } from '../../fields/NodeLabelField.tsx';
 import ShapePickerField from '../../fields/ShapePickerField.tsx';
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
 import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
+import { withoutUnusedConditions } from '../../localization/useDynamicValueSite.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import {
   ResourceClientProvider,
@@ -461,6 +460,27 @@ const replaceShapeMapping = (
 const DYNAMIC_LABEL = 'dynamicLabel';
 
 /**
+ * `draft` as a save writes it: its own label without the conditions that no
+ * translation of the label names any more. They stay in the draft while it
+ * is edited, so an "If" cut from the label and pasted back, or brought back
+ * by an undo, keeps its rules. A condition the stored label already had
+ * unnamed is left alone (see `withoutUnusedConditions`).
+ */
+const withoutUnusedLabelConditions = (
+  draft: CodebookEntityDraft,
+  stored: SectionDoc | undefined,
+): CodebookEntityDraft => {
+  const label = draft[DYNAMIC_LABEL];
+  if (!isRecord(label)) return draft;
+  const storedLabel = stored?.[DYNAMIC_LABEL];
+  const kept = withoutUnusedConditions(
+    label,
+    isRecord(storedLabel) ? storedLabel : {},
+  );
+  return kept === label ? draft : { ...draft, [DYNAMIC_LABEL]: kept };
+};
+
+/**
  * What a node type's label is checked against and written with: the
  * protocol's codebook, and the type the label is for (undefined while a new
  * type is being created, which has no attributes yet).
@@ -502,14 +522,9 @@ const dynamicLabelIssue = (
     nodeType: nodeType ?? '',
     conditions,
   });
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the field's own bindings, written only by its editor; each is read defensively by the checker
-  const bindings = (
-    isRecord(label.dynamicValues) ? label.dynamicValues : {}
-  ) as DynamicValues;
-  const values = dynamicValueArgumentsAt(bindings, context);
   return translations.some(
     ([locale, message]) =>
-      findDynamicValueProblem(message, values, locale) !== undefined,
+      findSiteMessageProblem(message, context, locale) !== undefined,
   )
     ? createMessageError(codebookEntityMessages.dynamicLabelProblem)
     : undefined;
@@ -1059,9 +1074,13 @@ function EntityEditor({
     // browser's own navigation, which is not what propagates here.
     event.stopPropagation();
     if (readOnly || busy || !dirty) return;
+    const submitted = withoutUnusedLabelConditions(
+      draft,
+      modeProps.mode === 'update' ? modeProps.authoritativeDocument : undefined,
+    );
     const nextErrors = validateFields(
       subject,
-      draft,
+      submitted,
       existingEntityNames,
       nodeLabel,
     );
@@ -1076,17 +1095,17 @@ function EntityEditor({
     try {
       document =
         modeProps.mode === 'create'
-          ? documentForNewEntity({ subject, draft })
+          ? documentForNewEntity({ subject, draft: submitted })
           : documentWithEntityProperties({
               subject,
               authoritativeDocument: modeProps.authoritativeDocument,
-              draft,
+              draft: submitted,
               // Removing every custom shape leaves the draft without the key,
               // which would otherwise keep the stored shapes.
               // which would otherwise keep the stored shapes; switching
               // Dynamic label off does the same to the stored label.
               unsetProperties: ['customShapes', DYNAMIC_LABEL].filter(
-                (key) => !Object.hasOwn(draft, key),
+                (key) => !Object.hasOwn(submitted, key),
               ),
             });
     } catch (error: unknown) {

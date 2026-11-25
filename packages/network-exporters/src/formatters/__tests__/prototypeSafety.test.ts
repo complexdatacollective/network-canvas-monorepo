@@ -7,7 +7,11 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testTypeId, testVariableId } from '../../__tests__/testIds';
+import {
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../__tests__/testIds';
 import type { FormattedSession } from '../../input';
 import { partitionByType } from '../../session/partitionByType';
 import { attributeListRows } from '../csv/attributeList';
@@ -313,8 +317,16 @@ describe('categorical variables named after Object.prototype keys', () => {
                 name: id,
                 type: 'categorical',
                 options: [
-                  { label: { en: 'A' }, value: 'constructor' },
-                  { label: { en: 'B' }, value: '__proto__' },
+                  {
+                    id: testOptionId('Person/constructor'),
+                    label: { en: 'A' },
+                    value: 'constructor',
+                  },
+                  {
+                    id: testOptionId('Person/__proto__'),
+                    label: { en: 'B' },
+                    value: '__proto__',
+                  },
                 ],
               } satisfies Variable,
             ]),

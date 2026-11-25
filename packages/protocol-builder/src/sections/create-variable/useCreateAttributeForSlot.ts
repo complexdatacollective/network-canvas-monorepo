@@ -1,10 +1,11 @@
 import { useCallback, type ReactNode } from 'react';
 
-import type { VariableOption, VariableType } from '@codaco/protocol-validation';
+import type { VariableType } from '@codaco/protocol-validation';
 
 import { sectionIdForCodebookSubject } from '../../codebook/editing.ts';
 import type {
   OptionRowChoiceValue,
+  OptionSeed,
   VariableEditorHostOptions,
 } from '../../codebook/optionRowChoice.ts';
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
@@ -33,13 +34,13 @@ export type CreateAttributeForSlotOptions = Readonly<{
    * researcher may not edit them — and the schema refuses an attribute bound
    * to one of these slots whose options differ.
    */
-  lockedOptions?: readonly VariableOption[];
+  lockedOptions?: readonly OptionSeed[];
   /**
    * Options the new attribute starts with, which the researcher may then edit,
    * add to and remove from. For a slot whose interface suggests a starting
    * list but does not own the values.
    */
-  seedOptions?: readonly VariableOption[];
+  seedOptions?: readonly OptionSeed[];
   /** Title of the editor's dialog, already formatted. */
   title: string;
   /**

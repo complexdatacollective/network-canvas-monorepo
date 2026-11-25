@@ -16,7 +16,7 @@ import type { InterviewExportInput } from '../input';
 import type { ExportOptions } from '../options';
 import type { ExportWarning } from '../output';
 import { runRecordedExport } from './exportHarness';
-import { testTypeId, testVariableId } from './testIds';
+import { testOptionId, testTypeId, testVariableId } from './testIds';
 
 // Built from code points so that no control character sits in this source.
 const control = String.fromCharCode(0x1);
@@ -56,8 +56,16 @@ const codebook: Codebook = {
           name: 'Colour',
           type: 'categorical',
           options: [
-            { label: { en: 'Red' }, value: 'red' },
-            { label: { en: 'Blue' }, value: 'blue' },
+            {
+              id: testOptionId('Colour/red'),
+              label: { en: 'Red' },
+              value: 'red',
+            },
+            {
+              id: testOptionId('Colour/blue'),
+              label: { en: 'Blue' },
+              value: 'blue',
+            },
           ],
         },
       },

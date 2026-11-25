@@ -4,7 +4,10 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { ComponentType } from '@codaco/protocol-validation';
+import {
+  type ComponentType,
+  dynamicValueNameFor,
+} from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -249,22 +252,21 @@ function buildPipedNamesInterview() {
     ],
     et.id,
   );
-  stage.stageEntry.dynamicValues = {
-    first: { path: 'edge.from.$label' },
-    second: { path: 'edge.to.$label' },
-  };
+  // The labels of the two people the edge joins.
+  const first = `{${dynamicValueNameFor({ kind: 'label', role: 'edgeFrom' })}}`;
+  const second = `{${dynamicValueNameFor({ kind: 'label', role: 'edgeTo' })}}`;
   stage.addFormField({
     component: 'Number',
-    prompt: { 'en-US': 'How many years has {first} known {second}?' },
+    prompt: { 'en-US': `How many years has ${first} known ${second}?` },
   });
   stage.addFormField({
     component: 'Boolean',
-    prompt: { 'en-US': 'Would {second} call {first} a close friend?' },
+    prompt: { 'en-US': `Would ${second} call ${first} a close friend?` },
   });
   stage.addFormField({
     component: 'TextArea',
-    prompt: { 'en-US': 'How did {first} and {second} meet?' },
-    hint: { 'en-US': 'Tell it as {first} would.' },
+    prompt: { 'en-US': `How did ${first} and ${second} meet?` },
+    hint: { 'en-US': `Tell it as ${first} would.` },
   });
 
   si.addInformationStage({

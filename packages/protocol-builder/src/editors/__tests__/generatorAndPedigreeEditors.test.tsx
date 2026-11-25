@@ -24,8 +24,8 @@ type SectionListEditorCase = Readonly<{
   /**
    * The top-level stage keys those sections have a field for, once the
    * stage's own wording is open where `opensWording` says so, and
-   * `dynamicValues`, which every stage editor registers for the values its
-   * text may show.
+   * `conditions`, which every stage editor registers for the "If"s its text
+   * may hold.
    */
   ownedKeys: readonly string[];
   /** Set where the stage's own wording mounts its fields only while open. */
@@ -55,14 +55,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: [
-      'conditions',
-      'dynamicValues',
-      'form',
-      'label',
-      'prompts',
-      'subject',
-    ],
+    ownedKeys: ['conditions', 'form', 'label', 'prompts', 'subject'],
   },
   {
     interfaceName: 'FamilyPedigree',
@@ -86,7 +79,6 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     opensWording: true,
     ownedKeys: [
       'conditions',
-      'dynamicValues',
       'edgeConfiguration',
       'framing',
       'label',

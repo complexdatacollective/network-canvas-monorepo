@@ -268,6 +268,10 @@ export class SectionOutlineStore {
   private readonly sections = new Map<string, SectionRecord>();
   /** The fields the last snapshot was built from, one list per section. */
   private cachedFields: readonly (readonly OutlineFieldRegistration[])[] = [];
+  /** The sections' order and fields as `revalidate` last read them. */
+  private revalidatedOrder: readonly string[] = [];
+  private revalidatedFields: readonly (readonly OutlineFieldRegistration[])[] =
+    [];
   /**
    * The schema's problems with the stage, as paths into its document.
    * Kept whole rather than filed under a section: a field registering later
@@ -411,7 +415,19 @@ export class SectionOutlineStore {
     const ordered = this.orderedRecords();
     const fields = ordered.map((record) => fieldsInside(record.element));
     const placed = this.placedIssues;
+    // Measured against what this last read off the page, and not against the
+    // last snapshot: any reader can take a snapshot, and one taken between
+    // two changes (a field marked invalid while the protocol was still being
+    // read, then cleared) would hide the second from every other subscriber,
+    // which would go on reporting the first.
+    const order = ordered.map((record) => record.id);
+    const moved =
+      !sameIds(order, this.revalidatedOrder) ||
+      !sameFieldLists(fields, this.revalidatedFields);
+    this.revalidatedOrder = order;
+    this.revalidatedFields = fields;
     if (
+      moved ||
       !this.sameOrder(ordered) ||
       !this.sameFields(fields) ||
       this.currentIssues() !== placed
@@ -581,16 +597,7 @@ export class SectionOutlineStore {
   private sameFields(
     fields: readonly (readonly OutlineFieldRegistration[])[],
   ): boolean {
-    return (
-      fields.length === this.cachedFields.length &&
-      fields.every((section, index) => {
-        const cached = this.cachedFields[index] ?? [];
-        return (
-          section.length === cached.length &&
-          section.every((field, position) => sameField(field, cached[position]))
-        );
-      })
-    );
+    return sameFieldLists(fields, this.cachedFields);
   }
 
   private sameOrder(ordered: readonly SectionRecord[]): boolean {
@@ -612,6 +619,26 @@ export class SectionOutlineStore {
     this.version += 1;
     for (const listener of this.listeners) listener();
   }
+}
+
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+function sameFieldLists(
+  fields: readonly (readonly OutlineFieldRegistration[])[],
+  other: readonly (readonly OutlineFieldRegistration[])[],
+): boolean {
+  return (
+    fields.length === other.length &&
+    fields.every((section, index) => {
+      const cached = other[index] ?? [];
+      return (
+        section.length === cached.length &&
+        section.every((field, position) => sameField(field, cached[position]))
+      );
+    })
+  );
 }
 
 function locate(record: SectionRecord): void {

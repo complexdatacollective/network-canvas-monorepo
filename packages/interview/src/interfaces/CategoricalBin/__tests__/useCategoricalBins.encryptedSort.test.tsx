@@ -34,7 +34,13 @@ const variables: Record<string, Variable> = {
     name: 'group',
     type: 'categorical',
     component: 'CheckboxGroup',
-    options: [{ label: { en: 'Friends' }, value: 'friends' }],
+    options: [
+      {
+        id: testId('useCategoricalBins option 1'),
+        label: { en: 'Friends' },
+        value: 'friends',
+      },
+    ],
   },
 };
 
