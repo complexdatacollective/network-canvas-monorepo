@@ -297,6 +297,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     interviewRouteMatches && interviewRouteParams.sessionId === sessionId;
   const [currentStep, setCurrentStep] = useState(0);
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
+  const [allowTextSizeChange, setAllowTextSizeChange] = useState(false);
   // Every write from this route is the session's whole state — network, stage
   // metadata and resume position. The step change carries no
   // network of its own, so it writes the state most recently handed to
@@ -586,6 +587,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         currentStep: initialStep,
       });
       setAllowStageNavigation(settings.allowStageNavigation);
+      setAllowTextSizeChange(settings.allowTextSizeChange);
       setLoadState({
         kind: 'ready',
         sessionId,
@@ -823,8 +825,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         }
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
-        allowUserScaling
-        initialTextScale={initialTextScale}
+        allowUserScaling={allowTextSizeChange}
+        // A size chosen earlier in this tab applies only while participants
+        // may change it.
+        initialTextScale={allowTextSizeChange ? initialTextScale : undefined}
         onTextScaleChange={handleTextScaleChange}
         navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
         // Redux DevTools and the action logger connect only in a development

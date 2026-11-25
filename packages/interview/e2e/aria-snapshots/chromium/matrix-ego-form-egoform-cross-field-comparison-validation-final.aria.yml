@@ -2,9 +2,9 @@
   - heading "Done" [level=1]
   - paragraph: Thank you.
   - navigation:
-    - button "Settings"
-    - button "Previous Step"
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step"
     - button "Next Step"
     - status
   - region "Interview notifications"

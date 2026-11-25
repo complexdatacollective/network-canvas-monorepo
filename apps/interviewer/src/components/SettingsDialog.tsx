@@ -193,6 +193,19 @@ const messages = defineMessages({
     description:
       'Explanatory paragraph in Settings, Interview section, about the Allow stage navigation toggle: what happens when it is off and why a researcher might turn it on.',
   },
+  allowTextSizeChange: {
+    id: 'interviewer.settingsDialog.allowTextSizeChange',
+    defaultMessage: 'Allow text size changes',
+    description:
+      'Toggle label in Settings, Interview section; controls whether participants can make the interview text larger or smaller.',
+  },
+  showsATextSizeButton: {
+    id: 'interviewer.settingsDialog.showsATextSizeButton',
+    defaultMessage:
+      'Shows a button during the interview that participants can use to make the text larger or smaller.',
+    description:
+      'Hint under the Allow text size changes toggle; the button is in the interview navigation.',
+  },
   exportGraphML: {
     id: 'interviewer.settingsDialog.exportGraphML',
     defaultMessage: 'Export GraphML',
@@ -1086,6 +1099,17 @@ export function SettingsDialog({
                     messages.whenOffParticipantsCanOnlyMoveForwards,
                   )}
                 </Paragraph>
+                <UnconnectedField
+                  name="allowTextSizeChange"
+                  label={intl.formatMessage(messages.allowTextSizeChange)}
+                  hint={intl.formatMessage(messages.showsATextSizeButton)}
+                  inline
+                  component={ToggleField}
+                  value={settings.allowTextSizeChange}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ allowTextSizeChange: next === true })
+                  }
+                />
               </>
             ) : null}
           </TabsPanel>

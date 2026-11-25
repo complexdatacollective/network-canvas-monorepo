@@ -385,3 +385,105 @@ describe('LanguageChooser', () => {
     expect(liveStore().getState().session.network).toEqual(networkBefore);
   });
 });
+
+describe('the language switcher in the navigation', () => {
+  const switcher = () =>
+    screen.queryByRole('combobox', { name: /^Interview language: / });
+
+  const moveToNextScreen = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'Next Step' }));
+    await screen.findByRole('heading', { name: `Stage ${testId('after')}` });
+  };
+
+  it('is not offered while the Language Chooser is on screen', async () => {
+    renderChooser();
+    await languageGroup();
+
+    expect(switcher()).toBeNull();
+  });
+
+  it('is offered on the screens after it, naming the interview language', async () => {
+    renderChooser();
+    const user = userEvent.setup();
+    await languageGroup();
+
+    await moveToNextScreen(user);
+
+    const trigger = await screen.findByRole('combobox', {
+      name: `Interview language: ${label('en')}`,
+    });
+    // It fades in with the rest of the bar's controls.
+    await waitFor(() => expect(trigger).toBeVisible());
+  });
+
+  it("lists the protocol's languages, each in its own language, with the current one selected", async () => {
+    renderChooser();
+    const user = userEvent.setup();
+    await languageGroup();
+    await moveToNextScreen(user);
+
+    await user.click(
+      await screen.findByRole('combobox', { name: /^Interview language: / }),
+    );
+    const list = await screen.findByRole('listbox', {
+      name: 'Interview language',
+    });
+
+    // Alphabetical by name, as the chooser lists them, and nothing more: an
+    // interview has no automatic language to offer.
+    expect(
+      within(list)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([label('en'), label('es'), label('ar')]);
+    expect(
+      within(list).getByRole('option', { name: label('en') }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(languageOf(within(list).getByText(label('ar')))).toHaveAttribute(
+      'lang',
+      'ar',
+    );
+  });
+
+  it('changes the language of the whole interview, as the chooser does', async () => {
+    renderChooser();
+    const user = userEvent.setup();
+    await languageGroup();
+    await moveToNextScreen(user);
+
+    await user.click(
+      await screen.findByRole('combobox', { name: /^Interview language: / }),
+    );
+    const list = await screen.findByRole('listbox', {
+      name: 'Interview language',
+    });
+    await user.click(within(list).getByRole('option', { name: label('ar') }));
+
+    const shell = screen.getByRole('main');
+    await waitFor(() => expect(shell).toHaveAttribute('lang', 'ar'));
+    expect(shell).toHaveAttribute('dir', 'rtl');
+    expect(liveStore().getState().ui.localePreference).toBe('ar');
+    expect(
+      await screen.findByRole('combobox', {
+        name: `Interview language: ${label('ar')}`,
+      }),
+    ).toBeInTheDocument();
+    // The choice is not interview data.
+    expect(liveStore().getState().session).not.toHaveProperty(
+      'localePreference',
+    );
+  });
+
+  it('is not offered when the protocol declares one language', async () => {
+    renderChooser({
+      payload: makePayload({
+        localization: { defaultLocale: 'en', locales: ['en'] },
+      }),
+    });
+    const user = userEvent.setup();
+    await languageGroup();
+    await moveToNextScreen(user);
+
+    expect(switcher()).toBeNull();
+  });
+});

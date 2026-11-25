@@ -9,9 +9,9 @@
   - paragraph: You may now close this window.
   - button "Finish"
   - navigation:
-    - button "Settings"
-    - button "Previous Step"
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step"
     - button "Next Step" [disabled]
     - status
   - region "Interview notifications"

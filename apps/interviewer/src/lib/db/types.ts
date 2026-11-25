@@ -193,6 +193,9 @@ export type StoredSettings = {
   // identifier — only the per-device installation id (see installationId.ts).
   analyticsEnabled: boolean;
   allowStageNavigation: boolean;
+  // Shows the text size button in the interview navigation. Defaults to true;
+  // a row written before this setting existed takes the default.
+  allowTextSizeChange: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {
@@ -214,4 +217,5 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   sampleProtocolDismissed: false,
   analyticsEnabled: true,
   allowStageNavigation: true,
+  allowTextSizeChange: true,
 };

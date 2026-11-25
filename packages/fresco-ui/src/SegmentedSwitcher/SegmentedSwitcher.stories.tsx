@@ -47,10 +47,11 @@ const options: SegmentedOption<'protocols' | 'data'>[] = [
   (e.g. a router \`<Link>\`).
 - **\`size\`** (\`'sm' | 'md' | 'lg' | 'xl'\`, default \`'md'\`) — track height is
   pinned to the matching \`Button\` height at each token, so they line up.
-- **\`variant\`** (\`'outline' | 'glass'\`, default \`'outline'\`) — \`outline\`
-  reads like a normal outline button (2px themed border, no fill); \`glass\` adds
-  a translucent, backdrop-blurred, shadowed surface with a thicker border, for
-  floating over content.
+- **\`variant\`** (\`'outline' | 'glass' | 'plain'\`, default \`'outline'\`) —
+  \`outline\` reads like a normal outline button (2px themed border, no fill);
+  \`glass\` adds a translucent, backdrop-blurred, shadowed surface with a
+  thicker border, for floating over content; \`plain\` draws no track at all,
+  for a switcher whose container is its track, such as a pill-shaped popup.
 - **\`aria-label\`** (\`string\`) or **\`aria-labelledby\`** (\`string\`) —
   exactly one is required: a name for the group, or the id of an element on
   the page that names it, such as a field's label.
@@ -69,7 +70,7 @@ Keyboard operation and \`role="group"\`/toggle ARIA come from Base UI.
 
 type StoryArgs = {
   size: 'sm' | 'md' | 'lg' | 'xl';
-  variant: 'outline' | 'glass';
+  variant: 'outline' | 'glass' | 'plain';
   disabledSecond: boolean;
   disabled: boolean;
 };
@@ -95,7 +96,7 @@ const meta: Meta<StoryArgs> = {
     },
     variant: {
       control: 'inline-radio',
-      options: ['outline', 'glass'],
+      options: ['outline', 'glass', 'plain'],
       description:
         'Track treatment. See the "Glass" story for the backdrop-blurred variant over content.',
     },

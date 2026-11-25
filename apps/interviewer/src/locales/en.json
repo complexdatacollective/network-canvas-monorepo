@@ -1071,6 +1071,10 @@
     "defaultMessage": "Allow stage navigation",
     "description": "Toggle label in Settings, Interview section; controls whether participants can jump between interview stages from the progress bar."
   },
+  "interviewer.settingsDialog.allowTextSizeChange": {
+    "defaultMessage": "Allow text size changes",
+    "description": "Toggle label in Settings, Interview section; controls whether participants can make the interview text larger or smaller."
+  },
   "interviewer.settingsDialog.appVersion": {
     "defaultMessage": "App version",
     "description": "Row title in Settings, About section, above the installed Interviewer version number."
@@ -1270,6 +1274,10 @@
   "interviewer.settingsDialog.showSampleProtocolOnHomeScreen": {
     "defaultMessage": "Show sample protocol on home screen",
     "description": "Toggle label in Settings, About section; controls whether the sample protocol card appears on the home screen."
+  },
+  "interviewer.settingsDialog.showsATextSizeButton": {
+    "defaultMessage": "Shows a button during the interview that participants can use to make the text larger or smaller.",
+    "description": "Hint under the Allow text size changes toggle; the button is in the interview navigation."
   },
   "interviewer.settingsDialog.simulateParticipantDropOut": {
     "defaultMessage": "Simulate participant drop-out",

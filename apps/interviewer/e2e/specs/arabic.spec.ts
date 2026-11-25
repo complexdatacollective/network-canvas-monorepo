@@ -124,11 +124,12 @@ test('every screen of Interviewer reads right to left in Arabic', async ({
   await audit(page, 'interview: name generator');
   await interviewNav.next();
   await audit(page, 'interview: sociogram');
-  await page.getByTestId('settings-button').click();
-  await expect(page.getByTestId('exit-button')).toBeVisible();
-  await audit(page, 'interview: settings');
+  await page.getByTestId('text-size-button').click();
+  const textSize = page.getByRole('dialog', { name: 'Text size' });
+  await expect(textSize).toBeVisible();
+  await audit(page, 'interview: text size');
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('exit-button')).toBeHidden();
+  await expect(textSize).toBeHidden();
   await interviewNav.next();
   await interviewNav.finish();
   // The finished interview, shown in place with the app's way out.

@@ -6,6 +6,11 @@
     - button "Father"
     - button "You"
     - button "Sister"
+    - toolbar "Add your relatives":
+      - button "Parent"
+      - button "Sibling"
+      - button "Partner"
+      - button "Child"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
       - button "Add and edit" [pressed]
@@ -23,8 +28,9 @@
     - button "Show the whole family"
   - text: Family members are now described with words like mother, father, sister and brother.
   - navigation:
-    - button "Settings"
-    - button "Previous Step"
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step"
     - button "Next Step"
+    - status
   - region "Interview notifications"
