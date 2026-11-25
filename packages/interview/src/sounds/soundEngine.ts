@@ -23,7 +23,8 @@ export type StopSound = () => void;
 export type SoundEngine = {
   /**
    * Turns sound on or off. Turning it on for the first time creates the audio
-   * context and loads the sprite; turning it off stops a looping sound.
+   * context and loads the sprite; turning it off stops every sound that is
+   * playing.
    */
   setEnabled: (enabled: boolean) => void;
   /** Plays a sound now, or not at all. */
@@ -47,6 +48,11 @@ type SourceNodeLike = {
   loopStart: number;
   loopEnd: number;
   readonly playbackRate: AudioParamLike;
+  addEventListener(
+    type: 'ended',
+    listener: () => void,
+    options?: AddEventListenerOptions,
+  ): void;
   connect(destination: object): unknown;
   disconnect(): void;
   start(when?: number, offset?: number, duration?: number): void;
@@ -192,7 +198,10 @@ type LoadState = 'idle' | 'loading' | 'loaded' | 'failed';
  * context suspended until the person interacts with the page, so the engine
  * resumes it on the first pointer or key press. A sound that cannot play at
  * the moment it is asked for (sound off, sprite not loaded, context not yet
- * running, page hidden) is dropped, never played later.
+ * running, page hidden) is dropped, never played later. For the same reason,
+ * hiding the page or turning sound off stops a sound that is part-way
+ * through; only a looping sound that is still wanted carries on when the page
+ * is shown again.
  *
  * A failed load is silent. It is tried again once on the next turn on, or on
  * the first gesture after the device comes back online, never in a loop.
@@ -216,6 +225,8 @@ export function createSoundEngine(
   let lastSound: { name: OneShotSoundName; at: number } | null = null;
   let pending: OneShotSoundName | null = null;
   const loops = new Set<SourceNodeLike>();
+  // Sounds that play once and have not yet ended.
+  const oneShots = new Set<SourceNodeLike>();
 
   const isHidden = () => env.document?.visibilityState === 'hidden';
 
@@ -243,16 +254,25 @@ export function createSoundEngine(
     );
   };
 
-  const stopLoops = () => {
-    for (const source of loops) {
-      try {
-        source.stop();
-        source.disconnect();
-      } catch {
-        // Already stopped.
-      }
+  const stopSource = (source: SourceNodeLike) => {
+    try {
+      source.stop();
+      source.disconnect();
+    } catch {
+      // Already stopped.
     }
+  };
+
+  const stopLoops = () => {
+    for (const source of loops) stopSource(source);
     loops.clear();
+  };
+
+  // A suspended context keeps a sound where it was, and resuming it would
+  // play the rest of a sound asked for long before.
+  const stopOneShots = () => {
+    for (const source of oneShots) stopSource(source);
+    oneShots.clear();
   };
 
   const resume = () => {
@@ -270,6 +290,7 @@ export function createSoundEngine(
   const onVisibilityChange = () => {
     if (!context) return;
     if (isHidden()) {
+      stopOneShots();
       if (context.state === 'running') {
         suspendedWhileHidden = true;
         context.suspend().catch(() => undefined);
@@ -337,7 +358,16 @@ export function createSoundEngine(
       : 1;
     const started = startSource(name, rate);
     if (!started) return;
-    started.source.start(0, started.start, started.duration);
+    const { source } = started;
+    source.addEventListener(
+      'ended',
+      () => {
+        oneShots.delete(source);
+      },
+      { once: true },
+    );
+    source.start(0, started.start, started.duration);
+    oneShots.add(source);
     lastPlayed.set(name, now);
     lastSound = { name, at: now };
   };
@@ -348,6 +378,7 @@ export function createSoundEngine(
       enabled = next;
       if (!next) {
         stopLoops();
+        stopOneShots();
         pending = null;
         listen(false);
         if (context?.state === 'running') {
@@ -402,13 +433,7 @@ export function createSoundEngine(
       source.start(0, start);
       loops.add(source);
       return () => {
-        if (!loops.delete(source)) return;
-        try {
-          source.stop();
-          source.disconnect();
-        } catch {
-          // Already stopped.
-        }
+        if (loops.delete(source)) stopSource(source);
       };
     },
 
@@ -416,6 +441,7 @@ export function createSoundEngine(
       enabled = false;
       pending = null;
       stopLoops();
+      stopOneShots();
       listen(false);
       const closing = context;
       context = null;

@@ -289,6 +289,47 @@ describe('sound engine looping sound', () => {
   });
 });
 
+describe('sound engine sound in progress', () => {
+  it('stops a short sound, but not the looping sound, when the page is hidden', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.startLoop('node-linking-mode');
+    harness.engine.play('finish-interview');
+    await settle();
+    const [loop, finish] = harness.context().played;
+    setVisibility('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(finish?.stopped).toBe(true);
+    expect(loop?.stopped).toBe(false);
+    expect(harness.context().suspend).toHaveBeenCalledTimes(1);
+
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(harness.context().resume).toHaveBeenCalledTimes(1);
+    expect(loop?.stopped).toBe(false);
+  });
+
+  it('stops a short sound when sound is turned off', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.play('finish-interview');
+    await settle();
+    harness.engine.setEnabled(false);
+    expect(harness.context().played[0]?.stopCalls).toBe(1);
+  });
+
+  it('does not stop a short sound that has already ended', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.play('error');
+    await settle();
+    const [source] = harness.context().played;
+    source?.end();
+    harness.engine.setEnabled(false);
+    expect(source?.stopCalls).toBe(0);
+  });
+});
+
 describe('sound engine after dispose', () => {
   it('opens a new context when turned on again, without loading the sprite again', async () => {
     const harness = tracked(setup());

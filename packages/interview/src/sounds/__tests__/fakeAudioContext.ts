@@ -8,8 +8,14 @@ class FakeSource {
   loopStart = 0;
   loopEnd = 0;
   readonly playbackRate = { value: 1 };
+  private readonly endedListeners: (() => void)[] = [];
   started: (number | undefined)[] | null = null;
   stopped = false;
+  /** How many times `stop` was called. */
+  stopCalls = 0;
+  addEventListener(_type: 'ended', listener: () => void) {
+    this.endedListeners.push(listener);
+  }
   connect() {
     return undefined;
   }
@@ -19,6 +25,11 @@ class FakeSource {
   }
   stop() {
     this.stopped = true;
+    this.stopCalls += 1;
+  }
+  /** Reaches the end of the sound on its own. */
+  end() {
+    for (const listener of this.endedListeners.splice(0)) listener();
   }
 }
 
