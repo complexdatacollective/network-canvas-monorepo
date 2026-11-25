@@ -327,7 +327,7 @@ describe('the diseases a narrative pedigree defines', () => {
     expect(offered).not.toContain(HAS_CONDITION_X);
     // Both listed, each with its reason.
     expect(await reasonFor(harness, IS_EGO)).toBe(
-      'The “Family Pedigree” stage records its own information in this attribute, so it cannot be used here.',
+      'The “Family Pedigree” stage sets this attribute for its own use, so it cannot be used here.',
     );
     expect(await reasonFor(harness, HAS_CONDITION_X)).toBe(
       'The disease “Condition X” already uses this attribute.',

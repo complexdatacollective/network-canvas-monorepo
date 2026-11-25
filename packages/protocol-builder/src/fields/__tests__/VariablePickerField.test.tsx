@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   type ComponentType,
@@ -14,6 +14,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
 import AssignAttributes, {
@@ -1277,5 +1278,153 @@ describe('a required picker in a stage editor', () => {
     expect(
       screen.queryByText('Choose what this attribute is set to.'),
     ).toBeNull();
+  });
+});
+
+describe('how the select box shows a new choice', () => {
+  /**
+   * The field holding its own value, with a way to change it from outside —
+   * as a form reset, an undo or another stage's values arriving do — and a
+   * create that adds the attribute and gives it to the field before it
+   * answers, as the stage editor's create does.
+   */
+  const mountWithOutsideChanges = (initialValue?: string) => {
+    let changeFromOutside: (next: string | undefined) => void = () => {};
+
+    function Harness() {
+      const [value, setValue] = useState(initialValue);
+      const [options, setOptions] = useState(OPTIONS);
+      changeFromOutside = setValue;
+      return (
+        <>
+          <label id="picker-label" htmlFor="picker">
+            Attribute to highlight
+          </label>
+          <VariablePickerField
+            id="picker"
+            name="highlight"
+            aria-labelledby="picker-label"
+            options={options}
+            value={value}
+            onChange={setValue}
+            nameScope={SCOPE}
+            newVariableType="boolean"
+            onCreateOption={async (variableName) => {
+              setOptions((current) => [
+                ...current,
+                { value: 'v-new', label: variableName, type: 'boolean' },
+              ]);
+              setValue('v-new');
+              return { status: 'created' };
+            }}
+          />
+        </>
+      );
+    }
+
+    const view = render(<Harness />);
+    const user = userEvent.setup();
+    const field = view.container;
+    return {
+      user,
+      field,
+      rerender: () => view.rerender(<Harness />),
+      changeFromOutside: (next: string | undefined) =>
+        act(() => changeFromOutside(next)),
+      trigger: () => attributeTrigger(field),
+    };
+  };
+
+  /** The trigger's slot showing this attribute's pill. */
+  const slotShowing = (trigger: HTMLElement, attributeName: string) => {
+    const pill = trigger.querySelector(`data[value="${attributeName}"]`);
+    const slot = pill?.parentElement;
+    if (slot === null || slot === undefined) {
+      throw new Error(`The trigger does not show “${attributeName}”.`);
+    }
+    return slot;
+  };
+  const arrivedByChoice = (trigger: HTMLElement, attributeName: string) =>
+    slotShowing(trigger, attributeName).hasAttribute('data-animated-arrival');
+  const confirmation = (trigger: HTMLElement) =>
+    trigger.querySelector('[data-choice-confirmation]');
+
+  it('draws the value held when the field mounts as it is', () => {
+    const control = mountWithOutsideChanges('v-married');
+
+    expect(arrivedByChoice(control.trigger(), 'married')).toBe(false);
+    expect(confirmation(control.trigger())).toBeNull();
+  });
+
+  it('shows the arrival of an attribute chosen in an empty field, and of one chosen over another', async () => {
+    const control = mountWithOutsideChanges();
+
+    await chooseAttribute(control.user, control.field, 'married');
+    expect(arrivedByChoice(control.trigger(), 'married')).toBe(true);
+    const first = confirmation(control.trigger());
+    expect(first).not.toBeNull();
+
+    await chooseAttribute(control.user, control.field, 'close_friend');
+    expect(arrivedByChoice(control.trigger(), 'close_friend')).toBe(true);
+    // A new confirmation for the new choice, rather than the old one left
+    // in place.
+    const second = confirmation(control.trigger());
+    expect(second).not.toBeNull();
+    expect(second).not.toBe(first);
+  });
+
+  it('shows the arrival of an attribute created here', async () => {
+    const control = mountWithOutsideChanges('v-married');
+
+    await inventAttribute(control.user, control.field, 'knows_well');
+    await waitFor(() => expect(popupIsOpen()).toBe(false));
+
+    expect(arrivedByChoice(control.trigger(), 'knows_well')).toBe(true);
+    expect(confirmation(control.trigger())).not.toBeNull();
+  });
+
+  it('does not replay on a re-render with the same value, and draws a value changed from outside as it is', async () => {
+    const control = mountWithOutsideChanges('v-married');
+    await chooseAttribute(control.user, control.field, 'close_friend');
+    const slot = slotShowing(control.trigger(), 'close_friend');
+    const shownConfirmation = confirmation(control.trigger());
+
+    control.rerender();
+    control.changeFromOutside('v-close');
+
+    // The same elements, so nothing mounted again to play a second time.
+    expect(slotShowing(control.trigger(), 'close_friend')).toBe(slot);
+    expect(confirmation(control.trigger())).toBe(shownConfirmation);
+
+    control.changeFromOutside('v-married');
+    // The value replaced from outside is hidden at once, not faded out
+    // under the new one.
+    expect(slotShowing(control.trigger(), 'close_friend')).toHaveClass(
+      'invisible',
+    );
+    expect(arrivedByChoice(control.trigger(), 'married')).toBe(false);
+    expect(confirmation(control.trigger())).toBeNull();
+
+    // Back from outside to the attribute that was once chosen here: still a
+    // change from outside.
+    control.changeFromOutside('v-close');
+    expect(arrivedByChoice(control.trigger(), 'close_friend')).toBe(false);
+    expect(confirmation(control.trigger())).toBeNull();
+  });
+
+  it('hides the value that is leaving from the select box’s name while the new one arrives', async () => {
+    const control = mountWithOutsideChanges('v-married');
+
+    await withAnimationsEnabled(async () => {
+      await chooseAttribute(control.user, control.field, 'close_friend');
+      // The old pill is still drawn, on its way out, and is not part of the
+      // name.
+      expect(
+        control.trigger().querySelector('data[value="married"]'),
+      ).not.toBeNull();
+      expect(control.trigger()).toHaveAccessibleName(
+        'Attribute to highlight close_friend',
+      );
+    });
   });
 });

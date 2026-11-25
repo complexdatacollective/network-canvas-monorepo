@@ -77,7 +77,7 @@ describe('the attributes a slot picker lists', () => {
     expect(
       slotReasons({ slotMap, draftBoundElsewhere: [SEX, GENDER] }),
     ).toEqual([
-      'The “Family tree” stage records its own information in this attribute, so it cannot be used here.',
+      'The “Family tree” stage sets this attribute for its own use, so it cannot be used here.',
       'Another field on this stage already uses this attribute.',
       undefined,
     ]);
@@ -88,7 +88,7 @@ describe('the attributes a slot picker lists', () => {
         currentValue: GENDER,
       }),
     ).toEqual([
-      'The “Family tree” stage records its own information in this attribute, so it cannot be used here.',
+      'The “Family tree” stage sets this attribute for its own use, so it cannot be used here.',
       undefined,
       undefined,
     ]);

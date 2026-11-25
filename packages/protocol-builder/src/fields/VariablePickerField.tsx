@@ -8,6 +8,12 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import {
+  AnimatePresence,
+  motion,
+  useIsPresent,
+  usePresenceData,
+} from 'motion/react';
+import {
   type ComponentPropsWithRef,
   type FocusEvent,
   type ReactNode,
@@ -28,6 +34,7 @@ import { useComboboxTriggerEscape } from '@codaco/fresco-ui/hooks/useComboboxTri
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
+import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { dropdownItemVariants } from '@codaco/fresco-ui/styles/controlVariants';
@@ -409,6 +416,103 @@ type CreateState =
   | undefined;
 
 /**
+ * The spring fresco-ui's choice controls select with (`selectionSpring` in
+ * `Boolean.tsx` and `RichSelectGroup.tsx`), and their shorter duration for
+ * what is being let go of, so a chosen attribute arrives as a chosen radio
+ * button or Boolean option does.
+ */
+const SELECTION_SPRING = {
+  type: 'spring',
+  duration: 0.3,
+  bounce: 0.15,
+} as const;
+const RELEASE_SPRING = { ...SELECTION_SPRING, duration: 0.15 } as const;
+
+/**
+ * How what the trigger shows comes and goes.
+ *
+ * Only a choice made in this field moves anything: a value already held when
+ * the field mounts, or changed from outside, is simply drawn. The new pill
+ * rises into place as the old one rises out, both in the one grid cell, so
+ * the trigger keeps its size throughout; scale is about the pill's own centre
+ * and the movement is vertical, so nothing depends on the reading direction.
+ * Under reduced motion they only fade.
+ *
+ * `custom` is whether the change is one being shown, and is passed through
+ * `AnimatePresence` so that it reaches the value leaving as well as the one
+ * arriving.
+ */
+type SlotMotion = Readonly<{ shown: boolean; reduced: boolean }>;
+const SLOT_VARIANTS = {
+  arriving: ({ reduced }: SlotMotion) =>
+    reduced ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 6 },
+  settled: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: SELECTION_SPRING,
+  },
+  leaving: ({ shown, reduced }: SlotMotion) => {
+    if (!shown) return { opacity: 0, transition: { duration: 0 } };
+    return reduced
+      ? { opacity: 0, transition: RELEASE_SPRING }
+      : { opacity: 0, scale: 0.95, y: -6, transition: RELEASE_SPRING };
+  },
+};
+
+const isShownChange = (data: unknown): boolean =>
+  typeof data === 'object' &&
+  data !== null &&
+  'shown' in data &&
+  data.shown === true;
+
+/**
+ * One thing the trigger shows: the held attribute's pill, or the
+ * placeholder.
+ *
+ * Hidden from assistive technology while it leaves, because the trigger is
+ * named by the slot they share, and the outgoing choice is no longer the
+ * value.
+ */
+function TriggerValue({
+  motionState,
+  arrives,
+  children,
+}: Readonly<{
+  motionState: SlotMotion;
+  /** Whether this value's arrival is a change being shown. */
+  arrives: boolean;
+  children: ReactNode;
+}>) {
+  const isPresent = useIsPresent();
+  // What `AnimatePresence` says about the change now, which a value that is
+  // leaving reads in place of the props it was last drawn with.
+  const leaving: unknown = usePresenceData();
+  // A change from outside is drawn at once: the value it replaces is hidden
+  // in the same render rather than one frame later, when its exit ends.
+  const dropped = !isPresent && !isShownChange(leaving);
+  return (
+    <motion.span
+      aria-hidden={isPresent ? undefined : true}
+      // Read by tests: the one statement that this value's arrival was
+      // animated, which a test cannot see from the end state.
+      data-animated-arrival={arrives ? '' : undefined}
+      custom={motionState}
+      variants={SLOT_VARIANTS}
+      initial={arrives ? 'arriving' : false}
+      animate="settled"
+      exit="leaving"
+      className={cx(
+        'col-start-1 row-start-1 flex max-w-full min-w-0 items-center justify-self-start',
+        dropped && 'invisible',
+      )}
+    >
+      {children}
+    </motion.span>
+  );
+}
+
+/**
  * Chooses one codebook attribute and, where the caller allows it, creates the
  * one that is missing.
  *
@@ -488,6 +592,40 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
    * long as the notice about it is on screen.
    */
   const [notice, setNotice] = useState<FieldNotice | undefined>(undefined);
+
+  /**
+   * Whether a choice made in this field has yet to reach the value. The value
+   * comes back through the caller — at once for a choice, whenever the
+   * codebook answers for a create — so the arrival is recognised when it
+   * happens, not when it is asked for.
+   */
+  const [awaitingChoice, setAwaitingChoice] = useState(false);
+  /**
+   * The value the trigger shows, whether it got there by a choice made in
+   * this field, and how many such choices there have been, which keys the
+   * trigger's confirmation so that each choice plays it once. A value held
+   * when the field mounts, or changed from outside, is not a choice made here.
+   */
+  const [shown, setShown] = useState<
+    Readonly<{ value: string | undefined; chosenHere: boolean; count: number }>
+  >({ value, chosenHere: false, count: 0 });
+  if (value !== shown.value) {
+    // Adjusting state while rendering, as React documents for state that
+    // follows a changed prop: in an effect, the new value would be drawn once
+    // without its arrival before the arrival started.
+    setShown({
+      value,
+      chosenHere: awaitingChoice,
+      count: shown.count + (awaitingChoice ? 1 : 0),
+    });
+    setAwaitingChoice(false);
+  }
+  const arrived = shown.chosenHere && shown.value === value;
+  const prefersReducedMotion = usePrefersReducedMotion() === true;
+  const slotMotion: SlotMotion = {
+    shown: arrived,
+    reduced: prefersReducedMotion,
+  };
 
   const selected = options.find((option) => option.value === value);
   const held = value !== undefined && value !== '';
@@ -605,6 +743,8 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
     }
     const variableName = typedName;
     setNotice(undefined);
+    // The caller may give this field the new attribute before it answers.
+    setAwaitingChoice(true);
     setCreate({ kind: 'busy', name: variableName });
     setAnnouncement(
       intl.formatMessage(messages.createRowBusy, {
@@ -616,6 +756,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
       // A refusal is ABOUT this name, so the list stays open with it still in
       // the search box, and the reason is shown on the row it was asked from.
       if (outcome.status === 'refused') {
+        setAwaitingChoice(false);
         setAnnouncement(outcome.message ?? '');
         setCreate(
           outcome.message === undefined
@@ -628,6 +769,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
       // second time would be refused for a duplicate name the researcher never
       // chose to ask for.
       if (outcome.status === 'unassigned') {
+        setAwaitingChoice(false);
         setNotice({ kind: 'unassigned', variableName });
       }
       setAnnouncement('');
@@ -638,6 +780,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
       // `onCreateOption` makes: nothing is known to exist, and nobody has said
       // anything about it. Said on the FIELD, because the list closes and the
       // control the researcher acts on next is this one.
+      setAwaitingChoice(false);
       setNotice({ kind: 'failed' });
       setAnnouncement('');
       close();
@@ -666,6 +809,7 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
       return;
     }
     setNotice(undefined);
+    if (next !== value) setAwaitingChoice(true);
     onChange?.(next);
     onSelectExisting?.(next);
     close();
@@ -984,22 +1128,57 @@ export default function VariablePickerField(props: VariablePickerFieldProps) {
                   readOnly,
                   'aria-invalid': ariaInvalid === true,
                 }),
-                className: cx('w-full', heldPill !== undefined && 'ps-1.5'),
+                className: cx(
+                  'relative w-full',
+                  heldPill !== undefined && 'ps-1.5',
+                ),
               })}
             >
+              {/* One grid cell, so that a value leaving and the value
+                  arriving share it while they cross. */}
               <span
                 id={valueId}
-                className="flex min-w-0 flex-1 items-center text-start"
+                className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] items-center text-start"
               >
-                {heldPill ?? (
-                  <span className="text-input-contrast/70 truncate italic">
-                    {intl.formatMessage(messages.placeholder)}
-                  </span>
-                )}
+                <AnimatePresence initial={false} custom={slotMotion}>
+                  {heldPill === undefined ? (
+                    <TriggerValue
+                      key="placeholder"
+                      motionState={slotMotion}
+                      arrives={false}
+                    >
+                      <span className="text-input-contrast/70 truncate italic">
+                        {intl.formatMessage(messages.placeholder)}
+                      </span>
+                    </TriggerValue>
+                  ) : (
+                    <TriggerValue
+                      key={`${isMissing ? 'missing' : 'held'}:${value}`}
+                      motionState={slotMotion}
+                      arrives={arrived}
+                    >
+                      {heldPill}
+                    </TriggerValue>
+                  )}
+                </AnimatePresence>
               </span>
               <Combobox.Icon className="shrink-0">
                 <ChevronsUpDown aria-hidden className="h-[1.2em] w-[1.2em]" />
               </Combobox.Icon>
+              {/* The trigger's border confirms a choice made here: it flashes
+                  in the colour a chosen row's check mark takes. Keyed by the
+                  choice, so each one plays it once and nothing else does. */}
+              {arrived && heldPill !== undefined && (
+                <motion.span
+                  key={shown.count}
+                  aria-hidden
+                  data-choice-confirmation=""
+                  className="ring-sea-green pointer-events-none absolute inset-0 rounded-[inherit] ring-2 ring-inset"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{ duration: 0.35, times: [0, 0.3, 1] }}
+                />
+              )}
             </Combobox.Trigger>
             <Combobox.Portal container={portalContainer ?? undefined}>
               {/* The popup layer, as `Popover`'s: this opens inside dialogs. */}

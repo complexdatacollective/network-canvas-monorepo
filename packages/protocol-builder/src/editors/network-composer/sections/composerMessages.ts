@@ -51,7 +51,7 @@ export const composerMessages = defineMessages({
   quickAddEmpty: {
     id: 'protocolBuilder.networkCanvas.quickAddEmpty',
     defaultMessage:
-      'This type has no Text attributes yet. Create one for the quick-add box to fill in.',
+      'This type has no Text attributes yet. Create one to store what is typed in the quick-add box.',
     description:
       'Shown under the quick-add attribute control when the node type that this stage builds has no attributes at all in the codebook. Text is the name of the kind of attribute that records typed text, as the codebook editor names it.',
   },

@@ -1102,7 +1102,7 @@ export const familyPedigreeMessages = defineMessages({
   personFormReservedReason: {
     id: 'protocolBuilder.pedigree.personFormReservedReason',
     defaultMessage:
-      'This Family Pedigree stage already records this attribute, so a form field cannot also collect it.',
+      'This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.',
     description:
       'Shown under an attribute in the attribute list of an additional person field, when the attribute is already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets.',
   },

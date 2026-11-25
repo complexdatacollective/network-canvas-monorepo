@@ -517,7 +517,7 @@ const inventThroughThePicker = async (
   const window = await searchForAnAttribute(harness, dialog, attributeName);
   await harness.user.click(
     within(window).getByRole('option', {
-      name: `Crear un atributo nuevo llamado «${attributeName}».`,
+      name: `Crear «${attributeName}»`,
     }),
   );
   // The window closes on the create row, and the picker is left showing the
@@ -835,7 +835,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
 
     expect(
       within(window).getByRole('option', {
-        name: 'Crear un atributo nuevo llamado «nombre de pila».',
+        name: 'Crear «nombre de pila»',
       }),
     ).not.toHaveAttribute('aria-disabled');
   });
@@ -852,10 +852,9 @@ describe('a codebook write a Spanish form field needs, refused', () => {
     // so the list has nothing to find and the create row says why.
     const window = await searchForAnAttribute(harness, dialog, 'layout_x');
 
-    // The row is found by what it would create rather than by its title,
-    // whose Spanish has not been written yet: the reason under it is the
-    // translated part.
+    // Both the row's title and the reason under it are in Spanish.
     const refused = within(window).getByRole('option', {
+      name: 'Un atributo no puede llamarse «layout_x»',
       description:
         'La exportación ya tiene una columna llamada «layout_x» para la posición del atributo de disposición «layout». Elige otro nombre.',
     });

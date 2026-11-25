@@ -2,7 +2,7 @@
 navOrder: 1
 title: Construire un protocole
 toc: true
-translatedFrom: 1ed7f34794c349f3eb6c3faa68e8d6a888e96ed8
+translatedFrom: 3c654f34f268fd81f17a6b3ef03a825c19e18d44
 ---
 
 <SummaryCard duration="2 heures">
@@ -170,7 +170,7 @@ Cliquez sur **Save and Return** (enregistrer et revenir) pour créer le type de 
 
 Créez ensuite un attribut d’ajout rapide, qui enregistrera les données saisies pour chaque alter (chaque personne que la personne participante cite pendant l’entretien). Sauf si vous avez une bonne raison de faire autrement, cet attribut devrait s’appeler « name ». Interviewer utilisera cet attribut comme libellé de chaque nœud créé dans cette étape.
 
-Pour le créer, cliquez sur le bouton **Sélectionner un attribut**, sous l’intitulé **Sélectionnez un attribut**. Une fenêtre s’ouvre, avec un champ de recherche, **Rechercher ou créer un attribut**, au-dessus de la liste des attributs que ce type de nœud possède déjà. Saisissez le nom de votre attribut (par exemple « name »). Comme rien ne correspond encore, la première ligne propose **Créer un nouvel attribut nommé « name ».** Choisissez-la : le nouvel attribut est créé et sélectionné comme attribut d’ajout rapide.
+Pour le créer, cliquez sur la zone située sous **Sélectionnez un attribut**. Une liste s’ouvre en dessous, avec un champ de recherche, **Rechercher ou créer un attribut**, au-dessus des attributs que ce type de nœud possède déjà. Saisissez le nom de votre attribut (par exemple « name »). Comme rien ne correspond encore, la première ligne propose **Créer « name »**, avec **Nouvel attribut de type « Texte »** en dessous. Choisissez-la : le nouvel attribut est créé et sélectionné comme attribut d’ajout rapide.
 
 Ce que la personne participante saisit dans le champ d’ajout rapide est la seule information qu’elle fournit pour chaque nœud ; un attribut créé ici est donc **obligatoire** par défaut. Si vous souhaitez permettre aux personnes participantes de laisser le champ vide, désactivez **Réponse obligatoire** dans la section **Validation**, sous le sélecteur.
 
@@ -255,7 +255,7 @@ Commencez par créer un titre pour le formulaire, afin d’indiquer à la person
 
 Définissez ensuite les champs du formulaire. Cliquez sur **Créer un champ de formulaire** dans la section **Champs du formulaire**. Une boîte de dialogue s’ouvre, avec à gauche les paramètres du champ : vous y choisissez un attribut pour le champ, rédigez la question, choisissez une commande de saisie (le type de champ avec lequel un attribut est recueilli : zone de texte, curseur, cases à cocher…) et définissez la validation que vous souhaitez inclure. À droite figure un aperçu en direct de la question telle que la personne participante la verra, qui se met à jour pendant que vous travaillez. Sur un écran étroit, l’aperçu s’affiche plutôt sous les paramètres.
 
-Pour le premier champ, vous voulez connaître le nom de l’établissement de santé que la personne participante cite. Sous **Sélection de l’attribut**, cliquez sur **Sélectionner un attribut** et choisissez « name » dans la liste ou, si le type de nœud « Clinic » n’a pas encore d’attribut « name », saisissez « name » et choisissez **Créer un nouvel attribut nommé « name ».** Ensuite, sous **Configuration du champ**, saisissez le **Texte de la question**. Dans cet exemple, utilisez la question « What is the name of this clinic? » (comment s’appelle cet établissement de santé ?).
+Pour le premier champ, vous voulez connaître le nom de l’établissement de santé que la personne participante cite. Sous **Sélection de l’attribut**, cliquez sur **Sélectionnez un attribut** et choisissez « name » dans la liste ou, si le type de nœud « Clinic » n’a pas encore d’attribut « name », saisissez « name » et choisissez **Créer « name »**. Ensuite, sous **Configuration du champ**, saisissez le **Texte de la question**. Dans cet exemple, utilisez la question « What is the name of this clinic? » (comment s’appelle cet établissement de santé ?).
 
 </AppOnly>
 
@@ -279,9 +279,11 @@ Dans Architect, chaque champ de formulaire peut comporter une **indication** fac
 
 <TipBox>
 
-De nombreux écrans d’Architect vous permettent soit de créer un nouvel attribut, soit d’en sélectionner un existant. Ils utilisent tous la même fenêtre d’attributs : cliquez sur **Sélectionner un attribut**, puis saisissez du texte dans le champ de recherche. Là où vous pouvez créer un attribut, le champ de recherche s’intitule **Rechercher ou créer un attribut**, et saisir un nom qui n’existe pas encore fait apparaître **Créer un nouvel attribut nommé « … ».** sur la première ligne. Là où vous pouvez seulement choisir un attribut existant, le champ s’intitule **Rechercher un attribut**.
+De nombreux écrans d’Architect vous permettent soit de créer un nouvel attribut, soit d’en sélectionner un existant. Ils utilisent tous la même zone de sélection d’attribut : cliquez dessus, et une liste d’attributs s’ouvre en dessous, avec un champ de recherche en haut. Saisissez du texte dans le champ de recherche pour réduire la liste. La liste conserve chaque attribut dont le nom contient les lettres que vous avez saisies, dans l’ordre où vous les avez saisies, même si d’autres lettres s’intercalent entre elles : « mré » trouve ainsi « marié ». Là où vous pouvez créer un attribut, le champ de recherche affiche **Rechercher ou créer un attribut**, et saisir un nom qui n’existe pas encore fait apparaître **Créer « … »** sur la première ligne. Là où le type de l’attribut est déjà déterminé, cette ligne indique aussi ce type, par exemple **Nouvel attribut de type « Booléen »**. Si le nom ne peut pas être utilisé, cette ligne en indique la raison. Là où vous pouvez seulement choisir un attribut existant, le champ de recherche affiche **Rechercher un attribut**.
 
 Sinon, choisissez un attribut existant dans la liste. Vous pouvez utiliser les touches fléchées et la touche Entrée au lieu de la souris.
+
+Les attributs qui existent mais ne peuvent pas être utilisés à cet endroit, par exemple parce qu’ils n’ont pas le bon type ou qu’ils sont déjà utilisés ailleurs dans l’étape, sont estompés et regroupés sous **Non disponibles ici**. Cliquez sur l’un d’eux, ou appuyez sur Entrée lorsqu’il est mis en surbrillance, pour savoir pourquoi il ne peut pas être utilisé.
 
 </TipBox>
 

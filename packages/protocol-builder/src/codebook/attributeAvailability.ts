@@ -55,7 +55,7 @@ export const attributeAvailabilityMessages = defineMessages({
   interfaceOwned: {
     id: 'protocolBuilder.attributeUnavailable.interfaceOwned',
     defaultMessage:
-      '{count, plural, =0 {Another stage records its own information in this attribute, so it cannot be used here.} one {The {stageLabels} stage records its own information in this attribute, so it cannot be used here.} other {The stages {stageLabels} record their own information in this attribute, so it cannot be used here.}}',
+      '{count, plural, =0 {Another stage sets this attribute for its own use, so it cannot be used here.} one {The {stageLabels} stage sets this attribute for its own use, so it cannot be used here.} other {The stages {stageLabels} set this attribute for their own use, so it cannot be used here.}}',
     description:
       'Shown under an attribute in the list of an attribute control, when a built-in interface (such as a Family Pedigree, which marks the participant) writes this attribute for its own purposes. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those stages, already in quotation marks and separated by commas, and is not translated here. count is how many stages there are; 0 when they cannot be named.',
   },

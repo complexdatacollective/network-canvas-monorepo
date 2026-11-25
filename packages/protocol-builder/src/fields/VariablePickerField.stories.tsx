@@ -409,6 +409,41 @@ export const FirstAttribute: Story = {
   },
 };
 
+/**
+ * What a choice looks like as it is made: the chosen attribute's pill rises
+ * into the select box, replacing the placeholder or the pill that was there,
+ * and the select box's border flashes once to confirm it. Nothing moves for a
+ * value the field already held. Choose attributes here to watch it; the
+ * automated run checks that both choices it makes were shown as arrivals
+ * (animations are skipped under test, so it ends in the settled state).
+ */
+export const ChoosingShowsTheChange: Story = {
+  args: { create: 'created' },
+  play: async ({ canvasElement }) => {
+    const select = await trigger(canvasElement);
+    const arrivedAs = (name: string) =>
+      select
+        .querySelector(`data[value="${name}"]`)
+        ?.closest('[data-animated-arrival]') ?? null;
+
+    await expect(select.querySelector('[data-animated-arrival]')).toBeNull();
+
+    await openPopup(canvasElement);
+    await userEvent.click(screen.getByRole('option', { name: 'married' }));
+    await waitFor(() => expect(arrivedAs('married')).not.toBeNull());
+
+    await openPopup(canvasElement);
+    await userEvent.click(screen.getByRole('option', { name: 'close_friend' }));
+    await waitFor(() => expect(arrivedAs('close_friend')).not.toBeNull());
+    await waitFor(() =>
+      expect(select.querySelector('data[value="married"]')).toBeNull(),
+    );
+    await expect(
+      select.querySelector('[data-choice-confirmation]'),
+    ).not.toBeNull();
+  },
+};
+
 /** Try every interaction, including creating an attribute. */
 export const Playground: Story = {
   args: { create: 'created' },

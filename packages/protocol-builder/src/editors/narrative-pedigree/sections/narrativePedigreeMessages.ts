@@ -281,7 +281,7 @@ export const narrativePedigreeMessages = defineMessages({
   diseaseVariableEmpty: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableEmpty',
     defaultMessage:
-      'The people in the source pedigree have no attributes yet. Add a nomination prompt to that pedigree asking who has this condition, and its attribute can be mapped here.',
+      'The people in the source pedigree have no attributes yet. Add a nomination prompt to that pedigree asking who has this condition, and the attribute that the prompt records can be mapped here.',
     description:
       'Said in place of the affected-status list when the node type of the source Family Pedigree stage has no attributes at all in the codebook. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; "Nomination prompts" is the name of that part of the pedigree editor.',
   },

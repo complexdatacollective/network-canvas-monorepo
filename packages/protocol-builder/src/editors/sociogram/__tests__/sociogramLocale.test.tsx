@@ -111,7 +111,7 @@ describe('the canvas sections, read in Spanish', () => {
         harness.user,
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
         'Find or create an attribute',
-        (term) => `Crear un atributo nuevo llamado «${term}».`,
+        (term) => `Crear «${term}»`,
       ),
     ).not.toBeNull();
     expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();

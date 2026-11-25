@@ -122,7 +122,11 @@ const pillClassName = (className: string | undefined): string =>
     // collapsed to the ellipsis width in Safari instead of measuring the full
     // name.
     'variable-pill font-monospace inline-flex h-12 w-max max-w-full min-w-0 flex-nowrap rounded-full p-0.5 text-base',
-    'effect-shadow-sm cursor-default bg-(--variable-pill-accent)',
+    // No cursor of its own: the pill is drawn inside the attribute picker's
+    // rows and trigger, and a cursor set here would show over part of a row
+    // that takes a click everywhere. Where it stands alone, whoever renders it
+    // sets the cursor (the rule preview keeps Architect's arrow).
+    'effect-shadow-sm bg-(--variable-pill-accent)',
     className,
   );
 

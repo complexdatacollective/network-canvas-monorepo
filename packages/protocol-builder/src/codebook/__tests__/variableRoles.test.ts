@@ -260,7 +260,7 @@ describe('variable role helpers', () => {
     expect(
       reasons(markInterfaceOwned(slotMap, FAMILY_SUBJECT, options, enIntl)),
     ).toEqual([
-      'The “Family Pedigree” stage records its own information in this attribute, so it cannot be used here.',
+      'The “Family Pedigree” stage sets this attribute for its own use, so it cannot be used here.',
       undefined,
     ]);
     expect(

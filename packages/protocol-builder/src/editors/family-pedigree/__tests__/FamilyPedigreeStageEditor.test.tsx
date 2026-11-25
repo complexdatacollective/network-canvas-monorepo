@@ -719,7 +719,7 @@ describe('the attribute slots', () => {
         FM_NAME,
       ),
     ).toBe(
-      'This Family Pedigree stage already records this attribute, so a form field cannot also collect it.',
+      'This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.',
     );
   });
 });
@@ -2537,7 +2537,7 @@ describe('the nomination prompts', () => {
         HEART_DISEASE,
       ),
     ).toBe(
-      'This Family Pedigree stage already records this attribute, so a form field cannot also collect it.',
+      'This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.',
     );
   });
 });
