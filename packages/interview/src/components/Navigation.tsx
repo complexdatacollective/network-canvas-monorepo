@@ -94,13 +94,17 @@ const containerVariants = {
  * text size leave too little of it, they give up length together, down to a
  * touch-target floor, rather than push one another out of the bar. The
  * progress bar only grows, so by then it has already given way.
+ *
+ * The floor is 44 CSS pixels, given in `rem` because the interview's spacing
+ * grows with its text size and a finger does not: with every button shown, a
+ * floor that grew too would push Next off a phone held sideways.
  */
 const barControlVariants = cva({
   base: 'shrink',
   variants: {
     orientation: {
-      vertical: 'min-h-11',
-      horizontal: 'min-w-11',
+      vertical: 'min-h-[2.75rem]',
+      horizontal: 'min-w-[2.75rem]',
     },
   },
   defaultVariants: {
@@ -108,9 +112,14 @@ const barControlVariants = cva({
   },
 });
 
-// The bar's feature buttons (exit, text size, language) draw their icons a
-// little smaller than the back and forward arrows.
-const barFeatureIconClassName = '[&>.lucide]:h-[1.5em]!';
+// The bar's optional buttons (exit, text size, language) draw their icons a
+// little smaller than the back and forward arrows, and dimmed as Back is on
+// the first screen, so they stay quieter than Back and Next. Pointed at,
+// focused or open, they show at full strength.
+const barFeatureIconClassName = cx(
+  '[&>.lucide]:h-[1.5em]! [&>.lucide]:opacity-50',
+  'hover:[&>.lucide]:opacity-100 focus-visible:[&>.lucide]:opacity-100 aria-expanded:[&>.lucide]:opacity-100',
+);
 
 // Icon buttons hold a fixed size, and the bar shrinks the wrapper around them.
 // Button already caps its width at the wrapper's; this caps its height too.

@@ -460,8 +460,12 @@ export const TextSize: Story = {
 
 // A Welcome screen, then a name generator whose name field is encrypted, so
 // the participant must enter their passphrase before they can add anyone.
-function buildEncryptedNamePayload(): string {
+function buildEncryptedNamePayload(localization?: {
+  defaultLocale: string;
+  locales: string[];
+}): string {
   const si = new SyntheticInterview();
+  if (localization) si.setLocalization(localization);
 
   si.addInformationStage({
     title: 'Welcome',
@@ -498,6 +502,13 @@ let encryptedNamePayload: string | undefined;
 const getEncryptedNamePayload = () =>
   (encryptedNamePayload ??= buildEncryptedNamePayload());
 
+let encryptedNameInLanguagesPayload: string | undefined;
+const getEncryptedNameInLanguagesPayload = () =>
+  (encryptedNameInLanguagesPayload ??= buildEncryptedNamePayload({
+    defaultLocale: 'en',
+    locales: ['en', 'es', 'fr', 'ar'],
+  }));
+
 // By more than a pixel: the controls abut, and motion's transforms leave
 // fractions of a pixel between neighbours.
 const overlaps = (a: DOMRect, b: DOMRect) =>
@@ -531,6 +542,7 @@ const expectBarFits = async (navigation: HTMLElement) => {
     ...nav.queryAllByRole('button', {
       name: /^(Exit interview|Exit review|Text size)$/,
     }),
+    ...nav.queryAllByRole('combobox', { name: /^Interview language: / }),
     ...nav.queryAllByRole('button', { name: 'Passphrase' }),
     nav.getByRole('button', { name: /previous step/i }),
     nav.getByRole('button', { name: /next step/i }),
@@ -752,6 +764,115 @@ export const HorizontalPassphrasePrompt: Story = {
   ),
   play: async ({ canvasElement }) => {
     await enterPassphraseAndAddPerson(canvasElement);
+  },
+};
+
+// Every button the bar can show at once, on a screen where Back is enabled.
+const expectEveryButton = async (canvasElement: HTMLElement) => {
+  const nav = within(await within(canvasElement).findByRole('navigation'));
+  const controls = [
+    await nav.findByRole('button', { name: 'Exit interview' }),
+    nav.getByRole('button', { name: 'Text size' }),
+    nav.getByRole('combobox', { name: /^Interview language: / }),
+    await nav.findByRole('button', { name: 'Passphrase' }, { timeout: 10_000 }),
+    nav.getByRole('button', { name: 'Previous Step' }),
+    nav.getByRole('button', { name: 'Next Step' }),
+  ];
+  // The bar's controls fade in.
+  for (const control of controls) {
+    await waitFor(() => expect(control).toBeVisible());
+  }
+  await expect(
+    nav.getByRole('button', { name: 'Previous Step' }),
+  ).toBeEnabled();
+};
+
+/**
+ * Every button the bar can show: exit, text size and language, the
+ * passphrase prompt for an interview with protected answers, then Back and
+ * Next. The optional buttons are drawn quieter than Back and Next until
+ * they are pointed at, focused or open.
+ */
+export const EveryButton: Story = {
+  name: 'Every button (vertical rail)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  beforeEach: forgetInterviewLanguage,
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getEncryptedNameInLanguagesPayload()}
+        navigationOrientation="vertical"
+        allowUserScaling
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await expectEveryButton(canvasElement);
+  },
+};
+
+export const HorizontalEveryButton: Story = {
+  name: 'Every button (horizontal bar)',
+  parameters: { controls: { exclude: ['stageCount'] } },
+  beforeEach: forgetInterviewLanguage,
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getEncryptedNameInLanguagesPayload()}
+        navigationOrientation="horizontal"
+        allowUserScaling
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await expectEveryButton(canvasElement);
+  },
+};
+
+/**
+ * Every button on the shortest screen, a small phone on its side, at every
+ * text size: the bar still fits them all.
+ */
+export const EveryButtonOnASmallPhone: Story = {
+  name: 'Every button (vertical rail, small phone in landscape)',
+  parameters: {
+    controls: { exclude: ['stageCount'] },
+    viewport: {
+      options: {
+        smallPhoneLandscape: {
+          name: 'Small phone (landscape)',
+          styles: { width: '568px', height: '320px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'smallPhoneLandscape', isRotated: false } },
+  beforeEach: forgetInterviewLanguage,
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getEncryptedNameInLanguagesPayload()}
+        navigationOrientation="vertical"
+        allowUserScaling
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await expectEveryButton(canvasElement);
+    await expectBarFitsAtEveryTextSize(
+      canvasElement,
+      await within(canvasElement).findByRole('navigation'),
+    );
   },
 };
 
