@@ -1,7 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
+import {
+  type CurrentProtocol,
+  dynamicValueNameFor,
+} from '@codaco/protocol-validation';
 import developmentProtocol from '@codaco/protocols/development';
 import { getEntityProperties } from '~/components/Codebook/helpers';
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
@@ -18,16 +22,22 @@ import { getProtocol } from '~/selectors/protocol';
  * stage uses it.
  */
 
-const NICKNAME = 'ego-nickname-variable';
+const NICKNAME = testVariableId('nickname');
+// The name text uses for it: its id, with the hyphens written as underscores.
+const YOU = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: NICKNAME,
+});
 const SHOWING_STAGE = '4f2b11a0-3046-11ed-a33e-959cc32d37ee';
 const SHOWING_STAGE_LABEL = 'Ego name contains';
 
 const SHOWS_NICKNAME = {
-  en: '{you, select, missing {Tell us about them.} other {Tell us about {you}.}}',
-  es: '{you, select, missing {Cuéntanos sobre ellos.} other {Cuéntanos sobre {you}.}}',
+  en: `{${YOU}, select, missing {Tell us about them.} other {Tell us about {${YOU}}.}}`,
+  es: `{${YOU}, select, missing {Cuéntanos sobre ellos.} other {Cuéntanos sobre {${YOU}}.}}`,
 };
 
-const makeStore = ({ bound }: { bound: boolean }) => {
+const makeStore = ({ shown }: { shown: boolean }) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefault) =>
@@ -45,12 +55,8 @@ const makeStore = ({ bound }: { bound: boolean }) => {
     },
   };
   protocol.stages = protocol.stages.map((stage) =>
-    bound && stage.id === SHOWING_STAGE && stage.type === 'Information'
-      ? {
-          ...stage,
-          title: SHOWS_NICKNAME,
-          dynamicValues: { you: { path: `ego.${NICKNAME}` } },
-        }
+    shown && stage.id === SHOWING_STAGE && stage.type === 'Information'
+      ? { ...stage, content: SHOWS_NICKNAME }
       : stage,
   );
   store.dispatch(protocolActions.setActiveProtocol(protocol));
@@ -62,7 +68,7 @@ const egoVariables = (store: ReturnType<typeof makeStore>) =>
 
 describe('a variable used only by a stage’s dynamic value', () => {
   it('is in use, and the usage names the stage that shows it', () => {
-    const store = makeStore({ bound: true });
+    const store = makeStore({ shown: true });
     const state = store.getState();
 
     expect(getIsUsed(state)[NICKNAME]).toBe(true);
@@ -71,14 +77,17 @@ describe('a variable used only by a stage’s dynamic value', () => {
     );
     expect(
       getVariableUsageHits(state, NICKNAME).map((hit) => hit.path),
-    ).toEqual([['stages', stageIndex, 'dynamicValues', 'you', 'path']]);
+    ).toEqual([
+      ['stages', stageIndex, 'content', 'en'],
+      ['stages', stageIndex, 'content', 'es'],
+    ]);
     expect(
       getEntityProperties(state, { entity: 'ego' })?.variables[NICKNAME]?.usage,
     ).toEqual([{ label: SHOWING_STAGE_LABEL, id: SHOWING_STAGE }]);
   });
 
   it('cannot be deleted', async () => {
-    const store = makeStore({ bound: true });
+    const store = makeStore({ shown: true });
 
     await expect(
       store
@@ -89,8 +98,8 @@ describe('a variable used only by a stage’s dynamic value', () => {
     expect(egoVariables(store)).toHaveProperty(NICKNAME);
   });
 
-  it('is deleted once no stage binds it', async () => {
-    const store = makeStore({ bound: false });
+  it('is deleted once no text shows it', async () => {
+    const store = makeStore({ shown: false });
     expect(getIsUsed(store.getState())[NICKNAME]).toBe(false);
 
     await store

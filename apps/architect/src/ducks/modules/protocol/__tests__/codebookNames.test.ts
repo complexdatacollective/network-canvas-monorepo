@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
+import { testId } from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol, Variable } from '@codaco/protocol-validation';
 import developmentProtocol from '@codaco/protocols/development';
 import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
@@ -44,6 +45,10 @@ const createPersonVariable = (store: Store, configuration: Partial<Variable>) =>
     .unwrap();
 
 const text = (name: string): Partial<Variable> => ({ name, type: 'text' });
+
+const CLOSE = testId('option/closeness/close');
+const COLLEAGUE = testId('option/closeness/colleague');
+const ONE = testId('option/closeness/one');
 
 describe('createVariableAsync names', () => {
   it.each([
@@ -99,17 +104,17 @@ describe('createVariableAsync names', () => {
       name: 'closeness',
       type: 'categorical',
       options: [
-        { label: { en: 'Close' }, value: '  amigo cercano ' },
-        { label: { en: 'Colleague' }, value: 'Colle\u0300gue' },
-        { label: { en: 'One' }, value: 1 },
+        { id: CLOSE, label: { en: 'Close' }, value: '  amigo cercano ' },
+        { id: COLLEAGUE, label: { en: 'Colleague' }, value: 'Colle\u0300gue' },
+        { id: ONE, label: { en: 'One' }, value: 1 },
       ],
     });
 
     const saved = personVariables(store)[variable];
     expect(saved && 'options' in saved ? saved.options : undefined).toEqual([
-      { label: { en: 'Close' }, value: 'amigo cercano' },
-      { label: { en: 'Colleague' }, value: 'Collègue' },
-      { label: { en: 'One' }, value: 1 },
+      { id: CLOSE, label: { en: 'Close' }, value: 'amigo cercano' },
+      { id: COLLEAGUE, label: { en: 'Colleague' }, value: 'Collègue' },
+      { id: ONE, label: { en: 'One' }, value: 1 },
     ]);
   });
 });
@@ -135,16 +140,20 @@ describe('renaming an attribute', () => {
     const { variable } = await createPersonVariable(store, {
       name: 'closeness',
       type: 'ordinal',
-      options: [{ label: { en: 'Close' }, value: 'close' }],
+      options: [{ id: CLOSE, label: { en: 'Close' }, value: 'close' }],
     });
 
     await store
       .dispatch(
         updateVariableByUUID(variable, {
           options: [
-            { label: { en: 'Close' }, value: ' close ' },
-            { label: { en: 'Colleague' }, value: 'Colle\u0300gue' },
-            { label: { en: 'One' }, value: 1 },
+            { id: CLOSE, label: { en: 'Close' }, value: ' close ' },
+            {
+              id: COLLEAGUE,
+              label: { en: 'Colleague' },
+              value: 'Colle\u0300gue',
+            },
+            { id: ONE, label: { en: 'One' }, value: 1 },
           ],
         }),
       )
@@ -152,9 +161,9 @@ describe('renaming an attribute', () => {
 
     const saved = personVariables(store)[variable];
     expect(saved && 'options' in saved ? saved.options : undefined).toEqual([
-      { label: { en: 'Close' }, value: 'close' },
-      { label: { en: 'Colleague' }, value: 'Collègue' },
-      { label: { en: 'One' }, value: 1 },
+      { id: CLOSE, label: { en: 'Close' }, value: 'close' },
+      { id: COLLEAGUE, label: { en: 'Colleague' }, value: 'Collègue' },
+      { id: ONE, label: { en: 'One' }, value: 1 },
     ]);
   });
 });

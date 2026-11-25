@@ -157,12 +157,11 @@ describe('a node type’s own label', () => {
           shape: { default: 'circle' },
           variables: { name: { name: 'name', type: 'text' } },
           dynamicLabel: {
-            text: localized('{known, select, yes {Named} other {Unnamed}}'),
-            dynamicValues: {
-              known: { path: '$condition.known', cases: { yes: true } },
-            },
+            text: localized(
+              `{condition_${testId('known').replaceAll('-', '_')}, select, true {Named} other {Unnamed}}`,
+            ),
             conditions: {
-              known: {
+              [testId('known')]: {
                 rules: [
                   {
                     id: testId('own'),

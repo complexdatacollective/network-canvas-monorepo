@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, screen, userEvent, within } from 'storybook/test';
 
+import { dynamicValueNameFor } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import NodeLabelField from '../../fields/NodeLabelField.tsx';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import { buttonPaint, TRANSPARENT } from '../../testing/buttonPaint.ts';
 import { ProtocolWithShapeImages } from '../../testing/ProtocolWithShapeImages.tsx';
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
 import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import { NodeLabelFieldProvider } from '../nodeLabelFieldSlot.ts';
 import CodebookEntityEditor from './CodebookEntityEditor.tsx';
@@ -33,8 +34,8 @@ const PERSON: SectionDoc = {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: { en: 'Asian' }, value: 'asian' },
-        { label: { en: 'White' }, value: 'white' },
+        { id: testId('option/asian'), label: { en: 'Asian' }, value: 'asian' },
+        { id: testId('option/white'), label: { en: 'White' }, value: 'white' },
       ],
     },
   },
@@ -400,8 +401,9 @@ export const AddingAShape: Story = {
 const PERSON_WITH_DYNAMIC_LABEL: SectionDoc = {
   ...PERSON,
   dynamicLabel: {
-    text: { en: '{name} 🙂' },
-    dynamicValues: { name: { path: `node.${NAME_ID}` } },
+    text: {
+      en: `{${dynamicValueNameFor({ kind: 'attribute', role: 'node', variableId: NAME_ID })}} 🙂`,
+    },
   },
 };
 

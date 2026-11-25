@@ -16,7 +16,11 @@ import {
   ncUUIDProperty,
 } from '@codaco/shared-consts';
 
-import { testTypeId, testVariableId } from '../../../__tests__/testIds';
+import {
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../../__tests__/testIds';
 import type { ExportOptions } from '../../../options';
 import {
   mockCodebook,
@@ -367,8 +371,16 @@ describe('buildGraphML', () => {
               name: 'unansweredNumericOrdinal',
               type: 'ordinal',
               options: [
-                { label: { en: 'One' }, value: 1 },
-                { label: { en: 'Two' }, value: 2 },
+                {
+                  id: testOptionId('unansweredNumericOrdinal/1'),
+                  label: { en: 'One' },
+                  value: 1,
+                },
+                {
+                  id: testOptionId('unansweredNumericOrdinal/2'),
+                  label: { en: 'Two' },
+                  value: 2,
+                },
               ],
             },
           },
@@ -386,16 +398,32 @@ describe('buildGraphML', () => {
               name: 'unrepresentedNumericOrdinal',
               type: 'ordinal',
               options: [
-                { label: { en: 'One' }, value: 1 },
-                { label: { en: 'Two' }, value: 2 },
+                {
+                  id: testOptionId('unrepresentedNumericOrdinal/1'),
+                  label: { en: 'One' },
+                  value: 1,
+                },
+                {
+                  id: testOptionId('unrepresentedNumericOrdinal/2'),
+                  label: { en: 'Two' },
+                  value: 2,
+                },
               ],
             },
             [testVariableId('stringOrdinal')]: {
               name: 'stringOrdinal',
               type: 'ordinal',
               options: [
-                { label: { en: 'One' }, value: 'one' },
-                { label: { en: 'Two' }, value: 'two' },
+                {
+                  id: testOptionId('stringOrdinal/one'),
+                  label: { en: 'One' },
+                  value: 'one',
+                },
+                {
+                  id: testOptionId('stringOrdinal/two'),
+                  label: { en: 'Two' },
+                  value: 'two',
+                },
               ],
             },
             [testVariableId('emptyOrdinal')]: {
@@ -412,8 +440,16 @@ describe('buildGraphML', () => {
               name: 'categorical',
               type: 'categorical',
               options: [
-                { label: { en: 'One' }, value: 1 },
-                { label: { en: 'Two' }, value: 2 },
+                {
+                  id: testOptionId('categorical/1'),
+                  label: { en: 'One' },
+                  value: 1,
+                },
+                {
+                  id: testOptionId('categorical/2'),
+                  label: { en: 'Two' },
+                  value: 2,
+                },
               ],
             },
           },

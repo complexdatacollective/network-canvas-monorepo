@@ -367,8 +367,19 @@ describe('Protocol Migrations', () => {
       expect(
         closeness && 'options' in closeness ? closeness.options : undefined,
       ).toEqual([
-        { label: { en: 'Close friend' }, value: 'close_friend' },
-        { label: { en: 'Colleague' }, value: 'colleague' },
+        // The 8 to 9 migration (which `V8OutputSchema` runs) derives each
+        // option's id from its variable's place and its value, so the ids
+        // are the same each time.
+        {
+          id: '3b91bba6-5f30-5f16-8a98-e1f8007adf21',
+          label: { en: 'Close friend' },
+          value: 'close_friend',
+        },
+        {
+          id: '4a5a8b7b-bdfe-5931-8cb7-0baba2130383',
+          label: { en: 'Colleague' },
+          value: 'colleague',
+        },
       ]);
     });
 

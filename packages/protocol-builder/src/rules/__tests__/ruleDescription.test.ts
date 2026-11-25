@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Codebook } from '@codaco/protocol-validation';
 
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
 import { describeRule } from '../ruleDescription.ts';
 import { testCodebook } from './fixtures.ts';
 
@@ -922,8 +922,16 @@ describe('describeRule', () => {
                   name: 'Consent',
                   type: 'categorical',
                   options: [
-                    { label: { en: 'Consented' }, value: 'true' },
-                    { label: { en: 'Declined' }, value: 'false' },
+                    {
+                      id: testId('option/Consent/true'),
+                      label: { en: 'Consented' },
+                      value: 'true',
+                    },
+                    {
+                      id: testId('option/Consent/false'),
+                      label: { en: 'Declined' },
+                      value: 'false',
+                    },
                   ],
                 },
               },

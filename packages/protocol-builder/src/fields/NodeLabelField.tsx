@@ -5,15 +5,12 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import {
   type Codebook,
-  type DynamicValues,
   type LocalizedString,
   nodeLabelValueContext,
 } from '@codaco/protocol-validation';
 
-import { dynamicValueNamesUsedIn } from '../localization/dynamicValueCatalog.ts';
 import { LocalizedStringField } from '../localization/LocalizedStringControl.tsx';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
-import { usableBindings } from '../localization/useDynamicValueSite.ts';
 import { DynamicMessageEditor } from './DynamicTextField.tsx';
 
 const messages = defineMessages({
@@ -32,7 +29,6 @@ const messages = defineMessages({
  */
 export type NodeLabelDraft = Readonly<{
   text?: LocalizedString;
-  dynamicValues?: DynamicValues;
   /** The conditions its text tests, by id, as the schema stores them. */
   conditions?: Readonly<Record<string, unknown>>;
 }>;
@@ -48,10 +44,6 @@ const asDraft = (value: unknown): NodeLabelDraft =>
 const withoutEmptyParts = (draft: NodeLabelDraft): NodeLabelDraft => ({
   ...(draft.text !== undefined &&
     Object.keys(draft.text).length > 0 && { text: draft.text }),
-  ...(draft.dynamicValues !== undefined &&
-    Object.keys(draft.dynamicValues).length > 0 && {
-      dynamicValues: draft.dynamicValues,
-    }),
   ...(draft.conditions !== undefined &&
     Object.keys(draft.conditions).length > 0 && {
       conditions: draft.conditions,
@@ -82,8 +74,10 @@ export type NodeLabelFieldProps = CreateFormFieldProps<
  * builder that filters and skip logic use.
  *
  * The whole label is one value of the surrounding form, as a rule set is:
- * the text binds the values it shows and declares the conditions it tests
- * as it is written, and one no translation names any more is dropped.
+ * the text declares the conditions it tests as it is written. A condition
+ * that no translation names any more stays until the node type is saved,
+ * which drops it (`withoutUnusedConditions`), so an "If" cut from the label
+ * and pasted back, or brought back by an undo, keeps its rules.
  */
 export default function NodeLabelField({
   id,
@@ -103,7 +97,7 @@ export default function NodeLabelField({
   const { localization, locale } = useEditingLanguage();
   const draft = useMemo(() => asDraft(value), [value]);
 
-  // The text's editor writes the text and then the bindings it uses, one
+  // The text's editor writes the text and then the conditions it tests, one
   // after the other, before this field is drawn again: each write builds on
   // the one before it rather than on the value this render was given.
   const pending = useRef<NodeLabelDraft | null>(null);
@@ -124,10 +118,6 @@ export default function NodeLabelField({
         conditions: draft.conditions,
       }),
     [codebook, nodeType, draft.conditions],
-  );
-  const bindings = useMemo(
-    () => usableBindings(draft.dynamicValues),
-    [draft.dynamicValues],
   );
 
   return (
@@ -153,10 +143,6 @@ export default function NodeLabelField({
           locale={locale ?? localization?.defaultLocale ?? 'en'}
           site={{
             context,
-            bindings,
-            setBindings: (next) => write({ dynamicValues: next }),
-            namesInUse: () =>
-              dynamicValueNamesUsedIn((pending.current ?? draft).text),
             conditions: {
               values: draft.conditions ?? {},
               set: (next) => write({ conditions: next }),

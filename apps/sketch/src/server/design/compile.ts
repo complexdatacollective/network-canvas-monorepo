@@ -24,6 +24,7 @@ import { taskIntroductions } from './intros.ts';
 import {
   assignCodebookIds,
   assignNestedObjectIds,
+  assignOptionIds,
   sketchStageId,
 } from './objectIds.ts';
 import {
@@ -1571,6 +1572,7 @@ export const compile = (
     stages,
   };
   const codebookSourceMap = assignCodebookIds(protocol, sourceMap);
+  assignOptionIds(protocol);
   const summary: ProtocolSummary = {
     name: String(protocol.name),
     stageCount: stages.length,

@@ -41,8 +41,8 @@ type FormEditorCase = Readonly<{
   sections: readonly string[];
   /**
    * The top-level stage keys those sections have a field for, and
-   * `dynamicValues`, which every stage editor registers for the values its
-   * text may show.
+   * `conditions`, which every stage editor registers for the "If"s its text
+   * may hold.
    */
   ownedKeys: readonly string[];
 }>;
@@ -62,7 +62,7 @@ const FORM_EDITORS: FormEditorCase[] = [
     stageId: 'information-1',
     editor: informationStageEditor,
     sections: ['Content', 'Skip logic', 'Interviewer guidance'],
-    ownedKeys: ['conditions', 'content', 'dynamicValues', 'label'],
+    ownedKeys: ['conditions', 'content', 'label'],
   },
   {
     interfaceName: 'EgoForm',
@@ -74,13 +74,7 @@ const FORM_EDITORS: FormEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: [
-      'conditions',
-      'dynamicValues',
-      'form',
-      'introductionPanel',
-      'label',
-    ],
+    ownedKeys: ['conditions', 'form', 'introductionPanel', 'label'],
   },
   {
     interfaceName: 'AlterForm',
@@ -93,7 +87,7 @@ const FORM_EDITORS: FormEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['conditions', 'dynamicValues', 'form', 'label', 'subject'],
+    ownedKeys: ['conditions', 'form', 'label', 'subject'],
   },
   {
     interfaceName: 'AlterEdgeForm',
@@ -106,7 +100,7 @@ const FORM_EDITORS: FormEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['conditions', 'dynamicValues', 'form', 'label', 'subject'],
+    ownedKeys: ['conditions', 'form', 'label', 'subject'],
   },
 ];
 

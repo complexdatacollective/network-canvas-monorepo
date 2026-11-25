@@ -24,7 +24,7 @@ import {
   expectNoLocaleLeaks,
   protocolStrings,
 } from '../../testing/localeSweep.ts';
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import CodebookSurface from '../components/CodebookSurface.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
@@ -269,8 +269,16 @@ const PERSON_DOCUMENT: SectionDoc = {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: { en: 'Asian' }, value: 'asian' },
-        { label: { en: 'White' }, value: 'white' },
+        {
+          id: testId('option/Ethnicity/asian'),
+          label: { en: 'Asian' },
+          value: 'asian',
+        },
+        {
+          id: testId('option/Ethnicity/white'),
+          label: { en: 'White' },
+          value: 'white',
+        },
       ],
     },
     [AGE]: {
@@ -434,8 +442,16 @@ describe('the codebook editors swept for English', () => {
       name: 'preferencia',
       type: 'categorical',
       options: [
-        { label: { en: 'Mucho' }, value: 'mucho' },
-        { label: { en: 'Poco' }, value: 'poco' },
+        {
+          id: testId('option/preferencia/mucho'),
+          label: { en: 'Mucho' },
+          value: 'mucho',
+        },
+        {
+          id: testId('option/preferencia/poco'),
+          label: { en: 'Poco' },
+          value: 'poco',
+        },
       ],
     };
     renderInSpanish(

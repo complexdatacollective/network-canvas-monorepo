@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { testOptionId } from '@codaco/protocol-builder/testing/testId';
 import type {
   Finding,
   ReviewResult,
@@ -514,11 +515,20 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     expect(findingOf(store, 'title').status).toBe('fixed');
   });
 
-  it('does not read a removal by index as made because the list got shorter', async () => {
+  it('does not read a removal as made because the list got shorter', async () => {
+    const NEVER = testOptionId(FREQ, 3);
     const options = [
-      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
-      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
-      { label: { en: 'Never', fr: 'Jamais' }, value: 3 },
+      {
+        id: testOptionId(FREQ, 1),
+        label: { en: 'Often', fr: 'Souvent' },
+        value: 1,
+      },
+      {
+        id: testOptionId(FREQ, 2),
+        label: { en: 'Rarely', fr: 'Rarement' },
+        value: 2,
+      },
+      { id: NEVER, label: { en: 'Never', fr: 'Jamais' }, value: 3 },
     ];
     /** The fixture with `freq` offering `list`. */
     const offering = (list: typeof options): CurrentProtocol => {
@@ -545,13 +555,16 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
       store,
       [
         makeFinding('drop', [
-          op('remove', `/codebook/node/${PERSON}/variables/${FREQ}/options/2`),
+          op(
+            'remove',
+            `/codebook/node/${PERSON}/variables/${FREQ}/options/${NEVER}`,
+          ),
         ]),
       ],
       offering(options),
     );
     expect(findingOf(store, 'drop').status).toBe('undecided');
-    // The first option goes; the third is still there, now at index 1.
+    // The first option goes; the third is still there, at another index.
     store.dispatch(
       actionCreators.updateProtocol({
         codebook: offering(options.slice(1)).codebook,

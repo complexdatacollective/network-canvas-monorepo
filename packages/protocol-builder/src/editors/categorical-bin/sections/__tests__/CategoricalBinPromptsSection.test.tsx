@@ -16,7 +16,11 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
-import { testId, testVariableId } from '../../../../testing/testId.ts';
+import {
+  testId,
+  testOptionId,
+  testVariableId,
+} from '../../../../testing/testId.ts';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import CategoricalBinPromptsSection from '../CategoricalBinPromptsSection.tsx';
 
@@ -131,8 +135,16 @@ describe('the questions a categorical bin asks', () => {
               name: 'contactStyle',
               type: 'categorical',
               options: [
-                { label: { 'en-US': 'In person' }, value: 'person' },
-                { label: { 'en-US': 'Online' }, value: 'online' },
+                {
+                  id: testId('option/contactStyle/person'),
+                  label: { 'en-US': 'In person' },
+                  value: 'person',
+                },
+                {
+                  id: testId('option/contactStyle/online'),
+                  label: { 'en-US': 'Online' },
+                  value: 'online',
+                },
               ],
             },
           },
@@ -585,6 +597,7 @@ describe('a categorical bin with more bins than fit on one screen', () => {
               name: 'contactType',
               type: 'categorical',
               options: Array.from({ length: count }, (_unused, index) => ({
+                id: testOptionId(CONTACT_TYPE, `option_${index + 1}`),
                 label: { 'en-US': `Option ${index + 1}` },
                 value: `option_${index + 1}`,
               })),

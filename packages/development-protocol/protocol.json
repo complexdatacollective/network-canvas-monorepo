@@ -237,14 +237,9 @@
         }
       },
       "id": "4f2b11a0-3046-11ed-a33e-959cc32d37ee",
-      "dynamicValues": {
-        "egoName": {
-          "path": "ego.3377af3f-3c79-41da-9b0b-6570fb519b93"
-        }
-      },
       "content": {
-        "en": "# Ego name contains Josh\n\n{egoName, select, missing {Hello fellow Josh!} other {Hello fellow {egoName}!}}\n",
-        "es": "# El nombre de ego contiene Josh\n\n{egoName, select, missing {¡Hola, colega Josh!} other {¡Hola, colega {egoName}!}}\n"
+        "en": "# Ego name contains Josh\n\n{ego_3377af3f_3c79_41da_9b0b_6570fb519b93, select, missing {Hello!} other {Hello fellow {ego_3377af3f_3c79_41da_9b0b_6570fb519b93}!}}\n",
+        "es": "# El nombre de ego contiene Josh\n\n{ego_3377af3f_3c79_41da_9b0b_6570fb519b93, select, missing {¡Hola!} other {¡Hola, colega {ego_3377af3f_3c79_41da_9b0b_6570fb519b93}!}}\n"
       }
     },
     {
@@ -1896,6 +1891,7 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "1b53e338-391f-5279-843c-ebd5fafa0122",
                 "label": {
                   "en": "Last 24 hours",
                   "es": "Últimas 24 horas"
@@ -1903,6 +1899,7 @@
                 "value": 4
               },
               {
+                "id": "3ce56d9a-5b4e-527e-97f6-8c046c1cb84c",
                 "label": {
                   "en": "Last week",
                   "es": "La última semana"
@@ -1910,6 +1907,7 @@
                 "value": 3
               },
               {
+                "id": "0938721c-7f2b-59b1-9c63-b8cefb2b3714",
                 "label": {
                   "en": "Last six months",
                   "es": "Los últimos seis meses"
@@ -1917,6 +1915,7 @@
                 "value": 2
               },
               {
+                "id": "b40fdb1b-ea0a-59bb-ad7a-132606bed7b7",
                 "label": {
                   "en": "Last two years",
                   "es": "Los últimos dos años"
@@ -1924,6 +1923,7 @@
                 "value": 1
               },
               {
+                "id": "8f61ce0c-adab-5cbf-97c9-9ac91c82a2a5",
                 "label": {
                   "en": "_Over_ two years ago",
                   "es": "Hace _más_ de dos años"
@@ -1941,6 +1941,7 @@
             },
             "options": [
               {
+                "id": "52a1fa23-62a3-5aae-98e0-c340c8aefdd7",
                 "label": {
                   "en": "Three",
                   "es": "Tres"
@@ -1948,6 +1949,7 @@
                 "value": 3
               },
               {
+                "id": "c1dc0b20-ecbb-5216-b84d-662d87545de0",
                 "label": {
                   "en": "Two",
                   "es": "Dos"
@@ -1955,6 +1957,7 @@
                 "value": 2
               },
               {
+                "id": "1304db64-b755-5f33-946f-f8a0cfa1eaba",
                 "label": {
                   "en": "One",
                   "es": "Uno"
@@ -1962,6 +1965,7 @@
                 "value": 1
               },
               {
+                "id": "f77776ce-8dc9-56ee-8bd4-57474120ae7c",
                 "label": {
                   "en": "Missing Value",
                   "es": "Valor faltante"
@@ -1975,6 +1979,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "e053ee6b-d4d6-5928-aeac-a61b533e1cb9",
                 "label": {
                   "en": "One",
                   "es": "Uno"
@@ -1982,6 +1987,7 @@
                 "value": "one"
               },
               {
+                "id": "094db667-4a5c-5cf9-9c11-53fddde0a021",
                 "label": {
                   "en": "Two",
                   "es": "Dos"
@@ -1995,6 +2001,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "0d71a4c0-f882-5b0b-be6b-e7740644940b",
                 "label": {
                   "en": "One",
                   "es": "Uno"
@@ -2002,6 +2009,7 @@
                 "value": "one"
               },
               {
+                "id": "ff19b938-6862-5b7b-8288-4927bd360214",
                 "label": {
                   "en": "Two",
                   "es": "Dos"
@@ -2019,6 +2027,7 @@
             },
             "options": [
               {
+                "id": "5afb6530-8fdb-5eab-9fc1-99b445b8cc3e",
                 "label": {
                   "en": "One",
                   "es": "Uno"
@@ -2026,6 +2035,7 @@
                 "value": "one"
               },
               {
+                "id": "03fcf9d2-82f1-5cf0-bd08-87edb926f454",
                 "label": {
                   "en": "Two",
                   "es": "Dos"
@@ -2033,6 +2043,7 @@
                 "value": "two"
               },
               {
+                "id": "e55bc944-61d2-541c-8e84-c182f47d52a1",
                 "label": {
                   "en": "***Three***",
                   "es": "***Tres***"
@@ -2040,6 +2051,7 @@
                 "value": "three"
               },
               {
+                "id": "2b24caae-8e1d-5628-a171-63f3c40b8fe1",
                 "label": {
                   "en": "Four",
                   "es": "Cuatro"
@@ -2053,6 +2065,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "a91548ef-3a4b-5f7b-bd38-ed52e42cbcb1",
                 "label": {
                   "en": "In person",
                   "es": "En persona"
@@ -2060,6 +2073,7 @@
                 "value": "person"
               },
               {
+                "id": "56609047-d394-5a59-b17f-567bac96b783",
                 "label": {
                   "en": "Phone call",
                   "es": "Llamada telefónica"
@@ -2067,6 +2081,7 @@
                 "value": "call"
               },
               {
+                "id": "0635b956-2a20-5476-8b7a-ad2e1dccb040",
                 "label": {
                   "en": "Text",
                   "es": "Mensaje de texto"
@@ -2074,6 +2089,7 @@
                 "value": "text"
               },
               {
+                "id": "6cfb6b86-7112-53c0-aa95-2534875fb3a7",
                 "label": {
                   "en": "Email",
                   "es": "Correo electrónico"
@@ -2081,6 +2097,7 @@
                 "value": "email"
               },
               {
+                "id": "3a7a4de6-9e02-5b06-850d-bf11bd4b3c28",
                 "label": {
                   "en": "Social media",
                   "es": "Redes sociales"
@@ -2100,6 +2117,7 @@
             },
             "options": [
               {
+                "id": "5be6cb66-871c-5457-a664-26bf839beb0c",
                 "label": {
                   "en": "Politics",
                   "es": "Política"
@@ -2107,6 +2125,7 @@
                 "value": "politics"
               },
               {
+                "id": "db4dc9e4-66b4-595f-b77c-6d6c0c0a0abd",
                 "label": {
                   "en": "Weather",
                   "es": "El tiempo"
@@ -2114,6 +2133,7 @@
                 "value": "weather"
               },
               {
+                "id": "34670a2b-b3fa-56b8-bb5e-85dbfa5778b2",
                 "label": {
                   "en": "Work",
                   "es": "Trabajo"
@@ -2121,6 +2141,7 @@
                 "value": "work"
               },
               {
+                "id": "86dd83cb-36ad-51c0-86a6-9cc8d102ccb0",
                 "label": {
                   "en": "Current events",
                   "es": "Actualidad"
@@ -2128,6 +2149,7 @@
                 "value": "current"
               },
               {
+                "id": "d5402c6d-37a0-547d-8db0-24dc52c6ce1e",
                 "label": {
                   "en": "Entertainment",
                   "es": "Entretenimiento"
@@ -2135,6 +2157,7 @@
                 "value": "entertainment"
               },
               {
+                "id": "6ce224e9-31c6-5503-b51e-540e8f2e70fb",
                 "label": {
                   "en": "School",
                   "es": "Escuela"
@@ -2142,6 +2165,7 @@
                 "value": "school"
               },
               {
+                "id": "de6221a0-04cb-5f6e-ad1e-8e56ef4ca579",
                 "label": {
                   "en": "Friends",
                   "es": "Amigos"
@@ -2149,6 +2173,7 @@
                 "value": "friends"
               },
               {
+                "id": "9036215d-e4e4-5d70-9748-2014e41ea833",
                 "label": {
                   "en": "Money",
                   "es": "Dinero"
@@ -2182,6 +2207,7 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "816a6700-ed51-52b7-bf99-7ad6bf648f81",
                 "label": {
                   "en": "Yes",
                   "es": "Sí"
@@ -2189,6 +2215,7 @@
                 "value": "yes"
               },
               {
+                "id": "dc7af711-ce0e-517b-beaa-f5f8573af773",
                 "value": "maybe",
                 "label": {
                   "en": "Maybe",
@@ -2196,6 +2223,7 @@
                 }
               },
               {
+                "id": "ee54693a-94e3-5bab-8d77-3442e2e5f999",
                 "label": {
                   "en": "No",
                   "es": "No"
@@ -2291,6 +2319,7 @@
             },
             "options": [
               {
+                "id": "1ee01580-9268-519b-b499-f12ecc15c730",
                 "label": {
                   "en": "Value Four",
                   "es": "Valor cuatro"
@@ -2298,6 +2327,7 @@
                 "value": 4
               },
               {
+                "id": "79dd583c-f3c3-593c-9683-a1f52e7dc844",
                 "label": {
                   "en": "Value Three is quite long",
                   "es": "El valor tres es bastante largo"
@@ -2305,6 +2335,7 @@
                 "value": 3
               },
               {
+                "id": "37d3c734-cca5-57a2-89eb-b6078a6f9f82",
                 "label": {
                   "en": "Value Two",
                   "es": "Valor dos"
@@ -2312,6 +2343,7 @@
                 "value": 2
               },
               {
+                "id": "27ac7b07-ce12-5059-9349-c13fff1092c4",
                 "label": {
                   "en": "Value One is also long, with break",
                   "es": "El valor uno también es largo, con salto"
@@ -2319,6 +2351,7 @@
                 "value": 1
               },
               {
+                "id": "fde52374-1da9-55ed-913e-3317b0369acb",
                 "label": {
                   "en": "Missing Value",
                   "es": "Valor faltante"
@@ -2336,6 +2369,7 @@
             },
             "options": [
               {
+                "id": "938e368b-3969-5eb9-b455-e2def7d949b4",
                 "label": {
                   "en": "Value A has additional text to go along with it",
                   "es": "El valor A tiene texto adicional que lo acompaña"
@@ -2343,6 +2377,7 @@
                 "value": "Value_A"
               },
               {
+                "id": "bbf416a1-95d2-55a6-90f4-aca687a071cd",
                 "label": {
                   "en": "Value B",
                   "es": "Valor B"
@@ -2350,6 +2385,7 @@
                 "value": "Value_B"
               },
               {
+                "id": "4884fe6d-a96a-50e4-bb34-be234664e31b",
                 "label": {
                   "en": "Value C is a label that has too much text - shorten it",
                   "es": "El valor C es una etiqueta con demasiado texto - acórtala"
@@ -2357,6 +2393,7 @@
                 "value": "Value_C"
               },
               {
+                "id": "4e398e72-23e8-58f9-b440-f8295f470e53",
                 "label": {
                   "en": "Value D",
                   "es": "Valor D"
@@ -2364,6 +2401,7 @@
                 "value": "Value_D"
               },
               {
+                "id": "e41bd0ee-41fe-588f-ac8f-e8bf9842151b",
                 "label": {
                   "en": "Value E",
                   "es": "Valor E"
@@ -2382,6 +2420,7 @@
             },
             "options": [
               {
+                "id": "3acf51b9-fcac-54bf-a71b-0fd915f3b862",
                 "label": {
                   "en": "Friends",
                   "es": "Amigos"
@@ -2389,6 +2428,7 @@
                 "value": "Value_A"
               },
               {
+                "id": "b9e8d108-a477-5b88-9ef7-c2c596d212c4",
                 "label": {
                   "en": "Family",
                   "es": "Familia"
@@ -2396,6 +2436,7 @@
                 "value": "Value_B"
               },
               {
+                "id": "1867d836-7ee7-552d-83ae-e5ec21af8eb7",
                 "label": {
                   "en": "Work",
                   "es": "Trabajo"
@@ -2403,6 +2444,7 @@
                 "value": "Value_C"
               },
               {
+                "id": "e778fb15-8c8a-5eff-b612-dbbffb6a64a7",
                 "label": {
                   "en": "Church",
                   "es": "Iglesia"
@@ -2410,6 +2452,7 @@
                 "value": "Value_D"
               },
               {
+                "id": "05b58078-b746-5cf9-bdca-62bb69799509",
                 "label": {
                   "en": "Vikings",
                   "es": "Vikingos"
@@ -2417,6 +2460,7 @@
                 "value": "Value_E"
               },
               {
+                "id": "4c37321b-6a8d-5d01-a082-f7204b0172f7",
                 "label": {
                   "en": "German Course",
                   "es": "Curso de alemán"
@@ -2424,6 +2468,7 @@
                 "value": "Value_F"
               },
               {
+                "id": "31a00424-a337-5136-9e89-ee2227502aaa",
                 "label": {
                   "en": "Gardening Club",
                   "es": "Club de jardinería"
@@ -2431,6 +2476,7 @@
                 "value": "Value_G"
               },
               {
+                "id": "dd537f98-4e53-50e2-9b99-69eb5263429c",
                 "label": {
                   "en": "Neighbors",
                   "es": "Vecinos"
@@ -2438,6 +2484,7 @@
                 "value": "Value_H"
               },
               {
+                "id": "11f9116b-b228-526a-b6a8-783547e2155d",
                 "label": {
                   "en": "Oxford Friends",
                   "es": "Amigos de Oxford"
@@ -2445,6 +2492,7 @@
                 "value": "Value_I"
               },
               {
+                "id": "1c8e722b-e1de-50a9-bb8d-514468448632",
                 "label": {
                   "en": "Band",
                   "es": "Banda"
@@ -2458,6 +2506,7 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "ad2bf061-9543-5b6b-a3a3-9f8fa4b48006",
                 "label": {
                   "en": "Agree",
                   "es": "De acuerdo"
@@ -2465,6 +2514,7 @@
                 "value": "agree"
               },
               {
+                "id": "b2d3b857-4389-5478-8bac-fc33cb18b00a",
                 "label": {
                   "en": "Somewhat Agree",
                   "es": "Algo de acuerdo"
@@ -2472,6 +2522,7 @@
                 "value": "somewhat_agree"
               },
               {
+                "id": "b1eb39f1-4184-5237-bf34-4d4733284c66",
                 "value": "neutral",
                 "label": {
                   "en": "Neutral",
@@ -2479,6 +2530,7 @@
                 }
               },
               {
+                "id": "b6400cbf-b912-5725-b938-8699102e2dca",
                 "label": {
                   "en": "Somewhat disagree",
                   "es": "Algo en desacuerdo"
@@ -2486,6 +2538,7 @@
                 "value": "somewhat_disagree"
               },
               {
+                "id": "13f84225-e87d-5540-aab7-20b249683229",
                 "label": {
                   "en": "Disagree",
                   "es": "En desacuerdo"
@@ -2542,6 +2595,7 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "f43c6b93-82a0-5198-b50b-8038611a2c5e",
                 "label": {
                   "en": "Every day",
                   "es": "Todos los días"
@@ -2549,6 +2603,7 @@
                 "value": 4
               },
               {
+                "id": "d7e2d601-c369-59b0-b606-34c77db34c52",
                 "label": {
                   "en": "Every other day",
                   "es": "Cada dos días"
@@ -2556,6 +2611,7 @@
                 "value": 3
               },
               {
+                "id": "0e421fe0-564a-5fcf-af4f-62eacbc901c0",
                 "label": {
                   "en": "Every week",
                   "es": "Cada semana"
@@ -2563,6 +2619,7 @@
                 "value": 2
               },
               {
+                "id": "ea5e3b23-0449-5550-873d-245d5137b6bc",
                 "label": {
                   "en": "Sometimes",
                   "es": "A veces"
@@ -2570,6 +2627,7 @@
                 "value": 1
               },
               {
+                "id": "45e0c946-5429-577c-99d0-50e3a09e2051",
                 "label": {
                   "en": "Never",
                   "es": "Nunca"
@@ -2650,6 +2708,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "8a83a79a-be13-56b1-b276-ce72648b2f9e",
                 "value": "woman",
                 "label": {
                   "en": "Woman",
@@ -2657,6 +2716,7 @@
                 }
               },
               {
+                "id": "7f703767-ada1-5d39-9ffa-63029a19e42b",
                 "value": "man",
                 "label": {
                   "en": "Man",
@@ -2664,6 +2724,7 @@
                 }
               },
               {
+                "id": "4639898e-766d-58c4-b323-96b1763d36c3",
                 "value": "nonBinary",
                 "label": {
                   "en": "Non-binary",
@@ -2671,6 +2732,7 @@
                 }
               },
               {
+                "id": "0e447c70-fc62-5af0-b281-34794ddc8ea3",
                 "value": "differentIdentity",
                 "label": {
                   "en": "A different identity",
@@ -2678,6 +2740,7 @@
                 }
               },
               {
+                "id": "51d032bb-7987-5333-94b7-d0adef039b18",
                 "value": "unknown",
                 "label": {
                   "en": "Don’t know",
@@ -2685,6 +2748,7 @@
                 }
               },
               {
+                "id": "b46472c7-5251-50b8-a2ee-fa1a6cd9e85a",
                 "value": "preferNotToSay",
                 "label": {
                   "en": "Prefer not to say",
@@ -2698,6 +2762,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "8758d46e-9c2e-53b2-a843-35c0f709e365",
                 "value": "female",
                 "label": {
                   "en": "Female",
@@ -2705,6 +2770,7 @@
                 }
               },
               {
+                "id": "0a6c319b-63a0-51ed-85cc-a32bda9be5fd",
                 "value": "male",
                 "label": {
                   "en": "Male",
@@ -2712,6 +2778,7 @@
                 }
               },
               {
+                "id": "08b55b63-5975-5d92-ae0f-98fd260fc650",
                 "value": "intersex",
                 "label": {
                   "en": "Intersex",
@@ -2719,6 +2786,7 @@
                 }
               },
               {
+                "id": "c7cb1dfa-2365-5de3-a680-d65e3831f0ca",
                 "value": "unknown",
                 "label": {
                   "en": "Don’t know",
@@ -2726,6 +2794,7 @@
                 }
               },
               {
+                "id": "535156ce-5dfe-58f7-9ef6-a61b7072741d",
                 "value": "preferNotToSay",
                 "label": {
                   "en": "Prefer not to say",
@@ -2782,6 +2851,7 @@
           },
           "options": [
             {
+              "id": "4c6eb018-bf31-56cd-a083-22174cc0cadf",
               "label": {
                 "en": "Value Four",
                 "es": "Valor cuatro"
@@ -2789,6 +2859,7 @@
               "value": 4
             },
             {
+              "id": "c0c58d16-b45c-5139-b6b3-b49d795d7879",
               "label": {
                 "en": "Value Three is quite long",
                 "es": "El valor tres es bastante largo"
@@ -2796,6 +2867,7 @@
               "value": 3
             },
             {
+              "id": "9c7d0b33-0528-5085-b5e0-0401f229b10d",
               "label": {
                 "en": "Value Two",
                 "es": "Valor dos"
@@ -2803,6 +2875,7 @@
               "value": 2
             },
             {
+              "id": "846ade0c-cd03-5a64-8709-ccfc6fdc6049",
               "label": {
                 "en": "Value One is also long, _with break_",
                 "es": "El valor uno también es largo, _con salto_"
@@ -2810,6 +2883,7 @@
               "value": 1
             },
             {
+              "id": "b09169d9-93c3-5542-9ce1-7540964ceda0",
               "label": {
                 "en": "Missing Value",
                 "es": "Valor faltante"
@@ -2827,6 +2901,7 @@
           },
           "options": [
             {
+              "id": "38020a51-0d03-584b-91a1-e3ee8b9e354b",
               "label": {
                 "en": "Value A **has additional** text to go along with it",
                 "es": "El valor A **tiene texto** adicional que lo acompaña"
@@ -2834,6 +2909,7 @@
               "value": "Value_A"
             },
             {
+              "id": "b5659968-dc8b-5baf-8ad5-653863ba8301",
               "label": {
                 "en": "Value B",
                 "es": "Valor B"
@@ -2841,6 +2917,7 @@
               "value": "Value_B"
             },
             {
+              "id": "384289aa-cf97-59b8-9f38-084e9125c4dc",
               "label": {
                 "en": "Value C is a label that has too much text - **shorten it**",
                 "es": "El valor C es una etiqueta con demasiado texto - **acórtala**"
@@ -2848,6 +2925,7 @@
               "value": "Value_C"
             },
             {
+              "id": "bc69704b-fdbf-574b-83be-a867e60c7dfc",
               "label": {
                 "en": "Value D",
                 "es": "Valor D"
@@ -2855,6 +2933,7 @@
               "value": "Value_D"
             },
             {
+              "id": "4cc7794a-75d4-5665-b4e4-f28eff7df6ec",
               "label": {
                 "en": "Value E",
                 "es": "Valor E"
@@ -2873,6 +2952,7 @@
           },
           "options": [
             {
+              "id": "2bb8888c-98ee-5e25-be0a-fe916bfb07fa",
               "label": {
                 "en": "Friends",
                 "es": "Amigos"
@@ -2880,6 +2960,7 @@
               "value": "Value_A"
             },
             {
+              "id": "e92e4738-216c-585d-8111-dc3c23014b6b",
               "label": {
                 "en": "Family",
                 "es": "Familia"
@@ -2887,6 +2968,7 @@
               "value": "Value_B"
             },
             {
+              "id": "432c460c-1378-57d6-ac8f-822ebaa4d165",
               "label": {
                 "en": "Work",
                 "es": "Trabajo"
@@ -2894,6 +2976,7 @@
               "value": "Value_C"
             },
             {
+              "id": "506a68fb-3450-5ef3-9033-8af15f2010bc",
               "label": {
                 "en": "Church",
                 "es": "Iglesia"
@@ -2901,6 +2984,7 @@
               "value": "Value_D"
             },
             {
+              "id": "f82db0f6-8a75-5088-b99c-077cd39107d8",
               "label": {
                 "en": "Vikings",
                 "es": "Vikingos"
@@ -2908,6 +2992,7 @@
               "value": "Value_E"
             },
             {
+              "id": "1936f0fa-95db-51fe-82a5-6fdad6cbac8e",
               "label": {
                 "en": "German Course",
                 "es": "Curso de alemán"
@@ -2915,6 +3000,7 @@
               "value": "Value_F"
             },
             {
+              "id": "b4f72786-95f4-5532-842b-e6e8209987cd",
               "label": {
                 "en": "_Gardening_ Club",
                 "es": "Club de _jardinería_"
@@ -2922,6 +3008,7 @@
               "value": "Value_G"
             },
             {
+              "id": "992a19c6-9fd1-5b85-a695-bf543d471574",
               "label": {
                 "en": "Neighbors",
                 "es": "Vecinos"
@@ -2929,6 +3016,7 @@
               "value": "Value_H"
             },
             {
+              "id": "dff525ff-9f88-5db0-ace3-241d760614fe",
               "label": {
                 "en": "Oxford Friends",
                 "es": "Amigos de Oxford"
@@ -2936,6 +3024,7 @@
               "value": "Value_I"
             },
             {
+              "id": "1af2f405-8b99-5a5d-b477-4d2bd462459c",
               "label": {
                 "en": "Band",
                 "es": "Banda"
@@ -2954,6 +3043,7 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "c3218f61-88ca-5bf2-91b5-bf35846b6cfc",
               "label": {
                 "en": "0",
                 "es": "0"
@@ -2961,6 +3051,7 @@
               "value": 0
             },
             {
+              "id": "6c82a95e-a400-58b2-aaca-542b40d24e9e",
               "label": {
                 "en": "Sometimes",
                 "es": "A veces"
@@ -2968,6 +3059,7 @@
               "value": "sometimes"
             },
             {
+              "id": "a0c1aa6b-b674-546a-bd5b-69e1f553600b",
               "label": {
                 "en": "_Lots_",
                 "es": "_Mucho_"
@@ -3038,6 +3130,7 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "ec3c0e4a-53bd-545a-abec-644e68e9371d",
                 "label": {
                   "en": "Very close",
                   "es": "Muy cercanos"
@@ -3045,6 +3138,7 @@
                 "value": 3
               },
               {
+                "id": "9d2e5a61-e182-520e-bf71-bffe8510af5d",
                 "label": {
                   "en": "Sort of close",
                   "es": "Algo cercanos"
@@ -3052,6 +3146,7 @@
                 "value": 2
               },
               {
+                "id": "96a799e2-869f-5794-b7b7-f27113df33b8",
                 "label": {
                   "en": "Not very close",
                   "es": "No muy cercanos"
@@ -3066,6 +3161,7 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "f0bdbfa3-a177-5dea-889e-8f30f3ac261e",
                 "label": {
                   "en": "One",
                   "es": "Uno"
@@ -3073,6 +3169,7 @@
                 "value": "one"
               },
               {
+                "id": "f5d3cb1f-6b58-5054-8d69-4020b18d106f",
                 "label": {
                   "en": "Two",
                   "es": "Dos"
@@ -3087,6 +3184,7 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "71e640ca-4d6f-53bc-9f0a-c084e188b40e",
                 "label": {
                   "en": "One",
                   "es": "Uno"
@@ -3094,6 +3192,7 @@
                 "value": "one"
               },
               {
+                "id": "028d7ebb-5eac-57e6-9404-a18d3824f1b3",
                 "label": {
                   "en": "Two",
                   "es": "Dos"
@@ -3101,6 +3200,7 @@
                 "value": "two"
               },
               {
+                "id": "1bd78de4-6931-54bb-af96-7214015823d0",
                 "label": {
                   "en": "Three",
                   "es": "Tres"
@@ -3118,6 +3218,7 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "7baaeabf-ee07-54e0-b920-407c62295476",
                 "label": {
                   "en": "One",
                   "es": "Uno"
@@ -3125,6 +3226,7 @@
                 "value": "one"
               },
               {
+                "id": "a2707d18-eaed-5e8a-99c5-3ed604396fa0",
                 "label": {
                   "en": "Two",
                   "es": "Dos"
@@ -3132,6 +3234,7 @@
                 "value": "two"
               },
               {
+                "id": "8f3b440e-8e3d-5dcc-8229-6ca80519f048",
                 "label": {
                   "en": "Three",
                   "es": "Tres"
@@ -3139,6 +3242,7 @@
                 "value": "three"
               },
               {
+                "id": "d0c8b0bc-ede9-5175-b1d1-444fdc81a993",
                 "label": {
                   "en": "Four",
                   "es": "Cuatro"
@@ -3158,6 +3262,7 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "47677f98-201d-50e5-9fb6-3ca5ba046f89",
                 "label": {
                   "en": "Constantly",
                   "es": "Constantemente"
@@ -3165,6 +3270,7 @@
                 "value": 5
               },
               {
+                "id": "3de9dcc2-ac71-5f17-b866-f909e62b8f12",
                 "label": {
                   "en": "Very often",
                   "es": "Muy a menudo"
@@ -3172,6 +3278,7 @@
                 "value": 4
               },
               {
+                "id": "61b7c341-71c8-50ac-8b29-8975f775610a",
                 "label": {
                   "en": "Somewhat often",
                   "es": "Bastante a menudo"
@@ -3179,6 +3286,7 @@
                 "value": 3
               },
               {
+                "id": "01c1ddc5-5462-5ecd-9c15-eba86abbeece",
                 "label": {
                   "en": "Rarely",
                   "es": "Rara vez"
@@ -3186,6 +3294,7 @@
                 "value": 2
               },
               {
+                "id": "2e9443f2-789c-52af-9b65-a0e71c4b3f98",
                 "label": {
                   "en": "Almost never",
                   "es": "Casi nunca"
@@ -3200,6 +3309,7 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "3063977c-856c-589d-bc6f-e0bca0c540ed",
                 "label": {
                   "en": "One",
                   "es": "Uno"
@@ -3207,6 +3317,7 @@
                 "value": "one"
               },
               {
+                "id": "da28386c-d17e-55fe-a62a-7bf7f18a7326",
                 "label": {
                   "en": "Two",
                   "es": "Dos"
@@ -3230,6 +3341,7 @@
             "type": "categorical",
             "options": [
               {
+                "id": "f2233c79-2b6d-50ff-871d-c1c8ea1f9d47",
                 "value": "partner",
                 "label": {
                   "en": "Partner",
@@ -3237,6 +3349,7 @@
                 }
               },
               {
+                "id": "2efdd1a9-a18e-51c9-ba06-6ce793121570",
                 "value": "biological",
                 "label": {
                   "en": "Biological parent",
@@ -3244,6 +3357,7 @@
                 }
               },
               {
+                "id": "55e2fcca-5dd8-5bdb-a02b-237db926db11",
                 "value": "adoptive",
                 "label": {
                   "en": "Adoptive parent",
@@ -3251,6 +3365,7 @@
                 }
               },
               {
+                "id": "ee06f77e-eabc-5bea-86b5-b05b6640c91e",
                 "value": "social",
                 "label": {
                   "en": "Step or social parent",
@@ -3258,6 +3373,7 @@
                 }
               },
               {
+                "id": "a2f531a7-549d-5e43-bd4a-09d11fde6a98",
                 "value": "donor",
                 "label": {
                   "en": "Donor",
@@ -3265,6 +3381,7 @@
                 }
               },
               {
+                "id": "86afefb8-9f94-5e82-8cb4-74be1c299901",
                 "value": "surrogate",
                 "label": {
                   "en": "Surrogate",
@@ -3272,6 +3389,7 @@
                 }
               },
               {
+                "id": "364fe149-606e-5d7f-9008-bf7e3f8744d5",
                 "value": "identicalTwin",
                 "label": {
                   "en": "Identical twin",
@@ -3279,6 +3397,7 @@
                 }
               },
               {
+                "id": "4678489b-3dad-51aa-adf1-4897ccfab6f0",
                 "value": "fraternalTwin",
                 "label": {
                   "en": "Fraternal twin",
@@ -3286,6 +3405,7 @@
                 }
               },
               {
+                "id": "4844c8c4-3567-5c88-98e7-0a4842cd2f37",
                 "value": "unknownZygosityTwin",
                 "label": {
                   "en": "Twin, not known if identical",

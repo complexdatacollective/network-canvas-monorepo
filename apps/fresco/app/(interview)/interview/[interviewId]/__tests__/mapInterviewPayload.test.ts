@@ -566,25 +566,26 @@ describe('mapInterviewForViewer', () => {
   );
 
   it('keeps only the ego values the finished screen it ended on shows', () => {
-    const finishStage = (
-      id: string,
-      bindings: Record<string, string>,
-      finishedText: string,
-    ) => ({
+    // Text names an ego attribute as `ego_<variable id>`, its id's hyphens
+    // written as underscores.
+    const AGE = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c01';
+    const TOWN = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c02';
+    const CLOSING = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c03';
+    const OTHER = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c04';
+    const NODE_NAME = '7f3c1a52-0d4e-4b8a-9c21-5e6f7a8b9c05';
+    const ego = (id: string) => `{ego_${id.replaceAll('-', '_')}}`;
+    const finishStage = (id: string, finishedText: string) => ({
       id,
       type: 'FinishSession',
       mode: 'confirmation',
       label: { en: 'Finish' },
       // The closing screen, which the completed state never shows.
-      content: { en: '# Thank you, {closing}' },
-      finishedContent: { en: finishedText, fr: '# Merci {town}' },
+      content: { en: `# Thank you, ${ego(CLOSING)}` },
+      finishedContent: { en: finishedText, fr: `# Merci ${ego(TOWN)}` },
       finishLabel: { en: 'Finish' },
       finishConfirmation: { en: 'Finish this interview?' },
       finishFailed: { en: 'The interview could not be finished.' },
       outcome: 'completed',
-      dynamicValues: Object.fromEntries(
-        Object.entries(bindings).map(([name, path]) => [name, { path }]),
-      ),
     });
     const finished = makeFinishedSource();
     const source: Source = {
@@ -594,20 +595,9 @@ describe('mapInterviewForViewer', () => {
         stages: [
           finishStage(
             FINISH_STAGE_ID,
-            {
-              age: 'ego.age',
-              town: 'ego.town',
-              closing: 'ego.closing',
-              node: 'node.name',
-              inherited: 'ego.constructor',
-            },
-            '# Done at {age}, {node} {inherited}',
+            `# Done at ${ego(AGE)}, {node_${NODE_NAME.replaceAll('-', '_')}} {ego_constructor}`,
           ),
-          finishStage(
-            OTHER_FINISH_STAGE_ID,
-            { other: 'ego.other' },
-            '# Done {other}',
-          ),
+          finishStage(OTHER_FINISH_STAGE_ID, `# Done ${ego(OTHER)}`),
         ],
       },
       network: {
@@ -616,10 +606,10 @@ describe('mapInterviewForViewer', () => {
         ego: {
           _uid: 'ego-1',
           attributes: {
-            age: 'EGO_ANSWER',
-            town: 'TOWN_ANSWER',
-            closing: 'CLOSING_ANSWER',
-            other: 'OTHER_EGO_ANSWER',
+            [AGE]: 'EGO_ANSWER',
+            [TOWN]: 'TOWN_ANSWER',
+            [CLOSING]: 'CLOSING_ANSWER',
+            [OTHER]: 'OTHER_EGO_ANSWER',
           },
         },
       },
@@ -633,8 +623,8 @@ describe('mapInterviewForViewer', () => {
     expect(result.view).toBe('completed');
     // A value any language's version of the finished screen shows is kept.
     expect(result.payload.session.network.ego.attributes).toStrictEqual({
-      age: 'EGO_ANSWER',
-      town: 'TOWN_ANSWER',
+      [AGE]: 'EGO_ANSWER',
+      [TOWN]: 'TOWN_ANSWER',
     });
     const sent = JSON.stringify(SuperJSON.serialize(result));
     for (const marker of [

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { testOptionId } from '@codaco/protocol-builder/testing/testId';
+
 import { describeFixTextEdits } from '../describeFix';
 import { applyOperations, fixFits, writtenHolds } from '../fixEngine';
 import { readPath } from '../fixPath';
@@ -209,13 +211,17 @@ describe('F: the preview shows every text change a fix makes', () => {
       },
     ]);
     const label = recordFix(protocol, [
-      op('set', `/codebook/node/${PERSON}/variables/${FREQ}/options/0/label`, {
-        en: 'Very often',
-      }),
+      op(
+        'set',
+        `/codebook/node/${PERSON}/variables/${FREQ}/options/${testOptionId(FREQ, 1)}/label`,
+        {
+          en: 'Very often',
+        },
+      ),
     ]);
     expect(describeFixTextEdits(protocol, label.operations)).toEqual([
       {
-        path: `/codebook/node/${PERSON}/variables/${FREQ}/options/0/label/en`,
+        path: `/codebook/node/${PERSON}/variables/${FREQ}/options/${testOptionId(FREQ, 1)}/label/en`,
         now: 'Often',
         after: 'Very often',
         locale: 'en',
@@ -240,15 +246,24 @@ describe('F: the preview shows every text change a fix makes', () => {
 });
 
 describe('B on a real protocol (the family is in fixFamily.test.ts)', () => {
-  it('sees an edit to the first of two options inserted at one index', async () => {
+  it('sees an edit to the first of two options inserted at one place', async () => {
     const options = `/codebook/node/${PERSON}/variables/${FREQ}/options`;
+    const first = testOptionId(FREQ, 1);
     const edit = await editProtocol(makeProtocol(), [
-      op('insert', `${options}/0`, { label: { en: 'A', fr: 'A' }, value: 3 }),
-      op('insert', `${options}/0`, { label: { en: 'B', fr: 'B' }, value: 4 }),
+      op('insert', `${options}/${first}`, {
+        id: testOptionId(FREQ, 3),
+        label: { en: 'A', fr: 'A' },
+        value: 3,
+      }),
+      op('insert', `${options}/${first}`, {
+        id: testOptionId(FREQ, 4),
+        label: { en: 'B', fr: 'B' },
+        value: 4,
+      }),
     ]);
     if (!edit.ok) throw new Error('setup');
     const changed = applyOperations(edit.protocol, [
-      op('set', `${options}/1/value`, 9),
+      op('set', `${options}/${testOptionId(FREQ, 3)}/value`, 9),
     ]);
     if (!changed.ok) throw new Error('setup');
     expect(writtenHolds(changed.result, edit.written)).toBe(false);

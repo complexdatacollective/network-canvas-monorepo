@@ -67,7 +67,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Every piece of text a participant reads is written in each of the protocol’s languages. A field shows one language at a time — the editing language, which every field on the page shares — and a menu beside it switches between them and marks the languages the text is still missing. A missing translation is never an error: participants using that language see the text in another one, and the note under the field says which. Each translation is typed in its own language and direction, and emptying one removes it.',
+          'Every piece of text that a participant reads is written in each of the protocol’s languages. A field shows one language at a time — the editing language, which every field on the page shares — and a menu beside it switches between them and marks the languages the text is still missing. A missing translation is never an error: participants using that language see the text in another one, and the note under the field says which. Each translation is typed in its own language and direction, and emptying one removes it.',
       },
     },
   },

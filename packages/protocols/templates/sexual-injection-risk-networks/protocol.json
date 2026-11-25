@@ -20,24 +20,28 @@
           },
           "options": [
             {
+              "id": "60ff3bc2-2559-599c-9100-86335df00f95",
               "label": {
                 "en": "Living with HIV"
               },
               "value": "positive"
             },
             {
+              "id": "0c430833-7e80-55c7-ad6b-0b4d30ee736d",
               "label": {
                 "en": "HIV-negative"
               },
               "value": "negative"
             },
             {
+              "id": "dea777c3-6ea7-5acb-bcee-c649f0faf1d3",
               "label": {
                 "en": "I don't know my status / never tested"
               },
               "value": "unknown"
             },
             {
+              "id": "26e6bdf1-0783-5f1c-8fe3-b1336a438fd1",
               "label": {
                 "en": "Prefer not to answer"
               },
@@ -140,24 +144,28 @@
             },
             "options": [
               {
+                "id": "46bf8ac9-5847-5eba-8b91-3168265727e5",
                 "label": {
                   "en": "Main or steady partner"
                 },
                 "value": "main"
               },
               {
+                "id": "ebaa44d9-26e1-5d5b-97bd-ef69b5a9b7d4",
                 "label": {
                   "en": "Casual partner"
                 },
                 "value": "casual"
               },
               {
+                "id": "ebc2ad05-f999-5cbd-ad52-16f232ddee6f",
                 "label": {
                   "en": "Exchange or transactional partner"
                 },
                 "value": "exchange"
               },
               {
+                "id": "3d5906d9-dd83-5b5c-b5a5-0fc793549a8c",
                 "label": {
                   "en": "Other"
                 },
@@ -183,36 +191,42 @@
             },
             "options": [
               {
+                "id": "e7c9c2f5-cda1-528b-a010-b227772769a2",
                 "label": {
                   "en": "Woman"
                 },
                 "value": "woman"
               },
               {
+                "id": "c5918017-a89e-5a63-adfd-49609e3f8ae1",
                 "label": {
                   "en": "Man"
                 },
                 "value": "man"
               },
               {
+                "id": "8df6d941-62c8-5753-b9b9-6140119950e1",
                 "label": {
                   "en": "Transgender woman"
                 },
                 "value": "trans_woman"
               },
               {
+                "id": "d967dbcd-879e-5f16-bb8e-65b2e714c29e",
                 "label": {
                   "en": "Transgender man"
                 },
                 "value": "trans_man"
               },
               {
+                "id": "71458dda-9a5c-50a7-a6f4-a8e2355b8263",
                 "label": {
                   "en": "Non-binary or another gender"
                 },
                 "value": "nonbinary"
               },
               {
+                "id": "3a1722a1-4ef5-58a3-b48d-295a8061039b",
                 "label": {
                   "en": "Don't know"
                 },
@@ -229,18 +243,21 @@
             },
             "options": [
               {
+                "id": "dff3ab73-ad95-5871-ad0b-8169b4c370e9",
                 "label": {
                   "en": "Living with HIV"
                 },
                 "value": "positive"
               },
               {
+                "id": "23f3d36b-6481-5b05-9ccf-ba13c36027d9",
                 "label": {
                   "en": "HIV-negative"
                 },
                 "value": "negative"
               },
               {
+                "id": "3b746577-cfc8-5e1b-aefc-e91c5550dfe8",
                 "label": {
                   "en": "Unknown"
                 },
@@ -254,30 +271,35 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "53c26206-5961-5534-a52c-b875e5586b6e",
                 "label": {
                   "en": "Never"
                 },
                 "value": 1
               },
               {
+                "id": "15069e65-b907-5f44-816e-d395b8691999",
                 "label": {
                   "en": "Sometimes"
                 },
                 "value": 2
               },
               {
+                "id": "e3c3cfde-00ac-5184-938b-d6769ceb78df",
                 "label": {
                   "en": "About half the time"
                 },
                 "value": 3
               },
               {
+                "id": "e20c9b74-d520-5c3b-a2c8-3dd50fd1863c",
                 "label": {
                   "en": "Usually"
                 },
                 "value": 4
               },
               {
+                "id": "4b697c74-728a-500b-93a3-58ee313b2848",
                 "label": {
                   "en": "Always"
                 },
@@ -372,14 +394,6 @@
     },
     {
       "id": "3c5c3313-0f08-58f3-892e-81647d0ededa",
-      "dynamicValues": {
-        "egoHivStatus": {
-          "path": "ego.0d99c62b-a3e2-5e14-b9e7-6100c4662f8e",
-          "cases": {
-            "positive": "positive"
-          }
-        }
-      },
       "type": "EgoForm",
       "label": {
         "en": "About you"
@@ -415,7 +429,7 @@
             "id": "3398c3a2-6f26-5e89-8e7d-7271d0a13763",
             "variable": "c6970d36-c080-53c0-b77b-425bf37a4623",
             "prompt": {
-              "en": "{egoHivStatus, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} positive {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
+              "en": "{ego_0d99c62b_a3e2_5e14_b9e7_6100c4662f8e, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} 60ff3bc2_2559_599c_9100_86335df00f95 {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
             },
             "hint": {
               "en": "Antiretroviral treatment is also known as ART."
@@ -549,14 +563,6 @@
     },
     {
       "id": "756e69ac-09e3-54e7-b836-9c5e02c4b3c4",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        },
-        "partnershipStart": {
-          "path": "node.388dfe6a-24b3-5b36-98bc-289e6ac08e92"
-        }
-      },
       "type": "AlterForm",
       "label": {
         "en": "About each partnership"
@@ -571,42 +577,42 @@
             "id": "61776abd-cf8c-538f-9402-4753f71cd5ce",
             "variable": "b4c0ecf9-f966-5ac8-84b6-e25f763b6cb7",
             "prompt": {
-              "en": "How would you describe your relationship with {nodeLabel}?"
+              "en": "How would you describe your relationship with {node_label}?"
             }
           },
           {
             "id": "60e226df-90b9-55ab-8dc2-0be26ee503b6",
             "variable": "d9e8d4c8-6f33-59d7-8fd1-098a0a280c82",
             "prompt": {
-              "en": "About how old is {nodeLabel}, in years?"
+              "en": "About how old is {node_label}, in years?"
             }
           },
           {
             "id": "9af3d1fd-a7a8-5e46-9c31-c0e11d11e701",
             "variable": "fc98f709-1cf5-52f2-a7b7-5d0b6f21a0ee",
             "prompt": {
-              "en": "What is {nodeLabel}'s gender?"
+              "en": "What is {node_label}'s gender?"
             }
           },
           {
             "id": "c676dac1-fa39-5435-9643-401b0ff4a58f",
             "variable": "ef5cf096-ddfa-50de-9b80-7d740456cb8b",
             "prompt": {
-              "en": "As far as you know, what is {nodeLabel}'s HIV status?"
+              "en": "As far as you know, what is {node_label}'s HIV status?"
             }
           },
           {
             "id": "f0c72086-6e18-55f8-88d8-1e65039803ec",
             "variable": "2059e762-380a-56cb-9228-dce0e22145cb",
             "prompt": {
-              "en": "When you had sex with {nodeLabel}, how often did you use a condom?"
+              "en": "When you had sex with {node_label}, how often did you use a condom?"
             }
           },
           {
             "id": "5ea71954-3eff-589f-8545-02f6050f24c2",
             "variable": "d7684a37-d4de-5540-bda6-57652fe92659",
             "prompt": {
-              "en": "Did you ever share injection equipment with {nodeLabel}?"
+              "en": "Did you ever share injection equipment with {node_label}?"
             },
             "hint": {
               "en": "Injection equipment includes needles, syringes, cookers, cotton, or water."
@@ -616,7 +622,7 @@
             "id": "96a703b7-0ad6-5945-a3d0-4d3cdd4fc5df",
             "variable": "388dfe6a-24b3-5b36-98bc-289e6ac08e92",
             "prompt": {
-              "en": "When did your sexual or injection relationship with {nodeLabel} begin?"
+              "en": "When did your sexual or injection relationship with {node_label} begin?"
             },
             "hint": {
               "en": "An approximate month and year is fine."
@@ -629,7 +635,7 @@
               "en": "When did it end?"
             },
             "hint": {
-              "en": "{partnershipStart, select, missing {} other {It began in {partnershipStart}. }}If it is still going on, you can leave this blank or choose this month."
+              "en": "{node_388dfe6a_24b3_5b36_98bc_289e6ac08e92, select, missing {} other {It began in {node_388dfe6a_24b3_5b36_98bc_289e6ac08e92}. }}If it is still going on, you can leave this blank or choose this month."
             }
           }
         ]

@@ -1,19 +1,22 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   getMarkdownLabelText,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
-import type {
-  DynamicValues,
-  LocalizedString,
-  Variable,
+import {
+  type AttributeDynamicValueRole,
+  dynamicValueNameFor,
+  type LabelledDynamicValueRole,
+  type LocalizedString,
+  optionCaseKey,
+  type Variable,
 } from '@codaco/protocol-validation';
 
-import { testVariableId } from '../../__tests__/testIds';
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { contentFormatFor } from '../../localization/contentFormat';
 import { DynamicMarkdown } from '../DynamicText';
 import {
@@ -21,6 +24,7 @@ import {
   type DynamicValueSources,
   markdownSource,
   resolveDynamicText,
+  showsDynamicValues,
 } from '../resolveDynamicText';
 
 const NAME = testVariableId('name');
@@ -33,6 +37,14 @@ const SMOKES = testVariableId('smokes');
 const drawnText = (html: string): string =>
   new DOMParser().parseFromString(html, 'text/html').body.textContent;
 
+const OPTION = {
+  notClose: testId('option not close'),
+  veryClose: testId('option very close'),
+  english: testId('option english'),
+  french: testId('option french'),
+  spanish: testId('option spanish'),
+};
+
 const VARIABLES: Record<string, Variable> = {
   [NAME]: { name: 'name', type: 'text' },
   [AGE]: { name: 'age', type: 'number' },
@@ -41,41 +53,49 @@ const VARIABLES: Record<string, Variable> = {
     name: 'closeness',
     type: 'ordinal',
     options: [
-      { label: { en: 'Not close' }, value: 0 },
-      { label: { en: 'Very close' }, value: 1 },
+      { id: OPTION.notClose, label: { en: 'Not close' }, value: 0 },
+      { id: OPTION.veryClose, label: { en: 'Very close' }, value: 1 },
     ],
   },
   [LANGUAGES]: {
     name: 'languages',
     type: 'categorical',
     options: [
-      { label: { en: 'English' }, value: 'en' },
-      { label: { en: 'French' }, value: 'fr' },
-      { label: { en: 'Spanish' }, value: 'es' },
+      { id: OPTION.english, label: { en: 'English' }, value: 'en' },
+      { id: OPTION.french, label: { en: 'French' }, value: 'fr' },
+      { id: OPTION.spanish, label: { en: 'Spanish' }, value: 'es' },
     ],
   },
   [SMOKES]: { name: 'smokes', type: 'boolean' },
 } as Record<string, Variable>;
 
-const BINDINGS: DynamicValues = {
-  name: { path: `ego.${NAME}` },
-  age: { path: `ego.${AGE}` },
-  born: { path: `ego.${BORN}` },
-  closeness: { path: `ego.${CLOSENESS}`, cases: { veryClose: 1 } },
-  languages: { path: `ego.${LANGUAGES}`, cases: { french: 'fr' } },
-  smokes: { path: `ego.${SMOKES}`, cases: { yes: true } },
-  partner: { path: `dyad.target.${NAME}` },
-  first: { path: 'dyad.source.$label' },
-  second: { path: 'dyad.target.$label' },
-  isYou: { path: 'node.$isParticipant', cases: { participant: true } },
-  today: { path: 'now' },
+/** The name text gives an attribute of `role`. */
+const attribute = (
+  variableId: string,
+  role: AttributeDynamicValueRole = 'ego',
+) => dynamicValueNameFor({ kind: 'attribute', role, variableId });
+/** The name text gives the label of the node in `role`. */
+const labelName = (role: LabelledDynamicValueRole) =>
+  dynamicValueNameFor({ kind: 'label', role });
+
+const N = {
+  name: attribute(NAME),
+  age: attribute(AGE),
+  born: attribute(BORN),
+  closeness: attribute(CLOSENESS),
+  languages: attribute(LANGUAGES),
+  smokes: attribute(SMOKES),
+  partner: attribute(NAME, 'dyadTarget'),
+  first: labelName('dyadSource'),
+  second: labelName('dyadTarget'),
+  isYou: dynamicValueNameFor({ kind: 'participant', role: 'node' }),
+  today: dynamicValueNameFor({ kind: 'intrinsic', name: 'now' }),
 };
 
 const sources = (
   ego: Record<string, unknown>,
   extra: Partial<DynamicValueSources> = {},
 ): DynamicValueSources => ({
-  bindings: BINDINGS,
   intrinsics: { now: new Date('2026-10-13T12:00:00Z') },
   attributes: { ego },
   labels: {},
@@ -97,14 +117,95 @@ const resolve = (
 ) =>
   resolveDynamicText(message, locale, sources(ego, extra), formatters(locale));
 
-const GREETING = '{name, select, missing {Hello!} other {Hello, {name}!}}';
+const GREETING = `{${N.name}, select, missing {Hello!} other {Hello, {${N.name}}!}}`;
 
 describe('resolveDynamicText', () => {
   it('leaves text that shows no value to the ordinary formatter', () => {
     expect(resolve('Hello!', {})).toBeUndefined();
     expect(resolve("'{'quoted'}'", {})).toBeUndefined();
-    // A name the stage does not bind is not a dynamic value.
-    expect(resolve('{unbound}', {})).toBeUndefined();
+    // A message that does not parse is formatted as any other.
+    expect(resolve(`{${N.name}, select, other {}`, {})).toBeUndefined();
+  });
+
+  it('reads a name that stands for nothing as missing', () => {
+    expect(
+      resolve('{unknown, select, missing {Nobody} other {Somebody}}', {}),
+    ).toEqual({ parts: ['Nobody'], text: 'Nobody' });
+    // A role that is not one, and an attribute of no variable.
+    expect(
+      resolve('{stranger_label, select, missing {Nobody} other {Somebody}}', {})
+        ?.text,
+    ).toBe('Nobody');
+    expect(
+      resolve(
+        `{${attribute(testVariableId('gone'))}, select, missing {Nobody} other {Somebody}}`,
+        {},
+      )?.text,
+    ).toBe('Nobody');
+    // Shown, it shows nothing.
+    expect(resolve('Hello {unknown}!', {})).toEqual({
+      parts: ['Hello ', '!'],
+      text: 'Hello !',
+    });
+  });
+
+  it('warns once in development about a name that stands for nothing, naming it but no value', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      // A message no other test reads, so that its first reading is here.
+      const message = `{ghost_value, select, missing {Nobody} other {Somebody}} {${N.name}, select, missing {} other {{${N.name}}}}`;
+      expect(resolve(message, { [NAME]: 'Ada Lovelace' })?.text).toBe(
+        'Nobody Ada Lovelace',
+      );
+      expect(resolve(message, { [NAME]: 'Ada Lovelace' })?.text).toBe(
+        'Nobody Ada Lovelace',
+      );
+      expect(warn).toHaveBeenCalledTimes(1);
+      const [warning] = warn.mock.calls[0] ?? [];
+      expect(warning).toContain('"ghost_value"');
+      expect(warning).not.toContain('Ada');
+      expect(warning).not.toContain(N.name);
+      // A message whose every name stands for something gives no warning.
+      warn.mockClear();
+      resolve(`{${N.age}, select, missing {?} other {{${N.age}}}} `, {
+        [AGE]: 3,
+      });
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('gives no warning for interface wording that is only scanned for values', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      // Interface wording has arguments of its own, such as `count`; scanning
+      // a stage for values reads it, and must neither warn nor need Vite's
+      // environment, which hosts such as Fresco do not have.
+      expect(
+        showsDynamicValues({
+          minNodesNotice: '{count, plural, one {# more} other {# more}}',
+        }),
+      ).toBe(false);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('gives no warning outside development', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.stubEnv('DEV', false);
+    try {
+      expect(
+        resolve('{ghost_in_production, select, missing {Nobody} other {}}', {})
+          ?.text,
+      ).toBe('Nobody');
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      warn.mockRestore();
+    }
   });
 
   it('takes the missing version for every kind of missing value', () => {
@@ -118,41 +219,81 @@ describe('resolveDynamicText', () => {
 
   it('shows a present value as text, marking where it is', () => {
     expect(resolve(GREETING, { [NAME]: 'Ada' })).toEqual({
-      parts: ['Hello, ', { name: 'name', text: 'Ada' }, '!'],
+      parts: ['Hello, ', { name: N.name, text: 'Ada' }, '!'],
       text: 'Hello, Ada!',
     });
   });
 
   it('shows 0 and false as values, not as missing', () => {
     expect(
-      resolve('{age, select, missing {?} other {Age {age}}}', { [AGE]: 0 })
-        ?.text,
+      resolve(`{${N.age}, select, missing {?} other {Age {${N.age}}}}`, {
+        [AGE]: 0,
+      })?.text,
     ).toBe('Age 0');
     expect(
-      resolve('{smokes, select, missing {?} other {{smokes}}}', {
+      resolve(`{${N.smokes}, select, missing {?} other {{${N.smokes}}}}`, {
         [SMOKES]: false,
       })?.text,
     ).toBe('No');
   });
 
-  it('chooses a case by the stored option, and other for the rest', () => {
-    const message =
-      '{closeness, select, missing {?} veryClose {Close: {closeness}} other {Not: {closeness}}}';
+  it('chooses a version by a yes/no answer', () => {
+    const message = `{${N.smokes}, select, missing {?} true {A smoker} false {Not a smoker} other {Other}}`;
+    expect(resolve(message, { [SMOKES]: true })?.text).toBe('A smoker');
+    expect(resolve(message, { [SMOKES]: false })?.text).toBe('Not a smoker');
+    expect(
+      resolve(`{${N.smokes}, select, true {A smoker} other {Other}}`, {
+        [SMOKES]: false,
+      })?.text,
+    ).toBe('Other');
+  });
+
+  it('chooses a case by the stored option’s id, and other for the rest', () => {
+    const message = `{${N.closeness}, select, missing {?} ${optionCaseKey(OPTION.veryClose)} {Close: {${N.closeness}}} other {Not: {${N.closeness}}}}`;
     expect(resolve(message, { [CLOSENESS]: 1 })?.text).toBe(
       'Close: Very close',
     );
     expect(resolve(message, { [CLOSENESS]: 0 })?.text).toBe('Not: Not close');
   });
 
+  it('reads an answer stored as text of a number as that option, as the schema does', () => {
+    const message = `{${N.closeness}, select, missing {?} ${optionCaseKey(OPTION.veryClose)} {Close: {${N.closeness}}} other {Not: {${N.closeness}}}}`;
+    expect(resolve(message, { [CLOSENESS]: '1' })?.text).toBe(
+      'Close: Very close',
+    );
+    expect(resolve(message, { [CLOSENESS]: '0' })?.text).toBe('Not: Not close');
+    expect(resolve(message, { [CLOSENESS]: ['1'] })?.text).toBe(
+      'Close: Very close',
+    );
+  });
+
   it('matches a case among a list of answers, and lists them', () => {
-    const message =
-      '{languages, select, missing {?} french {Bonjour ({languages})} other {{languages}}}';
+    const message = `{${N.languages}, select, missing {?} ${optionCaseKey(OPTION.french)} {Bonjour ({${N.languages}})} other {{${N.languages}}}}`;
     expect(resolve(message, { [LANGUAGES]: ['en', 'fr'] })?.text).toBe(
       'Bonjour (English and French)',
     );
     expect(resolve(message, { [LANGUAGES]: ['en', 'es'] })?.text).toBe(
       'English and Spanish',
     );
+  });
+
+  it('chooses, for several answers, the first option in the codebook’s order that the text has a version for', () => {
+    const versions = `${optionCaseKey(OPTION.spanish)} {Hola} ${optionCaseKey(OPTION.french)} {Bonjour} other {Hello}`;
+    const message = `{${N.languages}, select, ${versions}}`;
+    // French comes before Spanish in the codebook, whatever order the
+    // answers or the versions are in.
+    expect(resolve(message, { [LANGUAGES]: ['es', 'fr'] })?.text).toBe(
+      'Bonjour',
+    );
+    expect(resolve(message, { [LANGUAGES]: ['fr', 'es'] })?.text).toBe(
+      'Bonjour',
+    );
+    // English comes first, but the text has no version for it.
+    expect(resolve(message, { [LANGUAGES]: ['en', 'es'] })?.text).toBe('Hola');
+    expect(resolve(message, { [LANGUAGES]: ['en'] })?.text).toBe('Hello');
+    // Each select chooses among its own versions.
+    const two = `{${N.languages}, select, ${optionCaseKey(OPTION.spanish)} {Hola} other {Hello}} / {${N.languages}, select, ${optionCaseKey(OPTION.english)} {Hi} other {Hello}}`;
+    expect(resolve(two, { [LANGUAGES]: ['en', 'es'] })?.text).toBe('Hola / Hi');
   });
 
   describe('in a language other than English', () => {
@@ -162,14 +303,17 @@ describe('resolveDynamicText', () => {
         type: 'categorical',
         options: [
           {
+            id: OPTION.english,
             label: { en: 'English', es: 'Inglés', de: 'Englisch' },
             value: 'en',
           },
           {
+            id: OPTION.french,
             label: { en: 'French', es: '**Francés**', de: 'Französisch' },
             value: 'fr',
           },
           {
+            id: OPTION.spanish,
             label: { en: 'Spanish', es: 'Español', de: 'Spanisch' },
             value: 'es',
           },
@@ -181,7 +325,7 @@ describe('resolveDynamicText', () => {
     // its markdown shows, as the protocol localization provider does.
     const resolveIn = (locale: string, languages: string[]) =>
       resolveDynamicText(
-        '{languages, select, missing {?} other {{languages}}}',
+        `{${N.languages}, select, missing {?} other {{${N.languages}}}}`,
         locale,
         sources({ [LANGUAGES]: languages }, { variablesFor: () => LOCALIZED }),
         {
@@ -207,8 +351,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('chooses a plural by the language, and writes # as the number', () => {
-    const message =
-      '{age, select, missing {?} other {{age, plural, one {# year} other {# years}}}}';
+    const message = `{${N.age}, select, missing {?} other {{${N.age}, plural, one {# year} other {# years}}}}`;
     expect(resolve(message, { [AGE]: 1 })?.text).toBe('1 year');
     expect(resolve(message, { [AGE]: 1200 })?.text).toBe('1,200 years');
     expect(resolve(message, { [AGE]: 1200 }, 'de')?.text).toBe('1.200 years');
@@ -217,7 +360,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('writes a stored date in the language, without a time zone shift', () => {
-    const message = '{born, select, missing {?} other {{born}}}';
+    const message = `{${N.born}, select, missing {?} other {{${N.born}}}}`;
     expect(resolve(message, { [BORN]: '2024-03-05' })?.text).toBe(
       'March 5, 2024',
     );
@@ -229,7 +372,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('shows a stored date that is not on the calendar as it was stored', () => {
-    const message = '{born, select, missing {?} other {{born}}}';
+    const message = `{${N.born}, select, missing {?} other {{${N.born}}}}`;
     expect(resolve(message, { [BORN]: '2024-02-31' })?.text).toBe('2024-02-31');
     expect(resolve(message, { [BORN]: '2024-13' })?.text).toBe('2024-13');
     expect(resolve(message, { [BORN]: '2024-00-10' })?.text).toBe('2024-00-10');
@@ -253,7 +396,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('keeps a year before 100 as written', () => {
-    const message = '{born, select, missing {?} other {{born}}}';
+    const message = `{${N.born}, select, missing {?} other {{${N.born}}}}`;
     expect(resolve(message, { [BORN]: '0050-03-05' })?.text).toBe(
       'March 5, 50',
     );
@@ -262,21 +405,24 @@ describe('resolveDynamicText', () => {
 
   it('reads a role that is not on screen as missing', () => {
     expect(
-      resolve('{partner, select, missing {them} other {{partner}}}', {})?.text,
+      resolve(
+        `{${N.partner}, select, missing {them} other {{${N.partner}}}}`,
+        {},
+      )?.text,
     ).toBe('them');
   });
 
   it('shows the label of each node on screen as written', () => {
     expect(
-      resolve('Do {first} and {second} know each other?', {}, 'en', {
+      resolve(`Do {${N.first}} and {${N.second}} know each other?`, {}, 'en', {
         labels: { dyadSource: 'Jim', dyadTarget: '{Alice} #1' },
       }),
     ).toEqual({
       parts: [
         'Do ',
-        { name: 'first', text: 'Jim' },
+        { name: N.first, text: 'Jim' },
         ' and ',
-        { name: 'second', text: '{Alice} #1' },
+        { name: N.second, text: '{Alice} #1' },
         ' know each other?',
       ],
       text: 'Do Jim and {Alice} #1 know each other?',
@@ -285,33 +431,52 @@ describe('resolveDynamicText', () => {
 
   it('shows a label of only spaces as the node shows it', () => {
     expect(
-      resolve('Is {first} here?', {}, 'en', {
+      resolve(`Is {${N.first}} here?`, {}, 'en', {
         labels: { dyadSource: '  ' },
       })?.parts,
-    ).toEqual(['Is ', { name: 'first', text: '  ' }, ' here?']);
+    ).toEqual(['Is ', { name: N.first, text: '  ' }, ' here?']);
   });
 
   it('reads the label of a node that is not on screen as missing', () => {
     expect(
-      resolve('{first, select, missing {Them} other {{first}}}', {}, 'en', {
-        labels: { dyadTarget: 'Alice' },
-      })?.text,
+      resolve(
+        `{${N.first}, select, missing {Them} other {{${N.first}}}}`,
+        {},
+        'en',
+        { labels: { dyadTarget: 'Alice' } },
+      )?.text,
     ).toBe('Them');
   });
 
   it('chooses the version for whether the node is the participant', () => {
-    const living =
-      '{isYou, select, participant {Are you still living?} other {Is this person still living?}}';
+    const living = `{${N.isYou}, select, true {Are you still living?} false {Is this person still living?} other {Is this person living?}}`;
     expect(
       resolve(living, {}, 'en', { participants: { node: true } })?.text,
     ).toBe('Are you still living?');
     expect(
       resolve(living, {}, 'en', { participants: { node: false } })?.text,
     ).toBe('Is this person still living?');
+    expect(
+      resolve(`{${N.isYou}, select, missing {?} other {!}}`, {})?.text,
+    ).toBe('?');
+  });
+
+  it('chooses a version by a condition already judged', () => {
+    const id = testId('condition judged');
+    const met = dynamicValueNameFor({ kind: 'condition', conditionId: id });
+    const message = `{${met}, select, true {Met} false {Not met} other {?}}`;
+    expect(
+      resolve(message, {}, 'en', { conditionFacts: { [id]: true } })?.text,
+    ).toBe('Met');
+    expect(
+      resolve(message, {}, 'en', { conditionFacts: { [id]: false } })?.text,
+    ).toBe('Not met');
   });
 
   it("shows today's date", () => {
-    expect(resolve('Since {today}', {})?.text).toBe('Since October 13, 2026');
+    expect(resolve(`Since {${N.today}}`, {})?.text).toBe(
+      'Since October 13, 2026',
+    );
   });
 
   it('never parses a value as message syntax', () => {
@@ -320,29 +485,40 @@ describe('resolveDynamicText', () => {
     );
   });
 
-  it('reads only an attribute’s own value, never an inherited member', () => {
-    const bindings: DynamicValues = {
-      ...BINDINGS,
-      inherited: { path: 'ego.constructor' },
-      proto: { path: 'ego.__proto__' },
-    };
+  it('never reads an inherited member as an attribute: only a UUID names one', () => {
     const message = (name: string) =>
       `{${name}, select, missing {Missing} other {Got {${name}}}}`;
-    expect(resolve(message('inherited'), {}, 'en', { bindings })?.text).toBe(
-      'Missing',
-    );
-    expect(resolve(message('proto'), {}, 'en', { bindings })?.text).toBe(
-      'Missing',
-    );
-
     const ego: Record<string, unknown> = {};
     Object.defineProperty(ego, '__proto__', {
       enumerable: true,
       value: 'Ada',
     });
-    expect(resolve(message('proto'), ego, 'en', { bindings })?.text).toBe(
-      'Got Ada',
+    for (const name of ['ego_constructor', 'ego___proto__', 'ego_toString']) {
+      expect(resolve(message(name), ego)?.text).toBe('Missing');
+    }
+  });
+});
+
+describe('showsDynamicValues', () => {
+  it('finds a value named anywhere in a stage’s text', () => {
+    expect(
+      showsDynamicValues({
+        prompts: [{ text: { en: 'Hello', fr: `Bonjour {${N.name}}` } }],
+      }),
+    ).toBe(true);
+    expect(showsDynamicValues({ title: { en: `Since {${N.today}}` } })).toBe(
+      true,
     );
+  });
+
+  it('finds none in text without values, or with only other arguments', () => {
+    expect(
+      showsDynamicValues({
+        prompts: [{ text: { en: "Hello '{'there'}'" } }],
+        wording: { you: { en: '{isYou, select, true {You} other {{name}}}' } },
+        count: 3,
+      }),
+    ).toBe(false);
   });
 });
 

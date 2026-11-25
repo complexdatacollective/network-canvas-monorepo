@@ -21,7 +21,7 @@ import {
   chooseAttribute,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
-import { testTypeId, testVariableId } from '../../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../../testing/testId.ts';
 import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import {
   shapeMappingDraft,
@@ -59,8 +59,16 @@ const VARIABLES: Record<string, unknown> = {
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: { en: 'Asian' }, value: 'asian' },
-      { label: { en: 'White' }, value: 'white' },
+      {
+        id: testId('option/Ethnicity/asian'),
+        label: { en: 'Asian' },
+        value: 'asian',
+      },
+      {
+        id: testId('option/Ethnicity/white'),
+        label: { en: 'White' },
+        value: 'white',
+      },
     ],
   },
   [CONTACT]: {
@@ -68,8 +76,16 @@ const VARIABLES: Record<string, unknown> = {
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: { en: 'a.b [1]' }, value: 'a.b [1]' },
-      { label: { en: '友人' }, value: '友人' },
+      {
+        id: testId('option/Contact/a.b [1]'),
+        label: { en: 'a.b [1]' },
+        value: 'a.b [1]',
+      },
+      {
+        id: testId('option/Contact/友人'),
+        label: { en: '友人' },
+        value: '友人',
+      },
     ],
   },
   [ALIVE]: {

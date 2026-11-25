@@ -8,7 +8,11 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testTypeId, testVariableId } from '../../../__tests__/testIds';
+import {
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../../__tests__/testIds';
 import type { FormattedSession } from '../../../input';
 import type { ExportWarning } from '../../../output';
 import {
@@ -94,6 +98,7 @@ describe('the cells of categorical columns', () => {
         name: 'rating',
         type: 'categorical',
         options: values.map((value) => ({
+          id: testOptionId(`rating/${JSON.stringify(value)}`),
           label: { en: String(value) },
           value,
         })),
@@ -185,8 +190,16 @@ describe('variable columns with the same name', () => {
           name: 'colour',
           type: 'categorical',
           options: [
-            { label: { en: 'Red' }, value: 'red' },
-            { label: { en: 'Blue' }, value: 'blue' },
+            {
+              id: testOptionId('colour/red'),
+              label: { en: 'Red' },
+              value: 'red',
+            },
+            {
+              id: testOptionId('colour/blue'),
+              label: { en: 'Blue' },
+              value: 'blue',
+            },
           ],
         },
       }),
@@ -237,7 +250,13 @@ describe('variable columns with the same name', () => {
         [testVariableId('second')]: {
           name: 'x',
           type: 'categorical',
-          options: [{ label: { en: 'Café' }, value: 'Cafe\u0301' }],
+          options: [
+            {
+              id: testOptionId('Café'),
+              label: { en: 'Café' },
+              value: 'Cafe\u0301',
+            },
+          ],
         },
       }),
       withNodes(
@@ -296,8 +315,12 @@ describe('variable columns with the same name', () => {
           name: 'rating',
           type: 'categorical',
           options: [
-            { label: { en: 'One' }, value: 1 },
-            { label: { en: 'One, as text' }, value: '1' },
+            { id: testOptionId('rating/1'), label: { en: 'One' }, value: 1 },
+            {
+              id: testOptionId('rating/"1"'),
+              label: { en: 'One, as text' },
+              value: '1',
+            },
           ],
         },
       }),

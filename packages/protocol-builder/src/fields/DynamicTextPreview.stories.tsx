@@ -2,24 +2,12 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import { fixtureStageId } from '../testing/protocolFixture.ts';
 import { DynamicTextPreview } from './DynamicTextPreview.tsx';
 
 const STAGE_ID = fixtureStageId('anonymisation-1');
-const STAGE = sectionId({ kind: 'stage', stageId: STAGE_ID });
-
-/** The stage binds today's date under `today`, as inserting it would. */
-const bindsToday = (host: InMemoryHost): void => {
-  const { document } = host.store.read(STAGE);
-  host.store.applyAsCollaborator(STAGE, {
-    ...document,
-    dynamicValues: { today: { path: 'now' } },
-  });
-};
 
 const preview = (value: unknown) => (
   <div data-testid="preview">
@@ -71,9 +59,8 @@ export const PlainText: Story = {
  */
 export const VersionsShowAsTheirPill: Story = {
   args: {
-    seedEdit: bindsToday,
     children: preview({
-      en: 'Welcome.{today, select, missing {} other { Today is {today}.}}',
+      en: 'Welcome.{now, select, missing {} other { Today is {now}.}}',
     }),
   },
   play: async ({ canvasElement }) => {
@@ -83,20 +70,19 @@ export const VersionsShowAsTheirPill: Story = {
     const shown = await canvas.findByTestId('preview');
     // The pill names the value; its first word is held beside its icon.
     await waitFor(async () => {
-      await expect(
-        shown.querySelector('[data-token="today"]'),
-      ).toHaveTextContent('Today’s date');
+      await expect(shown.querySelector('[data-token="now"]')).toHaveTextContent(
+        'Today’s date',
+      );
     });
     await expect(shown.querySelectorAll('[data-token]')).toHaveLength(1);
     await expect(shown).not.toHaveTextContent('Today is');
   },
 };
 
-/** A value bound to the stage shows as its pill, named for what it holds. */
+/** A value the text shows is drawn as its pill, named for what it holds. */
 export const ShowingAValue: Story = {
   args: {
-    seedEdit: bindsToday,
-    children: preview({ en: 'Welcome. Today is {today}.' }),
+    children: preview({ en: 'Welcome. Today is {now}.' }),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -105,9 +91,9 @@ export const ShowingAValue: Story = {
     const shown = await canvas.findByTestId('preview');
     // The pill names the value; its first word is held beside its icon.
     await waitFor(async () => {
-      await expect(
-        shown.querySelector('[data-token="today"]'),
-      ).toHaveTextContent('Today’s date');
+      await expect(shown.querySelector('[data-token="now"]')).toHaveTextContent(
+        'Today’s date',
+      );
     });
     await expect(shown).toHaveTextContent(/^Welcome\. Today is .+\.$/);
   },

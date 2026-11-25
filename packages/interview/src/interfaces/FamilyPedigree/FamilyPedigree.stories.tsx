@@ -5,6 +5,7 @@ import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import {
+  dynamicValueNameFor,
   PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   type FramingSetting,
   type PedigreeCompletenessScope,
@@ -205,17 +206,14 @@ export function buildInterview({
   if (withFormFields) {
     stage.addFormField({ component: 'Number', prompt: 'Age' });
     // The question is worded for the participant when it is about them.
-    stage.stageEntry.dynamicValues = {
-      isParticipant: {
-        path: 'node.$isParticipant',
-        cases: { participant: true },
-      },
-    };
+    const isParticipant = dynamicValueNameFor({
+      kind: 'participant',
+      role: 'node',
+    });
     stage.addFormField({
       component: 'Boolean',
       prompt: {
-        'en-US':
-          '{isParticipant, select, participant {Are you still living?} other {Is this person still living?}}',
+        'en-US': `{${isParticipant}, select, true {Are you still living?} other {Is this person still living?}}`,
       },
       validation: { required: true },
     });

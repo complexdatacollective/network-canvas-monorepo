@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -7,10 +7,14 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
+import {
+  createOptionId,
+  MINIMUM_VARIABLE_OPTIONS,
+} from '@codaco/protocol-validation';
 
 import { minimumOptionsMessage } from '../../codebook/editing.ts';
 import { type ProtocolLocalization } from '../../localization/localizedText.ts';
+import { rowId, rowTemplate } from '../rowDialog.tsx';
 import {
   invalidOptionValue,
   isSameOptionValue,
@@ -194,12 +198,20 @@ export const optionsValidationFor = (
 
 const EMPTY_OPTIONS: OptionValue[] = [];
 
+/**
+ * Each option has an id of its own, by which text chooses a version for it,
+ * so a row is keyed by its id and a new row has one before it reaches the
+ * list.
+ */
+const newOptionRow = rowTemplate<OptionValue>(() => ({ id: createOptionId() }));
+
 export type OptionsProps = Omit<
   ArrayFieldProps<OptionValue>,
   | 'addButtonLabel'
   | 'confirmDelete'
   | 'editorComponent'
   | 'emptyStateMessage'
+  | 'getId'
   | 'immediateAdd'
   | 'itemClasses'
   | 'itemComponent'
@@ -256,10 +268,6 @@ export default function Options({
     [exportColumns, name, value],
   );
 
-  const itemTemplate = useCallback(() => ({}), []);
-  // Options carry no id of their own, so `ArrayField` issues each row a managed
-  // one and strips it again on submit.
-
   return (
     <OptionsContext value={context}>
       <ArrayField<OptionValue>
@@ -269,7 +277,8 @@ export default function Options({
         onChange={onChange}
         aria-invalid={ariaInvalid}
         itemComponent={Option}
-        itemTemplate={itemTemplate}
+        itemTemplate={newOptionRow}
+        getId={rowId}
         // The list-level error border goes on the row's Surface, which owns
         // the rounding: drawn on a child, the Surface's clip cuts its corners.
         itemClasses={cx(

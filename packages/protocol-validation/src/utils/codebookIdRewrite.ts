@@ -1,12 +1,12 @@
 import type { z } from 'zod';
 
 import {
-  dynamicValuePathFor,
-  parseDynamicValuePath,
+  dynamicValueNameFor,
+  parseDynamicValueName,
+  rewriteDynamicValueReferences,
 } from '../schemas/9/dynamic-values.ts';
-import { setValueAt, valueAt } from './protocolObjectIdRewrite.ts';
+import { renameKeys, setValueAt, valueAt } from './protocolObjectIdRewrite.ts';
 import {
-  type EntityAttributeReferenceHit,
   isAttributeHit,
   isTypeHit,
   walkSchemaReferences,
@@ -90,45 +90,26 @@ const filterRuleOwner = (
   return undefined;
 };
 
-const replacedValue = (
-  current: unknown,
-  hit: EntityAttributeReferenceHit,
+/**
+ * The name text uses for the attribute `name` names, once that attribute's
+ * id is `newId`, or undefined when `name` names no attribute.
+ */
+const renamedAttributeName = (
+  name: string,
   newId: string,
 ): string | undefined => {
-  if (!hit.inDynamicValuePath) return newId;
-  const parsed =
-    typeof current === 'string' ? parseDynamicValuePath(current) : undefined;
+  const parsed = parseDynamicValueName(name);
   return parsed?.kind === 'attribute'
-    ? dynamicValuePathFor(parsed.role, newId)
+    ? dynamicValueNameFor({ ...parsed, variableId: newId })
     : undefined;
-};
-
-/**
- * Renames the keys of `record` in place, keeping their order. Each entry is
- * defined rather than assigned, so a `__proto__` key stays an entry instead
- * of replacing the record's prototype.
- */
-const renameKeys = (
-  record: Record<string, unknown>,
-  renames: ReadonlyMap<string, string>,
-): void => {
-  const entries = Object.entries(record);
-  for (const key of Object.keys(record)) delete record[key];
-  for (const [key, value] of entries) {
-    Object.defineProperty(record, renames.get(key) ?? key, {
-      value,
-      enumerable: true,
-      writable: true,
-      configurable: true,
-    });
-  }
 };
 
 /**
  * Gives every node type, edge type and variable in `root`'s codebook the id
  * `renames` names for it, and points every reference to each at its new id:
  * every site `schema` tags as an entity type reference or an entity
- * attribute reference, including the attribute a dynamic value's path names.
+ * attribute reference, including each attribute text that shows dynamic
+ * values names (`ego_<id>`), whose name in the text is rewritten.
  * `root` is changed in place: it must be a copy the caller owns.
  *
  * Every reference is resolved against the document as it was before any
@@ -184,6 +165,12 @@ export const rewriteCodebookIds = (
   // Every new value is worked out before any is written, so that each
   // reference is resolved against the document as it was.
   const writes: { path: (string | number)[]; value: string }[] = [];
+  // The new name of each attribute a translation names, by the translation's
+  // path: one translation can name several, so each is rewritten once.
+  const messageRenames = new Map<
+    string,
+    { path: (string | number)[]; names: Map<string, string> }
+  >();
   for (const hit of walkSchemaReferences(schema, root, {
     readAssetBlocks: false,
   })) {
@@ -199,11 +186,30 @@ export const rewriteCodebookIds = (
       owner === undefined
         ? uniqueVariableRename(hit.variableId)
         : variableRenames.get(ownerKey(owner))?.get(hit.variableId);
-    const value =
-      renamed === undefined
-        ? undefined
-        : replacedValue(valueAt(root, hit.path), hit, renamed);
-    if (value !== undefined) writes.push({ path: hit.path, value });
+    if (renamed === undefined) continue;
+    if (hit.inMessage === undefined) {
+      writes.push({ path: hit.path, value: renamed });
+      continue;
+    }
+    const newName = renamedAttributeName(hit.inMessage.name, renamed);
+    if (newName === undefined) continue;
+    const key = JSON.stringify(hit.path);
+    const entry = messageRenames.get(key) ?? {
+      path: hit.path,
+      names: new Map<string, string>(),
+    };
+    entry.names.set(hit.inMessage.name, newName);
+    messageRenames.set(key, entry);
+  }
+  for (const { path, names } of messageRenames.values()) {
+    const message = valueAt(root, path);
+    if (typeof message !== 'string') continue;
+    writes.push({
+      path,
+      value: rewriteDynamicValueReferences(message, {
+        name: (name) => names.get(name),
+      }),
+    });
   }
   for (const { path, value } of writes) setValueAt(root, path, value);
 

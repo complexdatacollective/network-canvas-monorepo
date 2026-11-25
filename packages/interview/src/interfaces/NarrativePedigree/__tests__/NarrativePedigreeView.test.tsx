@@ -8,6 +8,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  dynamicValueNameFor,
   type FramingId,
   type LocalizationDeclaration,
   type PedigreeRelationshipKind,
@@ -24,6 +25,7 @@ import {
 import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { ContractProvider } from '../../../contract/context';
+import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
@@ -339,6 +341,12 @@ type StoreOptions = {
   encryption?: { key?: CryptoKey };
   /** Draw every person with a custom shape, wider than it is tall. */
   customShape?: boolean;
+  /** Settings of the source stage besides the fixture's own. */
+  sourceSettings?: Record<string, unknown>;
+  /** The participant's answers. */
+  egoAttributes?: Record<string, VariableValue>;
+  /** Render the view inside its stage's dynamic values, as the Shell does. */
+  withStageValues?: boolean;
 };
 
 function makeStore({
@@ -348,6 +356,8 @@ function makeStore({
   network = { nodes, edges },
   encryption,
   customShape,
+  sourceSettings,
+  egoAttributes = {},
 }: StoreOptions = {}) {
   const store = configureStore({
     reducer: { protocol, session, ui },
@@ -355,14 +365,17 @@ function makeStore({
       protocol: {
         localization: { defaultLocale: 'en', locales: ['en', 'es'] },
         codebook: makeCodebook(encryption !== undefined, customShape),
-        stages: [{ ...sourceStage, framing: sourceFraming }, narrativeStage],
+        stages: [
+          { ...sourceStage, ...sourceSettings, framing: sourceFraming },
+          narrativeStage,
+        ],
         assets: [],
       } as never,
       session: {
         id: 'test-session',
         network: {
           ...network,
-          ego: { [entityAttributesProperty]: {} },
+          ego: { [entityAttributesProperty]: egoAttributes },
         },
         stageMetadata: chosenFraming ? { 0: { framing: chosenFraming } } : {},
       } as never,
@@ -403,7 +416,13 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
               locale={requestedLocale}
               interfaceText={interfaceText}
             >
-              <NarrativePedigreeView stage={stage} />
+              {options.withStageValues === true ? (
+                <StageDynamicValues stage={stage}>
+                  <NarrativePedigreeView stage={stage} />
+                </StageDynamicValues>
+              ) : (
+                <NarrativePedigreeView stage={stage} />
+              )}
             </TestProtocolLocalization>
           </InterviewI18nProvider>
         </CurrentStepProvider>
@@ -493,6 +512,51 @@ describe('NarrativePedigreeView — who is drawn', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Focus on Partner' }),
+    ).toBeInTheDocument();
+  });
+
+  it('calls the participant as the source stage does, worded by its own conditions', async () => {
+    const isAda = testId('condition is Ada');
+    const name = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: NAME_VAR,
+    });
+    const isAdaName = dynamicValueNameFor({
+      kind: 'condition',
+      conditionId: isAda,
+    });
+    renderView({
+      withStageValues: true,
+      egoAttributes: { [NAME_VAR]: 'Ada' },
+      sourceSettings: {
+        wording: {
+          you: {
+            // An attribute can always be missing, so validation requires a
+            // version for when it is, even where the condition implies it
+            // is present.
+            en: `{${isAdaName}, select, true {Me, {${name}, select, missing {me} other {{${name}}}}} other {You}}`,
+          },
+        },
+        conditions: {
+          [isAda]: {
+            rules: [
+              {
+                type: 'ego',
+                id: testId('rule is Ada'),
+                options: {
+                  attribute: NAME_VAR,
+                  operator: 'EXACTLY',
+                  value: 'Ada',
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    expect(
+      await screen.findByRole('button', { name: 'Focus on Me, Ada' }),
     ).toBeInTheDocument();
   });
 

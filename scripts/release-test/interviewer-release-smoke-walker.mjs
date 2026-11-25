@@ -644,7 +644,7 @@ try {
   await nextStage();
 
   // Stage 1 — Information: protocol text back in English, with today's date
-  // inserted by a dynamic value ({today} bound to "now").
+  // inserted by a dynamic value ({now}).
   await expectStep(STEP.information);
   await expect(
     page.getByRole('heading', { name: 'Release smoke' }),
@@ -663,7 +663,7 @@ try {
   record(
     'stage-information',
     todayRendered,
-    `dynamic {today} rendered as ${JSON.stringify(todayText)} (inserted ${JSON.stringify(todayValues)}, expected ${JSON.stringify(todayExpected)})`,
+    `dynamic {now} rendered as ${JSON.stringify(todayText)} (inserted ${JSON.stringify(todayValues)}, expected ${JSON.stringify(todayExpected)})`,
   );
   await nextStage();
 
@@ -719,7 +719,8 @@ try {
   await nextStage();
 
   // Stage 4 — NameGeneratorQuickAdd: the prompt inserts the ego's name
-  // (dynamic value ego.ego_name), then create three nodes.
+  // (a dynamic value naming the ego_name attribute), then create three
+  // nodes.
   await expectStep(STEP.quickAdd);
   const quickAddPrompt = page.getByText(/^Who are the people you know/).first();
   await expect(quickAddPrompt).toBeVisible();
@@ -772,7 +773,7 @@ try {
 
   // Stage 7 — DyadCensus: answer all three pairs (Yes for the first, No
   // after). Each pair's prompt inserts both people's labels (dynamic values
-  // dyad.source.$label / dyad.target.$label), which must be exactly the pair
+  // {dyadSource_label} / {dyadTarget_label}), which must be exactly the pair
   // on screen. The ~350 ms auto-advance timer races a fixed sleep under
   // load, so wait for the observable PAIR IDENTITY to change after each
   // non-final answer (the DyadCensusFixture pattern).

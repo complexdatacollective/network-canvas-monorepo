@@ -1,6 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  dynamicValueNameFor,
+  optionCaseKey,
+} from '@codaco/protocol-validation';
+
 import { alterFormStageEditor } from '../../editors/alter-form/AlterFormStageEditor.ts';
 import { dyadCensusStageEditor } from '../../editors/dyad-census/DyadCensusStageEditor.ts';
 import {
@@ -18,6 +23,20 @@ const CONTACT_FREQ = fixtureVariableId(
   { entity: 'node', typeName: 'person' },
   'contactFreq',
 );
+
+/** A condition on the first node of the pair, and text that tests it. */
+const LINKED = testId('condition/linked');
+const RULES = [
+  {
+    id: testId('ties'),
+    type: 'edge',
+    options: { count: 'GREATER_THAN', value: 0 },
+  },
+];
+const TESTS_LINKED = `Do they{${dynamicValueNameFor({
+  kind: 'condition',
+  conditionId: LINKED,
+})}, select, true { still} other {}} talk?`;
 
 const openCensus = () => {
   const { id, type, fields } = loadFixtureStage('dyad-census-1');
@@ -62,15 +81,20 @@ const insertTodayInPrompt = async (harness: ReturnType<typeof openCensus>) => {
 const dialogClosed = () =>
   waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
+/** The names the text of the stage's prompts uses for its values. */
+const promptsText = (prompts: unknown) => JSON.stringify(prompts);
+
 /**
- * A value inserted in a row's dialog binds on the stage behind it at once,
- * but the row reaches the stage only when the dialog saves.
+ * What a row's dialog inserts is written into the row's text, and the row
+ * reaches the stage only when the dialog saves. (An "If" also declares its
+ * condition on the stage while the dialog is open, and a dialog that closes
+ * without saving puts the stage's conditions back exactly as they were: see
+ * `stageConditions.test.tsx`, where the rules dialog is a stand-in.)
  */
 describe('values inserted in a row dialog', () => {
-  it('leave no binding behind when the dialog is cancelled', async () => {
+  it('leave the stage as it was when the dialog is cancelled', async () => {
     const harness = openCensus();
     const dialog = await insertTodayInPrompt(harness);
-
     await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
     await harness.user.click(
       await screen.findByRole('button', { name: 'Discard changes' }),
@@ -83,10 +107,13 @@ describe('values inserted in a row dialog', () => {
       ' again',
     );
     const saved = await harness.submit();
-    expect(saved?.stageDocument).not.toHaveProperty('dynamicValues');
+    expect(saved?.stageDocument.prompts).toEqual([
+      expect.objectContaining({ text: { 'en-US': 'Who do you know?' } }),
+    ]);
+    expect(saved?.stageDocument).not.toHaveProperty('conditions');
   });
 
-  it('keep their binding when the dialog is saved', async () => {
+  it('are in the row’s text by name when the dialog is saved', async () => {
     const harness = openCensus();
     const dialog = await insertTodayInPrompt(harness);
 
@@ -94,16 +121,16 @@ describe('values inserted in a row dialog', () => {
     await dialogClosed();
 
     const saved = await harness.submit();
-    const bindings = saved?.stageDocument.dynamicValues;
-    expect(Object.keys(bindings ?? {})).toHaveLength(1);
-    expect(JSON.stringify(saved?.stageDocument.prompts)).toContain(
-      `{${Object.keys(bindings ?? {})[0]}`,
-    );
+    expect(saved?.stageDocument.prompts).toEqual([
+      expect.objectContaining({
+        text: { 'en-US': '{now}Who do you know?' },
+      }),
+    ]);
   });
 });
 
 describe('a deleted row', () => {
-  it('takes the binding only it used with it', async () => {
+  it('takes the condition only it tested with it', async () => {
     const { id, type, fields } = loadFixtureStage('dyad-census-1');
     const harness = renderStageEditor({
       stage: {
@@ -111,11 +138,11 @@ describe('a deleted row', () => {
         type,
         fields: {
           ...fields,
-          dynamicValues: { today: { path: 'now' } },
+          conditions: { [LINKED]: { about: 'dyadSource', rules: RULES } },
           prompts: [
             {
               id: testId('dated'),
-              text: { 'en-US': 'Who did you see on {today}?' },
+              text: { 'en-US': TESTS_LINKED },
               createEdge: KNOWS,
             },
             {
@@ -143,7 +170,7 @@ describe('a deleted row', () => {
     expect(saved?.stageDocument.prompts).toEqual([
       expect.objectContaining({ id: testId('plain') }),
     ]);
-    expect(saved?.stageDocument).not.toHaveProperty('dynamicValues');
+    expect(saved?.stageDocument).not.toHaveProperty('conditions');
   });
 });
 
@@ -169,24 +196,37 @@ describe('a value with answers inserted in a row dialog', () => {
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await dialogClosed();
     const saved = await harness.submit();
-    return Object.values(saved?.stageDocument.dynamicValues ?? {});
+    const variable =
+      harness.hostCodebook().node?.[PERSON]?.variables?.[CONTACT_FREQ];
+    const options = variable?.type === 'ordinal' ? variable.options : [];
+    return {
+      text: promptsText(saved?.stageDocument.prompts),
+      caseKeys: options.map((each) => optionCaseKey(each.id)),
+    };
   };
 
-  it('is bound without cases when only the value itself is shown', async () => {
-    expect(await insertAndSave(/First node: contactFreq.*Ordinal/)).toEqual([
-      { path: `dyad.source.${CONTACT_FREQ}` },
-    ]);
+  const FIRST_CONTACT_FREQ = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'dyadSource',
+    variableId: CONTACT_FREQ,
   });
 
-  it('is bound with its cases when it is shown by answer', async () => {
-    const [binding] = await insertAndSave(
+  it('is written by its name when only the value itself is shown', async () => {
+    const { text, caseKeys } = await insertAndSave(
+      /First node: contactFreq.*Ordinal/,
+    );
+    expect(text).toContain(`{${FIRST_CONTACT_FREQ}}`);
+    expect(caseKeys.length).toBeGreaterThan(0);
+    for (const key of caseKeys) expect(text).not.toContain(`${key} {`);
+  });
+
+  it('chooses each answer by its option’s id when it is shown by answer', async () => {
+    const { text, caseKeys } = await insertAndSave(
       /First node: contactFreq.*Different wording for each answer/,
     );
-    expect(binding).toEqual({
-      path: `dyad.source.${CONTACT_FREQ}`,
-      cases: expect.any(Object),
-    });
-    expect(Object.keys(binding?.cases ?? {}).length).toBeGreaterThan(0);
+    expect(text).toContain(`{${FIRST_CONTACT_FREQ}, select,`);
+    expect(caseKeys.length).toBeGreaterThan(0);
+    for (const key of caseKeys) expect(text).toContain(` ${key} {`);
   });
 });
 
@@ -213,7 +253,7 @@ describe('a value shown by answer in an open dialog', () => {
     const person = harness.hostCodebook().node?.[PERSON];
     if (person === undefined) throw new Error('No person type');
     const contactFreq = person.variables?.[CONTACT_FREQ];
-    if (contactFreq === undefined) throw new Error('No contactFreq');
+    if (contactFreq?.type !== 'ordinal') throw new Error('No contactFreq');
     harness.receiveCodebookUpdate({
       node: {
         [PERSON]: {
@@ -222,11 +262,12 @@ describe('a value shown by answer in an open dialog', () => {
             ...person.variables,
             [CONTACT_FREQ]: {
               ...contactFreq,
-              options: [
-                { label: { 'en-US': '**Every** week' }, value: 3 },
-                { label: { 'en-US': 'Monthly' }, value: 2 },
-                { label: { 'en-US': 'Rarely' }, value: 1 },
-              ],
+              // The same options, by id, one of them relabelled.
+              options: contactFreq.options.map((option) =>
+                option.value === 3
+                  ? { ...option, label: { 'en-US': '**Every** week' } }
+                  : option,
+              ),
             },
           },
         },
@@ -297,11 +338,10 @@ describe("a census prompt's preview", () => {
         type,
         fields: {
           ...fields,
-          dynamicValues: { today: { path: 'now' } },
           prompts: [
             {
               id: testId('dated'),
-              text: { 'en-US': 'Who did you see on {today}?' },
+              text: { 'en-US': 'Who did you see on {now}?' },
               createEdge: KNOWS,
             },
           ],
@@ -312,11 +352,11 @@ describe("a census prompt's preview", () => {
     await harness.opened();
 
     await waitFor(() =>
-      expect(document.querySelector('[data-token="today"]')).toHaveTextContent(
+      expect(document.querySelector('[data-token="now"]')).toHaveTextContent(
         'Today’s date',
       ),
     );
-    expect(screen.queryByText(/\{today\}/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\{now\}/)).not.toBeInTheDocument();
   });
 });
 
@@ -376,12 +416,12 @@ describe("a value inserted in a form field's question", () => {
       name: 'Interactive preview',
     });
     await waitFor(() =>
-      expect(preview.querySelector('[data-token="today"]')).toHaveTextContent(
+      expect(preview.querySelector('[data-token="now"]')).toHaveTextContent(
         'Today’s date',
       ),
     );
     expect(preview).toHaveTextContent("What is this person's relationship");
-    expect(preview).not.toHaveTextContent('{today}');
+    expect(preview).not.toHaveTextContent('{now}');
   });
 });
 
@@ -429,14 +469,6 @@ describe('a value inserted in default-language text that is translated', () => {
  * on the stage whether or not the dialog saves.
  */
 describe('rules edited in a row dialog', () => {
-  const RULES = [
-    {
-      id: testId('ties'),
-      type: 'edge',
-      options: { count: 'GREATER_THAN', value: 0 },
-    },
-  ];
-
   const openCensusWithAnIf = () => {
     const { id, type, fields } = loadFixtureStage('dyad-census-1');
     return renderStageEditor({
@@ -445,16 +477,11 @@ describe('rules edited in a row dialog', () => {
         type,
         fields: {
           ...fields,
-          dynamicValues: {
-            linked: { path: '$condition.linked', cases: { yes: true } },
-          },
-          conditions: { linked: { about: 'dyadSource', rules: RULES } },
+          conditions: { [LINKED]: { about: 'dyadSource', rules: RULES } },
           prompts: [
             {
               id: testId('dyad-census-prompt-1'),
-              text: {
-                'en-US': 'Do they{linked, select, yes { still} other {}} talk?',
-              },
+              text: { 'en-US': TESTS_LINKED },
               createEdge: KNOWS,
             },
           ],
@@ -517,7 +544,7 @@ describe('rules edited in a row dialog', () => {
     );
     const saved = await harness.submit();
     expect(saved?.stageDocument.conditions).toEqual({
-      linked: { about: 'dyadSource', rules: RULES },
+      [LINKED]: { about: 'dyadSource', rules: RULES },
     });
   });
 
@@ -530,7 +557,7 @@ describe('rules edited in a row dialog', () => {
 
     const saved = await harness.submit();
     expect(saved?.stageDocument.conditions).toEqual({
-      linked: { about: 'dyadTarget', rules: RULES },
+      [LINKED]: { about: 'dyadTarget', rules: RULES },
     });
   });
 });

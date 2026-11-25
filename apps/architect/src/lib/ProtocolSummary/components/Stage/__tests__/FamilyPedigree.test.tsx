@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  testOptionId,
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
@@ -29,9 +30,21 @@ const protocol = {
             name: 'Gender',
             type: 'categorical',
             options: [
-              { value: 'woman', label: { en: 'Woman' } },
-              { value: 'transWoman', label: { en: 'Trans **woman**' } },
-              { value: 'agender', label: { en: 'Agender' } },
+              {
+                id: testOptionId(GENDER, 'woman'),
+                value: 'woman',
+                label: { en: 'Woman' },
+              },
+              {
+                id: testOptionId(GENDER, 'transWoman'),
+                value: 'transWoman',
+                label: { en: 'Trans **woman**' },
+              },
+              {
+                id: testOptionId(GENDER, 'agender'),
+                value: 'agender',
+                label: { en: 'Agender' },
+              },
             ],
           },
         },

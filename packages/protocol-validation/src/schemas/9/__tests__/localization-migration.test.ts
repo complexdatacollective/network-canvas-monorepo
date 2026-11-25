@@ -573,11 +573,6 @@ describe('v8 to v9 localization migration', () => {
         expect(dynamicValueNamesIn(message)).toEqual([]);
       }
     }
-    expect(
-      (migrated.stages as Record<string, unknown>[]).some(
-        (stage) => stage.dynamicValues !== undefined,
-      ),
-    ).toBe(false);
   });
 
   it('drops the reserved marker from text that may now show values, and keeps the rest of it', () => {

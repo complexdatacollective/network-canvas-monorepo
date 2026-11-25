@@ -49,30 +49,35 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "2f272afb-659e-598c-b4bb-7b75f8ff5658",
               "label": {
                 "en": "Woman"
               },
               "value": "woman"
             },
             {
+              "id": "bbbb0230-891b-50c1-9eb2-e26fa208ec92",
               "label": {
                 "en": "Man"
               },
               "value": "man"
             },
             {
+              "id": "09d8bf50-cd69-5357-acde-fa721109397c",
               "label": {
                 "en": "Non-binary"
               },
               "value": "non_binary"
             },
             {
+              "id": "eb68fb6f-51c6-5c50-8a21-cc977533117b",
               "label": {
                 "en": "Another gender"
               },
               "value": "another_gender"
             },
             {
+              "id": "acbce509-14d1-5ea1-822f-88327b0e1440",
               "label": {
                 "en": "Prefer not to say"
               },
@@ -109,30 +114,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "df746fcf-883b-5162-bcc8-9ac533f59882",
               "label": {
                 "en": "Never"
               },
               "value": 0
             },
             {
+              "id": "26a7ea26-07ad-5721-b12b-4238f12ca78b",
               "label": {
                 "en": "Monthly or less"
               },
               "value": 1
             },
             {
+              "id": "c4c5aa8f-df09-5331-a75d-427d572a5f0f",
               "label": {
                 "en": "2 to 4 times a month"
               },
               "value": 2
             },
             {
+              "id": "a0c58674-b131-5845-816c-d6cc2ecaaeea",
               "label": {
                 "en": "2 to 3 times a week"
               },
               "value": 3
             },
             {
+              "id": "5bbbd9e8-14df-5bee-9afd-50a81ffbc22d",
               "label": {
                 "en": "4 or more times a week"
               },
@@ -149,30 +159,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "9c6f5c62-ae3b-5449-a26f-2c11fe842e59",
               "label": {
                 "en": "1 or 2"
               },
               "value": 0
             },
             {
+              "id": "1a486717-0c84-5e7e-8109-82f2eafe430d",
               "label": {
                 "en": "3 or 4"
               },
               "value": 1
             },
             {
+              "id": "7e0da522-3c61-5ac8-9245-ee6fb2b86c7c",
               "label": {
                 "en": "5 or 6"
               },
               "value": 2
             },
             {
+              "id": "2b70f87e-7ced-5f61-b848-f32650461635",
               "label": {
                 "en": "7 to 9"
               },
               "value": 3
             },
             {
+              "id": "9438058e-99b9-541f-aaf1-26cf2cefa4b2",
               "label": {
                 "en": "10 or more"
               },
@@ -186,30 +201,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "3ab50202-6bd3-5412-a9fa-ea72da4384dc",
               "label": {
                 "en": "Never"
               },
               "value": 0
             },
             {
+              "id": "fc05fbcd-3773-55cf-8052-e5b75762cdb4",
               "label": {
                 "en": "Less than monthly"
               },
               "value": 1
             },
             {
+              "id": "01fdda02-a32b-5f58-af7c-909c3b8445ed",
               "label": {
                 "en": "Monthly"
               },
               "value": 2
             },
             {
+              "id": "3106c9c4-f367-5ea1-a246-bbd5e320c91a",
               "label": {
                 "en": "Weekly"
               },
               "value": 3
             },
             {
+              "id": "81a597f0-9390-5803-a9d6-c1ef1c62d4a8",
               "label": {
                 "en": "Daily or almost daily"
               },
@@ -223,36 +243,42 @@
           "component": "RadioGroup",
           "options": [
             {
+              "id": "dcef273e-8d0b-5944-824c-13c1277931f9",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "a6080a4b-41d9-54c2-ae6b-95be8cd64f99",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "76dbd104-2712-525b-ab20-305916ffff1c",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "9cc22b70-881b-5fcc-87c0-58ab5b9264c6",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "0bcf6c51-8f13-59a9-8f8c-d4e48f5d4c4c",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "9094ab6a-37cc-501f-bd19-34fe053b9074",
               "label": {
                 "en": "All of the time"
               },
@@ -269,36 +295,42 @@
           "component": "RadioGroup",
           "options": [
             {
+              "id": "75bfda24-20e6-55d8-8c44-4d3bffd55b07",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "c8bd6d56-3d4a-5f8f-8670-211364820563",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "357b9db4-e0f2-5d31-9224-cb1cb7bf0c0a",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "fbb502e8-080d-53cd-bc89-7065260875aa",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "e15fd672-2a9f-56ad-b9d3-6d9c972912a8",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "49254bbb-c01d-575f-bf26-9801000a4d38",
               "label": {
                 "en": "All of the time"
               },
@@ -315,36 +347,42 @@
           "component": "RadioGroup",
           "options": [
             {
+              "id": "852c7321-ca8d-5770-b69a-e57834d4a16f",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "513efddc-afa0-57bb-8e94-60553cc972ea",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "ea98b50f-199b-545b-b7b9-f7d0921114d5",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "d63f5e0a-d84f-5017-b67c-c9dbb9e0d12f",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "e5870762-540f-5f01-8465-d11d90ad9181",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "817ed4ef-53e9-5aac-8f83-be417b42c96d",
               "label": {
                 "en": "All of the time"
               },
@@ -361,36 +399,42 @@
           "component": "RadioGroup",
           "options": [
             {
+              "id": "c5f23558-55dd-5f75-857f-fce7182a9a3b",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "6ecd74ce-9088-57cb-a522-6c1464012eb7",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "a37c2255-9966-5506-965a-1d19586f9664",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "bd8be0db-aa2b-5ba0-a43b-93827d1de78a",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "513c3b33-fcf4-552e-9199-df6d4c3c11e2",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "452abd6b-7bc8-53b2-9f28-a6e8749e1bbf",
               "label": {
                 "en": "All of the time"
               },
@@ -407,36 +451,42 @@
           "component": "RadioGroup",
           "options": [
             {
+              "id": "5afbef7e-db65-5aea-a3d8-c85207be23ed",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "1aec24a0-175d-5320-bbfe-1242979c8c80",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "43ba657e-73ae-5864-b42c-4920289e2c89",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "3b1eee22-a526-5ddf-a7cc-aa51a7b7ca1b",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "a46045b4-372c-5500-9de2-12019ab01a16",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "b4a05977-1b07-55de-a2cf-f8c21148f8c6",
               "label": {
                 "en": "All of the time"
               },
@@ -515,24 +565,28 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "64f81dca-61bc-538b-aac1-5721f3dc7888",
                 "label": {
                   "en": "Not very close"
                 },
                 "value": 1
               },
               {
+                "id": "746ff4b3-6ad7-5208-8ae5-63e8865f320e",
                 "label": {
                   "en": "Somewhat close"
                 },
                 "value": 2
               },
               {
+                "id": "c19f9c00-125f-5bd4-8339-1cb72f3d6e61",
                 "label": {
                   "en": "Close"
                 },
                 "value": 3
               },
               {
+                "id": "b73e5aa2-a6b5-5660-b969-97f109aaaa46",
                 "label": {
                   "en": "Very close"
                 },
@@ -546,30 +600,35 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "4308d625-6d48-5b00-99f3-eee1e522ac1b",
                 "label": {
                   "en": "Same accommodation"
                 },
                 "value": "same_accommodation"
               },
               {
+                "id": "e2d1f303-716c-578b-82fb-46121607cdc4",
                 "label": {
                   "en": "Same course"
                 },
                 "value": "same_course"
               },
               {
+                "id": "899bda9f-068a-56c0-beb9-032e6fdc1753",
                 "label": {
                   "en": "Club or society"
                 },
                 "value": "club_or_society"
               },
               {
+                "id": "7eb95543-b62a-5416-ad25-19616a3c0514",
                 "label": {
                   "en": "Through other friends"
                 },
                 "value": "through_other_friends"
               },
               {
+                "id": "10e16d97-c284-5168-a9ec-9e2556122988",
                 "label": {
                   "en": "Knew before university"
                 },
@@ -591,18 +650,21 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "0032e476-1eb1-5fac-898d-7b16c1661796",
                 "label": {
                   "en": "Yes"
                 },
                 "value": "yes"
               },
               {
+                "id": "2a301122-5fac-543b-ae19-028c3d7e9920",
                 "label": {
                   "en": "No"
                 },
                 "value": "no"
               },
               {
+                "id": "16f4c8db-7c80-5c1e-a6dd-5adc2891758f",
                 "label": {
                   "en": "I don't know"
                 },
@@ -624,24 +686,28 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "ac0b53e6-e06c-524a-a07b-e722f78b14fd",
                 "label": {
                   "en": "Less than monthly"
                 },
                 "value": 1
               },
               {
+                "id": "cfff0fd5-834c-5fd3-afa3-343119d067ad",
                 "label": {
                   "en": "Monthly"
                 },
                 "value": 2
               },
               {
+                "id": "5d9a2a5c-5a05-5317-8fa3-a34d0234118b",
                 "label": {
                   "en": "Weekly"
                 },
                 "value": 3
               },
               {
+                "id": "08b938c4-b289-5216-810f-8614b886207b",
                 "label": {
                   "en": "Several times a week"
                 },

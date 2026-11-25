@@ -27,7 +27,11 @@ import {
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import {
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../testing/testId.ts';
 import { richTextOf } from '../../testing/text.ts';
 import BooleanAnswersField from '../BooleanAnswersField.tsx';
 
@@ -161,7 +165,11 @@ function renderAttributeEditor(
   const committed = {
     name: 'closeness',
     type: 'ordinal',
-    options,
+    // Every stored option row carries an id.
+    options: options.map((option) => ({
+      id: testOptionId(CLOSENESS, option.value),
+      ...option,
+    })),
   };
   const props: VariableEditorProps = {
     openId: 'open-1',

@@ -460,16 +460,24 @@ describe('option labels', () => {
     name: 'Colour',
     type: 'categorical',
     options: [
-      { label, value: 'red' },
-      { label: localized('Blue'), value: 'blue' },
+      { id: testId('non-blank-text-option-1'), label, value: 'red' },
+      {
+        id: testId('non-blank-text-option-2'),
+        label: localized('Blue'),
+        value: 'blue',
+      },
     ],
   });
   const ordinalVariable = (label: Record<string, string>) => ({
     name: 'Closeness',
     type: 'ordinal',
     options: [
-      { label, value: 1 },
-      { label: localized('Very close'), value: 2 },
+      { id: testId('non-blank-text-option-3'), label, value: 1 },
+      {
+        id: testId('non-blank-text-option-4'),
+        label: localized('Very close'),
+        value: 2,
+      },
     ],
   });
 

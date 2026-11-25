@@ -6,9 +6,11 @@ import { describe, expect, it } from 'vitest';
 import {
   asEntityAttributeReference,
   type Codebook,
+  dynamicValueNameFor,
   getLocaleMetadata,
   type NodeLabel,
   NodeLabelSchema,
+  optionCaseKey,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -34,6 +36,38 @@ const FAR = testTypeId('far');
 const NAME_VAR = testVariableId('nameVar');
 const KIND = testVariableId('kind');
 const BEDS = testVariableId('beds');
+const HOSPITAL = testId('option hospital');
+const SCHOOL = testId('option school');
+
+/** The names a label's text gives what it shows. */
+const NAMES = {
+  name: dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'node',
+    variableId: NAME_VAR,
+  }),
+  kind: dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'node',
+    variableId: KIND,
+  }),
+  beds: dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'node',
+    variableId: BEDS,
+  }),
+  label: dynamicValueNameFor({ kind: 'label', role: 'node' }),
+};
+const HOSPITAL_CASE = optionCaseKey(HOSPITAL);
+const SCHOOL_CASE = optionCaseKey(SCHOOL);
+/** A condition's id, and the name text gives it. */
+const conditionNamed = (label: string) => {
+  const id = testId(`condition ${label}`);
+  return {
+    id,
+    name: dynamicValueNameFor({ kind: 'condition', conditionId: id }),
+  };
+};
 
 const place = (
   id: string,
@@ -77,8 +111,8 @@ function storeWith(
             name: 'kind',
             type: 'ordinal',
             options: [
-              { label: { en: 'Hospital' }, value: 'hospital' },
-              { label: { en: 'School' }, value: 'school' },
+              { id: HOSPITAL, label: { en: 'Hospital' }, value: 'hospital' },
+              { id: SCHOOL, label: { en: 'School' }, value: 'school' },
             ],
           },
           [BEDS]: { name: 'beds', type: 'number' },
@@ -164,14 +198,7 @@ function renderLabel(store: TestStore, node: NcNode) {
 
 const SWITCH_LABEL: NodeLabel = {
   text: {
-    en: '{kind, select, missing {} hospital {🏥 } school {🏫 } other {}}{nodeLabel}',
-  },
-  dynamicValues: {
-    kind: {
-      path: `node.${KIND}`,
-      cases: { hospital: 'hospital', school: 'school' },
-    },
-    nodeLabel: { path: 'node.$label' },
+    en: `{${NAMES.kind}, select, missing {} ${HOSPITAL_CASE} {🏥 } ${SCHOOL_CASE} {🏫 } other {}}{${NAMES.label}}`,
   },
 };
 
@@ -215,8 +242,9 @@ describe('a node type’s own label', () => {
     const node = place('a', {});
     const store = storeWith(
       {
-        text: { en: '{name, select, missing {} other {{name}}}' },
-        dynamicValues: { name: { path: `node.${NAME_VAR}` } },
+        text: {
+          en: `{${NAMES.name}, select, missing {} other {{${NAMES.name}}}}`,
+        },
       },
       [node],
     );
@@ -226,12 +254,7 @@ describe('a node type’s own label', () => {
   it('nests a version inside another', () => {
     const label: NodeLabel = {
       text: {
-        en: '{kind, select, missing {} hospital {{beds, select, missing {🏥} other {{beds, plural, one {🏥 # bed} other {🏥 # beds}}}}} other {}} {nodeLabel}',
-      },
-      dynamicValues: {
-        kind: { path: `node.${KIND}`, cases: { hospital: 'hospital' } },
-        beds: { path: `node.${BEDS}` },
-        nodeLabel: { path: 'node.$label' },
+        en: `{${NAMES.kind}, select, missing {} ${HOSPITAL_CASE} {{${NAMES.beds}, select, missing {🏥} other {{${NAMES.beds}, plural, one {🏥 # bed} other {🏥 # beds}}}}} other {}} {${NAMES.label}}`,
       },
     };
     const big = place('a', {
@@ -250,17 +273,13 @@ describe('a node type’s own label', () => {
   });
 
   it('chooses a version by a condition’s rules, met or not', () => {
+    const large = conditionNamed('large');
     const label: NodeLabel = NodeLabelSchema.parse({
       text: {
-        en: '{large, select, yes {⭐ } other {}}{small, select, no {· } other {}}{nodeLabel}',
-      },
-      dynamicValues: {
-        large: { path: '$condition.large', cases: { yes: true } },
-        small: { path: '$condition.large', cases: { no: false } },
-        nodeLabel: { path: 'node.$label' },
+        en: `{${large.name}, select, true {⭐ } other {}}{${large.name}, select, false {· } other {}}{${NAMES.label}}`,
       },
       conditions: {
-        large: {
+        [large.id]: {
           about: 'node',
           join: 'AND',
           rules: [
@@ -288,7 +307,7 @@ describe('a node type’s own label', () => {
         },
       },
     });
-    const large = place('a', {
+    const big = place('a', {
       [NAME_VAR]: 'A',
       [KIND]: 'hospital',
       [BEDS]: 400,
@@ -298,8 +317,8 @@ describe('a node type’s own label', () => {
       [KIND]: 'hospital',
       [BEDS]: 40,
     });
-    const store = storeWith(label, [large, small]);
-    expect(renderLabel(store, large).result.current).toBe('⭐ A');
+    const store = storeWith(label, [big, small]);
+    expect(renderLabel(store, big).result.current).toBe('⭐ A');
     expect(renderLabel(store, small).result.current).toBe('· B');
   });
 
@@ -311,8 +330,10 @@ describe('a node type’s own label', () => {
     const node = place('a', { [NAME_VAR]: 'A' });
     const store = storeWith(
       {
-        text: { en: 'Place {nodeLabel}', es: 'Lugar {nodeLabel}' },
-        dynamicValues: { nodeLabel: { path: 'node.$label' } },
+        text: {
+          en: `Place {${NAMES.label}}`,
+          es: `Lugar {${NAMES.label}}`,
+        },
       },
       [node],
       [],
@@ -330,22 +351,19 @@ describe('a label that follows how its node is connected', () => {
     about: 'node',
     rules: [{ type: 'edge', id: testId(id), options }],
   });
+  const linked = conditionNamed('linked');
+  const near = conditionNamed('near');
+  const most = conditionNamed('most');
+  const least = conditionNamed('least');
   const label: NodeLabel = NodeLabelSchema.parse({
     text: {
-      en: '{linked, select, yes {🔗 } other {}}{near, select, yes {📍 } other {}}{most, select, yes {👑 } other {}}{least, select, yes {🌱 } other {}}{nodeLabel}',
-    },
-    dynamicValues: {
-      linked: { path: '$condition.linked', cases: { yes: true } },
-      near: { path: '$condition.near', cases: { yes: true } },
-      most: { path: '$condition.most', cases: { yes: true } },
-      least: { path: '$condition.least', cases: { yes: true } },
-      nodeLabel: { path: 'node.$label' },
+      en: `{${linked.name}, select, true {🔗 } other {}}{${near.name}, select, true {📍 } other {}}{${most.name}, select, true {👑 } other {}}{${least.name}, select, true {🌱 } other {}}{${NAMES.label}}`,
     },
     conditions: {
-      linked: edgeRule('r1', { count: 'GREATER_THAN', value: 0 }),
-      near: edgeRule('r2', { type: NEAR, operator: 'EXISTS' }),
-      most: edgeRule('r3', { count: 'MOST' }),
-      least: edgeRule('r4', { count: 'FEWEST' }),
+      [linked.id]: edgeRule('r1', { count: 'GREATER_THAN', value: 0 }),
+      [near.id]: edgeRule('r2', { type: NEAR, operator: 'EXISTS' }),
+      [most.id]: edgeRule('r3', { count: 'MOST' }),
+      [least.id]: edgeRule('r4', { count: 'FEWEST' }),
     },
   });
   const a = place('a', { [NAME_VAR]: 'A' });
@@ -402,13 +420,14 @@ describe('a label that follows how its node is connected', () => {
 
   it('does not redraw a node whose facts an edge elsewhere leaves alone', async () => {
     const onlyLinked: NodeLabel = NodeLabelSchema.parse({
-      text: { en: '{linked, select, yes {🔗 } other {}}{nodeLabel}' },
-      dynamicValues: {
-        linked: { path: '$condition.linked', cases: { yes: true } },
-        nodeLabel: { path: 'node.$label' },
+      text: {
+        en: `{${linked.name}, select, true {🔗 } other {}}{${NAMES.label}}`,
       },
       conditions: {
-        linked: edgeRule('r1', { count: 'GREATER_THAN_OR_EQUAL', value: 1 }),
+        [linked.id]: edgeRule('r1', {
+          count: 'GREATER_THAN_OR_EQUAL',
+          value: 1,
+        }),
       },
     });
     const store = storeWith(onlyLinked, [a, b, c, d]);

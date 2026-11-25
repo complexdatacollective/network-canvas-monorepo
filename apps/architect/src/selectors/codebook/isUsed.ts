@@ -1,6 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 
-import { parseDynamicValuePath } from '@codaco/protocol-validation';
+import { dynamicValueReferencesIn } from '@codaco/protocol-validation';
 import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import type { RootState } from '~/ducks/store';
 
@@ -38,6 +38,25 @@ const isUsedMapEquals = (a: IsUsedMap, b: IsUsedMap): boolean => {
 const getLiveStageValues = (_state: RootState) => readStageDraft().stage;
 
 /**
+ * The attributes the text anywhere in `value` shows or chooses its wording
+ * by. Text names an attribute inside a longer name (`ego_<id>`, with the id's
+ * hyphens written as underscores), which a search for the id cannot find.
+ */
+const attributesShownIn = (value: unknown, found: Set<string>): Set<string> => {
+  if (typeof value === 'string') {
+    if (!value.includes('{')) return found;
+    for (const { parsed } of dynamicValueReferencesIn(value)) {
+      if (parsed?.kind === 'attribute') found.add(parsed.variableId);
+    }
+  } else if (Array.isArray(value)) {
+    for (const item of value) attributesShownIn(item, found);
+  } else if (typeof value === 'object' && value !== null) {
+    for (const item of Object.values(value)) attributesShownIn(item, found);
+  }
+  return found;
+};
+
+/**
  * Gets a key value object describing which variables are in use, including by
  * the stage currently being edited but not yet saved.
  *
@@ -72,14 +91,7 @@ export const getIsUsed = createSelector(
     const referencedVariables = new Set(Object.values(variableIndex));
 
     const liveStageData = liveValues ? JSON.stringify(liveValues) : '';
-    // A piped-text binding names its attribute inside a longer path
-    // (`ego.<id>`), which the string search cannot find.
-    const shownByLiveStage = new Set(
-      Object.values(liveValues?.dynamicValues ?? {}).flatMap(({ path }) => {
-        const parsed = parseDynamicValuePath(path);
-        return parsed?.kind === 'attribute' ? [parsed.variableId] : [];
-      }),
-    );
+    const shownByLiveStage = attributesShownIn(liveValues, new Set());
 
     return variableIds.reduce<IsUsedMap>((memo, variableId) => {
       const inProtocol = referencedVariables.has(variableId);

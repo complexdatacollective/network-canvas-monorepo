@@ -1,4 +1,5 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { dynamicValueNameFor } from '@codaco/protocol-validation';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { OneToManyDyadCensusFixture } from '../fixtures/one-to-many-dyad-census-fixture.js';
@@ -125,9 +126,11 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
           subject: { entity: 'node', type: person.id },
           behaviours: { removeAfterConsideration: false },
         });
-        stage.stageEntry.dynamicValues = {
-          focal: { path: `one_to_many.focal.${nameVarId}` },
-        };
+        const focal = dynamicValueNameFor({
+          kind: 'attribute',
+          role: 'focal',
+          variableId: nameVarId,
+        });
         synth.addManualNode(stage.id, person.id, 'p-carol', {
           [nameVarId]: 'Carol',
         });
@@ -139,8 +142,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         });
         stage.addPrompt({
           text: {
-            'en-US':
-              '{focal, select, missing {Who does this person know?} other {Who does {focal} know?}}',
+            'en-US': `{${focal}, select, missing {Who does this person know?} other {Who does {${focal}} know?}}`,
           },
           createEdge: friendship.id,
         });

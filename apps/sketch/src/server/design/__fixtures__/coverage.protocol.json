@@ -165,36 +165,42 @@
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "294163b3-66b9-5617-b093-fc116105bc5f",
                 "label": {
                   "en": "Faculty"
                 },
                 "value": "faculty"
               },
               {
+                "id": "149e8cc8-37e2-5975-84ff-40b08fa8962d",
                 "label": {
                   "en": "Peer mentor"
                 },
                 "value": "peer_mentor"
               },
               {
+                "id": "e8401663-3c5e-5c4e-8632-2c56835d81b9",
                 "label": {
                   "en": "Nobody"
                 },
                 "value": "nobody"
               },
               {
+                "id": "51ada809-7940-5f69-90c9-e472d23c0b97",
                 "label": {
                   "en": "Another adviser"
                 },
                 "value": "another_adviser"
               },
               {
+                "id": "6c47bf6e-4755-55bc-b636-bc5bc1ff424f",
                 "label": {
                   "en": "Not sure"
                 },
                 "value": "not_sure"
               },
               {
+                "id": "a0d27ea2-fc33-599b-82aa-91f6f041be68",
                 "label": {
                   "en": "Prefer not to say"
                 },
@@ -238,24 +244,28 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "2e22af1c-9d9c-5cf6-b0a9-4054a2eb0ef1",
                 "label": {
                   "en": "Rarely"
                 },
                 "value": 1
               },
               {
+                "id": "392ea978-cc8d-5283-8160-4d610706e719",
                 "label": {
                   "en": "Monthly"
                 },
                 "value": 2
               },
               {
+                "id": "95eb027e-2496-55b7-89bd-dc7e369574ad",
                 "label": {
                   "en": "Weekly"
                 },
                 "value": 3
               },
               {
+                "id": "ade7cd6e-7828-55f1-9f68-9f08ecbd120d",
                 "label": {
                   "en": "Daily"
                 },
@@ -269,24 +279,28 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "e86fc2c7-5c88-525c-94f8-35dce0aadbe0",
                 "label": {
                   "en": "Study"
                 },
                 "value": "study"
               },
               {
+                "id": "f7ed41c5-e3a6-5e45-a6de-77b910c8a956",
                 "label": {
                   "en": "Eat"
                 },
                 "value": "eat"
               },
               {
+                "id": "71dac772-2045-57a1-9c4b-b1bb4eef4b8b",
                 "label": {
                   "en": "Socialise"
                 },
                 "value": "socialise"
               },
               {
+                "id": "50ec40c0-74a6-5aa2-9b52-fefc52b1ceee",
                 "label": {
                   "en": "Exercise"
                 },
@@ -346,18 +360,21 @@
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "2ec263ad-0826-5f73-82db-472b16573c91",
                 "label": {
                   "en": "Department"
                 },
                 "value": "department"
               },
               {
+                "id": "ff601319-b966-5abf-b6e5-15b4ac315c56",
                 "label": {
                   "en": "Clubs"
                 },
                 "value": "clubs"
               },
               {
+                "id": "8bb812dc-69a4-50d1-915e-dc3dd5282c23",
                 "label": {
                   "en": "Family"
                 },
@@ -379,18 +396,21 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "e47f9f12-aedf-5e0d-b98a-b4fd67f84932",
                 "label": {
                   "en": "Acquaintances"
                 },
                 "value": 1
               },
               {
+                "id": "a07ae4ac-7902-5672-be9b-78af887d77af",
                 "label": {
                   "en": "Friends"
                 },
                 "value": 2
               },
               {
+                "id": "d8967014-8135-533f-a583-00986bf12450",
                 "label": {
                   "en": "Close friends"
                 },

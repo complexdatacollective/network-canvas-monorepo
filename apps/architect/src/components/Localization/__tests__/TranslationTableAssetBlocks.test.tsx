@@ -100,8 +100,9 @@ describe('TranslationTable: files placed in the text of an Information stage', (
   });
 
   // Whether text is drawn with its blocks is the field's to say, not
-  // whether today's text runs over more than one line. A page whose stage
-  // binds a value is drawn as text that shows values.
+  // whether today's text runs over more than one line. A page whose text
+  // shows a value is drawn as text that shows values, in each language,
+  // including one whose translation is the file alone.
   it('names the file in a page that holds nothing else', () => {
     const [information, ...rest] = protocol.stages;
     renderTable({
@@ -117,10 +118,7 @@ describe('TranslationTable: files placed in the text of an Information stage', (
       stages: [
         {
           ...information,
-          content: { en: BLOCK, fr: BLOCK },
-          dynamicValues: {
-            name: { path: `ego.${testVariableId('firstName')}` },
-          },
+          content: { en: `${BLOCK}\n\nToday is {now}.`, fr: BLOCK },
         },
         ...rest,
       ],

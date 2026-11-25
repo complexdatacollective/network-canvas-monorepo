@@ -6,7 +6,6 @@ import {
 } from '../../../localization/messageSyntax.ts';
 import { SkipLogicSchema } from '../common/index.ts';
 import { ConditionsSchema } from '../conditions.ts';
-import { DynamicValuesSchema } from '../dynamic-values.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { protocolObjectId } from '../protocol-object-id.ts';
 
@@ -60,10 +59,8 @@ export const baseStageSchema = z.strictObject({
     lines: 'single',
   }),
   skipLogic: SkipLogicSchema.optional(),
-  // Values from the interview the stage's text may show, by the argument name
-  // its messages use (see `dynamic-values.ts`).
-  dynamicValues: DynamicValuesSchema.optional(),
   // The conditions the stage's text chooses its wording by (see
-  // `conditions.ts`); a binding names one by `$condition.<id>`.
+  // `conditions.ts`); text names one by `condition_<id>` (see
+  // `dynamic-values.ts`).
   conditions: ConditionsSchema.optional(),
 });

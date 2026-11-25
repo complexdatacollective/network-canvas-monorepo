@@ -5,6 +5,7 @@ import {
   unionBranchIssues,
 } from '../../../__tests__/schemaIssues.ts';
 import {
+  testId,
   testVariableId,
   withTestCodebookIds,
 } from '../../../__tests__/testIds.ts';
@@ -86,8 +87,16 @@ describe('variable schema conformance', () => {
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
-          { label: localized('a'), value: 1 },
-          { label: localized('b'), value: 2 },
+          {
+            id: testId('variables-conformance-option-1'),
+            label: localized('a'),
+            value: 1,
+          },
+          {
+            id: testId('variables-conformance-option-2'),
+            label: localized('b'),
+            value: 2,
+          },
         ],
         validation: { minSelected: 1 },
       });
@@ -106,8 +115,16 @@ describe('variable schema conformance', () => {
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
-          { label: localized('a'), value: 1 },
-          { label: localized('b'), value: 2 },
+          {
+            id: testId('variables-conformance-option-3'),
+            label: localized('a'),
+            value: 1,
+          },
+          {
+            id: testId('variables-conformance-option-4'),
+            label: localized('b'),
+            value: 2,
+          },
         ],
         validation: { maxSelected: 3 },
       });
@@ -126,8 +143,16 @@ describe('variable schema conformance', () => {
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [
-          { label: localized('a'), value: 1 },
-          { label: localized('b'), value: 2 },
+          {
+            id: testId('variables-conformance-option-5'),
+            label: localized('a'),
+            value: 1,
+          },
+          {
+            id: testId('variables-conformance-option-6'),
+            label: localized('b'),
+            value: 2,
+          },
         ],
         validation: { minSelected: 1, maxSelected: 2 },
       });
@@ -140,8 +165,16 @@ describe('variable schema conformance', () => {
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
-          { label: localized('a'), value: 1 },
-          { label: localized('b'), value: 2 },
+          {
+            id: testId('variables-conformance-option-7'),
+            label: localized('a'),
+            value: 1,
+          },
+          {
+            id: testId('variables-conformance-option-8'),
+            label: localized('b'),
+            value: 2,
+          },
         ],
         validation: { required: true },
       });
@@ -156,8 +189,16 @@ describe('variable schema conformance', () => {
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [
-          { label: localized('True opt'), value: true },
-          { label: localized('Strong'), value: 'strong' },
+          {
+            id: testId('variables-conformance-option-true'),
+            label: localized('True opt'),
+            value: true,
+          },
+          {
+            id: testId('variables-conformance-option-9'),
+            label: localized('Strong'),
+            value: 'strong',
+          },
         ],
       });
       expect(unionBranchIssues(result)).toContainEqual([
@@ -171,8 +212,16 @@ describe('variable schema conformance', () => {
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
-          { label: localized('True opt'), value: true },
-          { label: localized('Strong'), value: 'strong' },
+          {
+            id: testId('variables-conformance-option-true'),
+            label: localized('True opt'),
+            value: true,
+          },
+          {
+            id: testId('variables-conformance-option-10'),
+            label: localized('Strong'),
+            value: 'strong',
+          },
         ],
       });
       expect(unionBranchIssues(result)).toContainEqual([
@@ -186,8 +235,16 @@ describe('variable schema conformance', () => {
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [
-          { label: localized('one'), value: 1 },
-          { label: localized('two'), value: 'two' },
+          {
+            id: testId('variables-conformance-option-11'),
+            label: localized('one'),
+            value: 1,
+          },
+          {
+            id: testId('variables-conformance-option-12'),
+            label: localized('two'),
+            value: 'two',
+          },
         ],
       });
       expect(result.success).toBe(true);
@@ -200,7 +257,13 @@ describe('variable schema conformance', () => {
         name: 'cat',
         type: 'categorical',
         component: 'CheckboxGroup',
-        options: [{ label: localized('only'), value: 'only' }],
+        options: [
+          {
+            id: testId('variables-conformance-option-13'),
+            label: localized('only'),
+            value: 'only',
+          },
+        ],
       });
       expect(parseIssues(result)).toEqual([
         { path: 'options', code: 'too_small' },
@@ -224,7 +287,13 @@ describe('variable schema conformance', () => {
         name: 'ord',
         type: 'ordinal',
         component: 'RadioGroup',
-        options: [{ label: localized('only'), value: 'only' }],
+        options: [
+          {
+            id: testId('variables-conformance-option-14'),
+            label: localized('only'),
+            value: 'only',
+          },
+        ],
       });
       expect(parseIssues(result)).toEqual([
         { path: 'options', code: 'too_small' },
@@ -237,8 +306,16 @@ describe('variable schema conformance', () => {
         type: 'categorical',
         component: 'CheckboxGroup',
         options: [
-          { label: localized('a'), value: 'a' },
-          { label: localized('b'), value: 'b' },
+          {
+            id: testId('variables-conformance-option-15'),
+            label: localized('a'),
+            value: 'a',
+          },
+          {
+            id: testId('variables-conformance-option-16'),
+            label: localized('b'),
+            value: 'b',
+          },
         ],
       });
       expect(result.success).toBe(true);
@@ -250,8 +327,16 @@ describe('variable schema conformance', () => {
         type: 'ordinal',
         component: 'RadioGroup',
         options: [
-          { label: localized('a'), value: 'a' },
-          { label: localized('b'), value: 'b' },
+          {
+            id: testId('variables-conformance-option-17'),
+            label: localized('a'),
+            value: 'a',
+          },
+          {
+            id: testId('variables-conformance-option-18'),
+            label: localized('b'),
+            value: 'b',
+          },
         ],
       });
       expect(result.success).toBe(true);
@@ -268,6 +353,7 @@ describe('variable schema conformance', () => {
       name: type,
       type,
       options: values.map((value, index) => ({
+        id: testId(`${type}-option-${index}`),
         label: localized(`Option ${index + 1}`),
         value,
       })),

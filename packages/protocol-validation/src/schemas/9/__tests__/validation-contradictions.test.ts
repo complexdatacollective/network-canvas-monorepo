@@ -5,6 +5,7 @@ import { dateWithinPickerRange } from '@codaco/shared-consts';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import {
+  testId,
   testVariableId,
   withTestCodebookIds,
 } from '../../../__tests__/testIds.ts';
@@ -59,8 +60,16 @@ describe('findValidationContradictions — local checks', () => {
         name: 'colors',
         type: 'categorical',
         options: [
-          { label: localized('Red'), value: 'red' },
-          { label: localized('Blue'), value: 'blue' },
+          {
+            id: testId('validation-contradictions-option-1'),
+            label: localized('Red'),
+            value: 'red',
+          },
+          {
+            id: testId('validation-contradictions-option-2'),
+            label: localized('Blue'),
+            value: 'blue',
+          },
         ],
         validation: { minSelected: 4, maxSelected: 1 },
       },
@@ -78,8 +87,16 @@ describe('findValidationContradictions — local checks', () => {
         name: 'colors',
         type: 'categorical',
         options: [
-          { label: localized('Red'), value: 'red' },
-          { label: localized('Blue'), value: 'blue' },
+          {
+            id: testId('validation-contradictions-option-3'),
+            label: localized('Red'),
+            value: 'red',
+          },
+          {
+            id: testId('validation-contradictions-option-4'),
+            label: localized('Blue'),
+            value: 'blue',
+          },
         ],
         validation: { minSelected: 3 },
       },
@@ -147,9 +164,21 @@ describe('findValidationContradictions — local checks', () => {
         name: 'colors',
         type: 'categorical',
         options: [
-          { label: localized('Red'), value: 'x' },
-          { label: localized('Red (again)'), value: 'x' },
-          { label: localized('Blue'), value: 'y' },
+          {
+            id: testId('validation-contradictions-option-5'),
+            label: localized('Red'),
+            value: 'x',
+          },
+          {
+            id: testId('validation-contradictions-option-6'),
+            label: localized('Red (again)'),
+            value: 'x',
+          },
+          {
+            id: testId('validation-contradictions-option-7'),
+            label: localized('Blue'),
+            value: 'y',
+          },
         ],
         validation: { minSelected: 3 },
       },
@@ -171,9 +200,21 @@ describe('findValidationContradictions — local checks', () => {
           name: 'colors',
           type: 'categorical',
           options: [
-            { label: localized('Red'), value: 'x' },
-            { label: localized('Red (again)'), value: 'x' },
-            { label: localized('Blue'), value: 'y' },
+            {
+              id: testId('validation-contradictions-option-8'),
+              label: localized('Red'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-9'),
+              label: localized('Red (again)'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-10'),
+              label: localized('Blue'),
+              value: 'y',
+            },
           ],
           validation: { minSelected: 2 },
         },
@@ -193,8 +234,16 @@ describe('findValidationContradictions — local checks', () => {
           name: 'colors',
           type: 'categorical',
           options: [
-            { label: localized('Red'), value: 'red' },
-            { label: localized('Blue'), value: 'blue' },
+            {
+              id: testId('validation-contradictions-option-11'),
+              label: localized('Red'),
+              value: 'red',
+            },
+            {
+              id: testId('validation-contradictions-option-12'),
+              label: localized('Blue'),
+              value: 'blue',
+            },
           ],
           validation: { minSelected: 2, maxSelected: 2 },
         },
@@ -2903,8 +2952,16 @@ describe('R1 — absolute floors on count-valued rules', () => {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: localized('Red'), value: 'red' },
-        { label: localized('Blue'), value: 'blue' },
+        {
+          id: testId('validation-contradictions-option-13'),
+          label: localized('Red'),
+          value: 'red',
+        },
+        {
+          id: testId('validation-contradictions-option-14'),
+          label: localized('Blue'),
+          value: 'blue',
+        },
       ],
       validation,
     });
@@ -3785,7 +3842,13 @@ describe('findValidationContradictions — twenty-first-wave Finding 2: coarse p
     ) => ({
       name,
       type: 'categorical',
-      options: [{ label: localized('X'), value: 'x' }],
+      options: [
+        {
+          id: testId('validation-contradictions-option-15'),
+          label: localized('X'),
+          value: 'x',
+        },
+      ],
       // Stray fields a prior schema revision or hand-edited fixture could
       // still carry; a categorical variable never reads these.
       component: 'DatePicker',
@@ -5395,22 +5458,42 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
       a: {
         name: 'a',
         type: 'categorical',
-        options: [{ label: localized('X'), value: 'x' }],
+        options: [
+          {
+            id: testId('validation-contradictions-option-16'),
+            label: localized('X'),
+            value: 'x',
+          },
+        ],
         validation: { sameAs: 'c' },
       },
       c: {
         name: 'c',
         type: 'categorical',
         options: [
-          { label: localized('X'), value: 'x' },
-          { label: localized('Y'), value: 'y' },
+          {
+            id: testId('validation-contradictions-option-17'),
+            label: localized('X'),
+            value: 'x',
+          },
+          {
+            id: testId('validation-contradictions-option-18'),
+            label: localized('Y'),
+            value: 'y',
+          },
         ],
         validation: { differentFrom: 'd' },
       },
       d: {
         name: 'd',
         type: 'categorical',
-        options: [{ label: localized('X'), value: 'x' }],
+        options: [
+          {
+            id: testId('validation-contradictions-option-19'),
+            label: localized('X'),
+            value: 'x',
+          },
+        ],
       },
     });
     expect(result).toHaveLength(1);
@@ -6490,22 +6573,44 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs
         name: 'a',
         type: 'ordinal',
         options: [
-          { label: localized('One'), value: 1 },
-          { label: localized('Two'), value: 2 },
+          {
+            id: testId('validation-contradictions-option-20'),
+            label: localized('One'),
+            value: 1,
+          },
+          {
+            id: testId('validation-contradictions-option-21'),
+            label: localized('Two'),
+            value: 2,
+          },
         ],
         validation: { sameAs: 'e', differentFrom: 'd' },
       },
       d: {
         name: 'd',
         type: 'ordinal',
-        options: [{ label: localized('Two'), value: 2 }],
+        options: [
+          {
+            id: testId('validation-contradictions-option-22'),
+            label: localized('Two'),
+            value: 2,
+          },
+        ],
       },
       e: {
         name: 'e',
         type: 'ordinal',
         options: [
-          { label: localized('Two'), value: 2 },
-          { label: localized('Three'), value: 3 },
+          {
+            id: testId('validation-contradictions-option-23'),
+            label: localized('Two'),
+            value: 2,
+          },
+          {
+            id: testId('validation-contradictions-option-24'),
+            label: localized('Three'),
+            value: 3,
+          },
         ],
       },
     });
@@ -7607,8 +7712,16 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
           name: 'x',
           type: 'categorical',
           options: [
-            { label: localized('X'), value: 'x' },
-            { label: localized('Y'), value: 'y' },
+            {
+              id: testId('validation-contradictions-option-25'),
+              label: localized('X'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-26'),
+              label: localized('Y'),
+              value: 'y',
+            },
           ],
           validation: { differentFrom: 'y' },
         },
@@ -7616,8 +7729,16 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
           name: 'y',
           type: 'categorical',
           options: [
-            { label: localized('X'), value: 'x' },
-            { label: localized('Y'), value: 'y' },
+            {
+              id: testId('validation-contradictions-option-27'),
+              label: localized('X'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-28'),
+              label: localized('Y'),
+              value: 'y',
+            },
           ],
           validation: { differentFrom: 'z' },
         },
@@ -7625,8 +7746,16 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
           name: 'z',
           type: 'categorical',
           options: [
-            { label: localized('X'), value: 'x' },
-            { label: localized('Y'), value: 'y' },
+            {
+              id: testId('validation-contradictions-option-29'),
+              label: localized('X'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-30'),
+              label: localized('Y'),
+              value: 'y',
+            },
           ],
           validation: { differentFrom: 'x' },
         },

@@ -1,20 +1,24 @@
 import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import {
   type CurrentProtocol,
+  dynamicValueNameFor,
   ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 
-type Stage = CurrentProtocol['stages'][number];
+/** The participant's first name, as text names it. */
+export const FIRST_NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: testVariableId('firstName'),
+});
 
 /**
  * A protocol in English and French with one Information stage whose content
- * is `content`. The stage binds `dynamicValues`, each of which may read
- * the ego's `firstName`. Not parsed, so a test can give it text the schema
- * refuses.
+ * is `content`, which may show the ego's `firstName` (`FIRST_NAME`). Not
+ * parsed, so a test can give it text the schema refuses.
  */
 export const dynamicValuesProtocol = (
   content: Record<string, string>,
-  dynamicValues?: Stage['dynamicValues'],
 ): CurrentProtocol => ({
   name: 'Study',
   schemaVersion: 9,
@@ -35,7 +39,6 @@ export const dynamicValuesProtocol = (
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
       content,
-      ...(dynamicValues === undefined ? {} : { dynamicValues }),
     },
   ],
 });

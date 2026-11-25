@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  dynamicValueNameFor,
   type LocaleTag,
   type LocalizationDeclaration,
   type LocalizedString,
@@ -82,7 +83,10 @@ const makeCodebook = (
           name: 'strength',
           type: 'ordinal',
           component: 'RadioGroup',
-          options,
+          options: options.map((option) => ({
+            id: testId(`option ${String(option.value)}`),
+            ...option,
+          })),
         },
       },
     },
@@ -368,16 +372,24 @@ describe('TieStrengthCensus dynamic values', () => {
     renderInterface([], codebook, false, {
       stage: {
         ...stage,
-        dynamicValues: {
-          first: { path: `dyad.source.${NAME_VAR}` },
-          second: { path: `dyad.target.${NAME_VAR}` },
-        },
-        prompts: stage.prompts.map((prompt) => ({
-          ...prompt,
-          negativeLabel: {
-            en: '{first, select, missing {Not close} other {{first} and {second} are not close}}',
-          },
-        })),
+        prompts: stage.prompts.map((prompt) => {
+          const firstName = dynamicValueNameFor({
+            kind: 'attribute',
+            role: 'dyadSource',
+            variableId: NAME_VAR,
+          });
+          const secondName = dynamicValueNameFor({
+            kind: 'attribute',
+            role: 'dyadTarget',
+            variableId: NAME_VAR,
+          });
+          return {
+            ...prompt,
+            negativeLabel: {
+              en: `{${firstName}, select, missing {Not close} other {{${firstName}} and {${secondName}} are not close}}`,
+            },
+          };
+        }),
       } as StageProps<'TieStrengthCensus'>['stage'],
       nodes: [
         { ...first!, [entityAttributesProperty]: { [NAME_VAR]: 'Ada' } },
@@ -397,13 +409,11 @@ describe('TieStrengthCensus dynamic values', () => {
     renderInterface([], codebook, false, {
       stage: {
         ...stage,
-        dynamicValues: {
-          first: { path: 'dyad.source.$label' },
-          second: { path: 'dyad.target.$label' },
-        },
         prompts: stage.prompts.map((prompt) => ({
           ...prompt,
-          negativeLabel: { en: '{first} and {second} are not close' },
+          negativeLabel: {
+            en: `{${dynamicValueNameFor({ kind: 'label', role: 'dyadSource' })}} and {${dynamicValueNameFor({ kind: 'label', role: 'dyadTarget' })}} are not close`,
+          },
         })),
       } as StageProps<'TieStrengthCensus'>['stage'],
       // The second has no name, so it is unnamed.

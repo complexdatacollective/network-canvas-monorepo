@@ -7,6 +7,7 @@ import {
   familyPedigreeWordingIn,
 } from '@codaco/interview/supplied-wording';
 import {
+  testOptionId,
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
@@ -93,8 +94,16 @@ const protocolIn = (
               type: 'categorical',
               component: 'CheckboxGroup',
               options: [
-                { label: text.options[0], value: 'close' },
-                { label: text.options[1], value: 'distant' },
+                {
+                  id: testOptionId(VARIABLE, 'close'),
+                  label: text.options[0],
+                  value: 'close',
+                },
+                {
+                  id: testOptionId(VARIABLE, 'distant'),
+                  label: text.options[1],
+                  value: 'distant',
+                },
               ],
             },
           },
@@ -205,6 +214,7 @@ const withPedigree = (
               name: 'sex',
               type: 'categorical',
               options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+                id: testOptionId(SEX, value),
                 value,
                 label: sexLabels(value),
               })),

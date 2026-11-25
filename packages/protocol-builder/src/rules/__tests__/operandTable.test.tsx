@@ -22,7 +22,7 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../testing/attributePicker.ts';
-import { testTypeId, testVariableId } from '../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
 import {
   canAuthorRuleForType,
   type OperandControl,
@@ -96,8 +96,8 @@ const personVariables: SectionDoc['variables'] = {
     type: 'ordinal',
     component: 'RadioGroup',
     options: [
-      { label: { en: 'Low' }, value: 1 },
-      { label: { en: 'High' }, value: 2 },
+      { id: testId('option/Band/1'), label: { en: 'Low' }, value: 1 },
+      { id: testId('option/Band/2'), label: { en: 'High' }, value: 2 },
     ],
   },
   [MOOD]: {
@@ -105,8 +105,12 @@ const personVariables: SectionDoc['variables'] = {
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: { en: 'Happy' }, value: 'happy' },
-      { label: { en: 'Sad' }, value: 'sad' },
+      {
+        id: testId('option/Mood/happy'),
+        label: { en: 'Happy' },
+        value: 'happy',
+      },
+      { id: testId('option/Mood/sad'), label: { en: 'Sad' }, value: 'sad' },
     ],
   },
   // The two the schema calls non-renderable: they are recorded by the stage

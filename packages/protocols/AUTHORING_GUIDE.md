@@ -47,8 +47,9 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
    stages, prompts, panels, Information `items`, form `fields`, filter `rules`, roster sort
    rules (`sortOptions.sortOrder`), `additionalAttributes` rows, roster card and sort properties
    (`cardOptions.additionalProperties`, `sortOptions.sortableProperties`), Narrative `presets`
-   and the rows of their `edges.display` and `highlight` lists, FamilyPedigree diseases and
-   NetworkComposer edge settings. Each id must be a UUID (for example
+   and the rows of their `edges.display` and `highlight` lists, FamilyPedigree diseases,
+   NetworkComposer edge settings, and the `options` of categorical and ordinal variables. Each
+   id must be a UUID (for example
    `"3f2c8a91-6b4d-4e2f-9a17-5c0d8e6b2a43"`), and no two of these objects anywhere in the
    protocol may share one, even when they are of different kinds or on different stages.
    Generate a fresh one for each object (`crypto.randomUUID()`, or `uuidgen`). Find a finish
@@ -104,11 +105,28 @@ Every participant-facing field holds an object keyed by those tags, one entry pe
   lists, then in the default language, then in any language of the protocol that has the text. The
   CLI does not report missing translations; call `analyzeProtocolLocalization` from
   `@codaco/protocol-validation` to list them.
-- **Each value is an ICU MessageFormat message made only of literal text.** Placeholders such as
-  `{name}` are not allowed. To show a literal brace, quote it: `"Pick one '{'or more'}'"` displays
+- **Each value is an ICU MessageFormat message.** Write literal text: a placeholder such as
+  `{name}` is refused. To show a literal brace, quote it: `"Pick one '{'or more'}'"` displays
   `Pick one {or more}`. An apostrophe directly before `{`, `}`, `<`, `>` or another apostrophe
   must be doubled (`''`). Any other apostrophe is literal, so `"Don't"` needs no change.
   `escapeMessageText` from `@codaco/protocol-validation` converts plain text for you.
+- **Text on a stage can show values.** A prompt, a form field's `prompt` or `hint`, Information
+  `content` and similar text may show an answer, or choose between versions of its wording by
+  one, but only with these argument names. Each id in a name is written with its hyphens as
+  underscores (`3377af3f_3c79_41da_9b0b_6570fb519b93`).
+  - `<role>_<variable id>`: an attribute of `ego`, or of the `node`, `edge`, `dyadSource`,
+    `dyadTarget` or `focal` entity that the stage asks about, where the stage has one.
+  - `<role>_label`: the label of one of those nodes, such as `node_label`.
+  - `node_isParticipant`: whether the node is the participant (Family Pedigree forms only).
+  - `condition_<condition id>`: whether one of the stage's `conditions` (rules keyed by UUID)
+    is met.
+  - `now`: today's date.
+
+  An attribute can be missing, so it may be shown only inside a version for when it has a value:
+  `{ego_<id>, select, missing {Hello!} other {Hello, {ego_<id>}!}}`. A version for one option of
+  a categorical or ordinal attribute is named by the option's `id`, with its hyphens as
+  underscores. A version for a yes/no attribute, a condition or `node_isParticipant` is named
+  `true` or `false`. The validator refuses a name or a version that the stage cannot use.
 
 Localized fields include: stage `label`; prompt `text`; form `title`; form field `prompt` and `hint`;
 `introductionPanel.title` and `.text` (Ego Form only); panel `title`; Information `content`; Narrative preset `label`, each `highlight[].label` and each `edges.display[].label`; variable
@@ -214,21 +232,24 @@ MUST match the type:
 | `layout`      | —                                      | —                                                          | needed for Sociogram/Narrative `layoutVariable`                      |
 | `location`    | —                                      | —                                                          | needed for Geospatial prompt `variable`                              |
 
-`options` (ordinal/categorical) = `[{ "label": { "en-US": "…" }, "value": <int|string|bool> }]`
-(ordinal: use integer `value`s that encode the response — normally ascending, but an
+`options` (ordinal/categorical) = `[{ "id": "<uuid>", "label": { "en-US": "…" }, "value": <int|string> }]`.
+Each option needs its own `id` (a UUID, as for every object id in §2). Answers are stored and
+exported by `value`; text names an option by its `id` (§2.1). (Ordinal: use integer `value`s that encode the response — normally ascending, but an
 instrument's official scoring may be encoded directly (e.g. reverse-scored EPDS items), so
-non-ascending integer values are allowed). Option `label`s, and a scalar's `minLabel` /
+non-ascending integer values are allowed.) Option `label`s, and a scalar's `minLabel` /
 `maxLabel`, are localized strings. Examples:
 
 ```jsonc
 "0c8f3a52-1d6e-4b7a-9f20-6e4b8d1c3a97": { "name": "alter_name", "type": "text", "component": "Text",
   "validation": { "required": true } },
 "5a2d7e19-8b3c-4f61-a0d4-c7e9f2b13658": { "name": "close_feeling", "type": "ordinal", "component": "LikertScale",
-  "options": [ {"label":{"en-US":"Not close"},"value":1}, {"label":{"en-US":"Somewhat close"},"value":2},
-               {"label":{"en-US":"Very close"},"value":3} ],
+  "options": [ {"id":"8e1d4c27-5a93-4f60-b2c8-3d7a9e05f164","label":{"en-US":"Not close"},"value":1},
+               {"id":"c49a0b6e-12f7-4d85-9e3c-a6b81f2d7530","label":{"en-US":"Somewhat close"},"value":2},
+               {"id":"1f7b3e95-c8a2-4064-8d1f-e52c9a07b6d3","label":{"en-US":"Very close"},"value":3} ],
   "validation": { "required": true } },
 "e71b4c08-3f9a-4d26-b5e1-0a8c6d2f9b43": { "name": "relationship", "type": "categorical", "component": "CheckboxGroup",
-  "options": [ {"label":{"en-US":"Family"},"value":"family"}, {"label":{"en-US":"Friend"},"value":"friend"} ] },
+  "options": [ {"id":"6b0e9f3a-4d71-48c2-a5e6-0c8d2b7f1949","label":{"en-US":"Family"},"value":"family"},
+               {"id":"d2a85c61-7e3b-4f09-b1d4-98f6e0a3c257","label":{"en-US":"Friend"},"value":"friend"} ] },
 "9d36f2a1-c04b-4e87-8a5f-b1d7e3c96024": { "name": "lives_with", "type": "boolean", "component": "Boolean",
   "options": [ {"label":{"en-US":"Yes"},"value":true}, {"label":{"en-US":"No"},"value":false} ] },
 "2f8e5b6c-a71d-4390-9c4e-d3b0a8f71e25": { "name": "start_date", "type": "datetime", "component": "DatePicker",

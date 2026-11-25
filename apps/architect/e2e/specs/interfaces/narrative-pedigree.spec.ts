@@ -1,7 +1,10 @@
 import type { Page } from '@playwright/test';
 
 import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
-import { withTestCodebookIds } from '@codaco/protocol-builder/testing/testId';
+import {
+  testOptionId,
+  withTestCodebookIds,
+} from '@codaco/protocol-builder/testing/testId';
 import {
   asEntityAttributeReference,
   type CurrentProtocol,
@@ -74,8 +77,14 @@ async function readNarrativePedigreeStage(
 // than cast here. The interface-owned option sets carry plain-string labels;
 // a protocol's codebook localizes them.
 const localizedOptions = (
+  variableName: string,
   options: readonly { value: string; label: string }[],
-) => options.map(({ value, label }) => ({ value, label: { en: label } }));
+) =>
+  options.map(({ value, label }) => ({
+    id: testOptionId(variableName, value),
+    value,
+    label: { en: label },
+  }));
 
 function protocolWithFamilyPedigreeStage(): CurrentProtocol {
   return withTestCodebookIds({
@@ -92,7 +101,10 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
             sexAssignedAtBirth: {
               name: 'sexAssignedAtBirth',
               type: 'categorical',
-              options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
+              options: localizedOptions(
+                'sexAssignedAtBirth',
+                PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+              ),
             },
             hasConditionX: {
               name: 'hasConditionX',
@@ -109,7 +121,10 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
             relationshipKind: {
               name: 'relationshipKind',
               type: 'categorical',
-              options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
+              options: localizedOptions(
+                'relationshipKind',
+                PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+              ),
             },
             isGestationalCarrier: {
               name: 'isGestationalCarrier',

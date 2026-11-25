@@ -3,7 +3,11 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Panel as PanelType, Stage } from '@codaco/protocol-validation';
+import {
+  dynamicValueNameFor,
+  type Panel as PanelType,
+  type Stage,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -303,11 +307,12 @@ describe('NodePanel title with a dynamic value', () => {
         }),
       },
     });
-    const stage = {
-      id: 'stage',
-      type: 'NameGenerator',
-      dynamicValues: { name: { path: `ego.${NAME_VAR}` } },
-    } as unknown as Stage;
+    const stage = { id: 'stage', type: 'NameGenerator' } as unknown as Stage;
+    const name = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: NAME_VAR,
+    });
 
     render(
       <Provider store={store}>
@@ -317,7 +322,7 @@ describe('NodePanel title with a dynamic value', () => {
               panelConfig={{
                 ...externalPanelConfig,
                 title: {
-                  en: '{name, select, missing {People} other {People {name} knows}}',
+                  en: `{${name}, select, missing {People} other {People {${name}} knows}}`,
                 },
               }}
               disableDragging={false}

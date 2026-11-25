@@ -136,72 +136,84 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "9f6c8391-73ab-53f9-810b-1d4a078a76f3",
                 "label": {
                   "en": "A person"
                 },
                 "value": "person"
               },
               {
+                "id": "1a799a06-a9b3-57fb-b0ba-9b0406c4bda2",
                 "label": {
                   "en": "A group"
                 },
                 "value": "group"
               },
               {
+                "id": "2849aa7c-7184-574f-b8b2-6c958a82dfcf",
                 "label": {
                   "en": "A home"
                 },
                 "value": "home"
               },
               {
+                "id": "0bb78e1b-291e-5d89-954e-4997f4603134",
                 "label": {
                   "en": "A school"
                 },
                 "value": "school"
               },
               {
+                "id": "4664108f-1930-564f-9278-d38ddf0ccb68",
                 "label": {
                   "en": "A place"
                 },
                 "value": "place"
               },
               {
+                "id": "980201db-e343-5212-a76c-e3603243d46f",
                 "label": {
                   "en": "An activity"
                 },
                 "value": "activity"
               },
               {
+                "id": "c6caef83-aeb8-5439-8452-e56392ec440e",
                 "label": {
                   "en": "A community or faith setting"
                 },
                 "value": "community"
               },
               {
+                "id": "cc127874-82f2-5cd4-8a85-97dfb32c9ba6",
                 "label": {
                   "en": "A professional or service"
                 },
                 "value": "professional"
               },
               {
+                "id": "363bdbc1-d221-5bb2-8091-de2f84c309e6",
                 "label": {
                   "en": "An animal"
                 },
                 "value": "animal"
               },
               {
+                "id": "cdf17ab9-2613-57df-a0b8-055233a23e77",
                 "label": {
                   "en": "An online space"
                 },
                 "value": "online"
               },
               {
+                "id": "942a854b-bb28-564d-81fe-a97e18e13c11",
                 "label": {
                   "en": "An object or memory"
                 },
                 "value": "memory"
               },
               {
+                "id": "3acb925d-d063-58c0-870b-d6d6d9fceec8",
                 "label": {
                   "en": "Something else"
                 },
@@ -345,72 +357,84 @@
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "a8562499-5601-5b33-a790-ce4adf27603b",
                 "label": {
                   "en": "A person"
                 },
                 "value": "person"
               },
               {
+                "id": "a61ad7f9-65eb-5143-b624-ae9407846f92",
                 "label": {
                   "en": "A group"
                 },
                 "value": "group"
               },
               {
+                "id": "5d4025cf-f967-5e76-a371-886a85f926ab",
                 "label": {
                   "en": "A home"
                 },
                 "value": "home"
               },
               {
+                "id": "899aa649-4c04-56d6-9890-0e3cb3d5dfc6",
                 "label": {
                   "en": "A school"
                 },
                 "value": "school"
               },
               {
+                "id": "72dc9b70-dd6f-5bb6-b41d-fdb83ad4f912",
                 "label": {
                   "en": "A place"
                 },
                 "value": "place"
               },
               {
+                "id": "7d638de9-f651-5982-8d00-d5a76d6bf83d",
                 "label": {
                   "en": "An activity"
                 },
                 "value": "activity"
               },
               {
+                "id": "cae7786b-7671-5e09-9e00-305a647d6beb",
                 "label": {
                   "en": "A community or faith setting"
                 },
                 "value": "community"
               },
               {
+                "id": "4eba7b81-a33a-5c3c-8f52-463e76a86e6f",
                 "label": {
                   "en": "A professional or service"
                 },
                 "value": "professional"
               },
               {
+                "id": "987e75c9-db2f-568d-a052-b03d3aafe2ff",
                 "label": {
                   "en": "An animal"
                 },
                 "value": "animal"
               },
               {
+                "id": "c1001489-44b9-507b-8b14-07848ebe459f",
                 "label": {
                   "en": "An online space"
                 },
                 "value": "online"
               },
               {
+                "id": "bba7b11a-346d-5196-9f1c-5ef98c892318",
                 "label": {
                   "en": "An object or memory"
                 },
                 "value": "memory"
               },
               {
+                "id": "27aaed41-ad67-5585-b379-9575d4b320ee",
                 "label": {
                   "en": "Something else"
                 },

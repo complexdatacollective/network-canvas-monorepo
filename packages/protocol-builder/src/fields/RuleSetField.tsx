@@ -76,7 +76,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.ruleSet.addConditionRule',
     defaultMessage: 'Add new rule',
     description:
-      'Action that adds a rule to the rules of an “If” in a piece of text a participant reads. The text shows one wording when the rules are met and another when they are not.',
+      'Action that adds a rule to the rules of an “If” in a piece of text that a participant reads. The text shows one wording when the rules are met and another when they are not.',
   },
   conditionTargetNode: {
     id: 'protocolBuilder.ruleSet.conditionTargetNode',

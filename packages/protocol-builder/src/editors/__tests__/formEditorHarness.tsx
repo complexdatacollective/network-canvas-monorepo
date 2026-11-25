@@ -16,11 +16,12 @@ import {
   attributeField,
   inventAttribute,
 } from '../../testing/attributePicker.ts';
+import { MINTED_ID } from '../../testing/mintedId.ts';
 import type {
   CodebookPatch,
   renderStageEditor,
 } from '../../testing/renderStageEditor.tsx';
-import { testVariableId } from '../../testing/testId.ts';
+import { testOptionId, testVariableId } from '../../testing/testId.ts';
 
 type Harness = ReturnType<typeof renderStageEditor>;
 
@@ -381,8 +382,16 @@ const seedCategoricalAttribute = (
           // this subject's attributes rather than complain about this one.
           component: 'CheckboxGroup',
           options: [
-            { label: { 'en-US': 'At home' }, value: 'home' },
-            { label: { 'en-US': 'At work' }, value: 'work' },
+            {
+              id: testOptionId(SEEDED_CATEGORICAL, 'home'),
+              label: { 'en-US': 'At home' },
+              value: 'home',
+            },
+            {
+              id: testOptionId(SEEDED_CATEGORICAL, 'work'),
+              label: { 'en-US': 'At work' },
+              value: 'work',
+            },
           ],
         },
       },
@@ -427,9 +436,18 @@ export const authorsValuesFromField = async (
   // editor reads it at once, and the protocol does not until the stage is
   // saved.
   const authored = [
-    { label: { 'en-US': 'At home' }, value: 'home' },
-    { label: { 'en-US': 'At work' }, value: 'work' },
-    { label: { 'en-US': 'Somewhere else' }, value: 'elsewhere' },
+    {
+      id: testOptionId(SEEDED_CATEGORICAL, 'home'),
+      label: { 'en-US': 'At home' },
+      value: 'home',
+    },
+    {
+      id: testOptionId(SEEDED_CATEGORICAL, 'work'),
+      label: { 'en-US': 'At work' },
+      value: 'work',
+    },
+    // The value typed here is given a new id.
+    { id: MINTED_ID, label: { 'en-US': 'Somewhere else' }, value: 'elsewhere' },
   ];
   await waitFor(() =>
     expect(

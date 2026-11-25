@@ -340,7 +340,7 @@ const rowValueInTable = (
 
 /**
  * Why `text`, as the row's translation in `locale`, cannot show its values:
- * by the protocol's own check, against the stage's bindings and what the
+ * by the protocol's own check, against the stage's conditions and what the
  * text's place can show, with the row's other cells as the table holds them
  * now, saved or not.
  */

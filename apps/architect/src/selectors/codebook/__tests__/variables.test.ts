@@ -4,7 +4,7 @@ import {
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
-import type { Stage } from '@codaco/protocol-validation';
+import { dynamicValueNameFor, type Stage } from '@codaco/protocol-validation';
 import {
   closeStageDraft,
   publishStageDraft,
@@ -179,9 +179,18 @@ describe('getIsUsed', () => {
   });
 
   it('returns true for a variable only the live stage’s piped text shows', () => {
+    // Text names the attribute inside a longer name, with its id's hyphens
+    // written as underscores, which a search for the id cannot find.
+    const you = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: variable5,
+    });
     openStageDraft({
-      title: { en: 'Welcome, {you}' },
-      dynamicValues: { you: { path: `ego.${variable5}` } },
+      title: { en: `Welcome, {${you}}` },
+      prompts: [
+        { text: { fr: `Bienvenue {${you}, select, missing {} other {}}` } },
+      ],
     });
 
     const result = getIsUsed(asState(mockStateWithoutUse));

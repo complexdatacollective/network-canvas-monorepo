@@ -15,13 +15,26 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
-import { testTypeId, testVariableId } from '../../../testing/testId.ts';
+import {
+  MINTED_ID,
+  MINTED_OPTION_ID,
+  stubbedOptionId,
+} from '../../../testing/mintedId.ts';
+import { testId, testTypeId, testVariableId } from '../../../testing/testId.ts';
 import { richTextOf } from '../../../testing/text.ts';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import VariableEditor, {
   type VariableEditorProps,
 } from '../VariableEditor.tsx';
+
+// Option rows take their ids from the function made for option ids.
+vi.mock('@codaco/protocol-validation', async (importActual) => {
+  const actual =
+    await importActual<typeof import('@codaco/protocol-validation')>();
+  let made = 0;
+  return { ...actual, createOptionId: () => stubbedOptionId((made += 1)) };
+});
 
 const NEW_VARIABLE_ID = testVariableId('new-variable');
 const PREFERENCE_ID = testVariableId('preference');
@@ -227,8 +240,16 @@ describe('VariableEditor', () => {
       name: 'preference',
       type: 'categorical',
       options: [
-        { label: { en: 'Yes' }, value: 'yes' },
-        { label: { en: 'No' }, value: 'no' },
+        {
+          id: MINTED_OPTION_ID,
+          label: { en: 'Yes' },
+          value: 'yes',
+        },
+        {
+          id: MINTED_OPTION_ID,
+          label: { en: 'No' },
+          value: 'no',
+        },
       ],
     });
     // The name as well as the id: a caller that can no longer use what was
@@ -272,8 +293,8 @@ describe('VariableEditor', () => {
       name: 'preference',
       type: 'categorical',
       options: [
-        { label: { en: 'Low' }, value: 1 },
-        { label: { en: 'High' }, value: 2 },
+        { id: testId('option/preference/1'), label: { en: 'Low' }, value: 1 },
+        { id: testId('option/preference/2'), label: { en: 'High' }, value: 2 },
       ],
     } as const;
     const authoritativeDocument = personDocument({ [PREFERENCE_ID]: existing });
@@ -320,8 +341,12 @@ describe('VariableEditor', () => {
       name: 'gender',
       type: 'categorical',
       options: [
-        { label: { en: 'Woman' }, value: 'woman' },
-        { label: { en: 'Man' }, value: 'man' },
+        {
+          id: testId('option/gender/woman'),
+          label: { en: 'Woman' },
+          value: 'woman',
+        },
+        { id: testId('option/gender/man'), label: { en: 'Man' }, value: 'man' },
       ],
     } as const;
 
@@ -408,8 +433,12 @@ describe('VariableEditor', () => {
       name: 'gender',
       type: 'categorical',
       options: [
-        { label: { en: 'Woman' }, value: 'woman' },
-        { label: { en: 'Man' }, value: 'man' },
+        {
+          id: testId('option/gender/woman'),
+          label: { en: 'Woman' },
+          value: 'woman',
+        },
+        { id: testId('option/gender/man'), label: { en: 'Man' }, value: 'man' },
       ],
     } as const;
     const ROW_CHOICE = {
@@ -511,8 +540,17 @@ describe('VariableEditor', () => {
       expect(submittedVariables(onSubmitDocument)[GENDER_ID]).toEqual({
         ...GENDER,
         options: [
-          { label: { en: 'Man' }, value: 'man' },
-          { label: { en: 'Agender' }, value: 'agender' },
+          {
+            id: testId('option/gender/man'),
+            label: { en: 'Man' },
+            value: 'man',
+          },
+          {
+            // A row added in the editor is given a new id.
+            id: MINTED_ID,
+            label: { en: 'Agender' },
+            value: 'agender',
+          },
         ],
       });
       expect(onComplete).toHaveBeenCalledWith(GENDER_ID, 'gender', [
@@ -737,7 +775,12 @@ describe('VariableEditor', () => {
     expect(submittedVariables(onSubmitDocument)[NEW_VARIABLE_ID]).toEqual({
       name: 'sex',
       type: 'categorical',
-      options: lockedOptions,
+      // Each option of the set is given a new id: the attribute's options are
+      // its own.
+      options: lockedOptions.map((option) => ({
+        id: MINTED_OPTION_ID,
+        ...option,
+      })),
       readOnly: true,
     });
   });
@@ -750,8 +793,16 @@ describe('VariableEditor', () => {
             name: 'preference',
             type: 'categorical',
             options: [
-              { label: { en: 'Yes' }, value: 'yes' },
-              { label: { en: 'No' }, value: 'no' },
+              {
+                id: testId('option/preference/yes'),
+                label: { en: 'Yes' },
+                value: 'yes',
+              },
+              {
+                id: testId('option/preference/no'),
+                label: { en: 'No' },
+                value: 'no',
+              },
             ],
           },
           readOnly: true,
@@ -974,8 +1025,16 @@ describe('VariableEditor', () => {
             name: 'first',
             type: 'categorical',
             options: [
-              { label: { en: 'Old one' }, value: 'old-1' },
-              { label: { en: 'Old two' }, value: 'old-2' },
+              {
+                id: testId('option/first/old-1'),
+                label: { en: 'Old one' },
+                value: 'old-1',
+              },
+              {
+                id: testId('option/first/old-2'),
+                label: { en: 'Old two' },
+                value: 'old-2',
+              },
             ],
           },
         })}

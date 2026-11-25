@@ -24,7 +24,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { testVariableId } from '../../testing/testId.ts';
+import { testVariableId, testId } from '../../testing/testId.ts';
 import { exactlyText } from '../../testing/text.ts';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import InterviewerGuidanceSection from '../interviewer-guidance/InterviewerGuidanceSection.tsx';
@@ -888,8 +888,16 @@ describe('a codebook write a Spanish form field needs, refused', () => {
         // writes, and its write the only thing that can be refused.
         readOnly: true,
         options: [
-          { label: en('En casa'), value: 'casa' },
-          { label: en('En la casa de un amigo'), value: 'Casa' },
+          {
+            id: testId('option/lugar_de_contacto/casa'),
+            label: en('En casa'),
+            value: 'casa',
+          },
+          {
+            id: testId('option/lugar_de_contacto/Casa'),
+            label: en('En la casa de un amigo'),
+            value: 'Casa',
+          },
         ],
       },
     });
