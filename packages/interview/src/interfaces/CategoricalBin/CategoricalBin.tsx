@@ -281,9 +281,22 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   // Reset expanded bin when prompt changes. Compared during render so the new
   // prompt is never painted with the previous prompt's bin still expanded.
   const [expandedPromptId, setExpandedPromptId] = useState(id);
+  // The bin whose panel last closed back into its circle. That circle has to
+  // know, so that its corners animate (see CategoricalBinItem). Worked out
+  // during render, like the reset above, so the circle knows from its first
+  // render.
+  const [shownExpandedIndex, setShownExpandedIndex] =
+    useState(expandedBinIndex);
+  const [closingBinIndex, setClosingBinIndex] = useState<number | null>(null);
   if (expandedPromptId !== id) {
     setExpandedPromptId(id);
     setExpandedBinIndex(null);
+    // A new prompt's bins are new circles, not the old prompt's panel closing.
+    setShownExpandedIndex(null);
+    setClosingBinIndex(null);
+  } else if (shownExpandedIndex !== expandedBinIndex) {
+    setShownExpandedIndex(expandedBinIndex);
+    setClosingBinIndex(shownExpandedIndex);
   }
 
   const hasExpanded = expandedBinIndex !== null;
@@ -612,6 +625,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
                         index={index}
                         label={bin.label}
                         isExpanded={false}
+                        isClosingFromPanel={index === closingBinIndex}
                         onToggleExpand={() => setExpandedBinIndex(index)}
                         catColor={getCatColor(index)}
                         onDropNode={(node) => handleDropNode(node, index)}
