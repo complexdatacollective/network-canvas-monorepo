@@ -50,17 +50,12 @@ dialog, and a **Summary** tab stage listing a text in every language.
 ## Narrative preset filters (schema 9)
 
 Schema 9 gives each Narrative preset a filter of its own and removes the
-stage's filter. These Architect captures of the Building a protocol tutorial
-predate that work (the Architect Classic captures are still right):
-
-| Image              | Page                                                    | What changed                                                                              |
-| ------------------ | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `edit-preset.png`  | `design-protocols/tutorials/building-a-protocol.en.mdx` | The preset dialog has a **Preset filter** group between the layout and grouping settings. |
-| `edit-preset2.png` | `design-protocols/tutorials/building-a-protocol.en.mdx` | Same dialog, further down. Recapture with `edit-preset.png` so the two still join up.     |
-| `narrative.png`    | `design-protocols/tutorials/building-a-protocol.en.mdx` | The Narrative stage editor no longer has a stage filter section.                          |
-
-The Narrative interface page (`interface-documentation/narrative.en.md`) has no
-capture of the preset filter yet; one would help.
+stage's filter. The Building a protocol tutorial's captures of the Narrative
+stage editor and the preset dialog (`architect-guide/narrative.png`,
+`architect-guide/edit-preset.png` and `architect-guide/edit-preset2.png`) were
+recaptured in November 2026 and show this. The Narrative interface page
+(`interface-documentation/narrative.en.md`) has no capture of the preset filter
+yet; one would help.
 
 ## Stage introduction panels removed (schema 9)
 
@@ -371,22 +366,3 @@ else. Logic is drawn as a pill of its own colour and icon. These images on
 | `piped-text/value-in-question.png`      | Same toolbar change: both toolbars in frame lack the **Insert logic** button.                                                                                                                       | ✅ Recaptured    |
 | `piped-text/pair-prompt.png`            | Same toolbar change: the toolbar lacks the **Insert logic** button.                                                                                                                                 | ✅ Recaptured    |
 | (new) `piped-text/if-block.png`         | Not yet captured: an open If block with an **If:** row, an **Otherwise** row, **Edit rules** and **Add else if**, for the new Logic section.                                                        | Not yet captured |
-
-## Attribute picker (schema 9)
-
-The attribute control is now a select box. It shows the chosen attribute's pill
-inside the box (or **Select an attribute** while it is empty) and has no
-**Change attribute** button below it. Clicking it opens a list with a search
-box under the field, and attributes that can't be used there are listed under
-**Not available here**. These Architect captures show the old pill and
-**Change attribute** button:
-
-| Image                                                         | Page                                                              |
-| ------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `architect-guide/form-fields.png`                             | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
-| `architect-guide/sociogram-layout.png`                        | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
-| `architect-guide/variable-toggling.png`                       | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
-| `architect-guide/followup.png`                                | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
-| `architect-guide/edit-preset.png`                             | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
-| `key-concepts/forms/field.png`                                | `design-protocols/key-concepts/forms.en.mdx`                      |
-| `interface-documentation/categorical-bin/architect-other.png` | `design-protocols/interface-documentation/categorical-bin.en.mdx` |
