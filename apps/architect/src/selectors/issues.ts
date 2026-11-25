@@ -6,7 +6,6 @@ import {
   collectLocalizedStringFields,
   type CurrentProtocol,
   type DynamicValueSite,
-  dynamicValueNamesIn,
   findLabelCollisions,
   findVariableRoleConflicts,
   type LocaleTag,
@@ -359,8 +358,8 @@ export type TranslationRow = {
   arguments?: MessageArguments;
   /**
    * Where text that can show values the interview fills in sits, when it can
-   * and either its stage binds any or the text itself names one: with nothing
-   * bound and nothing named, it is plain or formatted text like any other.
+   * and either its stage's text or the text itself names one: with nothing
+   * named, it is plain or formatted text like any other.
    */
   dynamicValues?: DynamicValueSite;
   /**
@@ -383,32 +382,6 @@ const PLACE_ORDER: Record<TranslationPlace['kind'], number> = {
   protocol: 3,
   interface: 4,
 };
-
-/** Whether the stage holding the text at `path` binds any value. */
-const stageBindsValues = (
-  protocol: CurrentProtocol,
-  path: readonly (string | number)[],
-) => {
-  const [root, index] = path;
-  if (root !== 'stages' || typeof index !== 'number') return false;
-  const stage: unknown = protocol.stages[index];
-  if (typeof stage !== 'object' || stage === null) return false;
-  const bindings = (stage as { dynamicValues?: unknown }).dynamicValues;
-  return (
-    typeof bindings === 'object' &&
-    bindings !== null &&
-    Object.keys(bindings).length > 0
-  );
-};
-
-/**
- * Whether the text names a value in any language. Imported text can name one
- * its stage does not bind, which the table must show and refuse.
- */
-const namesValues = (value: LocalizedString) =>
-  Object.values(value).some(
-    (message) => dynamicValueNamesIn(message).length > 0,
-  );
 
 /**
  * Every participant-facing string grouped by the stage or codebook entry that
@@ -439,10 +412,11 @@ export const getTranslationGroups = createSelector(
         ...(supplied === undefined ? {} : { supplied }),
         schema: hit.schema,
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
-        ...(hit.dynamicValues !== undefined &&
-        (stageBindsValues(protocol, hit.path) || namesValues(hit.value))
-          ? { dynamicValues: hit.dynamicValues }
-          : {}),
+        // Every text that can show values offers them in the table, as its
+        // editor on the stage does, whether or not it shows any yet.
+        ...(hit.dynamicValues === undefined
+          ? {}
+          : { dynamicValues: hit.dynamicValues }),
       });
     }
     return [...groups]

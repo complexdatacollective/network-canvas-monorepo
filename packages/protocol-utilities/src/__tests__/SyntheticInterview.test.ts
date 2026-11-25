@@ -3944,8 +3944,54 @@ describe('protocol object ids', () => {
         'narrativePresetHighlight',
         'disease',
         'composerEdge',
+        'option',
       ]),
     );
+  });
+
+  it('gives ids to the options of categorical and ordinal variables only, keeping any given', () => {
+    const si = new SyntheticInterview();
+    const nt = si.addNodeType();
+    const kind = nt.addVariable({
+      type: 'categorical',
+      name: 'kind',
+      options: [
+        { label: 'A', value: 'a' },
+        { id: '6f1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d', label: 'B', value: 'b' },
+      ],
+    });
+    const rating = nt.addVariable({ type: 'ordinal', name: 'rating' });
+    const flag = nt.addVariable({
+      type: 'boolean',
+      name: 'flag',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ],
+    });
+    si.addStage('Narrative', { subject: { entity: 'node', type: nt.id } });
+    const nodeType: unknown = si.getProtocol().codebook.node[nt.id];
+    const optionsOf = (id: string): Record<string, unknown>[] | undefined => {
+      if (!isRecord(nodeType) || !isRecord(nodeType.variables))
+        return undefined;
+      const variable = nodeType.variables[id];
+      if (!isRecord(variable) || !Array.isArray(variable.options)) {
+        return undefined;
+      }
+      return variable.options.filter(isRecord);
+    };
+
+    const kindOptions = optionsOf(kind.id);
+    expect(kindOptions?.[0]).toMatchObject({ id: anObjectId, value: 'a' });
+    expect(kindOptions?.[1]).toMatchObject({
+      id: '6f1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d',
+      value: 'b',
+    });
+    expect(
+      optionsOf(rating.id)?.every((o) => 'id' in o && isProtocolObjectId(o.id)),
+    ).toBe(true);
+    expect(optionsOf(flag.id)?.some((o) => 'id' in o)).toBe(false);
   });
 
   it('gives the same ids for the same seed and calls, and others for another seed', () => {

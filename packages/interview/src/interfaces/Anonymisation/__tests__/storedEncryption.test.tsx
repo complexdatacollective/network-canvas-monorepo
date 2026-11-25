@@ -11,7 +11,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testVariableId } from '../../../__tests__/testIds';
+import { testId, testVariableId } from '../../../__tests__/testIds';
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
 import { readEncryptedAttribute } from '../decryptionScope';
@@ -48,8 +48,16 @@ const unmarkedVariables: Record<string, Variable> = {
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: { en: 'Cat' }, value: 1 },
-      { label: { en: 'Dog' }, value: 2 },
+      {
+        id: testId('storedEncryption option 1'),
+        label: { en: 'Cat' },
+        value: 1,
+      },
+      {
+        id: testId('storedEncryption option 2'),
+        label: { en: 'Dog' },
+        value: 2,
+      },
     ],
   },
 };

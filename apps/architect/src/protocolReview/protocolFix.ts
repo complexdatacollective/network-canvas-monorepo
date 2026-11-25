@@ -187,7 +187,7 @@ const NOT_REFERENCES = new Set(['label', 'negative']);
 
 /**
  * What a member without an id refers to: everything else it holds that is
- * text, a number, or true or false (`NOT_REFERENCES`). An answer option's
+ * text, a number, or true or false (`NOT_REFERENCES`). A yes/no answer's
  * `value`, the edge `type` a narrative preset displays, the `variable` it
  * highlights or a roster sorts by. A number reads as its text, as the
  * protocol compares answer values (`optionValueKey`): `1` and `"1"` are the
@@ -228,8 +228,8 @@ const labelAsWordedBy =
  * For each member of `written`, the member of `current` it replaces, or
  * undefined when there is no telling; nothing is carried over to it.
  *
- * A member with an `id` replaces the one with that id. Others (an answer
- * option, an entry in a narrative preset or a roster's sorting) have none.
+ * A member with an `id` replaces the one with that id. Others (a yes/no
+ * answer, an entry in a narrative preset or a roster's sorting) have none.
  * Such a member replaces the one whose label it leaves as it was, and
  * failing that the one that refers to the same thing (`referenceOf`): a fix
  * that rewords a label keeps what it refers to, and one that recodes the

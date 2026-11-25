@@ -684,17 +684,37 @@ describe('generateNetwork', () => {
                 name: 'Closeness',
                 type: 'ordinal',
                 options: [
-                  { label: en('Low'), value: 1 },
-                  { label: en('Mid'), value: 2 },
-                  { label: en('High'), value: 3 },
+                  {
+                    id: testId('generateNetwork/option-1'),
+                    label: en('Low'),
+                    value: 1,
+                  },
+                  {
+                    id: testId('generateNetwork/option-2'),
+                    label: en('Mid'),
+                    value: 2,
+                  },
+                  {
+                    id: testId('generateNetwork/option-3'),
+                    label: en('High'),
+                    value: 3,
+                  },
                 ],
               },
               'var-cat': {
                 name: 'Group',
                 type: 'categorical',
                 options: [
-                  { label: en('A'), value: 'a' },
-                  { label: en('B'), value: 'b' },
+                  {
+                    id: testId('generateNetwork/option-4'),
+                    label: en('A'),
+                    value: 'a',
+                  },
+                  {
+                    id: testId('generateNetwork/option-5'),
+                    label: en('B'),
+                    value: 'b',
+                  },
                 ],
               },
               'var-other': {

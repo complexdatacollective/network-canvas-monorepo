@@ -1,7 +1,10 @@
 import path from 'node:path';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import { assetBlockMarkdown } from '@codaco/protocol-validation';
+import {
+  assetBlockMarkdown,
+  dynamicValueNameFor,
+} from '@codaco/protocol-validation';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
@@ -486,20 +489,20 @@ export const informationScenarios: InterfaceScenarios = {
             component: 'Text',
             prompt: 'What is your name?',
           });
-        const info = synth.addInformationStage({
+        const name = dynamicValueNameFor({
+          kind: 'attribute',
+          role: 'ego',
+          variableId: nameVar.id,
+        });
+        synth.addInformationStage({
           label: 'Welcome',
           title: {
-            'en-US':
-              '{name, select, missing {Welcome} other {Welcome, {name}}}',
+            'en-US': `{${name}, select, missing {Welcome} other {Welcome, {${name}}}}`,
           },
           text: {
-            'en-US':
-              'Thanks for **joining**{name, select, missing {.} other {, {name}.}}',
+            'en-US': `Thanks for **joining**{${name}, select, missing {.} other {, {${name}}.}}`,
           },
         });
-        info.stageEntry.dynamicValues = {
-          name: { path: `ego.${nameVar.id}` },
-        };
         return synth;
       },
       run: async ({ page, interview }) => {

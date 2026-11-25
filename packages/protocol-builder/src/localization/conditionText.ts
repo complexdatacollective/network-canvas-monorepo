@@ -3,11 +3,9 @@ import {
   type Codebook,
   CONDITION_ROLES,
   type ConditionRole,
-  type DynamicValueBinding,
   type DynamicValueSiteContext,
-  DYNAMIC_VALUE_NAME,
   type LocaleTag,
-  parseDynamicValuePath,
+  parseDynamicValueName,
 } from '@codaco/protocol-validation';
 
 import { isRuleDraft, type RuleDraft } from '../rules/rule.ts';
@@ -143,54 +141,19 @@ export const conditionSentence = (
 };
 
 /**
- * Ids of conditions whose last use was removed from some text while the
- * builder has been open. Undoing that removal brings the text back under the
- * same id, so the id is not given out again: another field on the stage
- * would otherwise take it for an "If" of its own, and the undo would then
- * restore the first text testing the second one's rules. Kept for the whole
- * session, not per field, because every field of a stage shares its ids.
+ * The id of the condition a value name in text stands for
+ * (`condition_<id>`), or undefined when it stands for something else.
  */
-const retiredConditionIds = new Set<string>();
-
-/** Marks `id` as one a removal may yet bring back. */
-export const retireConditionId = (id: string): void => {
-  retiredConditionIds.add(id);
-};
-
-/** A new condition's id, which is also the name its binding takes. */
-export const newConditionId = (taken: (id: string) => boolean): string => {
-  for (let number = 1; ; number += 1) {
-    const candidate = `if${number}`;
-    if (
-      DYNAMIC_VALUE_NAME.test(candidate) &&
-      !retiredConditionIds.has(candidate) &&
-      !taken(candidate)
-    ) {
-      return candidate;
-    }
-  }
-};
-
-/** The id of the condition `binding` stands for, if it stands for one. */
-export const conditionIdOf = (
-  binding: DynamicValueBinding | undefined,
-): string | undefined => {
-  if (binding === undefined) return undefined;
-  const parsed = parseDynamicValuePath(binding.path);
+export const conditionIdOfName = (name: string): string | undefined => {
+  const parsed = parseDynamicValueName(name);
   return parsed?.kind === 'condition' ? parsed.conditionId : undefined;
 };
 
-/**
- * The conditions among `dropped` that none of `bindings` tests any longer.
- * Two bindings can test one condition, so removing one of them from the text
- * leaves the condition in place for the other.
- */
-export const conditionsLeftUntested = (
-  dropped: readonly string[],
-  bindings: Readonly<Record<string, DynamicValueBinding>>,
-): string[] => {
-  const tested = new Set(
-    Object.values(bindings).map((binding) => conditionIdOf(binding)),
+/** The ids of the conditions `names` stand for. */
+export const conditionIdsNamedBy = (names: Iterable<string>): Set<string> =>
+  new Set(
+    [...names].flatMap((name) => {
+      const conditionId = conditionIdOfName(name);
+      return conditionId === undefined ? [] : [conditionId];
+    }),
   );
-  return dropped.filter((conditionId) => !tested.has(conditionId));
-};

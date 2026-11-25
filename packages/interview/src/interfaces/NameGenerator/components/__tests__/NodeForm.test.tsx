@@ -296,8 +296,8 @@ const cases: Record<string, UniqueCase> = {
       type: 'ordinal',
       component: 'RadioGroup',
       options: [
-        { label: { en: 'Low' }, value: 1 },
-        { label: { en: 'High' }, value: 2 },
+        { id: testId('NodeForm option 1'), label: { en: 'Low' }, value: 1 },
+        { id: testId('NodeForm option 2'), label: { en: 'High' }, value: 2 },
       ],
       validation: { unique: true },
     },
@@ -310,9 +310,21 @@ const cases: Record<string, UniqueCase> = {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: { en: 'Family' }, value: 'family' },
-        { label: { en: 'Work' }, value: 'work' },
-        { label: { en: 'School' }, value: 'school' },
+        {
+          id: testId('NodeForm option 3'),
+          label: { en: 'Family' },
+          value: 'family',
+        },
+        {
+          id: testId('NodeForm option 4'),
+          label: { en: 'Work' },
+          value: 'work',
+        },
+        {
+          id: testId('NodeForm option 5'),
+          label: { en: 'School' },
+          value: 'school',
+        },
       ],
       validation: { unique: true },
     },

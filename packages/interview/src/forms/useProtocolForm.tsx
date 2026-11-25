@@ -16,7 +16,10 @@ import type {
   StageSubject,
 } from '@codaco/protocol-validation';
 
-import { useDynamicValueSources } from '../dynamicValues/DynamicValueScope';
+import {
+  useDynamicValueSources,
+  useStageShowsDynamicValues,
+} from '../dynamicValues/DynamicValueScope';
 import {
   FormDynamicValues,
   type LabelNode,
@@ -316,6 +319,7 @@ export default function useProtocolForm({
   }, [fieldsMetadata, namespace]);
 
   const dynamicValueSources = useDynamicValueSources();
+  const stageShowsDynamicValues = useStageShowsDynamicValues();
   const formVariables = useMemo(
     () => [
       ...precedingVariables,
@@ -336,10 +340,9 @@ export default function useProtocolForm({
 
   // The fields' captions can show values of the entity the form describes,
   // including answers given in its earlier fields (see `FormDynamicValues`).
-  // A stage that binds no values leaves the fields as they are.
+  // A stage whose text shows no values leaves the fields as they are.
   const showsDynamicValues =
-    dynamicValueSources !== null &&
-    Object.keys(dynamicValueSources.bindings).length > 0;
+    dynamicValueSources !== null && stageShowsDynamicValues;
   const inFormScope = (children: ReactNode): ReactNode => {
     const scoped = showsDynamicValues ? (
       <FormDynamicValues

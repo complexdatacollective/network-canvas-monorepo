@@ -16,6 +16,7 @@ import { type DndStore, DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
   asEntityAttributeReference,
+  dynamicValueNameFor,
   type Variable,
 } from '@codaco/protocol-validation';
 import {
@@ -105,7 +106,13 @@ const variables: Record<string, Variable> = {
     name: 'Category',
     type: 'categorical',
     component: 'CheckboxGroup',
-    options: [{ label: { en: 'Family' }, value: 1 }],
+    options: [
+      {
+        id: testId('CategoricalBin option 1'),
+        label: { en: 'Family' },
+        value: 1,
+      },
+    ],
   },
   [OTHER_REASON_VARIABLE]: {
     name: 'Other reason',
@@ -413,14 +420,15 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
       stageVariables: namedVariables,
       binStage: {
         ...stage,
-        dynamicValues: { who: { path: 'node.$label' } },
         prompts: [
           {
             id: PROMPT_ID,
             text: { en: 'Which category?' },
             variable: asEntityAttributeReference(CATEGORY_VARIABLE),
             otherVariable: asEntityAttributeReference(OTHER_REASON_VARIABLE),
-            otherVariablePrompt: { en: 'Why {who}?' },
+            otherVariablePrompt: {
+              en: `Why {${dynamicValueNameFor({ kind: 'label', role: 'node' })}}?`,
+            },
             otherOptionLabel: { en: 'Other' },
           },
         ],

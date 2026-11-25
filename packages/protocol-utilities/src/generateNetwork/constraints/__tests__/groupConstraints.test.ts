@@ -5,6 +5,7 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testId.ts';
 import { buildEntityConstraints } from '../buildConstraints.ts';
 import type { DateResolution } from '../dateWindow.ts';
 import { resolveGenerationOrder } from '../dependencyOrder.ts';
@@ -89,6 +90,7 @@ function dateChain(
 
 function labelled(values: number[]) {
   return values.map((value) => ({
+    id: testId(`option-${value}`),
     label: { 'en-US': `Option ${value}` },
     value,
   }));
@@ -217,7 +219,12 @@ describe('intersectGroupConstraints', () => {
           name: 'Flag B',
           type: 'boolean',
           component: 'Boolean',
-          options: [{ label: { 'en-US': 'Yes' }, value: true }],
+          options: [
+            {
+              label: { 'en-US': 'Yes' },
+              value: true,
+            },
+          ],
           validation: { sameAs: asEntityAttributeReference('a') },
         },
       },

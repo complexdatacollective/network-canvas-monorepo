@@ -18,7 +18,7 @@ import { parseCsvRecord } from '../formatters/__tests__/namesFixture';
 import type { InterviewExportInput } from '../input';
 import type { ExportOptions } from '../options';
 import { runRecordedExport } from './exportHarness';
-import { testTypeId, testVariableId } from './testIds';
+import { testOptionId, testTypeId, testVariableId } from './testIds';
 
 const options: ExportOptions = {
   exportGraphML: true,
@@ -276,8 +276,16 @@ const recordedCodebook: Codebook = {
           name: 'pets',
           type: 'categorical',
           options: [
-            { label: { en: 'Cat' }, value: 'cat' },
-            { label: { en: 'Dog' }, value: 'dog' },
+            {
+              id: testOptionId('pets/cat'),
+              label: { en: 'Cat' },
+              value: 'cat',
+            },
+            {
+              id: testOptionId('pets/dog'),
+              label: { en: 'Dog' },
+              value: 'dog',
+            },
           ],
         },
         [testVariableId('p-city')]: { name: 'city', type: 'text' },

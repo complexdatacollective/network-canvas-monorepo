@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { testVariableId } from '@codaco/protocol-builder/testing/testId';
+import {
+  testOptionId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
 import {
   type CurrentProtocol,
   validateProtocol,
@@ -114,21 +117,25 @@ describe('a fix that replaces more than one text', () => {
     });
   });
 
-  it('keeps each option’s translations when the list is rewritten, matching options by value', () => {
+  it('keeps each option’s translations when the list is rewritten, matching options by id', () => {
     const protocol = makeProtocol();
+    const OFTEN = testOptionId(FREQ, 1);
+    const RARELY = testOptionId(FREQ, 2);
+    const SOMETIMES = testOptionId(FREQ, 3);
     const normalized = normalizeOperations(protocol, [
       op('set', `/codebook/node/${PERSON}/variables/${FREQ}/options`, [
-        { label: { en: 'Seldom' }, value: 2 },
-        { label: { en: 'Sometimes' }, value: 3 },
-        { label: { en: 'Frequently' }, value: 1 },
+        { id: RARELY, label: { en: 'Seldom' }, value: 2 },
+        { id: SOMETIMES, label: { en: 'Sometimes' }, value: 3 },
+        // Recoded as well as reworded: the id says which option it is.
+        { id: OFTEN, label: { en: 'Frequently' }, value: 4 },
       ]),
     ]);
     const applied = applyOperations(protocol, normalized);
     expect(applied.ok && variable(applied.result)).toMatchObject({
       options: [
-        { label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
-        { label: { en: 'Sometimes' }, value: 3 },
-        { label: { en: 'Frequently', fr: 'Souvent' }, value: 1 },
+        { id: RARELY, label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
+        { id: SOMETIMES, label: { en: 'Sometimes' }, value: 3 },
+        { id: OFTEN, label: { en: 'Frequently', fr: 'Souvent' }, value: 4 },
       ],
     });
   });

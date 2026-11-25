@@ -7,7 +7,11 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { testTypeId, testVariableId } from '../../../__tests__/testIds';
+import {
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../../__tests__/testIds';
 import type { FormattedSession } from '../../../input';
 import type { ExportWarning } from '../../../output';
 import {
@@ -336,8 +340,12 @@ describe('GraphML key ids that would be the same', () => {
         name: 'Rating',
         type: 'categorical',
         options: [
-          { label: { en: 'One' }, value: 1 },
-          { label: { en: 'Also one' }, value: '1' },
+          { id: testOptionId('Rating/1'), label: { en: 'One' }, value: 1 },
+          {
+            id: testOptionId('Rating/"1"'),
+            label: { en: 'Also one' },
+            value: '1',
+          },
         ],
       },
       [hashed]: { name: 'Hashed', type: 'text' },

@@ -602,7 +602,13 @@ describe('NetworkComposer validating an encrypted name', () => {
     [GROUP_VAR]: {
       name: 'team',
       type: 'categorical',
-      options: [{ value: 'red', label: { en: 'Team Red' } }],
+      options: [
+        {
+          id: testId('NetworkComposer option 1'),
+          value: 'red',
+          label: { en: 'Team Red' },
+        },
+      ],
     },
   };
   const groupedStage: StageProps<'NetworkComposer'>['stage'] = {

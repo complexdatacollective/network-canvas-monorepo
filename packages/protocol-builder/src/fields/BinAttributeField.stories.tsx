@@ -13,7 +13,7 @@ import {
   fixtureTypeId,
   fixtureVariableId,
 } from '../testing/protocolFixture.ts';
-import { testVariableId } from '../testing/testId.ts';
+import { testVariableId, testId } from '../testing/testId.ts';
 import BinAttributeField, {
   type BinAttributeSlot,
 } from './BinAttributeField.tsx';
@@ -228,13 +228,41 @@ export const MoreBinsThanFit: Story = {
             name: 'contactFreq',
             type: 'ordinal',
             options: [
-              { label: { 'en-US': 'Daily' }, value: 7 },
-              { label: { 'en-US': 'Weekly' }, value: 6 },
-              { label: { 'en-US': 'Monthly' }, value: 5 },
-              { label: { 'en-US': 'Every few months' }, value: 4 },
-              { label: { 'en-US': 'Once a year' }, value: 3 },
-              { label: { 'en-US': 'Less than once a year' }, value: 2 },
-              { label: { 'en-US': 'Never' }, value: 1 },
+              {
+                id: testId('option/contactFreq/7'),
+                label: { 'en-US': 'Daily' },
+                value: 7,
+              },
+              {
+                id: testId('option/contactFreq/6'),
+                label: { 'en-US': 'Weekly' },
+                value: 6,
+              },
+              {
+                id: testId('option/contactFreq/5'),
+                label: { 'en-US': 'Monthly' },
+                value: 5,
+              },
+              {
+                id: testId('option/contactFreq/4'),
+                label: { 'en-US': 'Every few months' },
+                value: 4,
+              },
+              {
+                id: testId('option/contactFreq/3'),
+                label: { 'en-US': 'Once a year' },
+                value: 3,
+              },
+              {
+                id: testId('option/contactFreq/2'),
+                label: { 'en-US': 'Less than once a year' },
+                value: 2,
+              },
+              {
+                id: testId('option/contactFreq/1'),
+                label: { 'en-US': 'Never' },
+                value: 1,
+              },
             ],
           },
         },

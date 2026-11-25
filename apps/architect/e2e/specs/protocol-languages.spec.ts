@@ -10,6 +10,7 @@ import {
   type CurrentProtocol,
   CurrentProtocolSchema,
   DEFAULT_FINISH_SESSION_TEXT,
+  dynamicValueNameFor,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
@@ -689,6 +690,12 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
   seed,
 }) => {
   const english = bilingualProtocol();
+  const lastName = testVariableId('lastName');
+  const name = dynamicValueNameFor({
+    kind: 'attribute',
+    role: 'ego',
+    variableId: lastName,
+  });
   await seed(
     CurrentProtocolSchema.parse(
       withInterfaceText(
@@ -698,7 +705,7 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
             ...english.codebook,
             ego: {
               variables: {
-                lastName: { name: 'last_name', type: 'text' },
+                [lastName]: { name: 'last_name', type: 'text' },
               },
             },
           },
@@ -707,10 +714,9 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
               ? {
                   ...stage,
                   content: {
-                    en: 'Hello{name, select, missing {} other {, {name}}}',
-                    fr: 'Bonjour{name, select, missing {} other {, {name}}}',
+                    en: `Hello{${name}, select, missing {} other {, {${name}}}}`,
+                    fr: `Bonjour{${name}, select, missing {} other {, {${name}}}}`,
                   },
-                  dynamicValues: { name: { path: 'ego.lastName' } },
                 }
               : stage,
           ),
@@ -747,10 +753,11 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
 
 // A page that is nothing but a file placed in it has no words of its own to
 // translate, so its cells in the table are only read. They still say what the
-// page shows: the file, by its description. With values among the page's
-// settings, a cell is drawn as text that shows them, which must say the same.
+// page shows: the file, by its description. Where the page's text shows a
+// value in another language, each cell is drawn as text that shows values,
+// which must say the same.
 for (const withValues of [false, true]) {
-  test(`names the file in the translation table for a page that is only a file${withValues ? ', with values set for the page' : ''}`, async ({
+  test(`names the file in the translation table for a page that is only a file${withValues ? ', in a language whose page shows a value in another' : ''}`, async ({
     architectPage: page,
     seed,
   }) => {
@@ -777,14 +784,16 @@ for (const withValues of [false, true]) {
               id: createProtocolObjectId(),
               type: 'Information',
               label: { en: STAGE_NAME, fr: 'Bienvenue' },
-              content: { en: block, fr: block },
-              ...(withValues
-                ? {
-                    dynamicValues: {
-                      name: { path: `ego.${testVariableId('firstName')}` },
-                    },
-                  }
-                : {}),
+              content: {
+                en: withValues
+                  ? `${block}\n\nHello {${dynamicValueNameFor({
+                      kind: 'attribute',
+                      role: 'ego',
+                      variableId: testVariableId('firstName'),
+                    })}, select, missing {} other {}}`
+                  : block,
+                fr: block,
+              },
             },
             ...emptyProtocol({ defaultLocale: 'en', locales: ['en', 'fr'] })
               .stages,

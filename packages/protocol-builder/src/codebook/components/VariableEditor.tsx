@@ -33,8 +33,8 @@ import {
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  createOptionId,
   type LocalizedString,
-  type VariableOption,
   type VariableType,
   VariableTypes,
 } from '@codaco/protocol-validation';
@@ -68,6 +68,7 @@ import {
 } from '../editing.ts';
 import type {
   OptionRowChoiceValue,
+  OptionSeed,
   VariableEditorHostOptions,
 } from '../optionRowChoice.ts';
 import {
@@ -270,6 +271,12 @@ const TYPE_OWNED_PROPERTIES = [
 const PARAMETER_OWNED_PROPERTIES = ['parameters'] as const;
 
 type EditableOption = Readonly<{
+  /**
+   * The option's own id, by which text chooses a version for it. Every row
+   * the editor adds has one; it is absent only from a stored option written
+   * before options had ids, which the codebook's check then names.
+   */
+  id?: string;
   /** Absent until the option has words in at least one language. */
   label?: LocalizedString;
   value: string | number;
@@ -321,7 +328,7 @@ type VariableEditorCommonProps = Readonly<{
   ): void;
   onDraftChange?(draft: CodebookVariableDraft): void;
   allowedVariableTypes?: readonly VariableType[];
-  lockedOptions?: readonly VariableOption[] | null;
+  lockedOptions?: readonly OptionSeed[] | null;
   /**
    * The stages that manage this attribute's options, by label, when the editor
    * is opened from anywhere but a stage that does (see
@@ -1067,7 +1074,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                               const next = [...options];
                               next[index] =
                                 label === undefined
-                                  ? { value: option.value }
+                                  ? {
+                                      ...(option.id !== undefined && {
+                                        id: option.id,
+                                      }),
+                                      value: option.value,
+                                    }
                                   : { ...option, label };
                               replaceOptions(next);
                             }}
@@ -1160,7 +1172,10 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                         ...current,
                         `new-option-${optionKeySequence.current++}`,
                       ]);
-                      replaceOptions([...options, { value: '' }]);
+                      replaceOptions([
+                        ...options,
+                        { id: createOptionId(), value: '' },
+                      ]);
                     }}
                   >
                     {intl.formatMessage(variableValuesMessages.addOption)}
@@ -1296,12 +1311,17 @@ function withoutStageManagedOptions(
 
 function draftWithLockedOptions(
   draft: CodebookVariableDraft,
-  lockedOptions: readonly VariableOption[] | null,
+  lockedOptions: readonly OptionSeed[] | null,
 ): CodebookVariableDraft {
   if (lockedOptions === null) return draft;
   return {
     ...draft,
-    options: lockedOptions.map((option) => ({ ...option })),
+    // Each attribute created on the set gets options of its own: an option id
+    // is unique across the protocol.
+    options: lockedOptions.map((option) => ({
+      ...option,
+      id: createOptionId(),
+    })),
     readOnly: true,
   };
 }
@@ -1502,6 +1522,8 @@ function readEditableOptions(value: unknown): EditableOption[] {
       ? asLocalizedString(option.label)
       : undefined;
     return {
+      ...(isRecord(option) &&
+        typeof option.id === 'string' && { id: option.id }),
       ...(label === undefined ? {} : { label }),
       value:
         isRecord(option) &&

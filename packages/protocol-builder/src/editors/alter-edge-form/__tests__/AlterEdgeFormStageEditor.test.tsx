@@ -8,6 +8,7 @@ import {
   fixtureVariableId,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
@@ -123,9 +124,21 @@ describe('the editor for a form about each relationship', () => {
             name: 'closeness',
             type: 'ordinal',
             options: [
-              { label: { 'en-US': 'Very close' }, value: 3 },
-              { label: { 'en-US': 'Somewhat close' }, value: 2 },
-              { label: { 'en-US': 'Not close' }, value: 1 },
+              {
+                id: testId('option/closeness/3'),
+                label: { 'en-US': 'Very close' },
+                value: 3,
+              },
+              {
+                id: testId('option/closeness/2'),
+                label: { 'en-US': 'Somewhat close' },
+                value: 2,
+              },
+              {
+                id: testId('option/closeness/1'),
+                label: { 'en-US': 'Not close' },
+                value: 1,
+              },
             ],
           },
         }),

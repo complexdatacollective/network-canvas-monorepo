@@ -44,18 +44,21 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "ce582fb2-29ac-52d6-aabe-fd3f0e4c8324",
                 "label": {
                   "en-US": "Weekly"
                 },
                 "value": 3
               },
               {
+                "id": "aee68258-1e89-5efb-916f-e39b30d091f6",
                 "label": {
                   "en-US": "Monthly"
                 },
                 "value": 2
               },
               {
+                "id": "1508889c-9ced-5df2-bfa0-5763f5b1c680",
                 "label": {
                   "en-US": "Rarely"
                 },
@@ -68,18 +71,21 @@
             "type": "categorical",
             "options": [
               {
+                "id": "416a61e2-9b6e-509a-9222-8e5246017fd7",
                 "label": {
                   "en-US": "In person"
                 },
                 "value": "in_person"
               },
               {
+                "id": "d25ff55d-4b62-5b01-984a-8945660b4720",
                 "label": {
                   "en-US": "Phone or video call"
                 },
                 "value": "call"
               },
               {
+                "id": "2def8ae3-c32f-597a-b51b-77cbd4eaa2e7",
                 "label": {
                   "en-US": "Text or messaging"
                 },
@@ -129,36 +135,42 @@
             "type": "categorical",
             "options": [
               {
+                "id": "0c1373c2-8156-57ee-b35f-847e4eb4c337",
                 "value": "woman",
                 "label": {
                   "en-US": "Woman"
                 }
               },
               {
+                "id": "59ef745a-5491-5cfe-a62a-e2f95b0fd817",
                 "value": "man",
                 "label": {
                   "en-US": "Man"
                 }
               },
               {
+                "id": "68226e1a-c1da-58a1-9f98-e430fd78cd13",
                 "value": "nonBinary",
                 "label": {
                   "en-US": "Non-binary"
                 }
               },
               {
+                "id": "14cbcfb7-bcd1-5184-ad34-43e733cc4f83",
                 "value": "differentIdentity",
                 "label": {
                   "en-US": "A different identity"
                 }
               },
               {
+                "id": "e6c61721-154f-5b59-8522-6787d2e1e761",
                 "value": "unknown",
                 "label": {
                   "en-US": "Don’t know"
                 }
               },
               {
+                "id": "97381784-94be-55eb-80b6-ba078cf5f8b5",
                 "value": "preferNotToSay",
                 "label": {
                   "en-US": "Prefer not to say"
@@ -171,30 +183,35 @@
             "type": "categorical",
             "options": [
               {
+                "id": "dafc1d52-ce30-50b0-a66f-71ceb9b897b1",
                 "value": "female",
                 "label": {
                   "en-US": "Female"
                 }
               },
               {
+                "id": "b26bd884-296f-5928-86a8-31ecc44ff05b",
                 "value": "male",
                 "label": {
                   "en-US": "Male"
                 }
               },
               {
+                "id": "ee28be72-e82e-546f-aa14-3cb6bf3a1108",
                 "value": "intersex",
                 "label": {
                   "en-US": "Intersex"
                 }
               },
               {
+                "id": "2fff84b1-4c5a-5883-9afd-0ce9d7d8dbc7",
                 "value": "unknown",
                 "label": {
                   "en-US": "Don’t know"
                 }
               },
               {
+                "id": "58e78ee0-26e8-5e4b-8ede-bffba24568c4",
                 "value": "preferNotToSay",
                 "label": {
                   "en-US": "Prefer not to say"
@@ -228,54 +245,63 @@
             "type": "categorical",
             "options": [
               {
+                "id": "6c589c38-8598-52dc-81cc-cab5f9c06c80",
                 "value": "partner",
                 "label": {
                   "en-US": "Partner"
                 }
               },
               {
+                "id": "f2dd84b4-f283-5a25-8d1a-338108e833d1",
                 "value": "biological",
                 "label": {
                   "en-US": "Biological parent"
                 }
               },
               {
+                "id": "f466e97e-2b2c-5a8f-ac3e-02846324cca3",
                 "value": "adoptive",
                 "label": {
                   "en-US": "Adoptive parent"
                 }
               },
               {
+                "id": "33dfa094-7d1c-5277-b3f8-b345553987f2",
                 "value": "social",
                 "label": {
                   "en-US": "Step or social parent"
                 }
               },
               {
+                "id": "ba0d30a8-6077-574e-843a-828ae35b512f",
                 "value": "donor",
                 "label": {
                   "en-US": "Donor"
                 }
               },
               {
+                "id": "32234556-d1c7-5043-a045-5572eda960f0",
                 "value": "surrogate",
                 "label": {
                   "en-US": "Surrogate"
                 }
               },
               {
+                "id": "8f9177f6-d5c3-57c8-8f7c-fec4b4f38544",
                 "value": "identicalTwin",
                 "label": {
                   "en-US": "Identical twin"
                 }
               },
               {
+                "id": "e37daf45-d5ca-527c-919e-373cf0be921c",
                 "value": "fraternalTwin",
                 "label": {
                   "en-US": "Fraternal twin"
                 }
               },
               {
+                "id": "08d233a9-5b1a-5db5-bbcf-b371b55bf885",
                 "value": "unknownZygosityTwin",
                 "label": {
                   "en-US": "Twin, not known if identical"
@@ -302,18 +328,21 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "feab459a-6553-56a7-9513-a45eaed4c7a2",
                 "label": {
                   "en-US": "Very close"
                 },
                 "value": 3
               },
               {
+                "id": "1693cb69-50d9-5670-8d2d-d64696cb2296",
                 "label": {
                   "en-US": "Somewhat close"
                 },
                 "value": 2
               },
               {
+                "id": "7e82109d-476f-5698-bb77-fba6bed6323b",
                 "label": {
                   "en-US": "Not close"
                 },

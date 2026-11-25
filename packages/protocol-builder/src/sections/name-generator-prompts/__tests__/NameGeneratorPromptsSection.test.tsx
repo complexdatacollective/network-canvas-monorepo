@@ -539,12 +539,11 @@ describe("a name generator prompt's preview", () => {
         type,
         fields: {
           ...fields,
-          dynamicValues: { today: { path: 'now' } },
           prompts: [
             {
               id: 'dated',
               text: en(
-                'Who did you see **{today}**? {today, select, missing {Anyone} other {Everyone}}',
+                'Who did you see **{now}**? {now, select, missing {Anyone} other {Everyone}}',
               ),
             },
           ],
@@ -555,14 +554,14 @@ describe("a name generator prompt's preview", () => {
 
     await waitFor(() =>
       expect(
-        document.querySelector('strong [data-token="today"]'),
+        document.querySelector('strong [data-token="now"]'),
       ).toHaveTextContent('Today’s date'),
     );
     // Outside the editor a value's versions fold into its pill.
     expect(
-      document.querySelectorAll('[data-token="today"]').length,
+      document.querySelectorAll('[data-token="now"]').length,
     ).toBeGreaterThan(1);
     expect(screen.queryByText('Everyone')).not.toBeInTheDocument();
-    expect(screen.queryByText(/\{today/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\{now/)).not.toBeInTheDocument();
   });
 });

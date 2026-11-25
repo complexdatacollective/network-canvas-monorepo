@@ -70,7 +70,6 @@ const resolveNodeLabel = ({
   resolve: ResolveText;
 }): string => {
   const sources: DynamicValueSources = {
-    bindings: label.dynamicValues ?? {},
     intrinsics: { now: undefined },
     attributes: { node: attributes },
     labels: { node: defaultLabel },

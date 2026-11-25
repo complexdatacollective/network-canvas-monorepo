@@ -1,5 +1,6 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testOptionId,
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
@@ -41,7 +42,7 @@ export const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
 /**
  * A small, valid schema 9 protocol in two languages: an Information stage, a
  * quick-add name generator with one prompt, and a node type whose ordinal
- * variable has options (an array without ids).
+ * variable has options.
  */
 export const makeProtocol = (
   overrides: Partial<CurrentProtocol> = {},
@@ -64,8 +65,16 @@ export const makeProtocol = (
               name: 'freq',
               type: 'ordinal',
               options: [
-                { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
-                { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
+                {
+                  id: testOptionId(FREQ, 1),
+                  label: { en: 'Often', fr: 'Souvent' },
+                  value: 1,
+                },
+                {
+                  id: testOptionId(FREQ, 2),
+                  label: { en: 'Rarely', fr: 'Rarement' },
+                  value: 2,
+                },
               ],
             },
           },

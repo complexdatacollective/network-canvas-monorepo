@@ -123,10 +123,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   ],
   [
     ['codebook', 'node', PERSON, 'dynamicLabel'],
-    {
-      text: en('Person {nodeLabel}'),
-      dynamicValues: { nodeLabel: { path: 'node.$label' } },
-    },
+    { text: en('Person {node_label}') },
   ],
   [
     ['codebook', 'node', PERSON, 'variables', CONTACT_TYPE, 'name'],
@@ -166,8 +163,8 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: en('Calm'), value: 'calm' },
-        { label: en('Busy'), value: 'busy' },
+        { id: testId('option/calm'), label: en('Calm'), value: 'calm' },
+        { id: testId('option/busy'), label: en('Busy'), value: 'busy' },
       ],
     },
   ],
@@ -260,7 +257,11 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       name: 'relativesNotRecorded',
       type: 'categorical',
       options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(
-        ({ value, label }) => ({ value, label: en(label) }),
+        ({ value, label }) => ({
+          id: testId(`option/relatives-not-recorded/${value}`),
+          value,
+          label: en(label),
+        }),
       ),
     },
   ],

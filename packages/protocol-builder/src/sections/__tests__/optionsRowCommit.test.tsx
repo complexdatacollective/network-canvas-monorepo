@@ -12,6 +12,7 @@ import {
 } from '../../testing/attributePicker.ts';
 import {
   loadFixtureStage,
+  fixtureOptionId,
   fixtureStageId,
   fixtureTypeId,
   fixtureVariableId,
@@ -20,7 +21,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import { testVariableId } from '../../testing/testId.ts';
+import { testVariableId, testId } from '../../testing/testId.ts';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 
 const MOOD = testVariableId('mood');
@@ -40,6 +41,14 @@ const CLOSENESS = fixtureVariableId(
 );
 
 const en = (text: string) => ({ 'en-US': text });
+
+/** The id the fixture gives the scale's point worth `value`. */
+const closenessOption = (value: number) =>
+  fixtureOptionId({ entity: 'edge', typeName: 'knows' }, 'closeness', value);
+
+/** The id the fixture gives the contact type answer worth `value`. */
+const contactOption = (value: string) =>
+  fixtureOptionId({ entity: 'node', typeName: 'person' }, 'contactType', value);
 
 /** A row editor's own queries, scoped to the dialog it opened. */
 const openFormField = async (harness: StageEditorHarness) => {
@@ -144,7 +153,7 @@ const withAnExtraPoint = (
   ...held,
   options: [
     ...(Array.isArray(held.options) ? held.options : []),
-    { label: en('Inseparable'), value: 4 },
+    { id: testId('option/closeness/4'), label: en('Inseparable'), value: 4 },
   ],
 });
 
@@ -206,10 +215,14 @@ describe('the answers a prompt writes back to its attribute', () => {
     // The save was about the prompt's wording. The other researcher's fourth
     // point is still there.
     expect(scale(harness).options).toEqual([
-      { label: en('Very close'), value: 3 },
-      { label: en('Somewhat close'), value: 2 },
-      { label: en('Not close'), value: 1 },
-      { label: en('Inseparable'), value: 4 },
+      { id: closenessOption(3), label: en('Very close'), value: 3 },
+      { id: closenessOption(2), label: en('Somewhat close'), value: 2 },
+      { id: closenessOption(1), label: en('Not close'), value: 1 },
+      {
+        id: testId('option/closeness/4'),
+        label: en('Inseparable'),
+        value: 4,
+      },
     ]);
   });
 
@@ -256,10 +269,11 @@ describe('the answers a prompt writes back to its attribute', () => {
     // The list is the stage's draft until the stage is saved: the editor
     // shows the researcher's list with the collaborator's rename merged in,
     // and the protocol still holds what the collaborator left.
+    // A relabelled point keeps its id.
     const written = [
-      { label: en('Inseparable'), value: 3 },
-      { label: en('Somewhat close'), value: 2 },
-      { label: en('Not close'), value: 1 },
+      { id: closenessOption(3), label: en('Inseparable'), value: 3 },
+      { id: closenessOption(2), label: en('Somewhat close'), value: 2 },
+      { id: closenessOption(1), label: en('Not close'), value: 1 },
     ];
     await waitFor(() =>
       expect(scale(harness, 'editor').options).toEqual(written),
@@ -350,7 +364,11 @@ const withAnExtraAnswer = (
   ...held,
   options: [
     ...(Array.isArray(held.options) ? held.options : []),
-    { label: en('Letters'), value: 'letters' },
+    {
+      id: testId('option/contactType/letters'),
+      label: en('Letters'),
+      value: 'letters',
+    },
   ],
 });
 
@@ -424,10 +442,26 @@ describe('the answers a form field writes back to its attribute', () => {
     );
 
     expect(collectedAttribute(harness).options).toEqual([
-      { label: en('In person'), value: 'in_person' },
-      { label: en('Phone or video call'), value: 'call' },
-      { label: en('Text or messaging'), value: 'text' },
-      { label: en('Letters'), value: 'letters' },
+      {
+        id: contactOption('in_person'),
+        label: en('In person'),
+        value: 'in_person',
+      },
+      {
+        id: contactOption('call'),
+        label: en('Phone or video call'),
+        value: 'call',
+      },
+      {
+        id: contactOption('text'),
+        label: en('Text or messaging'),
+        value: 'text',
+      },
+      {
+        id: testId('option/contactType/letters'),
+        label: en('Letters'),
+        value: 'letters',
+      },
     ]);
   });
 });
@@ -448,9 +482,13 @@ describe('the answers shown after the row is pointed somewhere else', () => {
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: en('Happy'), value: 'happy' },
-      { label: en('Sad'), value: 'sad' },
-      { label: en('Neither'), value: 'neither' },
+      { id: testId('option/mood/happy'), label: en('Happy'), value: 'happy' },
+      { id: testId('option/mood/sad'), label: en('Sad'), value: 'sad' },
+      {
+        id: testId('option/mood/neither'),
+        label: en('Neither'),
+        value: 'neither',
+      },
     ],
   };
 

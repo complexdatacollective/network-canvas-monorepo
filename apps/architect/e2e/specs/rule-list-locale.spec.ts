@@ -64,11 +64,19 @@ for (const { kind, label, shown, conjunction, emphasised } of [
       throw new Error('Expected the Information stage and contactType fixture');
     }
     const { defaultLocale } = protocol.localization;
-    variable.options = [
-      { value: 'in_person', label: { [defaultLocale]: 'Bravo' } },
-      { value: 'call', label: { [defaultLocale]: 'Zulu' } },
-      { value: 'text', label: { [defaultLocale]: label } },
-    ];
+    // Relabelled in place: each option keeps the id the fixture gave it.
+    const relabelled: Record<string, string> = {
+      in_person: 'Bravo',
+      call: 'Zulu',
+      text: label,
+    };
+    variable.options = variable.options.flatMap((option) => {
+      const relabel =
+        typeof option.value === 'string' ? relabelled[option.value] : undefined;
+      return relabel === undefined
+        ? []
+        : [{ ...option, label: { [defaultLocale]: relabel } }];
+    });
     stage.skipLogic = {
       action: 'SKIP',
       filter: {

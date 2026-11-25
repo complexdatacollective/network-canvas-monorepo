@@ -39,6 +39,7 @@ import {
   setLocalizedStrings,
   setTranslation,
 } from './protocol/localeOperations';
+import { withoutVersionsForRemovedOptions } from './protocol/removedOptionVersions';
 import stages from './protocol/stages';
 import { definitionAsStored } from './protocol/utils/helpers';
 
@@ -326,7 +327,16 @@ const activeProtocolReducer = (
   action: UnknownAction,
 ): ActiveProtocolState => {
   const next = activeProtocolSlice.reducer(state, action);
-  return next === null || next === state ? next : withoutSuppliedWording(next);
+  if (next === null || next === state) return next;
+  // A change to the codebook takes out of the text the versions written for
+  // options it deleted, however it was written (the codebook, a stage's
+  // save, an undo). Opening a protocol is not a change to the one open
+  // before it.
+  const kept =
+    state === undefined || state === null || setActiveProtocol.match(action)
+      ? next
+      : withoutVersionsForRemovedOptions(state, next);
+  return withoutSuppliedWording(kept);
 };
 
 export default activeProtocolReducer;

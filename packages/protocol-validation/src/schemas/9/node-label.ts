@@ -1,23 +1,15 @@
 import { z } from 'zod';
 
-import {
-  dynamicValueNamesIn,
-  findDynamicMessageSyntaxProblem,
-  findDynamicValueProblem,
-} from '../../localization/dynamicValueMessages.ts';
+import { findDynamicMessageSyntaxProblem } from '../../localization/dynamicValueMessages.ts';
 import { ConditionsSchema } from './conditions.ts';
 import {
   conditionsContextOf,
-  findBindingCaseProblems,
+  findSiteMessageProblem,
 } from './dynamic-value-validation.ts';
-import {
-  dynamicValueArgumentsAt,
-  type DynamicValueRole,
-  type DynamicValues,
-  type DynamicValueSiteContext,
-  DynamicValuesSchema,
-  dynamicValueStatus,
-  type DynamicValueVariable,
+import type {
+  DynamicValueRole,
+  DynamicValueSiteContext,
+  DynamicValueVariable,
 } from './dynamic-values.ts';
 import { localizedString, nonBlankText } from './localized-string.ts';
 
@@ -25,11 +17,10 @@ import { localizedString, nonBlankText } from './localized-string.ts';
  * How a node type labels its nodes, in place of the label the interview
  * would otherwise choose for each (an attribute called "name", and so on):
  * - `text`, the label, in each of the protocol's languages, which shows
- *   values as a stage's text does;
- * - `dynamicValues`, the values `text` names, as a stage binds its own: an
- *   attribute of the node (`node.<id>`), the label the interview would
- *   otherwise have chosen for it (`node.$label`), or one of the label's
- *   conditions (`$condition.<id>`);
+ *   values as a stage's text does, by name (see `dynamic-values.ts`): an
+ *   attribute of the node (`node_<variable id>`), the label the interview
+ *   would otherwise have chosen for it (`node_label`), or one of the label's
+ *   conditions (`condition_<id>`);
  * - `conditions`, the conditions `text` can choose its wording by, by id,
  *   each asked of the node the label is on (see `conditions.ts`).
  *
@@ -42,10 +33,8 @@ export const NodeLabelSchema = z.strictObject({
     { format: 'plain', lines: 'single' },
     { dynamicValues: 'nodeLabel' },
   ),
-  dynamicValues: DynamicValuesSchema.optional(),
   conditions: ConditionsSchema.optional(),
 });
-
 export type NodeLabel = z.infer<typeof NodeLabelSchema>;
 
 type Path = (string | number)[];
@@ -105,10 +94,9 @@ type LabelHit = Readonly<{
 
 /**
  * Every problem with the values node types' labels show, as
- * `findDynamicValueProblems` finds a stage's: a value the label names that
- * is not bound, cannot be shown on a node, or names an attribute or a
- * condition that does not exist; a binding case that stands for nothing;
- * and any misuse `findDynamicValueProblem` finds in a translation. Each
+ * `findDynamicValueProblems` finds a stage's: a name that refers to nothing,
+ * a value that cannot be shown on a node, a version for a case the value
+ * does not have, and any misuse `findDynamicValueProblem` finds. Each
  * language is checked on its own.
  *
  * `hits` are the protocol's localized strings (`collectLocalizedStrings`).
@@ -132,30 +120,6 @@ export const findNodeLabelProblems = (
       nodeType,
       conditions: label.conditions,
     });
-    const rawBindings = isRecord(label.dynamicValues)
-      ? label.dynamicValues
-      : {};
-    for (const [name, binding] of Object.entries(rawBindings)) {
-      if (!isRecord(binding) || typeof binding.path !== 'string') continue;
-      const status = dynamicValueStatus({ path: binding.path }, context);
-      if (status.status !== 'available') {
-        problems.push({
-          path: [...base, 'dynamicValues', name, 'path'],
-          message: `"${name}" cannot be shown on a node of this type: ${status.reason}.`,
-        });
-      }
-    }
-    problems.push(
-      ...findBindingCaseProblems(
-        rawBindings,
-        [...base, 'dynamicValues'],
-        context.variablesFor,
-      ),
-    );
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the label is raw here; its dynamicValues are shaped by DynamicValuesSchema and each binding is checked before use
-    const bindings = rawBindings as DynamicValues;
-    const values = dynamicValueArgumentsAt(bindings, context);
-
     for (const hit of hits) {
       if (
         hit.dynamicValues !== 'nodeLabel' ||
@@ -168,18 +132,12 @@ export const findNodeLabelProblems = (
       for (const [locale, message] of Object.entries(hit.value)) {
         // The field's own check reports what needs no codebook.
         if (findDynamicMessageSyntaxProblem(message) !== undefined) continue;
-        // A binding that cannot be shown is reported on the binding.
-        const unusable = dynamicValueNamesIn(message).some((name) => {
-          const binding = Object.hasOwn(bindings, name)
-            ? bindings[name]
-            : undefined;
-          return (
-            binding !== undefined &&
-            dynamicValueStatus(binding, context).status !== 'available'
-          );
-        });
-        if (unusable) continue;
-        const problem = findDynamicValueProblem(message, values, locale);
+        const problem = findSiteMessageProblem(
+          message,
+          context,
+          locale,
+          'This label',
+        );
         if (problem !== undefined) {
           problems.push({ path: [...hit.path, locale], message: problem });
         }

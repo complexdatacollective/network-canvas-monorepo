@@ -6,6 +6,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testId.ts';
 import { ValueGenerator } from '../../../ValueGenerator.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import type { GenerationContext } from '../../context.ts';
@@ -131,7 +132,12 @@ describe('solvableComponents', () => {
         name: 'Flag',
         type: 'boolean',
         component: 'Boolean',
-        options: [{ label: { 'en-US': 'Yes' }, value: true }],
+        options: [
+          {
+            label: { 'en-US': 'Yes' },
+            value: true,
+          },
+        ],
         validation: { differentFrom: ref('other') },
       },
       other: { name: 'Other', type: 'boolean' },
@@ -139,8 +145,16 @@ describe('solvableComponents', () => {
         name: 'Band',
         type: 'ordinal',
         options: [
-          { label: { 'en-US': 'Low' }, value: 1 },
-          { label: { 'en-US': 'High' }, value: 2 },
+          {
+            id: testId('solver/option-2'),
+            label: { 'en-US': 'Low' },
+            value: 1,
+          },
+          {
+            id: testId('solver/option-3'),
+            label: { 'en-US': 'High' },
+            value: 2,
+          },
         ],
         validation: { differentFrom: ref('twin') },
       },
@@ -148,8 +162,16 @@ describe('solvableComponents', () => {
         name: 'Twin',
         type: 'ordinal',
         options: [
-          { label: { 'en-US': 'Low' }, value: 1 },
-          { label: { 'en-US': 'High' }, value: 2 },
+          {
+            id: testId('solver/option-4'),
+            label: { 'en-US': 'Low' },
+            value: 1,
+          },
+          {
+            id: testId('solver/option-5'),
+            label: { 'en-US': 'High' },
+            value: 2,
+          },
         ],
       },
       s: {
@@ -288,9 +310,9 @@ describe('solvableComponents', () => {
 
   it('enumerates categorical subsets within the selection bounds', () => {
     const options = [
-      { label: { 'en-US': 'X' }, value: 'x' },
-      { label: { 'en-US': 'Y' }, value: 'y' },
-      { label: { 'en-US': 'Z' }, value: 'z' },
+      { id: testId('solver/option-6'), label: { 'en-US': 'X' }, value: 'x' },
+      { id: testId('solver/option-7'), label: { 'en-US': 'Y' }, value: 'y' },
+      { id: testId('solver/option-8'), label: { 'en-US': 'Z' }, value: 'z' },
     ];
     const entity = build({
       tags: {
@@ -391,6 +413,7 @@ describe('solvableComponents', () => {
     // a solved value must come from the same sizes, or adding a rule would
     // change what the data looks like.
     const options = Array.from({ length: 4 }, (_v, i) => ({
+      id: testId(`option-${i}`),
       label: { 'en-US': `O${i}` },
       value: i,
     }));
@@ -419,6 +442,7 @@ describe('solvableComponents', () => {
 
   it('widens a unique categorical domain to every selection size', () => {
     const options = Array.from({ length: 4 }, (_v, i) => ({
+      id: testId(`option-${i}`),
       label: { 'en-US': `O${i}` },
       value: i,
     }));
@@ -446,6 +470,7 @@ describe('solvableComponents', () => {
     // sits above the default ceiling of two, so the domain holds exactly the
     // size-three subsets.
     const options = Array.from({ length: 4 }, (_v, i) => ({
+      id: testId(`option-${i}`),
       label: { 'en-US': `O${i}` },
       value: i,
     }));
@@ -477,9 +502,17 @@ describe('solvableComponents', () => {
     // deduplicates every selection, so the domain must never hold a multiset
     // like ['x','x'] that no participant control can produce.
     const options = [
-      { label: { 'en-US': 'First X' }, value: 'x' },
-      { label: { 'en-US': 'Second X' }, value: 'x' },
-      { label: { 'en-US': 'Y' }, value: 'y' },
+      {
+        id: testId('solver/option-9'),
+        label: { 'en-US': 'First X' },
+        value: 'x',
+      },
+      {
+        id: testId('solver/option-10'),
+        label: { 'en-US': 'Second X' },
+        value: 'x',
+      },
+      { id: testId('solver/option-11'), label: { 'en-US': 'Y' }, value: 'y' },
     ];
     const entity = build({
       tags: {
@@ -509,6 +542,7 @@ describe('solvableComponents', () => {
     // generated entity. Work is proportional to elements, not subsets, so
     // the budget must count them.
     const options = Array.from({ length: 20 }, (_v, i) => ({
+      id: testId(`option-${i}`),
       label: { 'en-US': `O${i}` },
       value: i,
     }));
@@ -527,8 +561,16 @@ describe('solvableComponents', () => {
         name: 'Narrow',
         type: 'categorical',
         options: [
-          { label: { 'en-US': 'A' }, value: 'a' },
-          { label: { 'en-US': 'B' }, value: 'b' },
+          {
+            id: testId('solver/option-12'),
+            label: { 'en-US': 'A' },
+            value: 'a',
+          },
+          {
+            id: testId('solver/option-13'),
+            label: { 'en-US': 'B' },
+            value: 'b',
+          },
         ],
         validation: { minSelected: 2, maxSelected: 2 },
       },
@@ -542,6 +584,7 @@ describe('solvableComponents', () => {
 
   it('declines a categorical whose combination space overflows the budget', () => {
     const options = Array.from({ length: 24 }, (_v, i) => ({
+      id: testId(`option-${i}`),
       label: { 'en-US': `O${i}` },
       value: i,
     }));
@@ -572,6 +615,7 @@ describe('solvableComponents', () => {
     // unique variable could pass the count and then run out of solved values,
     // or be refused values the solver could in fact reach.
     const options = Array.from({ length: 4 }, (_v, i) => ({
+      id: testId(`option-${i}`),
       label: { 'en-US': `O${i}` },
       value: i,
     }));
@@ -659,8 +703,16 @@ describe('solvableComponents', () => {
         name: 'Repeated',
         type: 'ordinal',
         options: [
-          { label: { 'en-US': 'One' }, value: 1 },
-          { label: { 'en-US': 'Uno' }, value: 1 },
+          {
+            id: testId('solver/option-14'),
+            label: { 'en-US': 'One' },
+            value: 1,
+          },
+          {
+            id: testId('solver/option-15'),
+            label: { 'en-US': 'Uno' },
+            value: 1,
+          },
         ],
         validation: { differentFrom: ref('band') },
       },
@@ -744,18 +796,42 @@ describe('solvableComponents', () => {
         name: 'A',
         type: 'ordinal',
         options: [
-          { label: { 'en-US': 'One' }, value: 1 },
-          { label: { 'en-US': 'Two' }, value: 2 },
-          { label: { 'en-US': 'Three' }, value: 3 },
+          {
+            id: testId('solver/option-16'),
+            label: { 'en-US': 'One' },
+            value: 1,
+          },
+          {
+            id: testId('solver/option-17'),
+            label: { 'en-US': 'Two' },
+            value: 2,
+          },
+          {
+            id: testId('solver/option-18'),
+            label: { 'en-US': 'Three' },
+            value: 3,
+          },
         ],
       },
       b: {
         name: 'B',
         type: 'ordinal',
         options: [
-          { label: { 'en-US': 'Two' }, value: 2 },
-          { label: { 'en-US': 'Three' }, value: 3 },
-          { label: { 'en-US': 'Four' }, value: 4 },
+          {
+            id: testId('solver/option-19'),
+            label: { 'en-US': 'Two' },
+            value: 2,
+          },
+          {
+            id: testId('solver/option-20'),
+            label: { 'en-US': 'Three' },
+            value: 3,
+          },
+          {
+            id: testId('solver/option-21'),
+            label: { 'en-US': 'Four' },
+            value: 4,
+          },
         ],
         validation: { sameAs: ref('a') },
       },
@@ -763,8 +839,16 @@ describe('solvableComponents', () => {
         name: 'C',
         type: 'ordinal',
         options: [
-          { label: { 'en-US': 'Two' }, value: 2 },
-          { label: { 'en-US': 'Three' }, value: 3 },
+          {
+            id: testId('solver/option-22'),
+            label: { 'en-US': 'Two' },
+            value: 2,
+          },
+          {
+            id: testId('solver/option-23'),
+            label: { 'en-US': 'Three' },
+            value: 3,
+          },
         ],
         validation: { differentFrom: ref('a') },
       },

@@ -52,6 +52,7 @@ import {
   fixtureVariableId,
 } from '@codaco/protocol-builder/testing/protocolFixture';
 import {
+  testOptionId,
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
@@ -1730,8 +1731,16 @@ describe("Architect's in-process protocol-builder host", () => {
       requestId: nextRequestId(),
       sectionId: created.sectionId,
       document: withScale([
-        { label: { [FIXTURE_LANGUAGE]: 'Some' }, value: 1 },
-        { label: { [FIXTURE_LANGUAGE]: 'Lots' }, value: 2 },
+        {
+          id: testOptionId(testVariableId('f'), 1),
+          label: { [FIXTURE_LANGUAGE]: 'Some' },
+          value: 1,
+        },
+        {
+          id: testOptionId(testVariableId('f'), 2),
+          label: { [FIXTURE_LANGUAGE]: 'Lots' },
+          value: 2,
+        },
       ]),
       revision: held.revision,
     });

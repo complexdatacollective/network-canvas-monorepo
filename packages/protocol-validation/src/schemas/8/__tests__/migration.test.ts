@@ -2332,14 +2332,14 @@ describe('Migration V7 to V8', () => {
       const rank = parsed.codebook.node?.person?.variables?.rank;
       if (pick && 'options' in pick) {
         expect(pick.options).toEqual([
-          { label: en('Yes'), value: 'true' },
-          { label: en('No'), value: 'false' },
+          { id: expect.any(String), label: en('Yes'), value: 'true' },
+          { id: expect.any(String), label: en('No'), value: 'false' },
         ]);
       }
       if (rank && 'options' in rank) {
         expect(rank.options).toEqual([
-          { label: en('Yes'), value: 'true' },
-          { label: en('No'), value: 'false' },
+          { id: expect.any(String), label: en('Yes'), value: 'true' },
+          { id: expect.any(String), label: en('No'), value: 'false' },
         ]);
       }
     });
@@ -6281,8 +6281,8 @@ describe('Migration V7 to V8', () => {
         throw new Error('expected rating options');
       }
       expect(rating.options).toEqual([
-        { label: en('Half'), value: '0.5' },
-        { label: en('One'), value: 1 },
+        { id: expect.any(String), label: en('Half'), value: '0.5' },
+        { id: expect.any(String), label: en('One'), value: 1 },
       ]);
     });
 
@@ -6303,8 +6303,8 @@ describe('Migration V7 to V8', () => {
         throw new Error('expected rating options');
       }
       expect(rating.options).toEqual([
-        { label: en('7'), value: 'seven' },
-        { label: en('Eight'), value: 'eight' },
+        { id: expect.any(String), label: en('7'), value: 'seven' },
+        { id: expect.any(String), label: en('Eight'), value: 'eight' },
       ]);
     });
 

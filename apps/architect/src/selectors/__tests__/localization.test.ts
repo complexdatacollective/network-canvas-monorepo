@@ -2,10 +2,15 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
 import {
+  testId,
+  testOptionId,
   testTypeId,
   testVariableId,
 } from '@codaco/protocol-builder/testing/testId';
-import { ProtocolObjectIdSchema } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  ProtocolObjectIdSchema,
+} from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -55,7 +60,13 @@ const protocolIn = (
             name: 'closeness',
             type: 'categorical',
             component: 'CheckboxGroup',
-            options: [{ value: 'close', label: { en: 'Close' } }],
+            options: [
+              {
+                id: testOptionId(CLOSENESS, 'close'),
+                value: 'close',
+                label: { en: 'Close' },
+              },
+            ],
           },
         },
       },
@@ -137,6 +148,8 @@ describe('getTranslationGroups()', () => {
             format: 'markdown',
             lines: 'multiple',
             assetBlocks: true,
+            // Every text that can show values offers them.
+            dynamicValues: 'stageText',
             value: { en: '# Hello', fr: '# Bonjour' },
             // The declaration of the field it is in.
             schema: expect.anything(),
@@ -200,6 +213,7 @@ describe('getTranslationGroups()', () => {
       lines: 'multiple',
       // The one text of an Information stage can show files as blocks.
       assetBlocks: true,
+      dynamicValues: 'stageText',
       value: {
         en: '# About\n\nName **people**',
         fr: '# À propos\n\nNommez',
@@ -207,6 +221,61 @@ describe('getTranslationGroups()', () => {
       },
       // The declaration of the field it is in.
       schema: expect.anything(),
+    });
+  });
+
+  /**
+   * A text that can show values offers them to its translators whether or not
+   * any text of its stage shows one yet: a translation may be the first.
+   */
+  describe('the texts of a stage that can show values', () => {
+    const AGE = testVariableId('age');
+    const withForm = (prompt: string): CurrentProtocol => {
+      const protocol = trilingual();
+      return {
+        ...protocol,
+        codebook: {
+          ...protocol.codebook,
+          ego: { variables: { [AGE]: { name: 'age', type: 'number' } } },
+        },
+        stages: [
+          {
+            id: INTRO_STAGE_ID,
+            type: 'EgoForm',
+            label: { en: 'About you' },
+            introductionPanel: {
+              title: { en: 'About you' },
+              text: { en: 'A few questions.' },
+            },
+            form: {
+              fields: [
+                {
+                  id: testId('field/age'),
+                  variable: asEntityAttributeReference(AGE),
+                  prompt: { en: prompt },
+                  hint: { en: 'In whole years.' },
+                },
+              ],
+            },
+          },
+        ],
+      };
+    };
+    const hintRow = (protocol: CurrentProtocol) =>
+      getTranslationGroups(stateWith(protocol))
+        .find(({ key }) => key === `stage:${INTRO_STAGE_ID}`)
+        ?.rows.find(({ field }) => field.at(-1) === 'hint');
+
+    it('offers values in a text that names none, when another text of its stage names one', () => {
+      expect(hintRow(withForm('How old are you on {now}?'))).toMatchObject({
+        dynamicValues: 'formField',
+      });
+    });
+
+    it('offers values where no text of its stage names one', () => {
+      expect(hintRow(withForm('How old are you?'))).toMatchObject({
+        dynamicValues: 'formField',
+      });
     });
   });
 });

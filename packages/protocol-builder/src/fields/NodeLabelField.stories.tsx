@@ -3,7 +3,11 @@ import { expect, waitFor, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
-import { CodebookSchema } from '@codaco/protocol-validation';
+import {
+  CodebookSchema,
+  dynamicValueNameFor,
+  optionCaseKey,
+} from '@codaco/protocol-validation';
 
 import { ProtocolLocalizationProvider } from '../localization/ProtocolLocalization.tsx';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
@@ -16,6 +20,9 @@ const NEAR = testTypeId('near');
 const PLACE_NAME = testVariableId('placeName');
 const KIND = testVariableId('kind');
 const BEDS = testVariableId('beds');
+const HOSPITAL = testId('option/hospital');
+const SCHOOL = testId('option/school');
+const LINKED = testId('condition/linked');
 
 const LABEL = 'Label';
 const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
@@ -33,8 +40,8 @@ const CODEBOOK = CodebookSchema.parse({
           name: 'kind',
           type: 'ordinal',
           options: [
-            { label: { en: 'Hospital' }, value: 'hospital' },
-            { label: { en: 'School' }, value: 'school' },
+            { id: HOSPITAL, label: { en: 'Hospital' }, value: 'hospital' },
+            { id: SCHOOL, label: { en: 'School' }, value: 'school' },
           ],
         },
         [BEDS]: { name: 'beds', type: 'number' },
@@ -44,20 +51,22 @@ const CODEBOOK = CodebookSchema.parse({
   edge: { [NEAR]: { name: 'Near', color: 'edge-color-seq-1' } },
 });
 
+const KIND_NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: KIND,
+});
+const LINKED_NAME = dynamicValueNameFor({
+  kind: 'condition',
+  conditionId: LINKED,
+});
+
 const SWITCH_ON_KIND: NodeLabelDraft = {
   text: {
-    en: '{kind, select, missing {} hospital {🏥 } school {🏫 } other {}}{nodeLabel}{linked, select, yes { 🔗} other {}}',
-  },
-  dynamicValues: {
-    kind: {
-      path: `node.${KIND}`,
-      cases: { hospital: 'hospital', school: 'school' },
-    },
-    nodeLabel: { path: 'node.$label' },
-    linked: { path: '$condition.linked', cases: { yes: true } },
+    en: `{${KIND_NAME}, select, missing {} ${optionCaseKey(HOSPITAL)} {🏥 } ${optionCaseKey(SCHOOL)} {🏫 } other {}}{node_label}{${LINKED_NAME}, select, true { 🔗} other {}}`,
   },
   conditions: {
-    linked: {
+    [LINKED]: {
       about: 'node',
       rules: [
         {

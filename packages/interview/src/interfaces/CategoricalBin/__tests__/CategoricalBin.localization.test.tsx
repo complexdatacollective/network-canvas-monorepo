@@ -90,9 +90,17 @@ const protocolPayload: ProtocolPayload = {
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: { en: 'Family', ar: 'العائلة' }, value: 'family' },
+              {
+                id: testId('CategoricalBin option 1'),
+                label: { en: 'Family', ar: 'العائلة' },
+                value: 'family',
+              },
               // No Arabic translation: the participant sees the default.
-              { label: { en: 'Friends' }, value: 'friends' },
+              {
+                id: testId('CategoricalBin option 2'),
+                label: { en: 'Friends' },
+                value: 'friends',
+              },
             ],
           },
         },

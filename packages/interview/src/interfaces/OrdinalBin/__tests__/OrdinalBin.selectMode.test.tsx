@@ -17,6 +17,7 @@ import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
   asEntityAttributeReference,
   type Codebook,
+  dynamicValueNameFor,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -125,6 +126,8 @@ const NAME_VAR = testVariableId('name');
 const CLOSENESS_VAR = testVariableId('closeness');
 const STAGE_ID = testId('ordinal-bin-stage');
 const PROMPT_ID = testId('prompt-1');
+/** The name text gives the label of the node being placed. */
+const NODE_LABEL = dynamicValueNameFor({ kind: 'label', role: 'node' });
 
 const person = (id: string, name: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
@@ -145,8 +148,12 @@ const codebook: Codebook = {
           type: 'ordinal',
           component: 'LikertScale',
           options: [
-            { label: { en: 'Distant' }, value: 1 },
-            { label: { en: 'Close' }, value: 2 },
+            {
+              id: testId('option distant'),
+              label: { en: 'Distant' },
+              value: 1,
+            },
+            { id: testId('option close'), label: { en: 'Close' }, value: 2 },
           ],
         },
       },
@@ -160,7 +167,7 @@ type Mode = 'drag' | 'select';
 
 type StageOptions = {
   sortByName?: boolean;
-  /** Prompt text naming the person being placed, by `{nodeLabel}`. */
+  /** Prompt text naming the person being placed, by `{node_label}`. */
   namingFocal?: string;
 };
 
@@ -173,9 +180,6 @@ const buildStage = (
   label: { en: 'Rate people' },
   subject: { entity: 'node', type: NODE_TYPE },
   ...(mode === 'select' && { behaviours: { interactionMode: 'select' } }),
-  ...(namingFocal !== undefined && {
-    dynamicValues: { nodeLabel: { path: 'node.$label' } },
-  }),
   prompts: [
     {
       id: PROMPT_ID,
@@ -371,8 +375,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     // The prompt's natural sentence, without the marks around its values.
     const prompt = () => screen.getByTestId('prompt').getAttribute('title');
     renderStage('select', [person('a', 'Ann'), person('b', 'Ben')], {
-      namingFocal:
-        '{nodeLabel, select, missing {Everyone is placed.} other {How close is {nodeLabel}?}}',
+      namingFocal: `{${NODE_LABEL}, select, missing {Everyone is placed.} other {How close is {${NODE_LABEL}}?}}`,
     });
 
     await announcement('Ann');

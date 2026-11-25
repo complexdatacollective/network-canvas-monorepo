@@ -8,7 +8,7 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import {
   dynamicValueNamesIn,
   getLocaleMetadata,
-  parseDynamicValuePath,
+  parseDynamicValueName,
 } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
@@ -124,9 +124,8 @@ function finishTextEgoAttributes(
         dynamicValueNamesIn(message),
       ),
     );
-    for (const [name, binding] of Object.entries(stage.dynamicValues ?? {})) {
-      if (!shown.has(name)) continue;
-      const parsed = parseDynamicValuePath(binding.path);
+    for (const name of shown) {
+      const parsed = parseDynamicValueName(name);
       if (parsed?.kind !== 'attribute' || parsed.role !== 'ego') continue;
       // Attribute ids come from the protocol and may name a member every
       // object inherits, so only an own value counts.

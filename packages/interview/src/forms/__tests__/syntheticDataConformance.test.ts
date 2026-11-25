@@ -22,7 +22,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import { testTypeId, testVariableId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { buildDatePickerBoundProps } from '../buildDatePickerBoundProps';
 import { buildFieldValidationProps } from '../buildFieldValidationProps';
 
@@ -318,24 +318,72 @@ function formFields(variables: Variables): { variable: string }[] {
 }
 
 const FOUR_OPTIONS: VariableOptions = [
-  { label: { en: 'Work' }, value: 'work' },
-  { label: { en: 'Home' }, value: 'home' },
-  { label: { en: 'School' }, value: 'school' },
-  { label: { en: 'Sport' }, value: 'sport' },
+  {
+    id: testId('syntheticDataConformance option 1'),
+    label: { en: 'Work' },
+    value: 'work',
+  },
+  {
+    id: testId('syntheticDataConformance option 2'),
+    label: { en: 'Home' },
+    value: 'home',
+  },
+  {
+    id: testId('syntheticDataConformance option 3'),
+    label: { en: 'School' },
+    value: 'school',
+  },
+  {
+    id: testId('syntheticDataConformance option 4'),
+    label: { en: 'Sport' },
+    value: 'sport',
+  },
 ];
 
 const THREE_OPTIONS: VariableOptions = [
-  { label: { en: 'Low' }, value: 1 },
-  { label: { en: 'Mid' }, value: 2 },
-  { label: { en: 'High' }, value: 3 },
+  {
+    id: testId('syntheticDataConformance option 5'),
+    label: { en: 'Low' },
+    value: 1,
+  },
+  {
+    id: testId('syntheticDataConformance option 6'),
+    label: { en: 'Mid' },
+    value: 2,
+  },
+  {
+    id: testId('syntheticDataConformance option 7'),
+    label: { en: 'High' },
+    value: 3,
+  },
 ];
 
 const FIVE_OPTIONS: VariableOptions = [
-  { label: { en: 'Never' }, value: 1 },
-  { label: { en: 'Rarely' }, value: 2 },
-  { label: { en: 'Sometimes' }, value: 3 },
-  { label: { en: 'Often' }, value: 4 },
-  { label: { en: 'Always' }, value: 5 },
+  {
+    id: testId('syntheticDataConformance option 8'),
+    label: { en: 'Never' },
+    value: 1,
+  },
+  {
+    id: testId('syntheticDataConformance option 9'),
+    label: { en: 'Rarely' },
+    value: 2,
+  },
+  {
+    id: testId('syntheticDataConformance option 10'),
+    label: { en: 'Sometimes' },
+    value: 3,
+  },
+  {
+    id: testId('syntheticDataConformance option 11'),
+    label: { en: 'Often' },
+    value: 4,
+  },
+  {
+    id: testId('syntheticDataConformance option 12'),
+    label: { en: 'Always' },
+    value: 5,
+  },
 ];
 
 const MONTH_PARAMETERS = {

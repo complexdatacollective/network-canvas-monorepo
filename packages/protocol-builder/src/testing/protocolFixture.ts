@@ -218,14 +218,12 @@ export function fixtureTypeId(entity: 'node' | 'edge', name: string): string {
   return key;
 }
 
-/**
- * The id the fixture keeps the variable called `name` under, on the ego or
- * on the node or edge type called `typeName`.
- */
-export function fixtureVariableId(
-  owner: 'ego' | Readonly<{ entity: 'node' | 'edge'; typeName: string }>,
-  name: string,
-): string {
+type VariableOwner =
+  | 'ego'
+  | Readonly<{ entity: 'node' | 'edge'; typeName: string }>;
+
+/** The variables the fixture keeps on the ego or on one node or edge type. */
+const variablesOf = (owner: VariableOwner): unknown => {
   const codebook = fixtureCodebook();
   const definition =
     owner === 'ego'
@@ -236,14 +234,47 @@ export function fixtureVariableId(
             ? types[fixtureTypeId(owner.entity, owner.typeName)]
             : undefined;
         })();
-  const key = keyNamed(
-    isRecord(definition) ? definition.variables : undefined,
-    name,
-  );
+  return isRecord(definition) ? definition.variables : undefined;
+};
+
+/**
+ * The id the fixture keeps the variable called `name` under, on the ego or
+ * on the node or edge type called `typeName`.
+ */
+export function fixtureVariableId(owner: VariableOwner, name: string): string {
+  const key = keyNamed(variablesOf(owner), name);
   if (key === undefined) {
     throw new Error(`The all-interfaces protocol has no variable "${name}".`);
   }
   return key;
+}
+
+/**
+ * The id of the option whose value is `value` on the fixture's variable
+ * called `name`, owned as `fixtureVariableId` takes it.
+ */
+export function fixtureOptionId(
+  owner: VariableOwner,
+  name: string,
+  value: string | number,
+): string {
+  const variables = variablesOf(owner);
+  const variable = isRecord(variables)
+    ? variables[fixtureVariableId(owner, name)]
+    : undefined;
+  const options =
+    isRecord(variable) && Array.isArray(variable.options)
+      ? variable.options
+      : [];
+  const option: unknown = options.find(
+    (each: unknown) => isRecord(each) && each.value === value,
+  );
+  if (!isRecord(option) || typeof option.id !== 'string') {
+    throw new Error(
+      `The all-interfaces protocol's "${name}" has no option ${JSON.stringify(value)}.`,
+    );
+  }
+  return option.id;
 }
 
 /** The languages the fixture protocol declares. */

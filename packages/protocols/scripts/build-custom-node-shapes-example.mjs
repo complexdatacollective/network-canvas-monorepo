@@ -109,7 +109,11 @@ function nodeType({ key, name, color, customShapes }) {
         name: 'type',
         type: 'categorical',
         component: 'ToggleButtonGroup',
-        options: kinds.map(({ value, label }) => ({ label: en(label), value })),
+        options: kinds.map(({ value, label }) => ({
+          id: objectId(`${key}_type/option-${value}`),
+          label: en(label),
+          value,
+        })),
         validation: { required: true, maxSelected: 1 },
       },
       [`${key}_layout`]: { name: 'layout', type: 'layout' },

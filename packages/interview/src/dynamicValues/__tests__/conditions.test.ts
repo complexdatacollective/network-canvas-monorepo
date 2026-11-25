@@ -4,7 +4,7 @@ import {
   type Conditions,
   ConditionsSchema,
   createProtocolObjectId,
-  type DynamicValues,
+  dynamicValueNameFor,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -13,7 +13,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { testTypeId, testVariableId } from '../../__tests__/testIds';
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { contentFormatFor } from '../../localization/contentFormat';
 import { buildConnectivityIndex } from '../../nodeLabels/connectivity';
 import { conditionHolds, conditionReadsNetwork } from '../conditions';
@@ -55,8 +55,18 @@ const connectivity = buildConnectivityIndex(
   [edge('1', 'a', 'b', KNOWS, { [YEARS]: 12 }), edge('2', 'a', 'c', LIKES)],
 );
 
+/** Each condition's id, by what it asks. */
+const IDS = {
+  adult: testId('condition adult'),
+  closeAndKnown: testId('condition closeAndKnown'),
+  oldFriend: testId('condition oldFriend'),
+  popular: testId('condition popular'),
+  strongTie: testId('condition strongTie'),
+  gone: testId('condition gone'),
+};
+
 const CONDITIONS: Conditions = ConditionsSchema.parse({
-  adult: {
+  [IDS.adult]: {
     rules: [
       {
         type: 'ego',
@@ -69,7 +79,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
       },
     ],
   },
-  closeAndKnown: {
+  [IDS.closeAndKnown]: {
     about: 'dyadTarget',
     join: 'AND',
     rules: [
@@ -90,7 +100,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
       },
     ],
   },
-  oldFriend: {
+  [IDS.oldFriend]: {
     about: 'node',
     rules: [
       {
@@ -105,7 +115,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
       },
     ],
   },
-  popular: {
+  [IDS.popular]: {
     about: 'node',
     rules: [
       {
@@ -115,7 +125,7 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
       },
     ],
   },
-  strongTie: {
+  [IDS.strongTie]: {
     about: 'edge',
     rules: [
       {
@@ -133,10 +143,10 @@ const CONDITIONS: Conditions = ConditionsSchema.parse({
 });
 
 const holds = (
-  id: keyof typeof CONDITIONS,
+  id: keyof typeof IDS,
   subjects: Parameters<typeof conditionHolds>[1],
 ) => {
-  const condition = CONDITIONS[id];
+  const condition = CONDITIONS[IDS[id]];
   if (condition === undefined) throw new Error(`No condition ${id}`);
   return conditionHolds(condition, { connectivity, ...subjects });
 };
@@ -194,8 +204,8 @@ describe('conditionHolds', () => {
   });
 
   it('says which conditions follow the network', () => {
-    const reads = (id: string) => {
-      const condition = CONDITIONS[id];
+    const reads = (id: keyof typeof IDS) => {
+      const condition = CONDITIONS[IDS[id]];
       return condition !== undefined && conditionReadsNetwork(condition);
     };
     expect(reads('adult')).toBe(false);
@@ -206,12 +216,19 @@ describe('conditionHolds', () => {
 });
 
 describe('stage text that chooses its wording by a condition', () => {
-  const bindings: DynamicValues = {
-    adult: { path: '$condition.adult', cases: { yes: true } },
-    minor: { path: '$condition.adult', cases: { no: false } },
-    popular: { path: '$condition.popular', cases: { yes: true } },
-    gone: { path: '$condition.gone', cases: { yes: true } },
-  };
+  // The name text gives each condition.
+  const adult = dynamicValueNameFor({
+    kind: 'condition',
+    conditionId: IDS.adult,
+  });
+  const popular = dynamicValueNameFor({
+    kind: 'condition',
+    conditionId: IDS.popular,
+  });
+  const gone = dynamicValueNameFor({
+    kind: 'condition',
+    conditionId: IDS.gone,
+  });
   const formatters: DynamicValueFormatters = {
     format: contentFormatFor('en'),
     resolveLabel: (label) => label.en ?? '',
@@ -222,7 +239,6 @@ describe('stage text that chooses its wording by a condition', () => {
       message,
       'en',
       {
-        bindings,
         intrinsics: { now: new Date('2026-10-13T12:00:00Z') },
         attributes: {},
         labels: {},
@@ -235,8 +251,7 @@ describe('stage text that chooses its wording by a condition', () => {
     )?.text;
 
   it('reads the version for a condition that is met, and the one for when it is not', () => {
-    const message =
-      '{adult, select, yes {your work} other {your school}}{minor, select, no { (with a guardian)} other {}}';
+    const message = `{${adult}, select, true {your work} other {your school}}{${adult}, select, false { (with a guardian)} other {}}`;
     expect(read(message, { attributes: { ego: { [AGE]: 40 } } })).toBe(
       'your work',
     );
@@ -246,8 +261,7 @@ describe('stage text that chooses its wording by a condition', () => {
   });
 
   it('nests one condition inside another', () => {
-    const message =
-      '{adult, select, yes {{popular, select, yes {busy adult} other {adult}}} other {child}}';
+    const message = `{${adult}, select, true {{${popular}, select, true {busy adult} other {adult}}} other {child}}`;
     const about = (age: number, id: string) => ({
       attributes: { ego: { [AGE]: age }, node: {} },
       entityIds: { node: id },
@@ -258,7 +272,20 @@ describe('stage text that chooses its wording by a condition', () => {
     expect(read(message, about(3, 'a'))).toBe('child');
   });
 
-  it('reads its other version for a condition the stage does not declare', () => {
-    expect(read('{gone, select, yes {a} other {b}}', {})).toBe('b');
+  it('reads the version for true and the one for false', () => {
+    const message = `{${adult}, select, true {an adult} false {a child} other {someone}}`;
+    expect(read(message, { attributes: { ego: { [AGE]: 40 } } })).toBe(
+      'an adult',
+    );
+    expect(read(message, { attributes: { ego: { [AGE]: 9 } } })).toBe(
+      'a child',
+    );
+  });
+
+  it('reads a condition the stage does not declare as missing', () => {
+    expect(
+      read(`{${gone}, select, missing {a} true {b} false {c} other {d}}`, {}),
+    ).toBe('a');
+    expect(read(`{${gone}, select, true {a} other {b}}`, {})).toBe('b');
   });
 });

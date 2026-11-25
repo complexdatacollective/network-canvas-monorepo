@@ -24,8 +24,8 @@ type CanvasEditorCase = Readonly<{
   sections: readonly string[];
   /**
    * The top-level stage keys those sections have a field for, and
-   * `dynamicValues`, which every stage editor registers for the values its
-   * text may show.
+   * `conditions`, which every stage editor registers for the "If"s its text
+   * may hold.
    */
   ownedKeys: readonly string[];
 }>;
@@ -59,7 +59,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'background',
       'behaviours',
       'conditions',
-      'dynamicValues',
       'label',
       'prompts',
       'subject',
@@ -83,7 +82,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'background',
       'behaviours',
       'conditions',
-      'dynamicValues',
       'groupsHeading',
       'label',
       'linksHeading',
@@ -110,7 +108,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'behaviours',
       'conditions',
       'convexHullVariable',
-      'dynamicValues',
       'edges',
       'label',
       'layoutVariable',
@@ -141,7 +138,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     ],
     ownedKeys: [
       'conditions',
-      'dynamicValues',
       'label',
       'mapOptions',
       'outsideAreasLabel',
@@ -168,7 +164,6 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'conditionText',
       'conditions',
       'diseases',
-      'dynamicValues',
       'label',
       'saveSnapshot',
       'showAtRiskStatuses',
@@ -189,13 +184,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: [
-      'conditions',
-      'dynamicValues',
-      'explanationText',
-      'label',
-      'validation',
-    ],
+    ownedKeys: ['conditions', 'explanationText', 'label', 'validation'],
   },
 ];
 

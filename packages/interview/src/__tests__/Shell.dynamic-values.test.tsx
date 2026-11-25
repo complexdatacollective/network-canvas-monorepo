@@ -6,6 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import {
   asEntityAttributeReference,
+  dynamicValueNameFor,
   getLocaleMetadata,
 } from '@codaco/protocol-validation';
 import {
@@ -22,6 +23,16 @@ const NICKNAME = testVariableId('nickname');
 const AGE = testVariableId('age');
 const GUESS = testVariableId('guess');
 const COLOUR = testVariableId('colour');
+const RED = testId('option red');
+
+/** The name text gives an attribute of the participant. */
+const egoName = (variableId: string) =>
+  dynamicValueNameFor({ kind: 'attribute', role: 'ego', variableId });
+const N = {
+  name: egoName(NAME),
+  nickname: egoName(NICKNAME),
+  colour: egoName(COLOUR),
+};
 
 vi.mock('../interfaces', async () => {
   const { default: Information } =
@@ -83,20 +94,15 @@ const HOSTILE_NAME =
   'LEAK_SENTINEL **bold** [link](https://example.com) <img src=x onerror=alert(1)> {name}';
 
 const GREETING = {
-  en: '{name, select, missing {Welcome} other {Welcome, {name}}}',
+  en: `{${N.name}, select, missing {Welcome} other {Welcome, {${N.name}}}}`,
 };
 
-const BODY =
-  'Thanks for **joining**{name, select, missing {.} other {, {name}.}} [Your page]({name, select, missing {https://example.com} other {https://example.com/{name}}}): {nickname, select, missing {none} other {{nickname}}}';
+const BODY = `Thanks for **joining**{${N.name}, select, missing {.} other {, {${N.name}}.}} [Your page]({${N.name}, select, missing {https://example.com} other {https://example.com/{${N.name}}}}): {${N.nickname}, select, missing {none} other {{${N.nickname}}}}`;
 
 const information = {
   id: testId('welcome'),
   type: 'Information' as const,
   label: { en: 'Welcome' },
-  dynamicValues: {
-    name: { path: `ego.${NAME}` },
-    nickname: { path: `ego.${NICKNAME}` },
-  },
   content: { en: `# ${GREETING.en}\n\n${BODY}` },
 };
 
@@ -436,7 +442,6 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        dynamicValues: { name: { path: `ego.${NAME}` } },
         introductionPanel: { title: { en: 'About you' } },
         form: {
           fields: [
@@ -449,7 +454,7 @@ describe('dynamic values in a stage’s text', () => {
               id: testId('field-2'),
               variable: AGE,
               prompt: {
-                en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
+                en: `{${N.name}, select, missing {How old are you?} other {How old are you, {${N.name}}?}}`,
               },
             },
           ],
@@ -493,7 +498,6 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        dynamicValues: { name: { path: `ego.${NAME}` } },
         introductionPanel: { title: { en: 'About you' } },
         form: {
           fields: [
@@ -501,7 +505,7 @@ describe('dynamic values in a stage’s text', () => {
               id: testId('field-1'),
               variable: AGE,
               prompt: {
-                en: '**How old are you**{name, select, missing {?} other {, {name}?}}',
+                en: `**How old are you**{${N.name}, select, missing {?} other {, {${N.name}}?}}`,
               },
             },
           ],
@@ -532,7 +536,6 @@ describe('dynamic values in a stage’s text', () => {
         id: testId('about-you'),
         type: 'EgoForm',
         label: { en: 'About you' },
-        dynamicValues: { name: { path: `ego.${NAME}` } },
         introductionPanel: { title: { en: 'About you' } },
         form: {
           fields: [
@@ -545,7 +548,7 @@ describe('dynamic values in a stage’s text', () => {
               id: testId('field-2'),
               variable: AGE,
               prompt: {
-                en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
+                en: `{${N.name}, select, missing {How old are you?} other {How old are you, {${N.name}}?}}`,
               },
             },
             {
@@ -609,7 +612,7 @@ describe('dynamic values in a stage’s text', () => {
       {
         ...information,
         content: {
-          en: '# Welcome\n\n![Portrait of {name}](asset:portrait)\n\nBelow the portrait.',
+          en: `# Welcome\n\n![Portrait of {${N.name}}](asset:portrait)\n\nBelow the portrait.`,
         },
       },
       finishStage,
@@ -629,12 +632,8 @@ describe('dynamic values in a stage’s text', () => {
     payload.protocol.stages = [
       {
         ...information,
-        dynamicValues: {
-          ...information.dynamicValues,
-          colour: { path: `ego.${COLOUR}` },
-        },
         content: {
-          en: `# {colour, select, missing {No colour} other {Favourite: {colour}}}\n\n${BODY}`,
+          en: `# {${N.colour}, select, missing {No colour} other {Favourite: {${N.colour}}}}\n\n${BODY}`,
         },
       },
       finishStage,
@@ -645,7 +644,7 @@ describe('dynamic values in a stage’s text', () => {
         [COLOUR]: {
           name: 'colour',
           type: 'categorical',
-          options: [{ label: { en: '**Deep** _red_' }, value: 'red' }],
+          options: [{ id: RED, label: { en: '**Deep** _red_' }, value: 'red' }],
         },
       },
     } as InterviewPayload['protocol']['codebook']['ego'];

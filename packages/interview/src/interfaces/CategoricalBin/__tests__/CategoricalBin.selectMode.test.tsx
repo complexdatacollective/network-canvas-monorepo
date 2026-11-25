@@ -137,8 +137,16 @@ const codebook: Codebook = {
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: { en: 'Family' }, value: 1 },
-            { label: { en: 'Friend' }, value: 2 },
+            {
+              id: testId('CategoricalBin option 1'),
+              label: { en: 'Family' },
+              value: 1,
+            },
+            {
+              id: testId('CategoricalBin option 2'),
+              label: { en: 'Friend' },
+              value: 2,
+            },
           ],
         },
         [OTHER_REASON_VARIABLE]: {

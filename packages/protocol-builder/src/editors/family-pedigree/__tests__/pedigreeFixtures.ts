@@ -8,6 +8,7 @@ import {
   loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 
 const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
@@ -71,6 +72,7 @@ export const RELATIVES_NOT_RECORDED_VARIABLE: Readonly<
   name: 'relativesNotRecorded',
   type: 'categorical',
   options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(({ value, label }) => ({
+    id: testId(`option/relativesNotRecorded/${value}`),
     value,
     label: { 'en-US': label },
   })),

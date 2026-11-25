@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { dynamicValueNameFor } from '@codaco/protocol-validation';
 
 import StageEditor from '../../StageEditor.tsx';
 import {
@@ -71,9 +72,15 @@ export const Spectating: Story = {
 /**
  * A value the interview fills in, inserted into the page: typing `{`
  * offers what the page can show, and choosing the participant's name
- * binds it to the stage, inside versions for when it is known and when it is
- * not.
+ * writes it into the text by its attribute's id, inside versions for when it
+ * is known and when it is not.
  */
+const EGO_NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: fixtureVariableId('ego', 'ego_name'),
+});
+
 export const ShowingAValue: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -100,7 +107,7 @@ export const ShowingAValue: Story = {
           name: 'What the host was asked to commit',
         }),
       ).toHaveTextContent(
-        `"egoName": { "path": "ego.${fixtureVariableId('ego', 'ego_name')}" }`,
+        `{${EGO_NAME}, select, missing {} other {{${EGO_NAME}}}}`,
       );
     });
   },

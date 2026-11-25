@@ -283,7 +283,7 @@ export const localizedString = (
      * (the participant's own label on a Family Pedigree), but its supplied
      * wording never does. Each translation is checked here only for what
      * needs no stage; which values it shows, and how, is checked against the
-     * stage's bindings by the protocol (`findDynamicValueProblems`).
+     * stage and the codebook by the protocol (`findDynamicValueProblems`).
      */
     dynamicValues?: DynamicValueSite;
   } = {},

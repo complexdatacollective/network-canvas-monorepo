@@ -130,6 +130,7 @@ import type {
   TextInput,
   TieStrengthCensusPromptEntry,
   VariableEntry,
+  VariableOptionInput,
 } from './types.ts';
 
 const omittedAttributeValue = Symbol('omittedAttributeValue');
@@ -493,6 +494,17 @@ const rowObjectId = (
   label: string | undefined,
   index: number,
 ): ProtocolObjectId => syntheticObjectId(`${scope}/${label ?? `#${index}`}`);
+
+/**
+ * The id of an option of a categorical or ordinal variable that was given
+ * none: named by its variable and its value, which is unique within the
+ * variable, so each option has its own id and a rebuild gives the same one.
+ */
+const optionObjectId = (
+  variableId: string,
+  value: VariableOptionInput['value'],
+): ProtocolObjectId =>
+  syntheticObjectId(`${variableId}/option/${JSON.stringify(value)}`);
 
 const withRowIds = <Row extends object>(
   rows: readonly Row[],
@@ -2753,7 +2765,12 @@ export class SyntheticInterview {
     };
     if (entry.component) variable.component = entry.component;
     if (entry.options) {
-      variable.options = entry.options.map((option) => ({
+      const hasOptionIds =
+        entry.type === 'categorical' || entry.type === 'ordinal';
+      variable.options = entry.options.map(({ id, ...option }) => ({
+        ...(hasOptionIds && {
+          id: id ?? optionObjectId(entry.id, option.value),
+        }),
         ...option,
         label: this.localized(option.label),
       }));
@@ -3021,10 +3038,6 @@ export class SyntheticInterview {
 
     if (stage.filter) {
       config.filter = withFilterRuleIds(stage.filter, `${stage.id}/filter`);
-    }
-
-    if (stage.dynamicValues) {
-      config.dynamicValues = stage.dynamicValues;
     }
 
     if (stage.conditions) {

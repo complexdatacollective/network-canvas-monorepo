@@ -21,6 +21,7 @@ import { getTranslationGroups } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 
 import TranslationTable from '../TranslationTable';
+import { FIRST_NAME } from './dynamicValuesProtocol';
 import { largeTranslationProtocol } from './largeTranslationProtocol';
 
 const drewCell = vi.hoisted(() => vi.fn());
@@ -381,10 +382,7 @@ describe('TranslationTable with a large protocol', () => {
           ? {
               ...stage,
               content: {
-                en: 'Hello{name, select, missing {} other {, {name}}}',
-              },
-              dynamicValues: {
-                name: { path: `ego.${testVariableId('firstName')}` },
+                en: `Hello{${FIRST_NAME}, select, missing {} other {, {${FIRST_NAME}}}}`,
               },
             }
           : stage,

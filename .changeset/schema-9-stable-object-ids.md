@@ -13,13 +13,21 @@ prompt's additional attributes, a Name Generator Roster's card and sortable
 properties, Narrative presets with their edge and highlight rows, Narrative
 Pedigree diseases and Network Composer edge configurations.
 
+Each option of a categorical or ordinal variable has an `id` too, which text
+uses to give a version of its wording for that answer. Answers are still
+stored and exported by the option's `value`. The options of a yes/no variable
+have no `id`.
+
 Upgrading a protocol from schema 8 gives every one of these objects a new,
 random UUID, including any that already had one. Skip logic destinations and
 Narrative Pedigree source stages follow the stages they point at; where two
 stages shared an id, they follow the first. The stage and prompt ids stored in
 an interview's nodes are not changed. Upgrading the same protocol twice gives
 different ids. The stages an upgrade adds no longer have readable ids such as
-`finish`, so find a Finish Screen stage by its type.
+`finish`, so find a Finish Screen stage by its type. Options are the
+exception: an upgrade gives each option of a categorical or ordinal variable
+an id worked out from its variable and its value, so upgrading the same
+protocol twice gives each option the same id both times.
 
 The ids that node types, edge types and variables are stored under in a
 schema 9 codebook must be UUIDs too. Readable ids such as `person`, `knows` or
@@ -29,8 +37,10 @@ schema 8 keeps every node type, edge type and variable id that is already a
 UUID, as they are in protocols made in Architect. It gives each other id a new,
 random UUID and updates everything in the protocol that refers to it: stage
 subjects, edges that stages create or show, filter, skip logic and sort rules,
-form fields, prompt and layout variables, Narrative Pedigree attributes and
-piped text values. Names do not change, so exported data keeps the same column
+form fields, prompt and layout variables, and Narrative Pedigree attributes.
+Text in a schema 8 protocol cannot show values, so braces that it contains
+become ordinary characters, and there is no reference in it to update. Names
+do not change, so exported data keeps the same column
 names. During the interview, a roster column is matched to the variable whose
 id or name is the same as its heading, so a heading that is an id that the
 upgrade replaced no longer matches, unless it is also the variable's name.
@@ -39,12 +49,14 @@ Interviews already collected are not changed.
 For developers:
 
 - `ProtocolObjectIdSchema`, `ProtocolObjectId`, `ProtocolObjectKind`,
-  `isProtocolObjectId` and `createProtocolObjectId` describe and make ids.
+  `isProtocolObjectId` and `createProtocolObjectId` describe and make ids, and
+  `createOptionId` makes an option's.
 - `collectProtocolObjectIds` lists every id in a protocol with its path and
   kind, `findDuplicateProtocolObjectIds` lists the ids used more than once, and
   `freshenProtocolFragmentIds` gives a stage or list of stages new ids wherever
   they would collide with ids already in a destination protocol, updating stage
-  references inside the fragment and returning the old-to-new id map.
+  references, and the condition and option ids that the fragment's text names,
+  and returning the old-to-new id map.
 - A repeated id is reported once at each place it is used, as a `custom` issue
   with `params.rule === 'duplicateObjectId'`. Each issue from `validateProtocol`
   has an optional `objectId`, the id of the nearest object it is about, and
@@ -69,6 +81,8 @@ For developers:
   readable row id passed to it is used as a label for the id it makes. The
   node types, edge types and variables it adds get UUID ids in the same way: a
   readable id passed to it is used as a label, a UUID passed to it is kept,
-  and callers read the id from what the add call returns.
+  and callers read the id from what the add call returns. Each option of a
+  categorical or ordinal variable gets an id named by its variable and its
+  value, unless the caller gives one.
 - The schema 9 sample and development protocols carry UUID ids, in their
-  codebooks as well.
+  codebooks and option lists as well.

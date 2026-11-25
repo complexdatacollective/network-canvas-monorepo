@@ -296,6 +296,16 @@ const withoutIds = (value: unknown): unknown =>
         )
       : value;
 
+/**
+ * Options as the migration writes them: localized, each with the id the
+ * migration gives it.
+ */
+const migratedOptions = (options: Parameters<typeof localizedOptions>[0]) =>
+  localizedOptions(options).map((option) => ({
+    id: expect.any(String),
+    ...option,
+  }));
+
 describe('v8 to v9 Family Pedigree migration', () => {
   it('converts a full schema 8 pedigree into a stage schema 9 accepts', () => {
     const document = schema8Protocol();
@@ -443,7 +453,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         expect(relativesNotRecorded).toEqual({
           name: 'relativesNotRecorded',
           type: 'categorical',
-          options: localizedOptions(PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS),
+          options: migratedOptions(PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS),
         });
       },
     );
@@ -958,10 +968,10 @@ describe('v8 to v9 Family Pedigree migration', () => {
       const migrated = migrateValid(schema8Protocol());
       expect(
         variableAt(migrated, 'node', 'person', 'biologicalSex')?.options,
-      ).toEqual(localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS));
+      ).toEqual(migratedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS));
       expect(
         variableAt(migrated, 'edge', 'family', 'relationshipType')?.options,
-      ).toEqual(localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS));
+      ).toEqual(migratedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS));
     });
 
     it('keeps the attributes the redesigned stage no longer uses', () => {
@@ -969,7 +979,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       expect(variableAt(migrated, 'edge', 'family', 'gameteRole')).toEqual({
         name: 'gameteRole',
         type: 'categorical',
-        options: localizedOptions(SCHEMA_8_GAMETE_ROLE_OPTIONS),
+        options: migratedOptions(SCHEMA_8_GAMETE_ROLE_OPTIONS),
       });
       expect(
         variableAt(migrated, 'node', 'person', 'relationshipToEgo'),
@@ -1002,7 +1012,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
         variableAt(migrateStep(document), 'node', 'person', 'biologicalSex')
           ?.options,
       ).toEqual(
-        localizedOptions(sex.options as { value: string; label: string }[]),
+        migratedOptions(sex.options as { value: string; label: string }[]),
       );
       expect(() => migrateValid(document)).toThrow(
         /must keep its fixed options/,
@@ -1158,7 +1168,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       });
       expect(
         variableAt(migrated, 'node', 'person', 'biologicalSex')?.options,
-      ).toEqual(localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS));
+      ).toEqual(migratedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS));
     });
 
     it('keeps its Narrative Pedigree pointed at the converted pedigree', () => {

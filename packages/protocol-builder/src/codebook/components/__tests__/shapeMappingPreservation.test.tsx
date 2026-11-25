@@ -6,7 +6,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
-import { testTypeId, testVariableId } from '../../../testing/testId.ts';
+import { testTypeId, testVariableId, testId } from '../../../testing/testId.ts';
 import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { documentWithEntityProperties } from '../../editing.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
@@ -45,8 +45,16 @@ const PERSON: SectionDoc = {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: { en: 'Asian' }, value: 'asian' },
-        { label: { en: 'White' }, value: 'white' },
+        {
+          id: testId('option/Ethnicity/asian'),
+          label: { en: 'Asian' },
+          value: 'asian',
+        },
+        {
+          id: testId('option/Ethnicity/white'),
+          label: { en: 'White' },
+          value: 'white',
+        },
       ],
     },
   },

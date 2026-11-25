@@ -12,6 +12,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testId.ts';
 import { generateNetwork } from '../../../generateNetwork.ts';
 import { ValueGenerator } from '../../../ValueGenerator.ts';
 import { resolveGenerationConfig } from '../../config.ts';
@@ -284,8 +285,16 @@ describe('generateEntityAttributes', () => {
           name: 'A',
           type: 'categorical',
           options: [
-            { label: { 'en-US': 'X' }, value: 'x' },
-            { label: { 'en-US': 'Y' }, value: 'y' },
+            {
+              id: testId('generateEntityAttributes/option-1'),
+              label: { 'en-US': 'X' },
+              value: 'x',
+            },
+            {
+              id: testId('generateEntityAttributes/option-2'),
+              label: { 'en-US': 'Y' },
+              value: 'y',
+            },
           ],
           validation: { minSelected: 2, maxSelected: 2 },
         },
@@ -293,8 +302,16 @@ describe('generateEntityAttributes', () => {
           name: 'B',
           type: 'categorical',
           options: [
-            { label: { 'en-US': 'X' }, value: 'x' },
-            { label: { 'en-US': 'Y' }, value: 'y' },
+            {
+              id: testId('generateEntityAttributes/option-3'),
+              label: { 'en-US': 'X' },
+              value: 'x',
+            },
+            {
+              id: testId('generateEntityAttributes/option-4'),
+              label: { 'en-US': 'Y' },
+              value: 'y',
+            },
           ],
           validation: {
             minSelected: 2,
@@ -327,8 +344,16 @@ describe('generateEntityAttributes', () => {
           name: 'A',
           type: 'categorical',
           options: [
-            { label: { 'en-US': 'X' }, value: 'x' },
-            { label: { 'en-US': 'Y' }, value: 'y' },
+            {
+              id: testId('generateEntityAttributes/option-5'),
+              label: { 'en-US': 'X' },
+              value: 'x',
+            },
+            {
+              id: testId('generateEntityAttributes/option-6'),
+              label: { 'en-US': 'Y' },
+              value: 'y',
+            },
           ],
           validation: { minSelected: 2, maxSelected: 2 },
         },
@@ -336,8 +361,16 @@ describe('generateEntityAttributes', () => {
           name: 'Second Choice',
           type: 'categorical',
           options: [
-            { label: { 'en-US': 'X' }, value: 'x' },
-            { label: { 'en-US': 'Y' }, value: 'y' },
+            {
+              id: testId('generateEntityAttributes/option-7'),
+              label: { 'en-US': 'X' },
+              value: 'x',
+            },
+            {
+              id: testId('generateEntityAttributes/option-8'),
+              label: { 'en-US': 'Y' },
+              value: 'y',
+            },
           ],
           validation: {
             minSelected: 2,
@@ -530,9 +563,21 @@ describe('generateEntityAttributes', () => {
           name: 'Band',
           type: 'ordinal',
           options: [
-            { label: { 'en-US': 'A' }, value: 1 },
-            { label: { 'en-US': 'B' }, value: 2 },
-            { label: { 'en-US': 'C' }, value: 3 },
+            {
+              id: testId('generateEntityAttributes/option-9'),
+              label: { 'en-US': 'A' },
+              value: 1,
+            },
+            {
+              id: testId('generateEntityAttributes/option-10'),
+              label: { 'en-US': 'B' },
+              value: 2,
+            },
+            {
+              id: testId('generateEntityAttributes/option-11'),
+              label: { 'en-US': 'C' },
+              value: 3,
+            },
           ],
           validation: { unique: true },
         },
@@ -561,8 +606,16 @@ describe('generateEntityAttributes', () => {
           name: 'Band',
           type: 'ordinal',
           options: [
-            { label: { 'en-US': 'A' }, value: 1 },
-            { label: { 'en-US': 'B' }, value: 2 },
+            {
+              id: testId('generateEntityAttributes/option-12'),
+              label: { 'en-US': 'A' },
+              value: 1,
+            },
+            {
+              id: testId('generateEntityAttributes/option-13'),
+              label: { 'en-US': 'B' },
+              value: 2,
+            },
           ],
           validation: { unique: true },
         },
@@ -1547,9 +1600,21 @@ describe('generateEntityAttributes', () => {
 
   it('claims a pinned value, so a later entity is not issued it again', () => {
     const options = [
-      { label: { 'en-US': 'A' }, value: 1 },
-      { label: { 'en-US': 'B' }, value: 2 },
-      { label: { 'en-US': 'C' }, value: 3 },
+      {
+        id: testId('generateEntityAttributes/option-14'),
+        label: { 'en-US': 'A' },
+        value: 1,
+      },
+      {
+        id: testId('generateEntityAttributes/option-15'),
+        label: { 'en-US': 'B' },
+        value: 2,
+      },
+      {
+        id: testId('generateEntityAttributes/option-16'),
+        label: { 'en-US': 'C' },
+        value: 3,
+      },
     ];
     const entity = buildEntityConstraints(
       {
@@ -1607,7 +1672,13 @@ describe('generateEntityAttributes', () => {
         band: {
           name: 'Band',
           type: 'ordinal',
-          options: [{ label: { 'en-US': 'A' }, value: 1 }],
+          options: [
+            {
+              id: testId('generateEntityAttributes/option-17'),
+              label: { 'en-US': 'A' },
+              value: 1,
+            },
+          ],
           validation: { unique: true },
         },
       },
@@ -1658,8 +1729,16 @@ describe('generateEntityAttributes', () => {
           name: 'Band',
           type: 'ordinal',
           options: [
-            { label: { 'en-US': 'A' }, value: 1 },
-            { label: { 'en-US': 'B' }, value: 2 },
+            {
+              id: testId('generateEntityAttributes/option-18'),
+              label: { 'en-US': 'A' },
+              value: 1,
+            },
+            {
+              id: testId('generateEntityAttributes/option-19'),
+              label: { 'en-US': 'B' },
+              value: 2,
+            },
           ],
           validation: { unique: true },
         },

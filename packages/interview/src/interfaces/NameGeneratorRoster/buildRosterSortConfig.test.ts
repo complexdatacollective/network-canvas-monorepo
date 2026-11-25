@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Variable } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import { testVariableId } from '../../__tests__/testIds';
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { buildRosterSortConfig } from './buildRosterSortConfig';
 
 const nameVariableId = testVariableId('var-name');
@@ -27,9 +27,21 @@ const nodeVariables: Record<string, Variable> = {
     name: 'level',
     type: 'ordinal',
     options: [
-      { label: { en: 'Low' }, value: 'low' },
-      { label: { en: 'Medium' }, value: 'medium' },
-      { label: { en: 'High' }, value: 'high' },
+      {
+        id: testId('buildRosterSortConfig option 1'),
+        label: { en: 'Low' },
+        value: 'low',
+      },
+      {
+        id: testId('buildRosterSortConfig option 2'),
+        label: { en: 'Medium' },
+        value: 'medium',
+      },
+      {
+        id: testId('buildRosterSortConfig option 3'),
+        label: { en: 'High' },
+        value: 'high',
+      },
     ],
   },
 };
