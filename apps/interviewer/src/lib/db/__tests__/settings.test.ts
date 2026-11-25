@@ -5,9 +5,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db, getSettings, updateSettings } from '../db';
 import type { StoredSettings } from '../types';
 
+// A row written before either of the two newest settings existed.
 type SettingsRowBeforeInteractionSounds = Omit<
   StoredSettings,
-  'interactionSounds'
+  'interactionSounds' | 'allowTextSizeChange'
 >;
 
 const resetDatabase = async () => {

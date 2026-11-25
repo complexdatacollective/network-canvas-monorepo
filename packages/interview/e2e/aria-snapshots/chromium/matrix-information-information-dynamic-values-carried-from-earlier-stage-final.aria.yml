@@ -5,9 +5,9 @@
     - strong: joining
     - text: ", **bold** [link](https://example.com) <img src=x onerror=window.__pwned=1>."
   - navigation:
-    - button "Settings"
-    - button "Previous Step"
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step"
     - button "Next Step"
     - status
   - region "Interview notifications"

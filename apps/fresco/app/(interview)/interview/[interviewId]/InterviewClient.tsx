@@ -159,7 +159,6 @@ export default function InterviewClient({
       disableAnalytics={disableAnalytics}
       interactionSounds={interactionSounds}
       openFinishedAsActive={view === 'editable-finished'}
-      allowUserScaling
     />
   );
 }

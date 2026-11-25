@@ -170,8 +170,7 @@ const shownStage = () =>
 
 async function exitInterview() {
   const user = userEvent.setup();
-  await user.click(screen.getByTestId('settings-button'));
-  await user.click(await screen.findByTestId('exit-button'));
+  await user.click(screen.getByTestId('exit-button'));
   const dialog = await screen.findByRole('dialog', {
     name: 'Exit interview',
   });

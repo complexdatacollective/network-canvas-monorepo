@@ -3,13 +3,12 @@
 import { useDirection } from '@base-ui/react/direction-provider';
 import { Drawer } from '@base-ui/react/drawer';
 import {
-  ALargeSmall,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Languages,
   LogOut,
-  Settings,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
@@ -23,27 +22,24 @@ import {
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { AppMessage } from '@codaco/app-i18n/react';
-import { Button, IconButton } from '@codaco/fresco-ui/Button';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@codaco/fresco-ui/Popover';
+import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { navigationMessages as messages } from '../i18n/navigationMessages';
+import { useProtocolLocale } from '../localization/ProtocolLocalizationProvider';
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
 import ReadyToContinueAnnouncer from './ReadyToContinueAnnouncer';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
+import TextSizeControl from './TextSizeControl';
 
 const describeExitError = () => <AppMessage message={messages.exitFailed} />;
 
@@ -113,6 +109,15 @@ const barControlVariants = cva({
   },
 });
 
+// The bar's optional buttons (exit, text size, language) draw their icons a
+// little smaller than the back and forward arrows, and dimmed as Back is on
+// the first screen, so they stay quieter than Back and Next. Pointed at,
+// focused or open, they show at full strength.
+const barFeatureIconClassName = cx(
+  '[&>.lucide]:h-[1.5em]! [&>.lucide]:opacity-50',
+  'hover:[&>.lucide]:opacity-100 focus-visible:[&>.lucide]:opacity-100 aria-expanded:[&>.lucide]:opacity-100',
+);
+
 // Icon buttons hold a fixed size, and the bar shrinks the wrapper around them.
 // Button already caps its width at the wrapper's; this caps its height too.
 const barIconButtonClassName = 'max-h-full';
@@ -141,6 +146,48 @@ const NavigationButton = ({
         disabled={disabled}
         {...props}
         size="xl"
+      />
+    </motion.div>
+  );
+};
+
+/**
+ * Lets the participant change the interview language from any screen, with
+ * the same choice a Language Chooser stage offers. Shown only when the
+ * protocol declares more than one language.
+ */
+const LanguageSwitcherControl = ({
+  orientation,
+  isRtl,
+}: {
+  orientation: NavigationOrientation;
+  isRtl: boolean;
+}) => {
+  const { locale, options, setLocale } = useProtocolLocale();
+  if (options.length < 2) return null;
+
+  return (
+    <motion.div
+      variants={variants}
+      className={barControlVariants({ orientation })}
+    >
+      <LocaleSwitcher
+        options={options}
+        value={locale}
+        onChange={(next) => {
+          if (next !== null) setLocale(next);
+        }}
+        // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English
+        label="Interview language"
+        display="icon"
+        icon={<Languages aria-hidden />}
+        variant="text"
+        color="dynamic"
+        size="xl"
+        className={cx(barFeatureIconClassName, barIconButtonClassName)}
+        // A rail's popover opens away from the screen edge the rail is on.
+        side={orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'}
+        align="start"
       />
     </motion.div>
   );
@@ -179,13 +226,6 @@ const progressContainerVariants = cva({
  * control always presents one of these values.
  */
 export const TEXT_SCALE_OPTIONS = [0.9, 1, 1.1, 1.2, 1.3];
-const MIN_TEXT_SCALE_PERCENT = Math.round(
-  Math.min(...TEXT_SCALE_OPTIONS) * 100,
-);
-const MAX_TEXT_SCALE_PERCENT = Math.round(
-  Math.max(...TEXT_SCALE_OPTIONS) * 100,
-);
-const TEXT_SCALE_PERCENT_STEP = 10;
 
 type NavigationProps = {
   moveBackward: () => void;
@@ -204,6 +244,11 @@ type NavigationProps = {
   reviewMode?: boolean;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
+  /**
+   * Offer the interview's languages from the bar, when the protocol declares
+   * more than one. Needs a `ProtocolLocalizationProvider` around it.
+   */
+  showLanguageSwitcher?: boolean;
   textScale?: number;
   onTextScaleChange?: (scale: number) => void;
   className?: string;
@@ -228,6 +273,7 @@ const Navigation = ({
   reviewMode,
   allowStageNavigation,
   allowUserScaling,
+  showLanguageSwitcher = false,
   textScale = 1,
   onTextScaleChange,
   className,
@@ -256,10 +302,6 @@ const Navigation = ({
   // one without the other would render a dead control.
   const userScalingEnabled = !!allowUserScaling && !!onTextScaleChange;
 
-  // The settings popover hosts the exit action and the text-size control; with
-  // neither available there is nothing to show, so the trigger is omitted.
-  const showSettingsPopover = !!onExit || userScalingEnabled;
-
   const matchedTextScaleIndex = TEXT_SCALE_OPTIONS.findIndex(
     (scale) => scale === textScale,
   );
@@ -269,27 +311,8 @@ const Navigation = ({
     matchedTextScaleIndex === -1
       ? TEXT_SCALE_OPTIONS.findIndex((scale) => scale === 1)
       : matchedTextScaleIndex;
-  const textScalePercent = Math.round(
-    (TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1) * 100,
-  );
-  const textSizeLabelId = useId();
+  const shownTextScale = TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1;
   const readyDescriptionId = useId();
-  const textSizeControlRef = useRef<HTMLDivElement>(null);
-  const [textScaleInputValue, setTextScaleInputValue] = useState(
-    String(textScalePercent),
-  );
-  // The field mirrors the authoritative scale, so a change to it re-normalises
-  // what is displayed. Compared during render rather than in an effect: an
-  // effect would commit and paint the stale string for a frame first.
-  const [displayedTextScalePercent, setDisplayedTextScalePercent] =
-    useState(textScalePercent);
-  if (displayedTextScalePercent !== textScalePercent) {
-    setDisplayedTextScalePercent(textScalePercent);
-    setTextScaleInputValue(String(textScalePercent));
-  }
-  const textScaleInputPercent = Number(textScaleInputValue);
-  const hasTextScaleInputPercent =
-    textScaleInputValue !== '' && Number.isFinite(textScaleInputPercent);
 
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
@@ -300,7 +323,6 @@ const Navigation = ({
   // the panel has finished sliding in; on close we flip it first and let the
   // StagesMenu report back (`handleCardsClosed`) once the cards have animated
   // out, so the panel slides away only after — never over — the stagger.
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuSettled, setMenuSettled] = useState(false);
   const pendingStageRef = useRef<number | null>(null);
@@ -414,171 +436,46 @@ const Navigation = ({
         animate="animate"
         exit="exit"
       >
-        {showSettingsPopover && (
+        {onExit && (
+          <NavigationButton
+            wrapperClassName={barControlVariants({ orientation })}
+            className={barFeatureIconClassName}
+            onClick={() => void handleExit()}
+            icon={<LogOut />}
+            // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English
+            aria-label={reviewMode ? 'Exit review' : 'Exit interview'}
+            lang="en"
+            data-testid="exit-button"
+          />
+        )}
+        {userScalingEnabled && (
           <motion.div
             variants={variants}
-            className={cx(
-              barControlVariants({ orientation }),
-              orientation === 'horizontal' && 'order-1',
-            )}
+            className={barControlVariants({ orientation })}
           >
-            <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <PopoverTrigger
-                render={
-                  <IconButton
-                    color="dynamic"
-                    variant="text"
-                    size="xl"
-                    icon={<Settings />}
-                    className={cx(
-                      '[&>.lucide]:h-[1.5em]!',
-                      barIconButtonClassName,
-                    )}
-                    aria-label="Settings"
-                    lang="en"
-                    data-testid="settings-button"
-                  />
-                }
-              />
-              <PopoverContent
-                side={
-                  orientation === 'vertical'
-                    ? isRtl
-                      ? 'left'
-                      : 'right'
-                    : 'top'
-                }
-                align="start"
-                className="w-72 max-w-full"
-                aria-label="Interview settings"
-              >
-                <div className="flex flex-col gap-2">
-                  {userScalingEnabled && (
-                    <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-0 p-0">
-                      <legend
-                        id={textSizeLabelId}
-                        className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold"
-                      >
-                        <ALargeSmall aria-hidden className="size-5 shrink-0" />
-                        <span className="sr-only" lang="en">
-                          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
-                          {'Text size percentage'}
-                        </span>
-                      </legend>
-                      <div ref={textSizeControlRef} className="w-full">
-                        <InputField
-                          aria-labelledby={textSizeLabelId}
-                          type="number"
-                          inputMode="numeric"
-                          min={MIN_TEXT_SCALE_PERCENT}
-                          max={MAX_TEXT_SCALE_PERCENT}
-                          step={TEXT_SCALE_PERCENT_STEP}
-                          value={textScaleInputValue}
-                          onChange={(value) => {
-                            const nextValue = value ?? '';
-                            setTextScaleInputValue(nextValue);
-
-                            const nextPercent = Number(nextValue);
-                            const nextScale = nextPercent / 100;
-                            if (
-                              nextValue !== '' &&
-                              TEXT_SCALE_OPTIONS.includes(nextScale)
-                            ) {
-                              onTextScaleChange?.(nextScale);
-                            }
-                          }}
-                          onBlur={(event) => {
-                            if (
-                              event.relatedTarget instanceof HTMLElement &&
-                              textSizeControlRef.current?.contains(
-                                event.relatedTarget,
-                              )
-                            ) {
-                              return;
-                            }
-
-                            setTextScaleInputValue(String(textScalePercent));
-                          }}
-                          stepperLabels={{
-                            decrease: 'Decrease text size',
-                            increase: 'Increase text size',
-                          }}
-                          stepperDisabled={{
-                            decrease:
-                              hasTextScaleInputPercent &&
-                              textScaleInputPercent <= MIN_TEXT_SCALE_PERCENT,
-                            increase:
-                              hasTextScaleInputPercent &&
-                              textScaleInputPercent >= MAX_TEXT_SCALE_PERCENT,
-                          }}
-                          // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Unit symbol; the live output formats the complete percentage for the active locale.
-                          suffixComponent={<span aria-hidden="true">%</span>}
-                          className="w-full! [&_input]:text-end"
-                        />
-                        <output
-                          aria-live="polite"
-                          aria-atomic="true"
-                          className="sr-only"
-                          lang="en"
-                        >
-                          {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
-                          {`Current text size: ${textScalePercent}%`}
-                        </output>
-                      </div>
-                    </fieldset>
-                  )}
-                  {userScalingEnabled && onExit && (
-                    <hr className="mx-auto my-1 h-px w-full rounded border-0 bg-current/20" />
-                  )}
-                  {onExit && (
-                    <Button
-                      color="dynamic"
-                      variant="text"
-                      size="md"
-                      icon={<LogOut aria-hidden />}
-                      onClick={() => {
-                        setSettingsOpen(false);
-                        void handleExit();
-                      }}
-                      className="w-full justify-start rounded-sm px-4"
-                      data-testid="exit-button"
-                    >
-                      <AppMessage
-                        message={
-                          reviewMode
-                            ? messages.exitReview
-                            : messages.exitInterview
-                        }
-                      />
-                    </Button>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <TextSizeControl
+              scales={TEXT_SCALE_OPTIONS}
+              value={shownTextScale}
+              onChange={(scale) => onTextScaleChange?.(scale)}
+              // A rail's popup opens away from the screen edge the rail is on.
+              side={
+                orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'
+              }
+              triggerClassName={cx(
+                barFeatureIconClassName,
+                barIconButtonClassName,
+              )}
+            />
           </motion.div>
         )}
-        <NavigationButton
-          wrapperClassName={cx(
-            barControlVariants({ orientation }),
-            orientation === 'horizontal' && 'order-3',
-          )}
-          onClick={moveBackward}
-          disabled={disableMoveBackward}
-          icon={<BackIcon />}
-          aria-label="Previous Step"
-          lang="en"
-          buttonRef={backButtonRef}
-          data-testid="previous-button"
-        />
+        {showLanguageSwitcher && (
+          <LanguageSwitcherControl orientation={orientation} isRtl={isRtl} />
+        )}
+        {/* The bar's features come first, then the progress bar, then Back
+            and Next together at the end of the bar, in both orientations. */}
         <PassphrasePrompter
           orientation={orientation}
-          // Horizontally it joins the settings button at the leading edge,
-          // clear of the back and forward buttons. Sharing settings' `order-1`
-          // keeps it straight after settings, as it is in the DOM.
-          className={cx(
-            barControlVariants({ orientation }),
-            orientation === 'horizontal' && 'order-1',
-          )}
+          className={barControlVariants({ orientation })}
         />
         {stageNavigationEnabled ? (
           <motion.button
@@ -591,7 +488,6 @@ const Navigation = ({
             variants={variants}
             className={cx(
               progressContainerVariants({ orientation }),
-              orientation === 'horizontal' && 'order-2',
               // Wrap the bar directly so the focus ring hugs its pill shape
               // rather than a rectangular wrapper.
               'focusable cursor-pointer appearance-none rounded-full border-0 bg-transparent p-0',
@@ -601,25 +497,29 @@ const Navigation = ({
           </motion.button>
         ) : (
           <motion.div
-            className={cx(
-              progressContainerVariants({ orientation }),
-              orientation === 'horizontal' && 'order-2',
-            )}
+            className={progressContainerVariants({ orientation })}
             variants={variants}
           >
             <ProgressBar percentProgress={progress} orientation={orientation} />
           </motion.div>
         )}
         <NavigationButton
+          wrapperClassName={barControlVariants({ orientation })}
+          onClick={moveBackward}
+          disabled={disableMoveBackward}
+          icon={<BackIcon />}
+          aria-label="Previous Step"
+          lang="en"
+          buttonRef={backButtonRef}
+          data-testid="previous-button"
+        />
+        <NavigationButton
           className={cx(
             pulseNext &&
               'bg-success ui-enabled:hover:bg-success outline-success',
             pulseNext && !shouldReduceMotion && 'animate-pulse-glow',
           )}
-          wrapperClassName={cx(
-            barControlVariants({ orientation }),
-            orientation === 'horizontal' && 'order-4',
-          )}
+          wrapperClassName={barControlVariants({ orientation })}
           onClick={moveForward}
           disabled={disableMoveForward}
           icon={<ForwardIcon className="size-8" strokeWidth="3px" />}
