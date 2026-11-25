@@ -167,8 +167,16 @@ function payloadWith(
               type: 'ordinal',
               component: 'RadioGroup',
               options: [
-                { label: { en: 'Close' }, value: 1 },
-                { label: { en: 'Distant' }, value: 2 },
+                {
+                  id: testId('closeness-close'),
+                  label: { en: 'Close' },
+                  value: 1,
+                },
+                {
+                  id: testId('closeness-distant'),
+                  label: { en: 'Distant' },
+                  value: 2,
+                },
               ],
             },
           },
