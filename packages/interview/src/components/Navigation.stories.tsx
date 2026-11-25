@@ -416,7 +416,8 @@ export const TextSize: Story = {
         .map((button) => button.textContent),
     ).toEqual(['90%', '100%', '110%', '120%', '130%']);
     await expect(option('100%')).toHaveAttribute('aria-pressed', 'true');
-    await expect(popover).not.toHaveTextContent(/text size/i);
+    // Named for screen readers only: nothing on screen says "Text size".
+    await expect(popover.innerText).not.toMatch(/text size/i);
 
     const main = canvasElement.querySelector('main[data-theme-interview]');
     await expect(main).not.toBeNull();

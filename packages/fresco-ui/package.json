@@ -60,6 +60,7 @@
     "./pageActivity": "./src/pageActivity.ts",
     "./Pips": "./src/Pips.tsx",
     "./Popover": "./src/Popover.tsx",
+    "./popoverArrow": "./src/popoverArrow.ts",
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./PresentationalText": "./src/PresentationalText.ts",
     "./ProgressBar": "./src/ProgressBar.tsx",
@@ -403,6 +404,10 @@
       "./Popover": {
         "types": "./dist/Popover.d.ts",
         "default": "./dist/Popover.js"
+      },
+      "./popoverArrow": {
+        "types": "./dist/popoverArrow.d.ts",
+        "default": "./dist/popoverArrow.js"
       },
       "./PortalContainer": {
         "types": "./dist/PortalContainer.d.ts",

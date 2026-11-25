@@ -3,7 +3,6 @@
 import { useDirection } from '@base-ui/react/direction-provider';
 import { Drawer } from '@base-ui/react/drawer';
 import {
-  ALargeSmall,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -16,7 +15,6 @@ import {
   type Ref,
   useCallback,
   useId,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -27,28 +25,20 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@codaco/fresco-ui/Popover';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import ProgressBar from '@codaco/fresco-ui/ProgressBar';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
-import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { navigationMessages as messages } from '../i18n/navigationMessages';
-import {
-  useContentLocale,
-  useProtocolLocale,
-} from '../localization/ProtocolLocalizationProvider';
+import { useProtocolLocale } from '../localization/ProtocolLocalizationProvider';
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
 import ReadyToContinueAnnouncer from './ReadyToContinueAnnouncer';
 import StagesMenu, { STAGES_MENU_LIST_ID } from './StagesMenu';
+import TextSizeControl from './TextSizeControl';
 
 const describeExitError = () => <AppMessage message={messages.exitFailed} />;
 
@@ -313,16 +303,6 @@ const Navigation = ({
       ? TEXT_SCALE_OPTIONS.findIndex((scale) => scale === 1)
       : matchedTextScaleIndex;
   const shownTextScale = TEXT_SCALE_OPTIONS[textScaleIndex] ?? 1;
-  // Each size is named as a percentage, written as the interview's language
-  // writes one ("110 %" in French).
-  const contentLocale = useContentLocale();
-  const textScaleOptions = useMemo(() => {
-    const percent = new Intl.NumberFormat(contentLocale, { style: 'percent' });
-    return TEXT_SCALE_OPTIONS.map((scale) => ({
-      value: String(scale),
-      label: percent.format(scale),
-    }));
-  }, [contentLocale]);
   const readyDescriptionId = useId();
 
   const { confirm } = useDialog();
@@ -334,7 +314,6 @@ const Navigation = ({
   // the panel has finished sliding in; on close we flip it first and let the
   // StagesMenu report back (`handleCardsClosed`) once the cards have animated
   // out, so the panel slides away only after — never over — the stagger.
-  const [textSizeOpen, setTextSizeOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuSettled, setMenuSettled] = useState(false);
   const pendingStageRef = useRef<number | null>(null);
@@ -465,47 +444,19 @@ const Navigation = ({
             variants={variants}
             className={barControlVariants({ orientation })}
           >
-            <Popover open={textSizeOpen} onOpenChange={setTextSizeOpen}>
-              <PopoverTrigger
-                render={
-                  <IconButton
-                    color="dynamic"
-                    variant="text"
-                    size="xl"
-                    icon={<ALargeSmall />}
-                    className={cx(
-                      barFeatureIconClassName,
-                      barIconButtonClassName,
-                    )}
-                    aria-label="Text size"
-                    lang="en"
-                    data-testid="text-size-button"
-                  />
-                }
-              />
-              <PopoverContent
-                side={
-                  orientation === 'vertical'
-                    ? isRtl
-                      ? 'left'
-                      : 'right'
-                    : 'top'
-                }
-                align="start"
-                className="w-auto max-w-full"
-                aria-label="Text size"
-                lang="en"
-              >
-                {/* The button that opens the popover names the choice, so
-                    it shows no label of its own. */}
-                <SegmentedSwitcher
-                  aria-label="Text size"
-                  options={textScaleOptions}
-                  value={String(shownTextScale)}
-                  onValueChange={(next) => onTextScaleChange?.(Number(next))}
-                />
-              </PopoverContent>
-            </Popover>
+            <TextSizeControl
+              scales={TEXT_SCALE_OPTIONS}
+              value={shownTextScale}
+              onChange={(scale) => onTextScaleChange?.(scale)}
+              // A rail's popup opens away from the screen edge the rail is on.
+              side={
+                orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'
+              }
+              triggerClassName={cx(
+                barFeatureIconClassName,
+                barIconButtonClassName,
+              )}
+            />
           </motion.div>
         )}
         {showLanguageSwitcher && (
