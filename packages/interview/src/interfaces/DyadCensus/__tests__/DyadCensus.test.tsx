@@ -26,6 +26,7 @@ import session, { updatePrompt } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type {
   BeforeNextFunction,
+  BeforeNextResult,
   RegisterBeforeNext,
   StageProps,
 } from '../../../types';
@@ -153,7 +154,7 @@ function renderInterface(
     direction: 'forwards' | 'backwards',
     intent: 'step' | 'jump' = 'step',
   ) => {
-    let result: boolean | 'FORCE' | undefined;
+    let result: BeforeNextResult | undefined;
     await act(async () => {
       result = await handlers.get('stageValidation')?.(direction, intent);
     });
@@ -161,7 +162,7 @@ function renderInterface(
   };
 
   const runNavigation = async (direction: 'forwards' | 'backwards') => {
-    const results: (boolean | 'FORCE')[] = [];
+    const results: BeforeNextResult[] = [];
     await act(async () => {
       for (const [key, fn] of handlers) {
         if (key === 'stageValidation') continue;

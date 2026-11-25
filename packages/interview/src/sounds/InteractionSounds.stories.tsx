@@ -72,6 +72,16 @@ function buildInterview() {
     highlight: { variable: close.id },
   });
 
+  const census = interview.addStage('OneToManyDyadCensus', {
+    label: 'Choose connections',
+    subject: { entity: 'node', type: person.id },
+    behaviours: { removeAfterConsideration: false },
+  });
+  census.addPrompt({
+    text: 'Tap the people this person knows, and tap again to undo.',
+    createEdge: friendship.id,
+  });
+
   const categoricalBin = interview.addStage('CategoricalBin', {
     label: 'Sort people',
     subject: { entity: 'node', type: person.id },

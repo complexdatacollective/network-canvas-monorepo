@@ -21,6 +21,7 @@ import {
 
 import CanvasNode, { type NodeActivationDetails } from './CanvasNode';
 import EdgeLayer from './EdgeLayer';
+import type { CanvasNodeDragEnd } from './useCanvasDrag';
 import type { CanvasStoreApi } from './useCanvasStore';
 
 /** Which interaction, if any, makes a node a toggle for the current prompt. */
@@ -65,7 +66,7 @@ type CanvasProps = {
    * must not be announced as something that can be pressed.
    */
   nodeToggle?: NodeToggle;
-  onNodeDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
+  onNodeDragEnd?: CanvasNodeDragEnd;
   onDrop?: (nodeId: string, position: { x: number; y: number }) => void;
   allowRepositioning?: boolean;
   disabled?: boolean;

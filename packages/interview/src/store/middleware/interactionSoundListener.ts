@@ -41,7 +41,10 @@ const idsOf = (entities: readonly { _uid: string }[]) =>
  * A toggled connection (`toggleEdge`) is heard through the `addEdge` or
  * `deleteEdge` it dispatches. Changes to a person's answers (`updateNode`)
  * make no sound here: where one does mean something audible (a person placed
- * in a bin), the component that made it plays the sound.
+ * in a bin or on the sociogram), the component that made it plays the sound,
+ * and an option chosen in a field is heard from the field. An answer that
+ * also changes the network (a census answer that makes a connection) asks
+ * for both sounds in the same task, and the engine plays the more important.
  *
  * Undo and redo put the network back as it was through `deleteNode`,
  * `restoreNode` and `restoreNetwork`, and are heard as the change they make:

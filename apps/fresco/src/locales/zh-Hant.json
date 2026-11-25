@@ -656,7 +656,7 @@
   "fresco.settings.InterviewSettingsSection.ensureThatYouTestYourInterviewThoroughly": "停用此警告時，請務必在小螢幕上徹底測試您的訪談。Fresco 在較大的螢幕上效果最佳，在小螢幕上使用可能會讓參與者的使用體驗不佳。",
   "fresco.settings.InterviewSettingsSection.freezeCompletedInterviews": "凍結已完成的訪談",
   "fresco.settings.InterviewSettingsSection.ifAnonymousRecruitmentIsEnabledYouMay": "啟用匿名招募後，您可以產生匿名參與網址，並將此網址分享給參與者，讓他們自行加入您的研究。",
-  "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledShortSoundsPlay": "啟用此選項後，當參與者編輯其網絡、在各階段之間移動或嘗試送出有錯誤的表單時，以及訪談結束時，會播放簡短的音效。",
+  "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledShortSoundsPlay": "啟用此選項後，當參與者編輯其網絡、選擇答案、在各階段之間移動或嘗試送出有錯誤的表單時，以及訪談結束時，會播放簡短的音效。",
   "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledTheWarning": "啟用此選項後，將不再顯示在小螢幕上使用 Fresco 的警告。",
   "fresco.settings.InterviewSettingsSection.interviewSettings": "訪談設定",
   "fresco.settings.InterviewSettingsSection.limitInterviews": "限制訪談次數",

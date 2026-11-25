@@ -20,6 +20,7 @@ import { usePortalContainer } from '../../PortalContainer';
 import { ScrollArea } from '../../ScrollArea';
 import { dropdownItemVariants } from '../../styles/controlVariants';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 import { comboboxTriggerVariants } from './Combobox/shared';
 import InputField from './InputField';
@@ -129,6 +130,7 @@ export default function IconPicker({
 }: IconPickerProps) {
   const intl = useAppIntl();
   const [query, setQuery] = useState('');
+  const { onOptionToggle } = useFormFeedback();
   const {
     open: isOpen,
     onOpenChange,
@@ -193,7 +195,10 @@ export default function IconPicker({
       itemToStringValue={(item) => item}
       inputValue={query}
       onValueChange={(nextValue) => {
-        if (nextValue && !disabled && !readOnly) onChange?.(nextValue);
+        if (nextValue && !disabled && !readOnly) {
+          onChange?.(nextValue);
+          if (nextValue !== value) onOptionToggle(true);
+        }
       }}
       onInputValueChange={setQuery}
       open={isOpen}

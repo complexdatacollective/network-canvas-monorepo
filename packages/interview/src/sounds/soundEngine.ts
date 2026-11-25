@@ -91,6 +91,8 @@ type EngineEnvironment = {
   now: () => number;
   /** In [0, 1). */
   random: () => number;
+  /** Runs `callback` once the current task has finished. */
+  afterTask: (callback: () => void) => void;
   /** Where gestures, visibility and connectivity are observed. */
   document: Document | undefined;
   window: Window | undefined;
@@ -105,11 +107,11 @@ type EngineEnvironment = {
 export const MASTER_GAIN = 0.5;
 
 /**
- * The most a varied sound's playback rate moves either way: ±4% is about
- * two-thirds of a semitone, enough that a sound repeated in quick succession
- * does not sound mechanical, too little to sound like a different sound.
+ * The most a varied sound's playback rate moves either way: ±1.5% is about a
+ * quarter of a semitone, enough that a sound repeated in quick succession
+ * does not sound mechanical, too little to be heard as a change of pitch.
  */
-export const PITCH_VARIATION = 0.04;
+export const PITCH_VARIATION = 0.015;
 
 /** Sounds that repeat often enough to be varied in pitch. */
 const VARIED_SOUNDS: ReadonlySet<OneShotSoundName> = new Set<OneShotSoundName>([
@@ -190,6 +192,9 @@ const defaultEnvironment = (): EngineEnvironment => ({
   loadSound: fetchSound,
   now: () => performance.now(),
   random: Math.random,
+  afterTask: (callback) => {
+    setTimeout(callback, 0);
+  },
   document: typeof document === 'undefined' ? undefined : document,
   window: typeof window === 'undefined' ? undefined : window,
 });
@@ -461,12 +466,14 @@ export function createSoundEngine(
 
     play: (name) => {
       if (!enabled) return;
-      // Sounds asked for together (one action, or several dispatched in one
-      // go) are gathered, and the most important plays once they all have
-      // been asked for: within the same task, before anything is painted.
+      // Sounds asked for together are gathered, and the most important plays
+      // once the task that asked for them has finished: one action, several
+      // dispatched in one go, or one choice heard twice, as an option chosen
+      // in a field whose answer also makes a connection (the connection is
+      // stored a few promise callbacks after the choice, in the same task).
       if (pending === null) {
         pending = name;
-        queueMicrotask(flush);
+        env.afterTask(flush);
       } else if (isMoreImportant(name, pending)) {
         pending = name;
       }

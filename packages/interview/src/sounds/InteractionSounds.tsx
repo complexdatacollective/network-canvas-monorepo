@@ -2,7 +2,7 @@
 
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
 
-import { InvalidSubmitListener } from '@codaco/fresco-ui/form/InvalidSubmitListener';
+import { FormFeedbackListener } from '@codaco/fresco-ui/form/FormFeedbackListener';
 
 import type {
   LoopingSoundName,
@@ -24,8 +24,13 @@ const SILENT: InteractionSounds = {
 const InteractionSoundsContext = createContext<InteractionSounds>(SILENT);
 
 /**
- * Gives the interview's components its interaction sounds, and plays the
- * error sound whenever one of its forms refuses a submission.
+ * Gives the interview's components its interaction sounds. Its forms are
+ * heard here too: the error sound whenever one refuses a submission, and a
+ * toggle sound whenever the participant chooses an option in a field
+ * (`toggle-on` for selecting, ticking or turning on, `toggle-off` for
+ * unticking, turning off or clearing). A choice that also changes the
+ * network, such as an answer that makes a connection, asks for both sounds
+ * at once, and the engine plays only the more important.
  */
 export function InteractionSoundsProvider({
   engine,
@@ -36,9 +41,14 @@ export function InteractionSoundsProvider({
 }) {
   return (
     <InteractionSoundsContext value={engine}>
-      <InvalidSubmitListener onInvalidSubmit={() => engine.play('error')}>
+      <FormFeedbackListener
+        onInvalidSubmit={() => engine.play('error')}
+        onOptionToggle={(selected) =>
+          engine.play(selected ? 'toggle-on' : 'toggle-off')
+        }
+      >
         {children}
-      </InvalidSubmitListener>
+      </FormFeedbackListener>
     </InteractionSoundsContext>
   );
 }

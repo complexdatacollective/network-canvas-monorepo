@@ -28,6 +28,7 @@ import {
 } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { FieldValueProps, InjectedFieldProps } from '../../Field/types';
+import { useFormFeedback } from '../../FormFeedbackListener';
 import { getInputState } from '../../utils/getInputState';
 import InputField from '../InputField';
 import { type ComboboxOption, comboboxTriggerVariants } from './shared';
@@ -211,6 +212,18 @@ function ComboboxField(props: ComboboxFieldProps) {
     [value],
   );
 
+  const { onOptionToggle } = useFormFeedback();
+  // Reports a change from the chosen values to `next`: choosing any option is
+  // heard as a choice, and otherwise clearing one as clearing.
+  const reportChange = (next: typeof selectedValues) => {
+    if (next.some((chosen) => !selectedValues.includes(chosen))) {
+      onOptionToggle(true);
+    } else if (selectedValues.some((chosen) => !next.includes(chosen))) {
+      onOptionToggle(false);
+    }
+  };
+
+  // Base UI calls this only for the person's own choice.
   const handleValueChange = (
     newValue: unknown[] | null,
     _event: Combobox.Root.ChangeEventDetails,
@@ -218,6 +231,7 @@ function ComboboxField(props: ComboboxFieldProps) {
     if (readOnly) return;
     if (newValue === null) {
       onChange?.([]);
+      reportChange([]);
     } else if (newValue.every(isComboboxOption)) {
       if (single) {
         const [chosen] = newValue.filter(
@@ -231,6 +245,7 @@ function ComboboxField(props: ComboboxFieldProps) {
             : [chosen],
         );
         onChange?.([chosen.value]);
+        onOptionToggle(true);
         onOpenChange(false);
         return;
       }
@@ -238,7 +253,9 @@ function ComboboxField(props: ComboboxFieldProps) {
         (opt) => !options.some((option) => option.value === opt.value),
       );
       if (fromSearch.length > 0) setChosenFromSearch(fromSearch);
-      onChange?.(newValue.map((opt) => opt.value));
+      const nextValues = newValue.map((opt) => opt.value);
+      onChange?.(nextValues);
+      reportChange(nextValues);
     }
   };
 
@@ -264,12 +281,18 @@ function ComboboxField(props: ComboboxFieldProps) {
     const keptFromSearch = selectedValues.filter(
       (selected) => !options.some((opt) => opt.value === selected),
     );
-    onChange?.([...enabledOptions.map((opt) => opt.value), ...keptFromSearch]);
+    const nextValues = [
+      ...enabledOptions.map((opt) => opt.value),
+      ...keptFromSearch,
+    ];
+    onChange?.(nextValues);
+    reportChange(nextValues);
   };
 
   const handleDeselectAll = () => {
     if (readOnly) return;
     onChange?.([]);
+    reportChange([]);
   };
 
   // The options that came from the search text and have been chosen. Kept

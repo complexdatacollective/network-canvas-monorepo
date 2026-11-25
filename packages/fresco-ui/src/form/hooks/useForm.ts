@@ -9,7 +9,7 @@ import {
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 
-import { useInvalidSubmitListener } from '../InvalidSubmitListener';
+import { useFormFeedback } from '../FormFeedbackListener';
 import type { FlattenedErrors, FormConfig } from '../store/types';
 import useFormStore from './useFormStore';
 
@@ -69,7 +69,7 @@ export function useForm(config: FormConfig) {
     (state) => state.submitInvalidHandler,
   );
   const isSubmitting = useFormStore((state) => state.isSubmitting);
-  const onInvalidSubmit = useInvalidSubmitListener();
+  const { onInvalidSubmit } = useFormFeedback();
 
   // Keep errors ref in sync with store using useEffect
   useLayoutEffect(() => {
@@ -104,7 +104,7 @@ export function useForm(config: FormConfig) {
    * The handler comes from the STORE rather than from this hook's own config,
    * so a host that registers one directly reaches it too — and so the store's
    * registered handler stays the single place the behaviour lives. An
-   * enclosing `InvalidSubmitListener` is told about the refusal here too.
+   * enclosing `FormFeedbackListener` is told about the refusal here too.
    */
   const handledFocusRequestRef = useRef(errorFocusRequest);
   useLayoutEffect(() => {
@@ -116,7 +116,7 @@ export function useForm(config: FormConfig) {
     const requestedErrors = requestedErrorsRef.current ?? errorsRef.current;
     requestedErrorsRef.current = null;
     submitInvalidHandler?.(requestedErrors);
-    onInvalidSubmit?.();
+    onInvalidSubmit();
   }, [errorFocusRequest, submitInvalidHandler, onInvalidSubmit]);
 
   // Register form once on mount. layout effect used to ensure it runs before fields register.

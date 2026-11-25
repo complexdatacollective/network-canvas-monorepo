@@ -306,7 +306,7 @@
   "interviewer.settingsDialog.persisted": "Persistente",
   "interviewer.settingsDialog.pixels": "Pixels",
   "interviewer.settingsDialog.playSoundsDuringInterviews": "Reproduzir sons durante as entrevistas",
-  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "Reproduz sons curtos quando os participantes alteram a própria rede, passam de uma etapa para outra ou tentam enviar um formulário com erros, e quando a entrevista termina.",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "Reproduz sons curtos quando os participantes alteram a própria rede, escolhem uma resposta, passam de uma etapa para outra ou tentam enviar um formulário com erros, e quando a entrevista termina.",
   "interviewer.settingsDialog.privacy": "Privacidade",
   "interviewer.settingsDialog.protocol": "Protocolo",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "Volta a mostrar o cartão do protocolo de exemplo, instalável com um clique, ao lado do cartão Importar.",

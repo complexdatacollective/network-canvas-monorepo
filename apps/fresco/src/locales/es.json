@@ -656,7 +656,7 @@
   "fresco.settings.InterviewSettingsSection.ensureThatYouTestYourInterviewThoroughly": "Si deshabilitas este aviso, asegúrate de probar la entrevista a fondo en una pantalla pequeña. Fresco funciona mejor en pantallas grandes y su uso en una pantalla pequeña puede empeorar la experiencia de quienes participan.",
   "fresco.settings.InterviewSettingsSection.freezeCompletedInterviews": "Bloquear entrevistas completadas",
   "fresco.settings.InterviewSettingsSection.ifAnonymousRecruitmentIsEnabledYouMay": "Si el reclutamiento anónimo está habilitado, puedes generar una URL de participación anónima y compartirla para que quienes participan se inscriban en tu estudio.",
-  "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledShortSoundsPlay": "Si habilitas esta opción, se reproducen sonidos breves cuando quienes participan modifican su red, pasan de una etapa a otra o intentan enviar un formulario con errores, y cuando termina la entrevista.",
+  "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledShortSoundsPlay": "Si habilitas esta opción, se reproducen sonidos breves cuando quienes participan modifican su red, eligen una respuesta, pasan de una etapa a otra o intentan enviar un formulario con errores, y cuando termina la entrevista.",
   "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledTheWarning": "Si habilitas esta opción, se deshabilitará el aviso sobre el uso de Fresco en una pantalla pequeña.",
   "fresco.settings.InterviewSettingsSection.interviewSettings": "Configuración de entrevistas",
   "fresco.settings.InterviewSettingsSection.limitInterviews": "Limitar entrevistas",

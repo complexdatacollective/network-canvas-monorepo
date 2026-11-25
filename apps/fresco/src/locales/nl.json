@@ -656,7 +656,7 @@
   "fresco.settings.InterviewSettingsSection.ensureThatYouTestYourInterviewThoroughly": "Test je interview grondig op een klein scherm als je deze waarschuwing uitschakelt. Fresco is ontworpen om het best te werken op grotere schermen, en op een klein scherm kan de gebruikerservaring voor deelnemers tegenvallen.",
   "fresco.settings.InterviewSettingsSection.freezeCompletedInterviews": "Voltooide interviews bevriezen",
   "fresco.settings.InterviewSettingsSection.ifAnonymousRecruitmentIsEnabledYouMay": "Als anonieme werving is ingeschakeld, kun je een anonieme deelname-URL genereren. Die URL kun je met deelnemers delen, zodat ze zich zelf voor je onderzoek kunnen aanmelden.",
-  "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledShortSoundsPlay": "Als deze optie is ingeschakeld, worden korte geluiden afgespeeld wanneer deelnemers hun netwerk wijzigen, tussen fasen wisselen of een formulier met fouten proberen te verzenden, en wanneer het interview eindigt.",
+  "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledShortSoundsPlay": "Als deze optie is ingeschakeld, worden korte geluiden afgespeeld wanneer deelnemers hun netwerk wijzigen, een antwoord kiezen, tussen fasen wisselen of een formulier met fouten proberen te verzenden, en wanneer het interview eindigt.",
   "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledTheWarning": "Als deze optie is ingeschakeld, wordt de waarschuwing over het gebruik van Fresco op een klein scherm uitgeschakeld.",
   "fresco.settings.InterviewSettingsSection.interviewSettings": "Interviewinstellingen",
   "fresco.settings.InterviewSettingsSection.limitInterviews": "Interviews beperken",

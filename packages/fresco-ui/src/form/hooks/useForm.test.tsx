@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import Field from '../Field/Field';
 import FieldNamespace from '../FieldNamespace';
 import InputField from '../fields/InputField';
-import { InvalidSubmitListener } from '../InvalidSubmitListener';
+import { FormFeedbackListener } from '../FormFeedbackListener';
 import FormStoreProvider from '../store/formStoreProvider';
 import type { FormSubmissionResult, FormSubmitHandler } from '../store/types';
 import { focusFirstError } from '../utils/focusFirstError';
@@ -331,7 +331,7 @@ describe('useForm invalid-submit focus', () => {
   });
 });
 
-describe('useForm with an InvalidSubmitListener', () => {
+describe('useForm with a FormFeedbackListener', () => {
   function Harness({
     onSubmit,
   }: {
@@ -351,11 +351,11 @@ describe('useForm with an InvalidSubmitListener', () => {
   ) => {
     const onInvalidSubmit = vi.fn();
     render(
-      <InvalidSubmitListener onInvalidSubmit={onInvalidSubmit}>
+      <FormFeedbackListener onInvalidSubmit={onInvalidSubmit}>
         <FormStoreProvider>
           <Harness onSubmit={onSubmit} />
         </FormStoreProvider>
-      </InvalidSubmitListener>,
+      </FormFeedbackListener>,
     );
     return onInvalidSubmit;
   };

@@ -306,7 +306,7 @@
   "interviewer.settingsDialog.persisted": "Persisted",
   "interviewer.settingsDialog.pixels": "Pixels",
   "interviewer.settingsDialog.playSoundsDuringInterviews": "Play sounds during interviews",
-  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "Plays short sounds when participants change their network, move between stages or try to submit a form that has errors, and when the interview ends.",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "Plays short sounds when participants change their network, choose an answer, move between stages or try to submit a form that has errors, and when the interview ends.",
   "interviewer.settingsDialog.privacy": "Privacy",
   "interviewer.settingsDialog.protocol": "Protocol",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "Re-shows the one-click sample protocol card next to the Import card.",

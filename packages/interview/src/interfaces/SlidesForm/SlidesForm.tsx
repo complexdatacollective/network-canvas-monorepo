@@ -522,7 +522,7 @@ export default function SlidesForm({
       setFocusedSlide(null);
       changing.current = true;
       setActiveIndex((prev) => prev - 1);
-      return false;
+      return 'MOVED_WITHIN_STAGE';
     }
 
     // Forward direction
@@ -547,7 +547,7 @@ export default function SlidesForm({
     setFocusedSlide(movingOnByItself.current ? activeIndex + 1 : null);
     changing.current = true;
     setActiveIndex((prev) => prev + 1);
-    return false;
+    return 'MOVED_WITHIN_STAGE';
   };
 
   useBeforeNext(beforeNext);

@@ -7,17 +7,28 @@ import type { StoreApi } from 'zustand';
 import type { DndStore } from '@codaco/fresco-ui/dnd/dnd';
 import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
 import { findSourceZone } from '@codaco/fresco-ui/dnd/utils';
-import type { NodeDragEndInfo } from '@codaco/fresco-ui/Node';
+import type { ActivationSource, NodeDragEndInfo } from '@codaco/fresco-ui/Node';
 
 import type { CanvasStoreApi } from './useCanvasStore';
 
 const NUDGE_AMOUNT = 0.02;
 
+/**
+ * Called when the participant has moved a node to a new position: at the end
+ * of a pointer drag (`source: 'pointer'`), or after each arrow-key nudge
+ * (`source: 'keyboard'`).
+ */
+export type CanvasNodeDragEnd = (
+  nodeId: string,
+  position: { x: number; y: number },
+  details: { source: ActivationSource },
+) => void;
+
 type UseCanvasDragOptions = {
   nodeId: string;
   canvasRef: RefObject<HTMLElement | null>;
   store: CanvasStoreApi;
-  onDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
+  onDragEnd?: CanvasNodeDragEnd;
   disabled?: boolean;
   simulation?: {
     moveNode: (nodeId: string, position: { x: number; y: number }) => void;
@@ -153,7 +164,7 @@ export function useCanvasDrag({
         // When a drop target claimed the node, its onDrop owns the outcome —
         // persisting the canvas position here would race with it.
         if (!droppedOnDndTarget) {
-          onDragEnd?.(nodeId, pos);
+          onDragEnd?.(nodeId, pos, { source: 'pointer' });
         }
       }
 
@@ -201,7 +212,7 @@ export function useCanvasDrag({
       // (mirrors the pointer-drag path, which releases before onDragEnd).
       simulation?.moveNode(nodeId, newPos);
       simulation?.releaseNode(nodeId);
-      onDragEnd?.(nodeId, newPos);
+      onDragEnd?.(nodeId, newPos, { source: 'keyboard' });
     },
     [disabled, nodeId, store, simulation, onDragEnd, onRemove],
   );

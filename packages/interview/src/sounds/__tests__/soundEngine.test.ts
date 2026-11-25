@@ -246,6 +246,20 @@ describe('sound engine timing', () => {
     expect(played.map(soundOf)).toEqual(['discard']);
   });
 
+  it('gathers the sounds asked for in later promise callbacks of the same task', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    // An option chosen in a field, then the connection that answer makes,
+    // stored a few promise callbacks later.
+    harness.engine.play('toggle-on');
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    harness.engine.play('create-edge');
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual(['create-edge']);
+  });
+
   it('drops a less important sound that follows within the burst window, but not a more important one', async () => {
     const harness = tracked(setup());
     await ready(harness);
@@ -281,8 +295,10 @@ describe('sound engine pitch', () => {
     const rates = harness
       .context()
       .played.map((source) => source.playbackRate.value);
-    expect(rates[0]).toBeCloseTo(1 - PITCH_VARIATION, 6);
-    expect(rates[1]).toBeCloseTo(1 + PITCH_VARIATION, 4);
+    // ±1.5%, about a quarter of a semitone either way.
+    expect(PITCH_VARIATION).toBe(0.015);
+    expect(rates[0]).toBeCloseTo(0.985, 6);
+    expect(rates[1]).toBeCloseTo(1.015, 4);
   });
 
   it('does not vary the error or finish sounds', async () => {

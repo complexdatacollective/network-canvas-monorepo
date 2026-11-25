@@ -12,6 +12,7 @@ import {
 import { dropdownItemVariants } from '../../../styles/controlVariants';
 import { cx, type VariantProps } from '../../../utils/cva';
 import type { FieldValueProps, InjectedFieldProps } from '../../Field/types';
+import { useFormFeedback } from '../../FormFeedbackListener';
 import { getInputState } from '../../utils/getInputState';
 import { type SelectOption, selectWrapperVariants } from './shared';
 
@@ -56,6 +57,9 @@ function SelectField(props: SelectProps) {
     ...rest
   } = props;
 
+  const { onOptionToggle } = useFormFeedback();
+
+  // Base UI calls this only for the person's own choice.
   const handleValueChange = (newValue: unknown) => {
     if (newValue !== null && newValue !== undefined) {
       const isPrimitiveValue =
@@ -66,6 +70,7 @@ function SelectField(props: SelectProps) {
           (isPrimitiveValue && String(option.value) === String(newValue)),
       );
       onChange?.(selectedOption?.value);
+      onOptionToggle(true);
     }
   };
 

@@ -306,7 +306,7 @@
   "interviewer.settingsDialog.persisted": "持久性",
   "interviewer.settingsDialog.pixels": "像素",
   "interviewer.settingsDialog.playSoundsDuringInterviews": "訪談期間播放音效",
-  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "當參與者編輯其網絡、在各階段之間移動或嘗試送出有錯誤的表單時，以及訪談結束時，會播放簡短的音效。",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "當參與者編輯其網絡、選擇答案、在各階段之間移動或嘗試送出有錯誤的表單時，以及訪談結束時，會播放簡短的音效。",
   "interviewer.settingsDialog.privacy": "隱私權",
   "interviewer.settingsDialog.protocol": "協定",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "在「匯入協定」卡片旁重新顯示可一鍵安裝的範例協定卡片。",
