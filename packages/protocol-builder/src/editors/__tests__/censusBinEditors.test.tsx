@@ -5,7 +5,10 @@ import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
-import { attributeField } from '../../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+} from '../../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -107,11 +110,11 @@ type Control = Readonly<{
   /**
    * What the researcher reaches for.
    *
-   * `attribute` is not an ARIA role: an attribute is chosen in a window the
-   * field's trigger opens, and that trigger is named for what it does —
-   * "Select attribute" — rather than for the question it answers. So the
-   * picker is named here the way the researcher reads it, by the label of the
-   * FIELD, and found through that.
+   * `attribute` is not an ARIA role: an attribute is chosen in a list that
+   * the field's select box opens, and the select box is named by the field's
+   * label followed by the attribute it shows. So the picker is named here the
+   * way the researcher reads it, by the label of the FIELD, and found through
+   * that.
    */
   role: 'textbox' | 'combobox' | 'switch' | 'radio' | 'attribute';
   /** Its accessible name, as the researcher reads it. */
@@ -694,10 +697,6 @@ const CASES: readonly EditorCase[] = [
   },
 ];
 
-/** The two names an attribute picker's trigger goes by, held or not. */
-const isPickerTrigger = (name: string) =>
-  name === 'Select attribute' || name === 'Change attribute';
-
 /** Asserts one named control is mounted, and switched on where it must be. */
 function expectControl(control: Control): void {
   const scopeElement =
@@ -709,9 +708,7 @@ function expectControl(control: Control): void {
     // screen AND it offers the trigger that opens the window, rather than the
     // sentence a picker with nothing to offer shows in its place.
     expect(
-      within(attributeField(control.name, scopeElement)).getByRole('button', {
-        name: isPickerTrigger,
-      }),
+      attributeTrigger(attributeField(control.name, scopeElement)),
     ).toBeInTheDocument();
     return;
   }

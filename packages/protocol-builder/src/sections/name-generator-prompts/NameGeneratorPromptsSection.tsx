@@ -6,11 +6,17 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import Section from '@codaco/fresco-ui/Section';
 import { promptSchema } from '@codaco/protocol-validation';
 
+import {
+  attributeAvailabilityMessages,
+  attributeChoices,
+  markCrossClassUses,
+  markInterfaceOwned,
+  markListed,
+  onlyTypeReason,
+} from '../../codebook/attributeAvailability.ts';
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
 import {
   buildVariableRoleMap,
-  excludeInterfaceOwned,
-  excludeValidatedUses,
   buildExclusiveVariableSlotMap,
   hasValidatedUse,
 } from '../../codebook/variableRoles.ts';
@@ -193,8 +199,8 @@ function NameGeneratorPromptEditor({ item }: RowEditorProps) {
  * The fixed values every person named on this prompt is given.
  *
  * A stamp is an UNVALIDATED writer — the interview writes the configured
- * boolean straight onto the node — so the pool excludes any attribute a form
- * collects, whether that form is saved elsewhere in the protocol or is this
+ * boolean straight onto the node — so the list marks as unavailable any
+ * attribute a form collects, whether that form is saved elsewhere in the protocol or is this
  * stage's own unsaved one. Reselecting what the prompt already saved is never
  * a new contradiction, which is what the committed-pick set escapes.
  */
@@ -248,28 +254,41 @@ function AdditionalAttributes({
   const variableOptions = useMemo(() => {
     if (subject === undefined) return NO_OPTIONS;
     const committedPicks = [...committedVariableIds];
-    const pool = Object.entries(allVariables).map(([value, variable]) => ({
-      value,
-      label: variable.name,
-      type: variable.type,
-    }));
-    // Also drops an attribute an interface derives from the structure a
+    const pool = attributeChoices(
+      allVariables,
+      (type) => type === STAMP_TYPE,
+      onlyTypeReason(intl, STAMP_TYPE),
+    );
+    // Also marks an attribute an interface derives from the structure a
     // participant builds — a Family Pedigree's participant marker is a boolean
     // like any other, and stamping it here would put several people in one
     // family.
-    return excludeInterfaceOwned(
+    const owned = markInterfaceOwned(
       slotMap,
       subject,
-      excludeValidatedUses(roleMap, subject, pool, committedPicks),
+      pool,
+      intl,
       committedPicks,
-    ).filter(
-      ({ value }) =>
-        !draftValidatedVariables.has(value) || committedVariableIds.has(value),
+    );
+    const draftCollected = markListed(
+      owned,
+      draftValidatedVariables,
+      intl.formatMessage(attributeAvailabilityMessages.draftValidatedHere),
+      committedPicks,
+    );
+    return markCrossClassUses(
+      roleMap,
+      subject,
+      draftCollected,
+      'unvalidated',
+      intl,
+      committedPicks,
     );
   }, [
     allVariables,
     committedVariableIds,
     draftValidatedVariables,
+    intl,
     roleMap,
     slotMap,
     subject,

@@ -2,7 +2,7 @@
 navOrder: 1
 title: Crear un protocolo
 toc: true
-translatedFrom: 33dac18701ad92ed1f4a31a439ce850695c3d6e8
+translatedFrom: 10824fece650c38b2a5abdab25fb756d6d0addd1
 ---
 
 <SummaryCard duration="2 horas">
@@ -170,7 +170,7 @@ Haz clic en **Save and Return** (guardar y volver) para crear el tipo de nodo y 
 
 A continuación, crea un atributo de adición rápida que guardará los datos introducidos para cada álter (cada persona a la que se nombra durante la entrevista) que nombre la persona participante. Salvo que tengas un buen motivo para no hacerlo, este atributo debería llamarse «name». Interviewer usará este atributo como etiqueta de cada nodo creado en esta etapa.
 
-Para crearlo, haz clic en **Seleccionar atributo**, debajo de **Selecciona un atributo**. Se abre una ventana con un cuadro de búsqueda, **Busca o crea un atributo**, encima de una lista de los atributos que ya tiene este tipo de nodo. Escribe el nombre de tu atributo (por ejemplo, «name»). Como todavía no hay ninguna coincidencia, la primera fila ofrece **Crear un atributo nuevo llamado «name».** Elígela y el nuevo atributo se crea y se selecciona como atributo de adición rápida.
+Para crearlo, haz clic en el cuadro que hay debajo de **Selecciona un atributo**. Se abre una lista justo debajo, con un cuadro de búsqueda, **Busca o crea un atributo**, encima de los atributos que ya tiene este tipo de nodo. Escribe el nombre de tu atributo (por ejemplo, «name»). Como todavía no hay ninguna coincidencia, la primera fila ofrece **Crear «name»**, con **Nuevo atributo de tipo Texto** debajo. Elígela y el nuevo atributo se crea y se selecciona como atributo de adición rápida.
 
 Lo que la persona participante escribe en el cuadro de adición rápida es lo único que aporta sobre cada nodo, así que un atributo creado aquí es **obligatorio** desde el principio. Si quieres que quienes participan puedan dejar el cuadro vacío, desactiva **Respuesta obligatoria** en la sección **Validación**, debajo del selector.
 
@@ -255,7 +255,7 @@ Primero, crea un título para el formulario que oriente a la persona participant
 
 A continuación, define los campos del formulario. Haz clic en **Crear nuevo campo de formulario**, en la sección **Campos del formulario**. Se abre un cuadro de diálogo con los ajustes del campo a la izquierda, donde eliges un atributo para el campo, escribes la pregunta, eliges un control de entrada y estableces la validación que quieras incluir. A la derecha hay una vista previa en directo de la pregunta tal como la verá la persona participante, que se actualiza a medida que trabajas. En una pantalla estrecha, la vista previa aparece debajo de los ajustes.
 
-En el primer campo, quieres saber el nombre de la clínica que nombra la persona participante. En **Selección de atributo**, haz clic en **Seleccionar atributo** y elige «name» en la lista o, si el tipo de nodo «Clinic» todavía no tiene un atributo «name», escribe «name» y elige **Crear un atributo nuevo llamado «name».** Después, en **Configuración del campo**, introduce el **Texto de la pregunta**. En este ejemplo, usa la pregunta «What is the name of this clinic?» (¿cómo se llama esta clínica?).
+Para el primer campo, quieres saber el nombre de la clínica que menciona la persona participante. En **Selección de atributo**, haz clic en **Selecciona un atributo** y elige «name» en la lista o, si el tipo de nodo «Clinic» todavía no tiene un atributo «name», escribe «name» y elige **Crear «name»**. Después, en **Configuración del campo**, introduce el **Texto de la pregunta**. En este ejemplo, usa la pregunta «What is the name of this clinic?» (¿cómo se llama esta clínica?).
 
 </AppOnly>
 
@@ -279,9 +279,11 @@ En Architect, cada campo de formulario puede incluir una **indicación** opciona
 
 <TipBox>
 
-En muchas pantallas de Architect puedes crear un atributo nuevo o seleccionar uno existente. Todas usan la misma ventana de atributos: haz clic en **Seleccionar atributo** y escribe en el cuadro de búsqueda. Donde puedes crear un atributo, el cuadro de búsqueda dice **Busca o crea un atributo**, y al escribir un nombre que todavía no existe aparece **Crear un atributo nuevo llamado «…».** como primera fila. Donde solo puedes elegir un atributo existente, el cuadro dice **Busca un atributo**.
+En muchas pantallas de Architect puedes crear un atributo nuevo o seleccionar uno existente. Todas usan el mismo cuadro de selección de atributos: haz clic en él y se abre debajo una lista de atributos, con un cuadro de búsqueda en la parte superior. Escribe en el cuadro de búsqueda para acotar la lista. La lista muestra los atributos cuyo nombre contiene las letras que has escrito, en el orden en que las has escrito, aunque haya otras letras entre ellas, así que «csd» encuentra «casado». Donde puedes crear un atributo, el cuadro de búsqueda muestra **Busca o crea un atributo**, y al escribir un nombre que todavía no existe aparece **Crear «…»** como primera fila. Donde el tipo del atributo ya está definido, la fila también lo indica, por ejemplo **Nuevo atributo de tipo Booleano**. Si el nombre no se puede usar, la fila explica por qué. Donde solo puedes elegir un atributo existente, el cuadro de búsqueda muestra **Busca un atributo**.
 
 Si no, elige un atributo existente de la lista. Puedes usar las teclas de flecha e Intro en lugar del ratón.
+
+Los atributos que existen pero no se pueden usar en ese lugar (por ejemplo, porque son de un tipo incorrecto o porque ya se usan en otra parte de la etapa) aparecen atenuados en el apartado **No disponibles aquí**. Haz clic en uno, o pulsa Intro sobre él, para ver por qué no se puede usar.
 
 </TipBox>
 

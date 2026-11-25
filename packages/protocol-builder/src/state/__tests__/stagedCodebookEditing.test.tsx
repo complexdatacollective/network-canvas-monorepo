@@ -107,14 +107,14 @@ describe('codebook changes made on top of one another in a stage edit', () => {
     if (field === null) throw new Error('No quick-add field');
     const dialog = await openAttributePicker(harness.user, field);
     await harness.user.type(
-      within(dialog).getByRole('searchbox', {
+      within(dialog).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
       'nickname',
     );
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: 'Create new attribute called “nickname”.',
+        name: 'Create “nickname”',
       }),
     );
 

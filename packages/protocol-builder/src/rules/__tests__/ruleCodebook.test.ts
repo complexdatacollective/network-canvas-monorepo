@@ -546,7 +546,6 @@ describe('codebook entries that are legal but sparse', () => {
       value: UNNAMED,
       label: UNNAMED,
       type: 'text',
-      usable: true,
     });
   });
 
@@ -580,22 +579,27 @@ describe('reading the codebook for a rule', () => {
     expect(
       ruleVariableOptions(ruleVariables(codebook, 'node', PERSON)),
     ).toEqual([
-      { value: AGE, label: 'Age', type: 'number', usable: true },
-      { value: MOOD, label: 'Mood', type: 'categorical', usable: true },
-      { value: NOTE, label: 'Note', type: 'text', usable: true },
-      { value: BORN, label: 'Born', type: 'datetime', usable: true },
-      { value: HOME, label: 'Home', type: 'layout', usable: false },
+      { value: AGE, label: 'Age', type: 'number' },
+      { value: MOOD, label: 'Mood', type: 'categorical' },
+      { value: NOTE, label: 'Note', type: 'text' },
+      { value: BORN, label: 'Born', type: 'datetime' },
+      {
+        value: HOME,
+        label: 'Home',
+        type: 'layout',
+        unavailableReason:
+          'This attribute cannot be used in a rule. Choose another one.',
+        unavailableForType: true,
+      },
       // Whether it was answered can still be asked of an encrypted attribute.
-      { value: SECRET, label: 'Secret', type: 'text', usable: true },
+      { value: SECRET, label: 'Secret', type: 'text' },
     ]);
   });
 
   it('reads an ego rule against the ego codebook', () => {
     expect(
       ruleVariableOptions(ruleVariables(codebook, 'ego', undefined)),
-    ).toEqual([
-      { value: EGO_NAME, label: 'EgoName', type: 'text', usable: true },
-    ]);
+    ).toEqual([{ value: EGO_NAME, label: 'EgoName', type: 'text' }]);
   });
 
   it('offers nothing for an entity type the codebook no longer has', () => {

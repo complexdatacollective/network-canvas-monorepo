@@ -11,10 +11,14 @@ import { tieStrengthCensusPromptSchema } from '@codaco/protocol-validation';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import {
+  attributeChoices,
+  markCrossClassUses,
+  markInterfaceOwned,
+  onlyTypeReason,
+} from '../../../codebook/attributeAvailability.ts';
+import {
   buildExclusiveVariableSlotMap,
   buildVariableRoleMap,
-  excludeInterfaceOwned,
-  excludeValidatedUses,
   hasValidatedUse,
   interfaceOwnedPickIssue,
 } from '../../../codebook/variableRoles.ts';
@@ -312,19 +316,26 @@ function ScaleField({
     // prompts are the authority on what this stage writes, and the saved copy
     // of them is stale the moment editing begins.
     const roleMap = buildVariableRoleMap(protocolContext, identity.id);
-    const pool = Object.entries(allVariables).flatMap(([value, variable]) =>
-      variable.type === SCALE_TYPE
-        ? [{ value, label: variable.name, type: variable.type }]
-        : [],
+    const pool = attributeChoices(
+      allVariables,
+      (type) => type === SCALE_TYPE,
+      onlyTypeReason(intl, SCALE_TYPE),
     );
-    const keep = picked === undefined ? [] : [picked];
-    return excludeInterfaceOwned(
-      buildExclusiveVariableSlotMap(protocolContext),
+    return markCrossClassUses(
+      roleMap,
       subject,
-      excludeValidatedUses(roleMap, subject, pool, keep),
-      keep,
+      markInterfaceOwned(
+        buildExclusiveVariableSlotMap(protocolContext),
+        subject,
+        pool,
+        intl,
+        picked,
+      ),
+      'unvalidated',
+      intl,
+      picked,
     );
-  }, [allVariables, identity.id, picked, protocolContext, subject]);
+  }, [allVariables, identity.id, intl, picked, protocolContext, subject]);
 
   // The list the researcher is LOOKING at. The points are edited inline in
   // this dialog and saving closes it, so a warning counted from the stored

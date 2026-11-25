@@ -6,8 +6,11 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   attributeField,
+  attributeTrigger,
   awaitOfferedAttributes,
+  closeAttributePicker,
   offeredAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
 import {
   fixtureStageId,
@@ -99,9 +102,11 @@ const STAMP_PICKER = 'Create or select an attribute';
 
 /** Every attribute a picker's window offers, by the id it would store. */
 const offeredIds = (window: HTMLElement): string[] =>
-  [...window.querySelectorAll('[role="option"]')].map(
-    (row) => row.getAttribute('data-attribute-id') ?? '',
-  );
+  [
+    ...window.querySelectorAll(
+      '[role="option"][data-attribute-id]:not([data-unavailable])',
+    ),
+  ].map((row) => row.getAttribute('data-attribute-id') ?? '');
 
 const quickAddPicker = async (): Promise<HTMLElement> => {
   await screen.findByText(QUICK_ADD_LABEL, { selector: 'label' });
@@ -164,6 +169,10 @@ describe('what a quick-add generator and its own prompts may not share', () => {
     expect(await offeredAttributes(harness.user, picker)).not.toContain(
       NICKNAME,
     );
+    // Listed, with the prompt that stamps it.
+    expect(await unavailableReason(harness.user, picker, NICKNAME)).toBe(
+      'Prompt 1 on this stage assigns a value to this attribute, so it cannot also be collected here.',
+    );
   });
 
   /**
@@ -173,7 +182,8 @@ describe('what a quick-add generator and its own prompts may not share', () => {
    * It is closed by the kinds of answer the two writers take, not by a filter:
    * quick add fills in ONE box, so it offers text attributes alone
    * (`QuickAddSection`'s `QUICK_ADD_TYPE`), and a stamp writes a fixed value,
-   * so the row offers booleans alone (`AssignAttributes`' `ALLOWED_TYPES`).
+   * so the row offers booleans alone (`NameGeneratorPromptsSection`'s
+   * `STAMP_TYPE`), and lists every other attribute as one it cannot use.
    * No attribute is ever in both pools, so the attribute quick add fills in
    * cannot be stamped by a prompt of the same stage.
    */
@@ -205,10 +215,7 @@ describe('what a quick-add generator and its own prompts may not share', () => {
       }),
     );
     await harness.user.click(
-      within(attributeField(STAMP_PICKER, dialog)).getByRole('button', {
-        name: (name: string) =>
-          name === 'Select attribute' || name === 'Change attribute',
-      }),
+      attributeTrigger(attributeField(STAMP_PICKER, dialog)),
     );
     const window = await waitFor(() => {
       const opened = screen
@@ -225,5 +232,14 @@ describe('what a quick-add generator and its own prompts may not share', () => {
     // what is being read.
     expect(offered).toContain(personVariable('highlighted'));
     expect(offered).not.toContain(NICKNAME);
+    await closeAttributePicker(harness.user);
+    // Listed, for the reason that comes first: it is not a Boolean.
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField(STAMP_PICKER, dialog),
+        NICKNAME,
+      ),
+    ).toBe('Only Boolean attributes can be used here.');
   });
 });

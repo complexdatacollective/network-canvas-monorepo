@@ -104,7 +104,8 @@ after the fact is marked in place.
 | `multiSelect`                | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                                                                                                                    | i18n-2b   |
 | `option`                     | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`, `form/arrayFields/cellRules.ts` (`duplicateLabelRow`), `codebook/editing.ts` (`minimumOptions`)                                                                                                                        | i18n-2b   |
 | `entitySelect`               | `fields/EntityTypePickerField.tsx`                                                                                                                                                                                                                                                    | i18n-2b   |
-| `variablePicker`             | `fields/VariablePickerField.tsx`, `fields/VariableSpotlight.tsx`, `fields/AttributePill.tsx` (the `rename*` ids; all three added by the parity loop)                                                                                                                                  | i18n-2b   |
+| `variablePicker`             | `fields/VariablePickerField.tsx`, `fields/variableNameRules.ts` (`nameTaken`, `nameInvalid`)                                                                                                                                                                                          | i18n-2b   |
+| `attributeUnavailable`       | `codebook/attributeAvailability.ts` (the reasons an attribute picker gives an attribute it lists as not available here, shared by every picker)                                                                                                                                       | pickers   |
 | `exportColumn`               | `fields/variableNameRules.ts` (a name that would write an export column another variable or a built-in column already writes)                                                                                                                                                         | names     |
 | `skipLogicDestination`       | `fields/stageDestination.ts`                                                                                                                                                                                                                                                          | i18n-2b   |
 | `networkFilter`              | `sections/network-filter/NetworkFilterSection.tsx`                                                                                                                                                                                                                                    | i18n-2b   |
@@ -385,7 +386,7 @@ for something else or reopens a decision that has been made:
   reserved rather than being reused for something else.
 - **`variablePicker`'s `create*` ids are on screen at two call sites.** Quick
   add and the attribute row pass `onCreateOption`, so their pickers offer the
-  create row inside `fields/VariableSpotlight.tsx`. Every other section's
+  create row at the top of the list in `fields/VariablePickerField.tsx`. Every other section's
   picker only chooses; `FormFieldsSection` answers the same question through
   the `#create-new-attribute` sentinel in its own option list until the
   sibling create buttons are folded into the picker.

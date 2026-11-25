@@ -92,14 +92,14 @@ describe('a slot whose attribute needs more than a name', () => {
     const field = attributeField(LABEL);
     const dialog = await openAttributePicker(harness.user, field);
     await harness.user.type(
-      within(dialog).getByRole('searchbox', {
+      within(dialog).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
       'closeness',
     );
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: 'Create new attribute called “closeness”.',
+        name: 'Create “closeness”',
       }),
     );
 
@@ -175,8 +175,8 @@ describe('a slot whose attribute needs more than a name', () => {
    * The editor opens OVER this window, which stays open underneath it waiting
    * for an answer — so nothing on the window may raise it above a dialog
    * opened after it. jsdom has no stylesheet to paint with, so what is read
-   * here is the raise itself; `fields/VariableSpotlight.stories.tsx`'s "The
-   * editor it opens" story is where the stacking is measured in a browser.
+   * here is the raise itself: the popup layer's `z-3000`, which the list's
+   * positioner carries at every other time, is dropped while a create waits.
    */
   it('leaves the editor it opened on top of it', async () => {
     const harness = renderStageEditor({
@@ -190,14 +190,14 @@ describe('a slot whose attribute needs more than a name', () => {
       attributeField(LABEL),
     );
     await harness.user.type(
-      within(dialog).getByRole('searchbox', {
+      within(dialog).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
       'closeness',
     );
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: 'Create new attribute called “closeness”.',
+        name: 'Create “closeness”',
       }),
     );
 
@@ -206,7 +206,7 @@ describe('a slot whose attribute needs more than a name', () => {
     });
 
     const spotlight = document.querySelector<HTMLElement>(
-      '[data-variable-spotlight]',
+      '[data-attribute-picker-popup][data-open]',
     );
     if (spotlight === null) {
       throw new Error('the window closed, so there is nothing to be under');
@@ -218,6 +218,10 @@ describe('a slot whose attribute needs more than a name', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(spotlight.style.zIndex).toBe('');
+    const positioner = spotlight.parentElement;
+    expect(positioner).not.toBeNull();
+    expect(positioner).not.toHaveClass('z-3000');
+    expect(positioner?.style.zIndex).toBe('');
   });
 
   /**
@@ -234,13 +238,13 @@ describe('a slot whose attribute needs more than a name', () => {
 
     const field = attributeField(LABEL);
     const dialog = await openAttributePicker(harness.user, field);
-    const box = within(dialog).getByRole('searchbox', {
+    const box = within(dialog).getByRole('combobox', {
       name: 'Find or create an attribute',
     });
     await harness.user.type(box, 'closeness');
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: 'Create new attribute called “closeness”.',
+        name: 'Create “closeness”',
       }),
     );
 
@@ -258,7 +262,7 @@ describe('a slot whose attribute needs more than a name', () => {
     // never came: the row offers the create rather than saying it is making
     // one, and it is not switched off.
     const offer = within(document.body).getByRole('option', {
-      name: 'Create new attribute called “closeness”.',
+      name: 'Create “closeness”',
     });
     expect(offer).not.toHaveAttribute('aria-disabled');
     expect(box).toBeEnabled();

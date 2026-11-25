@@ -151,8 +151,8 @@ export const ASpectator: Story = {
     // The attribute is chosen in a window a trigger opens, so what is inert
     // for a spectator is the trigger.
     await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
-    ).toBeDisabled();
+      await canvas.findByRole('combobox', { name: /^Attribute/u }),
+    ).toHaveAttribute('aria-disabled', 'true');
     await expect(
       canvas.queryByRole('button', { name: 'Create a new attribute' }),
     ).toBeNull();
@@ -296,7 +296,7 @@ export const TheOtherBin: Story = {
     await awaitPassiveEffects();
 
     await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
+      await canvas.findByRole('combobox', { name: /^Attribute contactType$/u }),
     ).toBeInTheDocument();
     await expect(
       canvasElement.querySelector('[data-attribute-type]'),

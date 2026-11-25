@@ -10,6 +10,8 @@ import {
   inventAttribute,
   offeredAttributes,
   openAttributePicker,
+  unavailableAttributes,
+  unavailableReason,
 } from '../../../../testing/attributePicker.ts';
 import {
   fixtureStageId,
@@ -251,14 +253,23 @@ describe('the questions a tie-strength census asks about a pair', () => {
       screen.getByRole('radio', { name: 'family_edge' }),
     );
 
-    // And it offers that connection type's own ordinal attributes; a
-    // `family_edge` has none, so the picker says so rather than offering the
-    // person's.
+    // And it lists that connection type's own attributes; a `family_edge`
+    // has no ordinal one, so none can be chosen, and the person's are not
+    // listed at all.
+    const scale = await findScaleField();
     expect(
-      await screen.findByText(
-        'This connection type has no ordinal attributes yet. Create one to say what the scale is.',
+      await within(scale).findByText(
+        'None of the existing attributes can be used here. Open the list to see why.',
       ),
     ).toBeInTheDocument();
+    expect(await offeredAttributes(harness.user, scale)).toEqual([]);
+    const listed = await unavailableAttributes(harness.user, scale);
+    expect(listed).not.toContain(CLOSENESS);
+    const [first] = listed;
+    if (first === undefined) throw new Error('family_edge lists no attributes');
+    expect(await unavailableReason(harness.user, scale, first)).toBe(
+      'Only Ordinal attributes can be used here.',
+    );
   });
 
   /**
@@ -289,7 +300,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
 
     // The new connection type has no ordinal attributes at all, so the picker
     // has nothing to offer and nothing left over from the old one — it says so
-    // in place of the control, rather than holding the scale it was opened on.
+    // under the control, rather than holding the scale it was opened on.
     await waitFor(() =>
       expect(
         within(attributeField(SCALE_LABEL)).queryByText('closeness'),
@@ -297,7 +308,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     expect(
       within(attributeField(SCALE_LABEL)).getByText(
-        'This connection type has no ordinal attributes yet. Create one to say what the scale is.',
+        'None of the existing attributes can be used here. Open the list to see why.',
       ),
     ).toBeVisible();
 

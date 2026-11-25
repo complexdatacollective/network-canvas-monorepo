@@ -1,405 +1,450 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useMemo } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { useMemo, useState } from 'react';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import Section from '@codaco/fresco-ui/Section';
+import type { VariableType } from '@codaco/protocol-validation';
 
-import { REQUIRED } from '../form/requiredField.ts';
-import {
-  type CodebookSubject,
-  variablesForSubject,
-} from '../protocol-context.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
-import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import {
-  fixtureStageId,
-  fixtureTypeId,
-  fixtureVariableId,
-} from '../testing/protocolFixture.ts';
-import { variableNameScope } from './variableNameRules.ts';
-import VariablePickerField from './VariablePickerField.tsx';
+import type { VariableNameScope } from './variableNameRules.ts';
+import VariablePickerField, {
+  type CreateOptionOutcome,
+  type VariablePickerOption,
+} from './VariablePickerField.tsx';
 
-const PERSON = fixtureTypeId('node', 'person');
-const LAYOUT = fixtureVariableId(
-  { entity: 'node', typeName: 'person' },
-  'layout',
-);
+const NEEDS_BOOLEAN = 'Nodes can only be highlighted by a Boolean attribute.';
 
-const PERSON_SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
+/** The attributes of the node type "Person", judged for a highlight field. */
+const PERSON_ATTRIBUTES: readonly VariablePickerOption[] = [
+  {
+    value: 'name',
+    label: 'name',
+    type: 'text',
+    unavailableReason: `This is a Text attribute. ${NEEDS_BOOLEAN}`,
+  },
+  {
+    value: 'age',
+    label: 'age',
+    type: 'number',
+    unavailableReason: `This is a Number attribute. ${NEEDS_BOOLEAN}`,
+  },
+  { value: 'close_friend', label: 'close_friend', type: 'boolean' },
+  { value: 'lives_nearby', label: 'lives_nearby', type: 'boolean' },
+  {
+    value: 'sees_weekly',
+    label: 'sees_weekly',
+    type: 'boolean',
+    unavailableReason:
+      'Prompt 2 on this stage already highlights this attribute.',
+  },
+  { value: 'married', label: 'married', type: 'boolean' },
+  {
+    value: 'closeness',
+    label: 'closeness',
+    type: 'ordinal',
+    unavailableReason: `This is an Ordinal attribute. ${NEEDS_BOOLEAN}`,
+  },
+  {
+    value: 'layout',
+    label: 'layout',
+    type: 'layout',
+    unavailableReason:
+      'This is a Layout attribute. It records where nodes are placed on the canvas, so it cannot be used to highlight them.',
+  },
+];
 
-const FIELD_LABEL = 'Attribute this question records';
+const FIELD_LABEL = 'Attribute to highlight';
 
-/**
- * What may be picked, narrowed the way a section narrows it.
- *
- * A section holds this rule because the rule is the section's: this one offers
- * every attribute of the people the stage collects, and rules out the one that
- * records where a node was dragged to — a position is not an answer, so no
- * question can be about it. The picker is handed the result.
- */
-function useAttributeOptions(subject: CodebookSubject) {
-  const protocolContext = useProtocolContext();
-  return useMemo(
-    () =>
-      Object.entries(variablesForSubject(protocolContext, subject)).map(
-        ([value, variable]) => ({
-          value,
-          label: variable.name,
-          type: variable.type,
-          ...(variable.type === 'layout'
-            ? {
-                usable: false,
-                unusableWords: {
-                  optionLabel: `${variable.name} — records a position, not an answer`,
-                  note: 'This attribute records where somebody was placed on a screen, so a question cannot be about it. Choose another one.',
-                },
-              }
-            : {}),
-        }),
-      ),
-    [protocolContext, subject],
-  );
-}
+/** What the stand-in codebook does when asked to create an attribute. */
+type CreateBehaviour = 'created' | 'refused' | 'unassigned' | 'pending';
 
-/** A picker over the attributes of the people this protocol collects. */
-function AttributePicker({
-  canCreate = false,
+type HarnessProps = Readonly<{
+  options?: readonly VariablePickerOption[];
+  initialValue?: string;
+  /** `none` stands for a caller that gives no preset type. */
+  newVariableType?: VariableType | 'none';
+  /** Absent: the picker only chooses from what exists. */
+  create?: CreateBehaviour;
+  emptyMessage?: string;
+  readOnly?: boolean;
+}>;
+
+function Harness({
+  options: initialOptions = PERSON_ATTRIBUTES,
+  initialValue,
+  newVariableType = 'boolean',
+  create,
+  emptyMessage,
   readOnly = false,
-}: Readonly<{ canCreate?: boolean; readOnly?: boolean }>) {
-  const options = useAttributeOptions(PERSON_SUBJECT);
-  const protocolContext = useProtocolContext();
-  const nameScope = useMemo(
-    () =>
-      variableNameScope(
-        PERSON_SUBJECT.entity,
-        variablesForSubject(protocolContext, PERSON_SUBJECT),
-      ),
-    [protocolContext],
+}: HarnessProps) {
+  const [options, setOptions] = useState(initialOptions);
+  const [value, setValue] = useState<string | undefined>(initialValue);
+  const presetType = newVariableType === 'none' ? undefined : newVariableType;
+
+  const nameScope = useMemo<VariableNameScope>(
+    () => ({
+      entity: 'node',
+      variables: options.map((option) => ({
+        id: option.value,
+        name: option.label,
+        type: option.type ?? 'text',
+      })),
+    }),
+    [options],
   );
+
+  const onCreateOption = async (name: string): Promise<CreateOptionOutcome> => {
+    if (create === 'pending') return new Promise(() => undefined);
+    // A story holds still, so the codebook write is the one thing stood in
+    // for: what the picker does with each answer is what these stories show.
+    await Promise.resolve();
+    if (create === 'refused') {
+      return {
+        status: 'refused',
+        message:
+          'Robin is currently editing a section needed for this change. Try again when they have finished.',
+      };
+    }
+    const created: VariablePickerOption = {
+      value: `created:${name}`,
+      label: name,
+      ...(presetType === undefined ? {} : { type: presetType }),
+    };
+    setOptions((previous) => [...previous, created]);
+    if (create === 'unassigned') return { status: 'unassigned' };
+    setValue(created.value);
+    return { status: 'created' };
+  };
+
   return (
-    <Field<typeof VariablePickerField>
-      name="nodeConfiguration.egoAttribute"
-      component={VariablePickerField}
-      label={FIELD_LABEL}
-      hint="Every answer to this question is stored under this attribute."
-      options={options}
-      nameScope={nameScope}
-      required={REQUIRED}
-      readOnly={readOnly}
-      {...(canCreate
-        ? {
-            onCreateOption: async (variableName: string) => {
-              // A story holds still, so the codebook write is the one thing
-              // stood in for: what the picker does with each ANSWER is what
-              // these stories are about.
-              await Promise.resolve();
-              return variableName === 'taken'
-                ? ({
-                    status: 'refused',
-                    message: 'Pick another name.',
-                  } as const)
-                : ({ status: 'created' } as const);
-            },
-          }
-        : {})}
-    />
+    <div className="mx-auto flex min-h-[40rem] w-full max-w-2xl flex-col p-8">
+      <Section
+        title="Prompt 1"
+        description="Settings for how nodes are shown while this prompt is active."
+      >
+        <UnconnectedField
+          name="highlight"
+          label={FIELD_LABEL}
+          hint="Nodes are highlighted when this Boolean attribute is true."
+          component={VariablePickerField}
+          options={options}
+          value={value}
+          onChange={setValue}
+          nameScope={nameScope}
+          readOnly={readOnly}
+          {...(emptyMessage === undefined ? {} : { emptyMessage })}
+          {...(create === undefined ? {} : { onCreateOption })}
+          {...(presetType === undefined ? {} : { newVariableType: presetType })}
+        />
+      </Section>
+    </div>
   );
 }
-
-const openThePicker = async (canvasElement: HTMLElement) => {
-  const canvas = within(canvasElement);
-  // The stage arrives from the host over a promise, so the editor — and every
-  // control in it — is drawn a turn after the story mounts.
-  await awaitPassiveEffects();
-  // Either name: the fixture's stage already holds an attribute in some of
-  // these stories and holds none in others, and the trigger says which.
-  await userEvent.click(
-    await canvas.findByRole('button', {
-      name: /^(Select|Change) attribute$/u,
-    }),
-  );
-  return within(await within(document.body).findByRole('dialog'));
-};
 
 const meta = {
   title: 'Protocol Builder/Fields/Attribute picker',
-  component: FieldStoryHost,
+  component: Harness,
   parameters: {
-    layout: 'fullscreen',
     docs: {
       description: {
         component:
-          'Picks one codebook attribute, and — where the caller allows it — invents the one that is missing. A trigger and a window, never a list in place: the codebooks this searches run to dozens of attributes of one kind. What may be offered is the section’s rule, because it depends on what the choice is for. The picker shows the chosen attribute as a typed pill, keeps a stored choice it was not offered rather than blanking it, and, when a caller passes a way to create one, asks only for a name — from inside the window, on whatever was typed into the search box.',
+          'Chooses one codebook attribute and, where the caller allows it, creates the one that is missing. The field is a select box that shows the chosen attribute as its pill. Opening it shows a list anchored to it, with a search box that is focused automatically and matches attribute names loosely, so "mrd" finds "married". Attributes that cannot be used here are listed under "Not available here", dimmed; choosing one shows why instead of choosing it. When the caller passes `onCreateOption`, typing a name that no attribute has offers to create it as the first row of the list.',
       },
     },
   },
-  args: {
-    stageId: fixtureStageId('family-pedigree-1'),
-    sectionTitle: 'What this question records',
-    children: <AttributePicker />,
-  },
+  args: {},
   tags: ['autodocs'],
-} satisfies Meta<typeof FieldStoryHost>;
+} satisfies Meta<typeof Harness>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The stage as the protocol holds it, with the chosen attribute shown. */
-export const Chosen: Story = {};
+const trigger = (canvasElement: HTMLElement) =>
+  within(canvasElement).findByRole('combobox', {
+    name: new RegExp(`^${FIELD_LABEL}`, 'u'),
+  });
 
-/**
- * Nothing chosen. Said rather than left blank: an empty control reads as an
- * unanswered question rather than as one that failed to draw.
- */
-export const NothingChosen: Story = {
-  args: {
-    seedEdit: (host) => {
-      const stage = sectionId({
-        kind: 'stage',
-        stageId: fixtureStageId('family-pedigree-1'),
-      });
-      const { document: stageDocument } = host.store.read(stage);
-      const nodeConfiguration =
-        typeof stageDocument.nodeConfiguration === 'object' &&
-        stageDocument.nodeConfiguration !== null
-          ? stageDocument.nodeConfiguration
-          : {};
-      host.store.applyAsCollaborator(stage, {
-        ...stageDocument,
-        nodeConfiguration: { ...nodeConfiguration, egoAttribute: undefined },
-      });
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    await expect(
-      await canvas.findByText('No attribute selected'),
-    ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole('button', { name: 'Select attribute' }),
-    ).toBeInTheDocument();
-  },
+const openPopup = async (canvasElement: HTMLElement) => {
+  await userEvent.click(await trigger(canvasElement));
+  const search = await screen.findByRole('combobox', {
+    name: /^Find (or create )?an attribute$/u,
+  });
+  await waitFor(() => expect(search).toHaveFocus());
+  return search;
 };
 
-/**
- * Somebody else is editing the stage. The trigger is still there and still
- * says what it would do — a control that disappears cannot show that editing
- * is held elsewhere.
- */
-export const HeldBySomebodyElse: Story = {
-  args: { readOnly: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
-    ).toBeDisabled();
-  },
+const openAndType = async (canvasElement: HTMLElement, query: string) => {
+  const search = await openPopup(canvasElement);
+  await userEvent.type(search, query);
+  return search;
 };
 
-/**
- * The question refused: a stage saved without an attribute cannot be run, and
- * the sentence names the control that resolves it.
- */
-export const Unanswered: Story = {
-  args: {
-    seedEdit: (host) => {
-      const stage = sectionId({
-        kind: 'stage',
-        stageId: fixtureStageId('family-pedigree-1'),
-      });
-      const { document: stageDocument } = host.store.read(stage);
-      const nodeConfiguration =
-        typeof stageDocument.nodeConfiguration === 'object' &&
-        stageDocument.nodeConfiguration !== null
-          ? stageDocument.nodeConfiguration
-          : {};
-      host.store.applyAsCollaborator(stage, {
-        ...stageDocument,
-        nodeConfiguration: { ...nodeConfiguration, egoAttribute: undefined },
-      });
-    },
-  },
+/** Nothing chosen yet: the select box shows its placeholder. */
+export const Empty: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Save stage' }),
+    await expect(await trigger(canvasElement)).toHaveTextContent(
+      'Select an attribute',
     );
-
-    await expect(
-      await canvas.findByText('This field is required.'),
-    ).toBeInTheDocument();
   },
 };
 
-/**
- * What the control is FOR, driven end to end: open the window, narrow the list
- * by typing, walk into it with the arrow keys and take a row with Enter — then
- * read the attribute back off the trigger.
- */
-export const FindingAnAttribute: Story = {
-  args: { children: <AttributePicker /> },
+/** The chosen attribute is drawn as its pill inside the select box. */
+export const Selected: Story = {
+  args: { initialValue: 'close_friend' },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const dialog = await openThePicker(canvasElement);
-
-    // Named for what this picker can do: it was handed no way to create, so
-    // the box only finds.
     await expect(
-      dialog.getByRole('searchbox', { name: 'Find an attribute' }),
-    ).toHaveFocus();
-
-    await userEvent.keyboard('contact');
-    const narrowed = dialog.getAllByRole('option');
-    await expect(narrowed.length).toBeGreaterThan(0);
-    for (const row of narrowed) {
-      await expect(row.textContent?.toLowerCase()).toContain('contact');
-    }
-
-    await userEvent.keyboard('{ArrowDown}');
-    const listbox = dialog.getByRole('listbox', { name: 'Attribute results' });
-    await expect(listbox.contains(document.activeElement)).toBe(true);
-    await userEvent.keyboard('{Enter}');
-
-    await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
-    ).toBeInTheDocument();
-    // The field's own statement of what it now holds, which is the `<data>`
-    // the pill draws the name in — inside the button that renames it, at this
-    // mount, because this picker can write to the codebook behind it.
-    await expect(
-      canvas.getByText('contactFreq', { selector: 'data' }),
-    ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole('button', { name: 'Edit attribute name: contactFreq' }),
-    ).toBeInTheDocument();
-  },
-};
-
-/**
- * Where a caller allows one to be invented: the create row is the first thing
- * a name nothing matches produces, so looking for an attribute and finding it
- * does not exist are one act.
- */
-export const InventingOne: Story = {
-  args: { children: <AttributePicker canCreate /> },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const dialog = await openThePicker(canvasElement);
-
-    await userEvent.keyboard('nominated_early');
-    const create = dialog.getByRole('option', {
-      name: 'Create new attribute called “nominated_early”.',
-    });
-    await expect(dialog.getAllByRole('option')[0]).toBe(create);
-    await userEvent.click(create);
-
-    await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
-    ).toBeInTheDocument();
-  },
-};
-
-/**
- * A name that would write a column the export already writes is refused before
- * it is asked for: the row states the reason and does nothing, rather than
- * spending a round trip to come back with a complaint about a name still on
- * screen. Here `contactType` is a categorical attribute with an option `call`,
- * which the export writes to a column of exactly this name.
- */
-export const ANameThatCannotBeUsed: Story = {
-  args: { children: <AttributePicker canCreate /> },
-  play: async ({ canvasElement }) => {
-    const dialog = await openThePicker(canvasElement);
-
-    await userEvent.keyboard('contactType_call');
-    await expect(
-      dialog.getByRole('option', {
-        name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
+      await within(canvasElement).findByRole('combobox', {
+        name: `${FIELD_LABEL} close_friend`,
       }),
+    ).toHaveAccessibleDescription(
+      expect.stringContaining('Attribute type: Boolean'),
+    );
+  },
+};
+
+/**
+ * Open with nothing typed: the attributes that can be chosen first, the chosen
+ * one ticked, then the ones that cannot be used here.
+ */
+export const Open: Story = {
+  args: { initialValue: 'close_friend' },
+  play: async ({ canvasElement }) => {
+    await openPopup(canvasElement);
+    await expect(
+      await screen.findByText('Not available here'),
+    ).toBeInTheDocument();
+    await expect(
+      screen.getByRole('option', { name: 'sees_weekly' }),
     ).toHaveAttribute('aria-disabled', 'true');
   },
 };
 
-/**
- * An attribute the codebook still holds and this question may not use. It is
- * shown as the current choice and named for what is wrong with it, in the
- * caller's own words — "no longer in the codebook" would send the researcher
- * looking for something that never went anywhere.
- */
-export const AChoiceThatIsRuledOut: Story = {
-  args: {
-    seedEdit: (host) => {
-      const stage = sectionId({
-        kind: 'stage',
-        stageId: fixtureStageId('family-pedigree-1'),
-      });
-      const { document: stageDocument } = host.store.read(stage);
-      const nodeConfiguration =
-        typeof stageDocument.nodeConfiguration === 'object' &&
-        stageDocument.nodeConfiguration !== null
-          ? stageDocument.nodeConfiguration
-          : {};
-      host.store.applyAsCollaborator(stage, {
-        ...stageDocument,
-        nodeConfiguration: { ...nodeConfiguration, egoAttribute: LAYOUT },
-      });
-    },
-  },
+/** "mrd" finds "married" by a loose match. */
+export const FuzzyFilter: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    await expect(
-      await canvas.findByText(
-        'This attribute records where somebody was placed on a screen, so a question cannot be about it. Choose another one.',
-      ),
-    ).toBeInTheDocument();
+    await openAndType(canvasElement, 'mrd');
+    const listbox = await screen.findByRole('listbox');
+    await waitFor(() =>
+      expect(
+        within(listbox)
+          .getAllByRole('option')
+          .map((option) => option.dataset.attributeId),
+      ).toEqual(['married']),
+    );
   },
 };
 
 /**
- * A stored attribute nothing here offers. Kept and named, so the save can
- * still be refused and the researcher can see the reference they must replace
- * — blanking the control would hide it and then write the blank over it.
+ * Choosing an attribute that cannot be used here selects nothing and shows
+ * why, under its pill.
  */
-export const AChoiceNothingOffers: Story = {
-  args: {
-    seedEdit: (host) => {
-      const stage = sectionId({
-        kind: 'stage',
-        stageId: fixtureStageId('family-pedigree-1'),
-      });
-      const { document: stageDocument } = host.store.read(stage);
-      const nodeConfiguration =
-        typeof stageDocument.nodeConfiguration === 'object' &&
-        stageDocument.nodeConfiguration !== null
-          ? stageDocument.nodeConfiguration
-          : {};
-      host.store.applyAsCollaborator(stage, {
-        ...stageDocument,
-        nodeConfiguration: {
-          ...nodeConfiguration,
-          egoAttribute: 'deleted_attribute',
-        },
-      });
-    },
-  },
+export const UnavailableReasonRevealed: Story = {
+  args: { initialValue: 'close_friend' },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
+    await openPopup(canvasElement);
+    const option = await screen.findByRole('option', { name: 'sees_weekly' });
+    await expect(option).not.toHaveAttribute('data-revealed');
+    // A researcher scrolls to the row before pressing it; userEvent does not.
+    option.scrollIntoView({ block: 'nearest' });
+    await userEvent.click(option);
+    await waitFor(() => expect(option).toHaveAttribute('data-revealed'));
+    await expect(option).toHaveAccessibleDescription(
+      expect.stringContaining(
+        'Prompt 2 on this stage already highlights this attribute.',
+      ),
+    );
+    option.scrollIntoView({ block: 'nearest' });
+    // Still open, and the choice has not changed.
+    await expect(screen.getByRole('listbox')).toBeVisible();
+    await expect(await trigger(canvasElement)).toHaveAccessibleName(
+      `${FIELD_LABEL} close_friend`,
+    );
+  },
+};
 
+/** The create row, naming the type that the caller presets. */
+export const CreateRow: Story = {
+  args: { create: 'created' },
+  play: async ({ canvasElement }) => {
+    await openAndType(canvasElement, 'knows_ego');
+    const row = await screen.findByRole('option', {
+      name: 'Create “knows_ego”',
+    });
+    await expect(row).toHaveAccessibleDescription('New Boolean attribute');
+  },
+};
+
+/** A caller that presets no type: the create row names none. */
+export const CreateRowWithoutType: Story = {
+  args: { create: 'created', newVariableType: 'none' },
+  play: async ({ canvasElement }) => {
+    await openAndType(canvasElement, 'knows_ego');
     await expect(
-      await canvas.findByText(
+      await screen.findByRole('option', { name: 'Create “knows_ego”' }),
+    ).toHaveAccessibleDescription('New attribute');
+  },
+};
+
+/**
+ * A name that the export cannot use: "layout_x" is already a column that the
+ * layout attribute "layout" writes.
+ */
+export const InvalidName: Story = {
+  args: { create: 'created' },
+  play: async ({ canvasElement }) => {
+    await openAndType(canvasElement, 'layout_x');
+    const row = await screen.findByRole('option', {
+      name: 'An attribute cannot be named “layout_x”',
+    });
+    await expect(row).toHaveAttribute('aria-disabled', 'true');
+  },
+};
+
+/** While the codebook write is out, the row says so and holds every choice. */
+export const Creating: Story = {
+  args: { create: 'pending' },
+  play: async ({ canvasElement }) => {
+    await openAndType(canvasElement, 'knows_ego');
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Create “knows_ego”' }),
+    );
+    await expect(
+      await screen.findByRole('option', { name: 'Creating “knows_ego”…' }),
+    ).toHaveAttribute('aria-disabled', 'true');
+  },
+};
+
+/** A refused create keeps the list open on the name, with the reason. */
+export const Refused: Story = {
+  args: { create: 'refused' },
+  play: async ({ canvasElement }) => {
+    const search = await openAndType(canvasElement, 'knows_ego');
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Create “knows_ego”' }),
+    );
+    const row = await screen.findByRole('option', {
+      name: 'Create “knows_ego”',
+      description: /Robin is currently editing/u,
+    });
+    await expect(row).toHaveAttribute('data-create-state', 'refused');
+    await expect(search).toHaveValue('knows_ego');
+  },
+};
+
+/**
+ * The attribute was created, but whatever it was created for did not take
+ * it. The list closes and the field says where the attribute went.
+ */
+export const Unassigned: Story = {
+  args: { create: 'unassigned' },
+  play: async ({ canvasElement }) => {
+    await openAndType(canvasElement, 'knows_ego');
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Create “knows_ego”' }),
+    );
+    await expect(
+      await within(canvasElement).findByText(
+        '“knows_ego” was added to the codebook, but it has not been selected here.',
+      ),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * The field holds an attribute that cannot be used here. It is shown as
+ * itself, and the reason is shown under the field.
+ */
+export const HeldUnavailable: Story = {
+  args: { initialValue: 'sees_weekly' },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText(
+        'Prompt 2 on this stage already highlights this attribute.',
+      ),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * The field holds an id that no attribute in the list has. It is kept and
+ * named rather than dropped.
+ */
+export const HeldMissing: Story = {
+  args: { initialValue: 'deleted_attribute' },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText(
         'This attribute is not available here. Choose another one.',
       ),
-    ).toBeInTheDocument();
+    ).toBeVisible();
   },
+};
+
+/** Nothing to choose and nothing may be created: the field says so. */
+export const NothingToOffer: Story = {
+  args: {
+    options: [],
+    emptyMessage: 'This node type has no Boolean attributes yet.',
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText(
+        'This node type has no Boolean attributes yet.',
+      ),
+    ).toBeVisible();
+    await expect(
+      within(canvasElement).queryByRole('combobox'),
+    ).not.toBeInTheDocument();
+  },
+};
+
+/** An empty codebook, where the first attribute can be created. */
+export const FirstAttribute: Story = {
+  args: { options: [], create: 'created' },
+  play: async ({ canvasElement }) => {
+    await openPopup(canvasElement);
+    await expect(
+      await screen.findByText(/Nothing has been recorded about this type yet/u),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * What a choice looks like as it is made: the chosen attribute's pill rises
+ * into the select box, replacing the placeholder or the pill that was there,
+ * and the select box's border flashes once to confirm it. Nothing moves for a
+ * value the field already held. Choose attributes here to watch it; the
+ * automated run checks that both choices it makes were shown as arrivals
+ * (animations are skipped under test, so it ends in the settled state).
+ */
+export const ChoosingShowsTheChange: Story = {
+  args: { create: 'created' },
+  play: async ({ canvasElement }) => {
+    const select = await trigger(canvasElement);
+    const arrivedAs = (name: string) =>
+      select
+        .querySelector(`data[value="${name}"]`)
+        ?.closest('[data-animated-arrival]') ?? null;
+
+    await expect(select.querySelector('[data-animated-arrival]')).toBeNull();
+
+    await openPopup(canvasElement);
+    await userEvent.click(screen.getByRole('option', { name: 'married' }));
+    await waitFor(() => expect(arrivedAs('married')).not.toBeNull());
+
+    await openPopup(canvasElement);
+    await userEvent.click(screen.getByRole('option', { name: 'close_friend' }));
+    await waitFor(() => expect(arrivedAs('close_friend')).not.toBeNull());
+    await waitFor(() =>
+      expect(select.querySelector('data[value="married"]')).toBeNull(),
+    );
+    await expect(
+      select.querySelector('[data-choice-confirmation]'),
+    ).not.toBeNull();
+  },
+};
+
+/** Try every interaction, including creating an attribute. */
+export const Playground: Story = {
+  args: { create: 'created' },
 };

@@ -204,9 +204,9 @@ export const sociogramPromptMessages = defineMessages({
   promptHighlightEmpty: {
     id: 'protocolBuilder.networkCanvas.promptHighlightEmpty',
     defaultMessage:
-      'This type has no true-or-false attributes available, so there is nothing to mark.',
+      'This type has no Boolean attributes yet. Create one to record which nodes the participant marks.',
     description:
-      'Shown in place of the attribute-marked picker when the node type this stage is about has no boolean attribute the prompt may take. "This type" is that node type.',
+      'Shown under the attribute-marked picker when the node type that this stage is about has no attributes at all in the codebook. "This type" is that node type. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it.',
   },
   promptHighlightRequired: {
     id: 'protocolBuilder.networkCanvas.promptHighlightRequired',
@@ -216,7 +216,7 @@ export const sociogramPromptMessages = defineMessages({
   },
   promptCreateHighlightLabel: {
     id: 'protocolBuilder.networkCanvas.promptCreateHighlightLabel',
-    defaultMessage: 'Create a new true-or-false attribute',
+    defaultMessage: 'Create a new Boolean attribute',
     description:
       'Button beside the attribute-marked picker that adds a boolean attribute to the codebook without leaving the stage. Also the title of the dialog it opens.',
   },

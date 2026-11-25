@@ -14,6 +14,7 @@ import { sectionId, type SectionRef } from '@codaco/studio-sync/taxonomy';
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import {
   attributeField,
+  attributeTrigger,
   inventAttribute,
 } from '../../testing/attributePicker.ts';
 import { MINTED_ID } from '../../testing/mintedId.ts';
@@ -93,10 +94,6 @@ export const openField = async (
 const attributePicker = (dialog: RowDialog): HTMLElement =>
   attributeField('Attribute', dialog.element);
 
-/** The two names the picker's trigger goes by, once chosen and before. */
-const isPickerTrigger = (name: string) =>
-  name === 'Select attribute' || name === 'Change attribute';
-
 /**
  * Opens the picker's window from inside a row editor, and hands it back.
  *
@@ -108,11 +105,7 @@ const openPickerOver = async (
   harness: Harness,
   dialog: RowDialog,
 ): Promise<HTMLElement> => {
-  await harness.user.click(
-    within(attributePicker(dialog)).getByRole('button', {
-      name: isPickerTrigger,
-    }),
-  );
+  await harness.user.click(attributeTrigger(attributePicker(dialog)));
   return await waitFor(() => {
     const window = screen
       .getAllByRole('dialog')
@@ -138,7 +131,7 @@ export const collectAttribute = async (
 ): Promise<void> => {
   const window = await openPickerOver(harness, dialog);
   const row = window.querySelector<HTMLElement>(
-    `[role="option"][data-attribute-id="${attributeId}"]`,
+    `[role="option"][data-attribute-id="${attributeId}"]:not([aria-disabled="true"])`,
   );
   if (row === null) {
     throw new Error(`The window is not offering "${attributeId}".`);
@@ -147,7 +140,11 @@ export const collectAttribute = async (
   // The pick is written as the window closes, so a journey that carried on
   // while it was still up would go on reading the row through it.
   await waitFor(() => {
-    if (window.isConnected) throw new Error('the attribute window is open');
+    // Closed rather than gone: Base UI keeps a combobox's popup mounted, and
+    // hidden, once its trigger has been used.
+    if (window.hasAttribute('data-open')) {
+      throw new Error('the attribute window is open');
+    }
   });
 };
 

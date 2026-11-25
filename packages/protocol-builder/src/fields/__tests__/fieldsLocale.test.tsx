@@ -242,14 +242,12 @@ describe('the fields in this directory, read in Spanish', () => {
     // A real attribute is still there to be chosen while a dangling choice is
     // showing. It is chosen in the window the trigger opens: this picker has
     // no label of its own, so the window falls back to its own name.
-    await user.click(screen.getByRole('button', { name: 'Cambiar atributo' }));
-    const dialog = await screen.findByRole('dialog', {
-      name: 'Select an attribute',
-    });
+    await user.click(screen.getByRole('combobox'));
+    const dialog = await screen.findByRole('dialog', { name: 'Attributes' });
     // Named for what this window can do and no more: nothing was handed to it
     // to create with, so it only finds.
     expect(
-      within(dialog).getByRole('searchbox', { name: 'Find an attribute' }),
+      within(dialog).getByRole('combobox', { name: 'Find an attribute' }),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole('option', { name: 'Age' }),
@@ -271,9 +269,11 @@ describe('the fields in this directory, read in Spanish', () => {
       ),
     );
 
-    // Stated beside the pill for anyone who cannot read its colour, and the
-    // type token itself is a protocol schema value that stays as it is.
-    expect(screen.getByText('Attribute type: number')).toBeInTheDocument();
+    // Stated beside the pill for anyone who cannot read its colour. Text
+    // only a screen reader reads stays English in every language.
+    expect(screen.getByRole('combobox')).toHaveAccessibleDescription(
+      'Attribute type: Number',
+    );
   });
 
   it('says there is nothing to choose from in Spanish', () => {

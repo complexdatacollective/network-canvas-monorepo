@@ -7,10 +7,9 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 export const slotVariableMessages = defineMessages({
   emptyState: {
     id: 'protocolBuilder.slotVariable.emptyState',
-    defaultMessage:
-      'No attributes of this type can be used here yet. Create one to continue.',
+    defaultMessage: 'This type has no attributes yet. Create one to continue.',
     description:
-      'Shown in place of an attribute list when the codebook offers nothing this control can take, usually because every candidate is already written by something else. "Of this type" means of the attribute type the control needs, such as text or true/false.',
+      'Shown under an attribute control when the node or edge type that it chooses from has no attributes at all in the codebook. "This type" is that node or edge type.',
   },
   unvalidatedElsewhereRefusal: {
     id: 'protocolBuilder.slotVariable.unvalidatedElsewhereRefusal',
@@ -68,32 +67,18 @@ export const slotVariableMessages = defineMessages({
     description:
       'Refusal shown under an attribute control whose stage manages the attribute’s list of answers (a Family Pedigree’s gender identity, whose answers each take kinship words), when the attribute picked already has its answers managed by another stage. attributeName is the codebook name of the attribute, which is not translated.',
   },
-  managedElsewhereOptionLabel: {
-    id: 'protocolBuilder.slotVariable.managedElsewhereOptionLabel',
-    defaultMessage:
-      '{attributeName} — its options are managed by another stage',
-    description:
-      'Name of the option standing for the attribute a control already holds, when that attribute’s list of answers is managed by another stage, so this stage cannot use it. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated.',
-  },
   managedElsewhereNote: {
     id: 'protocolBuilder.slotVariable.managedElsewhereNote',
     defaultMessage:
       '{count, plural, one {Its options are managed by the {stageLabels} stage, which decides the kinship words each one takes, and only one stage may manage them. Choose another attribute, or stop asking about gender identity here.} other {Its options are managed by the stages {stageLabels}, which decide the kinship words each one takes, and only one stage may manage them. Choose another attribute, or stop asking about gender identity here.}}',
     description:
-      'Shown under the gender identity attribute control of a Family Pedigree stage when the attribute it holds already has its list of answers managed by another stage. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer.',
+      'Shown under the gender identity attribute control of a Family Pedigree stage when the attribute it holds already has its list of answers managed by another stage, and under that attribute in the control’s list, where it cannot be chosen. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer.',
   },
-  valuesChangedOptionLabel: {
-    id: 'protocolBuilder.slotVariable.valuesChangedOptionLabel',
+  ownedOptionsDifferNote: {
+    id: 'protocolBuilder.slotVariable.ownedOptionsDifferNote',
     defaultMessage:
-      '{attributeName} — no longer offers the values this control needs',
+      'This field needs the options supplied by Network Canvas, and this attribute has different options.',
     description:
-      'Name of the option standing for the attribute a control already holds, in a control that needs a fixed set of values the interface owns, when that attribute’s values have been edited elsewhere and no longer match the set. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated.',
-  },
-  valuesChangedNote: {
-    id: 'protocolBuilder.slotVariable.valuesChangedNote',
-    defaultMessage:
-      'This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.',
-    description:
-      'Shown under an attribute control when the attribute it holds is still a list of answers but its values have been edited elsewhere and no longer match the fixed set the interface owns.',
+      'Shown under an attribute in the list of an attribute control that needs a fixed set of answers supplied by Network Canvas (such as the sexes assigned at birth that a Family Pedigree draws), when this attribute’s list of answers is not exactly that set. Also shown under the control when the attribute it holds has a different list. Options are the answers that an attribute offers.',
   },
 });

@@ -2,7 +2,7 @@
 title: Variables
 navOrder: 4
 date: 5th October 2026
-translatedFrom: e4f35c213db895e098d321b8f13d0513438b4d25
+translatedFrom: 563e4d49d5572834653dfb99e1e208ab0f0de8b8
 ---
 
 <Definition>
@@ -106,7 +106,7 @@ Une variable peut porter un indicateur `encrypted`, qui signale que ses valeurs 
 
 Lorsque vous créez un champ dans un [formulaire](/fr/design-protocols/key-concepts/forms) :
 
-1. <AppOnly app="current">Cliquez sur **Sélectionner un attribut**, puis choisissez un attribut existant ou saisissez un nouveau nom (utilisez des noms descriptifs : `close_friend`, `contact_frequency`) et choisissez **Créer un nouvel attribut nommé « … ».**</AppOnly><AppOnly app="classic">Cliquez sur **Create new** (créer) ou sélectionnez une variable existante, puis saisissez un nom de variable (utilisez des noms descriptifs : `close_friend`, `contact_frequency`)</AppOnly>
+1. <AppOnly app="current">Cliquez sur **Sélectionnez un attribut**, puis choisissez un attribut existant ou saisissez un nouveau nom (utilisez des noms descriptifs : `close_friend`, `contact_frequency`) et choisissez **Créer « … »**. Les attributs qui ne peuvent pas être utilisés dans ce champ sont regroupés sous **Non disponibles ici** ; cliquez sur l’un d’eux pour savoir pourquoi.</AppOnly><AppOnly app="classic">Cliquez sur **Create new** (créer) ou sélectionnez une variable existante, puis saisissez un nom de variable (utilisez des noms descriptifs : `close_friend`, `contact_frequency`)</AppOnly>
 2. Sélectionnez une [commande de saisie](/fr/design-protocols/key-concepts/input-controls) : c’est elle qui définit le type de variable
 3. Configurez les éventuelles options propres à la commande
 4. Définissez des [règles de validation](/fr/design-protocols/key-concepts/field-validation) si nécessaire
@@ -279,9 +279,9 @@ Utilisez le [livre de codes](/fr/design-protocols/key-concepts/codebook) dans Ar
 
 Vous pouvez modifier la commande de saisie (si elle est compatible avec le type de variable), les règles de validation, les options des variables catégorielles et le nom de l’attribut. Vous ne pouvez pas modifier le type de variable, qui est défini lors de sa création avec une commande de saisie.
 
-Pour renommer un attribut, cliquez sur la pastille de l’attribut sélectionné dans une section, celle qui s’affiche sous **Changer d’attribut** dans une consigne, un champ de formulaire ou un autre sélecteur d’attribut, ou placez le focus dessus et appuyez sur Entrée ou sur Espace. (Les pastilles affichées ailleurs, par exemple dans les résultats de la recherche d’attributs ou dans le résumé d’une règle, sont des étiquettes et non des commandes ; dans le livre de codes, utilisez plutôt la commande de modification de la ligne de l’attribut.) Une zone s’ouvre avec le nom actuel ; saisissez le nouveau nom et cliquez sur **Enregistrer les modifications**. Le nouveau nom suit les mêmes règles que tout autre nom : consultez [Ce que peut contenir un nom](#what-a-name-can-contain) et [Noms qui entreraient en conflit dans les données exportées](#names-that-would-clash-in-exported-data). Annuler, appuyer sur Échap ou cliquer ailleurs conserve l’ancien nom. Les étapes qui utilisent l’attribut continuent de l’utiliser sous son nouveau nom, mais n’oubliez pas que ce nom devient le nom de la colonne dans les données exportées.
+Pour renommer un attribut, ouvrez le [livre de codes](/fr/design-protocols/key-concepts/codebook) et cliquez sur le nom de l’attribut dans la liste des attributs, ou placez le focus dessus et appuyez sur Entrée ou sur Espace. Il n’est pas possible de renommer un attribut depuis l’éditeur d’une étape. Une zone de saisie contenant le nom actuel s’ouvre ; saisissez le nouveau nom et cliquez sur **Enregistrer les modifications**. Le nouveau nom suit les mêmes règles que tout autre nom : consultez [Ce que peut contenir un nom](#what-a-name-can-contain) et [Noms qui entreraient en conflit dans les données exportées](#names-that-would-clash-in-exported-data). Annuler, appuyer sur Échap ou cliquer ailleurs conserve l’ancien nom. Les étapes qui utilisent l’attribut continuent de l’utiliser sous son nouveau nom, mais n’oubliez pas que ce nom devient le nom de la colonne dans les données exportées.
 
-Les modifications que vous apportez au livre de codes pendant qu’une étape est ouverte (créer un attribut, le renommer, ou modifier ses options ou ses règles de validation) sont enregistrées immédiatement dans le livre de codes. Elles sont conservées même si vous annulez ensuite vos modifications de l’étape, car un attribut appartient à toutes les étapes qui l’utilisent et non à la seule étape que vous modifiez.
+Les modifications que vous apportez au livre de codes pendant qu’une étape est ouverte (créer un attribut ou modifier ses options ou ses règles de validation) sont enregistrées immédiatement dans le livre de codes. Elles sont conservées même si vous annulez ensuite vos modifications de l’étape, car un attribut appartient à toutes les étapes qui l’utilisent et non à la seule étape que vous modifiez.
 
 Pour changer le type de variable, créez une nouvelle variable avec les paramètres voulus, remplacez l’ancienne variable par la nouvelle dans toutes les étapes, puis supprimez l’ancienne variable du livre de codes.
 
@@ -405,7 +405,7 @@ support_frequency: Ordinal (Radio Button Group)
 
 ### Renommer une variable {#need-to-rename-a-variable}
 
-**Solution :** cliquez sur la pastille de l’attribut et saisissez le nouveau nom. Consultez [Modifier des variables](#modifying-variables).
+**Solution :** dans le livre de codes, cliquez sur le nom de l’attribut et saisissez le nouveau nom. Consultez [Modifier des variables](#modifying-variables).
 
 ### Architect n’accepte pas un nom de variable {#architect-wont-accept-a-variable-name}
 

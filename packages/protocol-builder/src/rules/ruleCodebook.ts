@@ -56,9 +56,10 @@ export type RuleVariableOption = Readonly<{
   label: string;
   type: VariableType;
   /**
-   * Whether a rule can be built against an attribute of this type at all.
+   * Why a rule cannot be built against this attribute, or absent when it
+   * can. The sentence the attribute picker shows for it.
    *
-   * False for a layout attribute, whose answer is a point and which the
+   * Present for a layout attribute, whose answer is a point and which the
    * operand table therefore has no comparison to offer. Said here rather than
    * settled by leaving the attribute out, because "not something a rule can
    * ask about" and "not in the codebook" are different things to tell a
@@ -71,8 +72,20 @@ export type RuleVariableOption = Readonly<{
    * interview answers it is offered only the presence operators — see
    * `ruleOperatorSubject` — rather than being kept out of the picker.
    */
-  usable: boolean;
+  unavailableReason?: string;
+  /** Set with `unavailableReason`: the reason is the attribute's type. */
+  unavailableForType?: boolean;
 }>;
+
+const ruleVariableMessages = defineMessages({
+  notForRules: {
+    id: 'protocolBuilder.ruleCodebook.attributeNotForRules',
+    defaultMessage:
+      'This attribute cannot be used in a rule. Choose another one.',
+    description:
+      'Shown beside an attribute that is still in the protocol’s codebook but cannot carry a rule, such as one answered with a map position: in the list of attributes a rule can be about, and under the control when a stored rule names it.',
+  },
+});
 
 /** One authored option of a categorical or ordinal attribute. */
 export type RuleChoiceOption = Readonly<{
@@ -152,8 +165,8 @@ export const ruleEntityTypeExists = (
 };
 
 /**
- * Every attribute of an entity, each saying whether a rule can be built
- * against it.
+ * Every attribute of an entity, each saying why a rule cannot be built
+ * against it where one cannot.
  *
  * Marked rather than filtered: which of these a picker OFFERS is the picker's
  * decision, and it needs the rest to tell an attribute a rule cannot ask about
@@ -165,6 +178,7 @@ export const ruleEntityTypeExists = (
  */
 export const ruleVariableOptions = (
   variables: Readonly<Variables>,
+  intl: IntlShape = englishIntl,
 ): RuleVariableOption[] =>
   Object.entries(variables).flatMap<RuleVariableOption>(
     ([variableId, definition]) => {
@@ -175,7 +189,14 @@ export const ruleVariableOptions = (
           value: variableId,
           label: codebookLabel(definition.name, variableId),
           type,
-          usable: canAuthorRuleForType(type),
+          ...(canAuthorRuleForType(type)
+            ? {}
+            : {
+                unavailableReason: intl.formatMessage(
+                  ruleVariableMessages.notForRules,
+                ),
+                unavailableForType: true,
+              }),
         },
       ];
     },

@@ -175,14 +175,14 @@ describe('a slot whose attribute a name finishes', () => {
       attributeField(LABEL),
     );
     await harness.user.type(
-      within(dialog).getByRole('searchbox', {
+      within(dialog).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
       'is_participant',
     );
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: 'Create new attribute called “is_participant”.',
+        name: 'Create “is_participant”',
       }),
     );
 

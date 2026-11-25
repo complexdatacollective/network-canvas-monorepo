@@ -13,7 +13,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { RowValues } from '../../form/rowDialog.tsx';
 import { translationText } from '../../localization/localizedText.ts';
-import { attributeField } from '../../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+} from '../../testing/attributePicker.ts';
 import {
   fixtureTypeId,
   fixtureVariableId,
@@ -66,10 +69,6 @@ const englishOf = (value: unknown) => translationText(value, 'en-US');
  */
 type OpenDialog = BoundFunctions<typeof queries> & { element: HTMLElement };
 
-/** The two names the attribute picker's trigger goes by, before and after. */
-const isPickerTrigger = (name: string) =>
-  name === 'Select attribute' || name === 'Change attribute';
-
 /**
  * Points a row's attribute picker at the attribute stored under this id, the
  * way a researcher does: open the window, take the row that names it.
@@ -80,9 +79,7 @@ const choosePickerOption = async (
   attributeId: string,
 ) => {
   await harness.user.click(
-    within(attributeField('Attribute', dialog.element)).getByRole('button', {
-      name: isPickerTrigger,
-    }),
+    attributeTrigger(attributeField('Attribute', dialog.element)),
   );
   const window = await waitFor(() => {
     const found = screen
@@ -94,7 +91,7 @@ const choosePickerOption = async (
     return found;
   });
   const row = window.querySelector<HTMLElement>(
-    `[role="option"][data-attribute-id="${attributeId}"]`,
+    `[role="option"][data-attribute-id="${attributeId}"]:not([aria-disabled="true"])`,
   );
   if (row === null) {
     throw new Error(`The window is not offering "${attributeId}".`);
@@ -103,7 +100,11 @@ const choosePickerOption = async (
   // The pick is written as the window closes, so nothing may carry on while it
   // is still covering the row.
   await waitFor(() => {
-    if (window.isConnected) throw new Error('the attribute window is open');
+    // Closed rather than gone: Base UI keeps a combobox's popup mounted, and
+    // hidden, once its trigger has been used.
+    if (window.hasAttribute('data-open')) {
+      throw new Error('the attribute window is open');
+    }
   });
 };
 

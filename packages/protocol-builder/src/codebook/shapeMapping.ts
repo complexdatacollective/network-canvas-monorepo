@@ -12,6 +12,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { asLocalizedString } from '../localization/localizedText.ts';
+import { typeNameOf } from './attributeAvailability.ts';
 import { isNodeShapeReference } from './customShapes.ts';
 
 type ShapeMapping = NonNullable<NodeDefinition['shape']['dynamic']>;
@@ -47,11 +48,16 @@ export type ShapeMappingVariable = Readonly<{
   validation?: Readonly<{ minValue?: number; maxValue?: number }>;
 }>;
 
-/** An eligible attribute, as the picker lists it. */
+/**
+ * One of the type's attributes, as the picker lists it: one a shape cannot
+ * follow carries the sentence saying why.
+ */
 export type ShapeMappingVariableOption = Readonly<{
   value: string;
   label: string;
   type: VariableType;
+  unavailableReason?: string;
+  unavailableForType?: boolean;
 }>;
 
 const messages = defineMessages({
@@ -73,6 +79,12 @@ const messages = defineMessages({
     defaultMessage: 'Thresholds must increase in value, with no duplicates.',
     description:
       'Refusal shown under the shape mapping when its thresholds do not rise. A threshold is the value at which the shape changes.',
+  },
+  attributeNotForShapes: {
+    id: 'protocolBuilder.codebookEntity.shapeMappingAttributeNotForShapes',
+    defaultMessage: 'Node shapes cannot be based on {typeName} attributes.',
+    description:
+      'Shown under an attribute in the attribute list of the node type editor’s shape mapping, when the attribute is a kind that a shape cannot follow. Shapes follow Boolean, Categorical, Ordinal, Number and Scalar attributes. typeName is the translated name of the attribute’s kind, such as Text, Date or Layout, as the codebook editor names it.',
   },
 });
 
@@ -211,14 +223,27 @@ export const shapeMappingVariables = (
   );
 };
 
-/** The attributes a shape can follow, in the order the codebook holds them. */
+/**
+ * Every attribute of the type, in the order the codebook holds them, each one
+ * a shape cannot follow marked with the reason.
+ */
 export const eligibleShapeVariables = (
   variables: Readonly<Record<string, ShapeMappingVariable>>,
+  intl: Pick<IntlShape, 'formatMessage'>,
 ): ShapeMappingVariableOption[] =>
-  Object.entries(variables).flatMap(([id, variable]) =>
+  Object.entries(variables).map(([id, variable]) =>
     isEligible(variable.type)
-      ? [{ value: id, label: variable.name, type: variable.type }]
-      : [],
+      ? { value: id, label: variable.name, type: variable.type }
+      : {
+          value: id,
+          label: variable.name,
+          type: variable.type,
+          unavailableReason: intl.formatMessage(
+            messages.attributeNotForShapes,
+            { typeName: typeNameOf(intl, variable.type) },
+          ),
+          unavailableForType: true,
+        },
   );
 
 /**
