@@ -712,22 +712,23 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
 };
 
 export const PassphrasePrompt: Story = {
-  name: 'Passphrase prompt (vertical rail, small phone in landscape)',
+  name: 'Passphrase prompt (vertical rail, small tablet in landscape)',
   parameters: {
     controls: { exclude: ['stageCount'] },
-    // The narrowest preset turned on its side, where the rail is shortest.
-    // Declared as its own size because the test runner ignores `isRotated`.
+    // The smallest supported screen turned on its side, where the rail is
+    // shortest. Declared as its own size because the test runner ignores
+    // `isRotated`.
     viewport: {
       options: {
-        smallPhoneLandscape: {
-          name: 'Small phone (landscape)',
-          styles: { width: '568px', height: '320px' },
-          type: 'mobile',
+        smallTabletLandscape: {
+          name: 'Small tablet (landscape)',
+          styles: { width: '1024px', height: '768px' },
+          type: 'tablet',
         },
       },
     },
   },
-  globals: { viewport: { value: 'smallPhoneLandscape', isRotated: false } },
+  globals: { viewport: { value: 'smallTabletLandscape', isRotated: false } },
   render: () => (
     <div className="flex h-dvh w-full">
       <StoryInterviewShell
@@ -746,10 +747,22 @@ export const PassphrasePrompt: Story = {
 };
 
 export const HorizontalPassphrasePrompt: Story = {
-  name: 'Passphrase prompt (horizontal bar, small phone)',
-  parameters: { controls: { exclude: ['stageCount'] } },
-  // The narrowest preset, where the bar has the least room for the prompter.
-  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  name: 'Passphrase prompt (horizontal bar, small tablet)',
+  parameters: {
+    controls: { exclude: ['stageCount'] },
+    // The smallest supported screen, where the bar has the least room for
+    // the prompter.
+    viewport: {
+      options: {
+        smallTablet: {
+          name: 'Small tablet',
+          styles: { width: '768px', height: '1024px' },
+          type: 'tablet',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'smallTablet', isRotated: false } },
   render: () => (
     <div className="flex h-dvh w-full">
       <StoryInterviewShell
@@ -832,47 +845,6 @@ export const HorizontalEveryButton: Story = {
   ),
   play: async ({ canvasElement }) => {
     await expectEveryButton(canvasElement);
-  },
-};
-
-/**
- * Every button on the shortest screen, a small phone on its side, at every
- * text size: the bar still fits them all.
- */
-export const EveryButtonOnASmallPhone: Story = {
-  name: 'Every button (vertical rail, small phone in landscape)',
-  parameters: {
-    controls: { exclude: ['stageCount'] },
-    viewport: {
-      options: {
-        smallPhoneLandscape: {
-          name: 'Small phone (landscape)',
-          styles: { width: '568px', height: '320px' },
-          type: 'mobile',
-        },
-      },
-    },
-  },
-  globals: { viewport: { value: 'smallPhoneLandscape', isRotated: false } },
-  beforeEach: forgetInterviewLanguage,
-  render: () => (
-    <div className="flex h-dvh w-full">
-      <StoryInterviewShell
-        rawPayload={getEncryptedNameInLanguagesPayload()}
-        navigationOrientation="vertical"
-        allowUserScaling
-        onExit={() => {
-          console.log('Exited the interview.');
-        }}
-      />
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    await expectEveryButton(canvasElement);
-    await expectBarFitsAtEveryTextSize(
-      canvasElement,
-      await within(canvasElement).findByRole('navigation'),
-    );
   },
 };
 

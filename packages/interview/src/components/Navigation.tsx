@@ -95,17 +95,13 @@ const containerVariants = {
  * text size leave too little of it, they give up length together, down to a
  * touch-target floor, rather than push one another out of the bar. The
  * progress bar only grows, so by then it has already given way.
- *
- * The floor is 44 CSS pixels, given in `rem` because the interview's spacing
- * grows with its text size and a finger does not: with every button shown, a
- * floor that grew too would push Next off a phone held sideways.
  */
 const barControlVariants = cva({
   base: 'shrink',
   variants: {
     orientation: {
-      vertical: 'min-h-[2.75rem]',
-      horizontal: 'min-w-[2.75rem]',
+      vertical: 'min-h-11',
+      horizontal: 'min-w-11',
     },
   },
   defaultVariants: {
@@ -210,9 +206,7 @@ const progressContainerVariants = cva({
   base: 'm-6 flex grow',
   variants: {
     orientation: {
-      // On a short screen, such as a phone on its side, the rail's controls
-      // need the length the progress bar's margins would take.
-      vertical: '[@media(max-height:30rem)]:my-2',
+      vertical: '',
       horizontal: 'mx-4',
     },
   },
