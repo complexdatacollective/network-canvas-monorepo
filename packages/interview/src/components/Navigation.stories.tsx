@@ -405,89 +405,40 @@ export const TextSize: Story = {
   ),
   play: async ({ canvasElement }) => {
     const popover = await openTextSizePopover(canvasElement);
-    const group = within(popover).getByRole('group', { name: /text size/i });
-    const decrease = within(group).getByRole('button', {
-      name: /decrease text size/i,
-    });
-    const increase = within(group).getByRole('button', {
-      name: /increase text size/i,
-    });
-    const input = within(group).getByRole('spinbutton', {
-      name: /text size percentage/i,
-    });
-    const currentSize = within(group).getByRole('status');
-
-    await expect(currentSize).toHaveTextContent('100%');
-    await expect(input).toHaveValue(100);
-    await expect(input).toHaveAttribute('min', '90');
-    await expect(input).toHaveAttribute('max', '130');
-    await expect(input).toHaveAttribute('step', '10');
-    await expect(decrease).toBeEnabled();
-    await expect(increase).toBeEnabled();
-
-    // Opening the popover focuses its native number field (the steppers are
-    // out of the tab order). Arrow-key stepping then proves scaling works
-    // without a pointer.
-    //
-    // Waited for rather than read once: the popover moves focus itself, a
-    // frame or more after it opens, and until it does focus is still on the
-    // trigger.
-    await waitFor(() => expect(input).toHaveFocus());
-    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
-    await expect(input).toHaveValue(120);
-    await expect(currentSize).toHaveTextContent('120%');
+    // One choice for each size, named by the button that opened it; the
+    // popover shows no label of its own.
+    const sizes = within(popover).getByRole('group', { name: 'Text size' });
+    const option = (size: string) =>
+      within(sizes).getByRole('button', { name: size });
+    await expect(
+      within(sizes)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['90%', '100%', '110%', '120%', '130%']);
+    await expect(option('100%')).toHaveAttribute('aria-pressed', 'true');
+    await expect(popover).not.toHaveTextContent(/text size/i);
 
     const main = canvasElement.querySelector('main[data-theme-interview]');
     await expect(main).not.toBeNull();
-    await waitFor(() =>
-      expect(
-        getComputedStyle(main as Element)
-          .getPropertyValue('--interview-text-scale')
-          .trim(),
-      ).toBe('1.2'),
-    );
+    const shownScale = () =>
+      getComputedStyle(main as Element)
+        .getPropertyValue('--interview-text-scale')
+        .trim();
 
-    // Each stepper becomes unavailable at its corresponding bound while the
-    // opposite direction remains actionable.
-    await userEvent.click(increase);
-    await expect(input).toHaveValue(130);
-    await expect(currentSize).toHaveTextContent('130%');
-    await expect(increase).toBeDisabled();
-    await expect(decrease).toBeEnabled();
+    await userEvent.click(option('120%'));
+    await expect(option('120%')).toHaveAttribute('aria-pressed', 'true');
+    await expect(option('100%')).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => expect(shownScale()).toBe('1.2'));
 
-    await userEvent.click(decrease);
-    await userEvent.click(decrease);
-    await userEvent.click(decrease);
-    await userEvent.click(decrease);
-    await expect(input).toHaveValue(90);
-    await expect(currentSize).toHaveTextContent('90%');
-    await expect(decrease).toBeDisabled();
-    await expect(increase).toBeEnabled();
+    // The arrow keys move between the sizes, and Enter chooses one.
+    await userEvent.keyboard('{ArrowRight}');
+    await expect(option('130%')).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    await expect(option('130%')).toHaveAttribute('aria-pressed', 'true');
+    await waitFor(() => expect(shownScale()).toBe('1.3'));
 
-    // Direct entry is available as well as stepping. An off-step draft stays
-    // intact while focus moves to a stepper, so native stepping starts from
-    // the displayed value instead of rolling back to the last committed size.
-    await userEvent.click(input);
-    await userEvent.clear(input);
-    await userEvent.type(input, '100');
-    await expect(currentSize).toHaveTextContent('100%');
-
-    await userEvent.clear(input);
-    await userEvent.type(input, '115');
-    await expect(input).toHaveValue(115);
-    await expect(currentSize).toHaveTextContent('100%');
-    await expect(decrease).toBeEnabled();
-    await expect(increase).toBeEnabled();
-    await userEvent.click(decrease);
-    await expect(input).toHaveValue(110);
-    await expect(currentSize).toHaveTextContent('110%');
-
-    await userEvent.click(input);
-    await userEvent.clear(input);
-    await userEvent.type(input, '115');
-    await userEvent.click(increase);
-    await expect(input).toHaveValue(120);
-    await expect(currentSize).toHaveTextContent('120%');
+    await userEvent.click(option('120%'));
+    await waitFor(() => expect(shownScale()).toBe('1.2'));
 
     // Escape dismisses the popover and returns focus to the trigger.
     await userEvent.keyboard('{Escape}');
@@ -621,17 +572,15 @@ const expectBarFitsAtEveryTextSize = async (
   const popover = await within(canvasElement).findByRole('dialog', {
     name: 'Text size',
   });
-  const input = within(popover).getByRole('spinbutton', {
-    name: /text size percentage/i,
-  });
+  const sizes = within(popover).getByRole('group', { name: 'Text size' });
   const main = canvasElement.querySelector('main[data-theme-interview]');
   if (!main) throw new Error('The interview shell is not rendered.');
 
-  // The size starts at 100%; step down to the smallest option first.
-  input.focus();
-  await userEvent.keyboard('{ArrowDown}'.repeat(TEXT_SCALE_OPTIONS.indexOf(1)));
+  // The size starts at 100%; choose the smallest first, then each larger one.
+  within(sizes).getAllByRole('button')[0]?.focus();
   for (const [index, scale] of TEXT_SCALE_OPTIONS.entries()) {
-    if (index > 0) await userEvent.keyboard('{ArrowUp}');
+    if (index > 0) await userEvent.keyboard('{ArrowRight}');
+    await userEvent.keyboard('{Enter}');
     await waitFor(() =>
       expect(
         getComputedStyle(main)
@@ -666,8 +615,9 @@ const enterPassphraseAndAddPerson = async (canvasElement: HTMLElement) => {
 
   await expectBarFitsAtEveryTextSize(canvasElement, navigation);
 
-  // Keyboard only: the prompter follows the back button in the tab order.
-  nav.getByRole('button', { name: /previous step/i }).focus();
+  // Keyboard only: the prompter follows the bar's other features in the tab
+  // order, ahead of the progress bar, Back and Next.
+  nav.getByRole('button', { name: 'Text size' }).focus();
   await userEvent.tab();
   await expect(prompter).toHaveFocus();
 
@@ -818,7 +768,7 @@ export const TextSizeWithoutExit: Story = {
   play: async ({ canvasElement }) => {
     const popover = await openTextSizePopover(canvasElement);
     await expect(
-      within(popover).getByRole('group', { name: /text size/i }),
+      within(popover).getByRole('group', { name: 'Text size' }),
     ).toBeInTheDocument();
 
     // Without an exit handler there is no exit button.

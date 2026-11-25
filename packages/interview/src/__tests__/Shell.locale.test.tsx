@@ -500,10 +500,8 @@ describe('Shell interview languages', () => {
     await user.click(await screen.findByRole('button', { name: 'Text size' }));
     const textSize = await screen.findByRole('dialog', { name: 'Text size' });
     expect(
-      within(textSize).getByRole('spinbutton', {
-        name: 'Text size percentage',
-      }),
-    ).toBeVisible();
+      within(textSize).getByRole('group', { name: 'Text size' }),
+    ).toBeInTheDocument();
     // The language is changed from its own control in the navigation.
     expect(within(textSize).queryByRole('combobox')).not.toBeInTheDocument();
     expect(within(textSize).queryByText(/language/i)).not.toBeInTheDocument();
