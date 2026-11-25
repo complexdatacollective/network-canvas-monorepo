@@ -78,7 +78,7 @@
   "frescoUi.feedbackDialog.audienceLabel": "要讓誰看到？",
   "frescoUi.feedbackDialog.audienceTeam": "我們的團隊",
   "frescoUi.feedbackDialog.continueOnForum": "前往論壇繼續",
-  "frescoUi.feedbackDialog.description": "您可以將意見回饋私下傳送給我們的團隊，以回報問題或提出建議；也可以發布到<link>社群論壇</link>，取得協助並與其他研究人員討論。",
+  "frescoUi.feedbackDialog.description": "您可以在<link>社群論壇</link>上發文回報問題、提出建議，或向其他研究人員尋求協助。如果您不想公開發文，也可以改為將意見回饋私下傳送給我們的團隊。",
   "frescoUi.feedbackDialog.emailHint": "若希望收到回覆，請填寫電子郵件。留空即可保持匿名。",
   "frescoUi.feedbackDialog.emailLabel": "電子郵件（選填）",
   "frescoUi.feedbackDialog.feedbackLabel": "您的意見回饋",

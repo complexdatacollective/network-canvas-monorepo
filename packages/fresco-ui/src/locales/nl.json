@@ -78,7 +78,7 @@
   "frescoUi.feedbackDialog.audienceLabel": "Wie mag het zien?",
   "frescoUi.feedbackDialog.audienceTeam": "Ons team",
   "frescoUi.feedbackDialog.continueOnForum": "Verder naar het forum",
-  "frescoUi.feedbackDialog.description": "Stuur het privé naar ons team om een probleem te melden of een idee voor te stellen, of plaats het op het <link>communityforum</link> om hulp te krijgen en het met andere onderzoekers te bespreken.",
+  "frescoUi.feedbackDialog.description": "Plaats een bericht op het <link>communityforum</link> om een probleem te melden, een idee voor te stellen of hulp te krijgen van andere onderzoekers. Als je liever niets openbaar plaatst, kun je je feedback ook privé naar ons team sturen.",
   "frescoUi.feedbackDialog.emailHint": "Vul dit in als je een antwoord wilt. Laat het leeg om anoniem te blijven.",
   "frescoUi.feedbackDialog.emailLabel": "E-mailadres (optioneel)",
   "frescoUi.feedbackDialog.feedbackLabel": "Je feedback",

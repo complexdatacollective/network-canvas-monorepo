@@ -64,9 +64,9 @@ const messages = defineMessages({
   description: {
     id: 'frescoUi.feedbackDialog.description',
     defaultMessage:
-      'Send it privately to our team to report a problem or suggest an idea, or post it on the <link>community forum</link> to get help and discuss it with other researchers.',
+      'Post on the <link>community forum</link> to report a problem, suggest an idea, or get help from other researchers. If you’d rather not post publicly, you can send your feedback privately to our team instead.',
     description:
-      'Line under the title of the feedback dialog, explaining its two choices: sending the feedback privately to the Network Canvas team, or posting it publicly on the Network Canvas community forum, a discussion website for researchers who use the software. The words inside <link> link to the forum, opening it in a new tab.',
+      'Line under the title of the feedback dialog, explaining its two choices: posting the feedback publicly on the Network Canvas community forum, a discussion website for researchers who use the software, or sending it privately to the Network Canvas team. The words inside <link> link to the forum, opening it in a new tab.',
   },
   audienceLabel: {
     id: 'frescoUi.feedbackDialog.audienceLabel',
@@ -538,14 +538,14 @@ export default function FeedbackDialog({
               readOnly={sending}
               options={[
                 {
-                  value: 'team',
-                  label: intl.formatMessage(messages.audienceTeam),
-                  icon: Lock,
-                },
-                {
                   value: 'forum',
                   label: intl.formatMessage(messages.audienceForum),
                   icon: Users,
+                },
+                {
+                  value: 'team',
+                  label: intl.formatMessage(messages.audienceTeam),
+                  icon: Lock,
                 },
               ]}
             />

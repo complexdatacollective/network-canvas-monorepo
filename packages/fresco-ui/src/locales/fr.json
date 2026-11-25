@@ -78,7 +78,7 @@
   "frescoUi.feedbackDialog.audienceLabel": "Qui doit voir vos commentaires ?",
   "frescoUi.feedbackDialog.audienceTeam": "Notre équipe",
   "frescoUi.feedbackDialog.continueOnForum": "Continuer sur le forum",
-  "frescoUi.feedbackDialog.description": "Envoyez vos commentaires en privé à notre équipe pour signaler un problème ou suggérer une idée, ou publiez-les sur le <link>forum de la communauté</link> pour obtenir de l’aide et en discuter avec d’autres chercheurs.",
+  "frescoUi.feedbackDialog.description": "Publiez sur le <link>forum de la communauté</link> pour signaler un problème, proposer une idée ou obtenir de l’aide auprès d’autres équipes de recherche. Si vous préférez ne pas publier sur le forum, vous pouvez plutôt envoyer vos commentaires en privé à notre équipe.",
   "frescoUi.feedbackDialog.emailHint": "Indiquez-le si vous souhaitez une réponse. Laissez ce champ vide pour rester anonyme.",
   "frescoUi.feedbackDialog.emailLabel": "E-mail (facultatif)",
   "frescoUi.feedbackDialog.feedbackLabel": "Vos commentaires",

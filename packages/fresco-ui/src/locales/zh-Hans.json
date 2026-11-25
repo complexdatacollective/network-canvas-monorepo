@@ -78,7 +78,7 @@
   "frescoUi.feedbackDialog.audienceLabel": "让谁看到？",
   "frescoUi.feedbackDialog.audienceTeam": "我们的团队",
   "frescoUi.feedbackDialog.continueOnForum": "前往论坛继续",
-  "frescoUi.feedbackDialog.description": "您可以将反馈以私密方式发送给我们的团队，以报告问题或提出建议；也可以发布到<link>社区论坛</link>，获取帮助并与其他研究人员讨论。",
+  "frescoUi.feedbackDialog.description": "您可以在<link>社区论坛</link>上发帖，报告问题、提出建议，或向其他研究人员寻求帮助。如果您不想公开发帖，也可以改为将反馈以私密方式发送给我们的团队。",
   "frescoUi.feedbackDialog.emailHint": "如果希望收到回复，请填写邮箱。留空即可保持匿名。",
   "frescoUi.feedbackDialog.emailLabel": "电子邮箱（可选）",
   "frescoUi.feedbackDialog.feedbackLabel": "您的反馈",

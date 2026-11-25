@@ -42,7 +42,7 @@ describe('FeedbackDialog', () => {
     await openForm(user);
     expect(
       screen.getByRole('dialog', { name: TITLE }),
-    ).toHaveAccessibleDescription(/^Send it privately to our team/);
+    ).toHaveAccessibleDescription(/^Post on the community forum/);
     expect(
       screen.getByRole('link', { name: 'community forum' }),
     ).toHaveAttribute('href', 'https://community.networkcanvas.com/');

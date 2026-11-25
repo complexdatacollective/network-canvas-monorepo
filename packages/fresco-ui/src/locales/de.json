@@ -78,7 +78,7 @@
   "frescoUi.feedbackDialog.audienceLabel": "Wer soll es sehen?",
   "frescoUi.feedbackDialog.audienceTeam": "Unser Team",
   "frescoUi.feedbackDialog.continueOnForum": "Im Forum fortfahren",
-  "frescoUi.feedbackDialog.description": "Senden Sie es privat an unser Team, um ein Problem zu melden oder eine Idee vorzuschlagen, oder veröffentlichen Sie es im <link>Community-Forum</link>, um Hilfe zu erhalten und es mit anderen Forschenden zu diskutieren.",
+  "frescoUi.feedbackDialog.description": "Posten Sie im <link>Community-Forum</link>, um ein Problem zu melden, eine Idee vorzuschlagen oder Hilfe von anderen Forschenden zu erhalten. Wenn Sie lieber nicht öffentlich posten möchten, können Sie Ihr Feedback stattdessen privat an unser Team senden.",
   "frescoUi.feedbackDialog.emailHint": "Geben Sie Ihre E-Mail-Adresse an, wenn Sie eine Antwort wünschen. Lassen Sie das Feld leer, um anonym zu bleiben.",
   "frescoUi.feedbackDialog.emailLabel": "E-Mail (optional)",
   "frescoUi.feedbackDialog.feedbackLabel": "Ihr Feedback",

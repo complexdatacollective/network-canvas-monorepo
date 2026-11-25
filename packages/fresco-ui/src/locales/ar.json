@@ -78,7 +78,7 @@
   "frescoUi.feedbackDialog.audienceLabel": "من ينبغي أن يراها؟",
   "frescoUi.feedbackDialog.audienceTeam": "فريقنا",
   "frescoUi.feedbackDialog.continueOnForum": "المتابعة في المنتدى",
-  "frescoUi.feedbackDialog.description": "يمكنك إرسال ملاحظاتك إلى فريقنا بشكل غير علني للإبلاغ عن مشكلة أو اقتراح فكرة، أو نشرها في <link>منتدى المجتمع</link> لمناقشتها مع باحثين آخرين والحصول على المساعدة.",
+  "frescoUi.feedbackDialog.description": "انشر في <link>منتدى المجتمع</link> للإبلاغ عن مشكلة أو اقتراح فكرة أو الحصول على المساعدة من باحثين آخرين. وإن كنت تفضّل عدم النشر علنًا، فيمكنك بدلًا من ذلك إرسال ملاحظاتك إلى فريقنا بشكل غير علني.",
   "frescoUi.feedbackDialog.emailHint": "أضفه إذا كنت تريد ردًا. اتركه فارغًا للبقاء مجهول الهوية.",
   "frescoUi.feedbackDialog.emailLabel": "البريد الإلكتروني (اختياري)",
   "frescoUi.feedbackDialog.feedbackLabel": "ملاحظاتك",
