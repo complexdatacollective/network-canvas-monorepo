@@ -289,6 +289,126 @@ describe('sound engine looping sound', () => {
   });
 });
 
+describe('sound engine looping sound that is still wanted', () => {
+  // The sources that are playing, as a node that stays selected hears them.
+  const playing = (harness: ReturnType<typeof setup>) =>
+    harness.context().played.filter((source) => !source.stopped);
+
+  it('stops when sound is turned off, and starts again when it is turned on', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.startLoop('node-linking-mode');
+    harness.engine.setEnabled(false);
+    await settle();
+    expect(playing(harness)).toHaveLength(0);
+
+    harness.engine.setEnabled(true);
+    await settle();
+    expect(harness.context().played).toHaveLength(2);
+    expect(playing(harness)).toHaveLength(1);
+    expect(playing(harness)[0]?.loop).toBe(true);
+  });
+
+  it('starts again when sound is turned back on before the context has suspended', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.startLoop('node-linking-mode');
+    // A suspension still under way: the context is running, and says nothing.
+    harness.context().suspend.mockImplementationOnce(() => Promise.resolve());
+    harness.engine.setEnabled(false);
+    harness.engine.setEnabled(true);
+    await settle();
+    expect(harness.context().played).toHaveLength(2);
+    expect(playing(harness)).toHaveLength(1);
+  });
+
+  it('starts when the page is shown', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    setVisibility('hidden');
+    harness.engine.startLoop('node-linking-mode');
+    expect(harness.context().played).toHaveLength(0);
+
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(playing(harness)).toHaveLength(1);
+  });
+
+  it('starts when the sprite finishes loading', async () => {
+    let resolveLoad: (bytes: ArrayBuffer) => void = () => undefined;
+    const harness = tracked(
+      setup({
+        loadSprite: () =>
+          new Promise((resolve) => {
+            resolveLoad = resolve;
+          }),
+      }),
+    );
+    harness.engine.setEnabled(true);
+    harness.context().state = 'running';
+    await settle();
+    harness.engine.startLoop('node-linking-mode');
+    expect(harness.context().played).toHaveLength(0);
+
+    resolveLoad(new ArrayBuffer(8));
+    await settle();
+    expect(playing(harness)).toHaveLength(1);
+  });
+
+  it('starts when the context starts running', async () => {
+    const harness = tracked(setup());
+    harness.engine.setEnabled(true);
+    await settle();
+    harness.engine.startLoop('node-linking-mode');
+    expect(harness.context().played).toHaveLength(0);
+
+    harness.context().state = 'running';
+    await settle();
+    expect(playing(harness)).toHaveLength(1);
+  });
+
+  it('does not start again once it is no longer wanted', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    const stop = harness.engine.startLoop('node-linking-mode');
+    stop();
+    expect(playing(harness)).toHaveLength(0);
+    harness.engine.setEnabled(false);
+    harness.engine.setEnabled(true);
+    await settle();
+    expect(harness.context().played).toHaveLength(1);
+
+    // Asked for and given up while it could not be heard.
+    harness.engine.setEnabled(false);
+    await settle();
+    harness.engine.startLoop('node-linking-mode')();
+    harness.engine.setEnabled(true);
+    await settle();
+    expect(harness.context().played).toHaveLength(1);
+  });
+
+  it('plays from one source however often it becomes able to play', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.startLoop('node-linking-mode');
+    document.dispatchEvent(new Event('visibilitychange'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    harness.context().state = 'interrupted';
+    await settle();
+    harness.context().state = 'running';
+    await settle();
+    setVisibility('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    expect(harness.context().state).toBe('running');
+    expect(harness.context().played).toHaveLength(1);
+    expect(playing(harness)).toHaveLength(1);
+  });
+});
+
 describe('sound engine sound in progress', () => {
   it('stops a short sound, but not the looping sound, when the page is hidden', async () => {
     const harness = tracked(setup());

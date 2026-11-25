@@ -34,7 +34,28 @@ class FakeSource {
 }
 
 export class FakeAudioContext implements AudioContextLike {
-  state: AudioContextLike['state'] = 'suspended';
+  private currentState: AudioContextLike['state'] = 'suspended';
+  private readonly stateListeners = new Set<() => void>();
+  /**
+   * Like a real context, a change of state is announced by a `statechange`
+   * event that is queued rather than dispatched at once.
+   */
+  get state() {
+    return this.currentState;
+  }
+  set state(next: AudioContextLike['state']) {
+    if (next === this.currentState) return;
+    this.currentState = next;
+    queueMicrotask(() => {
+      for (const listener of this.stateListeners) listener();
+    });
+  }
+  addEventListener(_type: 'statechange', listener: () => void) {
+    this.stateListeners.add(listener);
+  }
+  removeEventListener(_type: 'statechange', listener: () => void) {
+    this.stateListeners.delete(listener);
+  }
   readonly destination = {};
   readonly master = { gain: { value: 1 }, connect: () => undefined };
   readonly sources: FakeSource[] = [];

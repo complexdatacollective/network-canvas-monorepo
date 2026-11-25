@@ -52,7 +52,12 @@ export function InteractionSoundsProvider({
 export const useInteractionSound = (): InteractionSounds =>
   useContext(InteractionSoundsContext);
 
-/** Plays a looping sound for as long as `playing` is true. */
+/**
+ * Plays a looping sound for as long as `playing` is true. If the sound cannot
+ * be heard yet (sound is off, or the sound file is still loading), it starts
+ * as soon as it can; turning sound off stops it, and turning sound on again
+ * starts it again.
+ */
 export function useLoopingInteractionSound(
   name: LoopingSoundName,
   playing: boolean,

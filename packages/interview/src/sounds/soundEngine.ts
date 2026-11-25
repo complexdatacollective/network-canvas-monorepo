@@ -17,7 +17,10 @@ export type OneShotSoundName = {
 /** A sound that repeats until it is stopped. */
 export type LoopingSoundName = Exclude<InteractionSoundName, OneShotSoundName>;
 
-/** Stops a looping sound. Calling it again does nothing. */
+/**
+ * Says that a looping sound is no longer wanted, and stops it if it is
+ * playing. Calling it again does nothing.
+ */
 export type StopSound = () => void;
 
 export type SoundEngine = {
@@ -29,12 +32,19 @@ export type SoundEngine = {
   setEnabled: (enabled: boolean) => void;
   /** Plays a sound now, or not at all. */
   play: (name: OneShotSoundName) => void;
-  /** Starts a looping sound now, or not at all. */
+  /**
+   * Asks for a looping sound until the returned function is called. The
+   * sound plays whenever it can be heard: at once if sound is on, the sprite
+   * is loaded, the context is running and the page is shown, or else as soon
+   * as all of these are true. Turning sound off stops it, and turning sound
+   * on again starts it again.
+   */
   startLoop: (name: LoopingSoundName) => StopSound;
   /**
    * Stops every sound, closes the audio context and stops listening to the
    * document. The decoded sprite is kept, so turning sound on again does not
-   * load it again.
+   * load it again, and so are the looping sounds that are still wanted, which
+   * start again once sound is turned on again.
    */
   dispose: () => void;
 };
@@ -64,6 +74,8 @@ type GainNodeLike = {
 };
 export type AudioContextLike = {
   readonly state: AudioContextState | 'interrupted';
+  addEventListener(type: 'statechange', listener: () => void): void;
+  removeEventListener(type: 'statechange', listener: () => void): void;
   readonly destination: unknown;
   resume(): Promise<void>;
   suspend(): Promise<void>;
@@ -189,6 +201,8 @@ const defaultEnvironment = (): EngineEnvironment => ({
 
 type LoadState = 'idle' | 'loading' | 'loaded' | 'failed';
 
+type WantedLoop = { name: LoopingSoundName; source: SourceNodeLike | null };
+
 /**
  * A small Web Audio player for the interview's interaction sounds.
  *
@@ -196,12 +210,18 @@ type LoadState = 'idle' | 'loading' | 'loaded' | 'failed';
  * creates one audio context and loads the sprite once; every sound then plays
  * from the decoded sprite without delay. A browser keeps a page's audio
  * context suspended until the person interacts with the page, so the engine
- * resumes it on the first pointer or key press. A sound that cannot play at
- * the moment it is asked for (sound off, sprite not loaded, context not yet
- * running, page hidden) is dropped, never played later. For the same reason,
- * hiding the page or turning sound off stops a sound that is part-way
- * through; only a looping sound that is still wanted carries on when the page
- * is shown again.
+ * resumes it on the first pointer or key press. A sound that plays once and
+ * cannot play at the moment it is asked for (sound off, sprite not loaded,
+ * context not yet running, page hidden) is dropped, never played later. For
+ * the same reason, hiding the page or turning sound off stops such a sound
+ * part-way through.
+ *
+ * A looping sound is different: it accompanies something that lasts (a node
+ * waiting to be connected), so it plays whenever it can be heard for as long
+ * as it is wanted. One asked for before it can be heard starts once it can;
+ * turning sound off stops it and turning sound on again starts it again;
+ * hiding the page pauses it with the context, and showing the page again
+ * resumes it.
  *
  * A failed load is silent. It is tried again once on the next turn on, or on
  * the first gesture after the device comes back online, never in a loop.
@@ -224,7 +244,8 @@ export function createSoundEngine(
   const lastPlayed = new Map<OneShotSoundName, number>();
   let lastSound: { name: OneShotSoundName; at: number } | null = null;
   let pending: OneShotSoundName | null = null;
-  const loops = new Set<SourceNodeLike>();
+  // Looping sounds that are wanted, each with its source while it plays.
+  const wantedLoops = new Set<WantedLoop>();
   // Sounds that play once and have not yet ended.
   const oneShots = new Set<SourceNodeLike>();
 
@@ -246,6 +267,7 @@ export function createSoundEngine(
       (decoded) => {
         sprite = decoded;
         loadState = 'loaded';
+        startWantedLoops();
         return undefined;
       },
       () => {
@@ -263,9 +285,12 @@ export function createSoundEngine(
     }
   };
 
-  const stopLoops = () => {
-    for (const source of loops) stopSource(source);
-    loops.clear();
+  // The loops stay wanted, and start again once they can be heard.
+  const stopWantedLoops = () => {
+    for (const loop of wantedLoops) {
+      if (loop.source) stopSource(loop.source);
+      loop.source = null;
+    }
   };
 
   // A suspended context keeps a sound where it was, and resuming it would
@@ -295,9 +320,12 @@ export function createSoundEngine(
         suspendedWhileHidden = true;
         context.suspend().catch(() => undefined);
       }
-    } else if (suspendedWhileHidden) {
-      suspendedWhileHidden = false;
-      if (enabled) resume();
+    } else {
+      if (suspendedWhileHidden) {
+        suspendedWhileHidden = false;
+        if (enabled) resume();
+      }
+      startWantedLoops();
     }
   };
 
@@ -333,6 +361,24 @@ export function createSoundEngine(
     source.connect(master);
     return { source, start, duration };
   };
+
+  // Starts every wanted loop that is not playing, if it would be heard. A
+  // loop that is playing is left alone: while the context is suspended it is
+  // paused, and it carries on when the context runs again.
+  function startWantedLoops() {
+    if (!ready()) return;
+    for (const loop of wantedLoops) {
+      if (loop.source) continue;
+      const started = startSource(loop.name, 1);
+      if (!started) return;
+      const { source, start, duration } = started;
+      source.loop = true;
+      source.loopStart = start;
+      source.loopEnd = start + duration;
+      source.start(0, start);
+      loop.source = source;
+    }
+  }
 
   const flush = () => {
     const name = pending;
@@ -377,7 +423,7 @@ export function createSoundEngine(
       if (next === enabled) return;
       enabled = next;
       if (!next) {
-        stopLoops();
+        stopWantedLoops();
         stopOneShots();
         pending = null;
         listen(false);
@@ -390,6 +436,7 @@ export function createSoundEngine(
       if (!context) {
         try {
           context = env.createAudioContext();
+          context.addEventListener('statechange', startWantedLoops);
           master = context.createGain();
           master.gain.value = MASTER_GAIN;
           master.connect(context.destination);
@@ -407,6 +454,8 @@ export function createSoundEngine(
       }
       // The next turn on is the moment a failed load is tried again.
       if (loadState === 'idle' || loadState === 'failed') load();
+      // The context may still be running from before sound was turned off.
+      startWantedLoops();
     },
 
     play: (name) => {
@@ -423,27 +472,24 @@ export function createSoundEngine(
     },
 
     startLoop: (name) => {
-      if (!ready()) return () => undefined;
-      const started = startSource(name, 1);
-      if (!started) return () => undefined;
-      const { source, start, duration } = started;
-      source.loop = true;
-      source.loopStart = start;
-      source.loopEnd = start + duration;
-      source.start(0, start);
-      loops.add(source);
+      const loop: WantedLoop = { name, source: null };
+      wantedLoops.add(loop);
+      startWantedLoops();
       return () => {
-        if (loops.delete(source)) stopSource(source);
+        if (!wantedLoops.delete(loop)) return;
+        if (loop.source) stopSource(loop.source);
+        loop.source = null;
       };
     },
 
     dispose: () => {
       enabled = false;
       pending = null;
-      stopLoops();
+      stopWantedLoops();
       stopOneShots();
       listen(false);
       const closing = context;
+      closing?.removeEventListener('statechange', startWantedLoops);
       context = null;
       master = null;
       suspendedWhileHidden = false;
