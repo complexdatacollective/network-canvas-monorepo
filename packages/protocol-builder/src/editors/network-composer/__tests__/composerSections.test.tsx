@@ -12,6 +12,7 @@ import {
   createRowIn,
   inventAttribute,
   offeredAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
 import { readMessage } from '../../../testing/i18n.ts';
 import { MINTED_ID } from '../../../testing/mintedId.ts';
@@ -48,6 +49,7 @@ const COMPOSER_NAME = personVariable('composerName');
 const RELATIONSHIP_TO_EGO = personVariable('relationship_to_ego');
 const FLAGGED = personVariable('flagged');
 const HIGHLIGHTED = personVariable('highlighted');
+const LAYOUT = personVariable('layout');
 const EDGE_NOTES = fixtureVariableId(
   { entity: 'edge', typeName: 'knows' },
   'edgeNotes',
@@ -1428,25 +1430,29 @@ describe('what a network composer lets the participant build', () => {
    * position attribute holds is taken just as firmly as one a text attribute
    * holds, and the codebook would refuse it after a round trip nobody needs.
    */
-  it('says a form field cannot invent a name the type already holds', async () => {
+  it('lists the attribute a form cannot collect instead of creating its name again', async () => {
     const harness = renderStageEditor(
       composerHolding({ nodeForm: { fields: [] } }),
     );
     await switchOnNodeForm(harness);
     await addRow(harness, 'Create new node attribute');
 
-    // A position attribute: named on this type, and never offered here,
-    // because no control can ask a participant for one.
+    // A position attribute: named on this type, and never choosable here,
+    // because no control can ask a participant for one. It is listed with
+    // that reason, so the name finds it: no create row, not even the one
+    // that refuses the name.
     expect(
       await createRowIn(
         harness.user,
         picker('Attribute'),
         'Find or create an attribute',
-        (term) =>
-          `Cannot create attribute named “${term}”: this type already has an attribute called that`,
+        (term) => `An attribute cannot be named “${term}”`,
         'layout',
       ),
-    ).not.toBeNull();
+    ).toBeNull();
+    expect(
+      await unavailableReason(harness.user, picker('Attribute'), LAYOUT),
+    ).toBe('A form cannot collect Layout attributes.');
   });
 
   /** The attribute is created and bound without the researcher leaving. */
@@ -1640,8 +1646,7 @@ describe('inventing the attribute a connection form records', () => {
    * fails here rather than quietly renaming its own search box.
    */
   const SEARCH_ONLY_LABEL = 'Find an attribute';
-  const createRowName = (term: string) =>
-    `Create new attribute called “${term}”.`;
+  const createRowName = (term: string) => `Create “${term}”`;
 
   /** A composer whose one connection form already asks something. */
   const askingAbout = (type: string) =>
@@ -2950,30 +2955,44 @@ describe('the groups a network composer divides its decisions into', () => {
       await screen.findByRole('region', { name: 'Quick add attribute' }),
     );
     expect(
-      quickAdd.getByRole('group', {
-        name: 'Create or select an attribute for the quick-add form',
+      quickAdd.getByRole('combobox', {
+        name: new RegExp(
+          `^Create or select an attribute for the quick-add form`,
+          'u',
+        ),
       }),
     ).toBeInTheDocument();
     // And no hint of its own: the group's sentence is where the words are now,
-    // so all the control still says about itself is that it must be answered.
+    // so the control says first that it must be answered.
     expect(
-      quickAdd.getByRole('group', {
-        name: 'Create or select an attribute for the quick-add form',
+      quickAdd.getByRole('combobox', {
+        name: new RegExp(
+          `^Create or select an attribute for the quick-add form`,
+          'u',
+        ),
       }),
-    ).toHaveAccessibleDescription(/^Required\s*$/);
+    ).toHaveAccessibleDescription(/^Required(?:\s|$)/u);
 
     expect(
       within(screen.getByRole('region', { name: 'Node positions' })).getByRole(
-        'group',
+        'combobox',
         {
-          name: 'Create or select an attribute to store node coordinates',
+          name: new RegExp(
+            `^Create or select an attribute to store node coordinates`,
+            'u',
+          ),
         },
       ),
     ).toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: 'Group hulls' })).getByRole(
-        'group',
-        { name: 'Create or select a categorical attribute for grouping' },
+        'combobox',
+        {
+          name: new RegExp(
+            `^Create or select a categorical attribute for grouping`,
+            'u',
+          ),
+        },
       ),
     ).toBeInTheDocument();
   });

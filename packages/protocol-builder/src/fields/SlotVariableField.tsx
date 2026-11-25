@@ -277,8 +277,8 @@ export default function SlotVariableField({
   );
 
   const pool = useMemo(
-    () => subjectVariableOptions(protocolContext, subject, variableType),
-    [protocolContext, subject, variableType],
+    () => subjectVariableOptions(protocolContext, subject, variableType, intl),
+    [intl, protocolContext, subject, variableType],
   );
 
   const valueCheckedOptions = useMemo(
@@ -288,13 +288,7 @@ export default function SlotVariableField({
         : ruleOutValuesOutsideOwnedSet(
             pool,
             lockedOptions,
-            (attributeName) => ({
-              optionLabel: intl.formatMessage(
-                slotVariableMessages.valuesChangedOptionLabel,
-                { attributeName },
-              ),
-              note: intl.formatMessage(slotVariableMessages.valuesChangedNote),
-            }),
+            intl.formatMessage(slotVariableMessages.ownedOptionsDifferNote),
           ),
     [intl, lockedOptions, pool],
   );
@@ -304,16 +298,11 @@ export default function SlotVariableField({
       ruleOutOptionsManagedElsewhere(
         valueCheckedOptions,
         managersElsewhere,
-        (attributeName, stageLabels) => ({
-          optionLabel: intl.formatMessage(
-            slotVariableMessages.managedElsewhereOptionLabel,
-            { attributeName },
-          ),
-          note: intl.formatMessage(slotVariableMessages.managedElsewhereNote, {
+        (stageLabels) =>
+          intl.formatMessage(slotVariableMessages.managedElsewhereNote, {
             count: stageLabels.length,
             stageLabels: quotedLabels(stageLabels),
           }),
-        }),
       ),
     [intl, managersElsewhere, valueCheckedOptions],
   );
@@ -331,12 +320,14 @@ export default function SlotVariableField({
         writerClass,
         ...(draftConflicting === undefined ? {} : { draftConflicting }),
         ...(draftBoundElsewhere === undefined ? {} : { draftBoundElsewhere }),
+        intl,
       }),
     [
       currentValue,
       draftBoundElsewhere,
       draftConflicting,
       draftSlotMap,
+      intl,
       ownSlot,
       roleMap,
       slotMap,

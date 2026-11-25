@@ -180,6 +180,7 @@
     "./form/validation/functions": "./src/form/validation/functions.ts",
     "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./form/validation/utils/isUnanswered": "./src/form/validation/utils/isUnanswered.ts",
+    "./hooks/useComboboxTriggerEscape": "./src/hooks/useComboboxTriggerEscape.ts",
     "./hooks/useFitText": "./src/hooks/useFitText.ts",
     "./hooks/useHasHydrated": "./src/hooks/useHasHydrated.ts",
     "./hooks/useNodeInteractions": "./src/hooks/useNodeInteractions.ts",
@@ -227,6 +228,7 @@
     "./utils/cva": "./src/utils/cva.ts",
     "./utils/finalFocus": "./src/utils/finalFocus.ts",
     "./utils/foldText": "./src/utils/foldText.ts",
+    "./utils/fuzzyMatch": "./src/utils/fuzzyMatch.ts",
     "./utils/saveBlob": "./src/utils/saveBlob.ts"
   },
   "publishConfig": {
@@ -887,6 +889,10 @@
         "types": "./dist/form/validation/utils/isUnanswered.d.ts",
         "default": "./dist/form/validation/utils/isUnanswered.js"
       },
+      "./hooks/useComboboxTriggerEscape": {
+        "types": "./dist/hooks/useComboboxTriggerEscape.d.ts",
+        "default": "./dist/hooks/useComboboxTriggerEscape.js"
+      },
       "./hooks/useFitText": {
         "types": "./dist/hooks/useFitText.d.ts",
         "default": "./dist/hooks/useFitText.js"
@@ -1071,6 +1077,10 @@
       "./utils/foldText": {
         "types": "./dist/utils/foldText.d.ts",
         "default": "./dist/utils/foldText.js"
+      },
+      "./utils/fuzzyMatch": {
+        "types": "./dist/utils/fuzzyMatch.d.ts",
+        "default": "./dist/utils/fuzzyMatch.js"
       },
       "./utils/saveBlob": {
         "types": "./dist/utils/saveBlob.d.ts",

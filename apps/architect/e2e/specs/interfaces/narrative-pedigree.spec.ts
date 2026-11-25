@@ -215,8 +215,9 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
         .click();
 
       // Pick-only: a disease READS an attribute the source pedigree records,
-      // so the picker lists only `hasConditionX`, which the seeded nomination
-      // prompt records.
+      // so the only attribute the picker lets a researcher choose is
+      // `hasConditionX`, which the seeded nomination prompt records; any other
+      // is listed under "Not available here".
       await chooseAttribute(
         architectPage
           .getByRole('dialog', { name: 'Create disease' })

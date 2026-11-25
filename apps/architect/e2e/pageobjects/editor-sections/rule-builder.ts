@@ -27,9 +27,10 @@ import { chooseAttribute } from './variables.js';
 // - Boolean 'Attribute value' is a radiogroup. Its visible option labels come
 //   from the attribute's authored markdown, while each radio exposes the
 //   stored boolean through `data-value`.
-// - The attribute is picked from a native select inside the
-//   `options.attribute` field — the same seam, a different control from the
-//   spotlight Architect used to render.
+// - The attribute is picked through the shared attribute picker inside the
+//   `options.attribute` field (`chooseAttribute`), which lists attributes a
+//   rule cannot compare under "Not available here" and takes only one that can
+//   be chosen.
 // - The join control only renders once 2+ rules exist. Its visible radios read
 //   'All rules must match' / 'Any rule can match'; a single-rule set writes no
 //   `join` key.

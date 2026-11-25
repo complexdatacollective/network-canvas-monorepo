@@ -9,7 +9,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { attributeField } from '../../../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+  closeAttributePicker,
+  unavailableAttributes,
+  unavailableReason,
+} from '../../../testing/attributePicker.ts';
 import {
   loadFixtureStage,
   fixtureTypeId,
@@ -87,10 +93,6 @@ const openPrompt = async (
 /** The field a stamp row picks its attribute in. */
 const STAMP_PICKER = 'Create or select an attribute';
 
-/** The two names the attribute picker's trigger goes by, before and after. */
-const isPickerTrigger = (name: string) =>
-  name === 'Select attribute' || name === 'Change attribute';
-
 const stampPicker = (dialog: OpenDialog): HTMLElement =>
   attributeField(STAMP_PICKER, dialog.element);
 
@@ -99,9 +101,7 @@ const openPicker = async (
   harness: Harness,
   dialog: OpenDialog,
 ): Promise<HTMLElement> => {
-  await harness.user.click(
-    within(stampPicker(dialog)).getByRole('button', { name: isPickerTrigger }),
-  );
+  await harness.user.click(attributeTrigger(stampPicker(dialog)));
   return await waitFor(() => {
     const window = screen
       .getAllByRole('dialog')
@@ -115,15 +115,22 @@ const openPicker = async (
 
 const expectWindowClosed = async (window: HTMLElement) => {
   await waitFor(() => {
-    if (window.isConnected) throw new Error('the attribute window is open');
+    // Closed rather than gone: Base UI keeps a combobox's popup mounted, and
+    // hidden, once its trigger has been used.
+    if (window.hasAttribute('data-open')) {
+      throw new Error('the attribute window is open');
+    }
   });
 };
 
 /** Every attribute the window is offering, by the id choosing it would store. */
+/** The attributes the window lists and that can be chosen. */
 const offeredIds = (window: HTMLElement): string[] =>
-  [...window.querySelectorAll('[role="option"]')].map(
-    (row) => row.getAttribute('data-attribute-id') ?? '',
-  );
+  [
+    ...window.querySelectorAll(
+      '[role="option"][data-attribute-id]:not([data-unavailable])',
+    ),
+  ].map((row) => row.getAttribute('data-attribute-id') ?? '');
 
 /** Points the stamp row at the attribute the codebook files under this id. */
 const chooseStamp = async (
@@ -146,7 +153,7 @@ const chooseStamp = async (
 
 /** The search box a name is typed into, which is also where one is invented. */
 const searchBox = (window: HTMLElement): HTMLElement =>
-  within(window).getByRole('searchbox', {
+  within(window).getByRole('combobox', {
     name: 'Find or create an attribute',
   });
 
@@ -240,6 +247,20 @@ describe("a name generator's prompts", () => {
     expect(offered).toContain(HIGHLIGHTED);
     expect(offered).not.toContain(NAME);
     expect(offered).not.toContain(FLAGGED);
+    await closeAttributePicker(harness.user);
+
+    // Listed, though, each with the reason it cannot be chosen: one a form
+    // collects, and one that is not a Boolean at all.
+    const picker = stampPicker(dialog);
+    expect(await unavailableAttributes(harness.user, picker)).toEqual(
+      expect.arrayContaining([NAME, FLAGGED]),
+    );
+    expect(await unavailableReason(harness.user, picker, FLAGGED)).toBe(
+      'The “Alter Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
+    );
+    expect(await unavailableReason(harness.user, picker, NAME)).toBe(
+      'Only Boolean attributes can be used here.',
+    );
   });
 
   /**
@@ -370,7 +391,7 @@ describe("a name generator's prompts", () => {
     await harness.user.type(searchBox(window), 'nominated_early');
     await harness.user.click(
       within(window).getByRole('option', {
-        name: 'Create new attribute called “nominated_early”.',
+        name: 'Create “nominated_early”',
       }),
     );
     // A create that landed closes the window, and the row now shows what it
@@ -453,9 +474,12 @@ describe("a name generator's prompts", () => {
     // Said on the row that would have created it, which is switched off rather
     // than offering a write the codebook is going to refuse.
     const refused = within(window).getByRole('option', {
-      name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
+      name: 'An attribute cannot be named “contactType_call”',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
+    expect(refused).toHaveAccessibleDescription(
+      'The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
+    );
     await harness.user.click(refused);
 
     // The name stays in the box: the refusal is ABOUT that name, and it is the
@@ -467,11 +491,7 @@ describe("a name generator's prompts", () => {
     // accessibility tree while it is up.
     await harness.user.keyboard('{Escape}');
     await expectWindowClosed(window);
-    expect(
-      within(stampPicker(dialog)).getByRole('button', {
-        name: 'Select attribute',
-      }),
-    ).toBeInTheDocument();
+    expect(attributeTrigger(stampPicker(dialog))).toBeInTheDocument();
   });
 
   /**
@@ -503,7 +523,7 @@ describe("a name generator's prompts", () => {
     await harness.user.type(searchBox(window), 'nominatedEarly');
     await harness.user.click(
       within(window).getByRole('option', {
-        name: 'Create new attribute called “nominatedEarly”.',
+        name: 'Create “nominatedEarly”',
       }),
     );
     await expectWindowClosed(window);

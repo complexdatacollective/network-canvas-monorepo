@@ -5,9 +5,14 @@ import { PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS } from '@codaco/protocol-validat
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { VariablePickerOption } from '../../fields/VariablePickerField.tsx';
 import { protocolContextFromSections } from '../../protocol-context.ts';
-import { readMessage } from '../../testing/i18n.ts';
+import { enIntl, readMessage } from '../../testing/i18n.ts';
 import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
+import {
+  markCrossClassUses,
+  markInterfaceOwned,
+} from '../attributeAvailability.ts';
 import {
   buildEntityTypeUsageIndex,
   buildExclusiveVariableSlotMap,
@@ -16,9 +21,6 @@ import {
   buildVariableRoleMap,
   buildVariableUsageIndex,
   entityTypeUsageKey,
-  excludeInterfaceOwned,
-  excludeUnvalidatedUses,
-  excludeValidatedUses,
   hasConflictingUse,
   hasUnvalidatedUse,
   hasValidatedUse,
@@ -46,8 +48,6 @@ const IS_GESTATIONAL_CARRIER = testVariableId('isGestationalCarrier');
 const IS_CURRENT_PARTNER = testVariableId('isCurrentPartner');
 const NAME = testVariableId('name');
 const OTHER_FLAG = testVariableId('otherFlag');
-const FORM_ONLY = testVariableId('form-only');
-const BIN_ONLY = testVariableId('bin-only');
 const FREE = testVariableId('free');
 
 const FORM_STAGE_ID = testId('form-stage');
@@ -158,14 +158,20 @@ describe('variable role helpers', () => {
     expect(buildVariableRoleMap(context)[key]).toEqual({
       validated: 1,
       unvalidated: 1,
+      validatedStages: ['Form'],
+      unvalidatedStages: ['Bin'],
     });
     expect(buildVariableRoleMap(context, FORM_STAGE_ID)[key]).toEqual({
       validated: 0,
       unvalidated: 1,
+      validatedStages: [],
+      unvalidatedStages: ['Bin'],
     });
     expect(buildVariableRoleMap(context, BIN_STAGE_ID)[key]).toEqual({
       validated: 1,
       unvalidated: 0,
+      validatedStages: ['Form'],
+      unvalidatedStages: [],
     });
   });
 
@@ -181,66 +187,118 @@ describe('variable role helpers', () => {
     ).toHaveLength(1);
   });
 
-  it('filters the opposite writer role while preserving committed picks', () => {
-    const roleMap = {
-      [variableRoleKey(SUBJECT, FORM_ONLY)]: {
-        validated: 1,
-        unvalidated: 0,
-      },
-      [variableRoleKey(SUBJECT, BIN_ONLY)]: {
-        validated: 0,
-        unvalidated: 1,
-      },
-    };
-    const options = [
-      { label: 'Form', value: FORM_ONLY },
-      { label: { en: 'Bin' }, value: BIN_ONLY },
+  it('marks the opposite writer role, naming the stages, while keeping committed picks', () => {
+    const roleMap = buildVariableRoleMap(
+      protocolContextFromSections(sections()),
+    );
+    const options: VariablePickerOption[] = [
+      { label: 'Category', value: CATEGORY },
       { label: 'Free', value: FREE },
     ];
+    const reasons = (marked: readonly { unavailableReason?: string }[]) =>
+      marked.map((option) => option.unavailableReason);
 
     expect(
-      excludeValidatedUses(roleMap, SUBJECT, options).map(({ value }) => value),
-    ).toEqual([BIN_ONLY, FREE]);
-    expect(
-      excludeValidatedUses(roleMap, SUBJECT, options, FORM_ONLY).map(
-        ({ value }) => value,
+      reasons(
+        markCrossClassUses(roleMap, SUBJECT, options, 'unvalidated', enIntl),
       ),
-    ).toEqual([FORM_ONLY, BIN_ONLY, FREE]);
+    ).toEqual([
+      'The “Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
+      undefined,
+    ]);
     expect(
-      excludeUnvalidatedUses(roleMap, SUBJECT, options, [BIN_ONLY]).map(
-        ({ value }) => value,
+      reasons(
+        markCrossClassUses(roleMap, SUBJECT, options, 'validated', enIntl),
       ),
-    ).toEqual([FORM_ONLY, BIN_ONLY, FREE]);
+    ).toEqual([
+      'The “Bin” stage sets this attribute without validation, so it cannot also be collected here.',
+      undefined,
+    ]);
+    // The field's own value is never marked by a rule about other uses.
+    expect(
+      reasons(
+        markCrossClassUses(
+          roleMap,
+          SUBJECT,
+          options,
+          'validated',
+          enIntl,
+          CATEGORY,
+        ),
+      ),
+    ).toEqual([undefined, undefined]);
+    // A role map that cannot name the stages still gives the reason.
+    expect(
+      reasons(
+        markCrossClassUses(
+          {
+            [variableRoleKey(SUBJECT, FREE)]: { validated: 2, unvalidated: 0 },
+          },
+          SUBJECT,
+          options,
+          'unvalidated',
+          enIntl,
+        ),
+      ),
+    ).toEqual([
+      undefined,
+      'Another stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
+    ]);
   });
 
-  it('preserves same-slot and committed structural picks but rejects them at save time elsewhere', () => {
+  it('marks structural attributes owned by an interface, except for the same slot or a committed pick, and rejects them at save time elsewhere', () => {
     const context = protocolContextFromSections(familySections());
     const slotMap = buildExclusiveVariableSlotMap(context);
-    const options = [
+    const options: VariablePickerOption[] = [
       { label: 'Participant marker', value: IS_EGO },
       { label: 'Other flag', value: OTHER_FLAG },
     ];
+    const reasons = (marked: readonly { unavailableReason?: string }[]) =>
+      marked.map((option) => option.unavailableReason);
 
     expect(context.issues).toEqual([]);
     expect(
-      excludeInterfaceOwned(slotMap, FAMILY_SUBJECT, options).map(
-        ({ value }) => value,
-      ),
-    ).toEqual([OTHER_FLAG]);
+      reasons(markInterfaceOwned(slotMap, FAMILY_SUBJECT, options, enIntl)),
+    ).toEqual([
+      'The “Family Pedigree” stage sets this attribute for its own use, so it cannot be used here.',
+      undefined,
+    ]);
     expect(
-      excludeInterfaceOwned(slotMap, FAMILY_SUBJECT, options, IS_EGO).map(
-        ({ value }) => value,
+      reasons(
+        markInterfaceOwned(slotMap, FAMILY_SUBJECT, options, enIntl, IS_EGO),
       ),
-    ).toEqual([IS_EGO, OTHER_FLAG]);
+    ).toEqual([undefined, undefined]);
     expect(
-      excludeInterfaceOwned(
-        slotMap,
-        FAMILY_SUBJECT,
-        options,
-        undefined,
-        EGO_SLOT,
-      ).map(({ value }) => value),
-    ).toEqual([IS_EGO, OTHER_FLAG]);
+      reasons(
+        markInterfaceOwned(
+          slotMap,
+          FAMILY_SUBJECT,
+          options,
+          enIntl,
+          undefined,
+          EGO_SLOT,
+        ),
+      ),
+    ).toEqual([undefined, undefined]);
+    // A claim the open stage has only drafted is another field on screen.
+    expect(
+      reasons(
+        markInterfaceOwned(
+          {
+            [variableRoleKey(FAMILY_SUBJECT, OTHER_FLAG)]: {
+              source: 'draft',
+              slot: EGO_SLOT,
+            },
+          },
+          FAMILY_SUBJECT,
+          options,
+          enIntl,
+        ),
+      ),
+    ).toEqual([
+      undefined,
+      'Another field on this stage already uses this attribute.',
+    ]);
 
     // The refusal crossed a string-only contract, so it is read back the way a
     // field's error region renders it.

@@ -16,7 +16,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   buildVariableRoleMap,
-  excludeUnvalidatedUses,
+  hasUnvalidatedUse,
   variableRoleConflicts,
 } from '../../../codebook/variableRoles.ts';
 import { draftAdditionalAttributeVariableIds } from '../../../codebook/variableValidation.ts';
@@ -27,6 +27,7 @@ import {
   chooseAttributeById,
   inventAttribute,
   offeredAttributes,
+  unavailableReason,
   openAttributePicker,
 } from '../../../testing/attributePicker.ts';
 import { fixtureMessage } from '../../../testing/i18n.ts';
@@ -499,6 +500,18 @@ describe('the fields a form collects', () => {
     expect(offered).toContain(AGE);
     expect(offered).not.toContain(HIGHLIGHTED);
     expect(offered).not.toContain(FLAGGED);
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributePicker(dialog),
+        HIGHLIGHTED,
+      ),
+    ).toBe(
+      'The “Sociogram” stage sets this attribute without validation, so it cannot also be collected here.',
+    );
+    expect(
+      await unavailableReason(harness.user, attributePicker(dialog), FLAGGED),
+    ).toBe('Another field on this stage already uses this attribute.');
   });
 
   /**
@@ -1049,7 +1062,7 @@ describe('a codebook change a field needs, refused', () => {
       attributePicker(dialog),
     );
     await harness.user.type(
-      within(pickerWindow).getByRole('searchbox', {
+      within(pickerWindow).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
       'contactType_call',
@@ -1058,9 +1071,12 @@ describe('a codebook change a field needs, refused', () => {
     // `contactType` is a categorical attribute with an option `call`, which
     // the export writes to a column of exactly this name.
     const refused = within(pickerWindow).getByRole('option', {
-      name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
+      name: 'An attribute cannot be named “contactType_call”',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
+    expect(refused).toHaveAccessibleDescription(
+      'The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
+    );
 
     await harness.user.click(refused);
 
@@ -1068,7 +1084,7 @@ describe('a codebook change a field needs, refused', () => {
     // and nothing was asked of the codebook — so nothing was answered in the
     // schema's own words either.
     expect(
-      within(pickerWindow).getByRole('searchbox', {
+      within(pickerWindow).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
     ).toHaveValue('contactType_call');
@@ -1189,23 +1205,25 @@ const PERSON_SUBJECT = { entity: 'node', type: PERSON } as const;
 /**
  * What the picker asks the role map, in the role map's own terms.
  *
- * `AttributePicker` filters its pool through exactly this call, so a pool of
- * one attribute answers "would this attribute have been offered?" without
- * standing anything in for the section.
+ * `AttributePicker` marks its pool through exactly this question, so one
+ * attribute answers "would this attribute have been offered?" without standing
+ * anything in for the section.
  */
 const offeredByRoleMap = (
   sections: Readonly<Record<string, Record<string, unknown>>>,
   variableId: string,
   excludedStageId?: string,
 ): string[] =>
-  excludeUnvalidatedUses(
+  hasUnvalidatedUse(
     buildVariableRoleMap(
       protocolContextFromSections(sections),
       excludedStageId,
     ),
     PERSON_SUBJECT,
-    [{ value: variableId }],
-  ).map((option) => option.value);
+    variableId,
+  )
+    ? []
+    : [variableId];
 
 /**
  * The stage being edited is part of the protocol its form is checked against.
@@ -1403,6 +1421,11 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
     // Not the empty picker: everything else about this subject is still there.
     expect(offered).toContain(AGE);
     expect(offered).not.toContain(FLAGGED);
+    expect(
+      await unavailableReason(harness.user, attributePicker(after), FLAGGED),
+    ).toBe(
+      'Another field on this stage sets this attribute without validation, so it cannot also be collected here.',
+    );
   });
 
   /**

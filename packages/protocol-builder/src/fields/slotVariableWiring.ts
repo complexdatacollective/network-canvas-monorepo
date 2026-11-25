@@ -1,4 +1,4 @@
-import { createMessageError } from '@codaco/app-i18n/messages';
+import { createMessageError, type IntlShape } from '@codaco/app-i18n/messages';
 import {
   type InterfaceOwnedOption,
   optionsMatchInterfaceOwnedSet,
@@ -9,9 +9,14 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
-  excludeInterfaceOwned,
-  excludeUnvalidatedUses,
-  excludeValidatedUses,
+  attributeAvailabilityMessages,
+  markCrossClassUses,
+  markInterfaceOwned,
+  markListed,
+  markUnavailable,
+  onlyTypeReason,
+} from '../codebook/attributeAvailability.ts';
+import {
   type ExclusiveVariableSlotMap,
   hasConflictingUse,
   interfaceOwnedPickIssue,
@@ -29,6 +34,7 @@ import type {
   ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
+import { isVariableType } from '../rules/operators.ts';
 import { slotVariableMessages } from './slotVariableMessages.ts';
 import type { VariablePickerOption } from './VariablePickerField.tsx';
 
@@ -79,45 +85,56 @@ const optionsOf = (
     ? variable.options
     : undefined;
 
-/** Every attribute of one type of `subject`, as picker options. */
+/**
+ * Every attribute of `subject` as picker options, with each one of another
+ * type than `variableType` marked for its type. An attribute of a type the
+ * schema does not know is left out: nothing true can be said about it.
+ */
 export function subjectVariableOptions(
   context: ProtocolBuilderProtocolContext,
   subject: CodebookSubject | null,
   variableType: VariableType,
+  intl: Pick<IntlShape, 'formatMessage'>,
 ): SlotVariableOption[] {
   if (subject === null) return [];
-  return Object.entries(variablesForSubject(context, subject))
-    .filter(([, variable]) => variable.type === variableType)
-    .map(([variableId, variable]: [string, Readonly<Variable>]) => {
+  const wrongType = onlyTypeReason(intl, variableType)();
+  return Object.entries(variablesForSubject(context, subject)).flatMap(
+    ([variableId, variable]: [string, Readonly<Variable>]) => {
+      if (!isVariableType(variable.type)) return [];
       const options = optionsOf(variable);
-      return {
-        value: variableId,
-        label: variable.name,
-        type: variable.type,
-        ...(options === undefined ? {} : { options }),
-      };
-    });
+      return [
+        {
+          value: variableId,
+          label: variable.name,
+          type: variable.type,
+          ...(options === undefined ? {} : { options }),
+          ...(variable.type === variableType
+            ? {}
+            : { unavailableReason: wrongType, unavailableForType: true }),
+        },
+      ];
+    },
+  );
 }
 
 /**
  * The pool, with every attribute whose values are not exactly the set the
- * interface owns RULED OUT rather than dropped, so the attribute a slot already
- * holds is still listed as held and named for what is wrong with it.
+ * interface owns marked with `reason`. The attribute a slot already holds is
+ * marked too: the save refuses it, so it is listed as held and named for what
+ * is wrong with it.
  */
 export function ruleOutValuesOutsideOwnedSet<T extends SlotVariableOption>(
   options: readonly T[],
   expectedOptions: readonly InterfaceOwnedOption[],
-  words: (
-    attributeName: string,
-  ) => NonNullable<VariablePickerOption['unusableWords']>,
+  reason: string,
 ): T[] {
-  return options.map((option) =>
+  return markUnavailable(options, (option) =>
     optionsMatchInterfaceOwnedSet(
       option.options === undefined ? undefined : [...option.options],
       expectedOptions,
     )
-      ? option
-      : { ...option, usable: false, unusableWords: words(option.label) },
+      ? undefined
+      : reason,
   );
 }
 
@@ -130,20 +147,11 @@ export function ruleOutValuesOutsideOwnedSet<T extends SlotVariableOption>(
 export function ruleOutOptionsManagedElsewhere<T extends SlotVariableOption>(
   options: readonly T[],
   managersElsewhere: (variableId: string) => readonly string[],
-  words: (
-    attributeName: string,
-    stageLabels: readonly string[],
-  ) => NonNullable<VariablePickerOption['unusableWords']>,
+  reason: (stageLabels: readonly string[]) => string,
 ): T[] {
-  return options.map((option) => {
+  return markUnavailable(options, (option) => {
     const stageLabels = managersElsewhere(option.value);
-    return stageLabels.length === 0
-      ? option
-      : {
-          ...option,
-          usable: false,
-          unusableWords: words(option.label, stageLabels),
-        };
+    return stageLabels.length === 0 ? undefined : reason(stageLabels);
   });
 }
 
@@ -183,6 +191,8 @@ export type SlotPickerOptionsInput<T extends SlotVariableOption> = Readonly<{
    * answers would have one overwrite the other.
    */
   draftBoundElsewhere?: readonly string[];
+  /** Formats the reason each attribute that cannot be chosen is given. */
+  intl: Pick<IntlShape, 'formatMessage'>;
 }>;
 
 /** The refusal for a pick another of this stage's answers already holds. */
@@ -198,9 +208,13 @@ export const draftBoundElsewhereIssue = (
     : undefined;
 
 /**
- * The attributes a slot picker may offer: none another writer class claims
- * (in the saved protocol or this stage's draft), and none another exclusive
- * interface slot claims (saved or drafted). The held value is always kept.
+ * The attributes a slot picker lists, with every one it cannot use marked with
+ * the reason: one another exclusive interface slot claims (saved or drafted),
+ * one another of this stage's answers already records, and one another writer
+ * class claims (in this stage's draft or the saved protocol). Marked in the
+ * order `slotCrossClassIssue` refuses them, so the reason in the list and the
+ * refusal under the field agree. The held value is never marked by these
+ * rules.
  */
 export function slotPickerOptions<T extends SlotVariableOption>({
   roleMap,
@@ -213,31 +227,48 @@ export function slotPickerOptions<T extends SlotVariableOption>({
   writerClass,
   draftConflicting,
   draftBoundElsewhere,
+  intl,
 }: SlotPickerOptionsInput<T>): T[] {
   if (subject === null) return [];
-  const crossClassFiltered =
-    writerClass === 'validated'
-      ? excludeUnvalidatedUses(roleMap, subject, options, currentValue)
-      : excludeValidatedUses(roleMap, subject, options, currentValue);
-  const draftFiltered = crossClassFiltered.filter(
-    (option) =>
-      option.value === currentValue ||
-      (draftConflicting?.includes(option.value) !== true &&
-        draftBoundElsewhere?.includes(option.value) !== true),
-  );
-  const savedOwnerFiltered = excludeInterfaceOwned(
+  const savedOwned = markInterfaceOwned(
     slotMap,
     subject,
-    draftFiltered,
+    options,
+    intl,
     currentValue,
     ownSlot,
   );
-  return excludeInterfaceOwned(
+  const boundElsewhere = markListed(
+    savedOwned,
+    draftBoundElsewhere,
+    intl.formatMessage(attributeAvailabilityMessages.sameStageField),
+    currentValue,
+  );
+  const draftClass = markListed(
+    boundElsewhere,
+    draftConflicting,
+    intl.formatMessage(
+      writerClass === 'unvalidated'
+        ? attributeAvailabilityMessages.draftValidatedHere
+        : attributeAvailabilityMessages.draftUnvalidatedHere,
+    ),
+    currentValue,
+  );
+  const draftOwned = markInterfaceOwned(
     draftSlotMap,
     subject,
-    savedOwnerFiltered,
+    draftClass,
+    intl,
     currentValue,
     ownSlot,
+  );
+  return markCrossClassUses(
+    roleMap,
+    subject,
+    draftOwned,
+    writerClass,
+    intl,
+    currentValue,
   );
 }
 

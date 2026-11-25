@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { FAMILY_PEDIGREE_SLOTS } from '@codaco/protocol-validation';
@@ -85,13 +85,28 @@ const holdingPersonAttribute =
     });
   };
 
+/** The slot's select box: the one field these stories render. */
+const findTrigger = (canvasElement: HTMLElement) =>
+  waitFor(() => {
+    const trigger = canvasElement.querySelector<HTMLElement>(
+      '[data-field-focus-target]',
+    );
+    if (trigger === null) throw new Error('The select box is not rendered.');
+    return trigger;
+  });
+
 const openTheWindow = async (canvasElement: HTMLElement) => {
-  const canvas = within(canvasElement);
   await awaitPassiveEffects();
-  await userEvent.click(
-    await canvas.findByRole('button', { name: /^(Select|Change) attribute$/u }),
+  await userEvent.click(await findTrigger(canvasElement));
+  return within(
+    await waitFor(() => {
+      const opened = document.body.querySelector<HTMLElement>(
+        '[data-attribute-picker-popup][data-open]',
+      );
+      if (opened === null) throw new Error('The attribute list is closed.');
+      return opened;
+    }),
   );
-  return within(await within(document.body).findByRole('dialog'));
 };
 
 const meta = {
@@ -120,24 +135,23 @@ type Story = StoryObj<typeof meta>;
 /** The slot as the protocol holds it, with creation offered in the window. */
 export const AHeldSlot: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
-    ).toBeEnabled();
+    await expect(await findTrigger(canvasElement)).not.toHaveAttribute(
+      'aria-disabled',
+    );
     const held = canvasElement.querySelector('[data-attribute-type]');
     await expect(held).toHaveAttribute('data-attribute-type', 'boolean');
     await expect(held).toHaveTextContent('is_ego');
 
     const window = await openTheWindow(canvasElement);
     await userEvent.type(
-      window.getByRole('searchbox', { name: 'Find or create an attribute' }),
+      window.getByRole('combobox', { name: 'Find or create an attribute' }),
       'is_participant',
     );
     await expect(
       await window.findByRole('option', {
-        name: 'Create new attribute called “is_participant”.',
+        name: 'Create “is_participant”',
       }),
     ).toBeInTheDocument();
   },
@@ -147,13 +161,17 @@ export const AHeldSlot: Story = {
 export const ASpectator: Story = {
   args: { readOnly: true },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    const trigger = await canvas.findByRole('button', {
-      name: 'Change attribute',
-    });
-    await expect(trigger).toBeDisabled();
+    const trigger = await findTrigger(canvasElement);
+    // A form held elsewhere takes no answers: its fields are disabled.
+    await expect(trigger).toHaveAttribute('aria-disabled', 'true');
+    // It takes no pointer, and the keyboard does not open it either.
+    trigger.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    await expect(
+      document.body.querySelector('[data-attribute-picker-popup][data-open]'),
+    ).toBeNull();
   },
 };
 
@@ -220,14 +238,14 @@ export const AnAttributeWhoseValuesChanged: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await expect(
-      await canvas.findByText(
-        'sexAssignedAtBirth — no longer offers the values this control needs',
-      ),
-    ).toBeInTheDocument();
+    // The held attribute is shown as itself, with the reason under the field.
+    const trigger = await findTrigger(canvasElement);
+    await waitFor(async () => {
+      await expect(trigger).toHaveAccessibleName(/sexAssignedAtBirth$/u);
+    });
     await expect(
       canvas.getByText(
-        'This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.',
+        'This field needs the options supplied by Network Canvas, and this attribute has different options.',
       ),
     ).toBeInTheDocument();
   },

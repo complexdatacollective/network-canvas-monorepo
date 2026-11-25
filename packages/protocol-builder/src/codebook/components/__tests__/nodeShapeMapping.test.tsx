@@ -20,6 +20,8 @@ import {
   attributeField,
   chooseAttribute,
   offeredAttributes,
+  unavailableAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
 import { testTypeId, testVariableId, testId } from '../../../testing/testId.ts';
 import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
@@ -264,7 +266,7 @@ describe('the attribute a shape can follow', () => {
     await user.click(toggle());
 
     // The picker lists what it is offered by name; what matters here is that
-    // the text attribute is not among them.
+    // the text attribute is not among them, and is listed with the reason.
     expect(await offeredAttributes(user, attributeField('Attribute'))).toEqual([
       AGE,
       ALIVE,
@@ -272,6 +274,12 @@ describe('the attribute a shape can follow', () => {
       CONTACT,
       ETHNICITY,
     ]);
+    expect(
+      await unavailableAttributes(user, attributeField('Attribute')),
+    ).toEqual([NOTES]);
+    expect(
+      await unavailableReason(user, attributeField('Attribute'), NOTES),
+    ).toBe('Node shapes cannot be based on Text attributes.');
   });
 
   it('replaces the whole mapping when a different kind of attribute is chosen', async () => {

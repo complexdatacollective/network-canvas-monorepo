@@ -103,7 +103,9 @@ function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
 
   return (
     <span
-      className="inline-flex max-w-full align-middle"
+      // The arrow Architect's pill has always shown: the pill is not text to
+      // select, and here nothing about it takes a click.
+      className="inline-flex max-w-full cursor-default align-middle"
       aria-label={description}
       data-rule-part="attribute"
     >

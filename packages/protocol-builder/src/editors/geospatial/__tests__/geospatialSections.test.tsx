@@ -10,6 +10,8 @@ import {
   chooseAttributeById,
   inventAttribute,
   offeredAttributes,
+  unavailableAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
 import {
   expectMapboxMocked,
@@ -501,17 +503,17 @@ describe('the places a geospatial stage asks about', () => {
     // Nothing to choose — and the field says so where the chosen attribute
     // would be. The trigger stays, because inventing one is still offered from
     // inside the window, which is the answer to having nothing free.
-    expect(
-      await offeredAttributes(
-        harness.user,
-        attributeField('Location attribute'),
-      ),
-    ).toEqual([]);
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([]);
     expect(
       dialog.getByText(
-        'No location attribute is free for this prompt. Create one to record where the participant chooses.',
+        'None of the existing attributes can be used here. Open the list to see why.',
       ),
     ).toBeInTheDocument();
+    // The attribute is listed, with the prompt that records it.
+    expect(await unavailableReason(harness.user, picker, LOCATION)).toBe(
+      'Prompt 1 on this stage already records its answer in this attribute.',
+    );
   });
 
   /**
@@ -577,12 +579,16 @@ describe('the places a geospatial stage asks about', () => {
     }));
 
     await openPrompt(harness, 'Create new prompt');
-    expect(
-      await offeredAttributes(
-        harness.user,
-        attributeField('Location attribute'),
-      ),
-    ).toEqual([WORKPLACE]);
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([WORKPLACE]);
+    // Listed, for its type, after the ones ruled out for a reason about this
+    // stage.
+    expect(await unavailableAttributes(harness.user, picker)).toEqual(
+      expect.arrayContaining([NICKNAME]),
+    );
+    expect(await unavailableReason(harness.user, picker, NICKNAME)).toBe(
+      'Only Location attributes can be used here.',
+    );
   });
 
   /**
@@ -635,17 +641,16 @@ describe('the places a geospatial stage asks about', () => {
     }));
 
     const after = await openPrompt(harness, 'Create new prompt');
-    expect(
-      await offeredAttributes(
-        harness.user,
-        attributeField('Location attribute'),
-      ),
-    ).toEqual([]);
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([]);
     expect(
       after.getByText(
-        'No location attribute is free for this prompt. Create one to record where the participant chooses.',
+        'None of the existing attributes can be used here. Open the list to see why.',
       ),
     ).toBeInTheDocument();
+    expect(await unavailableReason(harness.user, picker, WORKPLACE)).toBe(
+      'The “Alter Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
+    );
   });
 
   /**
@@ -698,7 +703,7 @@ describe('the places a geospatial stage asks about', () => {
     // the pick itself stays in the field, which is the row the gate refuses.
     expect(
       await dialog.findByText(
-        'This attribute is not available here. Choose another one.',
+        'The “Alter Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
       ),
     ).toBeInTheDocument();
 

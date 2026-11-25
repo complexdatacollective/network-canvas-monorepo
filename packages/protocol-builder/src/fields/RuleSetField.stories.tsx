@@ -418,13 +418,15 @@ export const WritingARuleOnAnEncryptedAttribute: Story = {
       await within(dialog).findByRole('option', { name: /Attribute/ }),
     );
     await userEvent.click(
-      await within(dialog).findByRole('button', { name: 'Select attribute' }),
+      await within(dialog).findByRole('combobox', {
+        name: /^Node attribute/u,
+      }),
     );
     // The attribute window opens over the rule dialog, so it is found by its
     // own marker: the dialog underneath is still in the accessibility tree.
     const attributes = await waitFor(() => {
       const opened = document.body.querySelector<HTMLElement>(
-        '[data-variable-spotlight]',
+        '[data-attribute-picker-popup][data-open]',
       );
       if (opened === null) throw new Error('The attribute window is closed.');
       return opened;

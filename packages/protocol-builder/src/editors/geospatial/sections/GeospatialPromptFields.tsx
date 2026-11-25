@@ -8,6 +8,7 @@ import Section from '@codaco/fresco-ui/Section';
 import { geospatialStage } from '@codaco/protocol-validation';
 import type { VariableType } from '@codaco/protocol-validation';
 
+import { markListed } from '../../../codebook/attributeAvailability.ts';
 import { DynamicTextPreview } from '../../../fields/DynamicTextPreview.tsx';
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
 import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
@@ -72,16 +73,16 @@ const VariablePicker = VariablePickerField as ComponentType<
  *
  * The interview writes what the participant taps straight into that attribute,
  * around whatever validation the codebook holds for it, so the picker is an
- * UNVALIDATED writer: an attribute a form field collects is not offered here,
+ * UNVALIDATED writer: an attribute a form field collects cannot be chosen here,
  * or an export would mix checked and unchecked answers under one name.
  *
- * An attribute another prompt on THIS stage already records is not offered
- * either. The interview stores each answer under the prompt's own attribute,
+ * An attribute another prompt on THIS stage already records cannot be chosen
+ * either, and says which prompt records it. The interview stores each answer under the prompt's own attribute,
  * so two prompts sharing one would have the second answer overwrite the first
  * and the stage would keep only the last place the participant chose. The
  * stage's own uses are invisible to `useVariableChoices` — it takes this stage
  * out of the role map so a stage can re-save itself — which is why the
- * exclusion is applied here, as a network composer's form fields apply it to
+ * rule is applied here, as a network composer's form fields apply it to
  * their own siblings.
  */
 export function GeospatialPromptFields({ item }: RowEditorProps) {
@@ -102,27 +103,33 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
       : { currentValue: committedVariable }),
   });
 
-  // ANOTHER prompt's: this row's own pick is skipped as the set is built, so
-  // the picker keeps offering it. One that dropped its own value would blank
-  // the control and write the blank over the reference the researcher has to
-  // resolve.
-  const recordedByAnotherPrompt = useMemo(
-    () =>
-      new Set(
-        promptsOf(prompts).flatMap((prompt) => {
-          const variable = promptVariableOf(prompt);
-          return variable === undefined || variable === committedVariable
-            ? []
-            : [variable];
-        }),
-      ),
-    [committedVariable, prompts],
-  );
+  // ANOTHER prompt's, by the number the researcher sees it under: this row's
+  // own pick is skipped as the map is built, so the picker keeps offering it.
+  // One that ruled out its own value would refuse the reference the
+  // researcher has to resolve.
+  const recordedByAnotherPrompt = useMemo(() => {
+    const recorded = new Map<string, number>();
+    promptsOf(prompts).forEach((prompt, index) => {
+      const variable = promptVariableOf(prompt);
+      if (
+        variable !== undefined &&
+        variable !== committedVariable &&
+        !recorded.has(variable)
+      ) {
+        recorded.set(variable, index + 1);
+      }
+    });
+    return recorded;
+  }, [committedVariable, prompts]);
 
   const options = useMemo(
     () =>
-      offered.filter((option) => !recordedByAnotherPrompt.has(option.value)),
-    [offered, recordedByAnotherPrompt],
+      markListed(offered, recordedByAnotherPrompt.keys(), (variableId) =>
+        intl.formatMessage(geospatialMessages.promptVariableRecordedElsewhere, {
+          promptNumber: recordedByAnotherPrompt.get(variableId) ?? 0,
+        }),
+      ),
+    [intl, offered, recordedByAnotherPrompt],
   );
 
   const { createProps, editor } = useCreateAttributeForSlot({

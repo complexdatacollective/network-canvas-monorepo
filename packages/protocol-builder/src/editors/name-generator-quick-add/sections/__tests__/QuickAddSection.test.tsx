@@ -238,14 +238,14 @@ describe('what a quick-add name generator records', () => {
 
     const dialog = await openAttributePicker(harness.user, await findPicker());
     await harness.user.type(
-      within(dialog).getByRole('searchbox', {
+      within(dialog).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
       'nickname',
     );
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: 'Create new attribute called “nickname”.',
+        name: 'Create “nickname”',
       }),
     );
 

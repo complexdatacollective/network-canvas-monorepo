@@ -51,27 +51,6 @@ const messages = defineMessages({
   },
 });
 
-const ALLOWED_TYPES = ['boolean'];
-
-/**
- * Narrows the shared pool to variables this control can stamp, and disables
- * the ones another row in the same list already claims.
- */
-const getAssignableVariableOptions = (
-  variableOptions: VariableOption[],
-  usedVariables: Array<string | undefined>,
-) =>
-  variableOptions
-    .filter(
-      ({ type: optionType }) =>
-        optionType && ALLOWED_TYPES.includes(optionType),
-    )
-    .map(({ value, ...rest }) => ({
-      ...rest,
-      value,
-      disabled: usedVariables.includes(value),
-    }));
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -183,9 +162,10 @@ export type AssignAttributesProps = Omit<
   /** Whose codebook the pickable attributes come from. */
   subject: CodebookSubject;
   /**
-   * The codebook pool for this subject, already filtered for uses this control
-   * must not offer. Rows this list already uses are disabled here, from the
-   * live value.
+   * The codebook pool for this subject, with every attribute the host's rules
+   * rule out (its type, a use elsewhere) already marked with the reason. Each
+   * row also marks, from the live value, the attributes the other rows
+   * assign.
    */
   variableOptions: VariableOption[];
   /** The host's variable picker — see `AssignAttributesContextValue`. */
@@ -248,13 +228,11 @@ export default function AssignAttributes({
     () => ({
       arrayName: name,
       subject,
-      variableOptions: getAssignableVariableOptions(
-        variableOptions,
-        rows.map((row) =>
-          isRecord(row) && typeof row.variable === 'string'
-            ? row.variable
-            : undefined,
-        ),
+      variableOptions,
+      rowVariables: rows.map((row) =>
+        isRecord(row) && typeof row.variable === 'string'
+          ? row.variable
+          : undefined,
       ),
       variablePickerComponent,
       onCreateVariable,

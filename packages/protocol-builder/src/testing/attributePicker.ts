@@ -1,18 +1,28 @@
 import { waitFor, within } from '@testing-library/react';
 import type userEvent from '@testing-library/user-event';
 
+import { fuzzyMatchScore } from '@codaco/fresco-ui/utils/fuzzyMatch';
+import { normalizeCodebookName } from '@codaco/shared-consts';
+
 type HarnessUser = ReturnType<typeof userEvent.setup>;
 
 /**
- * The two names the attribute picker's trigger goes by.
+ * Drives the attribute picker (`fields/VariablePickerField.tsx`) as a
+ * researcher does.
  *
- * A picker that already holds an attribute says so on its own button, so a
- * test that only knew one of the two would find the control before a choice
- * had been made and lose it afterwards.
+ * The picker is a combobox: its trigger shows the chosen attribute, and
+ * pressing it opens a popup with a search box and a list. The popup is found
+ * by its own marker, `data-attribute-picker-popup`, rather than by role: a
+ * picker is often inside a dialog already, and the popup is itself a dialog.
+ *
+ * Everything here reads markers rather than words, because the locale suites
+ * mount the same control in Spanish:
+ * - a row's `data-attribute-id` is what choosing it would store, and
+ *   `data-unavailable` marks an attribute that is listed but cannot be chosen
+ *   here (its reason is shown when it is chosen);
+ * - the create row carries `data-create-name` (the name it would create) and
+ *   `data-create-state` (`offered`, `invalid`, `busy` or `refused`).
  */
-const TRIGGER_NAMES = ['Select attribute', 'Change attribute'];
-
-const isTrigger = (name: string) => TRIGGER_NAMES.includes(name);
 
 /**
  * A field's own label, which `Field` gives the id `<control id>-label`. A
@@ -22,11 +32,6 @@ export const FIELD_LABEL = 'label[id$="-label"]';
 
 /**
  * One attribute picker, found by the label of the field it answers.
- *
- * The trigger says what it does — "Select attribute" — rather than which
- * question it answers, which is right on screen (the label is right above it)
- * and wrong for a test with three pickers open. So a test names the FIELD, and
- * everything below reaches inside it.
  *
  * Only a field's own label is matched (`FIELD_LABEL`), not an option card's:
  * a choice whose answers repeat a field's name (the pedigree's symbols offer
@@ -48,86 +53,112 @@ export function attributeField(
   return field;
 }
 
-/**
- * The two names the window's search box goes by.
- *
- * It says whether this window can invent an attribute, the way the trigger
- * says whether one has been chosen — so a helper that knew only one of the two
- * would find the box at the sites that create and lose it at the sites that
- * only choose. Which name is drawn where is asserted by the tests that are
- * about it.
- */
+/** The two names that the popup's search box goes by. */
 const isSearchBox = (name: string) =>
   name === 'Find or create an attribute' || name === 'Find an attribute';
 
-/**
- * The attribute window itself, found by its own marker rather than by role.
- *
- * A picker is often inside a dialog already — a row editor, the rule builder —
- * and the window opens on top of it. `Modal` isolates the one underneath with
- * `inert`, which browsers honour and Testing Library's accessibility tree does
- * not, so `getByRole('dialog')` matches both. The marker is on the window's own
- * popup and belongs to nothing else.
- */
-const SPOTLIGHT = '[data-variable-spotlight]';
+const OPEN_POPUP = '[data-attribute-picker-popup][data-open]';
 
-const openWindow = (): HTMLElement | null =>
-  document.body.querySelector<HTMLElement>(SPOTLIGHT);
+const openPopup = (): HTMLElement | null =>
+  document.body.querySelector<HTMLElement>(OPEN_POPUP);
 
 /**
- * The button that opens this field's window.
- *
- * Found by the marker the picker puts on it rather than by its name, because
- * the name is copy: the locale suites mount the same control in Spanish, and a
- * helper that only knew the English would find nothing there. Within one field
- * it is the picker's trigger and nothing else. The names are still asserted —
- * by the tests that are about them.
+ * The control that opens this field's popup: the combobox trigger, marked as
+ * the field's focus target.
  */
-const triggerOf = (field: HTMLElement): HTMLElement =>
-  field.querySelector<HTMLElement>('button[data-field-focus-target]') ??
-  within(field).getByRole('button', { name: isTrigger });
+export const attributeTrigger = (field: HTMLElement): HTMLElement => {
+  const trigger = field.querySelector<HTMLElement>('[data-field-focus-target]');
+  if (trigger === null) {
+    throw new Error(
+      'attributeTrigger: this field has no attribute picker trigger. It may be showing the sentence that says there is nothing to choose from.',
+    );
+  }
+  return trigger;
+};
 
-/** Opens one picker's window and hands it back. */
+/** The search box at the top of an open popup. */
+export const attributeSearchBox = (popup: HTMLElement): HTMLElement =>
+  within(popup).getByRole('combobox', { name: isSearchBox });
+
+/** Opens one picker's popup, and hands it back once its search box has focus. */
 export async function openAttributePicker(
   user: HarnessUser,
   field: HTMLElement,
 ): Promise<HTMLElement> {
-  await user.click(triggerOf(field));
+  await user.click(attributeTrigger(field));
+  let popup: HTMLElement | null = null;
   await waitFor(() => {
-    if (openWindow() === null) {
-      throw new Error('the attribute window did not open');
+    popup = openPopup();
+    if (popup === null) throw new Error('the attribute popup did not open');
+    // Base UI moves focus into the popup on the next frame, and a key typed
+    // before then lands on the trigger.
+    if (!popup.contains(popup.ownerDocument.activeElement)) {
+      throw new Error('the attribute popup has not taken focus yet');
     }
   });
-  const window = openWindow();
-  if (window === null) throw new Error('the attribute window did not open');
-  return window;
+  if (popup === null) throw new Error('the attribute popup did not open');
+  return popup;
 }
 
+const optionRows = (popup: HTMLElement): HTMLElement[] => [
+  ...popup.querySelectorAll<HTMLElement>('[role="option"]'),
+];
+
+const attributeRows = (popup: HTMLElement): HTMLElement[] =>
+  optionRows(popup).filter((row) => row.dataset.attributeId !== undefined);
+
+const attributeNameOf = (row: HTMLElement): string =>
+  row.querySelector('data[value]')?.getAttribute('value') ?? '';
+
+/** The ids of the attributes that the popup lists and that can be chosen. */
+const readOfferedIds = (popup: HTMLElement): string[] =>
+  attributeRows(popup)
+    .filter((row) => row.dataset.unavailable === undefined)
+    .flatMap((row) =>
+      row.dataset.attributeId === undefined ? [] : [row.dataset.attributeId],
+    );
+
+/** The ids of the attributes that the popup lists as not available here. */
+const readUnavailableIds = (popup: HTMLElement): string[] =>
+  attributeRows(popup)
+    .filter((row) => row.dataset.unavailable !== undefined)
+    .flatMap((row) =>
+      row.dataset.attributeId === undefined ? [] : [row.dataset.attributeId],
+    );
+
+const waitForThePopupToClose = async (): Promise<void> => {
+  await waitFor(() => {
+    if (openPopup() !== null) {
+      throw new Error('the attribute popup is still open');
+    }
+  });
+};
+
 /**
- * Picks the attribute of this name through the window, as a researcher does.
+ * Picks the attribute with this name, as a researcher does.
  *
- * Waits for the window to go before answering: the pick is written as it
+ * Waits for the popup to close before answering: the pick is written as it
  * closes, and a test that carried on while it was still on screen would read
- * the field through a dialog that still covers it.
+ * the field through a popup that still covers it.
  */
 export async function chooseAttribute(
   user: HarnessUser,
   field: HTMLElement,
   attributeName: string,
 ): Promise<void> {
-  const dialog = await openAttributePicker(user, field);
-  await user.click(within(dialog).getByRole('option', { name: attributeName }));
-  // Tolerant of a window that has already gone: the pick is written as it
-  // closes, and whether the close has landed by the time this runs is a
-  // scheduling detail. What must not happen is carrying on while a dialog
-  // still covers the field.
-  await waitForTheWindowToClose();
+  const popup = await openAttributePicker(user, field);
+  const row = within(popup).getByRole('option', { name: attributeName });
+  if (row.dataset.unavailable !== undefined) {
+    throw new Error(`“${attributeName}” is listed, but cannot be chosen here.`);
+  }
+  await user.click(row);
+  await waitForThePopupToClose();
 }
 
 /**
- * Chooses the attribute the protocol files under this id.
+ * Chooses the attribute that the protocol files under this id.
  *
- * The window shows the researcher's NAME for an attribute, and most of what a
+ * The list shows the researcher's NAME for an attribute, and most of what a
  * stage stores is an id — so a test that knows which reference it is after,
  * rather than which words, asks for it here.
  */
@@ -136,77 +167,50 @@ export async function chooseAttributeById(
   field: HTMLElement,
   attributeId: string,
 ): Promise<void> {
-  const dialog = await openAttributePicker(user, field);
-  const row = dialog.querySelector<HTMLElement>(
-    `[role="option"][data-attribute-id="${attributeId}"]`,
+  const popup = await openAttributePicker(user, field);
+  const row = popup.querySelector<HTMLElement>(
+    `[role="option"][data-attribute-id="${CSS.escape(attributeId)}"]`,
   );
-  if (row === null) {
+  if (row === null || row.dataset.unavailable !== undefined) {
     throw new Error(
-      `chooseAttributeById: the window is not offering "${attributeId}". It offers ${JSON.stringify(readOfferedIds(dialog))}.`,
+      `chooseAttributeById: the popup is not offering "${attributeId}". It offers ${JSON.stringify(readOfferedIds(popup))}, and lists ${JSON.stringify(readUnavailableIds(popup))} as not available here.`,
     );
   }
   await user.click(row);
-  await waitForTheWindowToClose();
+  await waitForThePopupToClose();
 }
 
-const readOfferedIds = (dialog: HTMLElement): string[] =>
-  [...dialog.querySelectorAll('[role="option"]')].map(
-    (row) => row.getAttribute('data-attribute-id') ?? row.textContent ?? '',
-  );
-
-const offeredRows = (dialog: HTMLElement): HTMLElement[] => [
-  ...dialog.querySelectorAll<HTMLElement>('[role="option"]'),
-];
-
 /**
- * Whether this row is one the window draws for this search term.
+ * Whether this row is one that the list shows for this search term.
  *
- * An attribute row is, when its name contains the term — which is the window's
- * own filter. A create row is, when it is about exactly the term typed: its
- * key is the term, so every keystroke replaces it with another. An empty term
- * produces no create row at all, so any row that names one is a leftover.
- *
- * Read from the markers rather than from the row's words, which are
- * translated: the locale suites search the same window in Spanish.
+ * An attribute row is, when the term matches its name by the list's own
+ * fuzzy match. A create row is, when it is about exactly the name the term
+ * would create. An empty term produces no create row at all.
  */
 const rowIsFor = (row: HTMLElement, term: string): boolean => {
   const created = row.dataset.createName;
-  if (created !== undefined) return term !== '' && created === term;
-  const name = row.querySelector('data[value]')?.getAttribute('value') ?? '';
-  return name.toLowerCase().includes(term.toLowerCase());
+  if (created !== undefined) {
+    const name = normalizeCodebookName(term);
+    return name !== '' && created === name;
+  }
+  return fuzzyMatchScore(term, attributeNameOf(row)) !== undefined;
 };
 
-const describeRow = (row: HTMLElement): string =>
-  row.dataset.createName === undefined
-    ? (row.querySelector('data[value]')?.getAttribute('value') ?? '(unnamed)')
-    : `create “${row.dataset.createName}”`;
-
 /**
- * Waits until the list is the one this term produces, and nothing else.
- *
- * A row the term no longer produces does not leave the DOM in the keystroke
- * that replaced it: the window's list animates, and `AnimatePresence` keeps an
- * exiting row mounted until its exit finishes — one frame later, with
- * animations skipped. So immediately after typing, the list can hold BOTH the
- * row the last keystroke made and the one the keystroke before it made, and a
- * test reading the list by position reads the leftover. On an idle machine the
- * frame lands inside `type()`; under a loaded CI runner it lands after it,
- * which is what made this window's tests fail there and pass here.
+ * Waits until the list is the one that this term produces, and nothing else.
  *
  * Waiting on the leftovers rather than on a count, because a count is a claim
  * about what the term produces — which is what the tests are here to assert.
  */
 const listSettledOn = async (
-  dialog: HTMLElement,
+  popup: HTMLElement,
   term: string,
 ): Promise<void> => {
   await waitFor(() => {
-    const leftovers = offeredRows(dialog).filter((row) => !rowIsFor(row, term));
+    const leftovers = optionRows(popup).filter((row) => !rowIsFor(row, term));
     if (leftovers.length > 0) {
       throw new Error(
-        `the list is still showing ${leftovers.length} row(s) from before “${term}” was typed: ${leftovers
-          .map(describeRow)
-          .join(', ')}`,
+        `the list is still showing ${leftovers.length} row(s) from before “${term}” was typed`,
       );
     }
   });
@@ -215,188 +219,197 @@ const listSettledOn = async (
 const typeSearchTerm = async (
   user: HarnessUser,
   box: HTMLElement,
-  dialog: HTMLElement,
+  popup: HTMLElement,
   term: string,
 ): Promise<void> => {
   await user.type(box, term);
-  await listSettledOn(dialog, term);
+  await listSettledOn(popup, term);
 };
 
 /**
- * Types a term into the open window's search box, and hands the box back once
- * the list below it is the one that term produces.
+ * Types a term into the open popup's search box, and hands the box back once
+ * the list below it is the one that the term produces.
  *
- * Clears first, so the term is what the box holds rather than what it holds
- * appended to whatever was there.
+ * Clears first, so the term is what the box contains rather than what it
+ * contains appended to whatever was there.
  */
 export async function searchAttributes(
   user: HarnessUser,
-  dialog: HTMLElement,
+  popup: HTMLElement,
   term: string,
 ): Promise<HTMLElement> {
-  const box = await clearAttributeSearch(user, dialog);
-  await typeSearchTerm(user, box, dialog, term);
+  const box = await clearAttributeSearch(user, popup);
+  await typeSearchTerm(user, box, popup, term);
   return box;
 }
 
 /**
- * Empties the open window's search box, and hands it back once the list below
+ * Empties the open popup's search box, and hands it back once the list below
  * it is the whole list again.
  */
 export async function clearAttributeSearch(
   user: HarnessUser,
-  dialog: HTMLElement,
+  popup: HTMLElement,
 ): Promise<HTMLElement> {
-  const box = within(dialog).getByRole('searchbox', { name: isSearchBox });
+  const box = attributeSearchBox(popup);
   await user.clear(box);
-  await listSettledOn(dialog, '');
+  await listSettledOn(popup, '');
   return box;
 }
 
 /**
- * Every attribute the window offers, by the id choosing it would store, in the
- * order it offers them. Leaves the window as it found it: closed.
+ * Every attribute that the popup offers and that can be chosen, by the id
+ * choosing it would store, in the order it lists them. Attributes listed as
+ * not available here are left out; `unavailableAttributes` reads those.
+ * Leaves the popup as it found it: closed.
  */
 export async function offeredAttributes(
   user: HarnessUser,
   field: HTMLElement,
   term?: string,
 ): Promise<string[]> {
-  const dialog = await openAttributePicker(user, field);
+  const popup = await openAttributePicker(user, field);
   if (term !== undefined) {
-    await searchAttributes(user, dialog, term);
+    await searchAttributes(user, popup, term);
   }
-  const offered = readOfferedIds(dialog);
+  const offered = readOfferedIds(popup);
   await closeAttributePicker(user);
   return offered;
 }
 
 /**
+ * Every attribute that the popup lists under "Not available here", by id, in
+ * the order it lists them. Leaves the popup as it found it: closed.
+ */
+export async function unavailableAttributes(
+  user: HarnessUser,
+  field: HTMLElement,
+): Promise<string[]> {
+  const popup = await openAttributePicker(user, field);
+  const unavailable = readUnavailableIds(popup);
+  await closeAttributePicker(user);
+  return unavailable;
+}
+
+/**
+ * The reason the popup gives for one attribute it lists as not available
+ * here, read as a researcher reads it: by choosing the attribute, which
+ * selects nothing and shows the reason under it. Fails when the attribute is
+ * not listed, or is listed as one that can be chosen. Leaves the popup as it
+ * found it: closed.
+ */
+export async function unavailableReason(
+  user: HarnessUser,
+  field: HTMLElement,
+  attributeId: string,
+): Promise<string> {
+  const popup = await openAttributePicker(user, field);
+  const row = popup.querySelector<HTMLElement>(
+    `[role="option"][data-attribute-id="${CSS.escape(attributeId)}"]`,
+  );
+  if (row === null || row.dataset.unavailable === undefined) {
+    throw new Error(
+      `unavailableReason: the popup does not list "${attributeId}" as not available here. It lists ${JSON.stringify(readUnavailableIds(popup))} as not available, and offers ${JSON.stringify(readOfferedIds(popup))}.`,
+    );
+  }
+  await user.click(row);
+  let reason = '';
+  await waitFor(() => {
+    const shown = row.querySelector<HTMLElement>('[id$="-reason"]');
+    if (row.dataset.revealed === undefined || shown === null) {
+      throw new Error('the reason has not been shown yet');
+    }
+    reason = shown.textContent ?? '';
+  });
+  await closeAttributePicker(user);
+  return reason;
+}
+
+/**
  * The attributes this picker offers, read once they are the ones the caller is
- * waiting for. Leaves the window as it found it: closed.
+ * waiting for. Leaves the popup as it found it: closed.
  *
- * The window is opened ONCE and the list inside it watched, which is what a
- * researcher sees as a revision lands. A `waitFor` around `offeredAttributes`
- * instead opens, reads and closes the window on every attempt — a quarter of a
- * second of work per turn on an idle machine, and an order of magnitude more
- * on a loaded CI runner, where the wait then spends its whole budget on the
- * first attempt and fails having never waited for anything.
+ * The popup is opened ONCE and the list inside it watched, which is what a
+ * researcher sees as a revision lands.
  */
 export async function awaitOfferedAttributes(
   user: HarnessUser,
   field: HTMLElement,
   areRight: (offered: string[]) => void,
 ): Promise<string[]> {
-  const dialog = await openAttributePicker(user, field);
+  const popup = await openAttributePicker(user, field);
   let offered: string[] = [];
   await waitFor(() => {
-    offered = readOfferedIds(dialog);
+    offered = readOfferedIds(popup);
     areRight(offered);
   });
   await closeAttributePicker(user);
   return offered;
 }
 
-/** Dismisses the open window, as Escape does. */
+/** Dismisses the open popup, as Escape does. */
 export async function closeAttributePicker(user: HarnessUser): Promise<void> {
   await user.keyboard('{Escape}');
-  await waitForTheWindowToClose();
+  await waitForThePopupToClose();
 }
 
-const waitForTheWindowToClose = async (): Promise<void> => {
-  await waitFor(() => {
-    if (openWindow() !== null) {
-      throw new Error('the attribute window is still open');
-    }
-  });
-};
+/** The popup's create row, whatever state it is in, or `null`. */
+export const findCreateRow = (popup: HTMLElement): HTMLElement | null =>
+  popup.querySelector<HTMLElement>('[role="option"][data-create-name]');
 
 /**
- * The row the window offers to invent an attribute from the typed name.
+ * Creates an attribute of this name through the popup, as a researcher does:
+ * types it into the search box and chooses the create row.
  *
- * Named after the name rather than found by position: it is the first row when
- * it is offered at all, and a test that took the first row would pass against
- * a window offering none.
- */
-function createRow(dialog: HTMLElement, name: string): HTMLElement {
-  return within(dialog).getByRole('option', {
-    name: `Create new attribute called “${name}”.`,
-  });
-}
-
-/**
- * Invents an attribute of this name through the window, as a researcher does:
- * types it into the search box and takes the create row.
- *
- * Hands the window back rather than waiting for it to close, because what
+ * Hands the popup back rather than waiting for it to close, because what
  * happens next is the thing under test — a slot whose attribute is finished by
- * a name closes it, one that needs a value set opens the codebook's editor on
- * top of it, and a refusal keeps it open on the name to correct.
+ * a name closes it, one that needs a value set opens the codebook's editor,
+ * and a refusal keeps it open on the name to correct.
  */
 export async function inventAttribute(
   user: HarnessUser,
   field: HTMLElement,
   attributeName: string,
 ): Promise<HTMLElement> {
-  const dialog = await openAttributePicker(user, field);
-  await typeSearchTerm(
-    user,
-    within(dialog).getByRole('searchbox', {
-      name: 'Find or create an attribute',
-    }),
-    dialog,
-    attributeName,
-  );
-  await user.click(createRow(dialog, attributeName));
-  return dialog;
+  const popup = await openAttributePicker(user, field);
+  await typeSearchTerm(user, attributeSearchBox(popup), popup, attributeName);
+  const row = findCreateRow(popup);
+  if (row === null || row.dataset.createState !== 'offered') {
+    throw new Error(
+      row === null
+        ? `inventAttribute: the popup offers no create row for “${attributeName}”.`
+        : `inventAttribute: the create row for “${attributeName}” is ${row.dataset.createState ?? 'unknown'}: ${row.textContent ?? ''}`,
+    );
+  }
+  await user.click(row);
+  return popup;
 }
 
 /**
- * Whether this picker offers to invent an attribute at all.
+ * Whether this picker offers to create an attribute at all.
  *
- * Asked of a term nothing matches, because that is the only state a create row
- * is offered in. Leaves the window as it found it: closed.
- *
- * Both shapes of the row count — the one that offers the name and the one
- * switched off with the reason it cannot be used — because the question here
- * is whether creation is on offer at this site, and a site that offers it
- * draws one or the other for every term. Reading only the enabled row would
- * answer "no" for a name the type already holds, which is the wrong answer to
- * a different question.
- *
- * The default term is a name the schema accepts, so a site that DOES offer
- * creation answers with the enabled row rather than the refusal: a term with a
- * space in it is refused by every picker, and a helper defaulting to one would
- * have read the same thing at every site whatever it allowed.
+ * Asked of a term that nothing matches, because that is the only state a
+ * create row is offered in. Both shapes of the row count — the one that offers
+ * the name and the one switched off with the reason it cannot be used —
+ * because the question here is whether creation is on offer at this site.
+ * Leaves the popup as it found it: closed.
  */
 export async function offersCreation(
   user: HarnessUser,
   field: HTMLElement,
   term = 'aNameNothingInThisCodebookHas',
 ): Promise<boolean> {
-  const dialog = await openAttributePicker(user, field);
-  // Either name: this is asked at the sites that cannot create as well, and
-  // the box says which of the two it is.
-  await searchAttributes(user, dialog, term);
-  const offered =
-    within(dialog).queryByRole('option', {
-      name: `Create new attribute called “${term}”.`,
-    }) !== null ||
-    within(dialog).queryByRole('option', {
-      name: (name) =>
-        name.startsWith(`Cannot create attribute named “${term}”:`),
-    }) !== null;
+  const popup = await openAttributePicker(user, field);
+  await searchAttributes(user, popup, term);
+  const offered = findCreateRow(popup) !== null;
   await closeAttributePicker(user);
   return offered;
 }
 
 /**
- * The create row, asked for in the reader's own language.
- *
- * The window's own words are the picker's — a section that offers creation
- * says so through this row rather than through a control of its own — so a
- * section's locale test names the field and the search box's label and reads
- * the row back. Leaves the window as it found it: closed.
+ * The create row, asked for in the reader's own language: found by the
+ * accessible name that `rowName` gives for the term. Leaves the popup as it
+ * found it: closed.
  */
 export async function createRowIn(
   user: HarnessUser,
@@ -405,14 +418,14 @@ export async function createRowIn(
   rowName: (term: string) => string,
   term = 'nuevo',
 ): Promise<HTMLElement | null> {
-  const dialog = await openAttributePicker(user, field);
+  const popup = await openAttributePicker(user, field);
   await typeSearchTerm(
     user,
-    within(dialog).getByRole('searchbox', { name: searchLabel }),
-    dialog,
+    within(popup).getByRole('combobox', { name: searchLabel }),
+    popup,
     term,
   );
-  const row = within(dialog).queryByRole('option', { name: rowName(term) });
+  const row = within(popup).queryByRole('option', { name: rowName(term) });
   await closeAttributePicker(user);
   return row;
 }

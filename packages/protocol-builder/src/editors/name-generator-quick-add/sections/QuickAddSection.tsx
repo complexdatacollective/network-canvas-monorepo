@@ -5,15 +5,19 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import {
+  attributeAvailabilityMessages,
+  attributeChoices,
+  markCrossClassUses,
+  markListed,
+  onlyTypeReason,
+} from '../../../codebook/attributeAvailability.ts';
+import {
   useCreateCodebookVariable,
   useWhereTheAnswerLands,
 } from '../../../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
-import {
-  buildVariableRoleMap,
-  excludeUnvalidatedUses,
-} from '../../../codebook/variableRoles.ts';
-import { draftAdditionalAttributeVariableIds } from '../../../codebook/variableValidation.ts';
+import { buildVariableRoleMap } from '../../../codebook/variableRoles.ts';
+import { draftAdditionalAttributePromptNumbers } from '../../../codebook/variableValidation.ts';
 import VariablePickerField, {
   type CreateOptionOutcome,
   type VariablePickerOption,
@@ -129,12 +133,12 @@ const useTypeName = (subject: CodebookSubject | undefined): string => {
  * optional capability, and why the attribute must be text: there is one box,
  * and no room to ask for anything more.
  *
- * The attribute is a validated writer, so the pool excludes anything written
- * unvalidated elsewhere in the protocol: an export must not mix a checked
+ * The attribute is a validated writer, so the list marks as unavailable
+ * anything written unvalidated elsewhere in the protocol: an export must not mix a checked
  * answer with a value some other stage stamped. THIS stage's own prompts are
  * such a writer too — each of them stamps fixed values on everyone named under
  * it — and the role map is built with the edited stage taken out, so the live
- * prompts are read here and excluded beside it. Left out, the picker offered an
+ * prompts are read here and marked beside it. Left out, the picker offered an
  * attribute this stage already stamps, and the protocol the researcher saved
  * was one the schema's role-conflict rule refuses.
  */
@@ -156,26 +160,41 @@ export default function QuickAddSection() {
     [identity.id, protocolContext],
   );
   const stamped = useMemo(
-    () => draftAdditionalAttributeVariableIds(draftPrompts),
+    () => draftAdditionalAttributePromptNumbers(draftPrompts),
     [draftPrompts],
   );
 
   const options = useMemo(() => {
     if (subject === undefined) return NO_OPTIONS;
-    const pool = Object.entries(variablesForSubject(protocolContext, subject))
-      .filter(([, variable]) => variable.type === QUICK_ADD_TYPE)
-      .map(([value, variable]) => ({
-        value,
-        label: variable.name,
-        type: variable.type,
-      }));
-    return excludeUnvalidatedUses(roleMap, subject, pool, fillsIn).filter(
-      // The committed pick is offered back whatever the filters say: a picker
-      // that dropped its own value would blank the control and write the blank
-      // over the reference the researcher has to resolve.
-      ({ value }) => value === fillsIn || !stamped.has(value),
+    const pool = attributeChoices(
+      variablesForSubject(protocolContext, subject),
+      (type) => type === QUICK_ADD_TYPE,
+      onlyTypeReason(intl, QUICK_ADD_TYPE),
     );
-  }, [fillsIn, protocolContext, roleMap, stamped, subject]);
+    // The committed pick is never marked by these rules: the researcher has
+    // to be able to keep the reference while they resolve it.
+    return markCrossClassUses(
+      roleMap,
+      subject,
+      markListed(
+        pool,
+        stamped.keys(),
+        (variableId) => {
+          const promptNumber = stamped.get(variableId);
+          return intl.formatMessage(
+            promptNumber === undefined
+              ? attributeAvailabilityMessages.draftUnvalidatedHere
+              : attributeAvailabilityMessages.promptAssigns,
+            { promptNumber },
+          );
+        },
+        fillsIn,
+      ),
+      'validated',
+      intl,
+      fillsIn,
+    );
+  }, [fillsIn, intl, protocolContext, roleMap, stamped, subject]);
 
   // Answered as an outcome rather than by writing the picker itself: the
   // control owns the name box and what becomes of the name in it, and the

@@ -22,6 +22,7 @@ import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import type { Variables } from '@codaco/protocol-validation';
 
+import { markListed } from '../../codebook/attributeAvailability.ts';
 import {
   buildVariableRoleMap,
   hasValidatedUse,
@@ -30,7 +31,10 @@ import { variableNameScope } from '../../fields/variableNameRules.ts';
 // The contract the picker's `onCreateOption` prop is written in, taken from
 // where that prop is declared. A type, so nothing about which picker a host
 // injects is decided here — see `variablePickerComponent`.
-import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
+import type {
+  CreateOptionOutcome,
+  VariablePickerOption,
+} from '../../fields/VariablePickerField.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -50,13 +54,11 @@ const FrescoBooleanControl = FrescoBooleanField as ComponentType<
   Record<string, unknown>
 >;
 
-export type VariableOption = {
-  disabled?: boolean;
-  isUsed?: boolean;
-  label: string;
-  type?: string;
-  value: string;
-};
+/**
+ * One attribute a row can list: the picker's own option, so an attribute that
+ * cannot be chosen carries the sentence saying why.
+ */
+export type VariableOption = VariablePickerOption;
 
 export type AttributeValue = {
   id?: string;
@@ -84,8 +86,13 @@ export type AssignAttributesContextValue = {
   /** Resolved name of the array field these rows belong to. */
   arrayName: string;
   subject: CodebookSubject;
-  /** The shared pool, already narrowed to assignable types. */
+  /**
+   * The shared pool, with every attribute the host's rules rule out already
+   * marked. Each row also marks the attributes the OTHER rows assign.
+   */
   variableOptions: VariableOption[];
+  /** The attribute each row of the list assigns, by row position. */
+  rowVariables: readonly (string | undefined)[];
   /**
    * The control that picks (and optionally creates) a codebook variable.
    *
@@ -123,6 +130,13 @@ const useAssignAttributesContext = () => {
 };
 
 const messages = defineMessages({
+  assignedByAnotherRow: {
+    id: 'protocolBuilder.assignAttributes.assignedByAnotherRow',
+    defaultMessage:
+      'Another row in this list already assigns a value to this attribute.',
+    description:
+      'Shown under an attribute in the attribute list of one row of the list of attributes that a prompt sets on every node it creates, when another row of the same list already sets this attribute. A prompt is the question a participant reads.',
+  },
   booleanTrue: {
     id: 'protocolBuilder.assignAttributes.booleanTrue',
     defaultMessage: 'True',
@@ -308,7 +322,8 @@ export default function Attribute({
   const {
     arrayName,
     subject,
-    variableOptions,
+    variableOptions: sharedOptions,
+    rowVariables,
     variablePickerComponent,
     onCreateVariable,
     draftValidatedVariables,
@@ -340,6 +355,19 @@ export default function Attribute({
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
   const variable =
     typeof item.variable === 'string' ? item.variable : undefined;
+  // Every attribute another row assigns is marked, so no two rows set the
+  // same attribute. This row's own attribute is never marked: it is in the
+  // list too, and the researcher has to be able to keep it.
+  const variableOptions = useMemo(
+    () =>
+      markListed(
+        sharedOptions,
+        rowVariables.filter((id): id is string => id !== undefined),
+        intl.formatMessage(messages.assignedByAnotherRow),
+        variable,
+      ),
+    [intl, rowVariables, sharedOptions, variable],
+  );
 
   // The DISPLAY half of the cross-class gate. Its blocking counterpart is the
   // owning array field's `crossClassPicks` rule, which runs this identical

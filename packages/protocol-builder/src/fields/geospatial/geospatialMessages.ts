@@ -320,9 +320,16 @@ export const geospatialMessages = defineMessages({
   promptVariableEmptyState: {
     id: 'protocolBuilder.geospatial.promptVariableEmptyState',
     defaultMessage:
-      'No location attribute is free for this prompt. Create one to record where the participant chooses.',
+      'This type has no attributes yet. Create a Location attribute to record where the participant chooses.',
     description:
-      'Shown in place of the location-attribute control when there is nothing for this prompt to choose: the node or edge type the stage works with has no attribute that can hold a place, or every one it has is already recorded by another prompt on this stage. "Type" is the kind of network member the stage is about.',
+      'Shown under the location-attribute control when the node type that the stage works with has no attributes at all in the codebook. "Type" is the kind of network member the stage is about. Location is the name of the kind of attribute that holds a place, as the codebook editor names it.',
+  },
+  promptVariableRecordedElsewhere: {
+    id: 'protocolBuilder.geospatial.promptVariableRecordedElsewhere',
+    defaultMessage:
+      'Prompt {promptNumber} on this stage already records its answer in this attribute.',
+    description:
+      'Shown under an attribute in the list of the location-attribute control, when another prompt of the same geospatial stage already stores the participant’s chosen area in it, so the later answer would replace the earlier one. promptNumber is that prompt’s position in the stage’s list of prompts, starting at 1. A prompt is one question a participant is asked; a stage is one step of an interview.',
   },
   createAttributeLabel: {
     id: 'protocolBuilder.geospatial.createAttributeLabel',

@@ -368,7 +368,7 @@ export default function NodeShapeMappingFields({
   const selectedId = mapping.variable;
   const selected = selectedId === undefined ? undefined : variables[selectedId];
   const config = thresholdInputConfig(selected);
-  const options = eligibleShapeVariables(variables);
+  const options = eligibleShapeVariables(variables, intl);
   const localize = useLocalizedText();
   const answers =
     selected === undefined ? [] : discreteAnswers(selected, intl, localize);

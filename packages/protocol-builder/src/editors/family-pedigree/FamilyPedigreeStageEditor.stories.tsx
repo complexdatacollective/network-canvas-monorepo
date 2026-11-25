@@ -184,20 +184,20 @@ export const CreatingAGenderIdentityAttribute: Story = {
     // Found by its own marker: the window is titled after the slot's question.
     const attributeWindow = await waitFor(() => {
       const found = document.body.querySelector<HTMLElement>(
-        '[data-variable-spotlight]',
+        '[data-attribute-picker-popup][data-open]',
       );
       if (found === null) throw new Error('the attribute window did not open');
       return found;
     });
     await userEvent.type(
-      within(attributeWindow).getByRole('searchbox', {
+      within(attributeWindow).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
       'gender_new',
     );
     await userEvent.click(
       within(attributeWindow).getByRole('option', {
-        name: 'Create new attribute called “gender_new”.',
+        name: 'Create “gender_new”',
       }),
     );
 
