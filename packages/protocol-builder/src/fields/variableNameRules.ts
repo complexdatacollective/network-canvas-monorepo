@@ -21,14 +21,14 @@ const messages = defineMessages({
     id: 'protocolBuilder.variablePicker.nameTaken',
     defaultMessage: 'this type already has an attribute called that',
     description:
-      'Reason given on the switched-off create row of the attribute list. Reads after a colon, so it is a clause rather than a sentence: “Cannot create attribute named “age”: this type already has an attribute called that”.',
+      'Reason given on the switched-off create row of the attribute list, on the line under “An attribute cannot be named “age””. Written as a clause rather than a sentence.',
   },
   nameInvalid: {
     id: 'protocolBuilder.variablePicker.nameInvalid',
     defaultMessage:
       'a name cannot contain line breaks, tabs or other control characters',
     description:
-      'Reason given on the switched-off create row of the attribute list when the name typed holds a character that cannot be stored in a name, such as a line break or a tab. Reads after a colon, so it is a clause rather than a sentence. Names may otherwise be written in any language or script, with spaces and punctuation.',
+      'Reason given on the switched-off create row of the attribute list when the name typed contains a character that cannot be stored in a name, such as a line break or a tab. Shown on the line under “An attribute cannot be named “…””, as a clause rather than a sentence. Names may otherwise be written in any language or script, with spaces and punctuation.',
   },
 });
 
@@ -328,9 +328,9 @@ export const variableNameScope = (
  * judged as one that exports a single column, or as `type` where the caller
  * already knows what it will create.
  *
- * One rule for the two controls that ask it — the create row of the attribute
- * window, and the editor the held pill opens on the name it already has — so
- * they cannot come to disagree about what a name may be. `excluding` is the
+ * One rule for every control that asks it — the attribute picker's create row,
+ * and Architect's codebook screen, which renames an attribute — so they
+ * cannot come to disagree about what a name may be. `excluding` is the
  * rename's own record id: an attribute is not the thing standing in its own
  * way.
  */

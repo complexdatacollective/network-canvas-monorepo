@@ -56,22 +56,33 @@ export const ChoosingTheAttribute: Story = {
 
     // Through the window, as a researcher answers it: the trigger opens it,
     // the search box narrows it, and the row is what carries the choice.
-    await userEvent.click(
-      await canvas.findByRole('button', {
-        name: /^(Select|Change) attribute$/u,
+    const trigger = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>(
+        '[data-field-name="quickAdd"] [data-field-focus-target]',
+      );
+      if (found === null) throw new Error('The attribute picker is missing.');
+      return found;
+    });
+    await userEvent.click(trigger);
+    const picker = within(
+      await waitFor(() => {
+        const opened = document.body.querySelector<HTMLElement>(
+          '[data-attribute-picker-popup][data-open]',
+        );
+        if (opened === null) throw new Error('The attribute popup is closed.');
+        return opened;
       }),
     );
-    const picker = within(await within(document.body).findByRole('dialog'));
     await userEvent.type(
-      picker.getByRole('searchbox', { name: 'Find or create an attribute' }),
+      picker.getByRole('combobox', { name: 'Find or create an attribute' }),
       'relationship_to_ego',
     );
     await userEvent.click(
       picker.getByRole('option', { name: 'relationship_to_ego' }),
     );
-    await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
-    ).toBeInTheDocument();
+    await waitFor(async () => {
+      await expect(trigger).toHaveAccessibleName(/relationship_to_ego$/u);
+    });
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
     await waitFor(async () => {

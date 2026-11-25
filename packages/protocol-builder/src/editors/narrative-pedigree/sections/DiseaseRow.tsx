@@ -77,8 +77,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * The attributes a sibling row already maps, so one attribute never describes
- * two diseases.
+ * The attributes a sibling row already maps, each with the sentence naming
+ * the disease that maps it, so one attribute never describes two diseases.
  *
  * Read from the LIVE rows rather than the saved stage: a disease added in this
  * session is not saved yet, and one just deleted must free its attribute at
@@ -87,12 +87,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const siblingVariables = (
   rows: unknown,
   editIndex: number | undefined,
-): ReadonlySet<string> => {
-  if (!Array.isArray(rows)) return new Set();
-  const used = new Set<string>();
+  reason: (diseaseLabel: unknown) => string,
+): ReadonlyMap<string, string> => {
+  const used = new Map<string, string>();
+  if (!Array.isArray(rows)) return used;
   rows.forEach((row, index) => {
     if (index === editIndex || !isRecord(row)) return;
-    if (typeof row.attribute === 'string') used.add(row.attribute);
+    if (typeof row.attribute === 'string' && !used.has(row.attribute)) {
+      used.set(row.attribute, reason(row.label));
+    }
   });
   return used;
 };
@@ -128,6 +131,7 @@ export function useDiseaseSubject(): CodebookSubject | null {
 export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
+  const localize = useLocalizedText();
   const { roleMap, slotMap } = useDiseaseVariableIndexes();
   const subject = useDiseaseSubject();
   const sourceStageId = useStageValue(SOURCE_FIELD);
@@ -169,11 +173,20 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
         subject,
         sourceStageId,
         ...(currentVariable === undefined ? {} : { currentVariable }),
-        used: siblingVariables(rows, editIndex),
+        used: siblingVariables(rows, editIndex, (diseaseLabel) => {
+          const diseaseName = localize(diseaseLabel).text;
+          return intl.formatMessage(
+            narrativePedigreeMessages.diseaseVariableMappedElsewhere,
+            { named: diseaseName === '' ? 'no' : 'yes', diseaseName },
+          );
+        }),
+        intl,
       }),
     [
       currentVariable,
       editIndex,
+      intl,
+      localize,
       protocolContext,
       roleMap,
       rows,

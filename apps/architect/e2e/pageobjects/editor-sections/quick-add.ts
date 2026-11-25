@@ -7,9 +7,11 @@ import { chooseOrCreateAttribute } from './variables.js';
 // `editors/name-generator-quick-add/sections/QuickAddSection.tsx`, `Quick add`)
 // holds one field, `quickAdd`, labelled "Select an attribute" and rendered by
 // `VariablePickerField`. Facts read from that source:
-// - The picker is a trigger opening the attribute window over the node type's
-//   TEXT attributes; because this section passes `onCreateOption`, the window
-//   also offers to create one under whatever is typed into its search box.
+// - The picker is a trigger opening the attribute popup over the node type's
+//   attributes, of which only the TEXT ones can be chosen (the rest are
+//   listed under "Not available here"); because this section passes
+//   `onCreateOption`, the popup also offers to create one under whatever is
+//   typed into its search box.
 // - So this selects when the type already has the attribute and creates only
 //   when it does not — a second quick-add stage on the same node type points
 //   at the attribute the first one made, and asking the codebook for a name it
@@ -33,13 +35,10 @@ export async function selectOrCreateQuickAddVariable(
   // Scoped to the field: a prompt dialog's attribute stamps render a picker of
   // their own, and so does the codebook surface.
   const picker = editor.field('quickAdd');
+  // Which also asserts that the FIELD holds it, not merely the codebook: a
+  // create that landed while the section had moved on answers
+  // `{ status: 'unassigned' }`, which leaves the trigger on its placeholder.
   await chooseOrCreateAttribute(picker, variableName);
-  // And the FIELD holds it, not merely the codebook: a create that landed
-  // while the section had moved on answers `{ status: 'unassigned' }`, which
-  // leaves the trigger reading "Select attribute".
-  await expect(
-    picker.getByRole('button', { name: 'Change attribute', exact: true }),
-  ).toBeVisible();
 
   if (options.clearRequiredValidation !== true) return;
   const toggle = editor

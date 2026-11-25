@@ -21,6 +21,10 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 
+import {
+  resolveTranslation,
+  translationText,
+} from '../localization/localizedText.ts';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -70,9 +74,22 @@ const stageManagedOptionsMessages = defineMessages({
 
 export type WriterClass = 'validated' | 'unvalidated';
 
-export type VariableRoleMap = Readonly<
-  Record<string, Readonly<{ validated: number; unvalidated: number }>>
->;
+/**
+ * How many uses of each class an attribute has, and the stages making them.
+ *
+ * The stage labels are the researcher's own names for the stages, in the
+ * protocol's default language, each named once however many uses it makes.
+ * Optional because a role map written out by hand (in a test, say) has no
+ * stages to name; a use the map cannot place in a stage names none either.
+ */
+export type VariableRoleEntry = Readonly<{
+  validated: number;
+  unvalidated: number;
+  validatedStages?: readonly string[];
+  unvalidatedStages?: readonly string[];
+}>;
+
+export type VariableRoleMap = Readonly<Record<string, VariableRoleEntry>>;
 
 /**
  * Who has claimed an attribute for an interface slot, and how it is known.
@@ -85,7 +102,16 @@ export type VariableRoleMap = Readonly<
  * front of them.
  */
 export type ExclusiveVariableSlotClaim = Readonly<
-  | { source: 'protocol'; slot: string; owner: string }
+  | {
+      source: 'protocol';
+      slot: string;
+      owner: string;
+      /**
+       * The researcher's name for the stage that makes the claim, in the
+       * protocol's default language, or `''` where it has none.
+       */
+      stageLabel: string;
+    }
   | { source: 'draft'; slot: string }
 >;
 
@@ -112,8 +138,6 @@ export type StageManagedOptionOwner = Readonly<{
 export type StageManagedOptionMap = Readonly<
   Record<string, readonly StageManagedOptionOwner[]>
 >;
-
-type VariableOption = Readonly<{ value: string }>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -157,28 +181,61 @@ export const entityTypeUsageKey = (
   typeId: string,
 ): string => JSON.stringify([entity, typeId]);
 
+/**
+ * The text of one stage's label, as a sentence naming the stage shows it: the
+ * protocol's default language, or where the protocol's languages are not
+ * known, the first language the label has.
+ */
+const stageLabelText = (
+  context: ProtocolBuilderProtocolContext,
+  stageIndex: number | undefined,
+): string => {
+  const stage =
+    stageIndex === undefined ? undefined : context.orderedStages[stageIndex];
+  if (stage === undefined) return '';
+  const { localization } = context;
+  return localization === undefined
+    ? resolveTranslation(stage.label, undefined, undefined).text
+    : translationText(stage.label, localization.defaultLocale);
+};
+
+const stageIndexOfPath = (path: readonly unknown[]): number | undefined =>
+  path[0] === 'stages' && typeof path[1] === 'number' ? path[1] : undefined;
+
 export function buildVariableRoleMap(
   context: ProtocolBuilderProtocolContext,
   excludedStageId?: string,
 ): VariableRoleMap {
-  const map = new Map<string, { validated: number; unvalidated: number }>();
+  const map = new Map<string, VariableRoleEntry>();
   for (const group of collectVariableRoleHits(protocolFrom(context))) {
-    const countOutsideStage = (hits: typeof group.validated): number =>
+    const outsideStage = (hits: typeof group.validated) =>
       excludedStageId === undefined
-        ? hits.length
+        ? hits
         : hits.filter((hit) => {
             if (hit.stageIndex === undefined) return true;
             return (
               context.orderedStages[hit.stageIndex]?.id !== excludedStageId
             );
-          }).length;
+          });
+    const stagesOf = (hits: typeof group.validated): readonly string[] =>
+      Object.freeze([
+        ...new Set(
+          hits
+            .map((hit) => stageLabelText(context, hit.stageIndex))
+            .filter((label) => label !== ''),
+        ),
+      ]);
     const subject = normalizeSubject(group.subject);
     if (subject === undefined) continue;
+    const validated = outsideStage(group.validated);
+    const unvalidated = outsideStage(group.unvalidated);
     map.set(
       variableRoleKey(subject, group.variableId),
       Object.freeze({
-        validated: countOutsideStage(group.validated),
-        unvalidated: countOutsideStage(group.unvalidated),
+        validated: validated.length,
+        unvalidated: unvalidated.length,
+        validatedStages: stagesOf(validated),
+        unvalidatedStages: stagesOf(unvalidated),
       }),
     );
   }
@@ -208,41 +265,6 @@ export const hasConflictingUse = (
   writerClass === 'validated'
     ? hasUnvalidatedUse(roleMap, subject, variableId)
     : hasValidatedUse(roleMap, subject, variableId);
-
-const escapeSet = (
-  currentValue?: string | readonly string[],
-): ReadonlySet<string> =>
-  new Set(typeof currentValue === 'string' ? [currentValue] : currentValue);
-
-/** Options safe to offer a validated writer such as a form field. */
-export const excludeUnvalidatedUses = <T extends VariableOption>(
-  roleMap: VariableRoleMap,
-  subject: CodebookSubject,
-  options: readonly T[],
-  currentValue?: string | readonly string[],
-): T[] => {
-  const escaped = escapeSet(currentValue);
-  return options.filter(
-    (option) =>
-      escaped.has(option.value) ||
-      !hasUnvalidatedUse(roleMap, subject, option.value),
-  );
-};
-
-/** Options safe to offer an unvalidated writer such as a bin or highlight. */
-export const excludeValidatedUses = <T extends VariableOption>(
-  roleMap: VariableRoleMap,
-  subject: CodebookSubject,
-  options: readonly T[],
-  currentValue?: string | readonly string[],
-): T[] => {
-  const escaped = escapeSet(currentValue);
-  return options.filter(
-    (option) =>
-      escaped.has(option.value) ||
-      !hasValidatedUse(roleMap, subject, option.value),
-  );
-};
 
 export function variableRoleConflicts(
   context: ProtocolBuilderProtocolContext,
@@ -295,6 +317,7 @@ export function buildExclusiveVariableSlotMap(
         source: 'protocol' as const,
         slot: claim.descriptor.slot,
         owner: claim.descriptor.owner,
+        stageLabel: stageLabelText(context, stageIndexOfPath(claim.path)),
       }),
     );
   }
@@ -413,25 +436,6 @@ export const stageManagedOptionsRefusal = (
 
 export const quotedLabels = (stageLabels: readonly string[]): string =>
   stageLabels.map((label) => `“${label}”`).join(', ');
-
-/**
- * Removes structural attributes owned by an interface while preserving a
- * picker's committed value and any claim made by the same structural slot.
- */
-export const excludeInterfaceOwned = <T extends VariableOption>(
-  slotMap: ExclusiveVariableSlotMap,
-  subject: CodebookSubject,
-  options: readonly T[],
-  currentValue?: string | readonly string[],
-  ownSlot?: string,
-): T[] => {
-  const escaped = escapeSet(currentValue);
-  return options.filter((option) => {
-    if (escaped.has(option.value)) return true;
-    const claim = slotMap[variableRoleKey(subject, option.value)];
-    return claim === undefined || claim.slot === ownSlot;
-  });
-};
 
 /**
  * Save-time refusal for a structural attribute owned by another interface

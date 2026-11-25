@@ -192,7 +192,8 @@ const inventControls = (): HTMLElement[] => {
     ...screen.queryAllByRole('menuitem'),
   ];
   return candidates.filter((control) => {
-    if (control.closest('[data-variable-spotlight]') !== null) return false;
+    if (control.closest('[data-attribute-picker-popup][data-open]') !== null)
+      return false;
     const label = control.getAttribute('aria-label');
     return wanted.has(collapse(label ?? control.textContent ?? ''));
   });
@@ -464,7 +465,7 @@ const expectCreationFree = async (
   ).toBe(false);
 
   const dialog = await openAttributePicker(user, field);
-  const box = within(dialog).queryByRole('searchbox', {
+  const box = within(dialog).queryByRole('combobox', {
     name: SEARCH_ONLY_LABEL,
   });
   expect(
@@ -477,7 +478,9 @@ const expectCreationFree = async (
   ).toHaveAttribute('placeholder', SEARCH_ONLY_PLACEHOLDER);
   await user.keyboard('{Escape}');
   await waitFor(() => {
-    expect(document.body.querySelector('[data-variable-spotlight]')).toBeNull();
+    expect(
+      document.body.querySelector('[data-attribute-picker-popup][data-open]'),
+    ).toBeNull();
   });
 };
 

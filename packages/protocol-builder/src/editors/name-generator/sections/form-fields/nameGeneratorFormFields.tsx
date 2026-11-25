@@ -1,17 +1,32 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
-import { draftAdditionalAttributeVariableIds } from '../../../../codebook/variableValidation.ts';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+import { attributeAvailabilityMessages } from '../../../../codebook/attributeAvailability.ts';
+import { draftAdditionalAttributePromptNumbers } from '../../../../codebook/variableValidation.ts';
 import { useStageValue } from '../../../../form/stageFormHooks.ts';
 import FormFieldsSection from '../../../../sections/form-fields/FormFieldsSection.tsx';
 import type { StageSection } from '../../../defineStageEditor.tsx';
 
 function NameGeneratorFormFields() {
+  const intl = useAppIntl();
   const prompts = useStageValue('prompts');
+  const promptNumbers = useMemo(
+    () => draftAdditionalAttributePromptNumbers(prompts),
+    [prompts],
+  );
   // Stable across renders that did not change the prompts: a fresh array
   // re-registers the field list's validator.
   const draftUnvalidatedVariables = useMemo(
-    () => [...draftAdditionalAttributeVariableIds(prompts)],
-    [prompts],
+    () => [...promptNumbers.keys()],
+    [promptNumbers],
+  );
+  const draftUnvalidatedReason = useCallback(
+    (variableId: string) =>
+      intl.formatMessage(attributeAvailabilityMessages.promptAssigns, {
+        promptNumber: promptNumbers.get(variableId) ?? 0,
+      }),
+    [intl, promptNumbers],
   );
 
   return (
@@ -19,6 +34,7 @@ function NameGeneratorFormFields() {
       subject="node"
       hasTitle
       draftUnvalidatedVariables={draftUnvalidatedVariables}
+      draftUnvalidatedReason={draftUnvalidatedReason}
     />
   );
 }

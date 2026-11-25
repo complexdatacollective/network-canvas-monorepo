@@ -6,7 +6,6 @@ import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   createVariableId,
-  type Codebook,
   VARIABLE_TYPE_COMPONENTS,
   type VariableType,
 } from '@codaco/protocol-validation';
@@ -18,7 +17,6 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import {
-  variableForSubject,
   variablesForSubject,
   type CodebookSubject,
   type ProtocolBuilderProtocolContext,
@@ -105,31 +103,6 @@ export type SetVariableComponent = (
   component: string,
   authored?: ParametersToWrite,
 ) => Promise<SetVariableComponentOutcome>;
-
-export type RenameCodebookVariableOutcome =
-  /** The codebook already calls the attribute that, so nothing was written. */
-  | Readonly<{ status: 'unchanged' }>
-  /** The codebook now calls it that. */
-  | Readonly<{ status: 'written' }>
-  | Readonly<{
-      status: 'refused';
-      message: string;
-      /**
-       * Whether the only thing in the way is a collaborator.
-       *
-       * Read by the surface showing it to choose the register: a held section
-       * is not a fault — the rename is fine and will work once they are
-       * finished — so it is said as a notice rather than as an error. Same
-       * reading `EncryptedAttributesSection` and the codebook's own editors
-       * make of `CodebookRefusal`.
-       */
-      held: boolean;
-    }>;
-
-export type RenameCodebookVariable = (
-  variableId: string,
-  name: string,
-) => Promise<RenameCodebookVariableOutcome>;
 
 const messages = defineMessages({
   refusedUnchanged: {
@@ -700,146 +673,6 @@ export function useSetVariableOptions(): SetVariableOptions {
     },
     [intl, localization, protocolContext, stageManagedLock, write],
   );
-}
-
-/**
- * Renames an existing attribute.
- *
- * The whole of what a rename writes is the `name`: everything in a protocol
- * that refers to an attribute refers to it by its record id, which is exactly
- * why that id is minted rather than taken from the name. So nothing else moves
- * — no prompt, no rule and no form field is rewritten — and `documentWithUpdatedVariable`
- * lays the one property over the section the host holds NOW, leaving a
- * collaborator's edit to the same attribute's values or rules alone.
- *
- * A name the codebook already holds is refused by the write itself
- * (`assertVariableNameAvailable`, which excludes the attribute being renamed,
- * so a change of case or of Unicode form is not a duplicate of itself). The
- * control asks the same rule as the researcher types; this is the answer that
- * counts, because the name can be taken by a collaborator inside the round
- * trip. The write refuses in the same way a name that would make the export
- * put two things in one column — and a categorical or layout attribute's
- * columns are all named after it, so renaming one is judged on every column.
- *
- * A name that already matches is not written: an unchanged save must not put a
- * revision on the codebook section that a collaborator has to merge.
- */
-export function useRenameCodebookVariable(
-  subject: CodebookSubject | undefined,
-): RenameCodebookVariable {
-  const write = useCodebookSectionWrite();
-  const protocolContext = useProtocolContext();
-  const intl = useAppIntl();
-
-  return useCallback(
-    async (variableId, typed) => {
-      if (subject === undefined) {
-        return {
-          status: 'refused',
-          message: intl.formatMessage(messages.noSubject),
-          held: false,
-        };
-      }
-      const name = normalizeCodebookName(typed);
-      // The only reading of the cache here, and only to skip a write with
-      // nothing to say. A cache that has not arrived yet is not an answer, so
-      // it goes on and asks the host.
-      if (
-        variableForSubject(protocolContext, subject, variableId)?.name === name
-      ) {
-        return { status: 'unchanged' };
-      }
-
-      let refusal: string | undefined;
-      const outcome = await write(subject, (authoritativeDocument) => {
-        const variables = authoritativeDocument.variables;
-        const current =
-          typeof variables === 'object' && variables !== null
-            ? Reflect.get(variables, variableId)
-            : undefined;
-        if (typeof current !== 'object' || current === null) {
-          refusal = intl.formatMessage(messages.missingVariable);
-          throw new MissingVariableError(variableId);
-        }
-
-        try {
-          return documentWithUpdatedVariable({
-            subject,
-            authoritativeDocument,
-            variableId,
-            draft: { name },
-          });
-        } catch (error: unknown) {
-          refusal = refusalMessage(
-            error,
-            {
-              name,
-              type: Reflect.get(current, 'type'),
-              component: Reflect.get(current, 'component'),
-              authorsOptions: false,
-            },
-            // Every refusal a rename draft can raise has its own sentence —
-            // the name is taken, the attribute has gone, the name is not one
-            // the codebook can carry — so this is the last resort rather than
-            // a sentence about renaming: it is reached only by a throw with
-            // nothing in it a researcher could act on.
-            readRefusal(codebookRefusalMessage({ kind: 'unexplained' }), intl),
-            intl,
-          );
-          throw error;
-        }
-      });
-
-      if (outcome.status === 'applied') return { status: 'written' };
-      return {
-        status: 'refused',
-        message: refusal ?? rowRefusal(outcome, intl),
-        held: refusal === undefined && outcome.refusal.kind === 'held',
-      };
-    },
-    [intl, protocolContext, subject, write],
-  );
-}
-
-/**
- * Which codebook section one attribute lives in, or `undefined` where no
- * section of the protocol holds it.
- *
- * Asked of the record id rather than taken as a parameter, because a control
- * handed an attribute is often not handed the type it belongs to: a rule's
- * operand and a form field's attribute both arrive as an id, and the section
- * that offered them narrowed a pool it built for its own purpose. A record id
- * belongs to exactly one section — `documentWithCreatedVariable` refuses one
- * any other section already holds — so this is a reading rather than a guess.
- *
- * `undefined` is the answer for an id the protocol has lost, which is the one
- * fact a control offering to EDIT the attribute has to be gated on.
- */
-export function useSubjectForVariable(
-  variableId: string | undefined,
-): CodebookSubject | undefined {
-  const { codebook } = useProtocolContext();
-  return useMemo(
-    () => subjectHoldingVariable(codebook, variableId),
-    [codebook, variableId],
-  );
-}
-
-function subjectHoldingVariable(
-  codebook: Readonly<Codebook>,
-  variableId: string | undefined,
-): CodebookSubject | undefined {
-  if (variableId === undefined) return undefined;
-  for (const entity of ['node', 'edge'] as const) {
-    for (const [type, definition] of Object.entries(codebook[entity] ?? {})) {
-      if (Object.hasOwn(definition.variables ?? {}, variableId)) {
-        return { entity, type };
-      }
-    }
-  }
-  return Object.hasOwn(codebook.ego?.variables ?? {}, variableId)
-    ? { entity: 'ego' }
-    : undefined;
 }
 
 /**

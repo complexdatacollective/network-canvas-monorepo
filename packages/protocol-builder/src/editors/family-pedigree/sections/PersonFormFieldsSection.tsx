@@ -36,6 +36,7 @@ export default function PersonFormFieldsSection() {
       draftUnvalidatedVariables={unvalidatedPersonVariables}
       reservedVariables={personAttributeVariables}
       reservedVariableRefusal={messages.personFormReservedRefusal}
+      reservedVariableReason={messages.personFormReservedReason}
       title={messages.personFormTitle}
       sectionKey="person-form-fields"
       description={messages.personFormDescription}

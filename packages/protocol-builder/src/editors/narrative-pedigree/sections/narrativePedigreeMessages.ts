@@ -274,16 +274,23 @@ export const narrativePedigreeMessages = defineMessages({
   },
   diseaseVariableHint: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableHint',
-    defaultMessage: 'Select a boolean node attribute.',
+    defaultMessage: 'Select a Boolean node attribute.',
     description:
       'Guidance under the node-attribute control. Boolean because a family member either has this condition recorded against them or does not.',
   },
   diseaseVariableEmpty: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableEmpty',
     defaultMessage:
-      'There is no attribute for this disease to map. A disease can only map an attribute that a nomination prompt of the source pedigree records and that no other disease already maps. Add a nomination prompt to that pedigree asking who has this condition, and it can be mapped here.',
+      'The people in the source pedigree have no attributes yet. Add a nomination prompt to that pedigree asking who has this condition, and its attribute can be mapped here.',
     description:
-      'Said in place of the affected-status list when the source Family Pedigree stage leaves this disease nothing to map — either because no nomination prompt of it records an attribute this stage could draw, or because every attribute it does record is already mapped by another disease. It states the rule and what to do rather than which of the two it is, because the remedy is the same nomination prompt either way. "Nomination prompts" is the name of that part of the pedigree editor.',
+      'Said in place of the affected-status list when the node type of the source Family Pedigree stage has no attributes at all in the codebook. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; "Nomination prompts" is the name of that part of the pedigree editor.',
+  },
+  diseaseVariableMappedElsewhere: {
+    id: 'protocolBuilder.narrativePedigree.diseaseVariableMappedElsewhere',
+    defaultMessage:
+      '{named, select, yes {The disease “{diseaseName}” already uses this attribute.} other {Another disease on this stage already uses this attribute.}}',
+    description:
+      'Shown under an attribute in the affected-status list of a disease, when another disease of the same stage already maps this attribute. diseaseName is that disease’s name as the researcher wrote it, and is not translated. named is "yes" when that disease has a name and "no" when it has none yet.',
   },
   diseaseVariableRequired: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableRequired',
@@ -326,9 +333,9 @@ export const narrativePedigreeMessages = defineMessages({
   diseaseVariableTypeChanged: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableTypeChanged',
     defaultMessage:
-      '{attributeName} no longer records a yes-or-no answer, so it cannot say who is affected. Choose another attribute.',
+      '{attributeName} is no longer a Boolean attribute, so it cannot say who is affected. Choose another attribute.',
     description:
-      'Refusal shown on the attribute control of a disease whose attribute has been changed to another type while the researcher had the row open. attributeName is the attribute’s own name and is not translated. A disease is drawn from a true-or-false answer.',
+      'Refusal shown on the attribute control of a disease whose attribute has been changed to another type while the researcher had the row open. attributeName is the attribute’s own name and is not translated. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it. A disease is drawn from a true or false answer.',
   },
   diseaseUnnamed: {
     id: 'protocolBuilder.narrativePedigree.diseaseUnnamed',

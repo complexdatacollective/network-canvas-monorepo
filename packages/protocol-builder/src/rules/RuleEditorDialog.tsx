@@ -1438,7 +1438,7 @@ function RuleEditorFields({
       target === undefined ? {} : ruleVariables(codebook, target, entityTypeId);
     const variableType = ruleVariableType(variables, attributeId);
     return {
-      variableOptions: ruleVariableOptions(variables),
+      variableOptions: ruleVariableOptions(variables, intl),
       operatorSubject: ruleOperatorSubject(variables, attributeId, {
         allowEncryptedAttributes,
       }),
@@ -1455,6 +1455,7 @@ function RuleEditorFields({
     attributeId,
     codebook,
     entityTypeId,
+    intl,
     localize,
     target,
   ]);

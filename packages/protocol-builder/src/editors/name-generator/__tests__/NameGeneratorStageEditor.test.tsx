@@ -9,7 +9,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { attributeField } from '../../../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+  unavailableReason,
+} from '../../../testing/attributePicker.ts';
 import {
   fixtureStageIds,
   fixtureStageId,
@@ -105,10 +109,6 @@ const openDialog = async (
   return Object.assign(within(element), { element });
 };
 
-/** The two names the attribute picker's trigger goes by, before and after. */
-const isPickerTrigger = (name: string) =>
-  name === 'Select attribute' || name === 'Change attribute';
-
 /**
  * Opens the attribute picker of the field this row labels, and hands back the
  * window it opened.
@@ -119,9 +119,7 @@ const openPicker = async (
   label: string,
 ): Promise<HTMLElement> => {
   await harness.user.click(
-    within(attributeField(label, dialog.element)).getByRole('button', {
-      name: isPickerTrigger,
-    }),
+    attributeTrigger(attributeField(label, dialog.element)),
   );
   return await waitFor(() => {
     const window = screen
@@ -136,7 +134,11 @@ const openPicker = async (
 
 const expectWindowClosed = async (window: HTMLElement) => {
   await waitFor(() => {
-    if (window.isConnected) throw new Error('the attribute window is open');
+    // Closed rather than gone: Base UI keeps a combobox's popup mounted, and
+    // hidden, once its trigger has been used.
+    if (window.hasAttribute('data-open')) {
+      throw new Error('the attribute window is open');
+    }
   });
 };
 
@@ -514,9 +516,13 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     dialog: OpenDialog,
   ): Promise<string[]> => {
     const window = await openPicker(harness, dialog, 'Attribute');
-    const offered = [...window.querySelectorAll('[role="option"]')].map(
-      (row) => row.getAttribute('data-attribute-id') ?? '',
-    );
+    // The attributes that can be chosen; the others are listed below them,
+    // each with its reason.
+    const offered = [
+      ...window.querySelectorAll(
+        '[role="option"][data-attribute-id]:not([data-unavailable])',
+      ),
+    ].map((row) => row.getAttribute('data-attribute-id') ?? '');
     await harness.user.keyboard('{Escape}');
     await expectWindowClosed(window);
     return offered;
@@ -565,5 +571,15 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     // offered, so the section is filtering rather than failing.
     expect(offered).toContain(personVariable('flagged'));
     expect(offered).not.toContain(FREE_ATTRIBUTE);
+    // Listed, with the prompt that stamps it.
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Attribute', after.element),
+        FREE_ATTRIBUTE,
+      ),
+    ).toBe(
+      'Prompt 1 on this stage assigns a value to this attribute, so it cannot also be collected here.',
+    );
   });
 });

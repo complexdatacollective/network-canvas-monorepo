@@ -276,9 +276,9 @@ describe('the tasks a sociogram sets', () => {
  * Tapping a node WRITES the attribute it marks, without the codebook's
  * validation rules running — so a prompt may not mark one a form collects.
  *
- * The picker enforces that by never offering such an attribute, and the
- * codebook is read live: a collaborator adding the form field while the dialog
- * is open drops the attribute from the option list and leaves the pick sitting
+ * The picker enforces that by never letting such an attribute be chosen, and
+ * the codebook is read live: a collaborator adding the form field while the
+ * dialog is open marks the attribute unavailable and leaves the pick sitting
  * in the form. Nothing then refused the row, so Save committed a prompt the
  * protocol reports as a writer conflict.
  */
@@ -295,13 +295,13 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     );
 
     collectInAForm(harness, HIGHLIGHTED);
-    // The picker is built from the live codebook, so the attribute leaving its
-    // options IS the collaborator's change arriving — and that is the state
-    // the row's own gate has to refuse from. Waited for rather than assumed:
-    // a save clicked before the change lands is refused by nothing, which is
-    // the defect this test exists for.
+    // The picker is built from the live codebook, so the attribute the field
+    // holds being marked unavailable IS the collaborator's change arriving —
+    // and that is the state the row's own gate has to refuse from. Waited for
+    // rather than assumed: a save clicked before the change lands is refused
+    // by nothing, which is the defect this test exists for.
     await within(await promptAttributeField('Boolean attribute')).findByText(
-      `${HIGHLIGHTED} — this attribute is not available here`,
+      'The “Alter Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
     );
 
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));

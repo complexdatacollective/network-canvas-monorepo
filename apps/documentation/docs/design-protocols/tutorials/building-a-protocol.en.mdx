@@ -169,7 +169,7 @@ Click **Save and Return** to create the node type and return to the name generat
 
 Next, create a Quick Add attribute that will store data entered for each alter nominated by the participant. Unless you have a good reason not to, this attribute should be called "name". Interviewer will use this attribute as the label for every node created on this stage.
 
-To create it, click **Select attribute** under **Select an attribute**. A window opens with a search box, **Find or create an attribute**, above a list of the attributes this node type already has. Type the name of your attribute (e.g., "name"). Because nothing matches yet, the first row offers **Create new attribute called “name”.** — choose it, and the new attribute is created and selected as the Quick Add attribute.
+To create it, click the box under **Select an attribute**. A list opens below it, with a search box, **Find or create an attribute**, above the attributes that this node type already has. Type the name of your attribute (e.g., "name"). Because nothing matches yet, the first row offers **Create “name”**, with **New Text attribute** below it — choose it, and the new attribute is created and selected as the Quick Add attribute.
 
 What the participant types into the quick add box is the only thing they give for each node, so an attribute created here starts out **required**. If you want to let participants leave the box empty, switch off **Required answer** in the **Validation** section under the picker.
 
@@ -254,7 +254,7 @@ First, create a title for the form to orient the participant to the information 
 
 Next, define the fields of the form. Click **Create new form field** in the **Form fields** section. A dialog opens with the field's settings on the left, where you choose an attribute for the field, write the question, choose an input control, and set any validation you want to include. On the right is a live preview of the question as the participant will see it, which updates as you work. On a narrow screen the preview appears below the settings instead.
 
-For the first field, you want to know the name of the clinic the participant is nominating. Under **Attribute selection**, click **Select attribute** and choose "name" from the list, or, if the Clinic node type doesn't have a "name" attribute yet, type "name" and choose **Create new attribute called “name”.** Next, under **Field configuration**, enter the **Question text**. In this example, use the question prompt "What is the name of this clinic?"
+For the first field, you want to know the name of the clinic the participant is nominating. Under **Attribute selection**, click **Select an attribute** and choose "name" from the list, or, if the Clinic node type doesn't have a "name" attribute yet, type "name" and choose **Create “name”**. Next, under **Field configuration**, enter the **Question text**. In this example, use the question prompt "What is the name of this clinic?"
 
 </AppOnly>
 
@@ -278,9 +278,11 @@ In Architect, each form field can include an optional **hint** — a short, mark
 
 <TipBox>
 
-Many screens in Architect let you either create a new attribute or select an existing one. They all use the same attribute window: click **Select attribute**, then type into the search box. Where you can create an attribute, the search box reads **Find or create an attribute**, and typing a name that doesn't exist yet offers **Create new attribute called “…”.** as the first row. Where you can only choose an existing attribute, the box reads **Find an attribute**.
+Many screens in Architect let you either create a new attribute or select an existing one. They all use the same attribute box: click it, and a list of attributes opens below it, with a search box at the top. Type into the search box to narrow the list. The list keeps each attribute whose name contains the letters that you typed in the same order, even when other letters come between them, so "mrd" finds "married". Where you can create an attribute, the search box reads **Find or create an attribute**, and typing a name that doesn't exist yet offers **Create “…”** as the first row. Where the attribute's type is already decided, the row also names it, for example **New Boolean attribute**. If the name can't be used, the row says why. Where you can only choose an existing attribute, the search box reads **Find an attribute**.
 
 Otherwise, choose an existing attribute from the list. You can use the arrow keys and Enter instead of the mouse.
+
+Attributes that exist but can't be used in that place, for example because they have the wrong type or are already used elsewhere on the stage, are dimmed and listed under **Not available here**. Click one, or press Enter on it, to see why it can't be used.
 
 </TipBox>
 

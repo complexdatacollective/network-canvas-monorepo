@@ -12,6 +12,7 @@ import {
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
+import { availableOnly } from '../../../../codebook/attributeAvailability.ts';
 import { LocalizedInputField } from '../../../../fields/LocalizedStringField.tsx';
 import { FilterRuleSetField } from '../../../../fields/RuleSetField.tsx';
 import VariablePickerField from '../../../../fields/VariablePickerField.tsx';
@@ -328,13 +329,19 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     types: CATEGORICAL_TYPES,
     ...(committedGroup === undefined ? {} : { currentValue: committedGroup }),
   });
-  const highlightOptions = useVariableChoices({
+  const highlightAttributes = useVariableChoices({
     subject,
     types: BOOLEAN_TYPES,
     ...(committedHighlight === undefined
       ? {}
       : { currentValue: committedHighlight }),
   });
+  // The highlight control is a tick list, not a picker: it has no place to
+  // list an attribute it cannot use, so it shows only the ones it can.
+  const highlightOptions = useMemo(
+    () => availableOnly(highlightAttributes),
+    [highlightAttributes],
+  );
 
   /**
    * What this preset NAMES on the two tick lists, read from the field rather
@@ -370,7 +377,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
 
   /**
    * Judged against what the list OFFERS rather than against the codebook, so
-   * an attribute retyped away from true-or-false is recoverable too. It is
+   * an attribute retyped away from Boolean is recoverable too. It is
    * still in the codebook and still cannot be a highlight, and read against
    * the codebook alone it would be neither offered nor restored — a tick
    * nothing could untick. Which of the two it is, is not something this list
@@ -380,9 +387,12 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     () => new Set(highlightOptions.map((option) => option.value)),
     [highlightOptions],
   );
+  // Named from every attribute, so a highlight retyped away from Boolean is
+  // still called by its name.
   const attributeNames = useMemo(
-    () => new Map(highlightOptions.map(({ value, label }) => [value, label])),
-    [highlightOptions],
+    () =>
+      new Map(highlightAttributes.map(({ value, label }) => [value, label])),
+    [highlightAttributes],
   );
   const lostHighlights = useLostReferences(
     highlightedAttributes,

@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { attributeField } from '../../../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+} from '../../../testing/attributePicker.ts';
 import {
   fixtureTypeId,
   fixtureVariableId,
@@ -67,11 +70,7 @@ describe('the network composer sections, read in Spanish', () => {
     // that choice rather than the word for making one: the picker's own words
     // come from the same catalog as the label above it. Waited for, because
     // the field is drawn before the stage's own value reaches it.
-    await waitFor(() =>
-      expect(
-        within(quickAdd).getByRole('button', { name: 'Cambiar atributo' }),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(attributeTrigger(quickAdd)).toBeInTheDocument());
     expect(
       attributeField('Crear o seleccionar un atributo categórico para agrupar'),
     ).toBeInTheDocument();

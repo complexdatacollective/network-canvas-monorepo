@@ -8,9 +8,17 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { CreateOptionOutcome } from '../../../fields/VariablePickerField.tsx';
+import VariablePickerField, {
+  type CreateOptionOutcome,
+} from '../../../fields/VariablePickerField.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import {
+  chooseAttributeById,
+  offeredAttributes,
+  unavailableAttributes,
+  unavailableReason,
+} from '../../../testing/attributePicker.ts';
 import {
   fixtureTypeId,
   fixtureVariableId,
@@ -74,9 +82,25 @@ const STAGE_FIELDS: SectionDoc = {
 };
 
 const VARIABLE_OPTIONS = [
-  { label: 'Flagged', value: FLAGGED, type: 'boolean' },
-  { label: 'Highlighted', value: HIGHLIGHTED, type: 'boolean' },
+  { label: 'Flagged', value: FLAGGED, type: 'boolean' as const },
+  { label: 'Highlighted', value: HIGHLIGHTED, type: 'boolean' as const },
 ];
+
+/** The picker every host actually injects. */
+const RealVariablePicker = VariablePickerField as ComponentType<
+  Record<string, unknown>
+>;
+
+/** One row's attribute field, by the row's position in the list. */
+const rowAttributeField = (index: number): HTMLElement => {
+  const field = document.querySelector<HTMLElement>(
+    `[data-field-name="additionalAttributes[${index}].variable"]`,
+  );
+  if (field === null) {
+    throw new Error(`row ${index} has no attribute field`);
+  }
+  return field;
+};
 
 /**
  * What the row answered the picker with, newest last.
@@ -280,24 +304,43 @@ describe('AssignAttributes', () => {
   });
 
   it('stops a second row claiming an attribute the first already stamps', async () => {
-    const { user } = renderAttributeList([], []);
-
-    await user.selectOptions(await addRow(user), HIGHLIGHTED);
-    await screen.findByText('Value to assign');
-    await addRow(user);
-
-    const pickers = await screen.findAllByRole('combobox', {
-      name: 'Create or select an attribute',
+    // Through the picker every host injects: an attribute another row stamps
+    // has to reach it as one that cannot be chosen, with the reason.
+    const { user, attributes } = renderAttributeList([], [], {
+      picker: RealVariablePicker,
     });
-    const secondRow = within(pickers[1]!);
+    const add = () =>
+      user.click(
+        screen.getByRole('button', { name: 'Add new attribute to assign' }),
+      );
+
+    await add();
+    await chooseAttributeById(user, rowAttributeField(0), HIGHLIGHTED);
+    await screen.findByText('Value to assign');
+    await add();
+    await waitFor(() => rowAttributeField(1));
+    const secondRow = rowAttributeField(1);
+
     // One variable holds one value per node, so a second row stamping the same
     // attribute is not a second stamp — it silently overwrites the first.
-    expect(
-      secondRow.getByRole('option', { name: 'Highlighted' }),
-    ).toBeDisabled();
+    expect(await unavailableAttributes(user, secondRow)).toEqual([HIGHLIGHTED]);
     // Everything else the pool offers is still open, so this is the used
     // attribute being withdrawn rather than the list being closed.
-    expect(secondRow.getByRole('option', { name: 'Flagged' })).toBeEnabled();
+    expect(await offeredAttributes(user, secondRow)).toEqual([FLAGGED]);
+    // Choosing it explains rather than chooses.
+    expect(await unavailableReason(user, secondRow, HIGHLIGHTED)).toBe(
+      'Another row in this list already assigns a value to this attribute.',
+    );
+    await waitFor(() =>
+      expect(attributes()).toEqual([
+        { id: expect.any(String), variable: HIGHLIGHTED },
+        NEW_ROW,
+      ]),
+    );
+    // The row that stamps it keeps it.
+    expect(await offeredAttributes(user, rowAttributeField(0))).toContain(
+      HIGHLIGHTED,
+    );
   });
 
   it('shows which row is incomplete when the save is refused', async () => {

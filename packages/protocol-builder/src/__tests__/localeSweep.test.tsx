@@ -19,7 +19,10 @@ import PageContentSection from '../sections/page-content/PageContentSection.tsx'
 import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/skip-logic/SkipLogicSection.tsx';
 import SubjectSection from '../sections/subject-picker/SubjectSection.tsx';
-import { attributeField } from '../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+} from '../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   localeLeaks,
@@ -238,7 +241,7 @@ describe('the row dialogs under es', () => {
     // Drawn rather than merely mounted: the attribute picker is the last of the
     // dialog's controls to arrive, and a sweep taken before it is there reads
     // half a surface.
-    await screen.findByRole('button', { name: 'Seleccionar atributo' });
+    await screen.findByRole('combobox', { name: /^Atributo/u });
 
     expectNoLocaleLeaks(
       'the add-a-form-field dialog',
@@ -278,11 +281,7 @@ describe('the row dialogs under es', () => {
     // The window the attribute is chosen in is a fifth surface, with copy none
     // of the four above render: its search box, the list under it, and what it
     // says when nothing a researcher types matches.
-    await harness.user.click(
-      within(attributeField('Atributo', row)).getByRole('button', {
-        name: 'Seleccionar atributo',
-      }),
-    );
+    await harness.user.click(attributeTrigger(attributeField('Atributo', row)));
     const picker = await waitFor(() => {
       const found = screen
         .getAllByRole('dialog')
@@ -295,7 +294,7 @@ describe('the row dialogs under es', () => {
 
     expectNoLocaleLeaks('the attribute window', researcherWords(harness));
 
-    const search = within(picker).getByRole('searchbox', {
+    const search = within(picker).getByRole('combobox', {
       name: 'Find or create an attribute',
     });
     await harness.user.type(search, 'apodo');

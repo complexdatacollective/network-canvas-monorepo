@@ -155,7 +155,7 @@ globalThis.Worker ??= WorkerStub;
 // unhandled error rather than a readable failure. `scrollTo` is what
 // fresco-ui's default onSubmitInvalid (focusFirstError) reaches for when a
 // submit is blocked; `scrollIntoView` is for everything else that scrolls a
-// selection into view (VariableSpotlight, the new-stage screens, useWizardState).
+// selection into view (the attribute picker, the new-stage screens, useWizardState).
 if (!Reflect.has(Element.prototype, 'scrollTo')) {
   Element.prototype.scrollTo = () => undefined;
 }

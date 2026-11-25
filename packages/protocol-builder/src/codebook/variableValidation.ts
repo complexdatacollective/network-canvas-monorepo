@@ -947,16 +947,26 @@ export const draftFormFieldVariableIds = (
 
 export const draftAdditionalAttributeVariableIds = (
   prompts: unknown,
-): ReadonlySet<string> => {
-  const ids = new Set<string>();
-  if (!Array.isArray(prompts)) return ids;
-  for (const prompt of prompts) {
-    if (!isRecord(prompt)) continue;
+): ReadonlySet<string> =>
+  new Set(draftAdditionalAttributePromptNumbers(prompts).keys());
+
+/**
+ * The same attributes, each with the number of the first prompt that assigns
+ * it (counted from 1, as the prompt list shows them), for a sentence that
+ * names the prompt.
+ */
+export const draftAdditionalAttributePromptNumbers = (
+  prompts: unknown,
+): ReadonlyMap<string, number> => {
+  const numbers = new Map<string, number>();
+  if (!Array.isArray(prompts)) return numbers;
+  prompts.forEach((prompt: unknown, index) => {
+    if (!isRecord(prompt)) return;
     for (const id of variableIdsFromRows(prompt.additionalAttributes)) {
-      ids.add(id);
+      if (!numbers.has(id)) numbers.set(id, index + 1);
     }
-  }
-  return ids;
+  });
+  return numbers;
 };
 
 export type RuleMapContext = Readonly<{

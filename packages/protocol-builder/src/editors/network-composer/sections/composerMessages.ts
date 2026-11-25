@@ -51,9 +51,9 @@ export const composerMessages = defineMessages({
   quickAddEmpty: {
     id: 'protocolBuilder.networkCanvas.quickAddEmpty',
     defaultMessage:
-      'This type has no free-text attributes available, so there is nothing for the quick-add box to fill in.',
+      'This type has no Text attributes yet. Create one for the quick-add box to fill in.',
     description:
-      'Shown in place of the quick-add attribute list when the node type this stage builds has no text attribute this stage may take.',
+      'Shown under the quick-add attribute control when the node type that this stage builds has no attributes at all in the codebook. Text is the name of the kind of attribute that records typed text, as the codebook editor names it.',
   },
   quickAddCreateLabel: {
     id: 'protocolBuilder.networkCanvas.createQuickAddLabel',
@@ -136,7 +136,7 @@ export const composerMessages = defineMessages({
     defaultMessage:
       'This type has no attributes with a fixed set of values, so there is nothing to group nodes by.',
     description:
-      'Shown in place of the grouping-attribute list when the node type this stage builds has no categorical attribute this stage may take.',
+      'Shown under the grouping-attribute control when the node type that this stage builds has no attributes at all in the codebook.',
   },
   hullCreateLabel: {
     id: 'protocolBuilder.networkCanvas.createHullLabel',

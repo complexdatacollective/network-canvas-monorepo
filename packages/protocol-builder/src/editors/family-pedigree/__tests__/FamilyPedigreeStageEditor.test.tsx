@@ -25,6 +25,7 @@ import {
   FIELD_LABEL,
   inventAttribute,
   offeredAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
 import {
   MINTED_OPTION_ID,
@@ -648,6 +649,13 @@ describe('the attribute slots', () => {
     expect(
       await offeredAttributes(harness.user, attributeField('Current partner')),
     ).toEqual([CURRENT_PARTNER]);
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Current partner'),
+        GESTATIONAL_CARRIER,
+      ),
+    ).toBe('Another field on this stage already uses this attribute.');
   });
 
   /**
@@ -665,6 +673,13 @@ describe('the attribute slots', () => {
     );
     expect(offered).toContain(GENDER_IDENTITY);
     expect(offered).not.toContain(SEX_ASSIGNED_AT_BIRTH);
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Gender identity'),
+        SEX_ASSIGNED_AT_BIRTH,
+      ),
+    ).toBe('Another field on this stage already uses this attribute.');
   });
 
   it('keeps the person attributes out of the additional fields', async () => {
@@ -697,6 +712,15 @@ describe('the attribute slots', () => {
     ]) {
       expect(offered).not.toContain(bound);
     }
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Attribute', dialog),
+        FM_NAME,
+      ),
+    ).toBe(
+      'This Family Pedigree stage already records this attribute, so a form field cannot also collect it.',
+    );
   });
 });
 
@@ -2506,6 +2530,15 @@ describe('the nomination prompts', () => {
         attributeField('Attribute', dialog),
       ),
     ).not.toContain(HEART_DISEASE);
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Attribute', dialog),
+        HEART_DISEASE,
+      ),
+    ).toBe(
+      'This Family Pedigree stage already records this attribute, so a form field cannot also collect it.',
+    );
   });
 });
 

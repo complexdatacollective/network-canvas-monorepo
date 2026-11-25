@@ -6,6 +6,10 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import Section from '@codaco/fresco-ui/Section';
 
+import {
+  attributeAvailabilityMessages,
+  markListed,
+} from '../../../codebook/attributeAvailability.ts';
 import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
 import {
   buildVariableRoleMap,
@@ -89,24 +93,19 @@ const variablesIn = (value: unknown): string[] =>
     : [];
 
 /**
- * The offered options minus the ones this stage's own draft has already
- * claimed the other way, and never minus the field's own pick.
- *
- * A picker that dropped its own value would blank the control and then write
- * the blank over the reference the researcher has to resolve.
+ * The offered options, with the ones this stage's own draft has already
+ * claimed the other way marked with `reason` — never the field's own pick,
+ * which the researcher has to be able to keep while they resolve it.
  */
 function useKeptOptions(
   offered: readonly VariablePickerOption[],
   held: string | undefined,
   claimedElsewhere: readonly string[],
+  reason: string,
 ): readonly VariablePickerOption[] {
   return useMemo(
-    () =>
-      offered.filter(
-        (option) =>
-          option.value === held || !claimedElsewhere.includes(option.value),
-      ),
-    [claimedElsewhere, held, offered],
+    () => markListed(offered, claimedElsewhere, reason, held),
+    [claimedElsewhere, held, offered, reason],
   );
 }
 
@@ -120,7 +119,7 @@ function useKeptOptions(
  * them names a codebook attribute, so each can create one where the protocol
  * has nothing suitable yet.
  *
- * The pickers deliberately exclude opposite things. Adding a node and
+ * The pickers deliberately rule out opposite things. Adding a node and
  * answering its form both collect through the codebook's own rules, so neither
  * may take an attribute something writes around them; the position and the
  * grouping are written straight onto the node as the participant drags and
@@ -129,13 +128,13 @@ function useKeptOptions(
  * unsaved draft: the role map is built with the edited stage taken out, so a
  * pick made a moment ago is a write nothing else accounts for.
  *
- * Excluded, and ALSO refused at the save — but only for a conflict with the
+ * Marked as unavailable, and ALSO refused at the save — but only for a conflict with the
  * rest of the protocol. A picker keeps the value it arrived holding, whatever
  * the filters say, because one that dropped its own pick would write the blank
  * over the reference the researcher has to resolve; so a protocol authored
  * elsewhere, where a form in another stage already collects what this stage
- * writes around the codebook, opens here with the conflict intact and nothing
- * filtered. That is the state Architect's own composer refused to save, and
+ * writes around the codebook, opens here with the conflict intact and the pick
+ * still choosable. That is the state Architect's own composer refused to save, and
  * the one place it can be resolved — with no unchanged-pick escape, for the
  * same reason: re-saving the stage as it stands leaves the export mixing a
  * checked answer with one this stage stamped.
@@ -215,8 +214,14 @@ export default function ComposerNodesSection() {
     quickAddOffered,
     quickAdd,
     draftUnvalidated,
+    intl.formatMessage(attributeAvailabilityMessages.draftUnvalidatedHere),
   );
-  const hullOptions = useKeptOptions(hullOffered, hull, draftValidated);
+  const hullOptions = useKeptOptions(
+    hullOffered,
+    hull,
+    draftValidated,
+    intl.formatMessage(attributeAvailabilityMessages.draftValidatedHere),
+  );
 
   /**
    * What the rest of the protocol already claims, and what to say about it.

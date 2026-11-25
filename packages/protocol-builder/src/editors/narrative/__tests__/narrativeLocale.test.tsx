@@ -1,8 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
   attributeField,
+  attributeTrigger,
   createRowIn,
 } from '../../../testing/attributePicker.ts';
 import { fixtureVariableId } from '../../../testing/protocolFixture.ts';
@@ -69,9 +70,9 @@ describe('the narrative sections, read in Spanish', () => {
     // This preset already positions by an attribute, which is the state the
     // trigger says "change" rather than "select" in.
     expect(
-      within(
+      attributeTrigger(
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
-      ).getByRole('button', { name: 'Cambiar atributo' }),
+      ),
     ).toBeInTheDocument();
     // Inventing one is offered from inside that window, on the term the
     // researcher typed, and in their language: the sections no longer carry a

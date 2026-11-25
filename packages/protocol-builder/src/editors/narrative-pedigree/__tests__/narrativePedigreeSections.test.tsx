@@ -5,6 +5,7 @@ import {
   attributeField,
   awaitOfferedAttributes,
   offeredAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
 import {
   fixtureStageId,
@@ -39,13 +40,20 @@ const HAS_CONDITION_X = familyMemberVariable('hasConditionX');
 const HAS_CONDITION_Z = testVariableId('hasConditionZ');
 const CONDITION_NOTES = testVariableId('conditionNotes');
 
-/**
- * What the attribute picker says when it can offer nothing.
- *
- * Reached two ways — a pedigree that records no condition, and one whose
- * conditions are all mapped already — so the sentence names neither cause.
- */
-const NOTHING_LEFT_TO_MAP = /There is no attribute for this disease to map/;
+/** What the attribute field says while none of the attributes it lists can be used. */
+const NONE_AVAILABLE =
+  'None of the existing attributes can be used here. Open the list to see why.';
+
+/** Why one attribute in the disease's list cannot be chosen. */
+const reasonFor = (
+  harness: StageEditorHarness,
+  attributeId: string,
+): Promise<string> =>
+  unavailableReason(
+    harness.user,
+    attributeField('Node attribute', screen.getByRole('dialog')),
+    attributeId,
+  );
 
 const openFixture = (): StageEditorHarness =>
   renderStageEditor({
@@ -317,6 +325,13 @@ describe('the diseases a narrative pedigree defines', () => {
     // `hasConditionX` is already mapped by the disease this stage holds.
     expect(offered).not.toContain(IS_EGO);
     expect(offered).not.toContain(HAS_CONDITION_X);
+    // Both listed, each with its reason.
+    expect(await reasonFor(harness, IS_EGO)).toBe(
+      'The “Family Pedigree” stage records its own information in this attribute, so it cannot be used here.',
+    );
+    expect(await reasonFor(harness, HAS_CONDITION_X)).toBe(
+      'The disease “Condition X” already uses this attribute.',
+    );
   });
 
   /**
@@ -324,7 +339,7 @@ describe('the diseases a narrative pedigree defines', () => {
    * attribute that is not one cannot carry it. The prompt is what makes the
    * type the only thing keeping it out of the list.
    */
-  it('never offers a recorded attribute that cannot hold a yes-or-no answer', async () => {
+  it('never offers a recorded attribute that is not a Boolean', async () => {
     const harness = openFixture();
     alsoRecording(harness, {
       hasConditionZ: 'boolean',
@@ -336,6 +351,9 @@ describe('the diseases a narrative pedigree defines', () => {
       expect(list).toContain(HAS_CONDITION_Z),
     );
     expect(offered).not.toContain(CONDITION_NOTES);
+    expect(await reasonFor(harness, CONDITION_NOTES)).toBe(
+      'Only Boolean attributes can be used here.',
+    );
   });
 
   /**
@@ -349,14 +367,13 @@ describe('the diseases a narrative pedigree defines', () => {
     receiveSection(harness, SOURCE_STAGE_SECTION, pedigreeRecordingNothing());
 
     const dialog = await addDisease(harness);
-    expect(await dialog.findByText(NOTHING_LEFT_TO_MAP)).toBeInTheDocument();
-    // The picker is gone, not merely empty: its trigger is the only way into
-    // the window, so a control that still offered one would be a door onto an
-    // empty list. Asked by the trigger's own name, because the control stopped
-    // being a select when the window replaced it.
-    expect(
-      dialog.queryByRole('button', { name: 'Select attribute' }),
-    ).toBeNull();
+    expect(await dialog.findByText(NONE_AVAILABLE)).toBeInTheDocument();
+    expect(await offeredAttributesOf(harness)).toEqual([]);
+    // The condition the pedigree used to record is listed, with the reason
+    // and the remedy.
+    expect(await reasonFor(harness, HAS_CONDITION_X)).toBe(
+      'Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.',
+    );
   });
 
   /**
@@ -373,7 +390,10 @@ describe('the diseases a narrative pedigree defines', () => {
     const harness = openFixture();
 
     const dialog = await addDisease(harness);
-    expect(await dialog.findByText(NOTHING_LEFT_TO_MAP)).toBeInTheDocument();
+    expect(await dialog.findByText(NONE_AVAILABLE)).toBeInTheDocument();
+    expect(await reasonFor(harness, HAS_CONDITION_X)).toBe(
+      'The disease “Condition X” already uses this attribute.',
+    );
   });
 
   it('keeps a mapping the protocol already holds saveable', async () => {
@@ -555,7 +575,7 @@ describe('a disease the source pedigree stopped recording', () => {
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findByText(/no longer records a yes-or-no answer/),
+      await screen.findByText(/is no longer a Boolean attribute/),
     ).toBeInTheDocument();
   });
 });
@@ -631,11 +651,11 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
     });
 
     expect(
-      await screen.findByText(/no longer records a yes-or-no answer/),
+      await screen.findByText(/is no longer a Boolean attribute/),
     ).toBeInTheDocument();
     const row = diseaseRow('Condition X');
     expect(row).toContainElement(
-      screen.getByText(/no longer records a yes-or-no answer/),
+      screen.getByText(/is no longer a Boolean attribute/),
     );
     expect(row.querySelector('[aria-invalid="true"]')).not.toBeNull();
     expect(diseasesOutline(harness)).toBe('Has a problem');

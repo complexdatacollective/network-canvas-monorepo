@@ -31,6 +31,13 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
+  attributeAvailabilityMessages,
+  attributeChoices,
+  formCannotCollectReason,
+  markCrossClassUses,
+  markListed,
+} from '../../codebook/attributeAvailability.ts';
+import {
   useCreateCodebookVariable,
   useSetVariableComponent,
   useSetVariableOptions,
@@ -49,7 +56,7 @@ import {
 } from '../../codebook/variableParameters.ts';
 import {
   buildVariableRoleMap,
-  excludeUnvalidatedUses,
+  hasUnvalidatedUse,
 } from '../../codebook/variableRoles.ts';
 import { variableTypeLabel } from '../../codebook/variableTypeLabels.ts';
 import {
@@ -546,8 +553,12 @@ type FormFieldsScope = Readonly<{
   subject: CodebookSubject | undefined;
   /** See `draftUnvalidatedVariables`. Carried for the row's own picker. */
   draftUnvalidated: ReadonlySet<string>;
+  /** See `draftUnvalidatedReason`. Carried for the row's own picker. */
+  draftUnvalidatedReason: ((variableId: string) => string) | undefined;
   /** See `reservedVariables`. Carried for the row's own picker. */
   reserved: ReadonlySet<string>;
+  /** See `reservedVariableReason`. Carried for the row's own picker. */
+  reservedVariableReason: MessageDescriptor | undefined;
   /**
    * The stage `draftUnvalidated` is the whole account of, where there is one.
    * Carried so the picker and the save-time gate build the same role map.
@@ -650,6 +661,14 @@ export type FormFieldsSectionProps = Readonly<{
    */
   draftUnvalidatedVariables?: readonly string[];
   /**
+   * What the field's attribute list says about one of
+   * `draftUnvalidatedVariables`, formatted by the host from its own catalog:
+   * only the host knows which of its controls sets the attribute ("Prompt 2
+   * on this stage assigns a value to this attribute…"). Omitted, the list
+   * says that another field on this stage sets it.
+   */
+  draftUnvalidatedReason?: (variableId: string) => string;
+  /**
    * Attributes this form may NOT collect, because the interface mounting it
    * already collects them through a control of its own.
    *
@@ -673,6 +692,13 @@ export type FormFieldsSectionProps = Readonly<{
    * handed across this seam is extracted by nothing and translated by nobody.
    */
   reservedVariableRefusal?: MessageDescriptor;
+  /**
+   * What the field's attribute list says about a reserved attribute, in the
+   * words of the interface that reserved it. The refusal above is said about
+   * a pick that has been made; this is said about an attribute in the list.
+   * Omitted, the list says that another field on this stage uses it.
+   */
+  reservedVariableReason?: MessageDescriptor;
   /**
    * Words this form needs instead of the shared ones, because it describes
    * something the shared section cannot name.
@@ -730,8 +756,10 @@ export default function FormFieldsSection({
   capability,
   hasTitle = false,
   draftUnvalidatedVariables,
+  draftUnvalidatedReason,
   reservedVariables,
   reservedVariableRefusal,
+  reservedVariableReason,
   title = formFieldsMessages.title,
   sectionKey = 'form-fields',
   description = formFieldsMessages.description,
@@ -845,7 +873,9 @@ export default function FormFieldsSection({
       fieldsPath: FIELDS_PATH,
       subject: codebookSubject,
       draftUnvalidated,
+      draftUnvalidatedReason,
       reserved,
+      reservedVariableReason,
       answeredFor,
       reportRowUnderEdit,
     }),
@@ -853,8 +883,10 @@ export default function FormFieldsSection({
       answeredFor,
       codebookSubject,
       draftUnvalidated,
+      draftUnvalidatedReason,
       reportRowUnderEdit,
       reserved,
+      reservedVariableReason,
     ],
   );
 
@@ -1453,14 +1485,13 @@ function useUnvalidatedWriterMap(answeredFor: string | undefined) {
  */
 function hasUnvalidatedUseFor(
   roleMap: ReturnType<typeof buildVariableRoleMap>,
-  codebookSubject: Parameters<typeof excludeUnvalidatedUses>[1],
+  codebookSubject: Parameters<typeof hasUnvalidatedUse>[1],
   variableId: string,
   draftUnvalidated: ReadonlySet<string>,
 ): boolean {
   return (
     draftUnvalidated.has(variableId) ||
-    excludeUnvalidatedUses(roleMap, codebookSubject, [{ value: variableId }])
-      .length === 0
+    hasUnvalidatedUse(roleMap, codebookSubject, variableId)
   );
 }
 
@@ -1914,14 +1945,16 @@ function NoInputControlOffered() {
   return reported ? null : <FormErrors errors={[NO_INPUT_CONTROL]} />;
 }
 /**
- * The attributes this field may collect.
+ * The attributes this field lists, and why the ones it cannot collect cannot
+ * be chosen.
  *
- * A form field is a VALIDATED writer, so the pool drops every attribute
- * something writes unvalidated — a prompt that stamps a fixed value, a bin
- * that records where a node was dropped — and every attribute a sibling field
- * in this same form already collects. What the row already holds always stays
- * in the list: reselecting a saved pick is never a new contradiction, and
- * dropping it would blank the very reference the researcher has to resolve.
+ * A form field is a VALIDATED writer, so every attribute something writes
+ * unvalidated — a prompt that stamps a fixed value, a bin that records where a
+ * node was dropped — is marked unavailable, and so is every attribute a
+ * sibling field in this same form already collects. What the row already holds
+ * is never marked by those rules: reselecting a saved pick is never a new
+ * contradiction, and refusing it would take away the very reference the
+ * researcher has to resolve.
  */
 function AttributePicker({
   item,
@@ -1929,8 +1962,15 @@ function AttributePicker({
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
-  const { fieldsPath, subject, draftUnvalidated, reserved, answeredFor } =
-    useFormFieldsScope();
+  const {
+    fieldsPath,
+    subject,
+    draftUnvalidated,
+    draftUnvalidatedReason,
+    reserved,
+    reservedVariableReason,
+    answeredFor,
+  } = useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
   const committed = asString(item.variable) ?? '';
   const setFieldValue = useFormStore((state) => state.setFieldValue);
@@ -1949,42 +1989,62 @@ function AttributePicker({
     // without a subject, so no row dialog can be opened — which is why no
     // sentence is written for it here.
     if (subject === undefined) return NO_OPTIONS;
-    const siblings = new Set(
-      rowsOf(fields)
-        .filter((_row, index) => index !== editIndex)
-        .flatMap((row) =>
-          typeof row.variable === 'string' ? [row.variable] : [],
-        ),
+    const siblings = rowsOf(fields)
+      .filter((_row, index) => index !== editIndex)
+      .flatMap((row) =>
+        typeof row.variable === 'string' ? [row.variable] : [],
+      );
+    // An attribute holding a position rather than an answer has no input
+    // control, so no form can ask for it.
+    const pool = attributeChoices(
+      variablesForSubject(protocolContext, subject),
+      isCollectableType,
+      formCannotCollectReason(intl),
     );
-    const pool = Object.entries(variablesForSubject(protocolContext, subject))
-      // An attribute holding a position rather than an answer has no input
-      // control, so no form can ask for it.
-      .filter(([, variable]) => isCollectableType(variable.type))
-      .map(([value, variable]) => ({
-        value,
-        label: variable.name,
-        type: variable.type,
-      }));
-    return excludeUnvalidatedUses(roleMap, subject, pool, committed).filter(
-      ({ value }) =>
-        value === committed ||
-        // A slot bound in this session writes unvalidated just as a saved one
-        // does; the protocol simply does not hold it yet. Asked the same way
-        // as the save-time gate, so the picker cannot offer what the dialog
-        // is about to refuse.
-        (!siblings.has(value) &&
-          !draftUnvalidated.has(value) &&
-          // And nothing the interface around this form collects itself: a
-          // field bound to one is a question no participant is ever asked.
-          !reserved.has(value)),
+    // Nothing the interface around this form collects itself: a field bound
+    // to one is a question no participant is ever asked.
+    const withoutReserved = markListed(
+      pool,
+      reserved,
+      intl.formatMessage(
+        reservedVariableReason ?? attributeAvailabilityMessages.sameStageField,
+      ),
+      committed,
+    );
+    // A slot bound in this session writes unvalidated just as a saved one
+    // does; the protocol simply does not hold it yet. Asked the same way as
+    // the save-time gate, so the picker cannot offer what the dialog is about
+    // to refuse.
+    const withoutDraft = markListed(
+      withoutReserved,
+      draftUnvalidated,
+      draftUnvalidatedReason ??
+        intl.formatMessage(attributeAvailabilityMessages.draftUnvalidatedHere),
+      committed,
+    );
+    return markListed(
+      markCrossClassUses(
+        roleMap,
+        subject,
+        withoutDraft,
+        'validated',
+        intl,
+        committed,
+      ),
+      siblings,
+      intl.formatMessage(attributeAvailabilityMessages.sameStageField),
+      committed,
     );
   }, [
     committed,
     draftUnvalidated,
+    draftUnvalidatedReason,
     editIndex,
     fields,
+    intl,
     protocolContext,
     reserved,
+    reservedVariableReason,
     roleMap,
     subject,
   ]);

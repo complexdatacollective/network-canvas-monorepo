@@ -371,3 +371,22 @@ else. Logic is drawn as a pill of its own colour and icon. These images on
 | `piped-text/value-in-question.png`      | Same toolbar change: both toolbars in frame lack the **Insert logic** button.                                                                                                                       | ✅ Recaptured    |
 | `piped-text/pair-prompt.png`            | Same toolbar change: the toolbar lacks the **Insert logic** button.                                                                                                                                 | ✅ Recaptured    |
 | (new) `piped-text/if-block.png`         | Not yet captured: an open If block with an **If:** row, an **Otherwise** row, **Edit rules** and **Add else if**, for the new Logic section.                                                        | Not yet captured |
+
+## Attribute picker (schema 9)
+
+The attribute control is now a select box. It shows the chosen attribute's pill
+inside the box (or **Select an attribute** while it is empty) and has no
+**Change attribute** button below it. Clicking it opens a list with a search
+box under the field, and attributes that can't be used there are listed under
+**Not available here**. These Architect captures show the old pill and
+**Change attribute** button:
+
+| Image                                                         | Page                                                              |
+| ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `architect-guide/form-fields.png`                             | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
+| `architect-guide/sociogram-layout.png`                        | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
+| `architect-guide/variable-toggling.png`                       | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
+| `architect-guide/followup.png`                                | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
+| `architect-guide/edit-preset.png`                             | `design-protocols/tutorials/building-a-protocol.en.mdx`           |
+| `key-concepts/forms/field.png`                                | `design-protocols/key-concepts/forms.en.mdx`                      |
+| `interface-documentation/categorical-bin/architect-other.png` | `design-protocols/interface-documentation/categorical-bin.en.mdx` |

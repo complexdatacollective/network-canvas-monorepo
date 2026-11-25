@@ -235,6 +235,10 @@
     "defaultMessage": "Add new attribute to assign",
     "description": "Visible text and accessible name of the button that adds another row to the list of attributes a prompt stamps onto every node it creates. Named in full rather than “Add new”, because a prompt editor mounts several lists side by side and a researcher navigating by buttons reads only these words."
   },
+  "protocolBuilder.assignAttributes.assignedByAnotherRow": {
+    "defaultMessage": "Another row in this list already assigns a value to this attribute.",
+    "description": "Shown under an attribute in the attribute list of one row of the list of attributes that a prompt sets on every node it creates, when another row of the same list already sets this attribute. A prompt is the question a participant reads."
+  },
   "protocolBuilder.assignAttributes.booleanFalse": {
     "defaultMessage": "False",
     "description": "The other of the two values a prompt can stamp onto every node it creates, for an attribute that records a yes/no answer."
@@ -282,6 +286,42 @@
   "protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind": {
     "defaultMessage": "{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}",
     "description": "Shown after the researcher changes the kind of answer an attribute they are inventing holds, when rules they had already written for it cannot be kept — either the new kind does not accept them, or they compare this answer with another attribute that is no longer comparable. ruleNames is the list of rule names, already translated."
+  },
+  "protocolBuilder.attributeUnavailable.draftUnvalidatedHere": {
+    "defaultMessage": "Another field on this stage sets this attribute without validation, so it cannot also be collected here.",
+    "description": "Shown under an attribute in the list of an attribute control that asks the participant for an answer and checks it, when another control of the stage that the researcher is editing sets this attribute directly, without checking it against its validation rules. A stage is one step of an interview; a field is one of the controls on it."
+  },
+  "protocolBuilder.attributeUnavailable.draftValidatedHere": {
+    "defaultMessage": "Another field on this stage collects this attribute and validates each answer, so it cannot also be set here without validation.",
+    "description": "Shown under an attribute in the list of an attribute control whose value the interview sets directly, when another control of the stage that the researcher is editing asks the participant for this attribute and checks each answer against its validation rules. A stage is one step of an interview; a field is one of the controls on it."
+  },
+  "protocolBuilder.attributeUnavailable.formCannotCollect": {
+    "defaultMessage": "A form cannot collect {typeName} attributes.",
+    "description": "Shown under an attribute in the list of a form field’s attribute control, when the attribute is a kind that no form control can ask for, such as one that records a position on a canvas or a map. typeName is the translated name of that kind, such as Layout or Location, as the codebook editor names it."
+  },
+  "protocolBuilder.attributeUnavailable.interfaceOwned": {
+    "defaultMessage": "{count, plural, =0 {Another stage records its own information in this attribute, so it cannot be used here.} one {The {stageLabels} stage records its own information in this attribute, so it cannot be used here.} other {The stages {stageLabels} record their own information in this attribute, so it cannot be used here.}}",
+    "description": "Shown under an attribute in the list of an attribute control, when a built-in interface (such as a Family Pedigree, which marks the participant) writes this attribute for its own purposes. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those stages, already in quotation marks and separated by commas, and is not translated here. count is how many stages there are; 0 when they cannot be named."
+  },
+  "protocolBuilder.attributeUnavailable.promptAssigns": {
+    "defaultMessage": "Prompt {promptNumber} on this stage assigns a value to this attribute, so it cannot also be collected here.",
+    "description": "Shown under an attribute in the list of an attribute control that asks the participant for an answer, when a prompt of the same name generator stage sets this attribute on every person added through it, without asking. promptNumber is that prompt’s position in the stage’s list of prompts, starting at 1. A prompt is one question a participant is asked; a stage is one step of an interview."
+  },
+  "protocolBuilder.attributeUnavailable.sameStageField": {
+    "defaultMessage": "Another field on this stage already uses this attribute.",
+    "description": "Shown under an attribute in the list of an attribute control, when another control of the stage that the researcher is editing already records something in this attribute, so one would overwrite the other. A stage is one step of an interview; a field is one of the controls on it."
+  },
+  "protocolBuilder.attributeUnavailable.unvalidatedElsewhere": {
+    "defaultMessage": "{count, plural, =0 {Another stage sets this attribute without validation, so it cannot also be collected here.} one {The {stageLabels} stage sets this attribute without validation, so it cannot also be collected here.} other {The stages {stageLabels} set this attribute without validation, so it cannot also be collected here.}}",
+    "description": "Shown under an attribute in the list of an attribute control that asks the participant for an answer and checks it, when another stage sets this attribute directly without checking it against the attribute’s validation rules. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those stages, already in quotation marks and separated by commas, and is not translated here. count is how many stages there are; 0 when they cannot be named."
+  },
+  "protocolBuilder.attributeUnavailable.validatedElsewhere": {
+    "defaultMessage": "{count, plural, =0 {Another stage collects this attribute and validates each answer, so it cannot also be set here without validation.} one {The {stageLabels} stage collects this attribute and validates each answer, so it cannot also be set here without validation.} other {The stages {stageLabels} collect this attribute and validate each answer, so it cannot also be set here without validation.}}",
+    "description": "Shown under an attribute in the list of an attribute control whose value the interview sets directly, without checking it against the attribute’s validation rules, when another stage asks the participant for this attribute and checks each answer. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those stages, already in quotation marks and separated by commas, and is not translated here. count is how many stages there are; 0 when they cannot be named."
+  },
+  "protocolBuilder.attributeUnavailable.wrongType": {
+    "defaultMessage": "Only {typeName} attributes can be used here.",
+    "description": "Shown under an attribute in the list of an attribute control that needs one kind of attribute, when this attribute is another kind. An attribute is a variable that the protocol’s codebook defines. typeName is the translated name of the kind that is needed, such as Boolean, Layout or Location, as the codebook editor names it."
   },
   "protocolBuilder.binBehaviours.description": {
     "defaultMessage": "Choose how the participant puts each node into a bin.",
@@ -1066,6 +1106,10 @@
   "protocolBuilder.codebookEntity.shapeMappingAttribute": {
     "defaultMessage": "Attribute",
     "description": "Label of the field choosing which of the type’s attributes the shape follows."
+  },
+  "protocolBuilder.codebookEntity.shapeMappingAttributeNotForShapes": {
+    "defaultMessage": "Node shapes cannot be based on {typeName} attributes.",
+    "description": "Shown under an attribute in the attribute list of the node type editor’s shape mapping, when the attribute is a kind that a shape cannot follow. Shapes follow Boolean, Categorical, Ordinal, Number and Scalar attributes. typeName is the translated name of the attribute’s kind, such as Text, Date or Layout, as the codebook editor names it."
   },
   "protocolBuilder.codebookEntity.shapeMappingDescription": {
     "defaultMessage": "Override the default shape based on the value of a node's attribute.",
@@ -2332,8 +2376,8 @@
     "description": "Refusal shown under the location-attribute control when two prompts of one geospatial stage would store the participant’s chosen area in the same attribute. A prompt is one question a participant is asked; a stage is one step of an interview."
   },
   "protocolBuilder.geospatial.promptVariableEmptyState": {
-    "defaultMessage": "No location attribute is free for this prompt. Create one to record where the participant chooses.",
-    "description": "Shown in place of the location-attribute control when there is nothing for this prompt to choose: the node or edge type the stage works with has no attribute that can hold a place, or every one it has is already recorded by another prompt on this stage. \"Type\" is the kind of network member the stage is about."
+    "defaultMessage": "This type has no attributes yet. Create a Location attribute to record where the participant chooses.",
+    "description": "Shown under the location-attribute control when the node type that the stage works with has no attributes at all in the codebook. \"Type\" is the kind of network member the stage is about. Location is the name of the kind of attribute that holds a place, as the codebook editor names it."
   },
   "protocolBuilder.geospatial.promptVariableHint": {
     "defaultMessage": "The attribute the participant's chosen area is stored in.",
@@ -2342,6 +2386,10 @@
   "protocolBuilder.geospatial.promptVariableLabel": {
     "defaultMessage": "Location attribute",
     "description": "Label of the control that chooses which codebook attribute this prompt records the participant’s chosen area in. A location attribute is one that holds a place; it is the only kind a map selection can be stored in."
+  },
+  "protocolBuilder.geospatial.promptVariableRecordedElsewhere": {
+    "defaultMessage": "Prompt {promptNumber} on this stage already records its answer in this attribute.",
+    "description": "Shown under an attribute in the list of the location-attribute control, when another prompt of the same geospatial stage already stores the participant’s chosen area in it, so the later answer would replace the earlier one. promptNumber is that prompt’s position in the stage’s list of prompts, starting at 1. A prompt is one question a participant is asked; a stage is one step of an interview."
   },
   "protocolBuilder.geospatial.promptVariableRequired": {
     "defaultMessage": "Choose the attribute this prompt records.",
@@ -3504,28 +3552,32 @@
     "description": "Stands in for the name in the collapsed row of the disease list while the researcher has not written one, so the row can still be told apart and opened."
   },
   "protocolBuilder.narrativePedigree.diseaseVariableEmpty": {
-    "defaultMessage": "There is no attribute for this disease to map. A disease can only map an attribute that a nomination prompt of the source pedigree records and that no other disease already maps. Add a nomination prompt to that pedigree asking who has this condition, and it can be mapped here.",
-    "description": "Said in place of the affected-status list when the source Family Pedigree stage leaves this disease nothing to map — either because no nomination prompt of it records an attribute this stage could draw, or because every attribute it does record is already mapped by another disease. It states the rule and what to do rather than which of the two it is, because the remedy is the same nomination prompt either way. \"Nomination prompts\" is the name of that part of the pedigree editor."
+    "defaultMessage": "The people in the source pedigree have no attributes yet. Add a nomination prompt to that pedigree asking who has this condition, and its attribute can be mapped here.",
+    "description": "Said in place of the affected-status list when the node type of the source Family Pedigree stage has no attributes at all in the codebook. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; \"Nomination prompts\" is the name of that part of the pedigree editor."
   },
   "protocolBuilder.narrativePedigree.diseaseVariableGone": {
     "defaultMessage": "The attribute this disease maps ({attributeName}) is no longer in the codebook, so nothing can record who is affected. Choose another attribute.",
     "description": "Refusal shown on the attribute control of a disease whose attribute has been deleted from the codebook while the researcher had the row open. attributeName is the stored identifier — there is no name left to show, because the definition has gone. An attribute is a codebook variable."
   },
   "protocolBuilder.narrativePedigree.diseaseVariableHint": {
-    "defaultMessage": "Select a boolean node attribute.",
+    "defaultMessage": "Select a Boolean node attribute.",
     "description": "Guidance under the node-attribute control. Boolean because a family member either has this condition recorded against them or does not."
   },
   "protocolBuilder.narrativePedigree.diseaseVariableLabel": {
     "defaultMessage": "Node attribute",
     "description": "Label of the control choosing which recorded field of a family member says whether they have this condition. An attribute is one field of data recorded about a person."
   },
+  "protocolBuilder.narrativePedigree.diseaseVariableMappedElsewhere": {
+    "defaultMessage": "{named, select, yes {The disease “{diseaseName}” already uses this attribute.} other {Another disease on this stage already uses this attribute.}}",
+    "description": "Shown under an attribute in the affected-status list of a disease, when another disease of the same stage already maps this attribute. diseaseName is that disease’s name as the researcher wrote it, and is not translated. named is \"yes\" when that disease has a name and \"no\" when it has none yet."
+  },
   "protocolBuilder.narrativePedigree.diseaseVariableRequired": {
     "defaultMessage": "Choose the attribute that records who is affected.",
     "description": "Refusal shown under the affected-status control when the researcher saves the dialog without choosing one."
   },
   "protocolBuilder.narrativePedigree.diseaseVariableTypeChanged": {
-    "defaultMessage": "{attributeName} no longer records a yes-or-no answer, so it cannot say who is affected. Choose another attribute.",
-    "description": "Refusal shown on the attribute control of a disease whose attribute has been changed to another type while the researcher had the row open. attributeName is the attribute’s own name and is not translated. A disease is drawn from a true-or-false answer."
+    "defaultMessage": "{attributeName} is no longer a Boolean attribute, so it cannot say who is affected. Choose another attribute.",
+    "description": "Refusal shown on the attribute control of a disease whose attribute has been changed to another type while the researcher had the row open. attributeName is the attribute’s own name and is not translated. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it. A disease is drawn from a true or false answer."
   },
   "protocolBuilder.narrativePedigree.diseasesAddLabel": {
     "defaultMessage": "Create new disease",
@@ -4037,7 +4089,7 @@
   },
   "protocolBuilder.networkCanvas.hullEmpty": {
     "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group nodes by.",
-    "description": "Shown in place of the grouping-attribute list when the node type this stage builds has no categorical attribute this stage may take."
+    "description": "Shown under the grouping-attribute control when the node type that this stage builds has no attributes at all in the codebook."
   },
   "protocolBuilder.networkCanvas.hullLabel": {
     "defaultMessage": "Create or select a categorical attribute for grouping",
@@ -4328,7 +4380,7 @@
     "description": "Refusal shown under the connection-type-created picker when the researcher saves a prompt that draws connections without saying which kind."
   },
   "protocolBuilder.networkCanvas.promptCreateHighlightLabel": {
-    "defaultMessage": "Create a new true-or-false attribute",
+    "defaultMessage": "Create a new Boolean attribute",
     "description": "Button beside the attribute-marked picker that adds a boolean attribute to the codebook without leaving the stage. Also the title of the dialog it opens."
   },
   "protocolBuilder.networkCanvas.promptCreateLayoutLabel": {
@@ -4356,8 +4408,8 @@
     "description": "Stands in for a prompt’s text in the collapsed row of the sociogram prompt list while the researcher has not written any yet."
   },
   "protocolBuilder.networkCanvas.promptHighlightEmpty": {
-    "defaultMessage": "This type has no true-or-false attributes available, so there is nothing to mark.",
-    "description": "Shown in place of the attribute-marked picker when the node type this stage is about has no boolean attribute the prompt may take. \"This type\" is that node type."
+    "defaultMessage": "This type has no Boolean attributes yet. Create one to record which nodes the participant marks.",
+    "description": "Shown under the attribute-marked picker when the node type that this stage is about has no attributes at all in the codebook. \"This type\" is that node type. Boolean is the name of the kind of attribute that records a true or false answer, as the codebook editor names it."
   },
   "protocolBuilder.networkCanvas.promptHighlightHint": {
     "defaultMessage": "Select the attribute toggled when a participant taps a node.",
@@ -4440,8 +4492,8 @@
     "description": "Heading of the group inside the sociogram prompt dialog holding the words the participant reads. A prompt is one task the participant is set."
   },
   "protocolBuilder.networkCanvas.quickAddEmpty": {
-    "defaultMessage": "This type has no free-text attributes available, so there is nothing for the quick-add box to fill in.",
-    "description": "Shown in place of the quick-add attribute list when the node type this stage builds has no text attribute this stage may take."
+    "defaultMessage": "This type has no Text attributes yet. Create one for the quick-add box to fill in.",
+    "description": "Shown under the quick-add attribute control when the node type that this stage builds has no attributes at all in the codebook. Text is the name of the kind of attribute that records typed text, as the codebook editor names it."
   },
   "protocolBuilder.networkCanvas.quickAddLabel": {
     "defaultMessage": "Create or select an attribute for the quick-add form",
@@ -5240,7 +5292,7 @@
     "description": "Title of the dialog that creates a new boolean attribute for a nomination prompt to set on the people the participant selects."
   },
   "protocolBuilder.pedigree.nominationVariableEmpty": {
-    "defaultMessage": "This type has no boolean attributes yet. Create one to record who the participant selects.",
+    "defaultMessage": "This type has no Boolean attributes yet. Create one to record who the participant selects.",
     "description": "Shown in place of the attribute picker’s options when the person node type has no attribute holding true or false."
   },
   "protocolBuilder.pedigree.nominationVariableGoneRefusal": {
@@ -5302,6 +5354,10 @@
   "protocolBuilder.pedigree.personFormFieldLabel": {
     "defaultMessage": "Form fields",
     "description": "Label of the ordered list of extra questions asked about each family member."
+  },
+  "protocolBuilder.pedigree.personFormReservedReason": {
+    "defaultMessage": "This Family Pedigree stage already records this attribute, so a form field cannot also collect it.",
+    "description": "Shown under an attribute in the attribute list of an additional person field, when the attribute is already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets."
   },
   "protocolBuilder.pedigree.personFormReservedRefusal": {
     "defaultMessage": "The interface already records this attribute itself, so these fields cannot collect it as well. Choose another attribute, or remove the field.",
@@ -6759,6 +6815,10 @@
     "defaultMessage": "Roster panel",
     "description": "Heading of the section naming the panel that lists the people a participant can add from a roster. A roster is a list of people imported from a data file."
   },
+  "protocolBuilder.ruleCodebook.attributeNotForRules": {
+    "defaultMessage": "This attribute cannot be used in a rule. Choose another one.",
+    "description": "Shown beside an attribute that is still in the protocol’s codebook but cannot carry a rule, such as one answered with a map position: in the list of attributes a rule can be about, and under the control when a stored rule names it."
+  },
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
     "defaultMessage": "{operator} (no longer offered)",
     "description": "Label for an operator a stored rule already uses which this editor no longer offers, shown so the researcher can read their own rule. The protocol schema still accepts it, so it can be chosen again. operator is the operator phrase, e.g. \"is greater than\"."
@@ -7816,32 +7876,24 @@
     "description": "Refusal shown under an attribute control that collects an answer from the participant, when the attribute picked is already written directly by another control of the stage the researcher has open. attributeName is the codebook name of the attribute, which is not translated."
   },
   "protocolBuilder.slotVariable.emptyState": {
-    "defaultMessage": "No attributes of this type can be used here yet. Create one to continue.",
-    "description": "Shown in place of an attribute list when the codebook offers nothing this control can take, usually because every candidate is already written by something else. \"Of this type\" means of the attribute type the control needs, such as text or true/false."
+    "defaultMessage": "This type has no attributes yet. Create one to continue.",
+    "description": "Shown under an attribute control when the node or edge type that it chooses from has no attributes at all in the codebook. \"This type\" is that node or edge type."
   },
   "protocolBuilder.slotVariable.managedElsewhereNote": {
     "defaultMessage": "{count, plural, one {Its options are managed by the {stageLabels} stage, which decides the kinship words each one takes, and only one stage may manage them. Choose another attribute, or stop asking about gender identity here.} other {Its options are managed by the stages {stageLabels}, which decide the kinship words each one takes, and only one stage may manage them. Choose another attribute, or stop asking about gender identity here.}}",
-    "description": "Shown under the gender identity attribute control of a Family Pedigree stage when the attribute it holds already has its list of answers managed by another stage. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer."
-  },
-  "protocolBuilder.slotVariable.managedElsewhereOptionLabel": {
-    "defaultMessage": "{attributeName} — its options are managed by another stage",
-    "description": "Name of the option standing for the attribute a control already holds, when that attribute’s list of answers is managed by another stage, so this stage cannot use it. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
+    "description": "Shown under the gender identity attribute control of a Family Pedigree stage when the attribute it holds already has its list of answers managed by another stage, and under that attribute in the control’s list, where it cannot be chosen. A stage is one step of an interview. stageLabels is the researcher’s own name for each of those steps, already in quotation marks and separated by commas, and is not translated here. count is how many steps manage the answers. The kinship words are the family words (mother, brother, parent) a family-tree step uses for each answer."
   },
   "protocolBuilder.slotVariable.managedElsewhereRefusal": {
     "defaultMessage": "\"{attributeName}\" cannot be used here, because only one stage may manage an attribute’s options. Choose another attribute.",
     "description": "Refusal shown under an attribute control whose stage manages the attribute’s list of answers (a Family Pedigree’s gender identity, whose answers each take kinship words), when the attribute picked already has its answers managed by another stage. attributeName is the codebook name of the attribute, which is not translated."
   },
+  "protocolBuilder.slotVariable.ownedOptionsDifferNote": {
+    "defaultMessage": "This field needs the options supplied by Network Canvas, and this attribute has different options.",
+    "description": "Shown under an attribute in the list of an attribute control that needs a fixed set of answers supplied by Network Canvas (such as the sexes assigned at birth that a Family Pedigree draws), when this attribute’s list of answers is not exactly that set. Also shown under the control when the attribute it holds has a different list. Options are the answers that an attribute offers."
+  },
   "protocolBuilder.slotVariable.unvalidatedElsewhereRefusal": {
     "defaultMessage": "\"{attributeName}\" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)",
     "description": "Refusal shown under an attribute control that collects an answer from the participant when the attribute picked is already written directly, without validation, by another stage of the protocol. attributeName is the codebook name of the attribute, which is not translated."
-  },
-  "protocolBuilder.slotVariable.valuesChangedNote": {
-    "defaultMessage": "This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.",
-    "description": "Shown under an attribute control when the attribute it holds is still a list of answers but its values have been edited elsewhere and no longer match the fixed set the interface owns."
-  },
-  "protocolBuilder.slotVariable.valuesChangedOptionLabel": {
-    "defaultMessage": "{attributeName} — no longer offers the values this control needs",
-    "description": "Name of the option standing for the attribute a control already holds, in a control that needs a fixed set of values the interface owns, when that attribute’s values have been edited elsewhere and no longer match the set. Shown in the list beside the attributes that can still be chosen. attributeName is the codebook name of the attribute, which is not translated."
   },
   "protocolBuilder.slotVariable.variableGoneRefusal": {
     "defaultMessage": "This attribute is no longer in the codebook, so nothing can be recorded under it. Choose another attribute.",
@@ -8235,21 +8287,25 @@
     "defaultMessage": "These settings cannot be saved as they are written. Check the values below.",
     "description": "Refusal shown over the whole block of settings an input control takes, when the protocol refuses them for a reason the editor has no wording of its own for. The settings themselves are listed underneath it."
   },
-  "protocolBuilder.variablePicker.changeAttribute": {
-    "defaultMessage": "Change attribute",
-    "description": "The same button once an attribute has been chosen, saying that pressing it replaces the choice rather than adding to it."
-  },
   "protocolBuilder.variablePicker.createRow": {
-    "defaultMessage": "Create new attribute called “{attributeName}”.",
+    "defaultMessage": "Create “{attributeName}”",
     "description": "First row of the attribute list, offering to add an attribute under the name the researcher has typed into the search box. attributeName is what they typed and is not translated."
   },
   "protocolBuilder.variablePicker.createRowBusy": {
-    "defaultMessage": "Creating the attribute “{attributeName}”…",
+    "defaultMessage": "Creating “{attributeName}”…",
     "description": "The first row of the attribute list while the attribute the researcher asked for is being added to the codebook — the protocol’s definition of what an interview records. attributeName is the name they typed and is not translated."
   },
-  "protocolBuilder.variablePicker.createRowRefused": {
-    "defaultMessage": "Cannot create attribute named “{attributeName}”: {reason}",
-    "description": "The same first row of the attribute list, switched off because the name typed cannot be used. attributeName is what the researcher typed and is not translated; reason is the sentence saying what is wrong with it."
+  "protocolBuilder.variablePicker.createRowInvalidName": {
+    "defaultMessage": "An attribute cannot be named “{attributeName}”",
+    "description": "First row of the attribute list, switched off because the name typed into the search box cannot be used. A second line below it gives the reason. attributeName is what the researcher typed and is not translated."
+  },
+  "protocolBuilder.variablePicker.createRowType": {
+    "defaultMessage": "New {typeName} attribute",
+    "description": "Second line of the row that creates an attribute, naming the kind of answer the new attribute will record. typeName is the translated name of that kind, such as Boolean, Text or Date, as the codebook editor names it."
+  },
+  "protocolBuilder.variablePicker.createRowUntyped": {
+    "defaultMessage": "New attribute",
+    "description": "Second line of the row that creates an attribute, when the kind of answer that the new attribute will record is chosen later."
   },
   "protocolBuilder.variablePicker.createdUnassigned": {
     "defaultMessage": "“{variableName}” was added to the codebook, but it has not been selected here.",
@@ -8261,7 +8317,7 @@
   },
   "protocolBuilder.variablePicker.firstAttribute": {
     "defaultMessage": "Nothing has been recorded about this type yet. Type a name above to create the first attribute, and see the <docs>documentation on attribute naming</docs> for what makes a good one.",
-    "description": "Shown in the attribute window when the protocol’s codebook holds nothing this control can offer and the researcher may create one. The text inside the docs tag is the words of a link to the Network Canvas documentation and must read as part of the sentence."
+    "description": "Shown in the attribute list when the protocol’s codebook contains nothing this control can offer and the researcher may create an attribute. The text inside the docs tag is the words of a link to the Network Canvas documentation and must read as part of the sentence."
   },
   "protocolBuilder.variablePicker.missingAttribute": {
     "defaultMessage": "This attribute is not available here. Choose another one.",
@@ -8273,71 +8329,43 @@
   },
   "protocolBuilder.variablePicker.nameInvalid": {
     "defaultMessage": "a name cannot contain line breaks, tabs or other control characters",
-    "description": "Reason given on the switched-off create row of the attribute list when the name typed holds a character that cannot be stored in a name, such as a line break or a tab. Reads after a colon, so it is a clause rather than a sentence. Names may otherwise be written in any language or script, with spaces and punctuation."
+    "description": "Reason given on the switched-off create row of the attribute list when the name typed contains a character that cannot be stored in a name, such as a line break or a tab. Shown on the line under “An attribute cannot be named “…””, as a clause rather than a sentence. Names may otherwise be written in any language or script, with spaces and punctuation."
   },
   "protocolBuilder.variablePicker.nameTaken": {
     "defaultMessage": "this type already has an attribute called that",
-    "description": "Reason given on the switched-off create row of the attribute list. Reads after a colon, so it is a clause rather than a sentence: “Cannot create attribute named “age”: this type already has an attribute called that”."
+    "description": "Reason given on the switched-off create row of the attribute list, on the line under “An attribute cannot be named “age””. Written as a clause rather than a sentence."
   },
-  "protocolBuilder.variablePicker.noneSelected": {
-    "defaultMessage": "No attribute selected",
-    "description": "Shown where the chosen attribute would be, while none has been chosen. Said rather than left blank, so an empty control reads as an unanswered question rather than as a control that failed to draw."
+  "protocolBuilder.variablePicker.noMatches": {
+    "defaultMessage": "No attributes match “{query}”.",
+    "description": "Shown in the attribute list when no attribute matches what the researcher typed in the search box, and this control does not allow an attribute to be created. query is what they typed and is not translated."
   },
-  "protocolBuilder.variablePicker.nothingMatches": {
-    "defaultMessage": "No attribute matches what you typed, and one cannot be created from this window. Create one elsewhere in your protocol and come back to choose it.",
-    "description": "Shown in the attribute window when what the researcher typed in the search box matches none of the attributes offered and this control does not allow one to be created."
+  "protocolBuilder.variablePicker.noneAvailable": {
+    "defaultMessage": "None of the attributes below can be used here. Choose one to see why.",
+    "description": "Shown at the top of the attribute list when the codebook has attributes but none of them can be chosen for this setting, and this control does not allow an attribute to be created. Choosing one of the attributes shows a sentence saying why it cannot be used."
   },
-  "protocolBuilder.variablePicker.nothingToSelect": {
-    "defaultMessage": "There are no attributes to choose from here, and one cannot be created from this window. Create one elsewhere in your protocol and come back to choose it.",
-    "description": "Shown in the attribute window when the protocol’s codebook holds nothing this control can offer and this control does not allow one to be created."
+  "protocolBuilder.variablePicker.noneAvailableCreate": {
+    "defaultMessage": "None of the attributes below can be used here. Type a name above to create a new attribute, or choose one below to see why it cannot be used.",
+    "description": "Shown at the top of the attribute list when the codebook has attributes but none of them can be chosen for this setting, and this control allows a new attribute to be created from the search box above the list."
   },
-  "protocolBuilder.variablePicker.renameCancelled": {
-    "defaultMessage": "Attribute name edit cancelled",
-    "description": "Said aloud when the researcher leaves the attribute-name editor without saving."
+  "protocolBuilder.variablePicker.noneAvailableField": {
+    "defaultMessage": "None of the existing attributes can be used here. Open the list to see why.",
+    "description": "Shown under an attribute control while nothing is chosen, when the codebook has attributes but none of them can be chosen for this setting. Opening the list shows each attribute with the reason it cannot be used."
   },
-  "protocolBuilder.variablePicker.renameEditing": {
-    "defaultMessage": "Editing attribute {name}",
-    "description": "Said aloud when the editor for an attribute’s name opens. name is the researcher’s own name for it and is not translated."
-  },
-  "protocolBuilder.variablePicker.renamePlaceholder": {
-    "defaultMessage": "Enter an attribute name...",
-    "description": "Placeholder in the box the attribute’s new name is typed into, shown while it is empty."
-  },
-  "protocolBuilder.variablePicker.renameRequired": {
-    "defaultMessage": "You must enter an attribute name",
-    "description": "Refusal shown in the attribute-name editor when the box has been emptied. An attribute must be called something."
-  },
-  "protocolBuilder.variablePicker.renameSubmit": {
-    "defaultMessage": "Save Changes",
-    "description": "Button that writes the attribute’s new name."
-  },
-  "protocolBuilder.variablePicker.renameTrigger": {
-    "defaultMessage": "Edit attribute name: {label}",
-    "description": "Accessible name and tooltip of the attribute pill when pressing it opens the editor for the attribute’s name. label is the researcher’s own name for it and is not translated."
-  },
-  "protocolBuilder.variablePicker.renamed": {
-    "defaultMessage": "Attribute renamed to {name}",
-    "description": "Said aloud once an attribute has been renamed. name is the researcher’s own new name for it and is not translated."
+  "protocolBuilder.variablePicker.placeholder": {
+    "defaultMessage": "Select an attribute",
+    "description": "Shown inside the attribute control while no attribute has been chosen. Pressing the control opens a list of the attributes to choose from. An attribute is a variable that the protocol’s codebook defines for a node type, an edge type or the interview participant."
   },
   "protocolBuilder.variablePicker.searchOnlyPlaceholder": {
     "defaultMessage": "Find an attribute…",
-    "description": "Placeholder in the attribute window’s search box where this control only chooses from attributes that already exist."
+    "description": "Placeholder in the search box at the top of the attribute list, where this control only chooses from attributes that already exist."
   },
   "protocolBuilder.variablePicker.searchPlaceholder": {
     "defaultMessage": "Find or create an attribute…",
-    "description": "Placeholder in the attribute window’s search box where this control allows a new attribute to be created."
+    "description": "Placeholder in the search box at the top of the attribute list, where this control allows a new attribute to be created."
   },
-  "protocolBuilder.variablePicker.selectAttribute": {
-    "defaultMessage": "Select attribute",
-    "description": "Button that opens the window a researcher chooses one codebook attribute in, while nothing has been chosen yet. An attribute is a variable the protocol’s codebook defines for a node type, an edge type or the interview participant."
-  },
-  "protocolBuilder.variablePicker.unusableAttribute": {
-    "defaultMessage": "This attribute cannot be used in a rule. Choose another one.",
-    "description": "Shown under the control when the attribute a researcher’s stored choice names is still in the codebook but cannot carry a rule. Worded apart from the deleted-attribute sentence on purpose: this attribute is still where the researcher left it."
-  },
-  "protocolBuilder.variablePicker.unusableOptionLabel": {
-    "defaultMessage": "{attributeName} — cannot be used in a rule",
-    "description": "Name of the one option standing for an attribute that is still in the protocol’s codebook and still cannot carry a rule, such as one answered with a map position. attributeName is the researcher’s own name for it, from the codebook, and is not translated."
+  "protocolBuilder.variablePicker.unavailableHeading": {
+    "defaultMessage": "Not available here",
+    "description": "Heading in the attribute list, above the attributes that exist but cannot be chosen for this setting. Choosing one of them shows a sentence saying why."
   },
   "protocolBuilder.variableValidation.codebookRenderingContradiction": {
     "defaultMessage": "These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. {contradiction}",

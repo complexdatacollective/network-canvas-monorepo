@@ -22,6 +22,7 @@ import { RULE_VALUE_FIELD } from '../../fields/RuleValueField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import {
   attributeField,
+  attributeTrigger,
   chooseAttributeById,
   offeredAttributes,
 } from '../../testing/attributePicker.ts';
@@ -936,15 +937,11 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
     await openExistingRule(user);
 
     const attribute = await waitFor(() => attributeField('Node attribute'));
-    // The rule's own choice is still held — the trigger offers to CHANGE it
-    // rather than to make one...
-    expect(
-      within(attribute).getByRole('button', { name: 'Change attribute' }),
-    ).toBeInTheDocument();
-    // ...and it is shown named for what is wrong with it.
-    expect(
-      within(attribute).getByText('Home — cannot be used in a rule'),
-    ).toBeInTheDocument();
+    // The rule's own choice is still held and shown as itself...
+    expect(attributeTrigger(attribute)).toHaveAccessibleName(
+      /^Node attribute Home/u,
+    );
+    // ...with what is wrong with it said under the control.
     expect(
       screen.getByText(
         'This attribute cannot be used in a rule. Choose another one.',

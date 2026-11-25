@@ -544,40 +544,5 @@
     "en": "This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.",
     "es": "Otro campo de este formulario ya recoge este atributo. Elige otro atributo o edita el campo existente.",
     "from": "74a07e626 architect.arrayValidation.duplicateField"
-  },
-  "protocolBuilder.variablePicker.renameTrigger": {
-    "en": "Edit attribute name: {label}",
-    "es": "Editar nombre del atributo: {label}",
-    "from": "74a07e626 architect.variablePill.editAttributeName"
-  },
-  "protocolBuilder.variablePicker.renamePlaceholder": {
-    "en": "Enter an attribute name...",
-    "es": "Introduce un nombre de atributo...",
-    "from": "74a07e626 architect.variablePill.enterAnAttributeName"
-  },
-  "protocolBuilder.variablePicker.renameSubmit": {
-    "en": "Save Changes",
-    "es": "Guardar cambios",
-    "from": "74a07e626 architect.variablePill.saveChanges"
-  },
-  "protocolBuilder.variablePicker.renameRequired": {
-    "en": "You must enter an attribute name",
-    "es": "Debes introducir un nombre de atributo",
-    "from": "74a07e626 architect.final.components.VariablePill.required"
-  },
-  "protocolBuilder.variablePicker.renameEditing": {
-    "en": "Editing attribute {name}",
-    "es": "Editando el atributo {name}",
-    "from": "74a07e626 architect.variablePill.editing"
-  },
-  "protocolBuilder.variablePicker.renameCancelled": {
-    "en": "Attribute name edit cancelled",
-    "es": "Se ha cancelado la edición del nombre del atributo",
-    "from": "74a07e626 architect.variablePill.cancelled"
-  },
-  "protocolBuilder.variablePicker.renamed": {
-    "en": "Attribute renamed to {name}",
-    "es": "Se ha cambiado el nombre del atributo a {name}",
-    "from": "74a07e626 architect.variablePill.renamed"
   }
 }

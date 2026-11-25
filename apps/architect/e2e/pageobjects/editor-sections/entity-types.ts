@@ -1,5 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
+import { chooseAttribute } from './variables.js';
+
 // The subject picker (`@codaco/protocol-builder`'s `SubjectSection`, through
 // `EntityTypePickerField`) backs every stage's `subject` field. Each existing
 // type renders as a radio whose accessible name is the type's own label — the
@@ -123,10 +125,11 @@ export async function selectOrCreateEdgeType(
  * The mapping lives in the same dialog the type's name and colour do
  * (`@codaco/protocol-builder`'s `CodebookEntityEditor`, "Node appearance"), is
  * switched on by the "Map attribute to shape" toggle, and follows one
- * attribute chosen through the shared attribute window — which opens OVER this
- * dialog, so its rows are looked up on the page rather than inside it. Saving
- * writes the codebook section immediately; it is not part of the stage's own
- * save.
+ * attribute chosen through the shared attribute picker (`chooseAttribute`,
+ * which finds the picker's popup on the page rather than inside this dialog,
+ * and takes only an attribute the popup lists as one that can be chosen).
+ * Saving writes the codebook section immediately; it is not part of the
+ * stage's own save.
  */
 export async function mapNodeShapeToAttribute(
   page: Page,
@@ -140,10 +143,10 @@ export async function mapNodeShapeToAttribute(
   await page.getByRole('button', { name: edit, exact: true }).click();
   const dialog = page.getByRole('dialog', { name: edit });
   await dialog.getByRole('switch', { name: 'Map attribute to shape' }).click();
-  await dialog.getByRole('button', { name: 'Select attribute' }).click();
-  await page
-    .getByRole('option', { name: options.attribute, exact: true })
-    .click();
+  await chooseAttribute(
+    dialog.locator('[data-field-name="shape-mapping-attribute"]'),
+    options.attribute,
+  );
   for (const { value, shape } of options.shapes) {
     // A radio group of node swatches, as Architect had it — not a select. The
     // group is named for the answer it maps; each swatch is named for the

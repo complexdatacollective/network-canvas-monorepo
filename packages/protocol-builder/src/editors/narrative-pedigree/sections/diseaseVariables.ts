@@ -1,13 +1,18 @@
 import { useMemo } from 'react';
 
-import { createMessageError } from '@codaco/app-i18n/messages';
+import { createMessageError, type IntlShape } from '@codaco/app-i18n/messages';
 import type { Variables } from '@codaco/protocol-validation';
 
 import {
+  attributeChoices,
+  markCrossClassUses,
+  markInterfaceOwned,
+  markUnavailable,
+  onlyTypeReason,
+} from '../../../codebook/attributeAvailability.ts';
+import {
   buildExclusiveVariableSlotMap,
   buildVariableRoleMap,
-  excludeInterfaceOwned,
-  excludeValidatedUses,
   type ExclusiveVariableSlotMap,
   hasValidatedUse,
   interfaceOwnedPickIssue,
@@ -68,9 +73,10 @@ export type DiseaseVariableInput = Readonly<{
 }>;
 
 /**
- * The attributes a disease may be mapped to.
+ * The attributes a disease's picker lists, each one it cannot map marked with
+ * the reason.
  *
- * Four exclusions, and every one of them is stated again in
+ * Four rules, and every one of them is stated again in
  * {@link diseasePickIssue}, because the picker only decides what may be
  * CHOSEN: an attribute that stopped qualifying while the dialog was open, or a
  * row an import brought in, never went through the picker at all.
@@ -97,36 +103,64 @@ export type DiseaseVariableInput = Readonly<{
  *   it writes. An attribute nothing ever sets to `true` marks nobody, and the
  *   stage then draws an unmarked family with nothing to say why.
  *
- * `used` is the picker's own fifth exclusion and has no save-time twin here:
- * two rows on one attribute is a rule about the LIST, and the list's own gate
- * is where it is stated.
+ * `used` is the picker's own fifth rule, keyed by attribute with the reason
+ * to give, and has no save-time twin here: two rows on one attribute is a rule
+ * about the LIST, and the list's own gate is where it is stated.
+ *
+ * The attribute the row already holds is marked only for its type: the rest
+ * let it through, as the save does.
  */
 export function diseaseVariableOptions(
-  input: DiseaseVariableInput & Readonly<{ used: ReadonlySet<string> }>,
+  input: DiseaseVariableInput &
+    Readonly<{
+      used: ReadonlyMap<string, string>;
+      intl: Pick<IntlShape, 'formatMessage'>;
+    }>,
 ): VariablePickerOption[] {
-  const { context, roleMap, slotMap, subject, sourceStageId, currentVariable } =
-    input;
-  if (subject === null) return [];
-  const recorded = sourceStageRecordedVariables(context, sourceStageId);
-  const pool = Object.entries(variablesForSubject(context, subject))
-    .filter(
-      ([variableId, variable]) =>
-        variable.type === AFFECTED_TYPE &&
-        (variableId === currentVariable ||
-          (recorded.has(variableId) && !input.used.has(variableId))),
-    )
-    .map(([variableId, variable]) => ({
-      value: variableId,
-      label: variable.name,
-      type: variable.type,
-    }));
-
-  const escape = currentVariable === undefined ? [] : [currentVariable];
-  return excludeInterfaceOwned(
+  const {
+    context,
+    roleMap,
     slotMap,
     subject,
-    excludeValidatedUses(roleMap, subject, pool, escape),
-    escape,
+    sourceStageId,
+    currentVariable,
+    used,
+    intl,
+  } = input;
+  if (subject === null) return [];
+  const recorded = sourceStageRecordedVariables(context, sourceStageId);
+  const pool = attributeChoices(
+    variablesForSubject(context, subject),
+    (type) => type === AFFECTED_TYPE,
+    onlyTypeReason(intl, AFFECTED_TYPE),
+  );
+  const owned = markInterfaceOwned(
+    slotMap,
+    subject,
+    pool,
+    intl,
+    currentVariable,
+  );
+  const crossClass = markCrossClassUses(
+    roleMap,
+    subject,
+    owned,
+    'unvalidated',
+    intl,
+    currentVariable,
+  );
+  const mapped = markUnavailable(
+    crossClass,
+    (option) => used.get(option.value),
+    currentVariable,
+  );
+  return markUnavailable(
+    mapped,
+    (option) =>
+      recorded.has(option.value)
+        ? undefined
+        : intl.formatMessage(narrativePedigreeMessages.diseasesNotRecorded),
+    currentVariable,
   );
 }
 
