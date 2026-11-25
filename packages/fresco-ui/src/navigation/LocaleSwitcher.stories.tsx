@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { Languages } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
@@ -60,6 +61,9 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
   \`responsive\` (the default) names it only while the nearest \`@container\`
   ancestor is at least 36em wide, so a host bar declares \`@container\` to
   let the pill collapse.
+- **\`icon\`** — the trigger's icon in place of the globe, for a switcher
+  that chooses something other than the interface language. The interview's
+  navigation shows Lucide's \`Languages\` icon for the interview language.
 - **\`searchable\`** — puts a search box above the list that filters by
   autonym or tag. Off by default; for hosts that offer many languages.
 - **\`saveState\`** / **\`persistence\`** — the host's persistence outcome,
@@ -93,6 +97,7 @@ const meta = {
     value: { control: false },
     onChange: { control: false },
     display: { control: 'radio', options: ['responsive', 'label', 'icon'] },
+    icon: { control: false },
     searchable: { control: 'boolean' },
     variant: {
       control: 'select',
@@ -394,6 +399,26 @@ export const IconOnly: Story = {
       within(popup).getByRole('option', { name: 'English' }),
     );
     await expect(trigger).toHaveAccessibleName('Interface language: English');
+  },
+};
+
+/**
+ * `icon`: a switcher for something other than the interface language shows
+ * its own icon, as the interview's navigation does for the interview
+ * language.
+ */
+export const CustomIcon: Story = {
+  args: {
+    display: 'icon',
+    value: 'es',
+    label: 'Interview language',
+    icon: <Languages aria-hidden />,
+  },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole('combobox');
+    await expect(trigger).toHaveAccessibleName('Interview language: Español');
+    await expect(trigger.querySelector('svg.lucide-languages')).toBeVisible();
+    await expect(trigger.querySelector('svg.lucide-globe')).toBeNull();
   },
 };
 

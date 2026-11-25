@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Languages,
   LogOut,
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -179,6 +180,7 @@ const LanguageSwitcherControl = ({
         // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English
         label="Interview language"
         display="icon"
+        icon={<Languages aria-hidden />}
         variant="text"
         color="dynamic"
         size="xl"

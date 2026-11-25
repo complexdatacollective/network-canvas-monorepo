@@ -150,11 +150,17 @@ export type LocaleSwitcherProps = {
   /** Which "saved" wording applies: stored in this browser, or on an account. */
   persistence?: 'device' | 'account';
   /**
-   * What the trigger shows beside the globe. `label` always names the current
+   * What the trigger shows beside its icon. `label` always names the current
    * language, `icon` never does (an icon button), and `responsive` names it
    * only while the nearest `@container` ancestor is at least 36em wide.
    */
   display?: LocaleSwitcherDisplay;
+  /**
+   * The trigger's icon, in place of the globe, for a switcher that chooses
+   * something other than the interface language, such as the interview
+   * language. It is decorative: pass it `aria-hidden`.
+   */
+  icon?: ReactElement;
   /** Put a search box above the list, for hosts that offer many languages. */
   searchable?: boolean;
   /**
@@ -171,7 +177,7 @@ export type LocaleSwitcherProps = {
    * The trigger element, in place of the `Button` that `variant`, `color`,
    * `size` and `className` style: for a host whose bar dresses its own
    * controls, such as a navigation list the switcher sits in among links. It
-   * receives the accessible name and the combobox state; the globe, and the
+   * receives the accessible name and the combobox state; the icon, and the
    * language name and chevron unless `display` is `icon`, are its children.
    */
   renderTrigger?: ReactElement;
@@ -201,6 +207,7 @@ export default function LocaleSwitcher({
   saveState = 'idle',
   persistence = 'device',
   display = 'responsive',
+  icon,
   searchable = false,
   variant = 'text',
   color = 'dynamic',
@@ -321,7 +328,7 @@ export default function LocaleSwitcher({
       : { 'aria-labelledby': labelId };
   const Chevron = side === 'top' ? ChevronUp : ChevronDown;
   const responsive = display === 'responsive';
-  const globe = <Globe aria-hidden />;
+  const triggerIcon = icon ?? <Globe aria-hidden />;
 
   return (
     <Combobox.Root
@@ -353,7 +360,7 @@ export default function LocaleSwitcher({
                 variant={variant}
                 color={color}
                 size={size}
-                icon={globe}
+                icon={triggerIcon}
                 aria-label={triggerName}
                 lang="en"
                 className={className}
@@ -361,7 +368,7 @@ export default function LocaleSwitcher({
             )
           }
         >
-          {renderTrigger ? globe : null}
+          {renderTrigger ? triggerIcon : null}
         </Combobox.Trigger>
       ) : (
         <Combobox.Trigger
@@ -373,7 +380,7 @@ export default function LocaleSwitcher({
                 variant={variant}
                 color={color}
                 size={size}
-                icon={globe}
+                icon={triggerIcon}
                 className={cx(
                   'shrink-0 rounded-full',
                   responsive && RESPONSIVE_ICON_ONLY_TRIGGER,
@@ -384,7 +391,7 @@ export default function LocaleSwitcher({
             )
           }
         >
-          {renderTrigger ? globe : null}
+          {renderTrigger ? triggerIcon : null}
           <span
             className={cx(
               'text-match-parent min-w-0 truncate leading-normal',

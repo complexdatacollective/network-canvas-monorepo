@@ -344,9 +344,9 @@ const chooseInterviewLanguage = async (canvasElement: HTMLElement) => {
 };
 
 /**
- * With more than one language in the protocol, a globe in the bar changes the
- * interview language from any screen, as a Language Chooser stage does. It is
- * not shown on a Language Chooser stage, nor for a protocol in one language.
+ * With more than one language in the protocol, a languages button in the bar
+ * changes the interview language from any screen, as a Language Chooser stage
+ * does. It is not shown on a Language Chooser stage, nor for a protocol in one language.
  * Interviewer's default bar: exit, text size, language, then the steps.
  */
 export const InterviewLanguage: Story = {
