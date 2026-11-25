@@ -19,13 +19,16 @@ import {
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { fixtureTypeId } from '../../testing/protocolFixture.ts';
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import { useCreateCodebookVariable } from '../useCodebookVariableEdits.ts';
 import { useCreateCodebookEntity } from '../writes.ts';
 
+const PERSON_TYPE = fixtureTypeId('node', 'person');
+
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
 
 const ANA = { sessionId: 'session-2', userId: 'user-2', displayName: 'Ana' };
 
@@ -273,7 +276,7 @@ function withTheAnswerSwallowed(host: InMemoryHost): Readonly<{
 function AttributeInventor() {
   const createVariable = useCreateCodebookVariable({
     entity: 'node',
-    type: 'person',
+    type: PERSON_TYPE,
   });
   const [answer, setAnswer] = useState('');
 

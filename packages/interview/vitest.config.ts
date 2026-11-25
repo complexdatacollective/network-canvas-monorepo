@@ -85,6 +85,8 @@ export default defineConfig({
             // stories open now pulls in fresco-ui's `Section` and the
             // Collapsible it is built on.
             '@base-ui/react/collapsible',
+            // The navigation's interview language list.
+            '@base-ui/react/combobox',
             '@base-ui/react/dialog',
             '@base-ui/react/direction-provider',
             '@base-ui/react/menu',
@@ -93,6 +95,9 @@ export default defineConfig({
             '@base-ui/react/radio',
             '@base-ui/react/slider',
             '@base-ui/react/switch',
+            // The navigation's text size choice.
+            '@base-ui/react/toggle',
+            '@base-ui/react/toggle-group',
             '@base-ui/react/toolbar',
             '@base-ui/react/tooltip',
             '@codaco/app-i18n > @formatjs/icu-messageformat-parser',
@@ -109,11 +114,7 @@ export default defineConfig({
             '@codaco/fresco-ui > nanoid',
             '@codaco/fresco-ui > react-best-merge-refs',
             '@codaco/fresco-ui > react-markdown',
-            '@codaco/fresco-ui > rehype-raw',
-            '@codaco/fresco-ui > rehype-sanitize',
             '@codaco/fresco-ui > gemoji',
-            '@codaco/fresco-ui > remark-gemoji',
-            '@codaco/fresco-ui > remark-gfm',
             '@codaco/fresco-ui > saxes',
             '@codaco/fresco-ui > tailwind-merge',
             '@codaco/fresco-ui > usehooks-ts',
@@ -122,13 +123,16 @@ export default defineConfig({
             // scanner never follows.
             '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
-            // The markdown parser that finds the files an Information page
-            // shows as blocks (`assetBlocksInMarkdown`) and reads formatted
-            // text for validation as the interview and the editor read it.
+            // The markdown parser every reader of stored text uses
+            // (`markdownTree`), and what the migration from schema 8 reads
+            // legacy text with (`legacyMarkdownAsStandard`).
+            '@codaco/protocol-validation > decode-named-character-reference',
+            '@codaco/protocol-validation > gemoji',
             '@codaco/protocol-validation > mdast-util-from-markdown',
-            '@codaco/protocol-validation > mdast-util-gfm',
+            '@codaco/protocol-validation > mdast-util-gfm-autolink-literal',
             '@codaco/protocol-validation > mdast-util-to-markdown',
-            '@codaco/protocol-validation > micromark-extension-gfm',
+            '@codaco/protocol-validation > micromark-extension-gfm-autolink-literal',
+            '@codaco/protocol-validation > micromark-util-decode-numeric-character-reference',
             'd3-force',
             'zod',
             'zod/mini',

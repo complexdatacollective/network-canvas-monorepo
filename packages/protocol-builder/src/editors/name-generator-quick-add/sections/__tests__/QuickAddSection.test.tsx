@@ -13,10 +13,26 @@ import {
   openAttributePicker,
 } from '../../../../testing/attributePicker.ts';
 import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../../testing/testId.ts';
 import QuickAddSection from '../QuickAddSection.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const NAME = personVariable('name');
+const RELATIONSHIP_TO_EGO = personVariable('relationship_to_ego');
+const FM_NAME = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'fm_name',
+);
 
 const quickAdd = <QuickAddSection />;
 
@@ -45,7 +61,7 @@ const editorValidation = (
   variableId: string,
 ): Record<string, unknown> | undefined => {
   const variable =
-    harness.editorCodebook().node?.person?.variables?.[variableId];
+    harness.editorCodebook().node?.[PERSON]?.variables?.[variableId];
   const validation =
     variable === undefined ? undefined : Reflect.get(variable, 'validation');
   return typeof validation === 'object' && validation !== null
@@ -75,7 +91,8 @@ const personValidation = (
   harness: StageEditorHarness,
   variableId: string,
 ): Record<string, unknown> | undefined => {
-  const variable = harness.hostCodebook().node?.person?.variables?.[variableId];
+  const variable =
+    harness.hostCodebook().node?.[PERSON]?.variables?.[variableId];
   const validation =
     variable === undefined ? undefined : Reflect.get(variable, 'validation');
   return typeof validation === 'object' && validation !== null
@@ -114,10 +131,10 @@ describe('what a quick-add name generator records', () => {
     });
 
     const offered = await offeredAttributes(harness.user, await findPicker());
-    expect(offered).toContain('name');
-    expect(offered).not.toContain('age');
-    expect(offered).not.toContain('contactType');
-    expect(offered).not.toContain('layout');
+    expect(offered).toContain(NAME);
+    expect(offered).not.toContain(personVariable('age'));
+    expect(offered).not.toContain(personVariable('contactType'));
+    expect(offered).not.toContain(personVariable('layout'));
   });
 
   /**
@@ -138,8 +155,8 @@ describe('what a quick-add name generator records', () => {
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: { 'en-US': 'Quick add' },
-          subject: { entity: 'node', type: 'family_member' },
-          quickAdd: 'fm_name',
+          subject: { entity: 'node', type: FAMILY_MEMBER },
+          quickAdd: FM_NAME,
           prompts: [
             {
               id: 'prompt-1',
@@ -156,8 +173,8 @@ describe('what a quick-add name generator records', () => {
     // validated use and therefore allowed; `fm_relationship_to_ego` is text as
     // well, and is stamped by the family pedigree — so the same list must not
     // hold it.
-    expect(offered).toContain('fm_name');
-    expect(offered).not.toContain('fm_relationship_to_ego');
+    expect(offered).toContain(FM_NAME);
+    expect(offered).not.toContain(testVariableId('fm_relationship_to_ego'));
   });
 
   /**
@@ -172,7 +189,7 @@ describe('what a quick-add name generator records', () => {
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: { 'en-US': 'Quick add' },
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           prompts: [
             {
               id: 'prompt-1',
@@ -199,11 +216,11 @@ describe('what a quick-add name generator records', () => {
     await chooseAttributeById(
       harness.user,
       await findPicker(),
-      'relationship_to_ego',
+      RELATIONSHIP_TO_EGO,
     );
 
     const request = await harness.submit();
-    expect(request?.stageDocument.quickAdd).toBe('relationship_to_ego');
+    expect(request?.stageDocument.quickAdd).toBe(RELATIONSHIP_TO_EGO);
   });
 
   /**
@@ -221,19 +238,20 @@ describe('what a quick-add name generator records', () => {
 
     const dialog = await openAttributePicker(harness.user, await findPicker());
     await harness.user.type(
-      within(dialog).getByRole('searchbox', {
+      within(dialog).getByRole('combobox', {
         name: 'Find or create an attribute',
       }),
       'nickname',
     );
     await harness.user.click(
       within(dialog).getByRole('option', {
-        name: 'Create new attribute called “nickname”.',
+        name: 'Create “nickname”',
       }),
     );
 
     const created = await waitFor(() => {
-      const variables = harness.editorCodebook().node?.person?.variables ?? {};
+      const variables =
+        harness.editorCodebook().node?.[PERSON]?.variables ?? {};
       const entry = Object.entries(variables).find(
         ([, variable]) => variable.name === 'nickname',
       );
@@ -251,7 +269,7 @@ describe('what a quick-add name generator records', () => {
     });
     // Not in the protocol yet: it is the stage's draft.
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).not.toContain('nickname');
@@ -265,7 +283,7 @@ describe('what a quick-add name generator records', () => {
     const request = await harness.submit();
     expect(request?.stageDocument.quickAdd).toBe(created[0]);
     expect(
-      harness.hostCodebook().node?.person?.variables?.[created[0]],
+      harness.hostCodebook().node?.[PERSON]?.variables?.[created[0]],
     ).toEqual(created[1]);
   });
 
@@ -284,8 +302,8 @@ describe('what a quick-add name generator records', () => {
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: { 'en-US': 'Quick add' },
-          subject: { entity: 'node', type: 'family_member' },
-          quickAdd: 'fm_name',
+          subject: { entity: 'node', type: FAMILY_MEMBER },
+          quickAdd: FM_NAME,
           prompts: [
             { id: 'prompt-1', text: { 'en-US': 'Add your relatives' } },
           ],
@@ -317,18 +335,18 @@ describe('what a quick-add name generator records', () => {
     const field = await findPicker();
     harness.receiveCodebookUpdate({
       node: {
-        person: {
+        [PERSON]: {
           name: 'person',
           color: 'node-color-seq-1',
           icon: 'add-a-person',
           shape: { default: 'circle' },
           variables: {
-            name: {
+            [NAME]: {
               name: 'name',
               type: 'text',
               component: 'Text',
             },
-            alias: {
+            [testVariableId('alias')]: {
               name: 'alias',
               type: 'text',
               component: 'Text',
@@ -339,7 +357,7 @@ describe('what a quick-add name generator records', () => {
     });
 
     await awaitOfferedAttributes(harness.user, field, (offered) =>
-      expect(offered).toContain('alias'),
+      expect(offered).toContain(testVariableId('alias')),
     );
   });
 });
@@ -413,18 +431,18 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     // Merged over the rules the attribute already had rather than replacing
     // them: the researcher added one rule, not a rule map.
     await waitFor(() =>
-      expect(editorValidation(harness, 'name')).toEqual({
+      expect(editorValidation(harness, NAME)).toEqual({
         unique: true,
         required: true,
       }),
     );
-    expect(personValidation(harness, 'name')).toEqual({ unique: true });
+    expect(personValidation(harness, NAME)).toEqual({ unique: true });
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Required answer' }),
     );
     await waitFor(() =>
-      expect(editorValidation(harness, 'name')).toEqual({ unique: true }),
+      expect(editorValidation(harness, NAME)).toEqual({ unique: true }),
     );
   });
 
@@ -444,7 +462,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
       await screen.findByRole('switch', { name: 'Minimum text length' }),
     );
     await waitFor(() =>
-      expect(editorValidation(harness, 'name')).toEqual({
+      expect(editorValidation(harness, NAME)).toEqual({
         unique: true,
         minLength: 1,
       }),
@@ -463,7 +481,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     ).toBeInTheDocument();
     // Nothing was kept for the empty box: a rule with no value stays on
     // screen to be corrected, and the draft still holds what it last had.
-    expect(editorValidation(harness, 'name')).toEqual({
+    expect(editorValidation(harness, NAME)).toEqual({
       unique: true,
       minLength: 1,
     });
@@ -471,7 +489,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     await harness.user.type(value, '2');
     await harness.user.tab();
     await waitFor(() =>
-      expect(editorValidation(harness, 'name')).toEqual({
+      expect(editorValidation(harness, NAME)).toEqual({
         unique: true,
         minLength: 2,
       }),
@@ -495,7 +513,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
 
     await waitFor(() =>
       expect(
-        harness.editorCodebook().node?.person?.variables?.name,
+        harness.editorCodebook().node?.[PERSON]?.variables?.[NAME],
       ).not.toHaveProperty('validation'),
     );
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
@@ -508,8 +526,8 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: { 'en-US': 'Quick add' },
-          subject: { entity: 'node', type: 'person' },
-          quickAdd: 'relationship_to_ego',
+          subject: { entity: 'node', type: PERSON },
+          quickAdd: RELATIONSHIP_TO_EGO,
           prompts: [
             {
               id: 'prompt-1',
@@ -544,17 +562,17 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
-    expect(editorValidation(harness, 'name')).toEqual({
+    expect(editorValidation(harness, NAME)).toEqual({
       unique: true,
       required: true,
     });
     expect(formIsDirty()).toBe(true);
     // The change is the stage's, not the protocol's, until the stage is saved.
-    expect(personValidation(harness, 'name')).toEqual({ unique: true });
+    expect(personValidation(harness, NAME)).toEqual({ unique: true });
 
     const request = await harness.submit();
     expect(request?.stageDocument).not.toHaveProperty('validation');
-    expect(personValidation(harness, 'name')).toEqual({
+    expect(personValidation(harness, NAME)).toEqual({
       unique: true,
       required: true,
     });
@@ -578,7 +596,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     expect(formIsDirty()).toBe(true);
 
     await first.cancel();
-    expect(personValidation(first, 'name')).toEqual({ unique: true });
+    expect(personValidation(first, NAME)).toEqual({ unique: true });
 
     // Reopened on a fresh host: the rule was never part of the protocol.
     const second = renderStageEditor({
@@ -586,7 +604,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
       sections: quickAddWithDirtyFlag,
     });
     await screen.findByRole('switch', { name: 'Required answer' });
-    expect(editorValidation(second, 'name')).toEqual({ unique: true });
+    expect(editorValidation(second, NAME)).toEqual({ unique: true });
     expect(
       screen.getByRole('switch', { name: 'Required answer' }),
     ).not.toBeChecked();
@@ -604,7 +622,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
       sections: quickAdd,
       heldSections: [
         {
-          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          sectionId: sectionId({ kind: 'codebookNode', typeId: PERSON }),
           displayName: 'Robin',
         },
       ],
@@ -613,7 +631,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
-    expect(editorValidation(harness, 'name')).toEqual({
+    expect(editorValidation(harness, NAME)).toEqual({
       unique: true,
       required: true,
     });
@@ -624,8 +642,8 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
         'Robin is currently editing a section needed for this change.',
       ),
     ).toBeInTheDocument();
-    expect(personValidation(harness, 'name')).toEqual({ unique: true });
-    expect(editorValidation(harness, 'name')).toEqual({
+    expect(personValidation(harness, NAME)).toEqual({ unique: true });
+    expect(editorValidation(harness, NAME)).toEqual({
       unique: true,
       required: true,
     });

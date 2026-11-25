@@ -12,6 +12,7 @@ import type { InterviewExportInput } from '../input';
 import type { ExportOptions } from '../options';
 import type { ExportWarning } from '../output';
 import { runRecordedExport } from './exportHarness';
+import { testVariableId } from './testIds';
 
 const options: ExportOptions = {
   exportGraphML: true,
@@ -28,11 +29,11 @@ const options: ExportOptions = {
 const codebook: Codebook = {
   ego: {
     variables: {
-      'ego-internal': {
+      [testVariableId('ego-internal')]: {
         name: 'finishOutcome',
         type: 'text',
       },
-      'ego-printed': {
+      [testVariableId('ego-printed')]: {
         name: 'networkCanvasFinishOutcome',
         type: 'text',
       },
@@ -67,8 +68,8 @@ const interview = (
     ego: {
       [entityPrimaryKeyProperty]: `${id}-ego`,
       [entityAttributesProperty]: {
-        'ego-internal': `internal ${id}`,
-        'ego-printed': `printed ${id}`,
+        [testVariableId('ego-internal')]: `internal ${id}`,
+        [testVariableId('ego-printed')]: `printed ${id}`,
       },
     },
   },

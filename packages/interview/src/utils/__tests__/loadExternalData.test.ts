@@ -11,19 +11,28 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../__tests__/testIds';
 import loadExternalData, {
   makeVariableUUIDReplacer,
 } from '../loadExternalData';
 
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
+const AGE = testVariableId('age');
+const CAFE = testVariableId('cafe');
+const DOTTED = testVariableId('dotted');
+const NAME = testVariableId('name');
+const PROTO = testVariableId('proto');
+
 const codebook: Codebook = {
   node: {
-    person: {
+    [PERSON]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {},
     },
-    place: {
+    [PLACE]: {
       name: 'Place',
       color: 'node-color-seq-2',
       shape: { default: 'square' },
@@ -38,7 +47,7 @@ describe('makeVariableUUIDReplacer primary-key salt', () => {
       [entityAttributesProperty]: { name: 'Alice', age: '30' },
     };
 
-    const replacer = makeVariableUUIDReplacer(codebook, 'person');
+    const replacer = makeVariableUUIDReplacer(codebook, PERSON);
 
     // Two byte-identical rows at different data-file positions.
     const first = replacer(row, 0);
@@ -54,7 +63,7 @@ describe('makeVariableUUIDReplacer primary-key salt', () => {
       [entityAttributesProperty]: { name: 'Bob', age: '42' },
     };
 
-    const replacer = makeVariableUUIDReplacer(codebook, 'person');
+    const replacer = makeVariableUUIDReplacer(codebook, PERSON);
 
     const a = replacer(row, 3);
     const b = replacer(row, 3);
@@ -67,11 +76,11 @@ describe('makeVariableUUIDReplacer primary-key salt', () => {
       [entityAttributesProperty]: { name: 'Carol', age: '50' },
     };
 
-    const replacer = makeVariableUUIDReplacer(codebook, 'person');
+    const replacer = makeVariableUUIDReplacer(codebook, PERSON);
 
     const node = replacer(row, 0);
 
-    expect(node[entityPrimaryKeyProperty]).toMatch(/^person_/);
+    expect(node[entityPrimaryKeyProperty]).toMatch(new RegExp(`^${PERSON}_`));
   });
 
   it('gives the same row parsed under two subject types different primary keys', () => {
@@ -82,8 +91,8 @@ describe('makeVariableUUIDReplacer primary-key salt', () => {
     // Same asset row, same index, parsed for two different node types (e.g.
     // one roster shared by a person stage and a place stage) — this is the
     // invariant the subject-type prefix exists to guarantee.
-    const asPerson = makeVariableUUIDReplacer(codebook, 'person')(row, 0);
-    const asPlace = makeVariableUUIDReplacer(codebook, 'place')(row, 0);
+    const asPerson = makeVariableUUIDReplacer(codebook, PERSON)(row, 0);
+    const asPlace = makeVariableUUIDReplacer(codebook, PLACE)(row, 0);
 
     expect(asPerson[entityPrimaryKeyProperty]).not.toBe(
       asPlace[entityPrimaryKeyProperty],
@@ -185,10 +194,10 @@ describe('loadExternalData CSV-vs-JSON selection', () => {
       },
     });
     expect(
-      makeVariableUUIDReplacer(codebook, 'person')(node, 0)[
+      makeVariableUUIDReplacer(codebook, PERSON)(node, 0)[
         entityPrimaryKeyProperty
       ],
-    ).toBe(`person_${hash({ node, index: 0 })}`);
+    ).toBe(`${PERSON}_${hash({ node, index: 0 })}`);
   });
 
   it('omits legacy own-undefined JSON attribute entries', async () => {
@@ -319,19 +328,19 @@ describe('loadExternalData column and attribute names', () => {
 describe('makeVariableUUIDReplacer column names', () => {
   const namedCodebook: Codebook = {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          'id-name': {
+          [NAME]: {
             name: 'Full name',
             type: 'text',
           },
-          'id-age': { name: '年龄', type: 'number' },
-          'id-cafe': { name: 'Café', type: 'text' },
-          'id-dotted': { name: 'a.b', type: 'text' },
-          'id-proto': {
+          [AGE]: { name: '年龄', type: 'number' },
+          [CAFE]: { name: 'Café', type: 'text' },
+          [DOTTED]: { name: 'a.b', type: 'text' },
+          [PROTO]: {
             name: '__proto__',
             type: 'text',
           },
@@ -341,7 +350,7 @@ describe('makeVariableUUIDReplacer column names', () => {
   };
 
   const replace = (attributes: Record<string, string>) =>
-    makeVariableUUIDReplacer(namedCodebook, 'person')(
+    makeVariableUUIDReplacer(namedCodebook, PERSON)(
       { [entityAttributesProperty]: attributes },
       0,
     )[entityAttributesProperty];
@@ -350,9 +359,9 @@ describe('makeVariableUUIDReplacer column names', () => {
     expect(
       replace({ 'Full name': 'Ada', '年龄': '36', 'a.b': 'dotted' }),
     ).toEqual({
-      'id-name': 'Ada',
-      'id-age': '36',
-      'id-dotted': 'dotted',
+      [NAME]: 'Ada',
+      [AGE]: '36',
+      [DOTTED]: 'dotted',
     });
   });
 
@@ -361,27 +370,27 @@ describe('makeVariableUUIDReplacer column names', () => {
 
     const attributes = replace({ Café: decomposedValue });
 
-    expect(Object.keys(attributes)).toEqual(['id-cafe']);
-    expect(attributes['id-cafe']).toBe(decomposedValue);
+    expect(Object.keys(attributes)).toEqual([CAFE]);
+    expect(attributes[CAFE]).toBe(decomposedValue);
   });
 
   it('does not read a dotted header as a path into the variable id it starts with', () => {
-    const attributes = replace({ 'id-name.name': 'x' });
+    const attributes = replace({ [`${NAME}.name`]: 'x' });
 
-    expect(attributes).toEqual({ 'id-name.name': 'x' });
+    expect(attributes).toEqual({ [`${NAME}.name`]: 'x' });
   });
 
   it('maps a column named __proto__ to the variable of that name', () => {
     const attributes = replace(Object.fromEntries([['__proto__', 'one']]));
 
-    expect(attributes).toEqual({ 'id-proto': 'one' });
+    expect(attributes).toEqual({ [PROTO]: 'one' });
     expect(Object.getPrototypeOf(attributes)).toBe(Object.prototype);
   });
 
   it('keeps an unmatched column named __proto__ or constructor as an attribute', () => {
     const { [entityAttributesProperty]: attributes } = makeVariableUUIDReplacer(
       codebook,
-      'person',
+      PERSON,
     )(
       {
         [entityAttributesProperty]: Object.fromEntries([
@@ -413,12 +422,12 @@ describe('a roster heading, from import to the variable it fills', () => {
 
   const cafeCodebook: Codebook = {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          'id-cafe': { name: cafe, type: 'text' },
+          [CAFE]: { name: cafe, type: 'text' },
         },
       },
     },
@@ -429,7 +438,7 @@ describe('a roster heading, from import to the variable it fills', () => {
     const { nodes } = await loadExternalData('roster.csv', 'stub://url');
     return nodes.map(
       (node, index) =>
-        makeVariableUUIDReplacer(cafeCodebook, 'person')(node, index)[
+        makeVariableUUIDReplacer(cafeCodebook, PERSON)(node, index)[
           entityAttributesProperty
         ],
     );
@@ -439,7 +448,7 @@ describe('a roster heading, from import to the variable it fills', () => {
     expect(isUsableExternalAttributeName(cafeDecomposed)).toBe(true);
 
     expect(await fill(`${cafeDecomposed}\nespresso\n`)).toEqual([
-      { 'id-cafe': 'espresso' },
+      { [CAFE]: 'espresso' },
     ]);
   });
 
@@ -447,14 +456,14 @@ describe('a roster heading, from import to the variable it fills', () => {
     await expect(
       fill(`${cafe},${cafeDecomposed}\nespresso,latte\n`),
     ).rejects.toThrow(
-      `The roster headings ${JSON.stringify(cafe)} and ${JSON.stringify(cafeDecomposed)} both resolve to the attribute "id-cafe".`,
+      `The roster headings ${JSON.stringify(cafe)} and ${JSON.stringify(cafeDecomposed)} both resolve to the attribute "${CAFE}".`,
     );
   });
 
   it('fills the variable from only the heading that matches its case', async () => {
     expect(
       await fill(`${cafe},${cafe.toLowerCase()}\nespresso,latte\n`),
-    ).toEqual([{ 'id-cafe': 'espresso', [cafe.toLowerCase()]: 'latte' }]);
+    ).toEqual([{ [CAFE]: 'espresso', [cafe.toLowerCase()]: 'latte' }]);
   });
 
   it('fills no variable from a quoted heading with a space at the end, which import refuses', async () => {
@@ -467,7 +476,7 @@ describe('a roster heading, from import to the variable it fills', () => {
 
   it('fills the variable from an unquoted heading with spaces round it, which every reader trims', async () => {
     expect(await fill(` ${cafe} \nespresso\n`)).toEqual([
-      { 'id-cafe': 'espresso' },
+      { [CAFE]: 'espresso' },
     ]);
   });
 });

@@ -10,13 +10,18 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
+import { createSoundSpy } from '../../sounds/__tests__/soundSpy';
+import { InteractionSoundsProvider } from '../../sounds/InteractionSounds';
 import { createWritesInFlightMiddleware } from '../../store/middleware/writesInFlight';
 import protocol from '../../store/modules/protocol';
 import session, { updateEgo, updatePrompt } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { WritesInFlightProvider } from '../../store/WritesInFlightContext';
 import useInterviewNavigation from '../useInterviewNavigation';
+
+const AGREES = testVariableId('agrees');
 
 type TestStage = {
   id: string;
@@ -57,10 +62,10 @@ const skipWhenDeclined = (
     join: 'AND',
     rules: [
       {
-        id: 'does-not-agree',
+        id: testId('does-not-agree'),
         type: 'ego',
         options: {
-          attribute: asEntityAttributeReference('agrees'),
+          attribute: asEntityAttributeReference(AGREES),
           operator: 'EXACTLY',
           value: false,
         },
@@ -92,7 +97,7 @@ function makeStore(stages: TestStage[], extraMiddleware: Middleware[] = []) {
           edge: {},
           ego: {
             variables: {
-              agrees: { name: 'Agrees', type: 'boolean' },
+              [AGREES]: { name: 'Agrees', type: 'boolean' },
             },
           },
         },
@@ -199,7 +204,7 @@ function renderNavigation(
           edge: {},
           ego: {
             variables: {
-              agrees: { name: 'Agrees', type: 'boolean' },
+              [AGREES]: { name: 'Agrees', type: 'boolean' },
             },
           },
         },
@@ -341,7 +346,9 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
+        await store.dispatch(
+          updateEgo({ set: { [AGREES]: false }, unset: [] }),
+        );
         return true;
       });
     });
@@ -365,7 +372,9 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
+        await store.dispatch(
+          updateEgo({ set: { [AGREES]: false }, unset: [] }),
+        );
         return true;
       });
     });
@@ -404,7 +413,9 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
+        await store.dispatch(
+          updateEgo({ set: { [AGREES]: false }, unset: [] }),
+        );
         return true;
       });
     });
@@ -416,7 +427,7 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: true }, unset: [] }));
+        await store.dispatch(updateEgo({ set: { [AGREES]: true }, unset: [] }));
         return true;
       });
     });
@@ -436,7 +447,9 @@ describe('useInterviewNavigation targeted skip routes', () => {
 
     act(() => {
       result.current.registerBeforeNext(async () => {
-        await store.dispatch(updateEgo({ set: { agrees: false }, unset: [] }));
+        await store.dispatch(
+          updateEgo({ set: { [AGREES]: false }, unset: [] }),
+        );
         return true;
       });
     });
@@ -696,6 +709,7 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
       await stepped.result.current.moveForward();
     });
     act(() => {
+      stepped.result.current.handleExitComplete();
       stepped.result.current.registerBeforeNext(record);
     });
     await act(async () => {
@@ -841,7 +855,7 @@ describe('useInterviewNavigation goToStage (progress-bar jump)', () => {
 });
 
 describe('useInterviewNavigation waiting for writes begun on the stage', () => {
-  const declined = { set: { agrees: false }, unset: [] };
+  const declined = { set: { [AGREES]: false }, unset: [] };
   // Lets everything already queued run, so a navigation that did not wait
   // would have finished.
   const queuedWorkRuns = () =>
@@ -1130,4 +1144,255 @@ describe('useInterviewNavigation waiting for writes begun on the stage', () => {
       expect(steps).toHaveLength(1);
     },
   );
+});
+
+// A stage that has been left stays mounted while its exit animation runs, and
+// `handleExitComplete` is what ends that animation. Until a test calls it, the
+// stage that was left is still the one on screen.
+describe('useInterviewNavigation requests from a stage that has been left', () => {
+  type Navigation = ReturnType<typeof useInterviewNavigation>;
+  const steps = (onStepChange: ReturnType<typeof vi.fn>) =>
+    onStepChange.mock.calls.map(([step]) => step);
+
+  it('does not move forward again from a stage that is still leaving', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(makeStages(3));
+
+    await act(async () => result.current.moveForward());
+    await act(async () => result.current.moveForward());
+    expect(steps(onStepChange)).toEqual([1]);
+
+    // The stage that was reached moves on as usual once it is shown.
+    act(() => result.current.handleExitComplete());
+    await act(async () => result.current.moveForward());
+    expect(steps(onStepChange)).toEqual([1, 2]);
+  });
+
+  it('does not move back again from a stage that is still leaving', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(makeStages(3), 2);
+
+    await act(async () => result.current.moveBackward());
+    await act(async () => result.current.moveBackward());
+    expect(steps(onStepChange)).toEqual([1]);
+
+    act(() => result.current.handleExitComplete());
+    await act(async () => result.current.moveBackward());
+    expect(steps(onStepChange)).toEqual([1, 0]);
+  });
+
+  it.each<[string, (navigation: Navigation) => Promise<unknown>, number]>([
+    ['forward', (navigation) => navigation.moveForward(), 1],
+    ['back', (navigation) => navigation.moveBackward(), 2],
+  ])(
+    'moves %s once when two requests to leave the stage are under way at once',
+    async (_direction, navigate, from) => {
+      const { result, onStepChange } = renderStatefulNavigation(
+        makeStages(3),
+        from,
+      );
+      // The stage saves before it lets the interview move on; each request
+      // waits for its own save.
+      const saves: ((allowed: boolean) => void)[] = [];
+      act(() => {
+        result.current.registerBeforeNext(
+          () =>
+            new Promise<boolean>((resolve) => {
+              saves.push(resolve);
+            }),
+        );
+      });
+
+      // Next is pressed while the stage is already moving on by itself.
+      let first: Promise<unknown> = Promise.resolve();
+      let second: Promise<unknown> = Promise.resolve();
+      act(() => {
+        first = navigate(result.current);
+        second = navigate(result.current);
+      });
+      await vi.waitFor(() => expect(saves).toHaveLength(2));
+
+      await act(async () => {
+        saves[0]?.(true);
+        await first;
+      });
+      await act(async () => {
+        saves[1]?.(true);
+        await second;
+      });
+
+      expect(steps(onStepChange)).toHaveLength(1);
+    },
+  );
+
+  it('does not jump from a stage that another navigation left while the jump waited', async () => {
+    const { result, onStepChange } = renderStatefulNavigation(makeStages(4));
+    const saves: ((allowed: boolean) => void)[] = [];
+    act(() => {
+      result.current.registerBeforeNext(
+        () =>
+          new Promise<boolean>((resolve) => {
+            saves.push(resolve);
+          }),
+      );
+    });
+
+    let moving: Promise<unknown> = Promise.resolve();
+    let jumping: Promise<unknown> = Promise.resolve();
+    act(() => {
+      moving = result.current.moveForward();
+      jumping = result.current.goToStage(3);
+    });
+    await vi.waitFor(() => expect(saves).toHaveLength(2));
+
+    await act(async () => {
+      saves[0]?.(true);
+      await moving;
+    });
+    await act(async () => {
+      saves[1]?.(true);
+      await jumping;
+    });
+
+    expect(steps(onStepChange)).toEqual([1]);
+  });
+});
+
+describe('useInterviewNavigation button sound', () => {
+  // Stage 0 has two prompts, so a move can be to another prompt or stage.
+  const stages = (): TestStage[] => [
+    {
+      id: 's0',
+      type: 'Information',
+      label: 'Stage 0',
+      items: [],
+      prompts: [
+        { id: 'p0', text: 'Prompt 0' },
+        { id: 'p1', text: 'Prompt 1' },
+      ],
+    },
+    ...makeStages(2).slice(1),
+  ];
+
+  function renderWithSounds(initialStep = 0) {
+    const store = makeStore(stages());
+    const sounds = createSoundSpy();
+    const onStepChange = vi.fn();
+    function Wrapper({ children }: { children: ReactNode }) {
+      const [step, setStep] = useState(initialStep);
+      return (
+        <Provider store={store}>
+          <InteractionSoundsProvider engine={sounds.engine}>
+            <CurrentStepProvider
+              currentStep={step}
+              onStepChange={(nextStep) => {
+                onStepChange(nextStep);
+                setStep(nextStep);
+              }}
+            >
+              {children}
+            </CurrentStepProvider>
+          </InteractionSoundsProvider>
+        </Provider>
+      );
+    }
+    const { result } = renderHook(() => useInterviewNavigation(), {
+      wrapper: Wrapper,
+    });
+    const played = () => sounds.play.mock.calls.map(([name]) => name);
+    return { result, store, onStepChange, played };
+  }
+
+  it('plays it when Next moves to the next prompt, and when Back moves back', async () => {
+    const { result, store, played } = renderWithSounds();
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    expect(store.getState().session.promptIndex).toBe(1);
+    expect(played()).toEqual(['tap-button']);
+
+    await act(async () => {
+      await result.current.moveBackward();
+    });
+    expect(store.getState().session.promptIndex).toBe(0);
+    expect(played()).toEqual(['tap-button', 'tap-button']);
+  });
+
+  it('plays it when Next moves to the next stage', async () => {
+    const { result, store, onStepChange, played } = renderWithSounds();
+    act(() => {
+      store.dispatch(updatePrompt(1));
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    expect(onStepChange).toHaveBeenCalledWith(1);
+    expect(played()).toEqual(['tap-button']);
+  });
+
+  it('does not play it when the stage refuses the move', async () => {
+    const { result, store, onStepChange, played } = renderWithSounds();
+    act(() => {
+      result.current.registerBeforeNext(() => false);
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    expect(store.getState().session.promptIndex).toBe(0);
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(played()).toEqual([]);
+  });
+
+  it('plays it when the stage moves within itself, without moving the interview', async () => {
+    const { result, store, onStepChange, played } = renderWithSounds();
+    act(() => {
+      result.current.registerBeforeNext(() => 'MOVED_WITHIN_STAGE');
+    });
+
+    await act(async () => {
+      await result.current.moveForward();
+    });
+    expect(store.getState().session.promptIndex).toBe(0);
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(played()).toEqual(['tap-button']);
+  });
+
+  it('does not play it when Back has nowhere to go', async () => {
+    const { result, onStepChange, played } = renderWithSounds();
+
+    await act(async () => {
+      await result.current.moveBackward();
+    });
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(played()).toEqual([]);
+  });
+
+  it('does not play it for a move the stage makes by itself', async () => {
+    const { result, store, onStepChange, played } = renderWithSounds();
+
+    await act(async () => {
+      await result.current.getNavigationHelpers().moveForward();
+    });
+    expect(store.getState().session.promptIndex).toBe(1);
+
+    act(() => {
+      result.current.registerBeforeNext(() => 'MOVED_WITHIN_STAGE');
+    });
+    await act(async () => {
+      await result.current.getNavigationHelpers().moveBackward();
+    });
+    expect(onStepChange).not.toHaveBeenCalled();
+    expect(played()).toEqual([]);
+  });
+
+  it('plays it when the list of screens moves the interview', async () => {
+    const { result, onStepChange, played } = renderWithSounds();
+
+    await act(async () => {
+      await result.current.goToStage(2);
+    });
+    expect(onStepChange).toHaveBeenCalledWith(2);
+    expect(played()).toEqual(['tap-button']);
+  });
 });

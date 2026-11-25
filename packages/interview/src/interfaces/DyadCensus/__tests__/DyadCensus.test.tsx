@@ -18,6 +18,7 @@ import {
 } from '@codaco/shared-consts';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
+import { testId, testTypeId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import protocol from '../../../store/modules/protocol';
@@ -25,6 +26,7 @@ import session, { updatePrompt } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type {
   BeforeNextFunction,
+  BeforeNextResult,
   RegisterBeforeNext,
   StageProps,
 } from '../../../types';
@@ -32,27 +34,39 @@ import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import DyadCensus from '../DyadCensus';
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'friend';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('friend');
 
 const twoPromptStage = {
-  id: 'dc1',
+  id: testId('dc1'),
   type: 'DyadCensus',
   label: { en: 'Dyad Census' },
   subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
-    { id: 'p1', text: { en: 'Are they friends (q1)?' }, createEdge: EDGE_TYPE },
-    { id: 'p2', text: { en: 'Are they friends (q2)?' }, createEdge: EDGE_TYPE },
+    {
+      id: testId('p1'),
+      text: { en: 'Are they friends (q1)?' },
+      createEdge: EDGE_TYPE,
+    },
+    {
+      id: testId('p2'),
+      text: { en: 'Are they friends (q2)?' },
+      createEdge: EDGE_TYPE,
+    },
   ],
 };
 
 const onePromptStage = {
-  id: 'dc1',
+  id: testId('dc1'),
   type: 'DyadCensus',
   label: { en: 'Dyad Census' },
   subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
-    { id: 'p1', text: { en: 'Are they friends?' }, createEdge: EDGE_TYPE },
+    {
+      id: testId('p1'),
+      text: { en: 'Are they friends?' },
+      createEdge: EDGE_TYPE,
+    },
   ],
 };
 
@@ -140,7 +154,7 @@ function renderInterface(
     direction: 'forwards' | 'backwards',
     intent: 'step' | 'jump' = 'step',
   ) => {
-    let result: boolean | 'FORCE' | undefined;
+    let result: BeforeNextResult | undefined;
     await act(async () => {
       result = await handlers.get('stageValidation')?.(direction, intent);
     });
@@ -148,7 +162,7 @@ function renderInterface(
   };
 
   const runNavigation = async (direction: 'forwards' | 'backwards') => {
-    const results: (boolean | 'FORCE')[] = [];
+    const results: BeforeNextResult[] = [];
     await act(async () => {
       for (const [key, fn] of handlers) {
         if (key === 'stageValidation') continue;

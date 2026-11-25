@@ -5,7 +5,7 @@
   "schemaVersion": 9,
   "codebook": {
     "node": {
-      "person": {
+      "f7a9fa56-4b42-57df-865a-ea1fc6569f42": {
         "name": "person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -13,7 +13,7 @@
           "default": "circle"
         },
         "variables": {
-          "name": {
+          "7b37ada5-9796-57be-914f-6505c629dfe3": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -21,41 +21,44 @@
               "unique": true
             }
           },
-          "relationship_to_ego": {
+          "d7a3e732-a445-58b9-9293-58a01d3fcf19": {
             "name": "relationship_to_ego",
             "type": "text",
             "component": "Text"
           },
-          "composerName": {
+          "0036a0d6-0feb-58d0-816c-42c8a72312da": {
             "name": "composerName",
             "type": "text",
             "component": "Text"
           },
-          "layout": {
+          "59869f03-9b27-57a6-95bd-b07125f456ca": {
             "name": "layout",
             "type": "layout"
           },
-          "location": {
+          "b4f13220-7694-50aa-8b09-82d53ba64c0f": {
             "name": "location",
             "type": "location"
           },
-          "contactFreq": {
+          "e7d97de9-b4d8-5ab4-bb50-08878ecbb16d": {
             "name": "contactFreq",
             "type": "ordinal",
             "options": [
               {
+                "id": "ce582fb2-29ac-52d6-aabe-fd3f0e4c8324",
                 "label": {
                   "en-US": "Weekly"
                 },
                 "value": 3
               },
               {
+                "id": "aee68258-1e89-5efb-916f-e39b30d091f6",
                 "label": {
                   "en-US": "Monthly"
                 },
                 "value": 2
               },
               {
+                "id": "1508889c-9ced-5df2-bfa0-5763f5b1c680",
                 "label": {
                   "en-US": "Rarely"
                 },
@@ -63,23 +66,26 @@
               }
             ]
           },
-          "contactType": {
+          "c85d3510-7891-5c8d-a5c3-78129528cd29": {
             "name": "contactType",
             "type": "categorical",
             "options": [
               {
+                "id": "416a61e2-9b6e-509a-9222-8e5246017fd7",
                 "label": {
                   "en-US": "In person"
                 },
                 "value": "in_person"
               },
               {
+                "id": "d25ff55d-4b62-5b01-984a-8945660b4720",
                 "label": {
                   "en-US": "Phone or video call"
                 },
                 "value": "call"
               },
               {
+                "id": "2def8ae3-c32f-597a-b51b-77cbd4eaa2e7",
                 "label": {
                   "en-US": "Text or messaging"
                 },
@@ -87,23 +93,23 @@
               }
             ]
           },
-          "flagged": {
+          "f7720d52-a1c1-550f-a815-c0c842cdbbfa": {
             "name": "flagged",
             "type": "boolean",
             "component": "Boolean"
           },
-          "highlighted": {
+          "c5612235-bc7e-5f25-bf5f-ecaa548db445": {
             "name": "highlighted",
             "type": "boolean",
             "component": "Boolean"
           },
-          "age": {
+          "fb622478-f9ba-59d7-8b9a-5b8606091fb2": {
             "name": "age",
             "type": "number"
           }
         }
       },
-      "family_member": {
+      "d2904722-c463-5fe3-8f6d-032114d8ed55": {
         "name": "family member",
         "color": "node-color-seq-2",
         "icon": "add-a-person",
@@ -111,7 +117,7 @@
           "default": "circle"
         },
         "variables": {
-          "fm_name": {
+          "9816c996-4c24-5e45-8e14-464b5a103d5f": {
             "name": "fm_name",
             "type": "text",
             "component": "Text",
@@ -119,46 +125,52 @@
               "unique": true
             }
           },
-          "is_ego": {
+          "11d77cf1-7140-5ea7-8b77-4d3157d669fc": {
             "name": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
-          "genderIdentity": {
+          "619462a8-74c2-5d6a-88c4-db0179409f69": {
             "name": "genderIdentity",
             "type": "categorical",
             "options": [
               {
+                "id": "0c1373c2-8156-57ee-b35f-847e4eb4c337",
                 "value": "woman",
                 "label": {
                   "en-US": "Woman"
                 }
               },
               {
+                "id": "59ef745a-5491-5cfe-a62a-e2f95b0fd817",
                 "value": "man",
                 "label": {
                   "en-US": "Man"
                 }
               },
               {
+                "id": "68226e1a-c1da-58a1-9f98-e430fd78cd13",
                 "value": "nonBinary",
                 "label": {
                   "en-US": "Non-binary"
                 }
               },
               {
+                "id": "14cbcfb7-bcd1-5184-ad34-43e733cc4f83",
                 "value": "differentIdentity",
                 "label": {
                   "en-US": "A different identity"
                 }
               },
               {
+                "id": "e6c61721-154f-5b59-8522-6787d2e1e761",
                 "value": "unknown",
                 "label": {
                   "en-US": "Don’t know"
                 }
               },
               {
+                "id": "97381784-94be-55eb-80b6-ba078cf5f8b5",
                 "value": "preferNotToSay",
                 "label": {
                   "en-US": "Prefer not to say"
@@ -166,35 +178,40 @@
               }
             ]
           },
-          "sexAssignedAtBirth": {
+          "5020bc4f-7715-5cdf-a41a-bea64038e14b": {
             "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
               {
+                "id": "dafc1d52-ce30-50b0-a66f-71ceb9b897b1",
                 "value": "female",
                 "label": {
                   "en-US": "Female"
                 }
               },
               {
+                "id": "b26bd884-296f-5928-86a8-31ecc44ff05b",
                 "value": "male",
                 "label": {
                   "en-US": "Male"
                 }
               },
               {
+                "id": "ee28be72-e82e-546f-aa14-3cb6bf3a1108",
                 "value": "intersex",
                 "label": {
                   "en-US": "Intersex"
                 }
               },
               {
+                "id": "2fff84b1-4c5a-5883-9afd-0ce9d7d8dbc7",
                 "value": "unknown",
                 "label": {
                   "en-US": "Don’t know"
                 }
               },
               {
+                "id": "58e78ee0-26e8-5e4b-8ede-bffba24568c4",
                 "value": "preferNotToSay",
                 "label": {
                   "en-US": "Prefer not to say"
@@ -202,7 +219,7 @@
               }
             ]
           },
-          "hasConditionX": {
+          "c18927a8-2e46-5308-a9fd-19d7ca1fe5a3": {
             "name": "hasConditionX",
             "type": "boolean"
           }
@@ -211,7 +228,7 @@
     },
     "ego": {
       "variables": {
-        "ego_name": {
+        "63dd79a3-4154-52ad-b515-fb3cc8d24811": {
           "name": "ego_name",
           "type": "text",
           "component": "Text"
@@ -219,63 +236,72 @@
       }
     },
     "edge": {
-      "family_edge": {
+      "d7ebf898-1ccb-5123-a6aa-21913ffdaf2b": {
         "name": "family_edge",
         "color": "edge-color-seq-1",
         "variables": {
-          "relationshipKind": {
+          "9d99804f-a799-5d68-9dc6-7eebc6dfbec0": {
             "name": "relationshipKind",
             "type": "categorical",
             "options": [
               {
+                "id": "6c589c38-8598-52dc-81cc-cab5f9c06c80",
                 "value": "partner",
                 "label": {
                   "en-US": "Partner"
                 }
               },
               {
+                "id": "f2dd84b4-f283-5a25-8d1a-338108e833d1",
                 "value": "biological",
                 "label": {
                   "en-US": "Biological parent"
                 }
               },
               {
+                "id": "f466e97e-2b2c-5a8f-ac3e-02846324cca3",
                 "value": "adoptive",
                 "label": {
                   "en-US": "Adoptive parent"
                 }
               },
               {
+                "id": "33dfa094-7d1c-5277-b3f8-b345553987f2",
                 "value": "social",
                 "label": {
                   "en-US": "Step or social parent"
                 }
               },
               {
+                "id": "ba0d30a8-6077-574e-843a-828ae35b512f",
                 "value": "donor",
                 "label": {
                   "en-US": "Donor"
                 }
               },
               {
+                "id": "32234556-d1c7-5043-a045-5572eda960f0",
                 "value": "surrogate",
                 "label": {
                   "en-US": "Surrogate"
                 }
               },
               {
+                "id": "8f9177f6-d5c3-57c8-8f7c-fec4b4f38544",
                 "value": "identicalTwin",
                 "label": {
                   "en-US": "Identical twin"
                 }
               },
               {
+                "id": "e37daf45-d5ca-527c-919e-373cf0be921c",
                 "value": "fraternalTwin",
                 "label": {
                   "en-US": "Fraternal twin"
                 }
               },
               {
+                "id": "08d233a9-5b1a-5db5-bbcf-b371b55bf885",
                 "value": "unknownZygosityTwin",
                 "label": {
                   "en-US": "Twin, not known if identical"
@@ -283,37 +309,40 @@
               }
             ]
           },
-          "isGestationalCarrier": {
+          "34c8dd7f-ac19-5a13-99a0-c2c10beec4c7": {
             "name": "isGestationalCarrier",
             "type": "boolean"
           },
-          "isCurrentPartner": {
+          "729ece78-f18c-5d61-b391-a2d469f9bd50": {
             "name": "isCurrentPartner",
             "type": "boolean"
           }
         }
       },
-      "knows": {
+      "be546dd6-d6dc-5f85-b821-974abd0845e5": {
         "name": "knows",
         "color": "edge-color-seq-2",
         "variables": {
-          "closeness": {
+          "59ee4723-dbbc-59c7-a3fc-4b082c525299": {
             "name": "closeness",
             "type": "ordinal",
             "options": [
               {
+                "id": "feab459a-6553-56a7-9513-a45eaed4c7a2",
                 "label": {
                   "en-US": "Very close"
                 },
                 "value": 3
               },
               {
+                "id": "1693cb69-50d9-5670-8d2d-d64696cb2296",
                 "label": {
                   "en-US": "Somewhat close"
                 },
                 "value": 2
               },
               {
+                "id": "7e82109d-476f-5698-bb77-fba6bed6323b",
                 "label": {
                   "en-US": "Not close"
                 },
@@ -321,7 +350,7 @@
               }
             ]
           },
-          "edgeNotes": {
+          "52737d29-39bf-5bd8-b4cd-ec79160f993c": {
             "name": "edgeNotes",
             "type": "text",
             "component": "TextArea"
@@ -332,7 +361,7 @@
   },
   "stages": [
     {
-      "id": "anonymisation-1",
+      "id": "02e10070-d771-550f-ac02-c84ceae61497",
       "type": "Anonymisation",
       "label": {
         "en-US": "Anonymisation"
@@ -346,7 +375,7 @@
       }
     },
     {
-      "id": "ego-form-1",
+      "id": "cc71786e-3aa7-5663-a7bb-1c3ddca2bd1d",
       "type": "EgoForm",
       "label": {
         "en-US": "Ego Form"
@@ -362,8 +391,8 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "ego_name",
+            "id": "2893e491-8b03-5f25-8d6f-d859e78da8d7",
+            "variable": "63dd79a3-4154-52ad-b515-fb3cc8d24811",
             "prompt": {
               "en-US": "What is your name?"
             }
@@ -372,7 +401,7 @@
       }
     },
     {
-      "id": "information-1",
+      "id": "6049d89c-eba1-5d05-a2cc-d6a6cc626412",
       "type": "Information",
       "label": {
         "en-US": "Information"
@@ -382,14 +411,14 @@
       }
     },
     {
-      "id": "name-generator-1",
+      "id": "2e075988-39e1-5888-bffa-225e2074f780",
       "type": "NameGenerator",
       "label": {
         "en-US": "Name Generator"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "form": {
         "title": {
@@ -397,8 +426,8 @@
         },
         "fields": [
           {
-            "id": "field-1",
-            "variable": "name",
+            "id": "07514def-8157-561e-a846-464893211399",
+            "variable": "7b37ada5-9796-57be-914f-6505c629dfe3",
             "prompt": {
               "en-US": "What is this person's name?"
             }
@@ -407,7 +436,7 @@
       },
       "prompts": [
         {
-          "id": "name-generator-prompt-1",
+          "id": "ac9b9226-bd95-5631-bc61-5f420fae1b32",
           "text": {
             "en-US": "Who are the people you know?"
           }
@@ -415,19 +444,19 @@
       ]
     },
     {
-      "id": "name-generator-quick-add-1",
+      "id": "14518a31-66a4-5dea-8991-3be35d7357c6",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "Name Generator Quick Add"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
-      "quickAdd": "name",
+      "quickAdd": "7b37ada5-9796-57be-914f-6505c629dfe3",
       "prompts": [
         {
-          "id": "name-generator-quick-add-prompt-1",
+          "id": "d16cf4c7-ff39-5566-852f-f8239e11a82a",
           "text": {
             "en-US": "Quickly add people you know"
           }
@@ -438,7 +467,7 @@
       }
     },
     {
-      "id": "name-generator-roster-1",
+      "id": "0c06ce6e-94af-5370-b616-517fb180c6ff",
       "minNodesNotice": {
         "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
       },
@@ -454,7 +483,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "dataSource": "roster_data",
       "panelTitle": {
@@ -463,6 +492,7 @@
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "b81cc4ca-b8ee-550f-81eb-4bd8d2384ec1",
             "label": {
               "en-US": "Age"
             },
@@ -473,12 +503,14 @@
       "sortOptions": {
         "sortOrder": [
           {
+            "id": "bb944dfa-5ff0-529a-a465-dd339d74a3e3",
             "property": "age",
             "direction": "desc"
           }
         ],
         "sortableProperties": [
           {
+            "id": "e6dd29fa-4ffb-50b6-9e2a-1fd665b9464a",
             "label": {
               "en-US": "Age"
             },
@@ -492,7 +524,7 @@
       },
       "prompts": [
         {
-          "id": "name-generator-roster-prompt-1",
+          "id": "6bc59607-cfdc-52bb-ab28-96ecd17ae3e4",
           "text": {
             "en-US": "Select people from the roster"
           }
@@ -507,14 +539,14 @@
       }
     },
     {
-      "id": "sociogram-1",
+      "id": "7dc12a2e-f513-5491-a06e-6ff32848ba80",
       "type": "Sociogram",
       "label": {
         "en-US": "Sociogram"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "background": {
         "concentricCircles": 4,
@@ -525,100 +557,100 @@
       },
       "prompts": [
         {
-          "id": "sociogram-prompt-1",
+          "id": "e47e83ec-1a8f-5330-a0e2-0e3360c2e4a6",
           "text": {
             "en-US": "Place the people who know each other close together"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "59869f03-9b27-57a6-95bd-b07125f456ca"
           },
           "edges": {
-            "display": ["knows"],
-            "create": "knows"
+            "display": ["be546dd6-d6dc-5f85-b821-974abd0845e5"],
+            "create": "be546dd6-d6dc-5f85-b821-974abd0845e5"
           },
           "highlight": {
             "allowHighlighting": false
           }
         },
         {
-          "id": "sociogram-prompt-2",
+          "id": "c6915d43-dcfe-5f94-9a4c-fe9fbb8146b1",
           "text": {
             "en-US": "Highlight the people you feel closest to"
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "59869f03-9b27-57a6-95bd-b07125f456ca"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["be546dd6-d6dc-5f85-b821-974abd0845e5"]
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "highlighted"
+            "variable": "c5612235-bc7e-5f25-bf5f-ecaa548db445"
           }
         }
       ]
     },
     {
-      "id": "dyad-census-1",
+      "id": "aae728cd-e60d-503d-b263-7fa21099894a",
       "type": "DyadCensus",
       "label": {
         "en-US": "Dyad Census"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "prompts": [
         {
-          "id": "dyad-census-prompt-1",
+          "id": "d89474db-f2eb-556a-9d0d-30ee4480d2ef",
           "text": {
             "en-US": "Do these two people know each other?"
           },
-          "createEdge": "knows"
+          "createEdge": "be546dd6-d6dc-5f85-b821-974abd0845e5"
         }
       ]
     },
     {
-      "id": "one-to-many-dyad-census-1",
+      "id": "e66fdd26-af0a-51da-9cc0-742e228341bc",
       "type": "OneToManyDyadCensus",
       "label": {
         "en-US": "One to Many Dyad Census"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "behaviours": {
         "removeAfterConsideration": true
       },
       "prompts": [
         {
-          "id": "one-to-many-dyad-census-prompt-1",
+          "id": "87c3fca2-a16a-5238-9155-8bde2bcb60a9",
           "text": {
             "en-US": "Tap on all the people who this person knows"
           },
-          "createEdge": "knows"
+          "createEdge": "be546dd6-d6dc-5f85-b821-974abd0845e5"
         }
       ]
     },
     {
-      "id": "tie-strength-census-1",
+      "id": "bce9a90e-11e4-5461-8b47-d66049e7473c",
       "type": "TieStrengthCensus",
       "label": {
         "en-US": "Tie-Strength Census"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "prompts": [
         {
-          "id": "tie-strength-census-prompt-1",
+          "id": "f0cd168a-7a10-58e8-a2ff-9c718dec9955",
           "text": {
             "en-US": "How close are these two people?"
           },
-          "createEdge": "knows",
-          "edgeVariable": "closeness",
+          "createEdge": "be546dd6-d6dc-5f85-b821-974abd0845e5",
+          "edgeVariable": "59ee4723-dbbc-59c7-a3fc-4b082c525299",
           "negativeLabel": {
             "en-US": "Don't know each other"
           }
@@ -626,68 +658,68 @@
       ]
     },
     {
-      "id": "ordinal-bin-1",
+      "id": "5da6e29b-162a-5912-9642-b31831381227",
       "type": "OrdinalBin",
       "label": {
         "en-US": "Ordinal Bin"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "prompts": [
         {
-          "id": "ordinal-bin-prompt-1",
+          "id": "c3b86056-61df-58cf-b646-a25ad2f23adf",
           "text": {
             "en-US": "How often do you have contact with this person?"
           },
-          "variable": "contactFreq",
+          "variable": "e7d97de9-b4d8-5ab4-bb50-08878ecbb16d",
           "color": "ord-color-seq-1"
         }
       ]
     },
     {
-      "id": "categorical-bin-1",
+      "id": "5788a511-a784-588c-8fe3-e5a77101c45d",
       "type": "CategoricalBin",
       "label": {
         "en-US": "Categorical Bin"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "prompts": [
         {
-          "id": "categorical-bin-prompt-1",
+          "id": "d6574ea1-cb98-51df-96b4-31ee979f8bd6",
           "text": {
             "en-US": "What type of contact do you have most with this person?"
           },
-          "variable": "contactType"
+          "variable": "c85d3510-7891-5c8d-a5c3-78129528cd29"
         }
       ]
     },
     {
-      "id": "alter-form-1",
+      "id": "b02c394d-b6d5-5b05-bdda-ba12f0e8d0bc",
       "type": "AlterForm",
       "label": {
         "en-US": "Alter Form"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "relationship_to_ego",
+            "id": "cdc8f988-8bce-5f7e-a82a-ff1ae5c54fc4",
+            "variable": "d7a3e732-a445-58b9-9293-58a01d3fcf19",
             "prompt": {
               "en-US": "What is this person's relationship to you?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "flagged",
+            "id": "36a57d13-dcda-5a7a-9fb9-dab86378e41e",
+            "variable": "f7720d52-a1c1-550f-a815-c0c842cdbbfa",
             "prompt": {
               "en-US": "Does this person have this attribute?"
             }
@@ -696,20 +728,20 @@
       }
     },
     {
-      "id": "alter-edge-form-1",
+      "id": "bf8767e8-c11f-5b26-8ace-c607e055f750",
       "type": "AlterEdgeForm",
       "label": {
         "en-US": "Alter Edge Form"
       },
       "subject": {
         "entity": "edge",
-        "type": "knows"
+        "type": "be546dd6-d6dc-5f85-b821-974abd0845e5"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "edgeNotes",
+            "id": "8d5f881e-f920-5245-b5b1-edff6559e538",
+            "variable": "52737d29-39bf-5bd8-b4cd-ec79160f993c",
             "prompt": {
               "en-US": "Add any notes about this relationship"
             }
@@ -718,7 +750,7 @@
       }
     },
     {
-      "id": "narrative-1",
+      "id": "96af4f84-0b7f-5eb3-bd54-387263b7cebc",
       "attributesHeading": {
         "en-US": "Attributes"
       },
@@ -734,20 +766,21 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "presets": [
         {
-          "id": "narrative-preset-1",
+          "id": "6d158bf4-2c03-52db-bc21-a1170ad39186",
           "label": {
             "en-US": "Default layout"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "contactType",
+          "layoutVariable": "59869f03-9b27-57a6-95bd-b07125f456ca",
+          "groupVariable": "c85d3510-7891-5c8d-a5c3-78129528cd29",
           "edges": {
             "display": [
               {
-                "type": "knows",
+                "id": "efd01880-b5c4-5ddd-9d91-7bb22e2b7f65",
+                "type": "be546dd6-d6dc-5f85-b821-974abd0845e5",
                 "label": {
                   "en-US": "knows"
                 }
@@ -756,7 +789,8 @@
           },
           "highlight": [
             {
-              "variable": "flagged",
+              "id": "baf1910b-f341-53a8-8011-a138b3dabaa4",
+              "variable": "f7720d52-a1c1-550f-a815-c0c842cdbbfa",
               "label": {
                 "en-US": "Flagged"
               }
@@ -774,7 +808,7 @@
       }
     },
     {
-      "id": "family-pedigree-1",
+      "id": "b4f38b94-4db4-5c1d-8dfd-28562f29ff93",
       "wording": {
         "alsoParentOfLabel": {
           "en-US": "Are they also the parent of…"
@@ -1002,13 +1036,13 @@
       },
       "subject": {
         "entity": "node",
-        "type": "family_member"
+        "type": "d2904722-c463-5fe3-8f6d-032114d8ed55"
       },
       "prompt": {
         "en-US": "Who is in your family?"
       },
       "nodeConfiguration": {
-        "nameAttribute": "fm_name",
+        "nameAttribute": "9816c996-4c24-5e45-8e14-464b5a103d5f",
         "nameField": {
           "prompt": {
             "en-US": "Name (optional)"
@@ -1018,7 +1052,7 @@
           }
         },
         "genderIdentity": {
-          "attribute": "genderIdentity",
+          "attribute": "619462a8-74c2-5d6a-88c4-db0179409f69",
           "terms": [
             {
               "value": "woman",
@@ -1046,27 +1080,27 @@
             }
           ]
         },
-        "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
-        "egoAttribute": "is_ego"
+        "sexAssignedAtBirthAttribute": "5020bc4f-7715-5cdf-a41a-bea64038e14b",
+        "egoAttribute": "11d77cf1-7140-5ea7-8b77-4d3157d669fc"
       },
       "edgeConfiguration": {
-        "type": "family_edge",
-        "kindAttribute": "relationshipKind",
-        "gestationalCarrierAttribute": "isGestationalCarrier",
-        "currentPartnerAttribute": "isCurrentPartner"
+        "type": "d7ebf898-1ccb-5123-a6aa-21913ffdaf2b",
+        "kindAttribute": "9d99804f-a799-5d68-9dc6-7eebc6dfbec0",
+        "gestationalCarrierAttribute": "34c8dd7f-ac19-5a13-99a0-c2c10beec4c7",
+        "currentPartnerAttribute": "729ece78-f18c-5d61-b391-a2d469f9bd50"
       },
       "nominationPrompts": [
         {
-          "id": "nomination-1",
+          "id": "8ec1d289-038e-5efb-bc97-8a2c14793cc7",
           "text": {
             "en-US": "Who in your family has been diagnosed with condition X?"
           },
-          "attribute": "hasConditionX"
+          "attribute": "c18927a8-2e46-5308-a9fd-19d7ca1fe5a3"
         }
       ]
     },
     {
-      "id": "narrative-pedigree-1",
+      "id": "47d782ae-d578-5602-b4b4-3f1f724082c3",
       "saveSnapshot": {
         "en-US": "Save snapshot"
       },
@@ -1085,37 +1119,37 @@
       "label": {
         "en-US": "Narrative Pedigree"
       },
-      "sourceStageId": "family-pedigree-1",
+      "sourceStageId": "b4f38b94-4db4-5c1d-8dfd-28562f29ff93",
       "diseases": [
         {
-          "id": "disease-1",
+          "id": "e2891ffc-5b42-533b-9531-fc24d51fc461",
           "label": {
             "en-US": "Condition X"
           },
           "color": "node-color-seq-1",
-          "attribute": "hasConditionX",
+          "attribute": "c18927a8-2e46-5308-a9fd-19d7ca1fe5a3",
           "inheritancePattern": "autosomalDominant"
         }
       ]
     },
     {
-      "id": "network-composer-1",
+      "id": "530cae12-9925-5a4f-a7a4-d2211a30a775",
       "type": "NetworkComposer",
       "label": {
         "en-US": "Network Composer"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
-      "quickAdd": "composerName",
-      "layoutVariable": "layout",
+      "quickAdd": "0036a0d6-0feb-58d0-816c-42c8a72312da",
+      "layoutVariable": "59869f03-9b27-57a6-95bd-b07125f456ca",
       "background": {
         "concentricCircles": 4
       }
     },
     {
-      "id": "geospatial-1",
+      "id": "15031867-da58-528e-9b3f-d98870df0a81",
       "outsideAreasLabel": {
         "en-US": "Outside Selectable Areas"
       },
@@ -1125,7 +1159,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "f7a9fa56-4b42-57df-865a-ea1fc6569f42"
       },
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
@@ -1138,16 +1172,16 @@
       },
       "prompts": [
         {
-          "id": "geospatial-prompt-1",
+          "id": "bcf0035c-5ddb-5a7f-aeb5-6e6758a60224",
           "text": {
             "en-US": "Where do you live?"
           },
-          "variable": "location"
+          "variable": "b4f13220-7694-50aa-8b09-82d53ba64c0f"
         }
       ]
     },
     {
-      "id": "language-chooser-1",
+      "id": "4c191cc5-7099-5635-8f1e-2cb5912b144f",
       "type": "LanguageChooser",
       "label": {
         "en-US": "Language Chooser"
@@ -1157,7 +1191,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "937a65b0-003a-57b1-bbf8-26e1e476cc81",
       "finishLabel": {
         "en-US": "Finish"
       },

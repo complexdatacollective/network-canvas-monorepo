@@ -17,6 +17,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { CanvasStoreApi } from '../../../canvas/useCanvasStore';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
@@ -63,13 +64,13 @@ beforeAll(() => {
   }
 });
 
-const NODE_TYPE = 'person';
-const EDGE_TYPE = 'knows';
-const LAYOUT_VAR = 'xy_position';
-const QUICK_ADD_VAR = 'var-quick-add';
+const NODE_TYPE = testTypeId('person');
+const EDGE_TYPE = testTypeId('knows');
+const LAYOUT_VAR = testVariableId('xy_position');
+const QUICK_ADD_VAR = testVariableId('var-quick-add');
 
 const makeStage = (defaultEnabled: boolean) => ({
-  id: 'nc1',
+  id: testId('nc1'),
   type: 'NetworkComposer' as const,
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
@@ -77,7 +78,7 @@ const makeStage = (defaultEnabled: boolean) => ({
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
   edges: [
     {
-      id: 'edge-config',
+      id: testId('edge-config'),
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
       label: { en: 'Knows' },
     },

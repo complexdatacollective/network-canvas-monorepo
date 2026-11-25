@@ -1,6 +1,6 @@
 'use client';
 import { Users } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useMotionValue } from 'motion/react';
 import {
   type RefObject,
   useCallback,
@@ -28,6 +28,7 @@ import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { useContentFormat } from '../../../localization/useContentFormat';
 import { getCurrentStageId } from '../../../selectors/session';
+import type { DropSound } from '../../../sounds/InteractionSounds';
 import { interfaceMessages } from '../../messages';
 import BinSummary from './BinSummary';
 
@@ -41,6 +42,12 @@ type CategoricalBinItemProps = {
   index: number;
   label: string;
   isExpanded: boolean;
+  /**
+   * True for the circle that this bin's open panel is closing into. The
+   * circle then rounds its corners in pixels until the change finishes, so
+   * that they animate from the panel's corners (see `circleRadius`).
+   */
+  isClosingFromPanel?: boolean;
   onToggleExpand: () => void;
   catColor: string | null;
   /** Resolves true only when the drop commits a bin assignment. */
@@ -171,6 +178,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     index,
     label,
     isExpanded,
+    isClosingFromPanel = false,
     onToggleExpand,
     catColor,
     onDropNode,
@@ -186,9 +194,31 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   const binRef = useRef<HTMLDivElement>(null);
   // The expanded panel grows out of the circle through its `layoutId`, and
   // Motion keeps its corners true only for a numeric radius, so the panel's
-  // `rounded-sm` is passed to `style` too. (The circle's `50%` is already a
-  // value Motion can correct.)
+  // `rounded-sm` is passed to `style` too.
   const panelRadius = useTokenRadius(binRef);
+  // Motion animates the corners between the circle and the panel only when
+  // both radii are in the same unit: between `50%` and pixels it jumps
+  // straight to the end. So for those two changes the circle is rounded with
+  // half its diameter in pixels instead, which draws the same circle. At rest
+  // it keeps `50%`: a pixel radius stays the same size on screen while Motion
+  // scales the box, so a circle shrinking to make room for another bin's
+  // panel would look square until it reached its new size.
+  const circleRadius = useMotionValue<number | string>('50%');
+  const roundInPixels = useCallback(() => {
+    const circle = binRef.current;
+    if (circle) circleRadius.set(circle.offsetWidth / 2);
+  }, [circleRadius]);
+  // Motion keeps the radius the circle had when the panel replaced it, so
+  // opening switches to pixels just before the panel appears.
+  const expand = () => {
+    roundInPixels();
+    onToggleExpand();
+  };
+  // Closing reads the circle's radius on every frame, so the circle keeps
+  // pixels until the change has finished (`onLayoutAnimationComplete`).
+  useLayoutEffect(() => {
+    if (isClosingFromPanel) roundInPixels();
+  }, [isClosingFromPanel, roundInPixels]);
   const contentRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const summaryTextRef = useRef<HTMLParagraphElement>(null);
@@ -212,6 +242,9 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     const node = metadata as NcNode;
     const committed = await onDropNode(node);
     if (committed) celebrate();
+    // The bin's drop sound plays only for a placement that was saved: not
+    // for a refused write, nor for an "other" question that was cancelled.
+    return committed;
   };
 
   const handleSelect = async () => {
@@ -231,6 +264,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     id: getCatBinDropTargetId(stageId, promptId, index),
     accepts: ['NODE'],
     announcedName: `Category: ${spokenLabel}`,
+    dropFeedback: 'toggle-on' satisfies DropSound,
     onDrop: handleDrop,
     disabled: !!select,
   });
@@ -370,7 +404,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
       data-flow-index={flowOrdinal}
       style={{
         ...colorStyle,
-        borderRadius: '50%',
+        borderRadius: circleRadius,
       }}
       {...(select
         ? {}
@@ -379,12 +413,13 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
             'tabIndex': 0,
             'onClick': (e: React.MouseEvent) => {
               e.stopPropagation();
-              onToggleExpand();
+              expand();
             },
             'aria-expanded': false,
             'aria-label': `Category ${spokenLabel}, ${itemCount(nodes.length)}`,
           })}
       transition={springTransition}
+      onLayoutAnimationComplete={() => circleRadius.set('50%')}
       variants={binItemVariants}
     >
       {select && (
@@ -415,7 +450,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
           className="focusable bg-surface/80 absolute bottom-[3cqb] left-1/2 z-10 flex size-[max(2.75rem,12cqi)] -translate-x-1/2 cursor-pointer items-center justify-center rounded-full"
           onClick={(e) => {
             e.stopPropagation();
-            onToggleExpand();
+            expand();
           }}
           aria-expanded={false}
           aria-label={`Show what is in ${spokenLabel}, ${itemCount(nodes.length)}`}

@@ -1,4 +1,5 @@
 import { withInterfaceText } from './suppliedWording.ts';
+import { testId, withTestIds } from './testIds.ts';
 
 /**
  * Test support: a schema 9 protocol must end at a finish stage, so a fixture
@@ -6,9 +7,10 @@ import { withInterfaceText } from './suppliedWording.ts';
  * its text in every language the fixture declares (so it adds no missing
  * translation). It then holds the interface text a stored protocol holds
  * (`withInterfaceText`): its own wording for the entries it shows, and none
- * for the rest. A fixture with no stage list is returned as it is.
+ * for the rest, and the protocol object ids `withTestIds` gives it. A fixture
+ * with no stage list is returned as it is.
  */
-const TEST_FINISH_STAGE_ID = 'test-finish';
+const TEST_FINISH_STAGE_ID = testId('test-finish');
 
 type FixtureLike = {
   stages?: unknown;
@@ -65,13 +67,15 @@ export const withFinishStage = <T>(protocol: T): T => {
   const fixture = protocol as FixtureLike;
   if (!Array.isArray(fixture.stages)) return protocol;
   if (endsAtFinishStage(fixture.stages)) {
-    return withFixtureInterfaceText(protocol);
+    return withTestIds(withFixtureInterfaceText(protocol));
   }
   const locales = fixture.localization?.locales ?? [
     fixture.localization?.defaultLocale ?? 'en',
   ];
-  return withFixtureInterfaceText({
-    ...protocol,
-    stages: [...fixture.stages, testFinishStage(locales)],
-  });
+  return withTestIds(
+    withFixtureInterfaceText({
+      ...protocol,
+      stages: [...fixture.stages, testFinishStage(locales)],
+    }),
+  );
 };

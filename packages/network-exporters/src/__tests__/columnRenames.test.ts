@@ -12,6 +12,7 @@ import type { InterviewExportInput } from '../input';
 import type { ExportOptions } from '../options';
 import type { ExportWarning } from '../output';
 import { runRecordedExport } from './exportHarness';
+import { testOptionId, testTypeId, testVariableId } from './testIds';
 
 const options: ExportOptions = {
   exportGraphML: true,
@@ -28,41 +29,49 @@ const options: ExportOptions = {
 const codebook: Codebook = {
   ego: {
     variables: {
-      'ego-case': {
+      [testVariableId('ego-case')]: {
         name: 'networkCanvasCaseID',
         type: 'text',
       },
     },
   },
   node: {
-    person: {
+    [testTypeId('person')]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-id': { name: 'nodeID', type: 'text' },
-        'p-label': { name: 'label', type: 'text' },
-        'p-red': {
+        [testVariableId('p-id')]: { name: 'nodeID', type: 'text' },
+        [testVariableId('p-label')]: { name: 'label', type: 'text' },
+        [testVariableId('p-red')]: {
           name: 'Colour_red',
           type: 'text',
         },
-        'p-colour': {
+        [testVariableId('p-colour')]: {
           name: 'Colour',
           type: 'categorical',
           options: [
-            { label: { en: 'Red' }, value: 'red' },
-            { label: { en: 'Blue' }, value: 'blue' },
+            {
+              id: testOptionId('Colour/red'),
+              label: { en: 'Red' },
+              value: 'red',
+            },
+            {
+              id: testOptionId('Colour/blue'),
+              label: { en: 'Blue' },
+              value: 'blue',
+            },
           ],
         },
       },
     },
   },
   edge: {
-    knows: {
+    [testTypeId('knows')]: {
       name: 'Knows',
       color: 'edge-color-seq-1',
       variables: {
-        'k-from': { name: 'from', type: 'text' },
+        [testVariableId('k-from')]: { name: 'from', type: 'text' },
       },
     },
   },
@@ -79,18 +88,18 @@ const interview = (id: string, suffix: string): InterviewExportInput => ({
     nodes: [
       {
         [entityPrimaryKeyProperty]: `${id}-node-1`,
-        type: 'person',
+        type: testTypeId('person'),
         [entityAttributesProperty]: {
-          'p-id': `own id ${suffix}`,
-          'p-label': `Label ${suffix}`,
-          'p-red': `crimson ${suffix}`,
-          'p-colour': ['blue'],
+          [testVariableId('p-id')]: `own id ${suffix}`,
+          [testVariableId('p-label')]: `Label ${suffix}`,
+          [testVariableId('p-red')]: `crimson ${suffix}`,
+          [testVariableId('p-colour')]: ['blue'],
         },
       },
       {
         [entityPrimaryKeyProperty]: `${id}-node-2`,
-        type: 'person',
-        [entityAttributesProperty]: { 'p-colour': ['red'] },
+        type: testTypeId('person'),
+        [entityAttributesProperty]: { [testVariableId('p-colour')]: ['red'] },
       },
     ],
     edges: [
@@ -98,13 +107,17 @@ const interview = (id: string, suffix: string): InterviewExportInput => ({
         [entityPrimaryKeyProperty]: `${id}-edge-1`,
         from: `${id}-node-1`,
         to: `${id}-node-2`,
-        type: 'knows',
-        [entityAttributesProperty]: { 'k-from': `school ${suffix}` },
+        type: testTypeId('knows'),
+        [entityAttributesProperty]: {
+          [testVariableId('k-from')]: `school ${suffix}`,
+        },
       },
     ],
     ego: {
       [entityPrimaryKeyProperty]: `${id}-ego`,
-      [entityAttributesProperty]: { 'ego-case': `their case ${suffix}` },
+      [entityAttributesProperty]: {
+        [testVariableId('ego-case')]: `their case ${suffix}`,
+      },
     },
   },
 });
@@ -221,10 +234,10 @@ describe('an export whose columns would share a name', () => {
     );
 
     expect(attrNameOf('label')).toBe('label');
-    expect(attrNameOf('p-label')).toBe('label_2');
-    expect(attrNameOf('p-red')).toBe('Colour_red');
-    expect(data.get('p-label')).toBe('Label a');
-    expect(data.get('p-red')).toBe('crimson a');
+    expect(attrNameOf(testVariableId('p-label'))).toBe('label_2');
+    expect(attrNameOf(testVariableId('p-red'))).toBe('Colour_red');
+    expect(data.get(testVariableId('p-label'))).toBe('Label a');
+    expect(data.get(testVariableId('p-red'))).toBe('crimson a');
 
     const colourRed = keys.find(
       (key) => key.getAttribute('attr.name') === 'Colour_red_2',

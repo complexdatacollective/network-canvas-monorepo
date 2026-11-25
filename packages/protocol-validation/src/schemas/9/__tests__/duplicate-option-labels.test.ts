@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import {
+  testTypeId,
+  testVariableId,
+  withOriginalCodebookKeys,
+} from '../../../__tests__/testIds.ts';
 import { findDuplicateOptionLabels } from '../../../localization/duplicateLabels.ts';
 import { DUPLICATE_LABEL } from '../../../localization/labelCollisions.ts';
 import { MigrationResultInvalidError } from '../../../migration/errors.ts';
@@ -18,7 +23,22 @@ import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 type Label = Record<string, string>;
 
-const CATEGORY_PATH = ['codebook', 'node', 'person', 'variables', 'category'];
+const CATEGORY_PATH = [
+  'codebook',
+  'node',
+  testTypeId('person'),
+  'variables',
+  testVariableId('category'),
+];
+
+// A migration gives the readable keys `person` and `category` new random ids.
+const MIGRATED_CATEGORY_PATH = [
+  'codebook',
+  'node',
+  expect.any(String),
+  'variables',
+  expect.any(String),
+];
 
 /**
  * The base protocol in English and French, with the person type's
@@ -96,6 +116,8 @@ describe('two options of one attribute that read the same', () => {
       {
         code: DUPLICATE_LABEL,
         path: [...CATEGORY_PATH, 'options', 1, 'label'],
+        // The problem is the option's, so it carries the option's id.
+        objectId: expect.any(String),
         message:
           'Options 1 and 2 of attribute "Category" have labels that read the same: "Friend" and " friend" (en). Each option needs a label participants can tell apart.',
         params: {
@@ -174,7 +196,7 @@ describe('two options of one attribute that read the same', () => {
       'codebook',
       'ego',
       'variables',
-      'consent',
+      testVariableId('consent'),
       'options',
       1,
       'label',
@@ -238,7 +260,7 @@ describe('migrating options whose labels read the same from schema 8', () => {
     ).toEqual([
       {
         code: DUPLICATE_LABEL,
-        path: [...CATEGORY_PATH, 'options', 1, 'label'],
+        path: [...MIGRATED_CATEGORY_PATH, 'options', 1, 'label'],
         message:
           'Options 1 and 2 of attribute "Category" have labels that read the same: "Friend" and "friend". Each option needs a label participants can tell apart.',
         params: expect.objectContaining({ name: 'Category' }),
@@ -260,7 +282,7 @@ describe('migrating options whose labels read the same from schema 8', () => {
           'codebook',
           'ego',
           'variables',
-          'consent',
+          expect.any(String),
           'options',
           1,
           'label',
@@ -273,13 +295,16 @@ describe('migrating options whose labels read the same from schema 8', () => {
   });
 
   it('leaves labels a participant can tell apart as they are', () => {
-    const variable = migrateProtocol(
-      asSchema8Protocol(withCategoryLabels({ en: 'Friend' }, { en: 'Family' })),
-      9,
+    const original = asSchema8Protocol(
+      withCategoryLabels({ en: 'Friend' }, { en: 'Family' }),
+    );
+    const variable = withOriginalCodebookKeys(
+      migrateProtocol(original, 9),
+      original,
     ).codebook.node?.person?.variables?.category;
     expect(variable?.type === 'categorical' ? variable.options : null).toEqual([
-      { label: { en: 'Friend' }, value: 'friend' },
-      { label: { en: 'Family' }, value: 'family' },
+      { id: expect.any(String), label: { en: 'Friend' }, value: 'friend' },
+      { id: expect.any(String), label: { en: 'Family' }, value: 'family' },
     ]);
   });
 });

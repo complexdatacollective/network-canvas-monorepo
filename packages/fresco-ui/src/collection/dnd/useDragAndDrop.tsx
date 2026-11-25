@@ -57,6 +57,7 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
     getItems,
     onReorder,
     onDrop,
+    dropFeedback,
     acceptTypes,
     acceptsFilter,
     allowedDropPositions = ['before', 'after'],
@@ -88,6 +89,9 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
 
   const onDropRef = useRef(onDrop);
   onDropRef.current = onDrop;
+
+  const dropFeedbackRef = useRef(dropFeedback);
+  dropFeedbackRef.current = dropFeedback;
 
   // Handle drop completion
   const handleDrop = useCallback(
@@ -126,12 +130,13 @@ export function useDragAndDrop<T>(options: DragAndDropOptions<T>): {
           accepts,
           acceptsFilter,
           announcedName,
+          dropFeedback: dropFeedbackRef.current,
           onDrop: (metadata) => {
-            if (!metadata || !onDropRef.current) return;
+            if (!metadata || !onDropRef.current) return false;
 
             const type =
               typeof metadata.type === 'string' ? metadata.type : 'unknown';
-            onDropRef.current({ type, metadata });
+            return onDropRef.current({ type, metadata });
           },
         });
 

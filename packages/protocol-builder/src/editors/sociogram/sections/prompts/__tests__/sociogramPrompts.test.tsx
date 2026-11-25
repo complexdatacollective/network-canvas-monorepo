@@ -9,7 +9,17 @@ import {
   inventAttribute,
 } from '../../../../../testing/attributePicker.ts';
 import { enIntl, readMessage } from '../../../../../testing/i18n.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+} from '../../../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+} from '../../../../../testing/testId.ts';
 import { sociogramPromptMessages } from '../sociogramPromptMessages.ts';
 import {
   collectInAForm,
@@ -19,6 +29,14 @@ import {
   sociogramHolding,
   sociogramSections,
 } from './canvasFixtures.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+const LAYOUT = personVariable('layout');
+const HIGHLIGHTED = personVariable('highlighted');
 
 /**
  * The attribute ids a sort rule is currently offering to order by.
@@ -62,6 +80,14 @@ const switchTapping = async (
   await harness.user.click(toggle);
 };
 
+/** The id the fixture gives its first prompt, read from the fixture itself. */
+const fixturePromptId = (): unknown => {
+  const [first] = [loadFixtureStage('sociogram-1').fields.prompts].flat();
+  return typeof first === 'object' && first !== null && 'id' in first
+    ? first.id
+    : undefined;
+};
+
 const openEditor = () => ({
   stageId: 'sociogram-1' as const,
   sections: sociogramSections,
@@ -99,10 +125,10 @@ describe('the tasks a sociogram sets', () => {
 
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]).toEqual({
-      id: 'sociogram-prompt-1',
+      id: fixturePromptId(),
       text: { 'en-US': 'Place the people who know each other close together' },
-      layout: { layoutVariable: 'layout' },
-      edges: { display: ['knows'] },
+      layout: { layoutVariable: LAYOUT },
+      edges: { display: [KNOWS] },
       highlight: { allowHighlighting: false },
     });
   });
@@ -138,9 +164,9 @@ describe('the tasks a sociogram sets', () => {
   /** A prompt that says nothing about tapping opens with the section off. */
   it('opens a prompt that taps do nothing on with the section off, and saves it unchanged', async () => {
     const SILENT_PROMPT = {
-      id: 'sociogram-prompt-1',
+      id: testId('sociogram-prompt-1'),
       text: { 'en-US': 'Place the people who know each other close together' },
-      layout: { layoutVariable: 'layout' },
+      layout: { layoutVariable: LAYOUT },
     };
     const harness = renderStageEditor(sociogramHolding(SILENT_PROMPT));
 
@@ -168,11 +194,11 @@ describe('the tasks a sociogram sets', () => {
     // holds is this edit alone.
     const harness = renderStageEditor(
       sociogramHolding({
-        id: 'sociogram-prompt-1',
+        id: testId('sociogram-prompt-1'),
         text: {
           'en-US': 'Place the people who know each other close together',
         },
-        layout: { layoutVariable: 'layout' },
+        layout: { layoutVariable: LAYOUT },
       }),
     );
 
@@ -181,7 +207,7 @@ describe('the tasks a sociogram sets', () => {
     await chooseAttributeById(
       harness.user,
       await promptAttributeField('Boolean attribute'),
-      'highlighted',
+      HIGHLIGHTED,
     );
     await switchTapping(harness, prompt, false);
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
@@ -193,7 +219,7 @@ describe('the tasks a sociogram sets', () => {
     // Absent, not `{ allowHighlighting: false }`: a prompt that never answered
     // the question still has not. The prompt itself is asserted first, so a
     // stage that did not save at all says so rather than throwing.
-    expect(saved).toMatchObject({ id: 'sociogram-prompt-1' });
+    expect(saved).toMatchObject({ id: testId('sociogram-prompt-1') });
     expect(saved).not.toHaveProperty('highlight');
   });
 
@@ -205,7 +231,7 @@ describe('the tasks a sociogram sets', () => {
     await chooseAttributeById(
       harness.user,
       await promptAttributeField('Boolean attribute'),
-      'highlighted',
+      HIGHLIGHTED,
     );
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -216,9 +242,9 @@ describe('the tasks a sociogram sets', () => {
     const first = promptsOf(saved?.stageDocument ?? {})[0];
     expect(first?.highlight).toEqual({
       allowHighlighting: true,
-      variable: 'highlighted',
+      variable: HIGHLIGHTED,
     });
-    expect(first?.edges).toEqual({ display: ['knows'] });
+    expect(first?.edges).toEqual({ display: [KNOWS] });
   });
 
   /**
@@ -240,8 +266,8 @@ describe('the tasks a sociogram sets', () => {
 
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[1]?.edges).toEqual({
-      display: ['knows', 'family_edge'],
-      create: 'family_edge',
+      display: [KNOWS, FAMILY_EDGE],
+      create: FAMILY_EDGE,
     });
   });
 });
@@ -250,9 +276,9 @@ describe('the tasks a sociogram sets', () => {
  * Tapping a node WRITES the attribute it marks, without the codebook's
  * validation rules running — so a prompt may not mark one a form collects.
  *
- * The picker enforces that by never offering such an attribute, and the
- * codebook is read live: a collaborator adding the form field while the dialog
- * is open drops the attribute from the option list and leaves the pick sitting
+ * The picker enforces that by never letting such an attribute be chosen, and
+ * the codebook is read live: a collaborator adding the form field while the
+ * dialog is open marks the attribute unavailable and leaves the pick sitting
  * in the form. Nothing then refused the row, so Save committed a prompt the
  * protocol reports as a writer conflict.
  */
@@ -265,17 +291,17 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     await chooseAttributeById(
       harness.user,
       await promptAttributeField('Boolean attribute'),
-      'highlighted',
+      HIGHLIGHTED,
     );
 
-    collectInAForm(harness, 'highlighted');
-    // The picker is built from the live codebook, so the attribute leaving its
-    // options IS the collaborator's change arriving — and that is the state
-    // the row's own gate has to refuse from. Waited for rather than assumed:
-    // a save clicked before the change lands is refused by nothing, which is
-    // the defect this test exists for.
+    collectInAForm(harness, HIGHLIGHTED);
+    // The picker is built from the live codebook, so the attribute the field
+    // holds being marked unavailable IS the collaborator's change arriving —
+    // and that is the state the row's own gate has to refuse from. Waited for
+    // rather than assumed: a save clicked before the change lands is refused
+    // by nothing, which is the defect this test exists for.
     await within(await promptAttributeField('Boolean attribute')).findByText(
-      'highlighted — this attribute is not available here',
+      'The “Alter Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
     );
 
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
@@ -300,7 +326,7 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     const harness = renderStageEditor(openEditor());
     // The prompt that already marks `highlighted`, and the form field that
     // conflicts with it, arriving before anything is edited.
-    collectInAForm(harness, 'highlighted');
+    collectInAForm(harness, HIGHLIGHTED);
 
     const prompt = await openPrompt(harness, 1);
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
@@ -323,13 +349,13 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
  * existence check — so nothing else was going to report it either.
  */
 describe('a connection type this protocol does not define', () => {
-  const LOST_EDGE = 'former_edge';
+  const LOST_EDGE = testTypeId('former_edge');
 
   const DISPLAYING_A_LOST_TYPE = {
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: 'layout' },
-    edges: { display: ['knows', LOST_EDGE] },
+    layout: { layoutVariable: LAYOUT },
+    edges: { display: [KNOWS, LOST_EDGE] },
   };
 
   const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
@@ -363,7 +389,7 @@ describe('a connection type this protocol does not define', () => {
     );
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.edges).toEqual({
-      display: ['knows', LOST_EDGE],
+      display: [KNOWS, LOST_EDGE],
     });
   });
 
@@ -412,8 +438,8 @@ describe('a connection type this protocol does not define', () => {
 
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.edges).toEqual({
-      display: ['knows'],
-      create: 'knows',
+      display: [KNOWS],
+      create: KNOWS,
     });
   });
 
@@ -430,7 +456,7 @@ describe('a connection type this protocol does not define', () => {
 
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.edges).toEqual({
-      display: ['knows'],
+      display: [KNOWS],
     });
   });
 });
@@ -448,10 +474,10 @@ describe('a connection type this protocol does not define', () => {
  */
 describe('a prompt that only highlights its nodes', () => {
   const DISPLAY_ONLY_PROMPT = {
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: 'layout' },
-    highlight: { variable: 'highlighted', allowHighlighting: false },
+    layout: { layoutVariable: LAYOUT },
+    highlight: { variable: HIGHLIGHTED, allowHighlighting: false },
   };
 
   /**
@@ -507,12 +533,12 @@ describe('a prompt that only highlights its nodes', () => {
 
     const saved = promptsOf((await harness.submit())?.stageDocument ?? {})[0];
     expect(saved?.highlight).toEqual({
-      variable: 'highlighted',
+      variable: HIGHLIGHTED,
       allowHighlighting: false,
     });
     expect(saved?.edges).toEqual({
-      create: 'family_edge',
-      display: ['family_edge'],
+      create: FAMILY_EDGE,
+      display: [FAMILY_EDGE],
     });
   });
 });
@@ -531,10 +557,10 @@ describe('a prompt that only highlights its nodes', () => {
  */
 describe('a prompt that draws a connection it does not show', () => {
   const COLLECTS_WITHOUT_SHOWING = {
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: 'layout' },
-    edges: { create: 'knows', display: [] },
+    layout: { layoutVariable: LAYOUT },
+    edges: { create: KNOWS, display: [] },
   };
 
   it('saves it exactly as it arrived', async () => {
@@ -589,8 +615,8 @@ describe('a prompt that draws a connection it does not show', () => {
 
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.edges).toEqual({
-      create: 'knows',
-      display: ['knows'],
+      create: KNOWS,
+      display: [KNOWS],
     });
   });
 });
@@ -614,14 +640,14 @@ describe('a prompt that draws a connection it does not show', () => {
  * check read the attribute and not the flag.
  */
 describe('what tapping a node does, against what the prompt already said', () => {
-  const HIGHLIGHT_ATTRIBUTE = 'highlighted';
+  const HIGHLIGHT_ATTRIBUTE = HIGHLIGHTED;
 
   const promptSaying = (
     highlight?: Record<string, unknown>,
   ): Record<string, unknown> => ({
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: 'layout' },
+    layout: { layoutVariable: LAYOUT },
     ...(highlight === undefined ? {} : { highlight }),
   });
 
@@ -772,7 +798,7 @@ describe('what tapping a node does, against what the prompt already said', () =>
       // The dialog staying open IS the refusal, and the reason is the one the
       // codebook editor gives for the same conflict.
       await prompt.findByText(
-        readMessage(validatedElsewhereMessage(HIGHLIGHT_ATTRIBUTE)),
+        readMessage(validatedElsewhereMessage('highlighted')),
       );
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       return;
@@ -810,13 +836,14 @@ describe('what tapping a node does, against what the prompt already said', () =>
  */
 describe('a prompt opened and cancelled untouched', () => {
   const DISCARD_TITLE = 'Discard your changes?';
+  const FRIEND = testTypeId('friend');
 
   const promptSaying = (
     tap: Record<string, unknown>,
   ): Record<string, unknown> => ({
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: 'Place the people who know each other close together',
-    layout: { layoutVariable: 'layout' },
+    layout: { layoutVariable: LAYOUT },
     ...tap,
   });
 
@@ -824,16 +851,13 @@ describe('a prompt opened and cancelled untouched', () => {
     ['taps do nothing', {}],
     [
       'only highlights',
-      { highlight: { variable: 'highlighted', allowHighlighting: false } },
+      { highlight: { variable: HIGHLIGHTED, allowHighlighting: false } },
     ],
     [
       'marks nodes',
-      { highlight: { variable: 'highlighted', allowHighlighting: true } },
+      { highlight: { variable: HIGHLIGHTED, allowHighlighting: true } },
     ],
-    [
-      'draws a connection',
-      { edges: { create: 'friend', display: ['friend'] } },
-    ],
+    ['draws a connection', { edges: { create: FRIEND, display: [FRIEND] } }],
   ])('closes without asking, for a prompt that %s', async (_name, tap) => {
     const harness = renderStageEditor(sociogramHolding(promptSaying(tap)));
 
@@ -852,7 +876,7 @@ describe('a prompt opened and cancelled untouched', () => {
     const harness = renderStageEditor(
       sociogramHolding(
         promptSaying({
-          highlight: { variable: 'highlighted', allowHighlighting: true },
+          highlight: { variable: HIGHLIGHTED, allowHighlighting: true },
         }),
       ),
     );
@@ -904,20 +928,20 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     // Saving the prompt made the attribute the stage's: the editor has it, and
     // the protocol does not until the stage is saved.
     const created = Object.entries(
-      harness.editorCodebook().node?.person?.variables ?? {},
+      harness.editorCodebook().node?.[PERSON]?.variables ?? {},
     ).find(([, variable]) => variable.name === 'second_canvas')?.[0];
     expect(created).toBeDefined();
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        (variable) => variable.name === 'second_canvas',
-      ),
+      Object.values(
+        harness.hostCodebook().node?.[PERSON]?.variables ?? {},
+      ).some((variable) => variable.name === 'second_canvas'),
     ).toBe(false);
 
     const saved = await harness.submit();
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
-        (variable) => variable.name === 'second_canvas',
-      ),
+      Object.values(
+        harness.hostCodebook().node?.[PERSON]?.variables ?? {},
+      ).some((variable) => variable.name === 'second_canvas'),
     ).toBe(true);
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.layout).toEqual({
       layoutVariable: created,
@@ -959,15 +983,15 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
     const created = Object.entries(
-      harness.editorCodebook().node?.person?.variables ?? {},
+      harness.editorCodebook().node?.[PERSON]?.variables ?? {},
     ).find(([, variable]) => variable.name === 'spoke_to_recently');
     if (created === undefined) throw new Error('the flag was not created');
     expect(created[1].type).toBe('boolean');
-    expect(harness.hostCodebook().node?.person?.variables).not.toHaveProperty(
+    expect(harness.hostCodebook().node?.[PERSON]?.variables).not.toHaveProperty(
       created[0],
     );
     const saved = await harness.submit();
-    expect(harness.hostCodebook().node?.person?.variables).toHaveProperty(
+    expect(harness.hostCodebook().node?.[PERSON]?.variables).toHaveProperty(
       created[0],
     );
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.highlight).toEqual({
@@ -994,17 +1018,19 @@ describe('a connections list with nothing in it', () => {
   it('says why, rather than rendering an empty fieldset', async () => {
     const harness = renderStageEditor(
       sociogramHolding({
-        id: 'sociogram-prompt-1',
+        id: testId('sociogram-prompt-1'),
         text: {
           'en-US': 'Place the people who know each other close together',
         },
-        layout: { layoutVariable: 'layout' },
+        layout: { layoutVariable: LAYOUT },
       }),
     );
 
     // Every edge type gone, so the prompt's own list has nothing to offer and
     // holds no reference of its own to report as lost.
-    harness.receiveCodebookUpdate({ edge: { knows: null, family_edge: null } });
+    harness.receiveCodebookUpdate({
+      edge: { [KNOWS]: null, [FAMILY_EDGE]: null },
+    });
 
     const prompt = await openPrompt(harness);
 
@@ -1030,11 +1056,18 @@ describe('a connections list with nothing in it', () => {
 });
 
 describe('the order a sociogram hands unplaced nodes over in', () => {
+  const NICKNAME = testVariableId('nickname');
   const SORTED_PROMPT = {
-    id: 'sociogram-prompt-1',
+    id: testId('sociogram-prompt-1'),
     text: { 'en-US': 'Place the people who know each other close together' },
-    layout: { layoutVariable: 'layout' },
-    sortOrder: [{ property: 'name', direction: 'asc' }],
+    layout: { layoutVariable: LAYOUT },
+    sortOrder: [
+      {
+        id: testId('sort-name'),
+        property: personVariable('name'),
+        direction: 'asc',
+      },
+    ],
   };
 
   const openWithSortOrder = () => sociogramHolding(SORTED_PROMPT);
@@ -1066,7 +1099,11 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
 
     const saved = await harness.submit();
     expect(promptsOf(saved?.stageDocument ?? {})[0]?.sortOrder).toEqual([
-      { property: 'age', direction: 'desc' },
+      {
+        id: expect.any(String),
+        property: personVariable('age'),
+        direction: 'desc',
+      },
     ]);
   });
 
@@ -1109,6 +1146,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('judges no sort rule while the stage has not been told what it collects', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testId('Sociogram-stage'),
         type: 'Sociogram' as const,
         fields: {
           label: { 'en-US': 'Sociogram' },
@@ -1116,7 +1154,13 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
           prompts: [
             {
               ...SORTED_PROMPT,
-              sortOrder: [{ property: 'nickname', direction: 'asc' }],
+              sortOrder: [
+                {
+                  id: testId('sort-nickname'),
+                  property: NICKNAME,
+                  direction: 'asc',
+                },
+              ],
             },
           ],
         },
@@ -1132,7 +1176,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     expect(sortPropertyOptions(prompt)).toEqual(['*']);
     expect(
       prompt.queryByRole('option', {
-        name: missingSortPropertyLabel('nickname', enIntl),
+        name: missingSortPropertyLabel(NICKNAME, enIntl),
       }),
     ).not.toBeInTheDocument();
 

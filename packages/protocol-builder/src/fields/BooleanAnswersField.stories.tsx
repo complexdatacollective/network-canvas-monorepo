@@ -5,6 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import BooleanAnswersField from './BooleanAnswersField.tsx';
 
 /** Where a form-fields row keeps the answers of the boolean it collects. */
@@ -42,7 +43,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'ego-form-1',
+    stageId: fixtureStageId('ego-form-1'),
     sectionTitle: 'Answer labels',
     children: <Answers />,
   },

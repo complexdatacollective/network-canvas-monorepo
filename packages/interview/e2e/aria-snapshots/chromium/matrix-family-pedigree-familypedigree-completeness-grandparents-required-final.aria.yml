@@ -16,7 +16,7 @@
       - button "Redo" [disabled]
     - separator
     - button /Family tree \d+% complete\. Show what’s still needed\./ [expanded]
-    - dialog:
+    - dialog /Family tree \d+% complete\. Show what’s still needed\./:
       - region /Family tree \d+% complete\. Show what’s still needed\./:
         - list:
           - listitem: "Done: Add your biological parents"
@@ -37,8 +37,9 @@
     - button "Show the whole family"
   - text: Details saved.
   - navigation:
-    - button "Settings"
-    - button "Previous Step"
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step"
     - button "Next Step"
+    - status
   - region "Interview notifications"

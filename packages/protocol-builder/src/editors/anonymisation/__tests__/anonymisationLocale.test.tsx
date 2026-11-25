@@ -1,7 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  fixtureStageId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
 import {
   alreadyProtecting,
@@ -9,9 +14,11 @@ import {
   withStageFields,
 } from './anonymisationFixtures.tsx';
 
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+
 const openEditor = () =>
   renderStageEditor({
-    stageId: 'anonymisation-1',
+    stageId: fixtureStageId('anonymisation-1'),
     locale: 'es',
     registry: anonymisationStageEditor,
   });
@@ -110,10 +117,10 @@ describe('the anonymisation sections, read in Spanish', () => {
    */
   it('asks in Spanish before it un-encrypts a whole type', async () => {
     const harness = renderStageEditor({
-      stageId: 'anonymisation-1',
+      stageId: fixtureStageId('anonymisation-1'),
       locale: 'es',
       registry: anonymisationStageEditor,
-      adapter: alreadyProtecting('name'),
+      adapter: alreadyProtecting(NAME),
     });
     await waitFor(() =>
       expect(
@@ -152,18 +159,18 @@ describe('the anonymisation sections, read in Spanish', () => {
    */
   it('refuses in Spanish, quoting the stages whose rules compare the attribute', async () => {
     const harness = renderStageEditor({
-      stageId: 'anonymisation-1',
+      stageId: fixtureStageId('anonymisation-1'),
       locale: 'es',
       registry: anonymisationStageEditor,
       adapter: withStageFields({
-        'name-generator-1': {
+        [fixtureStageId('name-generator-1')]: {
           skipLogic: {
             action: 'SKIP',
-            filter: { rules: [personRule('skip-a', 'name')] },
+            filter: { rules: [personRule(testId('skip-a'), NAME)] },
           },
         },
-        'sociogram-1': {
-          filter: { rules: [personRule('filter-a', 'name')] },
+        [fixtureStageId('sociogram-1')]: {
+          filter: { rules: [personRule(testId('filter-a'), NAME)] },
         },
       }),
     });

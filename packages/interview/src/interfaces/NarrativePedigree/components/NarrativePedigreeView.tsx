@@ -247,8 +247,9 @@ export default function NarrativePedigreeView({
     [sourceStage, localization],
   );
   const kinshipLocale = useKinshipLocale(sourceWording ?? undefined);
-  // The participant is called as the source stage calls them, with that
-  // stage's dynamic values (their name from an earlier form, say) written in.
+  // The participant is called as the source stage calls them, with the
+  // values its text names (their name from an earlier form, say) written in,
+  // and its wording chosen by that stage's own conditions.
   const dynamicValueSources = useDynamicValueSources();
   const resolveIn = useResolveLocalizedStringIn();
   const sourceYou = useMemo(
@@ -258,7 +259,7 @@ export default function NarrativePedigreeView({
             sourceWording.you,
             dynamicValueSources && {
               ...dynamicValueSources,
-              bindings: sourceStage.dynamicValues ?? {},
+              conditions: sourceStage.conditions,
             },
           ).text
         : '',

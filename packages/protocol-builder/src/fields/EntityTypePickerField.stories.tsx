@@ -8,9 +8,15 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId, fixtureTypeId } from '../testing/protocolFixture.ts';
+import { testTypeId } from '../testing/testId.ts';
 import EntityTypePickerField, {
   EntitySubjectPickerField,
 } from './EntityTypePickerField.tsx';
+
+const ORGANISATION = testTypeId('organisation');
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
 const meta = {
   title: 'Protocol Builder/Fields/Entity type picker',
@@ -25,7 +31,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'name-generator-1',
+    stageId: fixtureStageId('name-generator-1'),
     sectionTitle: 'What this stage is about',
     children: (
       <Field<typeof EntitySubjectPickerField>
@@ -120,7 +126,7 @@ export const ASpectator: Story = {
  * and it says so by passing a question or not passing one.
  */
 export const ChoosingAnotherType: Story = {
-  args: { stageId: 'anonymisation-1' },
+  args: { stageId: fixtureStageId('anonymisation-1') },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -143,7 +149,7 @@ export const ATypeAddedElsewhere: Story = {
   args: {
     seedEdit: (host) => {
       host.store.applyAsCollaborator(
-        sectionId({ kind: 'codebookNode', typeId: 'organisation' }),
+        sectionId({ kind: 'codebookNode', typeId: ORGANISATION }),
         {
           name: 'organisation',
           color: 'node-color-seq-3',
@@ -172,7 +178,7 @@ export const ATypeThatWasDeleted: Story = {
   args: {
     seedEdit: (host) => {
       host.store.applyAsCollaborator(
-        sectionId({ kind: 'codebookNode', typeId: 'person' }),
+        sectionId({ kind: 'codebookNode', typeId: PERSON }),
         undefined,
       );
     },
@@ -203,7 +209,7 @@ export const ATypeThatWasDeleted: Story = {
  * stored protocol valid would be right to refuse the pair as one edit.
  */
 export const MakingAType: Story = {
-  args: { stageId: 'anonymisation-1' },
+  args: { stageId: fixtureStageId('anonymisation-1') },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -253,7 +259,7 @@ export const EditingTheHeldType: Story = {
 /** The same control for a kind of relationship rather than a kind of member. */
 export const ChoosingAnEdgeType: Story = {
   args: {
-    stageId: 'dyad-census-1',
+    stageId: fixtureStageId('dyad-census-1'),
     sectionTitle: 'What this stage records',
     children: (
       <Field<typeof EntityTypePickerField>
@@ -331,7 +337,7 @@ export const OnAProtocolWithNoTypes: Story = {
       />
     ),
     seedEdit: (host) => {
-      for (const typeId of ['person', 'family_member']) {
+      for (const typeId of [PERSON, FAMILY_MEMBER]) {
         host.store.applyAsCollaborator(
           sectionId({ kind: 'codebookNode', typeId }),
           undefined,

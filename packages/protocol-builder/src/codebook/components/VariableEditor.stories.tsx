@@ -3,17 +3,25 @@ import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import { Button } from '@codaco/fresco-ui/Button';
-import type { VariableOption } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
+import type { OptionSeed } from '../optionRowChoice.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
 import VariableEditor from './VariableEditor.tsx';
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const PERSON = testTypeId('person');
+const SUBJECT = { entity: 'node', type: PERSON } as const;
+const CLOSENESS_ID = testVariableId('closeness');
+const CONSENT = testVariableId('consent');
+const MET = testVariableId('met');
+const RAPPORT = testVariableId('rapport');
+const PREFERENCE = testVariableId('preference');
+const NEW_ATTRIBUTE = testVariableId('newAttribute');
 
 const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 
@@ -32,7 +40,8 @@ const contextIn = (
   issues: [],
   localization,
 });
-const LOCKED_OPTIONS: readonly VariableOption[] = [
+// The set an interface owns: the attribute created on it gives each its id.
+const LOCKED_OPTIONS: readonly OptionSeed[] = [
   { label: { en: 'Woman' }, value: 'woman' },
   { label: { en: 'Man' }, value: 'man' },
   { label: { en: 'Another identity' }, value: 'another_identity' },
@@ -58,15 +67,15 @@ const CLOSENESS: SectionDoc = {
   name: 'closeness',
   type: 'ordinal',
   options: [
-    { label: { en: 'Not close' }, value: 1 },
-    { label: { en: 'Very close' }, value: 2 },
+    { id: testId('option/closeness/1'), label: { en: 'Not close' }, value: 1 },
+    { id: testId('option/closeness/2'), label: { en: 'Very close' }, value: 2 },
   ],
 };
 
 const SURFACES = {
   /** A choice list, which is what every earlier story here showed. */
   options: {
-    variableId: 'closeness',
+    variableId: CLOSENESS_ID,
     committed: CLOSENESS,
     draft: CLOSENESS,
   },
@@ -76,7 +85,7 @@ const SURFACES = {
    * cannot answer.
    */
   booleanAnswers: {
-    variableId: 'consent',
+    variableId: CONSENT,
     committed: {
       name: 'consent',
       type: 'boolean',
@@ -103,7 +112,7 @@ const SURFACES = {
    * than edited down to a pair.
    */
   heldAnswers: {
-    variableId: 'consent',
+    variableId: CONSENT,
     committed: {
       name: 'consent',
       type: 'boolean',
@@ -132,7 +141,7 @@ const SURFACES = {
    * be. Shown and left alone for the same reason.
    */
   heldAnswerValues: {
-    variableId: 'consent',
+    variableId: CONSENT,
     committed: {
       name: 'consent',
       type: 'boolean',
@@ -154,7 +163,7 @@ const SURFACES = {
   },
   /** A date field's resolution and the two dates it is bounded by, reversed. */
   dateSettings: {
-    variableId: 'met',
+    variableId: MET,
     committed: {
       name: 'met',
       type: 'datetime',
@@ -170,7 +179,7 @@ const SURFACES = {
   },
   /** The words at each end of a sliding scale, with the high end cleared. */
   scaleSettings: {
-    variableId: 'rapport',
+    variableId: RAPPORT,
     committed: {
       name: 'rapport',
       type: 'scalar',
@@ -202,14 +211,26 @@ const SURFACES = {
    * than replacing it with the copy it keeps for a save that did not happen.
    */
   contradiction: {
-    variableId: 'preference',
+    variableId: PREFERENCE,
     committed: {
       name: 'preference',
       type: 'categorical',
       options: [
-        { label: { en: 'Low' }, value: 'low' },
-        { label: { en: 'Middle' }, value: 'middle' },
-        { label: { en: 'High' }, value: 'high' },
+        {
+          id: testId('option/preference/low'),
+          label: { en: 'Low' },
+          value: 'low',
+        },
+        {
+          id: testId('option/preference/middle'),
+          label: { en: 'Middle' },
+          value: 'middle',
+        },
+        {
+          id: testId('option/preference/high'),
+          label: { en: 'High' },
+          value: 'high',
+        },
       ],
       validation: { minSelected: 3 },
     },
@@ -217,9 +238,21 @@ const SURFACES = {
       name: 'preference',
       type: 'categorical',
       options: [
-        { label: { en: 'Low' }, value: 'low' },
-        { label: { en: 'Middle' }, value: 'middle' },
-        { label: { en: 'High' }, value: 'high' },
+        {
+          id: testId('option/preference/low'),
+          label: { en: 'Low' },
+          value: 'low',
+        },
+        {
+          id: testId('option/preference/middle'),
+          label: { en: 'Middle' },
+          value: 'middle',
+        },
+        {
+          id: testId('option/preference/high'),
+          label: { en: 'High' },
+          value: 'high',
+        },
       ],
       validation: { minSelected: 3 },
     },
@@ -262,7 +295,7 @@ function VariableEditorDemo({
     setSubmissions((count) => count + 1);
     return Promise.resolve({
       status: 'applied',
-      sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+      sectionId: sectionId({ kind: 'codebookNode', typeId: PERSON }),
     });
   };
   const common = {
@@ -301,7 +334,7 @@ function VariableEditorDemo({
           <VariableEditor
             {...common}
             mode="create"
-            variableId="new-attribute"
+            variableId={NEW_ATTRIBUTE}
             initialDraft={{
               name: locked ? 'biologicalSex' : '',
               type: 'categorical',

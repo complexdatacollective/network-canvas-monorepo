@@ -1,6 +1,7 @@
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
+  createProtocolObjectId,
 } from '@codaco/protocol-validation';
 
 const LOCALES = ['en', 'fr', 'es', 'de'] as const;
@@ -48,7 +49,7 @@ export const largeTranslationProtocol = (stages: number): CurrentProtocol => {
     codebook: { node: {}, edge: {}, ego: {} },
     stages: [
       ...Array.from({ length: stages }, (_, index) => ({
-        id: `stage-${index}`,
+        id: createProtocolObjectId(),
         type: 'Information' as const,
         label: translations(index, (locale) => `Section ${index} ${locale}`),
         content: translations(index, (locale) =>
@@ -61,7 +62,10 @@ export const largeTranslationProtocol = (stages: number): CurrentProtocol => {
           ].join('\n\n'),
         ),
       })),
-      createDefaultFinishSessionStage({ id: 'finish', localization }),
+      createDefaultFinishSessionStage({
+        id: createProtocolObjectId(),
+        localization,
+      }),
     ],
   };
 };

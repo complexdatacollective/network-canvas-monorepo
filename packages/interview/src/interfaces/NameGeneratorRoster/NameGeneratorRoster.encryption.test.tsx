@@ -18,6 +18,7 @@ import {
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -29,6 +30,8 @@ import {
   createEncryptionStore,
   encryptedVariables,
   encryptionFor,
+  AGE_VARIABLE,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from '../Anonymisation/__tests__/encryptionFixtures';
@@ -40,8 +43,8 @@ import type { UseItemElement } from './useItems';
 
 const aliceRow = {
   _uid: 'roster-alice',
-  type: 'person',
-  attributes: { name: 'Alice', age: 40 },
+  type: NODE_TYPE,
+  attributes: { [NAME_VARIABLE]: 'Alice', [AGE_VARIABLE]: 40 },
 };
 
 const external = vi.hoisted(() => ({
@@ -103,7 +106,7 @@ afterEach(() => {
 });
 
 const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
-  id: 'roster-stage',
+  id: testId('roster-stage'),
   type: 'NameGeneratorRoster',
   allAddedNotice: { en: 'There is nothing left to add from this list.' },
   unnamedLabel: { en: 'Unnamed {count}' },
@@ -111,7 +114,7 @@ const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
   label: { en: 'Roster' },
   subject: { entity: 'node', type: NODE_TYPE },
   dataSource: 'roster-data',
-  prompts: [{ id: 'prompt-1', text: { en: 'Who do you know?' } }],
+  prompts: [{ id: testId('prompt-1'), text: { en: 'Who do you know?' } }],
 };
 
 const PASSPHRASE = 'roster passphrase';
@@ -160,18 +163,21 @@ async function renderRoster(
   // waiting for the add to finish.
   const startDroppingAlice = (alice: UseItemElement) => {
     act(() => {
-      dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
+      void dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
     });
   };
 
+  // Gives whether the list took the drop, which is what decides whether the
+  // list's drop sound plays.
   const dropAlice = async () => {
     const [alice] = roster.items;
     if (!alice) throw new Error('The roster lists Alice');
     expect(dropOnAddedList).toBeInstanceOf(Function);
+    let taken: Awaited<ReturnType<DropCallback>> = undefined;
     await act(async () => {
-      dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
-      await Promise.resolve();
+      taken = await dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
     });
+    return taken;
   };
 
   return { store, draggable, dropAlice, startDroppingAlice };
@@ -186,26 +192,28 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     expect(draggable()).toEqual([]);
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
-    await dropAlice();
+    expect(await dropAlice()).toBe(false);
 
     expect(store.getState().session.network.nodes).toEqual([]);
     expect(toast).not.toHaveBeenCalled();
   });
 
-  // A roster's columns are keyed by variable id once read, and an id is rarely
-  // the variable's name.
+  // A roster's columns are keyed by variable id once read, not by the
+  // variable's name.
   it('holds back a row whose encrypted column is keyed by a variable id unlike its name', async () => {
+    const rosterName = testVariableId('roster-name');
+    const rosterAge = testVariableId('roster-age');
     external.rosterPeople = [
-      { ...aliceRow, attributes: { 'var-name': 'Alice', 'var-age': 40 } },
+      { ...aliceRow, attributes: { [rosterName]: 'Alice', [rosterAge]: 40 } },
     ];
     const { store, draggable } = await renderRoster('fresh', {
-      'var-name': {
+      [rosterName]: {
         name: 'name',
         type: 'text',
         component: 'Text',
         encrypted: true,
       },
-      'var-age': {
+      [rosterAge]: {
         name: 'age',
         type: 'number',
         component: 'Number',
@@ -227,7 +235,7 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     expect(draggable()).toEqual([]);
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
-    await dropAlice();
+    expect(await dropAlice()).toBe(false);
 
     expect(store.getState().session.network.nodes).toEqual([]);
     // A write the session refused would be reported with a toast; the roster
@@ -247,7 +255,7 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
 
     expect(draggable()).toHaveLength(1);
 
-    await dropAlice();
+    expect(await dropAlice()).toBe(true);
 
     await waitFor(() =>
       expect(store.getState().session.network.nodes).toHaveLength(1),
@@ -255,14 +263,18 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     const [added] = store.getState().session.network.nodes;
     if (!added) throw new Error('Expected Alice to be added');
     expect(added[entityPrimaryKeyProperty]).toBe('roster-alice');
-    const stored = readEncryptedAttribute(added, 'name', encryptedVariables);
+    const stored = readEncryptedAttribute(
+      added,
+      NAME_VARIABLE,
+      encryptedVariables,
+    );
     if (stored?.status !== 'encrypted') {
       throw new Error('Expected a stored ciphertext');
     }
     expect(stored.value.nodeId).toBe('roster-alice');
-    expect(Object.keys(added[entitySecureAttributesMeta]?.name ?? {})).toEqual([
-      'iv',
-    ]);
+    expect(
+      Object.keys(added[entitySecureAttributesMeta]?.[NAME_VARIABLE] ?? {}),
+    ).toEqual(['iv']);
     const { key } = await encryptionFor(PASSPHRASE);
     await expect(decryptValue(key, stored.value, stored.value)).resolves.toBe(
       'Alice',

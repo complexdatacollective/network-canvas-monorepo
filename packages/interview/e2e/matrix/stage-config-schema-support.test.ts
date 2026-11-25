@@ -34,7 +34,7 @@ const minFilter = (nodeTypeId: string) =>
     join: 'OR',
     rules: [
       {
-        id: 'r',
+        id: '7d9f2c41-5b3e-4a8d-9c60-1e2f3a4b5c6d',
         type: 'node',
         options: { type: nodeTypeId, operator: 'EXISTS' },
       },

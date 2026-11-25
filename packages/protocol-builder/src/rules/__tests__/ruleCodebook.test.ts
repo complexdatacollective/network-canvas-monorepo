@@ -9,6 +9,7 @@ import {
 
 import { translationText } from '../../localization/localizedText.ts';
 import { enIntl } from '../../testing/i18n.ts';
+import { testTypeId, testVariableId, testId } from '../../testing/testId.ts';
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import type { OperandOptionProblem } from '../ruleCodebook.ts';
 import {
@@ -25,6 +26,30 @@ import {
   ruleVariableType,
 } from '../ruleCodebook.ts';
 import { testCodebook } from './fixtures.ts';
+
+const PERSON = testTypeId('person');
+const PLACE = testTypeId('place');
+const FRIEND = testTypeId('friend');
+const GHOST = testTypeId('ghost');
+const AGE = testVariableId('age');
+const BORN = testVariableId('born');
+const EGO_NAME = testVariableId('egoName');
+const FAVOURITE_COLOUR = testVariableId('favouriteColour');
+const HOME = testVariableId('home');
+const MET = testVariableId('met');
+const MOOD = testVariableId('mood');
+const NOTE = testVariableId('note');
+const SECRET = testVariableId('secret');
+const STRENGTH = testVariableId('strength');
+const CALLED = testVariableId('called');
+const GRADUATED = testVariableId('graduated');
+const JOINED = testVariableId('joined');
+const RANK = testVariableId('rank');
+const SEEN = testVariableId('seen');
+const UNNAMED = testVariableId('unnamed');
+const BLANK = testTypeId('blank');
+const PLAIN = testTypeId('plain');
+const AGREES = testVariableId('agrees');
 
 const inEnglish = (label: LocalizedString) => translationText(label, 'en');
 
@@ -130,10 +155,10 @@ describe('an operator a stored rule holds that the list leaves out', () => {
 });
 
 describe('the operators an encrypted attribute is offered', () => {
-  const variables = ruleVariables(codebook, 'node', 'person');
+  const variables = ruleVariables(codebook, 'node', PERSON);
 
   it('asks only whether it is answered, where rules read interview answers', () => {
-    expect(ruleOperatorSubject(variables, 'secret')).toBe('encrypted');
+    expect(ruleOperatorSubject(variables, SECRET)).toBe('encrypted');
     expect(ruleOperatorOptions('encrypted').map(({ value }) => value)).toEqual([
       'EXISTS',
       'NOT_EXISTS',
@@ -142,20 +167,20 @@ describe('the operators an encrypted attribute is offered', () => {
 
   it('compares it like any text attribute where the rule set allows that', () => {
     expect(
-      ruleOperatorSubject(variables, 'secret', {
+      ruleOperatorSubject(variables, SECRET, {
         allowEncryptedAttributes: true,
       }),
     ).toBe('text');
   });
 
   it('leaves an attribute that is not encrypted to its type', () => {
-    expect(ruleOperatorSubject(variables, 'note')).toBe('text');
-    expect(ruleOperatorSubject(variables, 'age')).toBe('number');
+    expect(ruleOperatorSubject(variables, NOTE)).toBe('text');
+    expect(ruleOperatorSubject(variables, AGE)).toBe('number');
   });
 
   it('offers the presence operators for a rule with no attribute it can type', () => {
     expect(ruleOperatorSubject(variables, undefined)).toBe('exists');
-    expect(ruleOperatorSubject(variables, 'favouriteColour')).toBe('exists');
+    expect(ruleOperatorSubject(variables, FAVOURITE_COLOUR)).toBe('exists');
   });
 
   it('keeps a stored comparison on screen, disabled', () => {
@@ -177,18 +202,18 @@ describe('the operators an encrypted attribute is offered', () => {
  */
 describe('the date picker a rule’s operand inherits', () => {
   const variables: Readonly<Variables> = Object.freeze({
-    born: {
+    [BORN]: {
       name: 'Born',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', min: '1800', max: '1810' },
     },
-    seen: {
+    [SEEN]: {
       name: 'Seen',
       type: 'datetime',
       component: 'DatePicker',
     },
-    met: {
+    [MET]: {
       name: 'Met',
       type: 'datetime',
       component: 'RelativeDatePicker',
@@ -196,7 +221,7 @@ describe('the date picker a rule’s operand inherits', () => {
     },
     // The same picker with nothing authored on it, which is where the window
     // is derived from the clock rather than from the codebook.
-    called: {
+    [CALLED]: {
       name: 'Called',
       type: 'datetime',
       component: 'RelativeDatePicker',
@@ -205,20 +230,20 @@ describe('the date picker a rule’s operand inherits', () => {
     // A month-resolution picker, so a month outside 01-12 has somewhere to be
     // asked about — and with no bounds authored, so the window it offers is
     // the one the control synthesises.
-    joined: {
+    [JOINED]: {
       name: 'Joined',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'month' },
     },
     // The same, one resolution coarser: a bare year dropdown.
-    graduated: {
+    [GRADUATED]: {
       name: 'Graduated',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year' },
     },
-    age: { name: 'Age', type: 'number' },
+    [AGE]: { name: 'Age', type: 'number' },
   });
 
   it('carries every bound the attribute’s own picker honours', () => {
@@ -228,15 +253,13 @@ describe('the date picker a rule’s operand inherits', () => {
     // `parseYmd` reads them. `compareDateStrings` truncates to the shorter of
     // the two before comparing, so a `"1800"` operand still sits on the floor
     // rather than below it.
-    expect(ruleVariableDateParameters(variables, 'born')).toEqual({
+    expect(ruleVariableDateParameters(variables, BORN)).toEqual({
       type: 'year',
       min: '1800-01-01',
       max: '1810-01-01',
     });
-    expect(operandDateProblems(variables, 'born', 'EXACTLY', '1800')).toEqual(
-      [],
-    );
-    expect(operandDateProblems(variables, 'born', 'EXACTLY', '1799')).toEqual([
+    expect(operandDateProblems(variables, BORN, 'EXACTLY', '1800')).toEqual([]);
+    expect(operandDateProblems(variables, BORN, 'EXACTLY', '1799')).toEqual([
       { kind: 'outOfRange', value: '1799' },
     ]);
   });
@@ -259,36 +282,36 @@ describe('the date picker a rule’s operand inherits', () => {
     vi.useFakeTimers();
     vi.setSystemTime('2026-07-27T12:00:00.000Z');
     try {
-      expect(ruleVariableDateParameters(variables, 'joined')).toEqual({
+      expect(ruleVariableDateParameters(variables, JOINED)).toEqual({
         type: 'month',
         min: '1920-01-01',
         max: '2026-07-27',
       });
-      expect(ruleVariableDateParameters(variables, 'graduated')).toEqual({
+      expect(ruleVariableDateParameters(variables, GRADUATED)).toEqual({
         type: 'year',
         min: '1920-01-01',
         max: '2026-07-27',
       });
 
       expect(
-        operandDateProblems(variables, 'graduated', 'EXACTLY', '1800'),
+        operandDateProblems(variables, GRADUATED, 'EXACTLY', '1800'),
       ).toEqual([{ kind: 'outOfRange', value: '1800' }]);
       expect(
-        operandDateProblems(variables, 'joined', 'EXACTLY', '1919-12'),
+        operandDateProblems(variables, JOINED, 'EXACTLY', '1919-12'),
       ).toEqual([{ kind: 'outOfRange', value: '1919-12' }]);
       expect(
-        operandDateProblems(variables, 'joined', 'EXACTLY', '2027-01'),
+        operandDateProblems(variables, JOINED, 'EXACTLY', '2027-01'),
       ).toEqual([{ kind: 'outOfRange', value: '2027-01' }]);
 
       // And every date the dropdowns DO offer is left alone.
       expect(
-        operandDateProblems(variables, 'graduated', 'EXACTLY', '1920'),
+        operandDateProblems(variables, GRADUATED, 'EXACTLY', '1920'),
       ).toEqual([]);
       expect(
-        operandDateProblems(variables, 'joined', 'EXACTLY', '1950-06'),
+        operandDateProblems(variables, JOINED, 'EXACTLY', '1950-06'),
       ).toEqual([]);
       expect(
-        operandDateProblems(variables, 'joined', 'EXACTLY', '2026-07'),
+        operandDateProblems(variables, JOINED, 'EXACTLY', '2026-07'),
       ).toEqual([]);
     } finally {
       vi.useRealTimers();
@@ -296,7 +319,7 @@ describe('the date picker a rule’s operand inherits', () => {
   });
 
   it('invents no bound the codebook does not hold', () => {
-    expect(ruleVariableDateParameters(variables, 'seen')).toEqual({
+    expect(ruleVariableDateParameters(variables, SEEN)).toEqual({
       type: 'full',
     });
   });
@@ -309,7 +332,7 @@ describe('the date picker a rule’s operand inherits', () => {
    * compare against a date no participant can ever give.
    */
   it('derives the window a relative date picker actually offers', () => {
-    expect(ruleVariableDateParameters(variables, 'met')).toEqual({
+    expect(ruleVariableDateParameters(variables, MET)).toEqual({
       type: 'full',
       min: '2019-12-02',
       max: '2020-01-31',
@@ -320,7 +343,7 @@ describe('the date picker a rule’s operand inherits', () => {
     vi.useFakeTimers();
     vi.setSystemTime('2026-07-27T12:00:00.000Z');
     try {
-      expect(ruleVariableDateParameters(variables, 'called')).toEqual({
+      expect(ruleVariableDateParameters(variables, CALLED)).toEqual({
         type: 'full',
         min: '2026-06-27',
         max: '2026-07-27',
@@ -331,7 +354,7 @@ describe('the date picker a rule’s operand inherits', () => {
   });
 
   it('gives anything that is not a date attribute the default picker', () => {
-    expect(ruleVariableDateParameters(variables, 'age')).toEqual({
+    expect(ruleVariableDateParameters(variables, AGE)).toEqual({
       type: 'full',
     });
     expect(ruleVariableDateParameters(variables, undefined)).toEqual({
@@ -352,48 +375,48 @@ describe('the date picker a rule’s operand inherits', () => {
   describe('a date the rule already holds', () => {
     it('reports one recorded at a resolution the attribute no longer uses', () => {
       expect(
-        operandDateProblems(variables, 'born', 'EXACTLY', '2020-05'),
+        operandDateProblems(variables, BORN, 'EXACTLY', '2020-05'),
       ).toEqual([
         { kind: 'wrongResolution', value: '2020-05', resolution: 'year' },
       ]);
       // The other direction of the same retype: an attribute answered with a
       // full date, holding a rule written when it recorded years.
-      expect(operandDateProblems(variables, 'seen', 'EXACTLY', '2020')).toEqual(
-        [{ kind: 'wrongResolution', value: '2020', resolution: 'full' }],
-      );
+      expect(operandDateProblems(variables, SEEN, 'EXACTLY', '2020')).toEqual([
+        { kind: 'wrongResolution', value: '2020', resolution: 'full' },
+      ]);
     });
 
     it('reports one outside the dates the attribute can record', () => {
-      expect(operandDateProblems(variables, 'born', 'EXACTLY', '1799')).toEqual(
-        [{ kind: 'outOfRange', value: '1799' }],
-      );
-      expect(operandDateProblems(variables, 'born', 'EXACTLY', '1811')).toEqual(
-        [{ kind: 'outOfRange', value: '1811' }],
-      );
+      expect(operandDateProblems(variables, BORN, 'EXACTLY', '1799')).toEqual([
+        { kind: 'outOfRange', value: '1799' },
+      ]);
+      expect(operandDateProblems(variables, BORN, 'EXACTLY', '1811')).toEqual([
+        { kind: 'outOfRange', value: '1811' },
+      ]);
     });
 
     it('says nothing about a date the attribute can still record', () => {
       // Including both bounds themselves, which are dates the picker offers.
       for (const value of ['1800', '1805', '1810']) {
-        expect(
-          operandDateProblems(variables, 'born', 'EXACTLY', value),
-        ).toEqual([]);
+        expect(operandDateProblems(variables, BORN, 'EXACTLY', value)).toEqual(
+          [],
+        );
       }
       expect(
-        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-05-14'),
+        operandDateProblems(variables, SEEN, 'EXACTLY', '2020-05-14'),
       ).toEqual([]);
     });
 
     it('reports one outside a relative picker’s window', () => {
       expect(
-        operandDateProblems(variables, 'met', 'EXACTLY', '2019-12-01'),
+        operandDateProblems(variables, MET, 'EXACTLY', '2019-12-01'),
       ).toEqual([{ kind: 'outOfRange', value: '2019-12-01' }]);
       expect(
-        operandDateProblems(variables, 'met', 'EXACTLY', '2020-02-01'),
+        operandDateProblems(variables, MET, 'EXACTLY', '2020-02-01'),
       ).toEqual([{ kind: 'outOfRange', value: '2020-02-01' }]);
       // Both ends of the window are dates the picker offers.
       for (const value of ['2019-12-02', '2020-01-01', '2020-01-31']) {
-        expect(operandDateProblems(variables, 'met', 'EXACTLY', value)).toEqual(
+        expect(operandDateProblems(variables, MET, 'EXACTLY', value)).toEqual(
           [],
         );
       }
@@ -412,12 +435,12 @@ describe('the date picker a rule’s operand inherits', () => {
       try {
         vi.setSystemTime('2026-07-27T12:00:00.000Z');
         expect(
-          operandDateProblems(variables, 'called', 'EXACTLY', '2026-07-01'),
+          operandDateProblems(variables, CALLED, 'EXACTLY', '2026-07-01'),
         ).toEqual([]);
 
         vi.setSystemTime('2026-09-01T12:00:00.000Z');
         expect(
-          operandDateProblems(variables, 'called', 'EXACTLY', '2026-07-01'),
+          operandDateProblems(variables, CALLED, 'EXACTLY', '2026-07-01'),
         ).toEqual([{ kind: 'outOfRange', value: '2026-07-01' }]);
       } finally {
         vi.useRealTimers();
@@ -433,20 +456,20 @@ describe('the date picker a rule’s operand inherits', () => {
      */
     it('reports one the calendar does not have', () => {
       expect(
-        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-02-31'),
+        operandDateProblems(variables, SEEN, 'EXACTLY', '2020-02-31'),
       ).toEqual([{ kind: 'impossibleDate', value: '2020-02-31' }]);
       expect(
-        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-13-01'),
+        operandDateProblems(variables, SEEN, 'EXACTLY', '2020-13-01'),
       ).toEqual([{ kind: 'impossibleDate', value: '2020-13-01' }]);
       expect(
-        operandDateProblems(variables, 'joined', 'EXACTLY', '2020-13'),
+        operandDateProblems(variables, JOINED, 'EXACTLY', '2020-13'),
       ).toEqual([{ kind: 'impossibleDate', value: '2020-13' }]);
       // A leap day IS on the calendar, in a leap year and not otherwise.
       expect(
-        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-02-29'),
+        operandDateProblems(variables, SEEN, 'EXACTLY', '2020-02-29'),
       ).toEqual([]);
       expect(
-        operandDateProblems(variables, 'seen', 'EXACTLY', '2021-02-29'),
+        operandDateProblems(variables, SEEN, 'EXACTLY', '2021-02-29'),
       ).toEqual([{ kind: 'impossibleDate', value: '2021-02-29' }]);
     });
 
@@ -454,16 +477,16 @@ describe('the date picker a rule’s operand inherits', () => {
       // A pattern comparison's operand is a regular expression, which is text
       // at any resolution — `.*` is not a date the picker has to be able to
       // record, and reporting it would refuse a rule that works.
-      expect(operandDateProblems(variables, 'born', 'CONTAINS', '18')).toEqual(
+      expect(operandDateProblems(variables, BORN, 'CONTAINS', '18')).toEqual(
         [],
       );
       // A rule against an attribute that is not a date, and one whose operand
       // has not been entered yet: unfinished, and reported as unfinished.
-      expect(operandDateProblems(variables, 'age', 'EXACTLY', 5)).toEqual([]);
+      expect(operandDateProblems(variables, AGE, 'EXACTLY', 5)).toEqual([]);
       expect(
-        operandDateProblems(variables, 'born', 'EXACTLY', undefined),
+        operandDateProblems(variables, BORN, 'EXACTLY', undefined),
       ).toEqual([]);
-      expect(operandDateProblems(variables, 'born', 'EXACTLY', '')).toEqual([]);
+      expect(operandDateProblems(variables, BORN, 'EXACTLY', '')).toEqual([]);
     });
   });
 });
@@ -477,13 +500,13 @@ describe('the date picker a rule’s operand inherits', () => {
 describe('codebook entries that are legal but sparse', () => {
   const sparseCodebook: Readonly<Codebook> = Object.freeze({
     node: {
-      blank: {
+      [BLANK]: {
         name: '',
         color: 'node-color-seq-4',
         shape: { default: 'circle' },
         variables: {
-          unnamed: { name: '', type: 'text' },
-          agrees: {
+          [UNNAMED]: { name: '', type: 'text' },
+          [AGREES]: {
             name: 'Agrees',
             type: 'boolean',
             options: [
@@ -491,21 +514,23 @@ describe('codebook entries that are legal but sparse', () => {
               { label: { en: 'No' }, value: false },
             ],
           },
-          rank: {
+          [RANK]: {
             name: 'Rank',
             type: 'ordinal',
-            options: [{ label: { en: '' }, value: 1 }],
+            options: [
+              { id: testId('option/Rank/1'), label: { en: '' }, value: 1 },
+            ],
           },
         },
       },
     },
     // No colour: the schema leaves an edge's colour optional.
-    edge: { plain: { name: '' } },
+    edge: { [PLAIN]: { name: '' } },
   });
 
   it('falls back to the first edge colour when an edge has none', () => {
     expect(ruleEntityTypeOptions(sparseCodebook, 'edge', {})).toEqual([
-      { value: 'plain', label: 'plain', color: 'edge-color-seq-1' },
+      { value: PLAIN, label: PLAIN, color: 'edge-color-seq-1' },
     ]);
   });
 
@@ -513,15 +538,14 @@ describe('codebook entries that are legal but sparse', () => {
     // A blank label would leave the researcher with a rule they cannot read,
     // and a radio with no accessible name at all.
     expect(ruleEntityTypeOptions(sparseCodebook, 'node', {})[0]?.label).toBe(
-      'blank',
+      BLANK,
     );
     expect(
-      ruleVariableOptions(ruleVariables(sparseCodebook, 'node', 'blank')),
+      ruleVariableOptions(ruleVariables(sparseCodebook, 'node', BLANK)),
     ).toContainEqual({
-      value: 'unnamed',
-      label: 'unnamed',
+      value: UNNAMED,
+      label: UNNAMED,
       type: 'text',
-      usable: true,
     });
   });
 
@@ -529,13 +553,13 @@ describe('codebook entries that are legal but sparse', () => {
     // A boolean variable carries `options`, but they are what its input
     // control prints for true and false — comparing the attribute against the
     // word "Yes" is a rule that matches nothing.
-    const variables = ruleVariables(sparseCodebook, 'node', 'blank');
-    expect(ruleVariableChoices(variables, 'agrees', inEnglish)).toBeUndefined();
+    const variables = ruleVariables(sparseCodebook, 'node', BLANK);
+    expect(ruleVariableChoices(variables, AGREES, inEnglish)).toBeUndefined();
   });
 
   it('names an authored option by its value when it has no label', () => {
-    const variables = ruleVariables(sparseCodebook, 'node', 'blank');
-    expect(ruleVariableChoices(variables, 'rank', inEnglish)).toEqual([
+    const variables = ruleVariables(sparseCodebook, 'node', BLANK);
+    expect(ruleVariableChoices(variables, RANK, inEnglish)).toEqual([
       { value: 1, label: '1' },
     ]);
   });
@@ -553,64 +577,69 @@ describe('reading the codebook for a rule', () => {
     // and a stored layout attribute — still in the codebook, still on screen
     // in the codebook editor — was reported as one the researcher had deleted.
     expect(
-      ruleVariableOptions(ruleVariables(codebook, 'node', 'person')),
+      ruleVariableOptions(ruleVariables(codebook, 'node', PERSON)),
     ).toEqual([
-      { value: 'age', label: 'Age', type: 'number', usable: true },
-      { value: 'mood', label: 'Mood', type: 'categorical', usable: true },
-      { value: 'note', label: 'Note', type: 'text', usable: true },
-      { value: 'born', label: 'Born', type: 'datetime', usable: true },
-      { value: 'home', label: 'Home', type: 'layout', usable: false },
+      { value: AGE, label: 'Age', type: 'number' },
+      { value: MOOD, label: 'Mood', type: 'categorical' },
+      { value: NOTE, label: 'Note', type: 'text' },
+      { value: BORN, label: 'Born', type: 'datetime' },
+      {
+        value: HOME,
+        label: 'Home',
+        type: 'layout',
+        unavailableReason:
+          'This attribute cannot be used in a rule. Choose another one.',
+        unavailableForType: true,
+      },
       // Whether it was answered can still be asked of an encrypted attribute.
-      { value: 'secret', label: 'Secret', type: 'text', usable: true },
+      { value: SECRET, label: 'Secret', type: 'text' },
     ]);
   });
 
   it('reads an ego rule against the ego codebook', () => {
     expect(
       ruleVariableOptions(ruleVariables(codebook, 'ego', undefined)),
-    ).toEqual([
-      { value: 'egoName', label: 'EgoName', type: 'text', usable: true },
-    ]);
+    ).toEqual([{ value: EGO_NAME, label: 'EgoName', type: 'text' }]);
   });
 
   it('offers nothing for an entity type the codebook no longer has', () => {
-    expect(ruleVariables(codebook, 'node', 'ghost')).toEqual({});
-    expect(ruleEntityTypeExists(codebook, 'node', 'ghost')).toBe(false);
-    expect(ruleEntityTypeExists(codebook, 'node', 'person')).toBe(true);
+    expect(ruleVariables(codebook, 'node', GHOST)).toEqual({});
+    expect(ruleEntityTypeExists(codebook, 'node', GHOST)).toBe(false);
+    expect(ruleEntityTypeExists(codebook, 'node', PERSON)).toBe(true);
   });
 
   it('answers undefined for the type of a deleted attribute', () => {
-    const variables = ruleVariables(codebook, 'node', 'person');
-    expect(ruleVariableType(variables, 'favouriteColour')).toBeUndefined();
-    expect(ruleVariableType(variables, 'age')).toBe('number');
+    const variables = ruleVariables(codebook, 'node', PERSON);
+    expect(ruleVariableType(variables, FAVOURITE_COLOUR)).toBeUndefined();
+    expect(ruleVariableType(variables, AGE)).toBe('number');
   });
 
   it('keeps option values in the type the codebook authored them with', () => {
-    const variables = ruleVariables(codebook, 'node', 'person');
-    expect(ruleVariableChoices(variables, 'mood', inEnglish)).toEqual([
+    const variables = ruleVariables(codebook, 'node', PERSON);
+    expect(ruleVariableChoices(variables, MOOD, inEnglish)).toEqual([
       { value: 'happy', label: 'Happy' },
       { value: 'sad', label: 'Sad' },
     ]);
-    expect(ruleVariableChoices(variables, 'age', inEnglish)).toBeUndefined();
+    expect(ruleVariableChoices(variables, AGE, inEnglish)).toBeUndefined();
   });
 
   it('lists the entity types a rule may be pointed at', () => {
     expect(ruleEntityTypeOptions(codebook, 'node', {})).toEqual([
       {
-        value: 'person',
+        value: PERSON,
         label: 'Person',
         color: 'node-color-seq-2',
         shape: 'square',
       },
       {
-        value: 'place',
+        value: PLACE,
         label: 'Place',
         color: 'node-color-seq-3',
         shape: 'circle',
       },
     ]);
     expect(ruleEntityTypeOptions(codebook, 'edge', {})).toEqual([
-      { value: 'friend', label: 'Friend', color: 'edge-color-seq-3' },
+      { value: FRIEND, label: 'Friend', color: 'edge-color-seq-3' },
     ]);
   });
 });
@@ -622,23 +651,23 @@ describe('reading the codebook for a rule', () => {
  * operand is still the shape an option value has.
  */
 describe('an operand naming an option the attribute no longer offers', () => {
-  const variables = ruleVariables(codebook, 'node', 'person');
+  const variables = ruleVariables(codebook, 'node', PERSON);
 
   it('names the option that went missing', () => {
     expect(
-      operandOptionProblems(variables, 'mood', 'EXACTLY', 'retired'),
+      operandOptionProblems(variables, MOOD, 'EXACTLY', 'retired'),
     ).toEqual([{ kind: 'unknownOption', value: 'retired' }]);
   });
 
   it('says nothing about an option the attribute still authors', () => {
-    expect(
-      operandOptionProblems(variables, 'mood', 'EXACTLY', 'happy'),
-    ).toEqual([]);
+    expect(operandOptionProblems(variables, MOOD, 'EXACTLY', 'happy')).toEqual(
+      [],
+    );
   });
 
   it('checks every member of a list operand', () => {
     expect(
-      operandOptionProblems(variables, 'mood', 'INCLUDES', [
+      operandOptionProblems(variables, MOOD, 'INCLUDES', [
         'happy',
         'retired',
         'lapsed',
@@ -654,34 +683,40 @@ describe('an operand naming an option the attribute no longer offers', () => {
     // identity, so the string "1" is not the option whose value is 1.
     const numericOptions: Readonly<Codebook> = {
       node: {
-        person: {
+        [PERSON]: {
           name: 'Person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            strength: {
+            [STRENGTH]: {
               name: 'Strength',
               type: 'ordinal',
               options: [
-                { label: { en: 'Weak' }, value: 1 },
-                { label: { en: 'Strong' }, value: 2 },
+                {
+                  id: testId('option/Strength/1'),
+                  label: { en: 'Weak' },
+                  value: 1,
+                },
+                {
+                  id: testId('option/Strength/2'),
+                  label: { en: 'Strong' },
+                  value: 2,
+                },
               ],
             },
           },
         },
       },
     };
-    const ordinal = ruleVariables(numericOptions, 'node', 'person');
+    const ordinal = ruleVariables(numericOptions, 'node', PERSON);
 
-    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', 1)).toEqual(
-      [],
-    );
-    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', '1')).toEqual([
+    expect(operandOptionProblems(ordinal, STRENGTH, 'EXACTLY', 1)).toEqual([]);
+    expect(operandOptionProblems(ordinal, STRENGTH, 'EXACTLY', '1')).toEqual([
       { kind: 'unknownOption', value: '1' },
     ]);
     // The widening that let a number attribute take a fraction has no business
     // here: an ordinal answers with one of its own options.
-    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', 0.5)).toEqual([
+    expect(operandOptionProblems(ordinal, STRENGTH, 'EXACTLY', 0.5)).toEqual([
       { kind: 'unknownOption', value: 0.5 },
     ]);
   });
@@ -689,31 +724,27 @@ describe('an operand naming an option the attribute no longer offers', () => {
   it('says nothing about a comparison whose operand is not an option', () => {
     // A number attribute's operand is typed out, not picked, so there is no
     // option list to hold it to; a presence rule compares nothing at all.
-    expect(operandOptionProblems(variables, 'age', 'EXACTLY', 41)).toEqual([]);
-    expect(
-      operandOptionProblems(variables, 'mood', 'EXISTS', 'retired'),
-    ).toEqual([]);
+    expect(operandOptionProblems(variables, AGE, 'EXACTLY', 41)).toEqual([]);
+    expect(operandOptionProblems(variables, MOOD, 'EXISTS', 'retired')).toEqual(
+      [],
+    );
   });
 
   it('says nothing about an operand that has not been entered yet', () => {
     expect(
-      operandOptionProblems(variables, 'mood', 'EXACTLY', undefined),
+      operandOptionProblems(variables, MOOD, 'EXACTLY', undefined),
     ).toEqual([]);
-    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', [])).toEqual(
-      [],
-    );
+    expect(operandOptionProblems(variables, MOOD, 'INCLUDES', [])).toEqual([]);
     // The three other spellings of "nothing has been entered": a null the
     // schema tolerates, and the empty values the two option controls hold
     // before anything is picked.
-    expect(operandOptionProblems(variables, 'mood', 'EXACTLY', null)).toEqual(
-      [],
-    );
-    expect(operandOptionProblems(variables, 'mood', 'EXACTLY', '')).toEqual([]);
+    expect(operandOptionProblems(variables, MOOD, 'EXACTLY', null)).toEqual([]);
+    expect(operandOptionProblems(variables, MOOD, 'EXACTLY', '')).toEqual([]);
   });
 
   it('says nothing about an attribute the codebook has lost', () => {
     expect(
-      operandOptionProblems(variables, 'favouriteColour', 'EXACTLY', 'blue'),
+      operandOptionProblems(variables, FAVOURITE_COLOUR, 'EXACTLY', 'blue'),
     ).toEqual([]);
   });
 });
@@ -730,7 +761,7 @@ describe('an operand naming an option the attribute no longer offers', () => {
  * to match.
  */
 describe('an operand that is not the shape an option can have', () => {
-  const variables = ruleVariables(codebook, 'node', 'person');
+  const variables = ruleVariables(codebook, 'node', PERSON);
 
   /**
    * `describedAs` is a message DESCRIPTOR, so the noun phrase is chosen in the
@@ -750,32 +781,32 @@ describe('an operand that is not the shape an option can have', () => {
 
   it('reports a boolean left behind by the migration', () => {
     expect(
-      asPhrases(operandOptionProblems(variables, 'mood', 'INCLUDES', [true])),
+      asPhrases(operandOptionProblems(variables, MOOD, 'INCLUDES', [true])),
     ).toEqual([{ kind: 'unusableValue', describedAs: 'a true/false value' }]);
   });
 
   it('reports a null member rather than skipping it', () => {
     expect(
-      asPhrases(operandOptionProblems(variables, 'mood', 'INCLUDES', [null])),
+      asPhrases(operandOptionProblems(variables, MOOD, 'INCLUDES', [null])),
     ).toEqual([{ kind: 'unusableValue', describedAs: 'an empty value' }]);
   });
 
   it('reports an object member', () => {
     expect(
-      asPhrases(operandOptionProblems(variables, 'mood', 'INCLUDES', [{}])),
+      asPhrases(operandOptionProblems(variables, MOOD, 'INCLUDES', [{}])),
     ).toEqual([{ kind: 'unusableValue', describedAs: 'an object' }]);
   });
 
   it('reports a bare value that is not a list at all', () => {
     expect(
-      asPhrases(operandOptionProblems(variables, 'mood', 'INCLUDES', true)),
+      asPhrases(operandOptionProblems(variables, MOOD, 'INCLUDES', true)),
     ).toEqual([{ kind: 'unusableValue', describedAs: 'a true/false value' }]);
   });
 
   it('reports every member of a mixed operand, in its own voice', () => {
     expect(
       asPhrases(
-        operandOptionProblems(variables, 'mood', 'INCLUDES', [
+        operandOptionProblems(variables, MOOD, 'INCLUDES', [
           'happy',
           true,
           'retired',
@@ -793,12 +824,7 @@ describe('an operand that is not the shape an option can have', () => {
     // The regression the descriptor exists for. A phrase chosen here would be
     // frozen into the editor's encoded refusal, and read as English inside an
     // otherwise Spanish sentence.
-    const [problem] = operandOptionProblems(
-      variables,
-      'mood',
-      'INCLUDES',
-      true,
-    );
+    const [problem] = operandOptionProblems(variables, MOOD, 'INCLUDES', true);
     expect(problem).toEqual({
       kind: 'unusableValue',
       describedAs: expect.objectContaining({

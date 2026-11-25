@@ -4,7 +4,6 @@ import type {
   ColorReference,
   ComponentType,
   ConditionRole,
-  DynamicValues,
   EdgeColorReference,
   EdgeCountComparison,
   FilterOperator,
@@ -17,6 +16,7 @@ import type {
   OrdinalColorReference,
   PedigreeCompletenessScope,
   PedigreeGenderWords,
+  ProtocolObjectId,
   StageType,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -67,7 +67,9 @@ export type FilterInput = {
 
 /**
  * A stage's conditions as a test writes them: the schema's `Conditions` with
- * attribute references unbranded, as `FilterInput` is.
+ * attribute references unbranded, as `FilterInput` is. Each is keyed by its
+ * id, a UUID, which the stage's text names as `condition_<id>` (with `-`
+ * written as `_`).
  */
 export type ConditionsInput = Record<
   string,
@@ -105,6 +107,13 @@ export type SkipLogicInput = {
  * union does not admit.
  */
 export type VariableOptionInput = {
+  /**
+   * The option's id, for an option of a categorical or ordinal variable.
+   * Absent, the built protocol gives it one named by its variable and value,
+   * so the same calls give the same ids. A boolean variable's options have
+   * none.
+   */
+  id?: string;
   label: TextInput;
   value: string | number | boolean;
   negative?: boolean;
@@ -322,14 +331,12 @@ export type AssetBlockInput = {
 };
 
 export type StageEntry = {
-  id: string;
+  id: ProtocolObjectId;
   type: StageType;
   label: TextInput;
   interviewScript?: string;
   skipLogic?: SkipLogicInput;
   filter?: FilterInput;
-  /** Values the stage's text can show; written as given. */
-  dynamicValues?: DynamicValues;
   /** What the stage's text tests to choose its wording, by condition id. */
   conditions?: ConditionsInput;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
@@ -533,6 +540,11 @@ export type AddEdgeTypeInput = {
 };
 
 export type AddVariableInput = {
+  /**
+   * A label the variable's id is derived from, so that it stays the same
+   * however many variables were added before it. The id is a UUID (one given
+   * here is kept); read it from what the add call returns.
+   */
   id?: string;
   name?: string;
   type?: VariableType;

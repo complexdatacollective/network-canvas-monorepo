@@ -6,10 +6,10 @@
  * Which images, and how one is drawn, are the caller's (`MarkdownBlockImages`).
  * What is here is how one gets from the markdown to the caller's component
  * with nothing else able to pose as one. A block can only come from an image
- * written in markdown: the image is taken out before any HTML is parsed, and
- * put back, as an element nothing else can produce, after the HTML has been
- * sanitized. HTML written into the text cannot make one, because the element
- * and its property are removed from whatever the sanitizer let through.
+ * written in markdown: the image is taken out of the markdown's structure,
+ * leaving a marker, and put back, as an element nothing else produces, once
+ * the structure is finished. HTML written into the text is shown as the
+ * characters typed (see `markdownTypedHtml`), so it cannot make one either.
  */
 
 /** An image a caller draws as a block: its address and its description. */
@@ -22,10 +22,9 @@ const CLOSE = '';
 const MARKERS = /[]/g;
 const MARKED = /^([\s\S]*)$/;
 
-// Known to no text: made when the module loads, and written into each marker.
-// Without it, HTML such as `<p>&#xE010;...&#xE011;</p>` would decode to
-// the marker characters only after the markdown pass that removes them, and be
-// taken for a marker.
+// Known to no text: made when the module loads, and written into each marker,
+// so that only a marker this module wrote is read as one, whatever else
+// reaches the finished structure.
 const NONCE = Array.from(
   globalThis.crypto.getRandomValues(new Uint32Array(4)),
   (part) => part.toString(16),
@@ -141,8 +140,7 @@ const markBlockImages = (
 
 /**
  * The remark half: takes each block image out of the markdown, leaving a
- * marker where it stood. Runs on the markdown's own structure, before any
- * HTML in it is parsed.
+ * marker where it stood. Runs on the markdown's own structure.
  */
 export const remarkBlockImages =
   (isBlockImage: (url: string) => boolean) => () => (tree: unknown) => {
@@ -214,10 +212,6 @@ const placeInText = (value: string): TreeNode[] => {
 };
 
 const placeBlockImages = (node: TreeNode) => {
-  // Whatever the sanitizer let through cannot be a block.
-  if (node.properties !== undefined) {
-    Reflect.deleteProperty(node.properties, BLOCK_IMAGE_PROPERTY);
-  }
   if (node.children === undefined) return;
   node.children = node.children.flatMap((child): TreeNode[] => {
     if (child.type === 'text' && typeof child.value === 'string') {
@@ -235,8 +229,8 @@ const placeBlockImages = (node: TreeNode) => {
 };
 
 /**
- * The rehype half: puts each block where its marker stands. Runs after the
- * HTML has been sanitized, on the finished structure.
+ * The rehype half: puts each block where its marker stands. Runs last, on
+ * the finished structure.
  */
 export const rehypeBlockImages = () => (tree: unknown) => {
   if (isTreeNode(tree)) placeBlockImages(tree);

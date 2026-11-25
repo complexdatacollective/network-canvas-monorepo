@@ -26,9 +26,10 @@ export type SegmentedSwitcherProps<T extends string> = {
   /**
    * Track treatment. `outline` (default) reads like a normal outline button;
    * `glass` adds the translucent, backdrop-blurred, shadowed glass treatment
-   * with a thicker border.
+   * with a thicker border; `plain` draws no track, for a switcher whose
+   * container is its track, such as a pill-shaped popup.
    */
-  'variant'?: 'outline' | 'glass';
+  'variant'?: 'outline' | 'glass' | 'plain';
   'className'?: string;
   /** Whether every segment ignores the pointer and the keyboard. */
   'disabled'?: boolean;
@@ -53,11 +54,14 @@ const trackHeightClass: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
   xl: 'h-20',
 };
 
-const trackVariantClass: Record<'outline' | 'glass', string> = {
+const trackVariantClass: Record<'outline' | 'glass' | 'plain', string> = {
   // Like a normal outline button: a 2px themed border, no fill.
   outline: 'border-2 border-outline',
   // Translucent surface + backdrop blur + shadow + a thicker (control) border.
   glass: 'control-glass border-outline',
+  // No border or fill: the container draws the track, and the segments keep
+  // the `p-1` inset from its edge.
+  plain: '',
 };
 
 // Segments stretch to fill the track's inner height (the flex chain uses

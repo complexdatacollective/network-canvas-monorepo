@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "ego_consent": {
+        "4634d252-92b4-5021-8357-a938e4707844": {
           "name": "consent",
           "type": "boolean",
           "component": "Boolean",
@@ -33,7 +33,7 @@
             "required": true
           }
         },
-        "ego_age": {
+        "06910208-e57b-5e3d-84e9-c7c717e5e864": {
           "name": "age",
           "type": "number",
           "component": "Number",
@@ -43,36 +43,41 @@
             "maxValue": 99
           }
         },
-        "ego_gender": {
+        "fe5589b9-c816-525e-84f5-4c0a67ea7b85": {
           "name": "gender",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "2f272afb-659e-598c-b4bb-7b75f8ff5658",
               "label": {
                 "en": "Woman"
               },
               "value": "woman"
             },
             {
+              "id": "bbbb0230-891b-50c1-9eb2-e26fa208ec92",
               "label": {
                 "en": "Man"
               },
               "value": "man"
             },
             {
+              "id": "09d8bf50-cd69-5357-acde-fa721109397c",
               "label": {
                 "en": "Non-binary"
               },
               "value": "non_binary"
             },
             {
+              "id": "eb68fb6f-51c6-5c50-8a21-cc977533117b",
               "label": {
                 "en": "Another gender"
               },
               "value": "another_gender"
             },
             {
+              "id": "acbce509-14d1-5ea1-822f-88327b0e1440",
               "label": {
                 "en": "Prefer not to say"
               },
@@ -83,7 +88,7 @@
             "maxSelected": 1
           }
         },
-        "ego_lives_in_halls": {
+        "22bf9f42-217d-5884-a62e-5a07f2f689de": {
           "name": "lives_in_halls",
           "type": "boolean",
           "component": "Boolean",
@@ -103,36 +108,41 @@
             }
           ]
         },
-        "ego_audit_frequency": {
+        "eee1799a-3112-500e-a856-d6d67570ccad": {
           "name": "audit_frequency",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
+              "id": "df746fcf-883b-5162-bcc8-9ac533f59882",
               "label": {
                 "en": "Never"
               },
               "value": 0
             },
             {
+              "id": "26a7ea26-07ad-5721-b12b-4238f12ca78b",
               "label": {
                 "en": "Monthly or less"
               },
               "value": 1
             },
             {
+              "id": "c4c5aa8f-df09-5331-a75d-427d572a5f0f",
               "label": {
                 "en": "2 to 4 times a month"
               },
               "value": 2
             },
             {
+              "id": "a0c58674-b131-5845-816c-d6cc2ecaaeea",
               "label": {
                 "en": "2 to 3 times a week"
               },
               "value": 3
             },
             {
+              "id": "5bbbd9e8-14df-5bee-9afd-50a81ffbc22d",
               "label": {
                 "en": "4 or more times a week"
               },
@@ -143,36 +153,41 @@
             "required": true
           }
         },
-        "ego_audit_typical": {
+        "5910de3c-1ccc-531c-993b-032c06f6b697": {
           "name": "audit_typical",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
+              "id": "9c6f5c62-ae3b-5449-a26f-2c11fe842e59",
               "label": {
                 "en": "1 or 2"
               },
               "value": 0
             },
             {
+              "id": "1a486717-0c84-5e7e-8109-82f2eafe430d",
               "label": {
                 "en": "3 or 4"
               },
               "value": 1
             },
             {
+              "id": "7e0da522-3c61-5ac8-9245-ee6fb2b86c7c",
               "label": {
                 "en": "5 or 6"
               },
               "value": 2
             },
             {
+              "id": "2b70f87e-7ced-5f61-b848-f32650461635",
               "label": {
                 "en": "7 to 9"
               },
               "value": 3
             },
             {
+              "id": "9438058e-99b9-541f-aaf1-26cf2cefa4b2",
               "label": {
                 "en": "10 or more"
               },
@@ -180,36 +195,41 @@
             }
           ]
         },
-        "ego_audit_heavy": {
+        "b8aa9b93-8f9c-56a4-ab3e-f6004be03099": {
           "name": "audit_heavy",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
+              "id": "3ab50202-6bd3-5412-a9fa-ea72da4384dc",
               "label": {
                 "en": "Never"
               },
               "value": 0
             },
             {
+              "id": "fc05fbcd-3773-55cf-8052-e5b75762cdb4",
               "label": {
                 "en": "Less than monthly"
               },
               "value": 1
             },
             {
+              "id": "01fdda02-a32b-5f58-af7c-909c3b8445ed",
               "label": {
                 "en": "Monthly"
               },
               "value": 2
             },
             {
+              "id": "3106c9c4-f367-5ea1-a246-bbd5e320c91a",
               "label": {
                 "en": "Weekly"
               },
               "value": 3
             },
             {
+              "id": "81a597f0-9390-5803-a9d6-c1ef1c62d4a8",
               "label": {
                 "en": "Daily or almost daily"
               },
@@ -217,42 +237,48 @@
             }
           ]
         },
-        "ego_who5_cheerful": {
+        "c91c7b1a-ff2f-5797-a910-e9376f0439b9": {
           "name": "who5_cheerful",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
             {
+              "id": "dcef273e-8d0b-5944-824c-13c1277931f9",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "a6080a4b-41d9-54c2-ae6b-95be8cd64f99",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "76dbd104-2712-525b-ab20-305916ffff1c",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "9cc22b70-881b-5fcc-87c0-58ab5b9264c6",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "0bcf6c51-8f13-59a9-8f8c-d4e48f5d4c4c",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "9094ab6a-37cc-501f-bd19-34fe053b9074",
               "label": {
                 "en": "All of the time"
               },
@@ -263,42 +289,48 @@
             "required": true
           }
         },
-        "ego_who5_calm": {
+        "877d085a-1f7f-541f-bd5e-3d7a4d27c918": {
           "name": "who5_calm",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
             {
+              "id": "75bfda24-20e6-55d8-8c44-4d3bffd55b07",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "c8bd6d56-3d4a-5f8f-8670-211364820563",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "357b9db4-e0f2-5d31-9224-cb1cb7bf0c0a",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "fbb502e8-080d-53cd-bc89-7065260875aa",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "e15fd672-2a9f-56ad-b9d3-6d9c972912a8",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "49254bbb-c01d-575f-bf26-9801000a4d38",
               "label": {
                 "en": "All of the time"
               },
@@ -309,42 +341,48 @@
             "required": true
           }
         },
-        "ego_who5_active": {
+        "42de71c8-f032-5eb6-9aaa-ad64dd9cd421": {
           "name": "who5_active",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
             {
+              "id": "852c7321-ca8d-5770-b69a-e57834d4a16f",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "513efddc-afa0-57bb-8e94-60553cc972ea",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "ea98b50f-199b-545b-b7b9-f7d0921114d5",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "d63f5e0a-d84f-5017-b67c-c9dbb9e0d12f",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "e5870762-540f-5f01-8465-d11d90ad9181",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "817ed4ef-53e9-5aac-8f83-be417b42c96d",
               "label": {
                 "en": "All of the time"
               },
@@ -355,42 +393,48 @@
             "required": true
           }
         },
-        "ego_who5_rested": {
+        "f792d73a-f402-5fcf-bb5a-8570177dc5c4": {
           "name": "who5_rested",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
             {
+              "id": "c5f23558-55dd-5f75-857f-fce7182a9a3b",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "6ecd74ce-9088-57cb-a522-6c1464012eb7",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "a37c2255-9966-5506-965a-1d19586f9664",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "bd8be0db-aa2b-5ba0-a43b-93827d1de78a",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "513c3b33-fcf4-552e-9199-df6d4c3c11e2",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "452abd6b-7bc8-53b2-9f28-a6e8749e1bbf",
               "label": {
                 "en": "All of the time"
               },
@@ -401,42 +445,48 @@
             "required": true
           }
         },
-        "ego_who5_interest": {
+        "872b697f-618c-508f-a2d4-cd7b4a51c59c": {
           "name": "who5_interest",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
             {
+              "id": "5afbef7e-db65-5aea-a3d8-c85207be23ed",
               "label": {
                 "en": "At no time"
               },
               "value": 0
             },
             {
+              "id": "1aec24a0-175d-5320-bbfe-1242979c8c80",
               "label": {
                 "en": "Some of the time"
               },
               "value": 1
             },
             {
+              "id": "43ba657e-73ae-5864-b42c-4920289e2c89",
               "label": {
                 "en": "Less than half of the time"
               },
               "value": 2
             },
             {
+              "id": "3b1eee22-a526-5ddf-a7cc-aa51a7b7ca1b",
               "label": {
                 "en": "More than half of the time"
               },
               "value": 3
             },
             {
+              "id": "a46045b4-372c-5500-9de2-12019ab01a16",
               "label": {
                 "en": "Most of the time"
               },
               "value": 4
             },
             {
+              "id": "b4a05977-1b07-55de-a2cf-f8c21148f8c6",
               "label": {
                 "en": "All of the time"
               },
@@ -450,7 +500,7 @@
       }
     },
     "node": {
-      "person": {
+      "bf5284c0-cbf4-5fae-92ea-30a42a4bce93": {
         "name": "Person",
         "icon": "add-a-person",
         "color": "node-color-seq-1",
@@ -458,7 +508,7 @@
           "default": "circle"
         },
         "variables": {
-          "person_name": {
+          "55b32df7-dde1-5409-99d3-0dfac466b7ba": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -467,21 +517,21 @@
               "unique": true
             }
           },
-          "person_layout": {
+          "f9fc70bb-bcc4-5094-9477-6a4a9ade1890": {
             "name": "layout",
             "type": "layout"
           },
-          "person_new_friend": {
+          "57ae97be-13bd-5eda-b574-f6f62bfaa6cd": {
             "name": "new_friend",
             "type": "boolean",
             "component": "Toggle"
           },
-          "person_support": {
+          "506e37ac-c1f7-53a8-8194-c061e245c2d3": {
             "name": "support",
             "type": "boolean",
             "component": "Toggle"
           },
-          "person_is_first_year": {
+          "b6b7facf-f398-54ea-aafe-4ba04c6c30dc": {
             "name": "is_first_year",
             "type": "boolean",
             "component": "Boolean",
@@ -501,7 +551,7 @@
               }
             ]
           },
-          "person_first_met": {
+          "0215aa22-abf9-53d1-8be5-44d6acb8ccb8": {
             "name": "first_met",
             "type": "datetime",
             "component": "DatePicker",
@@ -509,30 +559,34 @@
               "type": "month"
             }
           },
-          "person_closeness": {
+          "bbbd234d-bae3-579c-a04c-b65254bf336f": {
             "name": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
+                "id": "64f81dca-61bc-538b-aac1-5721f3dc7888",
                 "label": {
                   "en": "Not very close"
                 },
                 "value": 1
               },
               {
+                "id": "746ff4b3-6ad7-5208-8ae5-63e8865f320e",
                 "label": {
                   "en": "Somewhat close"
                 },
                 "value": 2
               },
               {
+                "id": "c19f9c00-125f-5bd4-8339-1cb72f3d6e61",
                 "label": {
                   "en": "Close"
                 },
                 "value": 3
               },
               {
+                "id": "b73e5aa2-a6b5-5660-b969-97f109aaaa46",
                 "label": {
                   "en": "Very close"
                 },
@@ -540,36 +594,41 @@
               }
             ]
           },
-          "person_how_met": {
+          "6c7fdce2-7723-57f5-9f65-70f49800fa7f": {
             "name": "how_met",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "4308d625-6d48-5b00-99f3-eee1e522ac1b",
                 "label": {
                   "en": "Same accommodation"
                 },
                 "value": "same_accommodation"
               },
               {
+                "id": "e2d1f303-716c-578b-82fb-46121607cdc4",
                 "label": {
                   "en": "Same course"
                 },
                 "value": "same_course"
               },
               {
+                "id": "899bda9f-068a-56c0-beb9-032e6fdc1753",
                 "label": {
                   "en": "Club or society"
                 },
                 "value": "club_or_society"
               },
               {
+                "id": "7eb95543-b62a-5416-ad25-19616a3c0514",
                 "label": {
                   "en": "Through other friends"
                 },
                 "value": "through_other_friends"
               },
               {
+                "id": "10e16d97-c284-5168-a9ec-9e2556122988",
                 "label": {
                   "en": "Knew before university"
                 },
@@ -580,29 +639,32 @@
               "maxSelected": 1
             }
           },
-          "person_how_met_other": {
+          "1168430a-ac0e-5534-81eb-f500f1fca169": {
             "name": "how_met_other",
             "type": "text",
             "component": "Text"
           },
-          "person_drinks_heavily": {
+          "e2abf2ff-5f4a-5085-8af3-42ae8abe8abd": {
             "name": "drinks_heavily",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "0032e476-1eb1-5fac-898d-7b16c1661796",
                 "label": {
                   "en": "Yes"
                 },
                 "value": "yes"
               },
               {
+                "id": "2a301122-5fac-543b-ae19-028c3d7e9920",
                 "label": {
                   "en": "No"
                 },
                 "value": "no"
               },
               {
+                "id": "16f4c8db-7c80-5c1e-a6dd-5adc2891758f",
                 "label": {
                   "en": "I don't know"
                 },
@@ -613,35 +675,39 @@
               "maxSelected": 1
             }
           },
-          "person_drinks_with": {
+          "e7609e1d-4814-5264-805c-969d30ef5a88": {
             "name": "drinks_with",
             "type": "boolean",
             "component": "Toggle"
           },
-          "person_drink_together_freq": {
+          "d1bf7a92-ada6-5a39-8338-8470048faf36": {
             "name": "drink_together_freq",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
+                "id": "ac0b53e6-e06c-524a-a07b-e722f78b14fd",
                 "label": {
                   "en": "Less than monthly"
                 },
                 "value": 1
               },
               {
+                "id": "cfff0fd5-834c-5fd3-afa3-343119d067ad",
                 "label": {
                   "en": "Monthly"
                 },
                 "value": 2
               },
               {
+                "id": "5d9a2a5c-5a05-5317-8fa3-a34d0234118b",
                 "label": {
                   "en": "Weekly"
                 },
                 "value": 3
               },
               {
+                "id": "08b938c4-b289-5216-810f-8614b886207b",
                 "label": {
                   "en": "Several times a week"
                 },
@@ -653,7 +719,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "1701f5b2-eae8-53df-ad7d-dd9dc66a8ead": {
         "name": "Know each other",
         "color": "edge-color-seq-1"
       }
@@ -661,7 +727,7 @@
   },
   "stages": [
     {
-      "id": "researcher_notes",
+      "id": "df8e9aba-e67f-53fa-b421-e9a758d11bd0",
       "type": "Information",
       "label": {
         "en": "Researcher notes (delete before fielding)"
@@ -671,7 +737,7 @@
       }
     },
     {
-      "id": "welcome",
+      "id": "3df253b7-4ccd-5881-a528-d057f91fdd6b",
       "type": "Information",
       "label": {
         "en": "Welcome"
@@ -681,7 +747,7 @@
       }
     },
     {
-      "id": "consent",
+      "id": "87a045da-9641-5946-a8f2-275d956422af",
       "type": "EgoForm",
       "label": {
         "en": "Consent"
@@ -697,8 +763,8 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_consent",
-            "variable": "ego_consent",
+            "id": "55495839-aa92-58cc-83e7-8b79017016d4",
+            "variable": "4634d252-92b4-5021-8357-a938e4707844",
             "prompt": {
               "en": "Do you agree to take part in this study?"
             }
@@ -707,7 +773,7 @@
       }
     },
     {
-      "id": "about_you",
+      "id": "6f1c6e40-a50f-5528-8ccc-6d760a7eadd3",
       "type": "EgoForm",
       "label": {
         "en": "About you"
@@ -723,22 +789,22 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_age",
-            "variable": "ego_age",
+            "id": "9ccc09b2-6691-5cdc-ae8d-3f650253bad1",
+            "variable": "06910208-e57b-5e3d-84e9-c7c717e5e864",
             "prompt": {
               "en": "What is your age in years?"
             }
           },
           {
-            "id": "field-ego_gender",
-            "variable": "ego_gender",
+            "id": "fd4113a4-a3b4-5fc8-bf7c-339e0d88d5f7",
+            "variable": "fe5589b9-c816-525e-84f5-4c0a67ea7b85",
             "prompt": {
               "en": "How do you describe your gender?"
             }
           },
           {
-            "id": "field-ego_lives_in_halls",
-            "variable": "ego_lives_in_halls",
+            "id": "609c7acf-4dc0-5e00-85d8-02b5c3489929",
+            "variable": "22bf9f42-217d-5884-a62e-5a07f2f689de",
             "prompt": {
               "en": "Do you live in university accommodation (halls)?"
             }
@@ -750,10 +816,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_1",
+              "id": "66c86dd1-f3be-53c5-a80a-38c5fef5be3c",
               "type": "ego",
               "options": {
-                "attribute": "ego_consent",
+                "attribute": "4634d252-92b4-5021-8357-a938e4707844",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -762,12 +828,12 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "consent_declined"
+          "stageId": "360cbe92-4d2c-5fb4-88a6-275315a71b41"
         }
       }
     },
     {
-      "id": "name_friends_intro",
+      "id": "d814ad49-86c9-5940-9072-af6d34ef35ce",
       "type": "Information",
       "label": {
         "en": "Naming friends (introduction)"
@@ -777,42 +843,44 @@
       }
     },
     {
-      "id": "name_friends",
+      "id": "a2b0fa2c-2e5d-51d4-8089-a59b365120dd",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en": "Naming friends"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "6f3d9c63-2ad1-5928-b66d-a3447a6659c2",
           "text": {
             "en": "Since **starting university this semester**, who have you **become friends with**?"
           },
           "additionalAttributes": [
             {
-              "variable": "person_new_friend",
+              "id": "b63b7f62-54ea-5a0a-933a-85ca5ad335bd",
+              "variable": "57ae97be-13bd-5eda-b574-f6f62bfaa6cd",
               "value": true
             }
           ]
         },
         {
-          "id": "p2",
+          "id": "1a27faf8-a48a-59dc-a779-404ca216fd2e",
           "text": {
             "en": "Who do you **spend most of your free time with** at university?"
           }
         },
         {
-          "id": "p3",
+          "id": "12dcdbb2-0c27-50d7-bd56-d1e175c8db9a",
           "text": {
             "en": "Who would you **turn to for support** if something was worrying you?"
           },
           "additionalAttributes": [
             {
-              "variable": "person_support",
+              "id": "de19397d-3f9b-5bdf-83b0-b3bc13f61005",
+              "variable": "506e37ac-c1f7-53a8-8194-c061e245c2d3",
               "value": true
             }
           ]
@@ -821,10 +889,10 @@
       "behaviours": {
         "maxNodes": 20
       },
-      "quickAdd": "person_name",
+      "quickAdd": "55b32df7-dde1-5409-99d3-0dfac466b7ba",
       "panels": [
         {
-          "id": "existing",
+          "id": "2abfb9cd-9433-5fff-818a-40e048a43bee",
           "title": {
             "en": "Already mentioned"
           },
@@ -833,7 +901,7 @@
       ]
     },
     {
-      "id": "friend_details_intro",
+      "id": "de0584c9-bf7a-5a0f-8059-70198bdcfb0c",
       "type": "Information",
       "label": {
         "en": "Friend details (introduction)"
@@ -843,10 +911,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_2",
+              "id": "4094268f-dea8-5e72-bd3f-12658b690a9f",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -858,7 +926,7 @@
       }
     },
     {
-      "id": "friend_details",
+      "id": "27e31375-16d1-5606-b1bd-95a080e8e2c2",
       "type": "AlterForm",
       "label": {
         "en": "Friend details"
@@ -868,10 +936,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_2",
+              "id": "b489510d-137e-503c-a26c-93abbbd2cd75",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -880,20 +948,20 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "form": {
         "fields": [
           {
-            "id": "field-person_is_first_year",
-            "variable": "person_is_first_year",
+            "id": "928bb7b3-eefa-56fd-8f3b-379a35d6371d",
+            "variable": "b6b7facf-f398-54ea-aafe-4ba04c6c30dc",
             "prompt": {
               "en": "Is this person also a first-year student?"
             }
           },
           {
-            "id": "field-person_first_met",
-            "variable": "person_first_met",
+            "id": "4cd97e47-84c8-54d7-be59-e2df327e3078",
+            "variable": "0215aa22-abf9-53d1-8be5-44d6acb8ccb8",
             "prompt": {
               "en": "When did you first meet this person?"
             }
@@ -902,7 +970,7 @@
       }
     },
     {
-      "id": "friend_bins_intro",
+      "id": "3540040d-5127-56f1-9387-19908b08d908",
       "type": "Information",
       "label": {
         "en": "Closeness, meeting, drinking (introduction)"
@@ -912,10 +980,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_3",
+              "id": "5f87e2b3-0d3d-5a5c-9b47-36c97bb7cde9",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -927,7 +995,7 @@
       }
     },
     {
-      "id": "friend_bins",
+      "id": "73f032c3-e63a-54c0-92f1-f3685df5f916",
       "type": "OrdinalBin",
       "label": {
         "en": "Closeness, meeting, drinking"
@@ -937,10 +1005,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_3",
+              "id": "b4afe6a6-07c7-5f66-847f-3de9140d82da",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -949,21 +1017,21 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "d64866f9-4656-5c9f-90ff-e1733096785f",
           "text": {
             "en": "Drag each person into the box that best describes **how close you feel** to them."
           },
-          "variable": "person_closeness",
+          "variable": "bbbd234d-bae3-579c-a04c-b65254bf336f",
           "color": "ord-color-seq-1"
         }
       ]
     },
     {
-      "id": "friend_bins_2",
+      "id": "d5a40bcd-86d0-52f7-9e84-a809b2e05d8c",
       "type": "CategoricalBin",
       "label": {
         "en": "Closeness, meeting, drinking (2)"
@@ -973,10 +1041,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_4",
+              "id": "698a412f-d136-5908-b0fa-02226fc32fb7",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -985,16 +1053,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "2b17e57c-3196-53e2-b203-ae5eb3c86038",
           "text": {
             "en": "How did you **first meet** each person?"
           },
-          "variable": "person_how_met",
-          "otherVariable": "person_how_met_other",
+          "variable": "6c7fdce2-7723-57f5-9f65-70f49800fa7f",
+          "otherVariable": "1168430a-ac0e-5534-81eb-f500f1fca169",
           "otherVariablePrompt": {
             "en": "Please describe"
           },
@@ -1003,16 +1071,16 @@
           }
         },
         {
-          "id": "p2",
+          "id": "28a6dd96-f068-57ea-b98e-5027453fa0a0",
           "text": {
             "en": "As far as you know, does each person often **drink heavily** (five or more drinks on one occasion)?"
           },
-          "variable": "person_drinks_heavily"
+          "variable": "e2abf2ff-5f4a-5085-8af3-42ae8abe8abd"
         }
       ]
     },
     {
-      "id": "friend_map_intro",
+      "id": "c02ed953-c484-58a7-8ddf-6a9048e3ce33",
       "type": "Information",
       "label": {
         "en": "Friendship map (introduction)"
@@ -1022,10 +1090,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_5",
+              "id": "37b3a078-eff5-598b-abf1-1f443c0b492a",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -1037,7 +1105,7 @@
       }
     },
     {
-      "id": "friend_map",
+      "id": "818190cd-29bc-5841-a39a-a69eb3a2e8a2",
       "type": "Sociogram",
       "label": {
         "en": "Friendship map"
@@ -1047,10 +1115,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_5",
+              "id": "f8fa54b9-82b4-5004-918d-783ebe79ee80",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -1059,7 +1127,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "background": {
         "concentricCircles": 4,
@@ -1070,47 +1138,47 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "605ac758-f0a7-587c-917f-2321e18ee287",
           "text": {
             "en": "Place the people you are **closest to** nearest the centre."
           },
           "layout": {
-            "layoutVariable": "person_layout"
+            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           }
         },
         {
-          "id": "p2",
+          "id": "40244c3a-8f1e-582f-91e9-3e93f802dcc1",
           "text": {
             "en": "Draw a line between any two people who **know each other**."
           },
           "layout": {
-            "layoutVariable": "person_layout"
+            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           },
           "edges": {
-            "create": "knows",
-            "display": ["knows"]
+            "create": "1701f5b2-eae8-53df-ad7d-dd9dc66a8ead",
+            "display": ["1701f5b2-eae8-53df-ad7d-dd9dc66a8ead"]
           }
         },
         {
-          "id": "p3",
+          "id": "9de9546b-29a2-542f-ac5b-8c39a5b40b3b",
           "text": {
             "en": "Tap everyone you **usually drink alcohol with**."
           },
           "layout": {
-            "layoutVariable": "person_layout"
+            "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["1701f5b2-eae8-53df-ad7d-dd9dc66a8ead"]
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "person_drinks_with"
+            "variable": "e7609e1d-4814-5264-805c-969d30ef5a88"
           }
         }
       ]
     },
     {
-      "id": "drinking_together_intro",
+      "id": "5f56e66d-1331-5041-a402-b94eab9c5f4f",
       "type": "Information",
       "label": {
         "en": "Drinking together (introduction)"
@@ -1121,20 +1189,20 @@
           "join": "AND",
           "rules": [
             {
-              "id": "rule_6",
+              "id": "5ef648da-a75d-50ed-a211-de8d0237fe8d",
               "type": "node",
               "options": {
-                "type": "person",
-                "attribute": "person_drinks_with",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
+                "attribute": "e7609e1d-4814-5264-805c-969d30ef5a88",
                 "operator": "EXACTLY",
                 "value": true
               }
             },
             {
-              "id": "rule_7",
+              "id": "6aa7c101-bf51-565a-8554-1a07e00e6122",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "EXISTS"
               }
             }
@@ -1146,7 +1214,7 @@
       }
     },
     {
-      "id": "drinking_together",
+      "id": "e1d1f13f-2a5b-5bd3-ae23-c4f2e3df09dd",
       "type": "OrdinalBin",
       "label": {
         "en": "Drinking together"
@@ -1157,20 +1225,20 @@
           "join": "AND",
           "rules": [
             {
-              "id": "rule_6",
+              "id": "9cfb63a2-4753-56c9-80c7-420ac6265c7d",
               "type": "node",
               "options": {
-                "type": "person",
-                "attribute": "person_drinks_with",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
+                "attribute": "e7609e1d-4814-5264-805c-969d30ef5a88",
                 "operator": "EXACTLY",
                 "value": true
               }
             },
             {
-              "id": "rule_7",
+              "id": "e0e597c7-125b-561d-a077-ad162205bd55",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "EXISTS"
               }
             }
@@ -1179,26 +1247,26 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "b63a83f9-f1bf-5c6e-8628-0e1f901919dc",
           "text": {
             "en": "How often do you **drink alcohol together** with each person?"
           },
-          "variable": "person_drink_together_freq",
+          "variable": "d1bf7a92-ada6-5a39-8338-8470048faf36",
           "color": "ord-color-seq-2"
         }
       ],
       "filter": {
         "rules": [
           {
-            "id": "rule_8",
+            "id": "712e042b-b192-5cad-98e6-70609f1571ff",
             "type": "node",
             "options": {
-              "type": "person",
-              "attribute": "person_drinks_with",
+              "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
+              "attribute": "e7609e1d-4814-5264-805c-969d30ef5a88",
               "operator": "EXACTLY",
               "value": true
             }
@@ -1207,7 +1275,7 @@
       }
     },
     {
-      "id": "your_drinking",
+      "id": "c53799a4-317d-54a3-a34c-669c3338899d",
       "type": "EgoForm",
       "label": {
         "en": "Your drinking"
@@ -1223,8 +1291,8 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_audit_frequency",
-            "variable": "ego_audit_frequency",
+            "id": "8d330119-590d-5257-84b4-3ea68778d397",
+            "variable": "eee1799a-3112-500e-a856-d6d67570ccad",
             "prompt": {
               "en": "How often do you have a drink containing alcohol?"
             }
@@ -1233,7 +1301,7 @@
       }
     },
     {
-      "id": "drinking_amount",
+      "id": "5fcbce8f-e51a-55f4-a0ef-4c6ba7cf04d1",
       "type": "EgoForm",
       "label": {
         "en": "Drinking amount"
@@ -1243,10 +1311,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_9",
+              "id": "0cb88be3-b12b-5e34-b085-768451a91501",
               "type": "ego",
               "options": {
-                "attribute": "ego_audit_frequency",
+                "attribute": "eee1799a-3112-500e-a856-d6d67570ccad",
                 "operator": "EXACTLY",
                 "value": 0
               }
@@ -1265,15 +1333,15 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_audit_typical",
-            "variable": "ego_audit_typical",
+            "id": "e7b0f0bb-a81c-557b-aa5f-3d9b9e3b5675",
+            "variable": "5910de3c-1ccc-531c-993b-032c06f6b697",
             "prompt": {
               "en": "How many drinks containing alcohol do you have on a typical day when you are drinking?"
             }
           },
           {
-            "id": "field-ego_audit_heavy",
-            "variable": "ego_audit_heavy",
+            "id": "f68e658b-39f3-5c1e-af6b-6809a72c7f07",
+            "variable": "b8aa9b93-8f9c-56a4-ab3e-f6004be03099",
             "prompt": {
               "en": "How often do you have six or more drinks on one occasion?"
             }
@@ -1282,7 +1350,7 @@
       }
     },
     {
-      "id": "wellbeing",
+      "id": "cfe9f242-8930-5f03-bfca-9b0abaac7418",
       "type": "EgoForm",
       "label": {
         "en": "Wellbeing (WHO-5)"
@@ -1298,36 +1366,36 @@
       "form": {
         "fields": [
           {
-            "id": "field-ego_who5_cheerful",
-            "variable": "ego_who5_cheerful",
+            "id": "bbccf91d-3cf6-5f4e-a5ab-2eac457c0b3c",
+            "variable": "c91c7b1a-ff2f-5797-a910-e9376f0439b9",
             "prompt": {
               "en": "Over the last two weeks: I have felt cheerful and in good spirits."
             }
           },
           {
-            "id": "field-ego_who5_calm",
-            "variable": "ego_who5_calm",
+            "id": "fc6883e4-4ae6-5d91-8988-86bdc8b79346",
+            "variable": "877d085a-1f7f-541f-bd5e-3d7a4d27c918",
             "prompt": {
               "en": "Over the last two weeks: I have felt calm and relaxed."
             }
           },
           {
-            "id": "field-ego_who5_active",
-            "variable": "ego_who5_active",
+            "id": "5aa55a70-7e23-5bae-903f-65ce2471d011",
+            "variable": "42de71c8-f032-5eb6-9aaa-ad64dd9cd421",
             "prompt": {
               "en": "Over the last two weeks: I have felt active and vigorous."
             }
           },
           {
-            "id": "field-ego_who5_rested",
-            "variable": "ego_who5_rested",
+            "id": "ec571f49-fe2c-5020-9810-3e0ccb91906f",
+            "variable": "f792d73a-f402-5fcf-bb5a-8570177dc5c4",
             "prompt": {
               "en": "Over the last two weeks: I woke up feeling fresh and rested."
             }
           },
           {
-            "id": "field-ego_who5_interest",
-            "variable": "ego_who5_interest",
+            "id": "adfab90c-d65c-55dc-a040-db73c924e2d2",
+            "variable": "872b697f-618c-508f-a2d4-cd7b4a51c59c",
             "prompt": {
               "en": "Over the last two weeks: My daily life has been filled with things that interest me."
             }
@@ -1336,7 +1404,7 @@
       }
     },
     {
-      "id": "review",
+      "id": "2b9ead84-3808-50b6-a7f2-1e141889a0ad",
       "type": "Narrative",
       "label": {
         "en": "Talking about your map"
@@ -1346,10 +1414,10 @@
         "filter": {
           "rules": [
             {
-              "id": "rule_10",
+              "id": "de0f8e1d-38cb-5363-aa35-200b9041b580",
               "type": "node",
               "options": {
-                "type": "person",
+                "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93",
                 "operator": "NOT_EXISTS"
               }
             }
@@ -1358,20 +1426,21 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
       },
       "presets": [
         {
-          "id": "view1",
+          "id": "b0a1238f-8488-5450-8ea7-394b95a1cc1f",
           "label": {
             "en": "Who drinks heavily"
           },
-          "layoutVariable": "person_layout",
-          "groupVariable": "person_drinks_heavily",
+          "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890",
+          "groupVariable": "e2abf2ff-5f4a-5085-8af3-42ae8abe8abd",
           "edges": {
             "display": [
               {
-                "type": "knows",
+                "id": "8165e4c4-3251-5842-8a9f-5f918ddabfaf",
+                "type": "1701f5b2-eae8-53df-ad7d-dd9dc66a8ead",
                 "label": {
                   "en": "Know each other"
                 }
@@ -1380,15 +1449,16 @@
           }
         },
         {
-          "id": "view2",
+          "id": "17b588bc-e6a8-59b2-80d5-02c598a76b2f",
           "label": {
             "en": "Who you drink with"
           },
-          "layoutVariable": "person_layout",
+          "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890",
           "edges": {
             "display": [
               {
-                "type": "knows",
+                "id": "fdfc4432-b7ab-5f05-a84e-e3556ddb9c28",
+                "type": "1701f5b2-eae8-53df-ad7d-dd9dc66a8ead",
                 "label": {
                   "en": "Know each other"
                 }
@@ -1397,7 +1467,8 @@
           },
           "highlight": [
             {
-              "variable": "person_drinks_with",
+              "id": "3eb1ddfa-d738-5965-834b-9ddcab4809c8",
+              "variable": "e7609e1d-4814-5264-805c-969d30ef5a88",
               "label": {
                 "en": "Drinks with participant"
               }
@@ -1405,12 +1476,12 @@
           ]
         },
         {
-          "id": "view3",
+          "id": "fe9fa4fc-4a7d-5294-a42b-028cd70ea45e",
           "label": {
             "en": "How you met"
           },
-          "layoutVariable": "person_layout",
-          "groupVariable": "person_how_met"
+          "layoutVariable": "f9fc70bb-bcc4-5094-9477-6a4a9ade1890",
+          "groupVariable": "6c7fdce2-7723-57f5-9f65-70f49800fa7f"
         }
       ],
       "background": {
@@ -1424,7 +1495,7 @@
       }
     },
     {
-      "id": "thanks",
+      "id": "6091974d-ebd0-5eae-98c2-845a4de4c349",
       "type": "Information",
       "label": {
         "en": "Thank you"
@@ -1434,7 +1505,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "af898428-02c5-5ce8-a117-44999877bc18",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
@@ -1449,7 +1520,7 @@
       "outcome": "completed"
     },
     {
-      "id": "consent_declined",
+      "id": "360cbe92-4d2c-5fb4-88a6-275315a71b41",
       "type": "FinishSession",
       "mode": "automatic",
       "label": {

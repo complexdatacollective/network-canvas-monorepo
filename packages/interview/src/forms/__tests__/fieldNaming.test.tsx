@@ -14,6 +14,7 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import protocol from '../../store/modules/protocol';
@@ -39,7 +40,9 @@ afterEach(() => {
   renderedFieldProps.length = 0;
 });
 
-const NODE_TYPE = 'person';
+const NODE_TYPE = testTypeId('person');
+const AGE = testVariableId('age');
+const SIBLINGS = testVariableId('siblings');
 const ENGLISH_ONLY: LocalizationDeclaration = {
   defaultLocale: 'en',
   locales: ['en'],
@@ -73,14 +76,14 @@ function makeWrapper(
         codebook: {
           node: {
             [NODE_TYPE]: {
-              name: NODE_TYPE,
+              name: 'person',
               variables: {
-                age: {
+                [AGE]: {
                   name: 'age_years',
                   type: 'number',
                   component: 'Number',
                 },
-                siblings: {
+                [SIBLINGS]: {
                   name: 'sibling_count',
                   type: 'number',
                   component: 'Number',
@@ -109,7 +112,7 @@ function makeWrapper(
 }
 
 const field = (variable: string, prompt: LocalizedString): FormField => ({
-  id: 'field-L111',
+  id: testId('field-L111'),
   variable: asEntityAttributeReference(variable),
   prompt,
 });
@@ -152,7 +155,7 @@ function variableLabelsOf(fields: FormField[]) {
  */
 describe('the caption and the validator name come from one rule', () => {
   it('captions a field with the prompt the researcher authored', () => {
-    render(<Fields fields={[field('age', { en: 'How old are you?' })]} />, {
+    render(<Fields fields={[field(AGE, { en: 'How old are you?' })]} />, {
       wrapper: makeWrapper(),
     });
 
@@ -161,14 +164,14 @@ describe('the caption and the validator name come from one rule', () => {
 
   it('names a variable in an error exactly as the field captions it', () => {
     const fields = [
-      field('age', { en: 'How old are you?' }),
-      field('siblings', { en: 'How many siblings?' }),
+      field(AGE, { en: 'How old are you?' }),
+      field(SIBLINGS, { en: 'How many siblings?' }),
     ];
     render(<Fields fields={fields} />, { wrapper: makeWrapper() });
 
     expect(variableLabelsOf(fields)).toEqual({
-      age: 'How old are you?',
-      siblings: 'How many siblings?',
+      [AGE]: 'How old are you?',
+      [SIBLINGS]: 'How many siblings?',
     });
     expect(screen.getByLabelText('How old are you?')).toBeInTheDocument();
     expect(screen.getByLabelText('How many siblings?')).toBeInTheDocument();
@@ -176,8 +179,8 @@ describe('the caption and the validator name come from one rule', () => {
 
   it('captions and names a field in the interview language', () => {
     const fields = [
-      field('age', { en: 'How old are you?', fr: 'Quel âge avez-vous ?' }),
-      field('siblings', { en: 'How many siblings?' }),
+      field(AGE, { en: 'How old are you?', fr: 'Quel âge avez-vous ?' }),
+      field(SIBLINGS, { en: 'How many siblings?' }),
     ];
     const wrapper = makeWrapper(ENGLISH_AND_FRENCH, 'fr');
     render(<Fields fields={fields} />, { wrapper });
@@ -188,8 +191,8 @@ describe('the caption and the validator name come from one rule', () => {
     expect(screen.getByLabelText('How many siblings?')).toBeInTheDocument();
     expect(screen.queryByLabelText('Siblings')).not.toBeInTheDocument();
     expect(variableLabelsOf(fields)).toEqual({
-      age: 'Quel âge avez-vous ?',
-      siblings: 'How many siblings?',
+      [AGE]: 'Quel âge avez-vous ?',
+      [SIBLINGS]: 'How many siblings?',
     });
   });
 
@@ -198,7 +201,7 @@ describe('the caption and the validator name come from one rule', () => {
       () =>
         useVariableLabels([
           {
-            variable: 'age',
+            variable: AGE,
             label: { en: 'Age' },
             prompt: { en: 'How old are they?' },
           },
@@ -210,6 +213,6 @@ describe('the caption and the validator name come from one rule', () => {
       },
     );
 
-    expect(result.current).toEqual({ age: 'Age' });
+    expect(result.current).toEqual({ [AGE]: 'Age' });
   });
 });

@@ -19,9 +19,9 @@
   - text: Question 9
   - textbox "Question 9"
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
     - status
   - region "Interview notifications"

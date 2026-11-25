@@ -2,6 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  createProtocolObjectId,
   CurrentProtocolSchema,
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
@@ -40,13 +41,13 @@ function twoScreenProtocol(): CurrentProtocol {
       assetManifest: {},
       stages: [
         {
-          id: 'welcome',
+          id: createProtocolObjectId(),
           type: 'Information',
           label: { en: STAGE_LABEL },
           content: { en: '# Welcome\n\nThank you for taking part.' },
         },
         {
-          id: 'closing',
+          id: createProtocolObjectId(),
           type: 'Information',
           label: { en: 'Closing' },
           content: {
@@ -54,7 +55,7 @@ function twoScreenProtocol(): CurrentProtocol {
           },
         },
         {
-          id: 'finish',
+          id: createProtocolObjectId(),
           type: 'FinishSession',
           label: { en: 'Finish' },
           mode: 'confirmation',

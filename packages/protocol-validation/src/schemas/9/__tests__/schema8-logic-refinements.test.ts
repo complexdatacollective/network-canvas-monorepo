@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import {
+  testTypeId,
+  testVariableId,
+  withStageTestIds,
+} from '../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { stageSchema } from '../stages/index.ts';
@@ -482,7 +487,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.before',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.before`,
           code: 'custom',
           message: 'RelativeDatePicker "before" must not be negative',
         },
@@ -516,7 +521,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.anchor',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.anchor`,
           code: 'custom',
           message:
             'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
@@ -538,7 +543,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(parseIssues(result)).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.anchor',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.anchor`,
           code: 'custom',
           message:
             'RelativeDatePicker anchor must be a valid ISO date (YYYY-MM-DD)',
@@ -609,7 +614,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       );
       expect(parseIssues(belowFloor)).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.anchor',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.anchor`,
           code: 'custom',
           message:
             'RelativeDatePicker anchor must use a year of 0001 or later — the native date input starts at year 0001',
@@ -630,7 +635,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
         ),
       ).toEqual([
         {
-          path: 'codebook.ego.variables.when.parameters.anchor',
+          path: `codebook.ego.variables.${testVariableId('when')}.parameters.anchor`,
           code: 'custom',
           message:
             'RelativeDatePicker anchor must use a year of 0001 or later — the native date input starts at year 0001',
@@ -708,7 +713,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
       expect(parseIssues(result)).toEqual([
         {
-          path: 'codebook.node.person.variables.rank.options',
+          path: `codebook.node.${testTypeId('person')}.variables.${testVariableId('rank')}.options`,
           code: 'too_small',
         },
       ]);
@@ -755,7 +760,9 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
 
     it('rejects an external-data panel filter with an edge rule, on the stage alone', () => {
       const result = stageSchema.safeParse(
-        nameGeneratorWithPanels([panelReadingAFileWithAnEdgeRule]),
+        withStageTestIds(
+          nameGeneratorWithPanels([panelReadingAFileWithAnEdgeRule]),
+        ),
       );
 
       expect(result.success).toBe(false);
@@ -775,16 +782,18 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
     });
 
     it('rejects it for a quick-add name generator too', () => {
-      const result = stageSchema.safeParse({
-        id: 'quickAdd1',
-        type: 'NameGeneratorQuickAdd',
-        addNamePlaceholder: localized('Type a name, then press Enter'),
-        label: localized('Generate'),
-        subject: { entity: 'node', type: 'person' },
-        quickAdd: 'name',
-        prompts: [{ id: 'p1', text: localized('Who?') }],
-        panels: [panelReadingAFileWithAnEdgeRule],
-      });
+      const result = stageSchema.safeParse(
+        withStageTestIds({
+          id: 'quickAdd1',
+          type: 'NameGeneratorQuickAdd',
+          addNamePlaceholder: localized('Type a name, then press Enter'),
+          label: localized('Generate'),
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          prompts: [{ id: 'p1', text: localized('Who?') }],
+          panels: [panelReadingAFileWithAnEdgeRule],
+        }),
+      );
 
       expect(result.success).toBe(false);
       if (result.success) return;
@@ -834,9 +843,11 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
      */
     it('accepts an edge rule on a panel reading the interview network', () => {
       const result = stageSchema.safeParse(
-        nameGeneratorWithPanels([
-          { ...panelReadingAFileWithAnEdgeRule, dataSource: 'existing' },
-        ]),
+        withStageTestIds(
+          nameGeneratorWithPanels([
+            { ...panelReadingAFileWithAnEdgeRule, dataSource: 'existing' },
+          ]),
+        ),
       );
 
       expect(result.error?.issues ?? []).toEqual([]);

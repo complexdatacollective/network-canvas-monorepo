@@ -1,6 +1,10 @@
 import type { Page } from '@playwright/test';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  dynamicValueNameFor,
+  optionCaseKey,
+} from '@codaco/protocol-validation';
 
 import { expect, test } from '../fixtures/architect-test.js';
 import {
@@ -11,8 +15,9 @@ import {
   EGO_NICKNAME_ID,
   GHOST_TITLE,
   INFO_STAGE_ID,
+  MOOD_OPTION_IDS,
   pipedTextProtocol,
-  protocolNamingUnboundValue,
+  protocolNamingUnknownValue,
   protocolWithNickname,
 } from '../fixtures/piped-text-protocol.js';
 import { switchesIn } from '../helpers/message-switches.js';
@@ -25,10 +30,21 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
  * Authoring piped text ("dynamic values") in Architect: the menus that insert
  * a value or wording that depends on one, what a text may refer to, what the
  * editor refuses, and what the protocol stores. Stored text is always an ICU
- * message with the stage's `dynamicValues` bindings, never the editor's own
- * document.
+ * message that names each value directly (`ego_<attribute id>`, `now`),
+ * never the editor's own document, and nothing else on the stage records it.
  */
 const PAGE_TEXT = 'Rich Text';
+
+/** The name stored text uses for one of the participant's attributes. */
+const egoName = (variableId: string) =>
+  dynamicValueNameFor({ kind: 'attribute', role: 'ego', variableId });
+const FIRST_NAME = egoName(EGO_FIRST_NAME_ID);
+const AGE = egoName(EGO_AGE_ID);
+const MOOD = egoName(EGO_MOOD_ID);
+
+/** What the stage editor and the translation table say about `{ghost}`. */
+const GHOST_PROBLEM =
+  /This text cannot use "ghost": it does not refer to an attribute, a node’s label, a condition or today’s date\./;
 
 type Stage = CurrentProtocol['stages'][number];
 
@@ -55,7 +71,7 @@ async function openStage(page: Page, stageId: string): Promise<void> {
 }
 
 test.describe('the insert menu', () => {
-  test('offers the values the text can show, and nothing it cannot, then stores bindings and an ICU message', async ({
+  test('offers the values the text can show, and nothing it cannot, then stores an ICU message naming them', async ({
     architectPage: page,
     seed,
   }) => {
@@ -115,20 +131,14 @@ test.describe('the insert menu', () => {
     const stage = await readStageJson(page, INFO_INDEX, (saved) =>
       JSON.stringify(saved).includes('missing'),
     );
-    expect(stage).toMatchObject({
-      dynamicValues: {
-        today: { path: 'now' },
-        firstName: { path: `ego.${EGO_FIRST_NAME_ID}` },
-      },
-    });
     const content = contentIn(stage, 'en');
     expect(content).toBe(
-      'Welcome to the study on {today} for {firstName, select, missing {} other {{firstName}}}',
+      `Welcome to the study on {now} for {${FIRST_NAME}, select, missing {} other {{${FIRST_NAME}}}}`,
     );
     // An ICU message string, not the editor's document.
     expect(content).not.toMatch(/"type"|paragraph|doc/);
     expect(switchesIn(content)).toEqual([
-      { argument: 'firstName', type: 'select', keys: ['missing', 'other'] },
+      { argument: FIRST_NAME, type: 'select', keys: ['missing', 'other'] },
     ]);
   });
 
@@ -151,28 +161,22 @@ test.describe('the insert menu', () => {
   });
 });
 
-test.describe('text that names a value it does not bind', () => {
+test.describe('text that names a value that does not exist', () => {
   test('is kept as it is and refused by the stage editor with an error that names it', async ({
     architectPage: page,
     seed,
   }) => {
     const piped = new PipedText(page);
     const editor = new StageEditor(page);
-    await seed(protocolNamingUnboundValue());
+    await seed(protocolNamingUnknownValue());
     await openStage(page, INFO_STAGE_ID);
 
-    // The text shows, the unbound name as a pill carrying the recorded name.
+    // The text shows, the unknown name as a pill carrying the recorded name.
     const text = piped.textbox(PAGE_TEXT);
     await expect(text).toHaveText('ghost welcome');
     await expect(text.getByText('ghost', { exact: true })).toBeVisible();
     await expect(text).toHaveAttribute('aria-invalid', 'true');
-    await expect(
-      piped
-        .field(PAGE_TEXT)
-        .getByText(
-          /This text refers to a value that does not exist: "ghost"\./,
-        ),
-    ).toBeVisible();
+    await expect(piped.field(PAGE_TEXT).getByText(GHOST_PROBLEM)).toBeVisible();
     // The stage's outline already says which section has the problem.
     const section = editor
       .outline()
@@ -184,12 +188,12 @@ test.describe('text that names a value it does not bind', () => {
     await page.keyboard.type('!');
     await page.getByRole('button', { name: 'Finished Editing' }).click();
     const summary = page.getByRole('alert').filter({ hasText: 'Content:' });
-    await expect(summary).toContainText(
-      'This text refers to a value that does not exist: "ghost".',
+    await expect(summary).toContainText(GHOST_PROBLEM);
+    await expect(page).toHaveURL(
+      new RegExp(`/protocol/stage/${INFO_STAGE_ID}$`),
     );
-    await expect(page).toHaveURL(/\/protocol\/stage\/info$/);
     await expect(section).toHaveAccessibleName(
-      /Has a problem\. This text refers to a value that does not exist: "ghost"\./,
+      new RegExp(`Has a problem\\. ${GHOST_PROBLEM.source}`),
     );
 
     await allowErroneousWriteToLand(page);
@@ -201,7 +205,7 @@ test.describe('text that names a value it does not bind', () => {
     architectPage: page,
     seed,
   }) => {
-    await seed(protocolNamingUnboundValue());
+    await seed(protocolNamingUnknownValue());
     await page.goto('/protocol/localization?table=open');
     const dialog = page.getByRole('dialog', {
       name: 'Translation table',
@@ -233,11 +237,7 @@ test.describe('text that names a value it does not bind', () => {
       'aria-invalid',
       'true',
     );
-    await expect(
-      table.getByText(
-        /This text refers to a value that does not exist: "ghost"\./,
-      ),
-    ).toBeVisible();
+    await expect(table.getByText(GHOST_PROBLEM)).toBeVisible();
 
     // Saving the table does not accept it.
     await dialog.getByRole('button', { name: 'Save', exact: true }).click();
@@ -366,19 +366,16 @@ test.describe('wording that depends on a value, in two languages', () => {
     const stage = await readStageJson(page, INFO_INDEX, (saved) =>
       JSON.stringify(saved).includes('"ar"'),
     );
-    expect(stage).toMatchObject({
-      dynamicValues: { age: { path: `ego.${EGO_AGE_ID}` } },
-    });
     const pluralKeys = (locale: string) =>
       switchesIn(contentIn(stage, locale))
         .filter(({ type }) => type === 'plural')
         .map(({ argument, keys }) => ({ argument, keys }));
     expect(pluralKeys('en')).toEqual([
-      { argument: 'age', keys: ['one', 'other'] },
+      { argument: AGE, keys: ['one', 'other'] },
     ]);
     expect(pluralKeys('ar')).toEqual([
       {
-        argument: 'age',
+        argument: AGE,
         keys: ['zero', 'one', 'two', 'few', 'many', 'other'],
       },
     ]);
@@ -420,27 +417,27 @@ test.describe('wording that depends on a value, in two languages', () => {
     const stage = await readStageJson(page, ANSWERS_INDEX, (saved) =>
       JSON.stringify(saved).includes('"ar"'),
     );
-    expect(stage).toMatchObject({
-      dynamicValues: {
-        mood: {
-          path: `ego.${EGO_MOOD_ID}`,
-          cases: { happy: 'happy', sad: 'sad', calm: 'calm' },
-        },
-      },
-    });
+    // Each answer is chosen by its option's id, written as a name.
+    const happy = optionCaseKey(MOOD_OPTION_IDS.happy);
     const answerSwitch = (locale: string) =>
       switchesIn(contentIn(stage, locale)).find(
-        ({ type, keys }) => type === 'select' && keys.includes('happy'),
+        ({ type, keys }) => type === 'select' && keys.includes(happy),
       );
     for (const locale of ['en', 'ar']) {
       expect(answerSwitch(locale)).toEqual({
-        argument: 'mood',
+        argument: MOOD,
         type: 'select',
-        keys: ['missing', 'happy', 'sad', 'calm', 'other'],
+        keys: [
+          'missing',
+          happy,
+          optionCaseKey(MOOD_OPTION_IDS.sad),
+          optionCaseKey(MOOD_OPTION_IDS.calm),
+          'other',
+        ],
       });
     }
-    expect(contentIn(stage, 'en')).toContain('happy {Glad}');
-    expect(contentIn(stage, 'ar')).toContain('happy {Pleased}');
+    expect(contentIn(stage, 'en')).toContain(`${happy} {Glad}`);
+    expect(contentIn(stage, 'ar')).toContain(`${happy} {Pleased}`);
   });
 });
 

@@ -9,19 +9,19 @@
   "lastModified": "2026-10-30T00:00:00.000Z",
   "codebook": {
     "node": {
-      "person": {
+      "0474d37d-b048-53f9-b873-6fe06e02058d": {
         "name": "Person",
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
         },
         "variables": {
-          "name": {
+          "3892995f-46d2-599f-b622-45c3261f1759": {
             "name": "name",
             "type": "text",
             "component": "Text"
           },
-          "location": {
+          "0754214c-fd6a-53b8-918d-2e365db416bd": {
             "name": "location",
             "type": "location"
           }
@@ -44,7 +44,7 @@
   },
   "stages": [
     {
-      "id": "stage-welcome",
+      "id": "f8b76b05-374d-541c-a353-0b31a53cfdbd",
       "type": "Information",
       "label": {
         "en-US": "Welcome"
@@ -54,7 +54,7 @@
       }
     },
     {
-      "id": "stage-ng",
+      "id": "56eb19d6-111e-557c-863a-c03d97e34d37",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en-US": "Name people"
@@ -67,16 +67,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0474d37d-b048-53f9-b873-6fe06e02058d"
       },
-      "quickAdd": "name",
+      "quickAdd": "3892995f-46d2-599f-b622-45c3261f1759",
       "behaviours": {
         "minNodes": 1,
         "maxNodes": 4
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "568e8d12-c363-5365-95c8-d1e639ee2291",
           "text": {
             "en-US": "Who are the people you know?"
           }
@@ -87,7 +87,7 @@
       }
     },
     {
-      "id": "stage-map",
+      "id": "2020c271-ab45-5636-b8bd-75b27148934a",
       "outsideAreasLabel": {
         "en-US": "Outside Selectable Areas"
       },
@@ -97,7 +97,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0474d37d-b048-53f9-b873-6fe06e02058d"
       },
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
@@ -110,21 +110,16 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "69dd216c-f6fb-5361-acba-981ad513056e",
           "text": {
-            "en-US": "Where does {nodeLabel} live?"
+            "en-US": "Where does {node_label} live?"
           },
-          "variable": "location"
+          "variable": "0754214c-fd6a-53b8-918d-2e365db416bd"
         }
-      ],
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      }
+      ]
     },
     {
-      "id": "finish",
+      "id": "c042ce7c-1e22-58b2-b46e-1a22bf367e99",
       "finishLabel": {
         "en-US": "Finish"
       },

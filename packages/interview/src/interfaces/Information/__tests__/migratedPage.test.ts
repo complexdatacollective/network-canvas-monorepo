@@ -1,47 +1,36 @@
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import {
-  ALLOWED_MARKDOWN_SECTION_TAGS,
-  RenderMarkdown,
-} from '@codaco/fresco-ui/RenderMarkdown';
-import { migrateProtocol } from '@codaco/protocol-validation';
+import { markdownTree, migrateProtocol } from '@codaco/protocol-validation';
+import { schema8MarkdownAsStandard } from '@codaco/protocol-validation/testing/information-pages';
 
-// Markdown as the interview draws an Information page's text, and as it drew
-// each schema 8 text item: through the same renderer, with the same
-// elements, raw HTML parsed and then sanitized.
-const html = (markdown: string): string =>
-  renderToStaticMarkup(
-    createElement(
-      RenderMarkdown,
-      { allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS },
-      markdown,
-    ),
-  );
+// Schema 9 text holds no HTML that is read as HTML. The migration from
+// schema 8 reads every `<` and `>` in a text item as a typed character
+// (except `<br>`, a line break), and writes it escaped, so the page it
+// writes shows those characters. The interview's renderer draws any HTML
+// left in schema 9 text as the characters typed (see fresco-ui's
+// `RenderMarkdown` tests); these tests check what the migration writes.
 
-// A link holding nothing but space (a link's words are drawn in a span):
-// nothing to read, but a stop for the keyboard.
-const EMPTY_LINK = /<a\b[^>]*>\s*(?:<span\b[^>]*>\s*<\/span>)?\s*<\/a>/g;
-const EMPTY_EMPHASIS = /<(em|strong)>\s*<\/\1>/g;
+type TreeNode = Readonly<{
+  type: string;
+  value?: string;
+  children?: readonly TreeNode[];
+}>;
 
-const emptyLinksIn = (markup: string): number =>
-  markup.match(EMPTY_LINK)?.length ?? 0;
+const nodesOf = (node: TreeNode): TreeNode[] => [
+  node,
+  ...(node.children ?? []).flatMap(nodesOf),
+];
 
-// What a participant is shown. Space between elements, and a line break
-// beside one, is not drawn, and differs between one text and several; nor is emphasis or a link holding
-// only space, which the HTML parser leaves after a list item that left one
-// open (a link of that kind is counted apart, below).
-const drawn = (markdown: string): string => {
-  let shown = html(markdown)
-    .replace(/>\s+</g, '><')
-    .replace(/\s*\n\s*(?=<)|(?<=>)\s*\n\s*/g, '');
-  for (;;) {
-    const less = shown.replace(EMPTY_EMPHASIS, '').replace(EMPTY_LINK, '');
-    if (less === shown) return shown;
-    shown = less;
-  }
-};
+// The characters a reading shows, in order: its words and its code.
+const wordsOf = (markdown: string): string =>
+  nodesOf(markdownTree(markdown))
+    .map((node) =>
+      node.type === 'text' || node.type === 'inlineCode' || node.type === 'code'
+        ? (node.value ?? '')
+        : '',
+    )
+    .join('')
+    .replace(/\s+/g, '');
 
 // The page a schema 8 Information stage of these text items becomes.
 const migratedPage = (items: readonly string[]): string => {
@@ -75,9 +64,7 @@ const migratedPage = (items: readonly string[]): string => {
   return message;
 };
 
-// Text items whose raw HTML leaves an element open, each drawn alone as
-// schema 8 drew it. An element left open holds, or for formatting is opened
-// again in, whatever follows it in the same document.
+// Text items holding HTML tags, many left open, which schema 8 drew as HTML.
 const LEFT_OPEN = [
   '<a href="https://example.com">First',
   '<strong>First',
@@ -113,31 +100,42 @@ const LEFT_OPEN = [
 const FOLLOWERS = ['Second', '- a list', '<span>raw</span>', '# Heading'];
 
 describe('a migrated Information page', () => {
-  it('draws each text item as it was drawn alone, whatever HTML it left open', () => {
+  it('writes the HTML of each text item as the characters typed, and keeps the items apart', () => {
     expect(LEFT_OPEN.length).toBeGreaterThan(0);
     for (const item of LEFT_OPEN) {
       for (const follower of FOLLOWERS) {
         const page = migratedPage([item, follower]);
+        const nodes = nodesOf(markdownTree(page));
+        // Nothing on the page is read as HTML.
         expect(
-          drawn(page),
-          `${JSON.stringify(item)} then ${JSON.stringify(follower)} became ${JSON.stringify(page)}`,
-        ).toBe(drawn(item) + drawn(follower));
-        // Joining adds no stop for the keyboard that the items lacked.
-        expect(
-          emptyLinksIn(html(page)),
+          nodes.filter(({ type }) => type === 'html'),
           JSON.stringify(page),
-        ).toBeLessThanOrEqual(
-          emptyLinksIn(html(item)) + emptyLinksIn(html(follower)),
+        ).toEqual([]);
+        // The page shows what each item shows alone, one after the other,
+        // and nothing more.
+        expect(
+          wordsOf(page),
+          `${JSON.stringify(item)} then ${JSON.stringify(follower)} became ${JSON.stringify(page)}`,
+        ).toBe(
+          wordsOf(schema8MarkdownAsStandard(item, 'multiple')) +
+            wordsOf(schema8MarkdownAsStandard(follower, 'multiple')),
         );
       }
     }
   });
 
-  it('draws an item that closes what it opens as it was written', () => {
-    const items = [
+  it('shows the tags of an item that closes what it opens as typed', () => {
+    const page = migratedPage([
       'Some <em>words</em> and <a href="https://example.com">a link</a>',
       'Second',
-    ];
-    expect(migratedPage(items)).toBe(items.join('\n\n'));
+    ]);
+    // The web address is read as GitHub's reading of schema 8 text read it,
+    // up to the space after it, and becomes a link.
+    expect(page).toBe(
+      'Some &lt;em&gt;words&lt;/em&gt; and &lt;a href="[https://example.com">a](https://example.com"\\>a) link&lt;/a&gt;\n\nSecond',
+    );
+    expect(wordsOf(page)).toBe(
+      'Some<em>words</em>and<ahref="https://example.com">alink</a>Second',
+    );
   });
 });

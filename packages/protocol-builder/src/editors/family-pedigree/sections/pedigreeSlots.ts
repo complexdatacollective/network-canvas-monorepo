@@ -322,7 +322,8 @@ export function usePedigreeDraftBindings(): Readonly<{
  * option, in the attribute's option order.
  */
 export const genderTermsFromDefaults = (
-  options: readonly VariableOption[],
+  // Only the values are read, so an option not yet given its id will do.
+  options: readonly (Pick<VariableOption, 'value'> & Partial<VariableOption>)[],
 ): { value: VariableOption['value']; words: PedigreeGenderWords }[] =>
   options.map(({ value }) => ({ value, words: defaultWordsFor(value) }));
 

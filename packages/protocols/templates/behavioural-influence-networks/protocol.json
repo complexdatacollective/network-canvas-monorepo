@@ -10,7 +10,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "activity_minutes_week": {
+        "26a54711-14e5-5f6a-8aba-ddb27341373d": {
           "name": "activity_minutes_week",
           "type": "number",
           "component": "Number",
@@ -19,24 +19,27 @@
             "maxValue": 10080
           }
         },
-        "smoking_status": {
+        "87be40d1-ad8c-5b1b-8c50-be5b45a015b2": {
           "name": "smoking_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "edac9ea1-cc13-545d-b2c5-eb8a9c1c6211",
               "label": {
                 "en": "Current smoker (smoke every day or some days)"
               },
               "value": "current"
             },
             {
+              "id": "5509853f-8a5e-5076-a4e9-a4e317af8b4b",
               "label": {
                 "en": "Former smoker (smoked at least 100 cigarettes in my life, but not now)"
               },
               "value": "former"
             },
             {
+              "id": "b77d0f5c-0a4f-5221-a839-2d2e532f829f",
               "label": {
                 "en": "Never smoker (have not smoked 100 cigarettes in my life)"
               },
@@ -47,30 +50,34 @@
             "required": true
           }
         },
-        "vaping_status": {
+        "0f9ec347-57ac-56fe-9b87-afda2e86d3de": {
           "name": "vaping_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "d0b7ffe8-a990-517c-b7dd-e6797d4b54ee",
               "label": {
                 "en": "I vape every day"
               },
               "value": "daily"
             },
             {
+              "id": "88fc9484-5c34-5a62-a8f3-3a3d2ce4a45e",
               "label": {
                 "en": "I vape some days"
               },
               "value": "some_days"
             },
             {
+              "id": "e8b493eb-778d-5f2b-bbe1-4f670bc8b4ee",
               "label": {
                 "en": "I have tried vaping, but not now"
               },
               "value": "former"
             },
             {
+              "id": "5d53ac18-3693-5091-bb53-16069699c4b7",
               "label": {
                 "en": "I have never vaped"
               },
@@ -81,36 +88,41 @@
             "required": true
           }
         },
-        "diet_quality": {
+        "33ca8907-196c-580e-9fef-e79e726f3a6a": {
           "name": "diet_quality",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
+              "id": "33e9140a-7b51-5787-8fc5-2f5ba0d89f12",
               "label": {
                 "en": "Poor"
               },
               "value": 1
             },
             {
+              "id": "bdc1dc92-c18e-5fd3-b92b-f97773873ceb",
               "label": {
                 "en": "Fair"
               },
               "value": 2
             },
             {
+              "id": "c62794bb-a467-56d0-905f-fe24bfbf8acf",
               "label": {
                 "en": "Good"
               },
               "value": 3
             },
             {
+              "id": "117a345e-5963-5f56-a5e2-7517f56de3e3",
               "label": {
                 "en": "Very good"
               },
               "value": 4
             },
             {
+              "id": "48f09166-4e96-5534-8054-1d31c2422cd0",
               "label": {
                 "en": "Excellent"
               },
@@ -121,36 +133,41 @@
             "required": true
           }
         },
-        "alcohol_frequency": {
+        "148afd23-aff5-5730-8e54-6abb6ed8a4e1": {
           "name": "alcohol_frequency",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
             {
+              "id": "99db3f4a-edb3-5a7b-83c7-40e1d295cfd8",
               "label": {
                 "en": "Never"
               },
               "value": 0
             },
             {
+              "id": "cdcee421-8947-5eeb-ad44-b3edb0f7e2ae",
               "label": {
                 "en": "Monthly or less"
               },
               "value": 1
             },
             {
+              "id": "8d121691-5ddd-5f5c-bbbe-bbc7f02b26f4",
               "label": {
                 "en": "2 to 4 times a month"
               },
               "value": 2
             },
             {
+              "id": "9f0ba55a-c97c-5898-8d2b-fca79093695b",
               "label": {
                 "en": "2 to 3 times a week"
               },
               "value": 3
             },
             {
+              "id": "c2d83005-d35c-5b3a-a3df-9b2bff5e3996",
               "label": {
                 "en": "4 or more times a week"
               },
@@ -164,7 +181,7 @@
       }
     },
     "node": {
-      "person": {
+      "d2196845-950a-5f79-a394-618fcb5028bf": {
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -172,7 +189,7 @@
           "default": "circle"
         },
         "variables": {
-          "alter_name": {
+          "390bc406-34c9-59aa-a2dc-6f0a692a0e14": {
             "name": "alter_name",
             "type": "text",
             "component": "Text",
@@ -181,42 +198,48 @@
               "unique": true
             }
           },
-          "relationship": {
+          "5eedb669-ff63-5e0f-922f-60cdf213a616": {
             "name": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "b673c62a-b100-5de0-9a14-95aa7ad810de",
                 "label": {
                   "en": "Partner or spouse"
                 },
                 "value": "partner"
               },
               {
+                "id": "aa8a7d8a-6ca7-53e4-b3d3-6c8656fa5412",
                 "label": {
                   "en": "Family member"
                 },
                 "value": "family"
               },
               {
+                "id": "2e6531b8-8516-5be6-8c31-a4ac7b9575da",
                 "label": {
                   "en": "Friend"
                 },
                 "value": "friend"
               },
               {
+                "id": "6df2fd2b-0379-5f4b-8155-dccdc7476d58",
                 "label": {
                   "en": "Co-worker or classmate"
                 },
                 "value": "coworker"
               },
               {
+                "id": "b3b0b9e0-edab-5908-973a-35403a9a434e",
                 "label": {
                   "en": "Neighbour"
                 },
                 "value": "neighbour"
               },
               {
+                "id": "3cd9647a-f0c6-504a-815f-b638c3fa08ae",
                 "label": {
                   "en": "Other"
                 },
@@ -224,30 +247,34 @@
               }
             ]
           },
-          "closeness": {
+          "0b46974e-4687-511f-9f48-22914b72ab7c": {
             "name": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
+                "id": "73239835-cc9e-5a71-92c6-03b45f7acd19",
                 "label": {
                   "en": "Not close"
                 },
                 "value": 1
               },
               {
+                "id": "222abc6d-6e7c-5088-8dee-46a93b064924",
                 "label": {
                   "en": "Somewhat close"
                 },
                 "value": 2
               },
               {
+                "id": "5d4881da-986c-579d-9979-bffa6fb80946",
                 "label": {
                   "en": "Close"
                 },
                 "value": 3
               },
               {
+                "id": "5092e625-5f9f-5763-b13e-f2cc0bf59349",
                 "label": {
                   "en": "Very close"
                 },
@@ -255,24 +282,27 @@
               }
             ]
           },
-          "alter_smokes": {
+          "2d97da18-ea10-5c8c-8135-5c6bea8dd5dc": {
             "name": "alter_smokes",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "ef191bf0-8b55-5973-8583-cb9a4124cb92",
                 "label": {
                   "en": "Yes"
                 },
                 "value": "yes"
               },
               {
+                "id": "506f1e1d-95b9-56a7-8057-a4b09aec9a77",
                 "label": {
                   "en": "No"
                 },
                 "value": "no"
               },
               {
+                "id": "8e6677a7-0640-58c9-b62d-8b5bb5384918",
                 "label": {
                   "en": "Don't know"
                 },
@@ -280,30 +310,34 @@
               }
             ]
           },
-          "alter_activity": {
+          "a585234d-14b0-5b6c-bd92-02bf65c6f043": {
             "name": "alter_activity",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
+                "id": "7dddbb15-51b2-5537-897f-4b32dd29ef1b",
                 "label": {
                   "en": "Not at all active"
                 },
                 "value": 1
               },
               {
+                "id": "5050fe4b-da44-5e31-a497-3637114ca3a3",
                 "label": {
                   "en": "Slightly active"
                 },
                 "value": 2
               },
               {
+                "id": "03a6ddfc-50cc-5e54-975d-cc453e6f9fb4",
                 "label": {
                   "en": "Moderately active"
                 },
                 "value": 3
               },
               {
+                "id": "499c8cc8-b1d4-5ead-86ce-8a84e809ae2e",
                 "label": {
                   "en": "Very active"
                 },
@@ -311,36 +345,41 @@
               }
             ]
           },
-          "alter_diet": {
+          "566239d3-c1d6-5ca3-b58f-4941aed01ebe": {
             "name": "alter_diet",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
+                "id": "0a344033-3337-5206-84b4-7edf615b34e6",
                 "label": {
                   "en": "Poor"
                 },
                 "value": 1
               },
               {
+                "id": "cb00494c-8a44-5c71-8910-27cd1df2a49c",
                 "label": {
                   "en": "Fair"
                 },
                 "value": 2
               },
               {
+                "id": "a9285e97-75b3-5709-8b3c-02327cfb6985",
                 "label": {
                   "en": "Good"
                 },
                 "value": 3
               },
               {
+                "id": "da5e5cf7-817e-5967-8284-ffd9f7328806",
                 "label": {
                   "en": "Very good"
                 },
                 "value": 4
               },
               {
+                "id": "66a9e6d9-a3bc-579a-8b76-bb6f91c2f442",
                 "label": {
                   "en": "Excellent"
                 },
@@ -348,36 +387,41 @@
               }
             ]
           },
-          "alter_drinks": {
+          "859fa610-6c3e-5d45-95a1-97b800483da2": {
             "name": "alter_drinks",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "f6dd34d1-6dc5-5d75-bd6c-701e79e444ec",
                 "label": {
                   "en": "Never"
                 },
                 "value": "never"
               },
               {
+                "id": "50002336-6e87-5fb5-85de-489a018233f6",
                 "label": {
                   "en": "Monthly or less"
                 },
                 "value": "monthly"
               },
               {
+                "id": "b10f8b90-363f-5363-83b2-414a7d00dad4",
                 "label": {
                   "en": "Weekly"
                 },
                 "value": "weekly"
               },
               {
+                "id": "f273e848-f5b4-57ce-984d-e562373156ea",
                 "label": {
                   "en": "Most days"
                 },
                 "value": "most_days"
               },
               {
+                "id": "31ba8f33-e501-54ce-b512-8e9882022a44",
                 "label": {
                   "en": "Don't know"
                 },
@@ -385,30 +429,34 @@
               }
             ]
           },
-          "shared_domains": {
+          "6c105aba-e793-5323-8d2a-0122aa1ab215": {
             "name": "shared_domains",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "a2392980-f6a7-55b5-8fe9-8333a5917853",
                 "label": {
                   "en": "Exercise together"
                 },
                 "value": "exercise"
               },
               {
+                "id": "d61d2ef8-8b17-5e28-bec3-9f035250ee2c",
                 "label": {
                   "en": "Eat meals together"
                 },
                 "value": "meals"
               },
               {
+                "id": "439bc168-91ed-5d0e-814b-1e9606a5590b",
                 "label": {
                   "en": "Smoke or vape together"
                 },
                 "value": "smoke_vape"
               },
               {
+                "id": "f035e6bb-0714-57a0-94ee-739c11bc0459",
                 "label": {
                   "en": "Drink alcohol together"
                 },
@@ -419,7 +467,7 @@
               "minSelected": 1
             }
           },
-          "layout": {
+          "a08b8051-1e97-5445-89a0-be9d247dbc0a": {
             "name": "layout",
             "type": "layout"
           }
@@ -427,7 +475,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "14ae2a64-0021-538d-bfef-d756ba74cfbd": {
         "name": "Knows",
         "color": "edge-color-seq-1"
       }
@@ -435,7 +483,7 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "6efa9c94-69f7-57f2-9a69-3670135dcbd4",
       "type": "Information",
       "label": {
         "en": "Template notes (delete before fielding)"
@@ -445,7 +493,7 @@
       }
     },
     {
-      "id": "information-intro",
+      "id": "84d3c70f-c36f-5eab-add0-7c6bac0afb1c",
       "type": "Information",
       "label": {
         "en": "Welcome"
@@ -455,7 +503,7 @@
       }
     },
     {
-      "id": "ego-behaviours",
+      "id": "9ee0483b-b33d-5a1e-9703-979f70d6e45f",
       "type": "EgoForm",
       "label": {
         "en": "Your own behaviours"
@@ -471,8 +519,8 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "activity_minutes_week",
+            "id": "364925c2-479a-5ab7-abbf-c1dc6ba62f3b",
+            "variable": "26a54711-14e5-5f6a-8aba-ddb27341373d",
             "prompt": {
               "en": "In a usual week, about how many **minutes** do you spend being physically active at a moderate or vigorous level?"
             },
@@ -481,29 +529,29 @@
             }
           },
           {
-            "id": "field-2",
-            "variable": "smoking_status",
+            "id": "9681d8f2-498c-50d5-8d03-caa0129dfd53",
+            "variable": "87be40d1-ad8c-5b1b-8c50-be5b45a015b2",
             "prompt": {
               "en": "Which best describes your **cigarette smoking**?"
             }
           },
           {
-            "id": "field-3",
-            "variable": "vaping_status",
+            "id": "5864a1e8-5ee5-5053-940f-efbd7e375dfb",
+            "variable": "0f9ec347-57ac-56fe-9b87-afda2e86d3de",
             "prompt": {
               "en": "Which best describes your use of **e-cigarettes or vapes**?"
             }
           },
           {
-            "id": "field-4",
-            "variable": "diet_quality",
+            "id": "546badca-b86a-55ff-be8a-9a34653ae703",
+            "variable": "33ca8907-196c-580e-9fef-e79e726f3a6a",
             "prompt": {
               "en": "In general, how healthy would you say your **diet** is?"
             }
           },
           {
-            "id": "field-5",
-            "variable": "alcohol_frequency",
+            "id": "84c017ac-232c-5d42-be03-4cb391119762",
+            "variable": "148afd23-aff5-5730-8e54-6abb6ed8a4e1",
             "prompt": {
               "en": "How often do you have a drink containing **alcohol**?"
             }
@@ -512,7 +560,7 @@
       }
     },
     {
-      "id": "ng-behaviours",
+      "id": "75f2298b-89aa-58c7-bb16-4e1ad7707fbb",
       "type": "NameGenerator",
       "label": {
         "en": "People you share behaviours with"
@@ -520,7 +568,7 @@
       "interviewScript": "Each prompt asks about a different shared activity. The same person can take part in several of these activities; when they do, add them once and then select them from the panel of people already mentioned for the other prompts, rather than typing their name again.",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "form": {
         "title": {
@@ -528,8 +576,8 @@
         },
         "fields": [
           {
-            "id": "field-1",
-            "variable": "alter_name",
+            "id": "fad41bcc-48ca-5887-8e32-ada70c701749",
+            "variable": "390bc406-34c9-59aa-a2dc-6f0a692a0e14",
             "prompt": {
               "en": "What is this person's first name or a nickname you will recognise?"
             }
@@ -538,7 +586,7 @@
       },
       "panels": [
         {
-          "id": "already-mentioned",
+          "id": "a34c62d1-41bf-5a4b-94e8-0045236a1f69",
           "title": {
             "en": "People you already mentioned"
           },
@@ -547,25 +595,25 @@
       ],
       "prompts": [
         {
-          "id": "p-exercise",
+          "id": "e4397d94-4b3f-524d-9aa0-4958bd8598f2",
           "text": {
             "en": "Who are the people you usually **exercise or play sport with**?"
           }
         },
         {
-          "id": "p-meals",
+          "id": "48ca9130-e055-5f69-a437-d25363926276",
           "text": {
             "en": "Who are the people you usually **eat meals with**?"
           }
         },
         {
-          "id": "p-smoke-vape",
+          "id": "bf1adb09-d241-59ca-ad1b-9c5b81f8786a",
           "text": {
             "en": "Who are the people you usually **smoke or vape with**?"
           }
         },
         {
-          "id": "p-drink",
+          "id": "de51569c-1fd5-5de4-8291-5e380dd78deb",
           "text": {
             "en": "Who are the people you usually **drink alcohol with**?"
           }
@@ -573,7 +621,7 @@
       ]
     },
     {
-      "id": "alter-behaviours-introduction",
+      "id": "4deca3df-89f2-502d-b4c5-c34671853647",
       "type": "Information",
       "label": {
         "en": "About each person"
@@ -583,93 +631,88 @@
       }
     },
     {
-      "id": "alter-behaviours",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
+      "id": "75c52f26-adf4-54ee-97bd-db33f1c53be1",
       "type": "AlterForm",
       "label": {
         "en": "Their behaviours"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "shared_domains",
+            "id": "9a16ed3c-2a45-5090-a99d-f00beebf34d9",
+            "variable": "6c105aba-e793-5323-8d2a-0122aa1ab215",
             "prompt": {
-              "en": "Which of these activities do you ever do **with {nodeLabel}**?"
+              "en": "Which of these activities do you ever do **with {node_label}**?"
             },
             "hint": {
               "en": "Select all that apply."
             }
           },
           {
-            "id": "field-2",
-            "variable": "relationship",
+            "id": "73d056c9-61a2-5178-b9de-2b59bb861db0",
+            "variable": "5eedb669-ff63-5e0f-922f-60cdf213a616",
             "prompt": {
-              "en": "What is your relationship to {nodeLabel}?"
+              "en": "What is your relationship to {node_label}?"
             }
           },
           {
-            "id": "field-3",
-            "variable": "alter_smokes",
+            "id": "4d770057-278b-529b-8942-67824f654d5c",
+            "variable": "2d97da18-ea10-5c8c-8135-5c6bea8dd5dc",
             "prompt": {
-              "en": "As far as you know, does {nodeLabel} **smoke**?"
+              "en": "As far as you know, does {node_label} **smoke**?"
             }
           },
           {
-            "id": "field-4",
-            "variable": "alter_activity",
+            "id": "289ca432-cec7-5f9e-b33e-42c69b514d8f",
+            "variable": "a585234d-14b0-5b6c-bd92-02bf65c6f043",
             "prompt": {
-              "en": "How **physically active** would you say {nodeLabel} is?"
+              "en": "How **physically active** would you say {node_label} is?"
             }
           },
           {
-            "id": "field-5",
-            "variable": "alter_diet",
+            "id": "6c9a02b6-9346-5f61-a8a0-7c45fb4316c6",
+            "variable": "566239d3-c1d6-5ca3-b58f-4941aed01ebe",
             "prompt": {
-              "en": "How **healthy** would you say {nodeLabel}'s diet is?"
+              "en": "How **healthy** would you say {node_label}'s diet is?"
             }
           },
           {
-            "id": "field-6",
-            "variable": "alter_drinks",
+            "id": "85b9a830-a37f-54da-91cf-2e7dd3a32a87",
+            "variable": "859fa610-6c3e-5d45-95a1-97b800483da2",
             "prompt": {
-              "en": "How often does {nodeLabel} **drink alcohol**, as far as you know?"
+              "en": "How often does {node_label} **drink alcohol**, as far as you know?"
             }
           }
         ]
       }
     },
     {
-      "id": "ordbin-closeness",
+      "id": "6021a9bf-0b1c-5d95-bbc3-52f4842e7771",
       "type": "OrdinalBin",
       "label": {
         "en": "How close you are"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "prompts": [
         {
-          "id": "p-closeness",
+          "id": "1ea070f4-d6bf-5a21-bf70-6f753c99e1ef",
           "text": {
             "en": "Place each person by **how close you feel to them**. Closer ties tend to have a stronger influence on our behaviour."
           },
-          "variable": "closeness",
+          "variable": "0b46974e-4687-511f-9f48-22914b72ab7c",
           "color": "ord-color-seq-1"
         }
       ]
     },
     {
-      "id": "narrative-clustering",
+      "id": "7665dd8f-3669-5f75-b4ba-a67b43e06f5c",
       "groupsHeading": {
         "en": "Groups"
       },
@@ -679,7 +722,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
       },
       "behaviours": {
         "automaticLayout": true,
@@ -688,30 +731,30 @@
       },
       "presets": [
         {
-          "id": "preset-smoking",
+          "id": "a160fa07-0edc-5564-88cd-0a9c9b11ac83",
           "label": {
             "en": "Smoking"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "alter_smokes",
+          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
+          "groupVariable": "2d97da18-ea10-5c8c-8135-5c6bea8dd5dc",
           "highlight": []
         },
         {
-          "id": "preset-activity",
+          "id": "d3da7416-5989-5979-ad4e-cdcac3c46663",
           "label": {
             "en": "Physical activity"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "alter_activity",
+          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
+          "groupVariable": "a585234d-14b0-5b6c-bd92-02bf65c6f043",
           "highlight": []
         },
         {
-          "id": "preset-drinking",
+          "id": "59da2f24-3470-5c3a-8cfc-4c21783cb0af",
           "label": {
             "en": "Drinking"
           },
-          "layoutVariable": "layout",
-          "groupVariable": "alter_drinks",
+          "layoutVariable": "a08b8051-1e97-5445-89a0-be9d247dbc0a",
+          "groupVariable": "859fa610-6c3e-5d45-95a1-97b800483da2",
           "highlight": []
         }
       ],
@@ -721,7 +764,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "94564d79-a972-5b35-b394-31cc819cbc50",
       "finishLabel": {
         "en": "Finish"
       },

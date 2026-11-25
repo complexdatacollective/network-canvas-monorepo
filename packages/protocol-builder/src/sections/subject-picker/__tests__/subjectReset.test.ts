@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { testVariableId } from '../../../testing/testId.ts';
 import {
   SUBJECT_INDEPENDENT_FIELDS,
   SUBJECT_INDEPENDENT_PARTS,
   subjectDependentPaths,
   subjectDependentResets,
 } from '../subjectReset.ts';
+
+const NAME = testVariableId('name');
 
 describe('what a subject change invalidates', () => {
   /**
@@ -92,7 +95,7 @@ describe('what a subject change invalidates', () => {
 
     expect(
       subjectDependentResets(['nodeConfiguration'], {}, () => ({
-        nameAttribute: 'name',
+        nameAttribute: NAME,
         nameField,
       })),
     ).toEqual([{ key: 'nodeConfiguration', value: { nameField } }]);
@@ -101,7 +104,7 @@ describe('what a subject change invalidates', () => {
   it('removes a key whose prose it keeps is absent', () => {
     expect(
       subjectDependentResets(['nodeConfiguration'], {}, () => ({
-        nameAttribute: 'name',
+        nameAttribute: NAME,
       })),
     ).toEqual([{ key: 'nodeConfiguration', value: undefined }]);
   });
@@ -109,7 +112,7 @@ describe('what a subject change invalidates', () => {
   it('counts as lost only the parts of a key it does not keep', () => {
     expect(
       subjectDependentPaths('nodeConfiguration', {
-        nameAttribute: 'name',
+        nameAttribute: NAME,
         nameField: { prompt: { en: 'Name' } },
       }),
     ).toEqual(['nodeConfiguration.nameAttribute']);

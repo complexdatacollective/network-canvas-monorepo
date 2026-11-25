@@ -6,6 +6,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import type { ParameterShape } from '../codebook/variableParameters.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import ComposerParametersField, {
   type ComposerParameters,
 } from './ComposerParametersField.tsx';
@@ -96,7 +97,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'network-composer-1',
+    stageId: fixtureStageId('network-composer-1'),
     // What the host stands in for is the row dialog that edits one form field.
     sectionTitle: 'One field of this form',
     children: <TheSettings />,

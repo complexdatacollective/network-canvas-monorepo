@@ -3,7 +3,6 @@ import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { type VariableValue, VariableValueSchema } from '@codaco/shared-consts';
 
 import type { AttributePatch } from '../store/entityAttributePatch';
-import { writeOwnProperty } from '../utils/ownProperty';
 
 export type FormValuesToAttributePatchResult =
   | { success: true; patch: AttributePatch }
@@ -34,9 +33,7 @@ export function formValuesToAttributePatch(
   const invalidFieldNames: string[] = [];
 
   for (const fieldName of mountedFieldNames) {
-    const value = Object.hasOwn(values, fieldName)
-      ? values[fieldName]
-      : undefined;
+    const value = values[fieldName];
 
     if (keepWhenUnanswered.includes(fieldName) && isUnanswered(value)) {
       continue;
@@ -53,7 +50,7 @@ export function formValuesToAttributePatch(
       continue;
     }
 
-    writeOwnProperty(set, fieldName, result.data);
+    set[fieldName] = result.data;
   }
 
   if (invalidFieldNames.length > 0) {

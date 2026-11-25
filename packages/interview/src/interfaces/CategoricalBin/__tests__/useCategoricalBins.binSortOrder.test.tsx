@@ -10,6 +10,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
@@ -17,10 +18,10 @@ import ui from '../../../store/modules/ui';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import { useCategoricalBins } from '../useCategoricalBins';
 
-const NODE_TYPE = 'person';
-const CAT_VAR = 'cat';
-const NAME_VAR = 'name';
-const AGE_VAR = 'age';
+const NODE_TYPE = testTypeId('person');
+const CAT_VAR = testVariableId('cat');
+const NAME_VAR = testVariableId('name');
+const AGE_VAR = testVariableId('age');
 
 const makeNode = (
   id: string,
@@ -62,10 +63,10 @@ function makeWrapper(networkNodes: NcNode[] = nodes) {
         codebook: {
           node: {
             [NODE_TYPE]: {
-              name: NODE_TYPE,
+              name: 'person',
               variables: {
                 [CAT_VAR]: {
-                  name: CAT_VAR,
+                  name: 'cat',
                   type: 'categorical',
                   options: [
                     { label: { en: 'A' }, value: 'a' },
@@ -73,11 +74,11 @@ function makeWrapper(networkNodes: NcNode[] = nodes) {
                   ],
                 },
                 [NAME_VAR]: {
-                  name: NAME_VAR,
+                  name: 'name',
                   type: 'text',
                 },
                 [AGE_VAR]: {
-                  name: AGE_VAR,
+                  name: 'age',
                   type: 'number',
                 },
               },

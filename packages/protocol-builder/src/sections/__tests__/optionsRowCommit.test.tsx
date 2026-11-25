@@ -10,14 +10,45 @@ import {
   attributeField,
   chooseAttributeById,
 } from '../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureOptionId,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { testVariableId, testId } from '../../testing/testId.ts';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 
+const MOOD = testVariableId('mood');
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const CONTACT_TYPE = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactType',
+);
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
+const CLOSENESS = fixtureVariableId(
+  { entity: 'edge', typeName: 'knows' },
+  'closeness',
+);
+
 const en = (text: string) => ({ 'en-US': text });
+
+/** The id the fixture gives the scale's point worth `value`. */
+const closenessOption = (value: number) =>
+  fixtureOptionId({ entity: 'edge', typeName: 'knows' }, 'closeness', value);
+
+/** The id the fixture gives the contact type answer worth `value`. */
+const contactOption = (value: string) =>
+  fixtureOptionId({ entity: 'node', typeName: 'person' }, 'contactType', value);
 
 /** A row editor's own queries, scoped to the dialog it opened. */
 const openFormField = async (harness: StageEditorHarness) => {
@@ -29,12 +60,12 @@ const openFormField = async (harness: StageEditorHarness) => {
  * The connection type whose scale the fixture's census prompt asks about, and
  * the section of the protocol that holds it.
  */
-const CENSUS_EDGE = 'knows';
+const CENSUS_EDGE = KNOWS;
 const CENSUS_EDGE_SECTION = sectionId({
   kind: 'codebookEdge',
   typeId: CENSUS_EDGE,
 });
-const SCALE_VARIABLE = 'closeness';
+const SCALE_VARIABLE = CLOSENESS;
 
 const openSection = () => ({
   stageId: 'tie-strength-census-1' as const,
@@ -122,7 +153,7 @@ const withAnExtraPoint = (
   ...held,
   options: [
     ...(Array.isArray(held.options) ? held.options : []),
-    { label: en('Inseparable'), value: 4 },
+    { id: testId('option/closeness/4'), label: en('Inseparable'), value: 4 },
   ],
 });
 
@@ -184,10 +215,14 @@ describe('the answers a prompt writes back to its attribute', () => {
     // The save was about the prompt's wording. The other researcher's fourth
     // point is still there.
     expect(scale(harness).options).toEqual([
-      { label: en('Very close'), value: 3 },
-      { label: en('Somewhat close'), value: 2 },
-      { label: en('Not close'), value: 1 },
-      { label: en('Inseparable'), value: 4 },
+      { id: closenessOption(3), label: en('Very close'), value: 3 },
+      { id: closenessOption(2), label: en('Somewhat close'), value: 2 },
+      { id: closenessOption(1), label: en('Not close'), value: 1 },
+      {
+        id: testId('option/closeness/4'),
+        label: en('Inseparable'),
+        value: 4,
+      },
     ]);
   });
 
@@ -234,10 +269,11 @@ describe('the answers a prompt writes back to its attribute', () => {
     // The list is the stage's draft until the stage is saved: the editor
     // shows the researcher's list with the collaborator's rename merged in,
     // and the protocol still holds what the collaborator left.
+    // A relabelled point keeps its id.
     const written = [
-      { label: en('Inseparable'), value: 3 },
-      { label: en('Somewhat close'), value: 2 },
-      { label: en('Not close'), value: 1 },
+      { id: closenessOption(3), label: en('Inseparable'), value: 3 },
+      { id: closenessOption(2), label: en('Somewhat close'), value: 2 },
+      { id: closenessOption(1), label: en('Not close'), value: 1 },
     ];
     await waitFor(() =>
       expect(scale(harness, 'editor').options).toEqual(written),
@@ -252,12 +288,12 @@ describe('the answers a prompt writes back to its attribute', () => {
   });
 });
 
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const CHOICE_VARIABLE = 'contactType';
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
+const CHOICE_VARIABLE = CONTACT_TYPE;
 
 /** A form collecting one attribute whose answers are a list. */
 const FORM_COLLECTING_A_CHOICE = {
-  id: 'alter-form-1',
+  id: fixtureStageId('alter-form-1'),
   type: 'AlterForm',
   fields: {
     ...loadFixtureStage('alter-form-1').fields,
@@ -282,7 +318,7 @@ const collectedAttribute = (
   harness: StageEditorHarness,
 ): Record<string, unknown> =>
   asRecord(
-    asRecord(asRecord(harness.hostCodebook().node?.person).variables)[
+    asRecord(asRecord(harness.hostCodebook().node?.[PERSON]).variables)[
       CHOICE_VARIABLE
     ],
   );
@@ -306,7 +342,7 @@ function writeTheAttribute(
   const variables = asRecord(person.variables);
   harness.receiveCodebookUpdate({
     node: {
-      person: {
+      [PERSON]: {
         ...person,
         variables: {
           ...variables,
@@ -328,7 +364,11 @@ const withAnExtraAnswer = (
   ...held,
   options: [
     ...(Array.isArray(held.options) ? held.options : []),
-    { label: en('Letters'), value: 'letters' },
+    {
+      id: testId('option/contactType/letters'),
+      label: en('Letters'),
+      value: 'letters',
+    },
   ],
 });
 
@@ -402,10 +442,26 @@ describe('the answers a form field writes back to its attribute', () => {
     );
 
     expect(collectedAttribute(harness).options).toEqual([
-      { label: en('In person'), value: 'in_person' },
-      { label: en('Phone or video call'), value: 'call' },
-      { label: en('Text or messaging'), value: 'text' },
-      { label: en('Letters'), value: 'letters' },
+      {
+        id: contactOption('in_person'),
+        label: en('In person'),
+        value: 'in_person',
+      },
+      {
+        id: contactOption('call'),
+        label: en('Phone or video call'),
+        value: 'call',
+      },
+      {
+        id: contactOption('text'),
+        label: en('Text or messaging'),
+        value: 'text',
+      },
+      {
+        id: testId('option/contactType/letters'),
+        label: en('Letters'),
+        value: 'letters',
+      },
     ]);
   });
 });
@@ -421,14 +477,18 @@ describe('the answers a form field writes back to its attribute', () => {
  */
 describe('the answers shown after the row is pointed somewhere else', () => {
   /** A second attribute of the same kind, for the row to be moved onto. */
-  const MOOD = {
+  const MOOD_ATTRIBUTE = {
     name: 'mood',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: en('Happy'), value: 'happy' },
-      { label: en('Sad'), value: 'sad' },
-      { label: en('Neither'), value: 'neither' },
+      { id: testId('option/mood/happy'), label: en('Happy'), value: 'happy' },
+      { id: testId('option/mood/sad'), label: en('Sad'), value: 'sad' },
+      {
+        id: testId('option/mood/neither'),
+        label: en('Neither'),
+        value: 'neither',
+      },
     ],
   };
 
@@ -440,14 +500,14 @@ describe('the answers shown after the row is pointed somewhere else', () => {
     }
     harness.receiveCodebookUpdate({
       node: {
-        person: {
+        [PERSON]: {
           ...person,
           variables: {
             ...asRecord(person.variables),
             [CHOICE_VARIABLE]: withTheControlTheRowWouldChoose(
               asRecord(asRecord(person.variables)[CHOICE_VARIABLE]),
             ),
-            mood: MOOD,
+            [MOOD]: MOOD_ATTRIBUTE,
           },
         },
       },
@@ -476,7 +536,7 @@ describe('the answers shown after the row is pointed somewhere else', () => {
     id: string,
   ): Record<string, unknown> =>
     asRecord(
-      asRecord(asRecord(harness.hostCodebook().node?.person).variables)[id],
+      asRecord(asRecord(harness.hostCodebook().node?.[PERSON]).variables)[id],
     );
 
   it('leaves the second attribute’s own answers alone', async () => {
@@ -486,7 +546,7 @@ describe('the answers shown after the row is pointed somewhere else', () => {
     });
     const dialog = await openOnAChoice(harness);
 
-    await pointTheRowAt(harness, 'mood');
+    await pointTheRowAt(harness, MOOD);
 
     // The list on screen is the attribute the row binds now, not the one it
     // opened on.
@@ -503,7 +563,9 @@ describe('the answers shown after the row is pointed somewhere else', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    expect(personVariable(harness, 'mood').options).toEqual(MOOD.options);
+    expect(personVariable(harness, MOOD).options).toEqual(
+      MOOD_ATTRIBUTE.options,
+    );
   });
 
   /**
@@ -521,7 +583,7 @@ describe('the answers shown after the row is pointed somewhere else', () => {
     });
     const dialog = await openOnAChoice(harness);
 
-    await pointTheRowAt(harness, 'flagged');
+    await pointTheRowAt(harness, FLAGGED);
     await waitFor(() =>
       expect(
         screen.queryByRole('region', { name: 'Choice values' }),
@@ -535,7 +597,7 @@ describe('the answers shown after the row is pointed somewhere else', () => {
 
     // Whatever the yes-or-no attribute ends up holding, it is not the three
     // choices the row was showing a moment ago.
-    const held = personVariable(harness, 'flagged').options;
+    const held = personVariable(harness, FLAGGED).options;
     expect(Array.isArray(held) ? held : []).not.toEqual(
       expect.arrayContaining([{ label: en('In person'), value: 'in_person' }]),
     );

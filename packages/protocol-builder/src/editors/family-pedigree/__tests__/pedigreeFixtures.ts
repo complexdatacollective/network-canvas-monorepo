@@ -3,12 +3,18 @@ import { PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS } from '@codaco/protocol-valida
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureTypeId,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
+
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 
 export const FAMILY_MEMBER_SECTION = sectionId({
   kind: 'codebookNode',
-  typeId: 'family_member',
+  typeId: FAMILY_MEMBER,
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -39,7 +45,7 @@ export function addFamilyMemberVariables(
   }
   harness.receiveCodebookUpdate({
     node: {
-      family_member: {
+      [FAMILY_MEMBER]: {
         ...section,
         variables: { ...variables, ...added },
       },
@@ -66,6 +72,7 @@ export const RELATIVES_NOT_RECORDED_VARIABLE: Readonly<
   name: 'relativesNotRecorded',
   type: 'categorical',
   options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(({ value, label }) => ({
+    id: testId(`option/relativesNotRecorded/${value}`),
     value,
     label: { 'en-US': label },
   })),

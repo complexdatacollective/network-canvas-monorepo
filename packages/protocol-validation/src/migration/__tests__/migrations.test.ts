@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../__tests__/schemaIssues.ts';
+import { withOriginalCodebookKeys } from '../../__tests__/testIds.ts';
 import migrationV1toV2 from '../../schemas/2/migration.ts';
 import migrationV2toV3 from '../../schemas/3/migration.ts';
 import migrationV4toV5 from '../../schemas/5/migration.ts';
@@ -315,9 +316,10 @@ describe('Protocol Migrations', () => {
         stages: [],
       };
 
-      const migrated = migrateProtocol(v3Protocol, undefined, {
-        name: 'Test Protocol',
-      });
+      const migrated = withOriginalCodebookKeys(
+        migrateProtocol(v3Protocol, undefined, { name: 'Test Protocol' }),
+        v3Protocol,
+      );
       expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
       const person = migrated.codebook.node?.person;
       expect(person?.name).toBe('My Type');
@@ -365,8 +367,19 @@ describe('Protocol Migrations', () => {
       expect(
         closeness && 'options' in closeness ? closeness.options : undefined,
       ).toEqual([
-        { label: { en: 'Close friend' }, value: 'close_friend' },
-        { label: { en: 'Colleague' }, value: 'colleague' },
+        // The 8 to 9 migration (which `V8OutputSchema` runs) derives each
+        // option's id from its variable's place and its value, so the ids
+        // are the same each time.
+        {
+          id: '3b91bba6-5f30-5f16-8a98-e1f8007adf21',
+          label: { en: 'Close friend' },
+          value: 'close_friend',
+        },
+        {
+          id: '4a5a8b7b-bdfe-5931-8cb7-0baba2130383',
+          label: { en: 'Colleague' },
+          value: 'colleague',
+        },
       ]);
     });
 

@@ -4,21 +4,44 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { readMessage } from '../../testing/i18n.ts';
 import {
+  testId,
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../testing/testId.ts';
+import {
   documentWithUpdatedVariable,
   InvalidCodebookDraftError,
 } from '../editing.ts';
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const PERSON = testTypeId('person');
+const CLOSENESS = testVariableId('closeness');
+
+const SUBJECT = { entity: 'node', type: PERSON } as const;
+
+/** Each option row given the id every row carries, so the rows differ only in what a test asks about. */
+const withIds = (options: readonly unknown[]): unknown[] =>
+  options.map((option) =>
+    typeof option === 'object' && option !== null && !('id' in option)
+      ? {
+          id: testOptionId(
+            CLOSENESS,
+            'value' in option ? option.value : undefined,
+          ),
+          ...option,
+        }
+      : option,
+  );
 
 const personDocument = (options: readonly unknown[]): SectionDoc => ({
   name: 'Person',
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {
-    closeness: {
+    [CLOSENESS]: {
       name: 'closeness',
       type: 'ordinal',
-      options,
+      options: withIds(options),
     },
   },
 });
@@ -43,8 +66,8 @@ const refusal = (options: readonly unknown[]): string | undefined => {
     documentWithUpdatedVariable({
       subject: SUBJECT,
       authoritativeDocument: personDocument(SOUND),
-      variableId: 'closeness',
-      draft: { options },
+      variableId: CLOSENESS,
+      draft: { options: withIds(options) },
       replaceProperties: ['options'],
     });
     return undefined;
@@ -146,7 +169,13 @@ describe('the write that records the answers an attribute offers', () => {
     { count: 'no values', options: [] },
     {
       count: 'one value',
-      options: [{ label: { en: 'Close' }, value: 'close' }],
+      options: [
+        {
+          id: testId('option/options/close'),
+          label: { en: 'Close' },
+          value: 'close',
+        },
+      ],
     },
   ])('says a list of $count is too short to hold', ({ options }) => {
     expect(refusal(options)).toBe(

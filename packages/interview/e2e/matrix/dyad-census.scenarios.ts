@@ -1,4 +1,9 @@
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import {
+  createConditionId,
+  createProtocolObjectId,
+  dynamicValueNameFor,
+} from '@codaco/protocol-validation';
 
 import { DyadCensusFixture } from '../fixtures/dyad-census-fixture.js';
 import { expect } from '../fixtures/matrix-test.js';
@@ -519,14 +524,19 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('DyadCensus', {
           subject: { entity: 'node', type: nodeType.id },
         });
-        stage.stageEntry.dynamicValues = {
-          first: { path: `dyad.source.${personName.id}` },
-          second: { path: `dyad.target.${personName.id}` },
-        };
+        const first = dynamicValueNameFor({
+          kind: 'attribute',
+          role: 'dyadSource',
+          variableId: personName.id,
+        });
+        const second = dynamicValueNameFor({
+          kind: 'attribute',
+          role: 'dyadTarget',
+          variableId: personName.id,
+        });
         stage.addPrompt({
           text: {
-            'en-US':
-              '{first, select, missing {Do these two} other {Do {first} and {second, select, missing {this person} other {{second}}}}} know each other?',
+            'en-US': `{${first}, select, missing {Do these two} other {Do {${first}} and {${second}, select, missing {this person} other {{${second}}}}}} know each other?`,
           },
         });
         synth.addManualNode(stage.id, nodeType.id, 'n0', {
@@ -562,12 +572,14 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         });
         // One "If" about the second person's answer, one about how many
         // edges the first person has.
+        const secondIsSam = createConditionId();
+        const firstIsConnected = createConditionId();
         stage.stageEntry.conditions = {
-          secondIsSam: {
+          [secondIsSam]: {
             about: 'dyadTarget',
             rules: [
               {
-                id: 'named-sam',
+                id: createProtocolObjectId(),
                 type: 'node',
                 options: {
                   type: nodeType.id,
@@ -578,28 +590,28 @@ export const dyadCensusScenarios: InterfaceScenarios = {
               },
             ],
           },
-          firstIsConnected: {
+          [firstIsConnected]: {
             about: 'dyadSource',
             rules: [
               {
-                id: 'has-an-edge',
+                id: createProtocolObjectId(),
                 type: 'edge',
                 options: { count: 'GREATER_THAN', value: 0 },
               },
             ],
           },
         };
-        stage.stageEntry.dynamicValues = {
-          secondIsSam: { path: '$condition.secondIsSam', cases: { yes: true } },
-          firstIsConnected: {
-            path: '$condition.firstIsConnected',
-            cases: { yes: true },
-          },
-        };
+        const secondIsSamName = dynamicValueNameFor({
+          kind: 'condition',
+          conditionId: secondIsSam,
+        });
+        const firstIsConnectedName = dynamicValueNameFor({
+          kind: 'condition',
+          conditionId: firstIsConnected,
+        });
         stage.addPrompt({
           text: {
-            'en-US':
-              '{secondIsSam, select, yes {Second is Sam.} other {Second is someone else.}} {firstIsConnected, select, yes {First has ties.} other {First has no ties.}} Do they know each other?',
+            'en-US': `{${secondIsSamName}, select, true {Second is Sam.} other {Second is someone else.}} {${firstIsConnectedName}, select, true {First has ties.} other {First has no ties.}} Do they know each other?`,
           },
         });
         synth.addManualNode(stage.id, nodeType.id, 'n0', {

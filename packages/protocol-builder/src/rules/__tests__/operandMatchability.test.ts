@@ -29,8 +29,12 @@ import {
   VariableTypesKeys,
 } from '@codaco/protocol-validation';
 
+import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
 import { operandRequirement, operatorsForSubject } from '../operators.ts';
 import { describeRule } from '../ruleDescription.ts';
+
+const PERSON = testTypeId('person');
+const V = testVariableId('v');
 
 const OPTIONS = [
   { value: 'low', label: { en: 'Low' } },
@@ -41,12 +45,12 @@ const OPTIONS = [
 const codebookFor = (type: VariableType): Codebook =>
   ({
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          v: {
+          [V]: {
             name: 'V',
             type,
             ...(type === 'categorical' || type === 'ordinal'
@@ -115,8 +119,8 @@ const canMatch = (
 
 const ruleFor = (operator: string, value: unknown) => ({
   type: 'node' as const,
-  id: 'r1',
-  options: { type: 'person', attribute: 'v', operator, value },
+  id: testId('r1'),
+  options: { type: PERSON, attribute: V, operator, value },
 });
 
 /** Everything the editor finds wrong with this rule. */

@@ -18,6 +18,7 @@ import { parseCsvRecord } from '../formatters/__tests__/namesFixture';
 import type { InterviewExportInput } from '../input';
 import type { ExportOptions } from '../options';
 import { runRecordedExport } from './exportHarness';
+import { testOptionId, testTypeId, testVariableId } from './testIds';
 
 const options: ExportOptions = {
   exportGraphML: true,
@@ -31,34 +32,34 @@ const options: ExportOptions = {
 
 const codebook: Codebook = {
   ego: {
-    variables: { 'e-note': { name: 'note', type: 'text' } },
+    variables: { [testVariableId('e-note')]: { name: 'note', type: 'text' } },
   },
   node: {
-    person: {
+    [testTypeId('person')]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-name': {
+        [testVariableId('p-name')]: {
           name: 'name',
           type: 'text',
           encrypted: true,
         },
-        'p-nickname': {
+        [testVariableId('p-nickname')]: {
           name: 'nickname',
           type: 'text',
           encrypted: true,
         },
-        'p-city': { name: 'city', type: 'text' },
+        [testVariableId('p-city')]: { name: 'city', type: 'text' },
       },
     },
   },
   edge: {
-    knows: {
+    [testTypeId('knows')]: {
       name: 'Knows',
       color: 'edge-color-seq-1',
       variables: {
-        'k-since': { name: 'since', type: 'text' },
+        [testVariableId('k-since')]: { name: 'since', type: 'text' },
       },
     },
   },
@@ -101,22 +102,26 @@ const interview = (metadata: ValueMetadata): InterviewExportInput => ({
     nodes: [
       {
         [entityPrimaryKeyProperty]: 'node-1',
-        type: 'person',
+        type: testTypeId('person'),
         [entityAttributesProperty]: {
-          'p-name': nameCiphertext,
-          'p-city': 'Lisbon',
+          [testVariableId('p-name')]: nameCiphertext,
+          [testVariableId('p-city')]: 'Lisbon',
         },
-        ...secureAttributes(metadata, 'p-name'),
+        ...secureAttributes(metadata, testVariableId('p-name')),
       },
       {
         [entityPrimaryKeyProperty]: 'node-2',
-        type: 'person',
+        type: testTypeId('person'),
         [entityAttributesProperty]: {
-          'p-name': nameCiphertext,
-          'p-nickname': nicknameCiphertext,
-          'p-city': 'Porto',
+          [testVariableId('p-name')]: nameCiphertext,
+          [testVariableId('p-nickname')]: nicknameCiphertext,
+          [testVariableId('p-city')]: 'Porto',
         },
-        ...secureAttributes(metadata, 'p-name', 'p-nickname'),
+        ...secureAttributes(
+          metadata,
+          testVariableId('p-name'),
+          testVariableId('p-nickname'),
+        ),
       },
     ],
     edges: [
@@ -124,13 +129,15 @@ const interview = (metadata: ValueMetadata): InterviewExportInput => ({
         [entityPrimaryKeyProperty]: 'edge-1',
         from: 'node-1',
         to: 'node-2',
-        type: 'knows',
-        [entityAttributesProperty]: { 'k-since': '2019' },
+        type: testTypeId('knows'),
+        [entityAttributesProperty]: { [testVariableId('k-since')]: '2019' },
       },
     ],
     ego: {
       [entityPrimaryKeyProperty]: 'ego-1',
-      [entityAttributesProperty]: { 'e-note': 'visible to the researcher' },
+      [entityAttributesProperty]: {
+        [testVariableId('e-note')]: 'visible to the researcher',
+      },
     },
   },
 });
@@ -216,12 +223,12 @@ describe.each([
     const firstData = dataOf(first);
     const secondData = dataOf(second);
 
-    expect(firstData.get('p-name')).toBe('ENCRYPTED');
-    expect(secondData.get('p-name')).toBe('ENCRYPTED');
-    expect(firstData.has('p-nickname')).toBe(false);
-    expect(secondData.get('p-nickname')).toBe('ENCRYPTED');
-    expect(firstData.get('p-city')).toBe('Lisbon');
-    expect(secondData.get('p-city')).toBe('Porto');
+    expect(firstData.get(testVariableId('p-name'))).toBe('ENCRYPTED');
+    expect(secondData.get(testVariableId('p-name'))).toBe('ENCRYPTED');
+    expect(firstData.has(testVariableId('p-nickname'))).toBe(false);
+    expect(secondData.get(testVariableId('p-nickname'))).toBe('ENCRYPTED');
+    expect(firstData.get(testVariableId('p-city'))).toBe('Lisbon');
+    expect(secondData.get(testVariableId('p-city'))).toBe('Porto');
   });
 
   it('labels a node with an encrypted name without its value', () => {
@@ -255,33 +262,41 @@ describe.each([
 // would leave them), and a type whose name the codebook does mark encrypted.
 const recordedCodebook: Codebook = {
   ego: {
-    variables: { 'e-note': { name: 'note', type: 'text' } },
+    variables: { [testVariableId('e-note')]: { name: 'note', type: 'text' } },
   },
   node: {
-    person: {
+    [testTypeId('person')]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-name': { name: 'name', type: 'text' },
-        'p-age': { name: 'age', type: 'number' },
-        'p-pets': {
+        [testVariableId('p-name')]: { name: 'name', type: 'text' },
+        [testVariableId('p-age')]: { name: 'age', type: 'number' },
+        [testVariableId('p-pets')]: {
           name: 'pets',
           type: 'categorical',
           options: [
-            { label: { en: 'Cat' }, value: 'cat' },
-            { label: { en: 'Dog' }, value: 'dog' },
+            {
+              id: testOptionId('pets/cat'),
+              label: { en: 'Cat' },
+              value: 'cat',
+            },
+            {
+              id: testOptionId('pets/dog'),
+              label: { en: 'Dog' },
+              value: 'dog',
+            },
           ],
         },
-        'p-city': { name: 'city', type: 'text' },
+        [testVariableId('p-city')]: { name: 'city', type: 'text' },
       },
     },
-    contact: {
+    [testTypeId('contact')]: {
       name: 'Contact',
       color: 'node-color-seq-2',
       shape: { default: 'circle' },
       variables: {
-        'c-name': {
+        [testVariableId('c-name')]: {
           name: 'name',
           type: 'text',
           encrypted: true,
@@ -290,11 +305,11 @@ const recordedCodebook: Codebook = {
     },
   },
   edge: {
-    knows: {
+    [testTypeId('knows')]: {
       name: 'Knows',
       color: 'edge-color-seq-1',
       variables: {
-        'k-since': { name: 'since', type: 'text' },
+        [testVariableId('k-since')]: { name: 'since', type: 'text' },
       },
     },
   },
@@ -311,44 +326,52 @@ const recordedInterview: InterviewExportInput = {
     nodes: [
       {
         [entityPrimaryKeyProperty]: 'person-1',
-        type: 'person',
+        type: testTypeId('person'),
         [entityAttributesProperty]: {
-          'p-name': nameCiphertext,
-          'p-age': nameCiphertext,
-          'p-pets': nameCiphertext,
-          'p-city': 'Lisbon',
+          [testVariableId('p-name')]: nameCiphertext,
+          [testVariableId('p-age')]: nameCiphertext,
+          [testVariableId('p-pets')]: nameCiphertext,
+          [testVariableId('p-city')]: 'Lisbon',
           'roster-note': nameCiphertext,
         },
         ...secureAttributes(
           { iv: valueIv },
-          'p-name',
-          'p-age',
-          'p-pets',
+          testVariableId('p-name'),
+          testVariableId('p-age'),
+          testVariableId('p-pets'),
           'roster-note',
         ),
       },
       {
         // Encrypted, and its record lost: still never written.
         [entityPrimaryKeyProperty]: 'contact-1',
-        type: 'contact',
-        [entityAttributesProperty]: { 'c-name': nicknameCiphertext },
+        type: testTypeId('contact'),
+        [entityAttributesProperty]: {
+          [testVariableId('c-name')]: nicknameCiphertext,
+        },
       },
       {
         // Written in the clear, as a roster's names are.
         [entityPrimaryKeyProperty]: 'contact-2',
-        type: 'contact',
-        [entityAttributesProperty]: { 'c-name': 'Ana from the roster' },
+        type: testTypeId('contact'),
+        [entityAttributesProperty]: {
+          [testVariableId('c-name')]: 'Ana from the roster',
+        },
       },
       {
         // Answered in the clear over encrypted answers, by a runtime that
         // left their records in place.
         [entityPrimaryKeyProperty]: 'contact-3',
-        type: 'contact',
+        type: testTypeId('contact'),
         [entityAttributesProperty]: {
-          'c-name': 'Bea',
+          [testVariableId('c-name')]: 'Bea',
           'roster-note': 'met at work',
         },
-        ...secureAttributes({ iv: valueIv }, 'c-name', 'roster-note'),
+        ...secureAttributes(
+          { iv: valueIv },
+          testVariableId('c-name'),
+          'roster-note',
+        ),
       },
     ],
     edges: [
@@ -356,15 +379,19 @@ const recordedInterview: InterviewExportInput = {
         [entityPrimaryKeyProperty]: 'edge-1',
         from: 'person-1',
         to: 'contact-1',
-        type: 'knows',
-        [entityAttributesProperty]: { 'k-since': nameCiphertext },
-        ...secureAttributes({ iv: valueIv }, 'k-since'),
+        type: testTypeId('knows'),
+        [entityAttributesProperty]: {
+          [testVariableId('k-since')]: nameCiphertext,
+        },
+        ...secureAttributes({ iv: valueIv }, testVariableId('k-since')),
       },
     ],
     ego: {
       [entityPrimaryKeyProperty]: 'ego-1',
-      [entityAttributesProperty]: { 'e-note': nameCiphertext },
-      ...secureAttributes({ iv: valueIv }, 'e-note'),
+      [entityAttributesProperty]: {
+        [testVariableId('e-note')]: nameCiphertext,
+      },
+      ...secureAttributes({ iv: valueIv }, testVariableId('e-note')),
     },
   },
 };

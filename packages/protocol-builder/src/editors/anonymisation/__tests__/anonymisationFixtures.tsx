@@ -5,7 +5,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
+import { fixtureTypeId } from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
 
 const nodeSection = (typeId: string) =>
   sectionId({ kind: 'codebookNode', typeId });
@@ -21,7 +24,8 @@ export const personVariable = (
   harness: StageEditorHarness,
   variableId: string,
 ): Readonly<Record<string, unknown>> => {
-  const variable = harness.hostCodebook().node?.person?.variables?.[variableId];
+  const variable =
+    harness.hostCodebook().node?.[PERSON]?.variables?.[variableId];
   if (variable === undefined) {
     throw new Error(`the person type has no "${variableId}" attribute`);
   }
@@ -42,7 +46,7 @@ const typeDocument = (
 
 /** The person type as the authoritative protocol currently holds it. */
 export const personDocument = (harness: StageEditorHarness) =>
-  typeDocument(harness, 'person');
+  typeDocument(harness, PERSON);
 
 /**
  * One attribute of one type, left there by a COLLABORATOR.
@@ -111,7 +115,7 @@ export const switchOnType = async (
  * both — which is what the tests that deliver one afterwards are about.
  */
 export const alreadyProtecting =
-  (variableId: string, typeId = 'person') =>
+  (variableId: string, typeId = PERSON) =>
   (host: InMemoryHost): ProtocolBuilderAdapter => {
     const section = nodeSection(typeId);
     const definition = host.store.read(section).document;
@@ -134,14 +138,14 @@ export const alreadyProtecting =
 export const personRule = (id: string, attribute: string): SectionDoc => ({
   id,
   type: 'node',
-  options: { type: 'person', attribute, operator: 'EXACTLY', value: 'Ada' },
+  options: { type: PERSON, attribute, operator: 'EXACTLY', value: 'Ada' },
 });
 
 /** A node rule asking only whether one `person` attribute was answered. */
 export const answeredRule = (id: string, attribute: string): SectionDoc => ({
   id,
   type: 'node',
-  options: { type: 'person', attribute, operator: 'EXISTS' },
+  options: { type: PERSON, attribute, operator: 'EXISTS' },
 });
 
 /**

@@ -26,11 +26,15 @@ import {
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
+import { testId, testTypeId } from '../../testing/testId.ts';
 import {
   useProtocolBuilderContext,
   type ProtocolBuilderAdapter,
 } from '../context.ts';
 import { useEntityTypes, useSection, useSectionMutation } from '../hooks.ts';
+
+const PLACE_TYPE = testTypeId('place');
 
 /** The edit these calls are made from: one editor, open throughout. */
 const EDIT = 'edit-1';
@@ -41,8 +45,14 @@ const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
-const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
+const EGO_FORM = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('ego-form-1'),
+});
 
 const COLLABORATOR = {
   sessionId: 'session-2',
@@ -332,9 +342,9 @@ describe('the protocol state layer', () => {
   it('lists a section created while the section list was in flight', async () => {
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(FIXTURE),
-      nextId: () => 'place',
+      nextId: () => PLACE_TYPE,
     });
-    const created = sectionId({ kind: 'codebookNode', typeId: 'place' });
+    const created = sectionId({ kind: 'codebookNode', typeId: PLACE_TYPE });
     const gated = gatedSectionList(host);
     const watched = watchedEvents(gated.adapter);
     render(
@@ -453,7 +463,10 @@ describe('the protocol state layer', () => {
 
   it('says a section is unavailable when its acquire is refused', async () => {
     const host = newHost();
-    const missing = sectionId({ kind: 'stage', stageId: 'never-existed' });
+    const missing = sectionId({
+      kind: 'stage',
+      stageId: testId('never-existed'),
+    });
 
     render(
       <ProtocolBuilder

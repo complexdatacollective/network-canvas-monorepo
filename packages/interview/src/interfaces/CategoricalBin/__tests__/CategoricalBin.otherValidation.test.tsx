@@ -18,6 +18,7 @@ import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
   asEntityAttributeReference,
   type Codebook,
+  dynamicValueNameFor,
   type Validation,
 } from '@codaco/protocol-validation';
 import {
@@ -26,6 +27,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
@@ -122,13 +124,13 @@ beforeEach(() => {
   track.mockClear();
 });
 
-const NODE_TYPE = 'person';
-const CATEGORY_VARIABLE = 'category';
-const OTHER_VARIABLE = 'otherReason';
-const NOTE_VARIABLE = 'existingNote';
-const COLLIDING_SIBLING_VARIABLE = 'otherVariable';
-const STAGE_ID = 'categorical-bin-stage';
-const PROMPT_ID = 'prompt-1';
+const NODE_TYPE = testTypeId('person');
+const CATEGORY_VARIABLE = testVariableId('category');
+const OTHER_VARIABLE = testVariableId('otherReason');
+const NOTE_VARIABLE = testVariableId('existingNote');
+const SIBLING_VARIABLE = testVariableId('otherVariable');
+const STAGE_ID = testId('categorical-bin-stage');
+const PROMPT_ID = testId('prompt-1');
 const OTHER_PROMPT_TEXT = 'Please specify the other category';
 const RESERVED_NOTE_VALUE = 'reserved-value';
 // Only one categorical option is configured, so the bins array is
@@ -141,7 +143,7 @@ function buildNode(): NcNode {
     type: NODE_TYPE,
     [entityAttributesProperty]: {
       [NOTE_VARIABLE]: RESERVED_NOTE_VALUE,
-      [COLLIDING_SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
+      [SIBLING_VARIABLE]: RESERVED_NOTE_VALUE,
     },
   };
 }
@@ -173,7 +175,13 @@ function buildCodebook(
             // to [category option, other bin] with the "other" bin at index 1
             // as long as there is exactly one option — matching
             // OTHER_BIN_INDEX below.
-            options: [{ label: { en: 'Family' }, value: 1 }],
+            options: [
+              {
+                id: testId('option family'),
+                label: { en: 'Family' },
+                value: 1,
+              },
+            ],
           },
           ...(omitOtherVariable
             ? {}
@@ -190,7 +198,7 @@ function buildCodebook(
             type: 'text',
             component: 'Text',
           },
-          [COLLIDING_SIBLING_VARIABLE]: {
+          [SIBLING_VARIABLE]: {
             name: 'Collision-prone sibling',
             type: 'text',
             component: 'Text',
@@ -280,21 +288,22 @@ function CaptureDndStore({
 }
 
 // The participant's own answer, which the "other" question shows.
-const EGO_NAME_VARIABLE = 'egoName';
+const EGO_NAME_VARIABLE = testVariableId('egoName');
+const EGO_NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: EGO_NAME_VARIABLE,
+});
 
 function renderCategoricalBin(
   otherValidation?: Validation,
   omitOtherComponent = false,
   omitOtherVariable = false,
   otherVariable = OTHER_VARIABLE,
-  /**
-   * An "other" question that shows the participant's name, and the name, or
-   * the values `bindings` names.
-   */
+  /** An "other" question that shows values, and the participant's name. */
   dynamic?: {
     prompt: string;
     egoName: string;
-    bindings?: CategoricalBinStage['dynamicValues'];
   },
 ) {
   const baseProtocol = buildProtocol(
@@ -310,9 +319,6 @@ function renderCategoricalBin(
       ? baseStage
       : {
           ...baseStage,
-          dynamicValues: dynamic.bindings ?? {
-            name: { path: `ego.${EGO_NAME_VARIABLE}` },
-          },
           prompts: baseStage.prompts.map((each) => ({
             ...each,
             otherVariablePrompt: { en: dynamic.prompt },
@@ -698,9 +704,9 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     expect(getOtherAttribute(store)).toBe('a genuinely new reason');
   });
 
-  it('resolves a reference to a sibling literally named otherVariable instead of comparing the dialog answer with itself', async () => {
+  it('resolves a reference to a second sibling instead of comparing the dialog answer with itself', async () => {
     const { store, getDndStore } = renderCategoricalBin({
-      differentFrom: asEntityAttributeReference(COLLIDING_SIBLING_VARIABLE),
+      differentFrom: asEntityAttributeReference(SIBLING_VARIABLE),
     });
 
     await dropNodeIntoOtherBin(getDndStore);
@@ -786,8 +792,7 @@ describe('CategoricalBin queued dialog localization', () => {
       false,
       OTHER_VARIABLE,
       {
-        prompt:
-          '{name, select, missing {Why other?} other {Why **other**, {name}?}}',
+        prompt: `{${EGO_NAME}, select, missing {Why other?} other {Why **other**, {${EGO_NAME}}?}}`,
         egoName: '[continue](https://example.test)',
       },
     );
@@ -809,12 +814,8 @@ describe('CategoricalBin queued dialog localization', () => {
       false,
       OTHER_VARIABLE,
       {
-        prompt: 'Why is {label} ({note}) other?',
+        prompt: `Why is {${dynamicValueNameFor({ kind: 'label', role: 'node' })}} ({${dynamicValueNameFor({ kind: 'attribute', role: 'node', variableId: NOTE_VARIABLE })}}) other?`,
         egoName: 'Ada',
-        bindings: {
-          label: { path: 'node.$label' },
-          note: { path: `node.${NOTE_VARIABLE}` },
-        },
       },
     );
     await dropNodeIntoOtherBin(getDndStore);

@@ -3,13 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { Variable } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { buildRosterSortConfig } from './buildRosterSortConfig';
 
-const nameVariableId = 'var-name';
-const ageVariableId = 'var-age';
-const lastNameVariableId = 'var-last';
-const firstNameVariableId = 'var-first';
-const levelVariableId = 'var-level';
+const nameVariableId = testVariableId('var-name');
+const ageVariableId = testVariableId('var-age');
+const lastNameVariableId = testVariableId('var-last');
+const firstNameVariableId = testVariableId('var-first');
+const levelVariableId = testVariableId('var-level');
 
 const nodeVariables: Record<string, Variable> = {
   [nameVariableId]: { name: 'name', type: 'text' },
@@ -26,9 +27,21 @@ const nodeVariables: Record<string, Variable> = {
     name: 'level',
     type: 'ordinal',
     options: [
-      { label: { en: 'Low' }, value: 'low' },
-      { label: { en: 'Medium' }, value: 'medium' },
-      { label: { en: 'High' }, value: 'high' },
+      {
+        id: testId('buildRosterSortConfig option 1'),
+        label: { en: 'Low' },
+        value: 'low',
+      },
+      {
+        id: testId('buildRosterSortConfig option 2'),
+        label: { en: 'Medium' },
+        value: 'medium',
+      },
+      {
+        id: testId('buildRosterSortConfig option 3'),
+        label: { en: 'High' },
+        value: 'high',
+      },
     ],
   },
 };

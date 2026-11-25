@@ -11,9 +11,6 @@ import type { VariableType, Variables } from '@codaco/protocol-validation';
 import {
   buildExclusiveVariableSlotMap,
   buildVariableRoleMap,
-  excludeInterfaceOwned,
-  excludeUnvalidatedUses,
-  excludeValidatedUses,
   hasUnvalidatedUse,
   hasValidatedUse,
   interfaceOwnedPickIssue,
@@ -39,8 +36,14 @@ import AttributeValueFields, {
 import { useCreateAttributeForSlot } from '../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { slotVariableMessages } from './slotVariableMessages.ts';
-import { draftBoundElsewhereIssue } from './slotVariableWiring.ts';
+import {
+  draftBoundElsewhereIssue,
+  slotPickerOptions,
+  subjectVariableOptions,
+} from './slotVariableWiring.ts';
 import VariablePickerField from './VariablePickerField.tsx';
+
+const NO_CLAIMS: ExclusiveVariableSlotMap = Object.freeze({});
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -194,44 +197,36 @@ export default function BinAttributeField({
     // The role map excludes the stage being edited: this form's own unsaved
     // prompts are the authority on what this stage writes, and the saved copy
     // of them is stale the moment editing begins.
-    const roleMap = buildVariableRoleMap(protocolContext, identity.id);
-    const pool = Object.entries(allVariables).flatMap(([value, variable]) =>
-      variable.type === slot.variableType
-        ? [{ value, label: variable.name, type: variable.type }]
-        : [],
-    );
-    const keep = picked === undefined ? [] : [picked];
-    const withoutConflicts =
-      slot.writerClass === 'unvalidated'
-        ? excludeValidatedUses(roleMap, subject, pool, keep)
-        : excludeUnvalidatedUses(roleMap, subject, pool, keep);
+    //
     // An attribute another interface DERIVES from the structure a participant
     // builds is never a bin: this stage writes it by drag-and-drop and would
     // overwrite what that interface computes. An attribute whose VALUES an
-    // interface owns is a different matter and stays on offer — sorting family
-    // members by sex is legitimate authoring — with its values shown read-only
-    // below.
-    const withoutDraftConflicts = withoutConflicts.filter(
-      (option) =>
-        option.value === picked ||
-        (draftConflicting?.includes(option.value) !== true &&
-          draftBoundElsewhere?.includes(option.value) !== true),
-    );
-    const withoutSavedOwners = excludeInterfaceOwned(
-      buildExclusiveVariableSlotMap(protocolContext),
+    // interface owns is a different matter and can still be chosen — sorting
+    // family members by sex is legitimate authoring — with its values shown
+    // read-only below.
+    return slotPickerOptions({
+      roleMap: buildVariableRoleMap(protocolContext, identity.id),
+      slotMap: buildExclusiveVariableSlotMap(protocolContext),
+      draftSlotMap: draftSlotMap ?? NO_CLAIMS,
       subject,
-      withoutDraftConflicts,
-      keep,
-    );
-    return draftSlotMap === undefined
-      ? withoutSavedOwners
-      : excludeInterfaceOwned(draftSlotMap, subject, withoutSavedOwners, keep);
+      options: subjectVariableOptions(
+        protocolContext,
+        subject,
+        slot.variableType,
+        intl,
+      ),
+      ...(picked === undefined ? {} : { currentValue: picked }),
+      writerClass: slot.writerClass,
+      ...(draftConflicting === undefined ? {} : { draftConflicting }),
+      ...(draftBoundElsewhere === undefined ? {} : { draftBoundElsewhere }),
+      intl,
+    });
   }, [
-    allVariables,
     draftBoundElsewhere,
     draftConflicting,
     draftSlotMap,
     identity.id,
+    intl,
     picked,
     protocolContext,
     slot,

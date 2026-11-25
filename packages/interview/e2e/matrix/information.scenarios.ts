@@ -1,7 +1,10 @@
 import path from 'node:path';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import { assetBlockMarkdown } from '@codaco/protocol-validation';
+import {
+  assetBlockMarkdown,
+  dynamicValueNameFor,
+} from '@codaco/protocol-validation';
 
 import { expect } from '../fixtures/matrix-test.js';
 import { DEV_PROTOCOL_ASSETS_DIR } from '../helpers/protocol-paths.js';
@@ -82,7 +85,11 @@ export const informationScenarios: InterfaceScenarios = {
         await expect(page.locator('strong', { hasText: 'bold' })).toBeVisible();
         await expect(page.locator('em', { hasText: 'italic' })).toBeVisible();
         await expect(page.locator('main li')).toHaveCount(2);
-        // Sanitization: no script execution, no script element
+        // HTML is not part of protocol text: the tag is shown as the
+        // characters typed, and nothing runs.
+        await expect(
+          page.getByText('<script>window.__pwned=1</script> plain tail text'),
+        ).toBeVisible();
         await expect(page.locator('main script')).toHaveCount(0);
         const pwned = await page.evaluate(
           () => (window as { __pwned?: number }).__pwned,
@@ -482,20 +489,20 @@ export const informationScenarios: InterfaceScenarios = {
             component: 'Text',
             prompt: 'What is your name?',
           });
-        const info = synth.addInformationStage({
+        const name = dynamicValueNameFor({
+          kind: 'attribute',
+          role: 'ego',
+          variableId: nameVar.id,
+        });
+        synth.addInformationStage({
           label: 'Welcome',
           title: {
-            'en-US':
-              '{name, select, missing {Welcome} other {Welcome, {name}}}',
+            'en-US': `{${name}, select, missing {Welcome} other {Welcome, {${name}}}}`,
           },
           text: {
-            'en-US':
-              'Thanks for **joining**{name, select, missing {.} other {, {name}.}}',
+            'en-US': `Thanks for **joining**{${name}, select, missing {.} other {, {${name}}.}}`,
           },
         });
-        info.stageEntry.dynamicValues = {
-          name: { path: `ego.${nameVar.id}` },
-        };
         return synth;
       },
       run: async ({ page, interview }) => {

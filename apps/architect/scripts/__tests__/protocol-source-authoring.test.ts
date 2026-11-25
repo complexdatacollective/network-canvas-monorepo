@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
   type CurrentProtocol,
+  ProtocolObjectIdSchema,
   validateProtocol,
 } from '@codaco/protocol-validation';
 import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation/schema-version';
@@ -57,6 +58,10 @@ const manifest = {
   ],
 };
 
+const FINISH_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '4c8e2a61-7d3b-4f9e-8a15-6b0d2c9e7f34',
+);
+
 const makeProtocol = (
   assetManifest: CurrentProtocol['assetManifest'] = {},
 ): CurrentProtocol =>
@@ -66,7 +71,7 @@ const makeProtocol = (
     localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [
       {
-        id: 'finish',
+        id: FINISH_STAGE_ID,
         type: 'FinishSession',
         label: { en: 'Finish' },
         mode: 'confirmation',

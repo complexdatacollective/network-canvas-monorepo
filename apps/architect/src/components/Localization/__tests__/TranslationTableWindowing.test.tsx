@@ -13,6 +13,7 @@ import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { testVariableId } from '@codaco/protocol-builder/testing/testId';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -20,6 +21,7 @@ import { getTranslationGroups } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
 
 import TranslationTable from '../TranslationTable';
+import { FIRST_NAME } from './dynamicValuesProtocol';
 import { largeTranslationProtocol } from './largeTranslationProtocol';
 
 const drewCell = vi.hoisted(() => vi.fn());
@@ -373,16 +375,15 @@ describe('TranslationTable with a large protocol', () => {
       const [firstName] = [{ name: 'first_name', type: 'text' as const }];
       protocol.codebook = {
         ...protocol.codebook,
-        ego: { variables: { firstName } },
+        ego: { variables: { [testVariableId('firstName')]: firstName } },
       };
       protocol.stages = protocol.stages.map((stage, index) =>
         index === 9 && stage.type === 'Information'
           ? {
               ...stage,
               content: {
-                en: 'Hello{name, select, missing {} other {, {name}}}',
+                en: `Hello{${FIRST_NAME}, select, missing {} other {, {${FIRST_NAME}}}}`,
               },
-              dynamicValues: { name: { path: 'ego.firstName' } },
             }
           : stage,
       );

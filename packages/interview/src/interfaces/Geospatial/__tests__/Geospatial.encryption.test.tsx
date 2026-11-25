@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   asEntityAttributeReference,
+  dynamicValueNameFor,
   type Variable,
 } from '@codaco/protocol-validation';
 import {
@@ -18,6 +19,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../../contract/context';
@@ -30,6 +32,7 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import {
   createEncryptionStore,
   encryptionFor,
+  NODE_TYPE,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
@@ -83,9 +86,12 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', StubObserver);
 });
 
+const NAME_VAR = testVariableId('name');
+const NEIGHBOURHOOD_VAR = testVariableId('neighbourhood');
+
 const variables: Record<string, Variable> = {
-  name: { name: 'name', type: 'text', component: 'Text' },
-  neighbourhood: {
+  [NAME_VAR]: { name: 'name', type: 'text', component: 'Text' },
+  [NEIGHBOURHOOD_VAR]: {
     name: 'Neighbourhood',
     type: 'text',
     component: 'Text',
@@ -94,11 +100,11 @@ const variables: Record<string, Variable> = {
 };
 
 const stage: StageProps<'Geospatial'>['stage'] = {
-  id: 'geospatial-stage',
+  id: testId('geospatial-stage'),
   type: 'Geospatial',
   outsideAreasLabel: { en: 'Outside Selectable Areas' },
   label: { en: 'Where people live' },
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: NODE_TYPE },
   mapOptions: {
     tokenAssetId: 'mapbox-token',
     style: 'mapbox://styles/mapbox/standard',
@@ -110,17 +116,17 @@ const stage: StageProps<'Geospatial'>['stage'] = {
   },
   prompts: [
     {
-      id: 'prompt-1',
+      id: testId('prompt-1'),
       text: { en: 'Where does this person live?' },
-      variable: asEntityAttributeReference('neighbourhood'),
+      variable: asEntityAttributeReference(NEIGHBOURHOOD_VAR),
     },
   ],
 };
 
 const person: NcNode = {
   [entityPrimaryKeyProperty]: 'n1',
-  type: 'person',
-  [entityAttributesProperty]: { name: 'Alice' },
+  type: NODE_TYPE,
+  [entityAttributesProperty]: { [NAME_VAR]: 'Alice' },
 };
 
 async function renderGeospatial({
@@ -190,7 +196,7 @@ async function renderGeospatial({
 
 async function readStoredLocation(node: NcNode | undefined) {
   const attribute = node
-    ? readEncryptedAttribute(node, 'neighbourhood', variables)
+    ? readEncryptedAttribute(node, NEIGHBOURHOOD_VAR, variables)
     : undefined;
   if (attribute?.status !== 'encrypted') {
     throw new Error('Expected the location to be stored encrypted');
@@ -202,10 +208,11 @@ async function readStoredLocation(node: NcNode | undefined) {
 describe('Geospatial prompt', () => {
   const namingStage: StageProps<'Geospatial'>['stage'] = {
     ...stage,
-    dynamicValues: { who: { path: 'node.$label' } },
     prompts: stage.prompts.map((prompt) => ({
       ...prompt,
-      text: { en: 'Where does {who} live?' },
+      text: {
+        en: `Where does {${dynamicValueNameFor({ kind: 'label', role: 'node' })}} live?`,
+      },
     })),
   };
 
@@ -258,7 +265,7 @@ describe('Geospatial asking for an encrypted location', () => {
     const stored = await waitFor(() => {
       const [saved] = store.getState().session.network.nodes;
       const attribute = saved
-        ? readEncryptedAttribute(saved, 'neighbourhood', variables)
+        ? readEncryptedAttribute(saved, NEIGHBOURHOOD_VAR, variables)
         : undefined;
       if (attribute?.status !== 'encrypted') {
         throw new Error('Expected the location to be stored encrypted');

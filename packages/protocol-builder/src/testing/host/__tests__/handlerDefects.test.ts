@@ -7,6 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { attempt } from '../../../state/attempt.ts';
 import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import { fixtureStageId } from '../../protocolFixture.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -15,7 +16,10 @@ import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
 import { createWebSocketHost } from '../websocketHost.ts';
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 const WRITER = {
   sessionId: 'writer-session',
   userId: 'writer',

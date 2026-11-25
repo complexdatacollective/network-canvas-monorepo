@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { validateProtocol } from '@codaco/protocol-validation';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import {
+  sectionShapeIssues,
   validateSection,
   validateStageSectionIdentity,
 } from '@codaco/studio-sync/section-validation';
 
 import { sectionizeProtocol } from '../sectionize.ts';
-import { baseProtocol } from './helpers.ts';
+import { BASE_CODEBOOK_IDS, baseProtocol, testTypeId } from './helpers.ts';
 
 describe('validateSection', () => {
   it('accepts every section of a valid protocol', () => {
@@ -101,6 +102,21 @@ describe('validateSection', () => {
     const result = validateStageSectionIdentity('expected', { id: 'other' });
     expect(result.success).toBe(false);
   });
+
+  it('refuses a node or edge type section whose type id is not a UUID', () => {
+    const definition = { name: 'Knows', color: 'edge-color-seq-1' };
+    expect(
+      sectionShapeIssues(
+        `codebook:edge:${BASE_CODEBOOK_IDS.knows}`,
+        definition,
+      ),
+    ).toEqual([]);
+    for (const id of ['codebook:node:person', 'codebook:edge:knows']) {
+      expect(sectionShapeIssues(id, definition)).toContainEqual(
+        expect.objectContaining({ message: expect.stringContaining('UUID') }),
+      );
+    }
+  });
 });
 
 describe('validation layering', () => {
@@ -109,12 +125,12 @@ describe('validation layering', () => {
     // Legal per entity definition, illegal for the codebook as a whole.
     protocol.codebook.node = {
       ...protocol.codebook.node,
-      colleague: {
+      [testTypeId('colleague')]: {
         name: 'Colleague',
         color: 'node-color-seq-2',
         shape: { default: 'circle' },
         variables: {
-          personName: {
+          [BASE_CODEBOOK_IDS.personName]: {
             name: 'OtherName',
             type: 'text',
           },

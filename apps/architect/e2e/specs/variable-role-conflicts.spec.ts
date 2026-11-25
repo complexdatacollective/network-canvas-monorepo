@@ -1,5 +1,10 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testVariableId,
+  withTestCodebookIds,
+} from '@codaco/protocol-builder/testing/testId';
+import {
+  createProtocolObjectId,
   CurrentProtocolSchema,
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
@@ -8,8 +13,12 @@ import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { readStageJson } from '../helpers/read-store.js';
 import {
+  attributeRows,
   dismissAttributeWindow,
+  offeredAttributeRows,
   openAttributeWindow,
+  unavailableAttributeRows,
+  unavailableReason,
 } from '../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
@@ -26,16 +35,17 @@ const categoricalOptions = [
 // Builds a protocol with a form+bin cross-class conflict on `sharedVar` (an
 // AlterForm field — a VALIDATED writer — and a CategoricalBin prompt's
 // `variable` — an UNVALIDATED writer — both on node type "person"), plus two
-// single-role variables (`formOnlyVar`, `binOnlyVar`) that must each stay
-// excluded from the *other* class's picker, and one wholly unused `cleanVar`
-// confirming the pickers aren't just returning an empty list. Each writer
+// single-role variables (`formOnlyVar`, `binOnlyVar`) that the *other*
+// class's picker must list as not available here, and one wholly unused
+// `cleanVar` confirming the pickers aren't just returning an empty list. Each writer
 // gets its own stage (rather than sharing one AlterForm/CategoricalBin stage
 // with two fields/prompts) so every array field section holds exactly one row
 // — no need to disambiguate rows by index or preview text.
 // Variable "name"s are what the alert/picker render as the visible label, so
 // they are kept short and plain here. A name may be any text a
-// `CodebookNameSchema` accepts, spaces and any script included; only the
-// codebook keys are held to `CodebookIdSchema`'s `/^[a-zA-Z0-9._:-]+$/`.
+// `CodebookNameSchema` accepts, spaces and any script included. Codebook keys
+// must be UUIDs, so the fixture is written with readable keys and given UUIDs
+// by `withTestCodebookIds`.
 // Passed through CurrentProtocolSchema.parse (like
 // helpers/load-fixture.ts's loadAllInterfacesFixture) rather than typed
 // directly as CurrentProtocol: entityAttributeReference's branded string
@@ -45,107 +55,109 @@ const categoricalOptions = [
 // real-shape at the same time.
 function conflictProtocol(): CurrentProtocol {
   return CurrentProtocolSchema.parse(
-    withInterfaceText({
-      name: 'Variable Role Conflicts E2E',
-      schemaVersion: 9,
-      localization: { defaultLocale: 'en', locales: ['en'] },
-      codebook: {
-        node: {
-          person: {
-            name: 'Person',
-            color: 'node-color-seq-1',
-            shape: { default: 'circle' },
-            variables: {
-              sharedVar: {
-                name: 'sharedVar',
-                type: 'categorical',
-                // Referenced by an AlterForm field below — schema.ts's
-                // logic refinements reject a form-field variable with no
-                // `component` ("must define a component ... to be rendered
-                // as a form field").
-                component: 'CheckboxGroup',
-                options: categoricalOptions,
-              },
-              formOnlyVar: {
-                name: 'formOnlyVar',
-                type: 'categorical',
-                component: 'CheckboxGroup',
-                options: categoricalOptions,
-              },
-              binOnlyVar: {
-                name: 'binOnlyVar',
-                type: 'categorical',
-                options: categoricalOptions,
-              },
-              cleanVar: {
-                name: 'cleanVar',
-                type: 'categorical',
-                options: categoricalOptions,
+    withInterfaceText(
+      withTestCodebookIds({
+        name: 'Variable Role Conflicts E2E',
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-1',
+              shape: { default: 'circle' },
+              variables: {
+                sharedVar: {
+                  name: 'sharedVar',
+                  type: 'categorical',
+                  // Referenced by an AlterForm field below — schema.ts's
+                  // logic refinements reject a form-field variable with no
+                  // `component` ("must define a component ... to be rendered
+                  // as a form field").
+                  component: 'CheckboxGroup',
+                  options: categoricalOptions,
+                },
+                formOnlyVar: {
+                  name: 'formOnlyVar',
+                  type: 'categorical',
+                  component: 'CheckboxGroup',
+                  options: categoricalOptions,
+                },
+                binOnlyVar: {
+                  name: 'binOnlyVar',
+                  type: 'categorical',
+                  options: categoricalOptions,
+                },
+                cleanVar: {
+                  name: 'cleanVar',
+                  type: 'categorical',
+                  options: categoricalOptions,
+                },
               },
             },
           },
         },
-      },
-      stages: [
-        {
-          id: 'shared-field-form',
-          type: 'AlterForm',
-          label: { en: 'Person Details' },
-          subject: { entity: 'node', type: 'person' },
-          form: {
-            fields: [
+        stages: [
+          {
+            id: createProtocolObjectId(),
+            type: 'AlterForm',
+            label: { en: 'Person Details' },
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              fields: [
+                {
+                  id: createProtocolObjectId(),
+                  variable: 'sharedVar',
+                  prompt: { en: 'Shared field prompt' },
+                },
+              ],
+            },
+          },
+          {
+            id: createProtocolObjectId(),
+            type: 'AlterForm',
+            label: { en: 'Extra Person Form' },
+            subject: { entity: 'node', type: 'person' },
+            form: {
+              fields: [
+                {
+                  id: createProtocolObjectId(),
+                  variable: 'formOnlyVar',
+                  prompt: { en: 'Form only field prompt' },
+                },
+              ],
+            },
+          },
+          {
+            id: createProtocolObjectId(),
+            type: 'CategoricalBin',
+            label: { en: 'Contact Category' },
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
               {
-                id: 'field-1',
+                id: createProtocolObjectId(),
+                text: { en: 'Shared bin prompt' },
                 variable: 'sharedVar',
-                prompt: { en: 'Shared field prompt' },
               },
             ],
           },
-        },
-        {
-          id: 'form-only-form',
-          type: 'AlterForm',
-          label: { en: 'Extra Person Form' },
-          subject: { entity: 'node', type: 'person' },
-          form: {
-            fields: [
+          {
+            id: createProtocolObjectId(),
+            type: 'CategoricalBin',
+            label: { en: 'Extra Category Bin' },
+            subject: { entity: 'node', type: 'person' },
+            prompts: [
               {
-                id: 'field-1',
-                variable: 'formOnlyVar',
-                prompt: { en: 'Form only field prompt' },
+                id: createProtocolObjectId(),
+                text: { en: 'Bin only prompt' },
+                variable: 'binOnlyVar',
               },
             ],
           },
-        },
-        {
-          id: 'shared-bin',
-          type: 'CategoricalBin',
-          label: { en: 'Contact Category' },
-          subject: { entity: 'node', type: 'person' },
-          prompts: [
-            {
-              id: 'shared-bin-prompt',
-              text: { en: 'Shared bin prompt' },
-              variable: 'sharedVar',
-            },
-          ],
-        },
-        {
-          id: 'bin-only-bin',
-          type: 'CategoricalBin',
-          label: { en: 'Extra Category Bin' },
-          subject: { entity: 'node', type: 'person' },
-          prompts: [
-            {
-              id: 'bin-only-prompt',
-              text: { en: 'Bin only prompt' },
-              variable: 'binOnlyVar',
-            },
-          ],
-        },
-        ...emptyProtocol().stages,
-      ],
-    }),
+          ...emptyProtocol().stages,
+        ],
+      }),
+    ),
   );
 }
 
@@ -185,7 +197,7 @@ test('surfaces a form+bin variable role conflict in the timeline alert and Stage
   ).toBeVisible();
 });
 
-test("excludes each writer's picker from offering the other class's variable, while keeping the current selection", async ({
+test("lists the other class's variable in each writer's picker as not available, with the reason, while keeping the current selection", async ({
   architectPage,
   seed,
 }) => {
@@ -195,15 +207,18 @@ test("excludes each writer's picker from offering the other class's variable, wh
   const timeline = new Timeline(architectPage);
   const editor = new StageEditor(architectPage);
 
-  // Both pickers are `@codaco/protocol-builder`'s `VariablePickerField` — a
-  // native `<select>`, so what a picker offers is read off its `<option>`s
-  // rather than off a spotlight's result rows.
+  // Both pickers are `@codaco/protocol-builder`'s `VariablePickerField`. It
+  // lists every attribute of the subject, and the caller marks the ones that
+  // cannot be chosen here (`codebook/attributeAvailability.ts`): those are
+  // `aria-disabled`, sit under "Not available here", and choosing one shows
+  // the reason instead of choosing it. Nothing has been typed in either popup,
+  // so there is no create row and every option is an attribute.
   //
   // AlterForm's field `variable` picker is a VALIDATED writer
-  // (`FormFieldsSection`'s `AttributePicker` calls `excludeUnvalidatedUses`):
-  // it must drop binOnlyVar (an UNVALIDATED-only writer elsewhere), while
-  // keeping the field's own current value (sharedVar, also itself part of the
-  // conflict) and the unrelated cleanVar.
+  // (`FormFieldsSection` calls `markCrossClassUses`): it must rule out
+  // binOnlyVar (an UNVALIDATED-only writer elsewhere), while keeping the
+  // field's own current value (sharedVar, also itself part of the conflict)
+  // and the unrelated cleanVar on offer.
   await timeline.openStage('Person Details');
   await editor
     .section('Form configuration')
@@ -217,17 +232,33 @@ test("excludes each writer's picker from offering the other class's variable, wh
   const formWindow = await openAttributeWindow(
     fieldDialog.locator('[data-field-name="variable"]'),
   );
-  const formPickerItems = formWindow.getByRole('option');
-  // Three: the attributes this picker may offer, and nothing else. Inventing
-  // one is the window's create row, which is offered against a TYPED name —
-  // nothing has been typed here, so the list is exactly what is on offer.
-  await expect(formPickerItems).toHaveCount(3);
-  await expect(formPickerItems.filter({ hasText: 'binOnlyVar' })).toHaveCount(
-    0,
+  await expect(formWindow.getByRole('option')).toHaveCount(4);
+  await expect(offeredAttributeRows(formWindow, 'sharedVar')).toBeVisible();
+  await expect(offeredAttributeRows(formWindow, 'cleanVar')).toBeVisible();
+  await expect(offeredAttributeRows(formWindow, 'formOnlyVar')).toBeVisible();
+  await expect(
+    formWindow
+      .getByRole('group', { name: 'Not available here', exact: true })
+      .getByRole('option'),
+  ).toHaveCount(1);
+  await expect(
+    formWindow
+      .getByRole('group', { name: 'Not available here', exact: true })
+      .getByRole('option', { name: 'binOnlyVar', exact: true }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  expect(await unavailableReason(formWindow, 'binOnlyVar')).toBe(
+    'The “Extra Category Bin” stage sets this attribute without validation, so it cannot also be collected here.',
   );
-  await expect(formPickerItems.filter({ hasText: 'sharedVar' })).toHaveCount(1);
-  await expect(formPickerItems.filter({ hasText: 'cleanVar' })).toHaveCount(1);
+  // Choosing it chose nothing: the popup is still open on the same list, and
+  // the row is still the one that cannot be chosen.
+  await expect(formWindow).toBeVisible();
+  await expect(
+    unavailableAttributeRows(formWindow, 'binOnlyVar'),
+  ).toBeVisible();
   await dismissAttributeWindow(formWindow);
+  await expect(
+    fieldDialog.locator('[data-field-name="variable"]').locator('data[value]'),
+  ).toHaveAttribute('value', 'sharedVar');
 
   // Navigating away (rather than closing the dialog first) is deliberate:
   // nothing has been touched, so there is nothing to discard, and it sidesteps
@@ -235,10 +266,10 @@ test("excludes each writer's picker from offering the other class's variable, wh
   await gotoProtocol(architectPage);
 
   // CategoricalBin's prompt `variable` picker is an UNVALIDATED writer
-  // (`BinAttributeField` calls `excludeValidatedUses` for a slot whose writer
-  // class is unvalidated): it must drop formOnlyVar (a VALIDATED-only writer
+  // (`BinAttributeField` marks validated uses for a slot whose writer class is
+  // unvalidated): it must rule out formOnlyVar (a VALIDATED-only writer
   // elsewhere), while keeping the prompt's own current value (sharedVar) and
-  // the unrelated cleanVar.
+  // the unrelated cleanVar on offer.
   await timeline.openStage('Contact Category');
   await editor
     .field('prompts')
@@ -252,17 +283,32 @@ test("excludes each writer's picker from offering the other class's variable, wh
   const binWindow = await openAttributeWindow(
     promptDialog.locator('[data-field-name="variable"]'),
   );
-  const binPickerItems = binWindow.getByRole('option');
-  // Three, for the same reason: this picker offers creation too — a bin
+  // Four for the same reason: this picker offers creation too — a bin
   // attribute IS its list of values, so its create row escalates to the
-  // codebook editor — but no row is drawn until a name is typed.
-  await expect(binPickerItems).toHaveCount(3);
-  await expect(binPickerItems.filter({ hasText: 'formOnlyVar' })).toHaveCount(
-    0,
+  // codebook editor — but no create row is drawn until a name is typed.
+  await expect(binWindow.getByRole('option')).toHaveCount(4);
+  await expect(attributeRows(binWindow)).toHaveCount(4);
+  await expect(offeredAttributeRows(binWindow, 'sharedVar')).toBeVisible();
+  await expect(offeredAttributeRows(binWindow, 'cleanVar')).toBeVisible();
+  await expect(offeredAttributeRows(binWindow, 'binOnlyVar')).toBeVisible();
+  await expect(
+    binWindow
+      .getByRole('group', { name: 'Not available here', exact: true })
+      .getByRole('option'),
+  ).toHaveCount(1);
+  await expect(
+    binWindow
+      .getByRole('group', { name: 'Not available here', exact: true })
+      .getByRole('option', { name: 'formOnlyVar', exact: true }),
+  ).toHaveAttribute('aria-disabled', 'true');
+  expect(await unavailableReason(binWindow, 'formOnlyVar')).toBe(
+    'The “Extra Person Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
   );
-  await expect(binPickerItems.filter({ hasText: 'sharedVar' })).toHaveCount(1);
-  await expect(binPickerItems.filter({ hasText: 'cleanVar' })).toHaveCount(1);
+  await expect(binWindow).toBeVisible();
   await dismissAttributeWindow(binWindow);
+  await expect(
+    promptDialog.locator('[data-field-name="variable"]').locator('data[value]'),
+  ).toHaveAttribute('value', 'sharedVar');
 
   await gotoProtocol(architectPage);
 
@@ -272,11 +318,15 @@ test("excludes each writer's picker from offering the other class's variable, wh
   if (alterFormStage.type !== 'AlterForm') {
     throw new Error('expected stage 0 to still be an AlterForm');
   }
-  expect(alterFormStage.form.fields[0]?.variable).toBe('sharedVar');
+  expect(alterFormStage.form.fields[0]?.variable).toBe(
+    testVariableId('sharedVar'),
+  );
 
   const categoricalBinStage = await readStageJson(architectPage, 2);
   if (categoricalBinStage.type !== 'CategoricalBin') {
     throw new Error('expected stage 2 to still be a CategoricalBin');
   }
-  expect(categoricalBinStage.prompts[0]?.variable).toBe('sharedVar');
+  expect(categoricalBinStage.prompts[0]?.variable).toBe(
+    testVariableId('sharedVar'),
+  );
 });

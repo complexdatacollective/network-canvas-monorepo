@@ -13,10 +13,13 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import {
+  AGE_VARIABLE,
   createEncryptionStore,
   encryptedVariables,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   unlockWith,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { encryptionUnlocked } from '../../store/modules/ui';
@@ -28,11 +31,19 @@ import useSortedNodeList from '../useSortedNodeList';
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
 const byName: SortRule[] = [
-  { property: asEntityAttributeReference('name'), direction: 'asc' },
+  {
+    id: testId('sort-name'),
+    property: asEntityAttributeReference(NAME_VARIABLE),
+    direction: 'asc',
+  },
 ];
 const byNameThenAge: SortRule[] = [
   ...byName,
-  { property: asEntityAttributeReference('age'), direction: 'asc' },
+  {
+    id: testId('sort-age'),
+    property: asEntityAttributeReference(AGE_VARIABLE),
+    direction: 'asc',
+  },
 ];
 
 const ids = (nodes: readonly NcNode[]) =>
@@ -40,7 +51,10 @@ const ids = (nodes: readonly NcNode[]) =>
 
 const withAge = (node: NcNode, age: number): NcNode => ({
   ...node,
-  [entityAttributesProperty]: { ...node[entityAttributesProperty], age },
+  [entityAttributesProperty]: {
+    ...node[entityAttributesProperty],
+    [AGE_VARIABLE]: age,
+  },
 });
 
 /**

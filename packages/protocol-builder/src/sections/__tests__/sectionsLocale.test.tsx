@@ -10,21 +10,46 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { attributeField } from '../../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+} from '../../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
 } from '../../testing/localeSweep.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+} from '../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { testVariableId, testId } from '../../testing/testId.ts';
 import { exactlyText } from '../../testing/text.ts';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import InterviewerGuidanceSection from '../interviewer-guidance/InterviewerGuidanceSection.tsx';
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
 import SkipLogicSection from '../skip-logic/SkipLogicSection.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const LAYOUT = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'layout',
+);
+const CONTACT_TYPE = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactType',
+);
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
+const CLOSENESS = testVariableId('closeness');
+const MET_ON = testVariableId('met_on');
+const LUGAR_DE_CONTACTO = testVariableId('lugar_de_contacto');
 
 /** Protocol copy in the fixture's one language. */
 const en = (text: string) => ({ 'en-US': text });
@@ -294,13 +319,13 @@ describe('the form-fields section, read in Spanish', () => {
     // bound attribute's kind cannot change, so only its own controls are
     // offered.
     seedPersonVariables(harness, {
-      closeness: {
+      [CLOSENESS]: {
         name: 'closeness',
         type: 'scalar',
         parameters: { minLabel: en('Nada cerca'), maxLabel: en('Muy cerca') },
       },
     });
-    await chooseAttribute(harness, dialog, 'closeness');
+    await chooseAttribute(harness, dialog, CLOSENESS);
     const scaleControls = await dialog.findByRole('combobox', {
       name: 'Control de entrada',
     });
@@ -337,7 +362,7 @@ describe('the form-fields section, read in Spanish', () => {
  */
 const PERSON_TYPE_SECTION = sectionId({
   kind: 'codebookNode',
-  typeId: 'person',
+  typeId: PERSON,
 });
 
 /** The fixture's alter form, mounted with only the section under test. */
@@ -389,7 +414,7 @@ const seedPersonVariables = (
   const existing = person.variables;
   harness.receiveCodebookUpdate({
     node: {
-      person: {
+      [PERSON]: {
         ...person,
         variables: {
           ...(typeof existing === 'object' && existing !== null
@@ -401,10 +426,6 @@ const seedPersonVariables = (
     },
   });
 };
-
-/** The two names the attribute picker's trigger goes by, in Spanish. */
-const isPickerTrigger = (name: string) =>
-  name === 'Seleccionar atributo' || name === 'Cambiar atributo';
 
 /**
  * Chooses the attribute a field collects, once the picker is offering it.
@@ -423,9 +444,7 @@ const chooseAttribute = async (
   attributeId: string,
 ) => {
   await harness.user.click(
-    within(attributeField('Atributo', dialog.element)).getByRole('button', {
-      name: isPickerTrigger,
-    }),
+    attributeTrigger(attributeField('Atributo', dialog.element)),
   );
   const window = await waitFor(() => {
     const found = screen
@@ -449,7 +468,11 @@ const chooseAttribute = async (
   // The pick is written as the window closes, so nothing may carry on while it
   // is still covering the row.
   await waitFor(() => {
-    if (window.isConnected) throw new Error('the attribute window is open');
+    // Closed rather than gone: Base UI keeps a combobox's popup mounted, and
+    // hidden, once its trigger has been used.
+    if (window.hasAttribute('data-open')) {
+      throw new Error('the attribute window is open');
+    }
   });
 };
 
@@ -466,9 +489,7 @@ const searchForAnAttribute = async (
   term: string,
 ): Promise<HTMLElement> => {
   await harness.user.click(
-    within(attributeField('Atributo', dialog.element)).getByRole('button', {
-      name: isPickerTrigger,
-    }),
+    attributeTrigger(attributeField('Atributo', dialog.element)),
   );
   const window = await waitFor(() => {
     const found = screen
@@ -480,7 +501,7 @@ const searchForAnAttribute = async (
     return found;
   });
   await harness.user.type(
-    within(window).getByRole('searchbox', {
+    within(window).getByRole('combobox', {
       name: 'Find or create an attribute',
     }),
     term,
@@ -496,7 +517,7 @@ const inventThroughThePicker = async (
   const window = await searchForAnAttribute(harness, dialog, attributeName);
   await harness.user.click(
     within(window).getByRole('option', {
-      name: `Crear un atributo nuevo llamado «${attributeName}».`,
+      name: `Crear «${attributeName}»`,
     }),
   );
   // The window closes on the create row, and the picker is left showing the
@@ -692,7 +713,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
   it('offers what a date field accepts', async () => {
     const harness = alterFormInSpanish();
     seedPersonVariables(harness, {
-      met_on: {
+      [MET_ON]: {
         name: 'met_on',
         type: 'datetime',
         component: 'DatePicker',
@@ -702,7 +723,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await chooseAttribute(harness, dialog, 'met_on');
+    await chooseAttribute(harness, dialog, MET_ON);
 
     const settings = within(
       await dialog.findByRole('region', { name: 'Ajustes del control' }),
@@ -732,7 +753,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
             fields: [
               {
                 id: 'field-1',
-                variable: 'layout',
+                variable: LAYOUT,
                 prompt: en('¿Dónde se sitúa?'),
               },
             ],
@@ -775,19 +796,28 @@ describe('a codebook write a Spanish form field needs, refused', () => {
    * researcher is still looking at it, in their own language, with nothing
    * asked of the host.
    */
-  it('says on the create row that another spelling of a name is already used', async () => {
+  it('finds the attribute under another spelling of its name, instead of creating it', async () => {
     const harness = alterFormInSpanish();
     const dialog = await openFieldDialog(
       harness,
       'Crear nuevo campo de formulario',
     );
 
+    // `contactType` is what the fixture's person type already calls one of its
+    // own — and one no form may collect, because a bin stage writes it without
+    // asking. So it is listed as unavailable, the search finds it, and there
+    // is no create row to offer or to refuse.
     const window = await searchForAnAttribute(harness, dialog, 'CONTACTTYPE');
 
-    const refused = within(window).getByRole('option', {
-      name: 'No se puede crear un atributo llamado «CONTACTTYPE»: este tipo ya tiene un atributo con ese nombre',
-    });
-    expect(refused).toHaveAttribute('aria-disabled', 'true');
+    const listed = within(window)
+      .getAllByRole('option')
+      .find((row) => row.dataset.attributeId === CONTACT_TYPE);
+    expect(listed).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      within(window)
+        .queryAllByRole('option')
+        .filter((row) => row.dataset.createName !== undefined),
+    ).toEqual([]);
   });
 
   it('offers to create a name written with spaces', async () => {
@@ -805,27 +835,31 @@ describe('a codebook write a Spanish form field needs, refused', () => {
 
     expect(
       within(window).getByRole('option', {
-        name: 'Crear un atributo nuevo llamado «nombre de pila».',
+        name: 'Crear «nombre de pila»',
       }),
     ).not.toHaveAttribute('aria-disabled');
   });
 
-  it('says on the create row that this type is already using the name', async () => {
+  it('says on the create row that the export already has a column under the name', async () => {
     const harness = alterFormInSpanish();
     const dialog = await openFieldDialog(
       harness,
       'Crear nuevo campo de formulario',
     );
 
-    // `contactType` is what the fixture's person type already calls one of its
-    // own — and one no form may collect, because a bin stage writes it without
-    // asking. So it is not in the list, and a name is taken by an attribute
-    // whether or not this control could have offered it.
-    const window = await searchForAnAttribute(harness, dialog, 'contactType');
+    // The person type's layout attribute `layout` exports its position to
+    // `layout_x`, so no attribute may take that name — and no attribute does,
+    // so the list has nothing to find and the create row says why.
+    const window = await searchForAnAttribute(harness, dialog, 'layout_x');
 
+    // Both the row's title and the reason under it are in Spanish.
     const refused = within(window).getByRole('option', {
-      name: 'No se puede crear un atributo llamado «contactType»: este tipo ya tiene un atributo con ese nombre',
+      name: 'Un atributo no puede llamarse «layout_x»',
+      description:
+        'La exportación ya tiene una columna llamada «layout_x» para la posición del atributo de disposición «layout». Elige otro nombre.',
     });
+    expect(refused).toHaveAttribute('data-create-name', 'layout_x');
+    expect(refused).toHaveAttribute('data-create-state', 'invalid');
     expect(refused).toHaveAttribute('aria-disabled', 'true');
   });
 
@@ -834,7 +868,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
     // The type this stage collects about, deleted by a collaborator. A
     // codebook section has a lock of its own, so holding this stage does not
     // hold that off.
-    harness.receiveCodebookUpdate({ node: { person: null } });
+    harness.receiveCodebookUpdate({ node: { [PERSON]: null } });
 
     const dialog = await inventAttribute(harness, 'apodo');
 
@@ -861,7 +895,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
   it('says the input control could not be recorded', async () => {
     const harness = alterFormInSpanish();
     seedPersonVariables(harness, {
-      lugar_de_contacto: {
+      [LUGAR_DE_CONTACTO]: {
         name: 'lugar_de_contacto',
         type: 'categorical',
         component: 'CheckboxGroup',
@@ -870,8 +904,16 @@ describe('a codebook write a Spanish form field needs, refused', () => {
         // writes, and its write the only thing that can be refused.
         readOnly: true,
         options: [
-          { label: en('En casa'), value: 'casa' },
-          { label: en('En la casa de un amigo'), value: 'Casa' },
+          {
+            id: testId('option/lugar_de_contacto/casa'),
+            label: en('En casa'),
+            value: 'casa',
+          },
+          {
+            id: testId('option/lugar_de_contacto/Casa'),
+            label: en('En la casa de un amigo'),
+            value: 'Casa',
+          },
         ],
       },
     });
@@ -879,7 +921,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await chooseAttribute(harness, dialog, 'lugar_de_contacto');
+    await chooseAttribute(harness, dialog, LUGAR_DE_CONTACTO);
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Control de entrada' }),
       'ToggleButtonGroup',
@@ -944,17 +986,17 @@ describe('a form a Spanish researcher cannot save', () => {
         type: 'AlterForm',
         fields: {
           label: en('Formulario de alter'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           form: {
             fields: [
               {
                 id: 'field-1',
-                variable: 'relationship_to_ego',
+                variable: RELATIONSHIP_TO_EGO,
                 prompt: en('¿De qué os conocéis?'),
               },
               {
                 id: 'field-2',
-                variable: 'relationship_to_ego',
+                variable: RELATIONSHIP_TO_EGO,
                 prompt: en('¿Y de qué más?'),
               },
             ],
@@ -989,10 +1031,10 @@ describe('a form a Spanish researcher cannot save', () => {
         type: 'AlterForm',
         fields: {
           label: en('Formulario de alter'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: PERSON },
           // A field that names an attribute and asks nothing, which the row
           // dialog cannot produce and an import can.
-          form: { fields: [{ variable: 'relationship_to_ego' }] },
+          form: { fields: [{ variable: RELATIONSHIP_TO_EGO }] },
         },
       },
       locale: 'es',

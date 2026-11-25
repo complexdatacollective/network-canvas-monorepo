@@ -4,15 +4,24 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { testId } from '../../testing/testId.ts';
 import { anonymisationStageEditor } from './AnonymisationStageEditor.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Anonymisation',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'anonymisation-1',
+    stageId: fixtureStageId('anonymisation-1'),
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
@@ -114,11 +123,11 @@ export const AttributeARuleReads: Story = {
           filter: {
             rules: [
               {
-                id: 'rule-1',
+                id: testId('rule-1'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'name',
+                  type: PERSON,
+                  attribute: NAME,
                   operator: 'EXACTLY',
                   value: 'Ada',
                 },
@@ -169,11 +178,11 @@ export const AttributeARuleAsksAbout: Story = {
           filter: {
             rules: [
               {
-                id: 'rule-1',
+                id: testId('rule-1'),
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'name',
+                  type: PERSON,
+                  attribute: NAME,
                   operator: 'NOT_EXISTS',
                 },
               },

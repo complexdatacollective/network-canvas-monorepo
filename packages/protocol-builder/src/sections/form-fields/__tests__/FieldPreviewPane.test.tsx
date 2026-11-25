@@ -36,6 +36,7 @@ import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
 } from '../../../protocol-context.ts';
+import { testVariableId } from '../../../testing/testId.ts';
 
 /**
  * The protocol the pane reads, stated rather than hosted.
@@ -49,25 +50,33 @@ import type {
  *
  * `vi.hoisted` because `vi.mock`'s factory runs before the module body.
  */
-const mocks = vi.hoisted(() => {
+const mocks = await vi.hoisted(async () => {
+  const testIds = await import('../../../testing/testId.ts');
+  const ids = {
+    PERSON_TYPE: testIds.testTypeId('person'),
+    AGE: testIds.testVariableId('age'),
+    YEARS_KNOWN: testIds.testVariableId('yearsKnown'),
+    SATISFACTION: testIds.testVariableId('satisfaction'),
+    CONSENTS: testIds.testVariableId('consents'),
+  };
   const person = {
     name: 'Person',
     color: 'node-color-seq-1' as const,
     shape: { default: 'circle' as const },
     variables: {
-      age: {
+      [ids.AGE]: {
         name: 'Age',
         type: 'number' as const,
         component: 'Number' as const,
       },
       // A second attribute the first is indistinguishable from by kind and
       // control alone — the pair a rebound row is told apart by.
-      yearsKnown: {
+      [ids.YEARS_KNOWN]: {
         name: 'Years known',
         type: 'number' as const,
         component: 'Number' as const,
       },
-      satisfaction: {
+      [ids.SATISFACTION]: {
         name: 'Satisfaction',
         type: 'scalar' as const,
         component: 'VisualAnalogScale' as const,
@@ -76,7 +85,7 @@ const mocks = vi.hoisted(() => {
           maxLabel: { en: 'Completely' },
         },
       },
-      consents: {
+      [ids.CONSENTS]: {
         name: 'Consents',
         type: 'boolean' as const,
         component: 'Boolean' as const,
@@ -85,13 +94,15 @@ const mocks = vi.hoisted(() => {
     },
   };
   const context: ProtocolBuilderProtocolContext = {
-    codebook: { node: { person } },
+    codebook: { node: { [ids.PERSON_TYPE]: person } },
     assets: {},
     orderedStages: [],
     issues: [],
   };
-  return { context };
+  return { context, ids };
 });
+
+const { PERSON_TYPE, AGE, YEARS_KNOWN, SATISFACTION, CONSENTS } = mocks.ids;
 
 vi.mock('../../../state/protocolContext.ts', () => ({
   useProtocolContext: () => mocks.context,
@@ -107,7 +118,10 @@ const EMPTY_STATE =
   'Select an attribute and input control to preview this field.';
 const REQUIRED_EN = 'You must answer this question before continuing.';
 
-const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON: CodebookSubject = { entity: 'node', type: PERSON_TYPE };
+
+const DEPARTED = testVariableId('departed');
+const FAVOURITE_FOOD = testVariableId('favouriteFood');
 
 const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 
@@ -264,7 +278,7 @@ const renderPreviewLoading = async (
 
 describe('FieldPreviewPane', () => {
   it('shows the existing-attribute notice in the preview pane', () => {
-    const preview = renderPreview({ variable: 'age' });
+    const preview = renderPreview({ variable: AGE });
 
     expect(preview).toHaveTextContent(SHARED_ATTRIBUTE);
   });
@@ -280,7 +294,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('carries the interview theme on the preview’s own root', () => {
-    const preview = renderPreview({ variable: 'age' });
+    const preview = renderPreview({ variable: AGE });
 
     const themed = preview.querySelector('[data-theme-interview]');
     expect(themed).not.toBeNull();
@@ -309,7 +323,7 @@ describe('FieldPreviewPane', () => {
     // The dialog opens before its sections mount, and a scale's end labels
     // belong to the attribute rather than to the row — so the committed row
     // plus the live codebook is all there is to draw from at that moment.
-    renderPreview({ variable: 'satisfaction' });
+    renderPreview({ variable: SATISFACTION });
 
     expect(screen.getByText('Not at all')).toBeVisible();
     expect(screen.getByText('Completely')).toBeVisible();
@@ -317,7 +331,7 @@ describe('FieldPreviewPane', () => {
 
   it('drops the attribute’s settings from the preview once the row has cleared them', () => {
     renderPreview(
-      { variable: 'satisfaction' },
+      { variable: SATISFACTION },
       {
         fields: (
           <Field
@@ -350,7 +364,7 @@ describe('FieldPreviewPane', () => {
     renderPreview(
       {
         id: 'field-L351',
-        variable: 'age',
+        variable: AGE,
         component: 'Number',
         label: en('Research_Label_Á1'),
       },
@@ -364,10 +378,7 @@ describe('FieldPreviewPane', () => {
 
     // No label written yet. The attribute's own name is never a caption, so
     // the stand-in the form family uses stands in here too.
-    renderPreview(
-      { variable: 'age', component: 'Number' },
-      { mode: 'composer' },
-    );
+    renderPreview({ variable: AGE, component: 'Number' }, { mode: 'composer' });
     expect(
       screen.getByRole('spinbutton', {
         name: 'Your question will appear here.',
@@ -384,7 +395,7 @@ describe('FieldPreviewPane', () => {
     renderPreview(
       {
         id: 'field-L380',
-        variable: 'age',
+        variable: AGE,
         component: 'Number',
         label: en('   '),
       },
@@ -400,7 +411,7 @@ describe('FieldPreviewPane', () => {
 
     // An emptied box reads the same way, and an authored one still wins.
     renderPreview(
-      { id: 'field-L393', variable: 'age', component: 'Number', label: en('') },
+      { id: 'field-L393', variable: AGE, component: 'Number', label: en('') },
       { mode: 'composer' },
     );
     expect(
@@ -414,7 +425,7 @@ describe('FieldPreviewPane', () => {
     renderPreview(
       {
         id: 'field-L405',
-        variable: 'age',
+        variable: AGE,
         component: 'Number',
         label: en('Research_Label_Á1'),
       },
@@ -427,7 +438,7 @@ describe('FieldPreviewPane', () => {
     cleanup();
 
     // And the form family's question, which is read by the same rule.
-    renderPreview({ variable: 'age', prompt: en('  \n  ') });
+    renderPreview({ variable: AGE, prompt: en('  \n  ') });
     expect(
       screen.getByRole('spinbutton', {
         name: 'Your question will appear here.',
@@ -467,7 +478,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('stands in for a question nobody has written yet', () => {
-    renderPreview({ variable: 'age' });
+    renderPreview({ variable: AGE });
 
     expect(
       screen.getByRole('spinbutton', {
@@ -560,7 +571,7 @@ describe('FieldPreviewPane', () => {
         </Form>
       </ProtocolLocalizationProvider>
     );
-    const { rerender } = render(previewOf('age', 'Research_Question_Á1'));
+    const { rerender } = render(previewOf(AGE, 'Research_Question_Á1'));
 
     const age = screen.getByRole('spinbutton', {
       name: 'Research_Question_Á1',
@@ -568,7 +579,7 @@ describe('FieldPreviewPane', () => {
     fireEvent.change(age, { target: { value: '42' } });
     expect(age).toHaveValue(42);
 
-    rerender(previewOf('yearsKnown', 'Research_Question_Á2'));
+    rerender(previewOf(YEARS_KNOWN, 'Research_Question_Á2'));
 
     expect(
       screen.getByRole('spinbutton', { name: 'Research_Question_Á2' }),
@@ -582,7 +593,7 @@ describe('FieldPreviewPane', () => {
     // throws on a missing codebook entry — so a kind inferred from the control
     // would preview a working field the participant can never meet.
     renderPreview(
-      { variable: 'departed', component: 'Number' },
+      { variable: DEPARTED, component: 'Number' },
       { mode: 'composer' },
     );
 
@@ -597,7 +608,7 @@ describe('FieldPreviewPane', () => {
     // The row keeps the control it was given for the attribute it used to
     // collect for a render or two after it is rebound. That pairing is one the
     // protocol schema refuses, so the attribute's own control answers instead.
-    renderPreview({ variable: 'age', _component: 'CheckboxGroup' });
+    renderPreview({ variable: AGE, _component: 'CheckboxGroup' });
 
     expect(
       screen.getByRole('spinbutton', {
@@ -608,7 +619,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('runs the attribute’s own rules against a trial answer without touching the draft', async () => {
-    const item = { variable: 'consents', prompt: en('Research_Question_Á1') };
+    const item = { variable: CONSENTS, prompt: en('Research_Question_Á1') };
     const original = structuredClone(item);
     const submitAuthoring = vi.fn(() => ({ success: true as const }));
     renderPreview(item, { probe: true, onSubmit: submitAuthoring });
@@ -633,7 +644,7 @@ describe('FieldPreviewPane', () => {
   // whatever language Architect itself shows.
   it('reads the pane in Architect’s language and the participant’s field in the protocol’s, leaving authored words alone', async () => {
     const item = {
-      variable: 'consents',
+      variable: CONSENTS,
       prompt: en('Research_Question_Á1'),
       hint: en('Authored_Hint_Á1'),
     };
@@ -686,7 +697,7 @@ describe('FieldPreviewPane', () => {
     });
     try {
       await renderPreviewLoading(
-        { variable: 'consents', prompt: { es: 'Pregunta_Á1' } },
+        { variable: CONSENTS, prompt: { es: 'Pregunta_Á1' } },
         { localization: { defaultLocale: 'es', locales: ['es', 'en'] } },
       );
       const field = await screen.findByRole('radio', { name: 'Sí' });
@@ -701,7 +712,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('keeps a participant scale’s own popup inside the locale region and the portal boundary', async () => {
-    const item = { variable: 'satisfaction', prompt: en('Research_Scale_Á1') };
+    const item = { variable: SATISFACTION, prompt: en('Research_Scale_Á1') };
     const original = structuredClone(item);
     await renderPreviewLoading(item, { locale: 'es', probe: true });
 
@@ -750,7 +761,7 @@ describe('FieldPreviewPane', () => {
     renderPreview(
       {
         id: 'field-L735',
-        variable: 'favouriteFood',
+        variable: FAVOURITE_FOOD,
         component: 'Text',
         label: en('Favourite food'),
       },
@@ -768,7 +779,7 @@ describe('FieldPreviewPane', () => {
     };
     renderPreview(
       {
-        variable: 'age',
+        variable: AGE,
         prompt: { en: 'How old are you?', es: '¿Cuántos años tienes?' },
       },
       { localization: bilingual },
@@ -780,7 +791,7 @@ describe('FieldPreviewPane', () => {
     cleanup();
 
     renderPreview(
-      { variable: 'age', prompt: en('How old are you?') },
+      { variable: AGE, prompt: en('How old are you?') },
       { localization: bilingual },
     );
     expect(
@@ -856,7 +867,7 @@ describe('FieldPreviewPane', () => {
     }
 
     it('draws no language menu for a protocol written in one language', () => {
-      renderPreview({ variable: 'age', prompt: en('How old are you?') });
+      renderPreview({ variable: AGE, prompt: en('How old are you?') });
 
       expect(
         screen.queryByRole('button', { name: /Editing language/ }),
@@ -865,7 +876,7 @@ describe('FieldPreviewPane', () => {
 
     it('offers the protocol’s languages in the pane’s own region', () => {
       const preview = renderPreview(
-        { variable: 'age', prompt: translated('How old?', '¿Qué edad?') },
+        { variable: AGE, prompt: translated('How old?', '¿Qué edad?') },
         { localization: BILINGUAL },
       );
 
@@ -877,7 +888,7 @@ describe('FieldPreviewPane', () => {
     it('captions the field in the language chosen from the preview', async () => {
       renderPreview(
         {
-          variable: 'age',
+          variable: AGE,
           prompt: translated('How old are you?', '¿Cuántos años tienes?'),
         },
         { localization: BILINGUAL },
@@ -901,7 +912,7 @@ describe('FieldPreviewPane', () => {
       // preview stands in for that boundary: the Spanish fallback sits in the
       // English region the participant chose, as it would in the interview.
       renderPreview(
-        { variable: 'age', prompt: { es: '¿Cuántos años tienes?' } },
+        { variable: AGE, prompt: { es: '¿Cuántos años tienes?' } },
         { localization: { defaultLocale: 'es', locales: ['es', 'en'] } },
       );
 
@@ -918,7 +929,7 @@ describe('FieldPreviewPane', () => {
 
     it('lays the field out right to left for a right-to-left protocol language', () => {
       renderPreview(
-        { variable: 'age', prompt: { ar: 'كم عمرك؟' } },
+        { variable: AGE, prompt: { ar: 'كم عمرك؟' } },
         { localization: { defaultLocale: 'ar', locales: ['ar'] } },
       );
 
@@ -945,7 +956,7 @@ describe('FieldPreviewPane', () => {
 
     it('moves every localized field to the language chosen from the preview', async () => {
       renderPreview(
-        { variable: 'age', prompt: translated('How old?', '¿Qué edad?') },
+        { variable: AGE, prompt: translated('How old?', '¿Qué edad?') },
         {
           localization: BILINGUAL,
           fields: <EditingLanguageProbe />,
@@ -1035,7 +1046,7 @@ describe('FieldPreviewPane', () => {
     });
 
     it('does not count the stand-in for a question nobody has written', async () => {
-      renderPreview({ variable: 'age' }, { localization: BILINGUAL });
+      renderPreview({ variable: AGE }, { localization: BILINGUAL });
 
       expect(await languagesMarkedMissing()).toEqual([]);
     });
@@ -1046,7 +1057,7 @@ describe('FieldPreviewPane', () => {
       <Form onSubmit={() => ({ success: true as const })}>
         <FieldPreviewPane
           subject={PERSON}
-          item={{ variable: 'age', prompt: en('How old are you?') }}
+          item={{ variable: AGE, prompt: en('How old are you?') }}
         />
       </Form>,
     );
@@ -1056,7 +1067,7 @@ describe('FieldPreviewPane', () => {
   });
 
   it('previews nothing at all when the section cannot say whose codebook it collects into', () => {
-    renderPreview({ variable: 'age' }, { subject: undefined });
+    renderPreview({ variable: AGE }, { subject: undefined });
 
     expect(screen.getByText(EMPTY_STATE)).toBeVisible();
   });

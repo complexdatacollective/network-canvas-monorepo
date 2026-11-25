@@ -19,6 +19,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../contract/types';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -36,10 +37,10 @@ import session, {
 import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
 
-const NODE_TYPE = 'person';
-const NAME_VAR = 'name';
-const NICKNAME_VAR = 'nickname';
-const NOTES_VAR = 'notes';
+const NODE_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const NICKNAME_VAR = testVariableId('nickname');
+const NOTES_VAR = testVariableId('notes');
 const NODE_ID = 'node-1';
 const PASSPHRASE = 'protocol form passphrase';
 
@@ -140,7 +141,7 @@ const codebookWith = (nodeVariables: Record<string, Variable>): Codebook => ({
 function fieldFor(variable: string): FormField[] {
   return [
     {
-      id: 'field-L142',
+      id: testId('field-L142'),
       variable: asEntityAttributeReference(variable),
       prompt: { en: 'Answer' },
     },
@@ -202,12 +203,14 @@ async function makeStore(
     codebook: codebookWith(nodeVariables),
     stages: [
       {
-        id: 'stage-1',
+        id: testId('stage-1'),
         type: 'NameGenerator',
         label: { en: 'Name the people you know' },
         subject: { entity: 'node', type: NODE_TYPE },
         form: { title: { en: 'Add a person' }, fields: fieldFor(NOTES_VAR) },
-        prompts: [{ id: 'prompt-1', text: { en: 'Name the people you know' } }],
+        prompts: [
+          { id: testId('prompt-1'), text: { en: 'Name the people you know' } },
+        ],
       },
     ],
   };

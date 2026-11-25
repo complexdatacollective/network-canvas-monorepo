@@ -23,6 +23,10 @@ import {
   makeFinding,
   makeProtocol,
   op,
+  WELCOME_STAGE_ID,
+  NAMES_STAGE_ID,
+  NAMES_PROMPT_ID,
+  PERSON,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 
@@ -43,10 +47,10 @@ import {
 /** A problem whose fix is made in the codebook's Person type. */
 const PERSON_FINDING = makeFinding(
   'person',
-  [op('set', '/codebook/node/person/name', 'Friend')],
+  [op('set', `/codebook/node/${PERSON}/name`, 'Friend')],
   {
     codebookEntity: 'node',
-    codebookTypeId: 'person',
+    codebookTypeId: PERSON,
     title: 'The person type is too broad',
   },
 );
@@ -502,7 +506,7 @@ describe('the results', () => {
       within(panel).getByRole('link', { name: 'Open stage 2' }),
     );
     expect(screen.getByTestId('location')).toHaveTextContent(
-      '/protocol/stage/names',
+      `/protocol/stage/${NAMES_STAGE_ID}`,
     );
     await waitFor(() =>
       expect(
@@ -862,10 +866,14 @@ describe('one problem at a time, in the panel', () => {
   });
 
   it('offers no link to a stage the fix removed, only to the Stages screen', async () => {
-    const remove = makeFinding('remove', [op('remove', '/stages/welcome')], {
-      stageId: 'welcome',
-      title: 'The welcome stage repeats the consent form',
-    });
+    const remove = makeFinding(
+      'remove',
+      [op('remove', `/stages/${WELCOME_STAGE_ID}`)],
+      {
+        stageId: WELCOME_STAGE_ID,
+        title: 'The welcome stage repeats the consent form',
+      },
+    );
     await reviewed(store, { ...RESULT, findings: [remove] });
     renderToolbar(store);
     const dialog = await openProblemFromList(
@@ -1064,7 +1072,7 @@ describe('one problem at a time, in the panel', () => {
     );
     expect(findingOf(store, 'title').status).toBe('mine');
     expect(screen.getByTestId('location')).toHaveTextContent(
-      '/protocol/stage/welcome',
+      `/protocol/stage/${WELCOME_STAGE_ID}`,
     );
     await waitFor(() =>
       expect(
@@ -1073,7 +1081,7 @@ describe('one problem at a time, in the panel', () => {
     );
     home.unmount();
 
-    renderToolbar(store, { path: '/protocol/stage/welcome' });
+    renderToolbar(store, { path: `/protocol/stage/${WELCOME_STAGE_ID}` });
     await userEvent.click(reviewButton());
     const panel = await screen.findByRole('dialog', {
       name: 'Protocol review',
@@ -1102,7 +1110,7 @@ describe('one problem at a time, in the panel', () => {
   it('opens on every problem from a stage with nothing left to fix there', async () => {
     await reviewed(store);
     await store.dispatch(decideFinding('title', 'mine'));
-    renderToolbar(store, { path: '/protocol/stage/names' });
+    renderToolbar(store, { path: `/protocol/stage/${NAMES_STAGE_ID}` });
     await userEvent.click(reviewButton());
     const panel = await screen.findByRole('dialog', {
       name: 'Protocol review',
@@ -1120,7 +1128,7 @@ describe('one problem at a time, in the panel', () => {
 
   it('offers the review outside the Stages screen only once there is one', async () => {
     await openProtocol(store);
-    renderToolbar(store, { path: '/protocol/stage/welcome' });
+    renderToolbar(store, { path: `/protocol/stage/${WELCOME_STAGE_ID}` });
     expect(
       screen.queryByRole('button', { name: /Review protocol/ }),
     ).toBeNull();
@@ -1332,21 +1340,25 @@ describe('one problem at a time, in the panel', () => {
         makeFinding(
           'whole',
           [
-            op('set', '/stages/names/prompts/p1/text', {
-              en: 'Name everyone you know',
-            }),
+            op(
+              'set',
+              `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
+              {
+                en: 'Name everyone you know',
+              },
+            ),
           ],
-          { stageId: 'names', title: 'The prompt is vague' },
+          { stageId: NAMES_STAGE_ID, title: 'The prompt is vague' },
         ),
         makeFinding(
           'both',
           [
-            op('set', '/stages/welcome/label', {
+            op('set', `/stages/${WELCOME_STAGE_ID}/label`, {
               en: 'Welcome to our study',
               fr: 'Bienvenue dans notre étude',
             }),
           ],
-          { stageId: 'welcome', title: 'The welcome title is unclear' },
+          { stageId: WELCOME_STAGE_ID, title: 'The welcome title is unclear' },
         ),
       ],
     });

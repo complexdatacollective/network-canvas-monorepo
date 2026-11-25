@@ -3,6 +3,11 @@ import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
+import {
+  testTypeId,
+  testVariableId,
+  withTestIds,
+} from '../../../__tests__/testIds.ts';
 import { analyzeProtocolLocalization } from '../../../localization/analyzeProtocolLocalization.ts';
 import type { MessageArguments } from '../../../localization/messageArguments.ts';
 import { resolveLocalizedString } from '../../../localization/resolveLocalizedString.ts';
@@ -34,7 +39,9 @@ import {
   SNAPSHOT_CONDITION_ARGUMENTS,
   SNAPSHOT_INHERITANCE_ARGUMENTS,
 } from '../stages/narrative-pedigree.ts';
-import { completeProtocol } from './complete-localized-protocol.ts';
+import { completeProtocol as completeLocalizedProtocol } from './complete-localized-protocol.ts';
+
+const completeProtocol = () => withTestIds(completeLocalizedProtocol());
 
 type Path = readonly (string | number)[];
 
@@ -109,10 +116,17 @@ const messageUsing = (declaration: MessageArguments): string =>
 
 const FINISH_STAGE_INDEX = 20;
 
-const person = ['codebook', 'node', 'person'] as const;
-const personVariable = (id: string) => [...person, 'variables', id] as const;
+const person = ['codebook', 'node', testTypeId('person')] as const;
+const personVariable = (id: string) =>
+  [...person, 'variables', testVariableId(id)] as const;
 const knowsVariable = (id: string) =>
-  ['codebook', 'edge', 'knows', 'variables', id] as const;
+  [
+    'codebook',
+    'edge',
+    testTypeId('knows'),
+    'variables',
+    testVariableId(id),
+  ] as const;
 const stage = (index: number, ...rest: (string | number)[]) => [
   'stages',
   index,
@@ -142,9 +156,9 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       [
         'codebook',
         'node',
-        'relative',
+        testTypeId('relative'),
         'variables',
-        'sex',
+        testVariableId('sex'),
         'options',
         index,
         'label',
@@ -157,9 +171,9 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       [
         'codebook',
         'node',
-        'relative',
+        testTypeId('relative'),
         'variables',
-        'relativesNotRecorded',
+        testVariableId('relativesNotRecorded'),
         'options',
         index,
         'label',
@@ -174,9 +188,9 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       [
         'codebook',
         'edge',
-        'family',
+        testTypeId('family'),
         'variables',
-        'relType',
+        testVariableId('relType'),
         'options',
         index,
         'label',

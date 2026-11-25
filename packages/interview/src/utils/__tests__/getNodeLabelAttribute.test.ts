@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { NodeDefinition } from '@codaco/protocol-validation';
 
+import { testVariableId } from '../../__tests__/testIds';
 import { getNodeLabelAttribute } from '../getNodeLabelAttribute';
+
+const VAR_123 = testVariableId('var-123');
+const VAR_456 = testVariableId('var-456');
+const VAR_789 = testVariableId('var-789');
+const VAR_AAA = testVariableId('var-aaa');
+const VAR_BBB = testVariableId('var-bbb');
 
 describe('getNodeLabelAttribute', () => {
   it('should return value from variable named "name" in codebook', () => {
@@ -12,14 +19,14 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-6',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'name', type: 'text' },
-        'var-456': { name: 'age', type: 'number' },
+        [VAR_123]: { name: 'name', type: 'text' },
+        [VAR_456]: { name: 'age', type: 'number' },
       },
     };
 
     const mockNodeAttributes = {
-      'var-123': 'John Doe',
-      'var-456': 30,
+      [VAR_123]: 'John Doe',
+      [VAR_456]: 30,
     };
 
     // Execute
@@ -29,7 +36,7 @@ describe('getNodeLabelAttribute', () => {
     );
 
     // Verify
-    expect(result).toBe('var-123');
+    expect(result).toBe(VAR_123);
   });
 
   it('should look for "name" in a case-insensitive way', () => {
@@ -39,12 +46,12 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-5',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'NAME', type: 'text' }, // Upper case
+        [VAR_123]: { name: 'NAME', type: 'text' }, // Upper case
       },
     };
 
     const mockNodeAttributes = {
-      'var-123': 'Jane Doe',
+      [VAR_123]: 'Jane Doe',
     };
 
     // Execute
@@ -54,7 +61,7 @@ describe('getNodeLabelAttribute', () => {
     );
 
     // Verify
-    expect(result).toBe('var-123');
+    expect(result).toBe(VAR_123);
   });
 
   it('should return value from attribute named "name" if codebook lookup fails', () => {
@@ -64,13 +71,13 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-4',
       shape: { default: 'circle' },
       variables: {
-        'var-456': { name: 'age', type: 'number' },
+        [VAR_456]: { name: 'age', type: 'number' },
       },
     };
 
     const mockNodeAttributes = {
-      'name': 'John Smith', // Direct name attribute
-      'var-456': 30,
+      name: 'John Smith', // Direct name attribute
+      [VAR_456]: 30,
     };
 
     // Execute
@@ -90,13 +97,13 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-3',
       shape: { default: 'circle' },
       variables: {
-        'var-456': { name: 'age', type: 'number' },
+        [VAR_456]: { name: 'age', type: 'number' },
       },
     };
 
     const mockNodeAttributes = {
-      'NAME': 'John Smith', // Upper case name attribute
-      'var-456': 30,
+      NAME: 'John Smith', // Upper case name attribute
+      [VAR_456]: 30,
     };
 
     // Execute
@@ -116,22 +123,22 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-2',
       shape: { default: 'circle' },
       variables: {
-        'var-123': {
+        [VAR_123]: {
           name: 'firstName',
           type: 'text',
         },
-        'var-456': {
+        [VAR_456]: {
           name: 'lastName',
           type: 'text',
         },
-        'var-789': { name: 'age', type: 'number' },
+        [VAR_789]: { name: 'age', type: 'number' },
       },
     };
 
     const mockNodeAttributes = {
-      'var-123': '', // Empty value
-      'var-456': 'Smith',
-      'var-789': 30,
+      [VAR_123]: '', // Empty value
+      [VAR_456]: 'Smith',
+      [VAR_789]: 30,
     };
 
     // Execute
@@ -141,7 +148,7 @@ describe('getNodeLabelAttribute', () => {
     );
 
     // Verify
-    expect(result).toBe('var-456'); // Should return the first text variable with a value
+    expect(result).toBe(VAR_456); // Should return the first text variable with a value
   });
 
   it('should prefer a variable whose NAME contains "name" over an earlier text variable', () => {
@@ -153,11 +160,11 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-2',
       shape: { default: 'circle' },
       variables: {
-        'var-aaa': {
+        [VAR_AAA]: {
           name: 'description',
           type: 'text',
         },
-        'var-bbb': {
+        [VAR_BBB]: {
           name: 'full_name',
           type: 'text',
         },
@@ -165,8 +172,8 @@ describe('getNodeLabelAttribute', () => {
     };
 
     const mockNodeAttributes = {
-      'var-aaa': 'A person',
-      'var-bbb': 'Jane Doe',
+      [VAR_AAA]: 'A person',
+      [VAR_BBB]: 'Jane Doe',
     };
 
     const result = getNodeLabelAttribute(
@@ -174,7 +181,7 @@ describe('getNodeLabelAttribute', () => {
       mockNodeAttributes,
     );
 
-    expect(result).toBe('var-bbb');
+    expect(result).toBe(VAR_BBB);
   });
 
   it('should handle undefined codebook variables', () => {
@@ -197,7 +204,7 @@ describe('getNodeLabelAttribute', () => {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'var-123': { name: 'name', type: 'text' },
+        [VAR_123]: { name: 'name', type: 'text' },
       },
     };
 

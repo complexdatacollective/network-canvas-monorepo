@@ -9,6 +9,7 @@ import {
 
 import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import { testTypeId } from '../../testing/testId.ts';
 import type { ResourceKind } from '../types.ts';
 
 /**
@@ -246,7 +247,7 @@ export function createStoryHost(options: StoryHostOptions = {}): StoryHost {
       [sectionId({ kind: 'stageOrder' })]: { stages: [stage.stageId] },
       [stageSection]: { id: stage.stageId, type: stage.type, ...stage.fields },
       [sectionId({ kind: 'assets' })]: assets,
-      [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
+      [sectionId({ kind: 'codebookNode', typeId: testTypeId('person') })]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },

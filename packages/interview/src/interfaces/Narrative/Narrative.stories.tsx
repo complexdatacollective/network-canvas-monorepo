@@ -4,6 +4,7 @@ import { expect, waitFor, within } from 'storybook/test';
 import { SuperJSON } from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
@@ -527,7 +528,7 @@ const buildPresetFilters = () => {
     filter: {
       rules: [
         {
-          id: 'close-friends',
+          id: createProtocolObjectId(),
           type: 'node',
           options: {
             type: nt.id,

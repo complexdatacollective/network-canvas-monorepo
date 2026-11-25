@@ -2,7 +2,7 @@
 title: Variables
 navOrder: 4
 date: 5th October 2026
-translatedFrom: 6a5fb1eb94dfec0dc4ec2f2b4f18585451c40fbb
+translatedFrom: 42497f3987ee6585023b7248908010b294e6383e
 ---
 
 <Definition>
@@ -106,7 +106,7 @@ Una variable puede llevar la marca `encrypted`, que indica que sus valores se ci
 
 Al crear un campo en un [formulario](/es/design-protocols/key-concepts/forms):
 
-1. <AppOnly app="current">Haz clic en **Seleccionar atributo** y, después, elige un atributo existente o escribe un nombre nuevo (usa nombres descriptivos: `close_friend`, `contact_frequency`) y elige **Crear un atributo nuevo llamado «…».**</AppOnly><AppOnly app="classic">Haz clic en **Create new** (crear nuevo) o selecciona una variable existente y, después, introduce un nombre de variable (usa nombres descriptivos: `close_friend`, `contact_frequency`)</AppOnly>
+1. <AppOnly app="current">Haz clic en **Selecciona un atributo** y, después, elige un atributo existente o escribe un nombre nuevo (usa nombres descriptivos: `close_friend`, `contact_frequency`) y elige **Crear «…»**. Los atributos que no se pueden usar en este campo aparecen en el apartado **No disponibles aquí**; elige uno para ver por qué.</AppOnly><AppOnly app="classic">Haz clic en **Create new** (crear nuevo) o selecciona una variable existente y, después, introduce un nombre de variable (usa nombres descriptivos: `close_friend`, `contact_frequency`)</AppOnly>
 2. Selecciona un [control de entrada](/es/design-protocols/key-concepts/input-controls); con él se establece el tipo de variable
 3. Configura las opciones propias del control
 4. Establece [reglas de validación](/es/design-protocols/key-concepts/field-validation) si hace falta
@@ -279,9 +279,9 @@ Usa el [libro de códigos](/es/design-protocols/key-concepts/codebook) de Archit
 
 Puedes cambiar el control de entrada (si es compatible con el tipo de variable), las reglas de validación, las opciones de respuesta de las variables categóricas y el nombre del atributo. No puedes cambiar el tipo de variable, que se establece al crearla con un control de entrada.
 
-Para renombrar un atributo, haz clic en la píldora del atributo que se ha seleccionado en una sección (la que aparece bajo **Cambiar atributo** en una pregunta, en un campo de formulario o en otro selector de atributos), o sitúa el foco en ella y pulsa Intro o la barra espaciadora. (Las píldoras que aparecen en otros lugares, como en los resultados de la búsqueda de atributos o en el resumen de una regla, son etiquetas y no controles; en el libro de códigos, usa en su lugar el control de edición de la propia fila del atributo). Se abre un cuadro con el nombre actual; escribe el nombre nuevo y haz clic en **Guardar cambios**. El nombre nuevo sigue las mismas reglas que cualquier otro nombre: consulta [Qué puede contener un nombre](#what-a-name-can-contain) y [Nombres que coincidirían en los datos exportados](#names-that-would-clash-in-exported-data). Si cancelas, pulsas Escape o haces clic fuera del cuadro, se mantiene el nombre anterior. Las etapas que usan el atributo lo siguen usando con su nombre nuevo, pero recuerda que el nombre se convierte en el nombre de la columna en los datos exportados.
+Para renombrar un atributo, abre el [libro de códigos](/es/design-protocols/key-concepts/codebook) y haz clic en el nombre del atributo en la lista de atributos, o sitúa el foco en él y pulsa Intro o la barra espaciadora. Los atributos no se pueden renombrar desde el editor de una etapa. Se abre un cuadro con el nombre actual; escribe el nombre nuevo y haz clic en **Guardar cambios**. El nombre nuevo sigue las mismas reglas que cualquier otro nombre: consulta [Qué puede contener un nombre](#what-a-name-can-contain) y [Nombres que coincidirían en los datos exportados](#names-that-would-clash-in-exported-data). Si cancelas, pulsas Escape o haces clic fuera del cuadro, se mantiene el nombre anterior. Las etapas que usan el atributo lo siguen usando con su nombre nuevo, pero recuerda que el nombre se convierte en el nombre de la columna en los datos exportados.
 
-Los cambios que haces en el libro de códigos mientras hay una etapa abierta (crear un atributo, renombrarlo o editar sus opciones de respuesta o sus reglas de validación) se escriben en el libro de códigos de inmediato. Se conservan aunque después canceles los cambios en la etapa, porque un atributo pertenece a todas las etapas que lo usan y no solo a la etapa que estás editando.
+Los cambios que haces en el libro de códigos mientras tienes una etapa abierta (crear un atributo o editar sus opciones de respuesta o sus reglas de validación) se guardan en el libro de códigos de inmediato. Se conservan aunque después canceles los cambios en la etapa, porque un atributo pertenece a todas las etapas que lo usan y no solo a la etapa que estás editando.
 
 Para cambiar el tipo de variable, crea una variable nueva con la configuración que quieras, sustituye la variable antigua por la nueva en todas las etapas y elimina la variable antigua del libro de códigos.
 
@@ -405,7 +405,7 @@ support_frequency: Ordinal (Radio Button Group)
 
 ### Necesitas renombrar una variable {#need-to-rename-a-variable}
 
-**Solución:** haz clic en la píldora del atributo y escribe el nombre nuevo. Consulta [Modificar variables](#modifying-variables).
+**Solución:** en el libro de códigos, haz clic en el nombre del atributo y escribe el nombre nuevo. Consulta [Modificar variables](#modifying-variables).
 
 ### Architect no acepta el nombre de una variable {#architect-wont-accept-a-variable-name}
 

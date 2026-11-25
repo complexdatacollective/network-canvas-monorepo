@@ -9,9 +9,19 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { attributeField } from '../../../testing/attributePicker.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  attributeField,
+  attributeTrigger,
+  unavailableReason,
+} from '../../../testing/attributePicker.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testTypeId, testVariableId } from '../../../testing/testId.ts';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorStageEditor } from '../NameGeneratorStageEditor.ts';
 import { addInterviewNetworkPanel, chooseNodeType } from './addSidePanel.ts';
@@ -45,6 +55,10 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
   ),
 }));
 
+const PERSON = fixtureTypeId('node', 'person');
+const personVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
+
 /**
  * The editor as a host reaches it: through its own registry entry, so every
  * mount here also says this interface is dispatched to THIS editor.
@@ -58,7 +72,9 @@ const mountFixture = () =>
   });
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf('name-generator-1');
+const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('name-generator-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'NameGenerator' as const, position: NAME_GENERATOR_INDEX },
@@ -93,10 +109,6 @@ const openDialog = async (
   return Object.assign(within(element), { element });
 };
 
-/** The two names the attribute picker's trigger goes by, before and after. */
-const isPickerTrigger = (name: string) =>
-  name === 'Select attribute' || name === 'Change attribute';
-
 /**
  * Opens the attribute picker of the field this row labels, and hands back the
  * window it opened.
@@ -107,9 +119,7 @@ const openPicker = async (
   label: string,
 ): Promise<HTMLElement> => {
   await harness.user.click(
-    within(attributeField(label, dialog.element)).getByRole('button', {
-      name: isPickerTrigger,
-    }),
+    attributeTrigger(attributeField(label, dialog.element)),
   );
   return await waitFor(() => {
     const window = screen
@@ -124,7 +134,11 @@ const openPicker = async (
 
 const expectWindowClosed = async (window: HTMLElement) => {
   await waitFor(() => {
-    if (window.isConnected) throw new Error('the attribute window is open');
+    // Closed rather than gone: Base UI keeps a combobox's popup mounted, and
+    // hidden, once its trigger has been used.
+    if (window.hasAttribute('data-open')) {
+      throw new Error('the attribute window is open');
+    }
   });
 };
 
@@ -205,7 +219,12 @@ describe('the name generator editor', () => {
       'Add a person',
     );
     const field = await openDialog(harness, 'Create new form field');
-    await choosePickerOption(harness, field, 'Attribute', 'name');
+    await choosePickerOption(
+      harness,
+      field,
+      'Attribute',
+      personVariable('name'),
+    );
     await writeInto(
       harness,
       field.getByRole('textbox', { name: 'Question text' }),
@@ -230,13 +249,13 @@ describe('the name generator editor', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       label: { 'en-US': 'Close friends' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         title: { 'en-US': 'Add a person' },
         fields: [
           {
             id: expect.any(String),
-            variable: 'name',
+            variable: personVariable('name'),
             prompt: { 'en-US': 'What is their name?' },
           },
         ],
@@ -408,13 +427,13 @@ describe('the name generator editor', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        colleague: {
+        [testTypeId('colleague')]: {
           name: 'colleague',
           color: 'node-color-seq-3',
           icon: 'add-a-person',
           shape: { default: 'circle' },
           variables: {
-            colleague_name: {
+            [testVariableId('colleague_name')]: {
               name: 'colleague_name',
               type: 'text',
               component: 'Text',
@@ -462,23 +481,23 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
    * protocol already exercises those rules elsewhere. So the test needs one
    * free attribute, added the way a collaborator would add it.
    */
-  const FREE_ATTRIBUTE = 'nominated_early';
+  const FREE_ATTRIBUTE = testVariableId('nominated_early');
 
   const addFreeAttribute = (harness: ReturnType<typeof renderStageEditor>) => {
     const person =
       harness.protocolSections()[
-        sectionId({ kind: 'codebookNode', typeId: 'person' })
+        sectionId({ kind: 'codebookNode', typeId: PERSON })
       ];
     if (person === undefined) throw new Error('the person type is gone');
 
     harness.receiveCodebookUpdate({
       node: {
-        person: {
+        [PERSON]: {
           ...person,
           variables: {
             ...(person.variables as Record<string, unknown>),
             [FREE_ATTRIBUTE]: {
-              name: FREE_ATTRIBUTE,
+              name: 'nominated_early',
               type: 'boolean',
               component: 'Boolean',
             },
@@ -497,9 +516,13 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     dialog: OpenDialog,
   ): Promise<string[]> => {
     const window = await openPicker(harness, dialog, 'Attribute');
-    const offered = [...window.querySelectorAll('[role="option"]')].map(
-      (row) => row.getAttribute('data-attribute-id') ?? '',
-    );
+    // The attributes that can be chosen; the others are listed below them,
+    // each with its reason.
+    const offered = [
+      ...window.querySelectorAll(
+        '[role="option"][data-attribute-id]:not([data-unavailable])',
+      ),
+    ].map((row) => row.getAttribute('data-attribute-id') ?? '');
     await harness.user.keyboard('{Escape}');
     await expectWindowClosed(window);
     return offered;
@@ -546,7 +569,17 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     const offered = await offeredAttributes(harness, after);
     // Not the empty picker: everything else about this node type is still
     // offered, so the section is filtering rather than failing.
-    expect(offered).toContain('flagged');
+    expect(offered).toContain(personVariable('flagged'));
     expect(offered).not.toContain(FREE_ATTRIBUTE);
+    // Listed, with the prompt that stamps it.
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Attribute', after.element),
+        FREE_ATTRIBUTE,
+      ),
+    ).toBe(
+      'Prompt 1 on this stage assigns a value to this attribute, so it cannot also be collected here.',
+    );
   });
 });

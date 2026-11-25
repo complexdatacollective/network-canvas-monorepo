@@ -1,11 +1,14 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
   attributeField,
+  attributeTrigger,
   createRowIn,
 } from '../../../testing/attributePicker.ts';
+import { fixtureVariableId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../testing/testId.ts';
 import {
   narrativeEditor,
   narrativeHolding,
@@ -67,9 +70,9 @@ describe('the narrative sections, read in Spanish', () => {
     // This preset already positions by an attribute, which is the state the
     // trigger says "change" rather than "select" in.
     expect(
-      within(
+      attributeTrigger(
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
-      ).getByRole('button', { name: 'Cambiar atributo' }),
+      ),
     ).toBeInTheDocument();
     // Inventing one is offered from inside that window, on the term the
     // researcher typed, and in their language: the sections no longer carry a
@@ -79,7 +82,7 @@ describe('the narrative sections, read in Spanish', () => {
         harness.user,
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
         'Find or create an attribute',
-        (term) => `Crear un atributo nuevo llamado «${term}».`,
+        (term) => `Crear «${term}»`,
       ),
     ).not.toBeNull();
     expect(preset.getByText('Resaltado de nodos')).toBeInTheDocument();
@@ -112,12 +115,15 @@ describe('the narrative sections, read in Spanish', () => {
    * spliced into the Spanish sentence rather than into the English one.
    */
   it('splices a lost highlight attribute’s id into the Spanish tick list', async () => {
-    const LOST_HIGHLIGHT = 'former_flag';
+    const LOST_HIGHLIGHT = testVariableId('former_flag');
     const harness = renderStageEditor({
       ...narrativeHolding({
         id: 'narrative-preset-1',
         label: { 'en-US': 'Vista por defecto' },
-        layoutVariable: 'layout',
+        layoutVariable: fixtureVariableId(
+          { entity: 'node', typeName: 'person' },
+          'layout',
+        ),
         highlight: [
           { variable: LOST_HIGHLIGHT, label: { 'en-US': 'Antes marcado' } },
         ],

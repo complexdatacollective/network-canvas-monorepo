@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../__tests__/finishStage.ts';
+import { testTypeId, withTestCodebookIds } from '../../__tests__/testIds.ts';
 import { ValidationError } from '../../migration/errors.ts';
 import { migrateProtocol } from '../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../utils/test-utils.ts';
@@ -41,13 +42,13 @@ const cases = [
   },
   {
     where: 'a node variable id',
-    path: ['codebook', 'node', 'person', 'variables', '__proto__'],
+    path: ['codebook', 'node', testTypeId('person'), 'variables', '__proto__'],
     add: (protocol: ReturnType<typeof createBaseProtocol>) =>
       addPrototypeKey(protocol.codebook.node.person.variables, textVariable),
   },
   {
     where: 'an edge variable id',
-    path: ['codebook', 'edge', 'knows', 'variables', '__proto__'],
+    path: ['codebook', 'edge', testTypeId('knows'), 'variables', '__proto__'],
     add: (protocol: ReturnType<typeof createBaseProtocol>) =>
       addPrototypeKey(protocol.codebook.edge.knows.variables, textVariable),
   },
@@ -94,9 +95,10 @@ describe('a __proto__ codebook id', () => {
   it.each(cases)('stops a migration when it is $where', ({ add, path }) => {
     const protocol = createBaseProtocol();
     add(protocol);
+    const converted = withTestCodebookIds(protocol);
 
-    expect(() => migrateProtocol(protocol)).toThrow(ValidationError);
-    expect(() => migrateProtocol(protocol)).toThrow(
+    expect(() => migrateProtocol(converted)).toThrow(ValidationError);
+    expect(() => migrateProtocol(converted)).toThrow(
       `${path.join('.')}: An id cannot be __proto__`,
     );
   });

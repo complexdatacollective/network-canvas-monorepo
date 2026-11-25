@@ -8,7 +8,7 @@
   },
   "codebook": {
     "node": {
-      "node-type-9009-3": {
+      "f37ad799-bba7-537b-ada5-60eac0036ea1": {
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -16,23 +16,24 @@
           "default": "circle"
         },
         "variables": {
-          "var-9009-4": {
+          "8222e1d1-28e5-561e-9033-242194ec9dfb": {
             "name": "name",
             "type": "text",
             "validation": {
               "required": true
             }
           },
-          "hours": {
+          "82ee67e8-c1c2-5f68-868d-efb95113e814": {
             "name": "hours",
             "type": "number",
             "component": "Number"
           },
-          "context": {
+          "e24ee7e4-5169-5d77-894f-ecd5479d12ec": {
             "name": "context",
             "type": "categorical",
             "options": [
               {
+                "id": "b7289c97-60b8-5788-b990-07661b1ba01f",
                 "label": {
                   "en": "Work",
                   "es": "Trabajo"
@@ -40,6 +41,7 @@
                 "value": "work"
               },
               {
+                "id": "413acdfc-a242-5363-a690-1f5abf772d2e",
                 "label": {
                   "en": "Family",
                   "es": "Familia"
@@ -47,6 +49,7 @@
                 "value": "family"
               },
               {
+                "id": "e51f3267-49ed-524d-b58f-c7e76ba219dd",
                 "label": {
                   "en": "Neighbourhood",
                   "es": "Barrio"
@@ -55,11 +58,12 @@
               }
             ]
           },
-          "closeness": {
+          "5cb9386e-0dec-5594-b877-04f5f9b13a75": {
             "name": "closeness",
             "type": "ordinal",
             "options": [
               {
+                "id": "3e3e4cc3-62a9-5817-8a1f-10cf25331043",
                 "label": {
                   "en": "Close",
                   "es": "Cercano"
@@ -67,6 +71,7 @@
                 "value": 1
               },
               {
+                "id": "8c449c91-556a-5db4-8dff-abe2b34dcb04",
                 "label": {
                   "en": "Not close",
                   "es": "No cercano"
@@ -75,13 +80,13 @@
               }
             ]
           },
-          "is_pet": {
+          "61017b9f-2b03-58a6-aa37-91e911dd0a17": {
             "name": "is_pet",
             "type": "boolean"
           }
         }
       },
-      "node-type-9009-17": {
+      "4b00deb4-c117-56d8-b086-8e6fe6c802c1": {
         "name": "Relative",
         "color": "node-color-seq-2",
         "icon": "add-a-person",
@@ -89,16 +94,17 @@
           "default": "circle"
         },
         "variables": {
-          "var-9009-18": {
+          "26a55385-accf-5488-b140-cc715535d19e": {
             "name": "name",
             "type": "text",
             "encrypted": true
           },
-          "var-9009-20": {
+          "8b070246-416f-5ecf-8a3d-d03be490d607": {
             "name": "genderIdentity",
             "type": "categorical",
             "options": [
               {
+                "id": "c018ef12-f719-541b-ab4d-f273f977fb29",
                 "value": "woman",
                 "label": {
                   "en": "Woman",
@@ -106,6 +112,7 @@
                 }
               },
               {
+                "id": "a099df44-2a50-5e3f-a3d5-547a10f27d81",
                 "value": "man",
                 "label": {
                   "en": "Man",
@@ -113,6 +120,7 @@
                 }
               },
               {
+                "id": "0784d673-5d3a-55e9-aa62-a76b539f578f",
                 "value": "nonBinary",
                 "label": {
                   "en": "Non-binary",
@@ -120,6 +128,7 @@
                 }
               },
               {
+                "id": "a6b3bc6e-3d28-53dc-93af-d8b842b24020",
                 "value": "differentIdentity",
                 "label": {
                   "en": "A different identity",
@@ -127,6 +136,7 @@
                 }
               },
               {
+                "id": "5b58f563-2c6b-53a5-b1af-dd6c5c775bbd",
                 "value": "unknown",
                 "label": {
                   "en": "Don’t know",
@@ -134,6 +144,7 @@
                 }
               },
               {
+                "id": "7fe5e886-010f-506e-a04f-c2f01184f3a0",
                 "value": "preferNotToSay",
                 "label": {
                   "en": "Prefer not to say",
@@ -142,11 +153,12 @@
               }
             ]
           },
-          "var-9009-21": {
+          "fead4aa4-e6d1-51ce-a907-d92150e1ec56": {
             "name": "sexAssignedAtBirth",
             "type": "categorical",
             "options": [
               {
+                "id": "18ac3e1f-5180-5075-a273-04608adb4831",
                 "value": "female",
                 "label": {
                   "en": "Female",
@@ -154,6 +166,7 @@
                 }
               },
               {
+                "id": "a94e202c-7532-5bea-bd6a-1b3baf088167",
                 "value": "male",
                 "label": {
                   "en": "Male",
@@ -161,6 +174,7 @@
                 }
               },
               {
+                "id": "0c7637a3-6850-5431-9953-7f5aa18e387d",
                 "value": "intersex",
                 "label": {
                   "en": "Intersex",
@@ -168,6 +182,7 @@
                 }
               },
               {
+                "id": "d86dd2ba-eb4d-5334-ae72-7c180724c278",
                 "value": "unknown",
                 "label": {
                   "en": "Don’t know",
@@ -175,6 +190,7 @@
                 }
               },
               {
+                "id": "21c9d67f-b0d0-522c-b10b-70149f3a6f6f",
                 "value": "preferNotToSay",
                 "label": {
                   "en": "Prefer not to say",
@@ -183,7 +199,7 @@
               }
             ]
           },
-          "var-9009-22": {
+          "64f47678-a046-5566-979f-2984c4650f72": {
             "name": "isEgo",
             "type": "boolean"
           }
@@ -191,15 +207,16 @@
       }
     },
     "edge": {
-      "edge-type-9009-23": {
+      "18503667-c4e7-5b58-a196-fc90813a0d96": {
         "name": "Family",
         "color": "edge-color-seq-1",
         "variables": {
-          "var-9009-24": {
+          "ea2ffb06-1ebf-59e8-8976-5764835e477b": {
             "name": "kind",
             "type": "categorical",
             "options": [
               {
+                "id": "a120b986-ec7d-5144-88cc-399be83335d6",
                 "value": "partner",
                 "label": {
                   "en": "Partner",
@@ -207,6 +224,7 @@
                 }
               },
               {
+                "id": "39850206-df66-5b22-b710-d5b7d5a4815d",
                 "value": "biological",
                 "label": {
                   "en": "Biological parent",
@@ -214,6 +232,7 @@
                 }
               },
               {
+                "id": "f194fe5e-3086-500a-b9a0-97ae598a9daa",
                 "value": "adoptive",
                 "label": {
                   "en": "Adoptive parent",
@@ -221,6 +240,7 @@
                 }
               },
               {
+                "id": "4153dab8-fbce-593f-8774-7bd0f61991c3",
                 "value": "social",
                 "label": {
                   "en": "Step or social parent",
@@ -228,6 +248,7 @@
                 }
               },
               {
+                "id": "215b9519-ee23-5ff9-9d23-1676bc42989c",
                 "value": "donor",
                 "label": {
                   "en": "Egg or sperm donor",
@@ -235,6 +256,7 @@
                 }
               },
               {
+                "id": "18ec0591-adc6-5c9c-93a2-468057582453",
                 "value": "surrogate",
                 "label": {
                   "en": "Surrogate",
@@ -242,6 +264,7 @@
                 }
               },
               {
+                "id": "ff0fdc9b-4e97-590b-98d4-152de45a4ef6",
                 "value": "identicalTwin",
                 "label": {
                   "en": "Identical twin",
@@ -249,6 +272,7 @@
                 }
               },
               {
+                "id": "d4145124-d456-507e-b887-db26f7127a4d",
                 "value": "fraternalTwin",
                 "label": {
                   "en": "Fraternal twin",
@@ -256,6 +280,7 @@
                 }
               },
               {
+                "id": "9c386213-f1ba-562c-a02d-fa59e2cefaa0",
                 "value": "unknownZygosityTwin",
                 "label": {
                   "en": "Twin, not known if identical",
@@ -264,11 +289,11 @@
               }
             ]
           },
-          "var-9009-25": {
+          "003854c0-4c1b-545c-9ead-c968a3ff51a2": {
             "name": "gestationalCarrier",
             "type": "boolean"
           },
-          "var-9009-26": {
+          "959b623c-21c3-5300-b7f2-63e2cf1af34f": {
             "name": "currentPartner",
             "type": "boolean"
           }
@@ -277,7 +302,7 @@
     },
     "ego": {
       "variables": {
-        "ego-var-9009-1": {
+        "da7d8d07-b30e-5f7b-80fb-7ee2cd9c6ad0": {
           "name": "ego_name",
           "type": "text",
           "component": "Text",
@@ -285,7 +310,7 @@
             "required": true
           }
         },
-        "ego-var-9009-2": {
+        "e9f21876-b930-52ca-bf9e-7f7a4d4d1e39": {
           "name": "consent",
           "type": "boolean",
           "component": "Boolean",
@@ -315,7 +340,7 @@
   },
   "stages": [
     {
-      "id": "language",
+      "id": "832fa593-e307-55cf-823f-3b4c5647aa26",
       "type": "LanguageChooser",
       "label": {
         "en": "Language",
@@ -327,24 +352,19 @@
       }
     },
     {
-      "id": "welcome",
+      "id": "322c897b-0762-57f6-93f2-9d44699ca338",
       "type": "Information",
       "label": {
         "en": "Welcome",
         "es": "Bienvenida"
       },
-      "dynamicValues": {
-        "today": {
-          "path": "now"
-        }
-      },
       "content": {
-        "en": "# Welcome\n\nThis interview was started on {today}.",
-        "es": "# Bienvenida\n\nEsta entrevista se empezó el {today}."
+        "en": "# Welcome\n\nThis interview was started on {now}.",
+        "es": "# Bienvenida\n\nEsta entrevista se empezó el {now}."
       }
     },
     {
-      "id": "about-you",
+      "id": "4badd6ae-28a8-5573-861e-121d5a911938",
       "type": "EgoForm",
       "label": {
         "en": "About you",
@@ -359,16 +379,16 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "ego-var-9009-1",
+            "id": "064c0dfc-10e5-541f-9b70-b9119ade6af4",
+            "variable": "da7d8d07-b30e-5f7b-80fb-7ee2cd9c6ad0",
             "prompt": {
               "en": "What is your name?",
               "es": "¿Cómo te llamas?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "ego-var-9009-2",
+            "id": "5f97e59f-07d3-5078-85da-184308ed8000",
+            "variable": "e9f21876-b930-52ca-bf9e-7f7a4d4d1e39",
             "prompt": {
               "en": "Do you agree to take part?",
               "es": "¿Aceptas participar?"
@@ -378,7 +398,7 @@
       }
     },
     {
-      "id": "privacy",
+      "id": "03c4c152-a167-5d56-bddf-e89e0d52ad6a",
       "type": "Anonymisation",
       "label": {
         "en": "Privacy",
@@ -389,10 +409,10 @@
         "filter": {
           "rules": [
             {
-              "id": "consent-declined",
+              "id": "1f257cad-8470-5de7-bc47-12f402814165",
               "type": "ego",
               "options": {
-                "attribute": "ego-var-9009-2",
+                "attribute": "e9f21876-b930-52ca-bf9e-7f7a4d4d1e39",
                 "operator": "EXACTLY",
                 "value": false
               }
@@ -401,7 +421,7 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "1dd347f7-e4ba-5467-9778-03c9bc9ea149"
         }
       },
       "explanationText": {
@@ -410,24 +430,19 @@
       }
     },
     {
-      "id": "greeting",
+      "id": "01aad786-e3ec-5e11-ad7e-a912239cbb5d",
       "type": "Information",
       "label": {
         "en": "Greeting",
         "es": "Saludo"
       },
-      "dynamicValues": {
-        "egoName": {
-          "path": "ego.ego-var-9009-1"
-        }
-      },
       "content": {
-        "en": "# {egoName, select, missing {Hello} other {Hello, {egoName}}}\n\nThank you{egoName, select, missing {.} other {, {egoName}.}} Next, tell us about the people you know.",
-        "es": "# {egoName, select, missing {Hola} other {Hola, {egoName}}}\n\nGracias{egoName, select, missing {.} other {, {egoName}.}} Ahora, háblanos de las personas que conoces."
+        "en": "# {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {Hello} other {Hello, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}}}\n\nThank you{ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {.} other {, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}.}} Next, tell us about the people you know.",
+        "es": "# {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {Hola} other {Hola, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}}}\n\nGracias{ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0, select, missing {.} other {, {ego_da7d8d07_b30e_5f7b_80fb_7ee2cd9c6ad0}.}} Ahora, háblanos de las personas que conoces."
       }
     },
     {
-      "id": "people",
+      "id": "3f242aec-7da7-5aab-b3e6-7066cceec574",
       "type": "NameGeneratorQuickAdd",
       "label": {
         "en": "People",
@@ -435,54 +450,49 @@
       },
       "subject": {
         "entity": "node",
-        "type": "node-type-9009-3"
+        "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
       },
       "prompts": [
         {
-          "id": "prompt-9009-11",
+          "id": "d233145b-85c1-5a6b-9d47-27c38bca3589",
           "text": {
             "en": "Who are the people you know?",
             "es": "¿Quiénes son las personas que conoces?"
           }
         }
       ],
-      "quickAdd": "var-9009-4",
+      "quickAdd": "8222e1d1-28e5-561e-9033-242194ec9dfb",
       "addNamePlaceholder": {
         "en": "Type a name, then press Enter",
         "es": "Escribe un nombre y pulsa Intro"
       }
     },
     {
-      "id": "each-person",
+      "id": "34ae9efa-7037-504c-a629-30283860c2fe",
       "type": "AlterForm",
       "label": {
         "en": "About each person",
         "es": "Sobre cada persona"
       },
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "subject": {
         "entity": "node",
-        "type": "node-type-9009-3"
+        "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "hours",
+            "id": "498b3f9b-7894-5b47-93af-b5f7a0f7e4ee",
+            "variable": "82ee67e8-c1c2-5f68-868d-efb95113e814",
             "prompt": {
-              "en": "How many hours a week do you spend with {nodeLabel}?",
-              "es": "¿Cuántas horas a la semana pasas con {nodeLabel}?"
+              "en": "How many hours a week do you spend with {node_label}?",
+              "es": "¿Cuántas horas a la semana pasas con {node_label}?"
             }
           }
         ]
       }
     },
     {
-      "id": "context-bin",
+      "id": "6c7da068-e884-5ae8-ad55-632d0f1fad78",
       "type": "CategoricalBin",
       "label": {
         "en": "Context",
@@ -490,16 +500,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "node-type-9009-3"
+        "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
       },
       "prompts": [
         {
-          "id": "prompt-9009-14",
+          "id": "1efee686-9932-5eae-bcc3-3f49ce985fec",
           "text": {
             "en": "Where do you know each person from?",
             "es": "¿De dónde conoces a cada persona?"
           },
-          "variable": "context"
+          "variable": "e24ee7e4-5169-5d77-894f-ecd5479d12ec"
         }
       ],
       "behaviours": {
@@ -512,7 +522,7 @@
       }
     },
     {
-      "id": "nobody-to-show",
+      "id": "84550fb5-ea3b-5f8d-acda-684677280003",
       "type": "OrdinalBin",
       "label": {
         "en": "Pets",
@@ -521,11 +531,11 @@
       "filter": {
         "rules": [
           {
-            "id": "only-pets",
+            "id": "daf582f0-c1b5-5f58-aaa6-46ef71f5b96f",
             "type": "node",
             "options": {
-              "type": "node-type-9009-3",
-              "attribute": "is_pet",
+              "type": "f37ad799-bba7-537b-ada5-60eac0036ea1",
+              "attribute": "61017b9f-2b03-58a6-aa37-91e911dd0a17",
               "operator": "EXACTLY",
               "value": true
             }
@@ -534,22 +544,22 @@
       },
       "subject": {
         "entity": "node",
-        "type": "node-type-9009-3"
+        "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
       },
       "prompts": [
         {
-          "id": "prompt-9009-16",
+          "id": "673a7e0f-1a35-5931-9fbe-4ac8a62b54e2",
           "text": {
             "en": "How close are you to each pet?",
             "es": "¿Qué tan cercano eres a cada mascota?"
           },
-          "variable": "closeness",
+          "variable": "5cb9386e-0dec-5594-b877-04f5f9b13a75",
           "color": "ord-color-seq-1"
         }
       ]
     },
     {
-      "id": "family",
+      "id": "58c739fd-59d7-5a5b-992d-91ced6827f0f",
       "type": "FamilyPedigree",
       "label": {
         "en": "Family",
@@ -557,16 +567,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "node-type-9009-17"
+        "type": "4b00deb4-c117-56d8-b086-8e6fe6c802c1"
       },
       "prompt": {
         "en": "Add the members of your family.",
         "es": "Añade a los miembros de tu familia."
       },
       "nodeConfiguration": {
-        "nameAttribute": "var-9009-18",
+        "nameAttribute": "26a55385-accf-5488-b140-cc715535d19e",
         "genderIdentity": {
-          "attribute": "var-9009-20",
+          "attribute": "8b070246-416f-5ecf-8a3d-d03be490d607",
           "terms": [
             {
               "value": "woman",
@@ -594,8 +604,8 @@
             }
           ]
         },
-        "sexAssignedAtBirthAttribute": "var-9009-21",
-        "egoAttribute": "var-9009-22",
+        "sexAssignedAtBirthAttribute": "fead4aa4-e6d1-51ce-a907-d92150e1ec56",
+        "egoAttribute": "64f47678-a046-5566-979f-2984c4650f72",
         "nameField": {
           "prompt": {
             "en": "Name (optional)",
@@ -608,10 +618,10 @@
         }
       },
       "edgeConfiguration": {
-        "type": "edge-type-9009-23",
-        "kindAttribute": "var-9009-24",
-        "gestationalCarrierAttribute": "var-9009-25",
-        "currentPartnerAttribute": "var-9009-26"
+        "type": "18503667-c4e7-5b58-a196-fc90813a0d96",
+        "kindAttribute": "ea2ffb06-1ebf-59e8-8976-5764835e477b",
+        "gestationalCarrierAttribute": "003854c0-4c1b-545c-9ead-c968a3ff51a2",
+        "currentPartnerAttribute": "959b623c-21c3-5300-b7f2-63e2cf1af34f"
       },
       "wording": {
         "alsoParentOfLabel": {
@@ -909,7 +919,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "2b5cce6a-7754-5f9f-9304-e21f4dd86f8d",
       "type": "FinishSession",
       "label": {
         "en": "Finish Interview",
@@ -939,7 +949,7 @@
       }
     },
     {
-      "id": "finish-declined",
+      "id": "1dd347f7-e4ba-5467-9778-03c9bc9ea149",
       "type": "FinishSession",
       "label": {
         "en": "Not taking part",

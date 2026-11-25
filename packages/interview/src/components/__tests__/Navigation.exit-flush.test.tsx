@@ -9,6 +9,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../__tests__/testIds';
 import { createDebouncedSyncHandler } from '../../contract/debouncedSync';
 import type { InterviewPayload } from '../../contract/types';
 import Shell from '../../Shell';
@@ -72,7 +73,7 @@ const payload = {
     assets: [],
     stages: [
       {
-        id: 'only-stage',
+        id: testId('only-stage'),
         type: 'Information',
         label: { en: 'Only stage' },
         content: { en: '# Only stage' },
@@ -141,8 +142,7 @@ describe('Navigation exit flush', () => {
     });
 
     const user = userEvent.setup();
-    await user.click(screen.getByTestId('settings-button'));
-    await user.click(await screen.findByTestId('exit-button'));
+    await user.click(screen.getByTestId('exit-button'));
     const dialog = await screen.findByRole('dialog', {
       name: 'Exit interview',
     });

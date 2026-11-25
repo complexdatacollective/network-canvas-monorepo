@@ -18,6 +18,7 @@ import {
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
 import { createWebSocketHost } from '../../testing/host/websocketHost.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { attempt } from '../attempt.ts';
 import { streamProtocolEvents } from '../channel.ts';
 import type { ProtocolBuilderAdapter } from '../context.ts';
@@ -30,7 +31,10 @@ let writes = 0;
 const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 const ASSETS = sectionId({ kind: 'assets' });
 
@@ -252,11 +256,11 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     });
     expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER]);
     expect(Redacted.value(order.document).stages).not.toContain(
-      'information-1',
+      fixtureStageId('information-1'),
     );
     const stagesBefore = Redacted.value(before.document).stages;
     expect(Array.isArray(stagesBefore) && stagesBefore).toContain(
-      'information-1',
+      fixtureStageId('information-1'),
     );
     expect(order.revision.sequence).toBe(deleted.revision.sequence);
     const { refusal } = await attempt(adapter, 'GetSection', {

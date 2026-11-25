@@ -8,15 +8,31 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../testing/protocolFixture.ts';
+import { testVariableId, testId } from '../testing/testId.ts';
 import BinAttributeField, {
   type BinAttributeSlot,
 } from './BinAttributeField.tsx';
 
+const PERSON = fixtureTypeId('node', 'person');
+const CONTACT_FREQ = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactFreq',
+);
+const CONTACT_TYPE = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactType',
+);
+
 /** Whose attributes a bin prompt sorts, which the stage's subject decides. */
-const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON_SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 
 /** The codebook section a collaborator's edits below are written to. */
-const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 /** What an Ordinal Bin can draw before the bins stop being readable. */
 const ORDINAL_BIN_LIMIT = 6;
@@ -54,7 +70,7 @@ function TheScale({ committed }: Readonly<{ committed: string | undefined }>) {
   return (
     <BinAttributeField
       slot={SCALE_SLOT}
-      subject={PERSON}
+      subject={PERSON_SUBJECT}
       committed={committed}
       label="Attribute"
       hint="Each of this attribute's values becomes a bin, in the order the attribute lists them."
@@ -72,7 +88,7 @@ function TheBins({ committed }: Readonly<{ committed: string | undefined }>) {
   return (
     <BinAttributeField
       slot={BINS_SLOT}
-      subject={PERSON}
+      subject={PERSON_SUBJECT}
       committed={committed}
       label="Attribute"
       hint="Each of this attribute's values becomes a bin, and dropping someone into a bin records that value for them."
@@ -99,10 +115,10 @@ const meta = {
     },
   },
   args: {
-    stageId: 'ordinal-bin-1',
+    stageId: fixtureStageId('ordinal-bin-1'),
     // What the host stands in for is the row dialog that edits one question.
     sectionTitle: 'The scale',
-    children: <TheScale committed="contactFreq" />,
+    children: <TheScale committed={CONTACT_FREQ} />,
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof FieldStoryHost>;
@@ -135,8 +151,8 @@ export const ASpectator: Story = {
     // The attribute is chosen in a window a trigger opens, so what is inert
     // for a spectator is the trigger.
     await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
-    ).toBeDisabled();
+      await canvas.findByRole('combobox', { name: /^Attribute/u }),
+    ).toHaveAttribute('aria-disabled', 'true');
     await expect(
       canvas.queryByRole('button', { name: 'Create a new attribute' }),
     ).toBeNull();
@@ -172,7 +188,9 @@ export const AnAttributeThatMustBeChosen: Story = {
  * so this host reaches the control's sentence and not that one.
  */
 export const AnAttributeNothingOffers: Story = {
-  args: { children: <TheScale committed="withdrawn_attribute" /> },
+  args: {
+    children: <TheScale committed={testVariableId('withdrawn_attribute')} />,
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -206,17 +224,45 @@ export const MoreBinsThanFit: Story = {
         ...document,
         variables: {
           ...variables,
-          contactFreq: {
+          [CONTACT_FREQ]: {
             name: 'contactFreq',
             type: 'ordinal',
             options: [
-              { label: { 'en-US': 'Daily' }, value: 7 },
-              { label: { 'en-US': 'Weekly' }, value: 6 },
-              { label: { 'en-US': 'Monthly' }, value: 5 },
-              { label: { 'en-US': 'Every few months' }, value: 4 },
-              { label: { 'en-US': 'Once a year' }, value: 3 },
-              { label: { 'en-US': 'Less than once a year' }, value: 2 },
-              { label: { 'en-US': 'Never' }, value: 1 },
+              {
+                id: testId('option/contactFreq/7'),
+                label: { 'en-US': 'Daily' },
+                value: 7,
+              },
+              {
+                id: testId('option/contactFreq/6'),
+                label: { 'en-US': 'Weekly' },
+                value: 6,
+              },
+              {
+                id: testId('option/contactFreq/5'),
+                label: { 'en-US': 'Monthly' },
+                value: 5,
+              },
+              {
+                id: testId('option/contactFreq/4'),
+                label: { 'en-US': 'Every few months' },
+                value: 4,
+              },
+              {
+                id: testId('option/contactFreq/3'),
+                label: { 'en-US': 'Once a year' },
+                value: 3,
+              },
+              {
+                id: testId('option/contactFreq/2'),
+                label: { 'en-US': 'Less than once a year' },
+                value: 2,
+              },
+              {
+                id: testId('option/contactFreq/1'),
+                label: { 'en-US': 'Never' },
+                value: 1,
+              },
             ],
           },
         },
@@ -241,16 +287,16 @@ export const MoreBinsThanFit: Story = {
  */
 export const TheOtherBin: Story = {
   args: {
-    stageId: 'categorical-bin-1',
+    stageId: fixtureStageId('categorical-bin-1'),
     sectionTitle: 'The bins',
-    children: <TheBins committed="contactType" />,
+    children: <TheBins committed={CONTACT_TYPE} />,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
     await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
+      await canvas.findByRole('combobox', { name: /^Attribute contactType$/u }),
     ).toBeInTheDocument();
     await expect(
       canvasElement.querySelector('[data-attribute-type]'),

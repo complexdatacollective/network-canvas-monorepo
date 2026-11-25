@@ -20,9 +20,14 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
     validateProtocol: async (protocol: {
       stages: { id: string; type: string }[];
     }) => {
+      const { sketchStageId } = await import('../design/objectIds.ts');
+      const consent = [
+        sketchStageId('consent'),
+        sketchStageId('consent_declined'),
+      ];
       const rejected = protocol.stages
         .map((s, i) =>
-          s.type === 'Information' || s.id.startsWith('consent') ? -1 : i,
+          s.type === 'Information' || consent.includes(s.id) ? -1 : i,
         )
         .filter((i) => i >= 0);
       if (!rejected.length) return actual.validateProtocol(protocol as never);

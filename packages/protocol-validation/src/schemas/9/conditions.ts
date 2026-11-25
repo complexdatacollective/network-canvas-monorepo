@@ -1,9 +1,13 @@
 import { z } from 'zod';
 
-import { DYNAMIC_VALUE_NAME } from '../../localization/dynamicValueMessages.ts';
 import type { DynamicValueRole } from './dynamic-values.ts';
 import { entityTypeReference } from './entity-type-reference.ts';
 import { filterRuleSchema } from './filters/index.ts';
+import {
+  createProtocolObjectId,
+  type ProtocolObjectId,
+  protocolObjectId,
+} from './protocol-object-id.ts';
 
 /**
  * How a count of edges is compared: against a number, or against the counts
@@ -35,7 +39,7 @@ export const edgeCountNeedsValue = (comparison: EdgeCountComparison): boolean =>
 export const EdgeCountRuleSchema = z
   .strictObject({
     type: z.literal('edge'),
-    id: z.string(),
+    id: protocolObjectId('rule'),
     options: z.strictObject({
       /** The one edge type counted; absent, every edge counts. */
       type: entityTypeReference({ entity: 'edge' }).optional(),
@@ -129,7 +133,9 @@ export const ConditionSchema = z
 export type Condition = z.infer<typeof ConditionSchema>;
 
 /**
- * Conditions by id; an id is an argument-like name.
+ * Conditions by id. An id is a UUID, made like a protocol object's
+ * (`createConditionId`), and text names a condition by it
+ * (`condition_<id>`, see `dynamic-values.ts`).
  *
  * Declared with its type written out: every stage schema holds it, and left
  * to inference the stage union's type grows past what the compiler will
@@ -137,16 +143,17 @@ export type Condition = z.infer<typeof ConditionSchema>;
  */
 export type Conditions = Record<string, Condition>;
 
-export const ConditionsSchema: z.ZodType<Conditions> = z
-  .record(z.string(), ConditionSchema)
-  .superRefine((conditions, ctx) => {
-    for (const id of Object.keys(conditions)) {
-      if (!DYNAMIC_VALUE_NAME.test(id)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `"${id}" cannot identify a condition: use ASCII letters and digits, starting with a letter.`,
-          path: [id],
-        });
-      }
-    }
-  });
+export const ConditionsSchema: z.ZodType<Conditions> = z.record(
+  z.uuid(),
+  ConditionSchema,
+  {
+    error: (issue) =>
+      issue.code === 'invalid_key'
+        ? `The condition id ${JSON.stringify(issue.input)} is not a UUID. Every condition id must be a UUID.`
+        : undefined,
+  },
+);
+
+/** A new, random condition id, for a condition being created. */
+export const createConditionId = (): ProtocolObjectId =>
+  createProtocolObjectId();

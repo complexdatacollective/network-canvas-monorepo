@@ -1,12 +1,18 @@
 import { z } from 'zod';
 
-import { CodebookIdSchema, CodebookNameSchema } from '@codaco/shared-consts';
+import { CodebookNameSchema } from '@codaco/shared-consts';
 
 import {
   findDuplicateName,
   getVariableNames,
 } from '../../../utils/validation-helpers.ts';
+import { codebookRecord, VariableIdSchema } from '../codebook-ids.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
+import {
+  createProtocolObjectId,
+  type ProtocolObjectId,
+  protocolObjectId,
+} from '../protocol-object-id.ts';
 import {
   DATE_RESOLUTION,
   isIsoDate,
@@ -430,9 +436,29 @@ export const categoricalOptionValueSchema = z.union([
  */
 export const optionValueKey = (value: string | number): string => String(value);
 
+const isOptionValue = (value: unknown): value is string | number =>
+  typeof value === 'string' || typeof value === 'number';
+
+/**
+ * Whether a stored answer is the option value `value`, compared as the
+ * schema compares option values (`optionValueKey`): an answer of `"1"` is the
+ * option whose value is `1`. A yes/no option's value is matched exactly.
+ */
+export const isSameOptionValue = (answer: unknown, value: unknown): boolean =>
+  answer === value ||
+  (isOptionValue(answer) &&
+    isOptionValue(value) &&
+    optionValueKey(answer) === optionValueKey(value));
+
+/** A new, random option id, for a categorical or ordinal option being created. */
+export const createOptionId = (): ProtocolObjectId => createProtocolObjectId();
+
+// Each option has an id, by which text chooses a version for it (see
+// `optionCaseKey`). Answers are still stored, and exported, by `value`.
 const categoricalOptionsSchema = z
   .array(
     z.strictObject({
+      id: protocolObjectId('option'),
       label: localizedString(nonBlankText(), {
         format: 'markdown',
         lines: 'single',
@@ -592,20 +618,20 @@ const checkDuplicateVariableNames = (
     });
   }
 };
-export const VariablesSchema = z
-  .record(CodebookIdSchema, VariableSchema)
+const variableRecord = () =>
+  codebookRecord(VariableIdSchema, VariableSchema, 'variable');
+
+export const VariablesSchema = variableRecord()
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncryptedOnNonTextNode)
   .superRefine(rejectValidationContradictions);
 
-export const EdgeVariablesSchema = z
-  .record(CodebookIdSchema, VariableSchema)
+export const EdgeVariablesSchema = variableRecord()
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Edge'))
   .superRefine(rejectValidationContradictions);
 
-export const EgoVariablesSchema = z
-  .record(CodebookIdSchema, VariableSchema)
+export const EgoVariablesSchema = variableRecord()
   .superRefine(checkDuplicateVariableNames)
   .superRefine(rejectEncrypted('Ego'))
   .superRefine(rejectEgoUnique)

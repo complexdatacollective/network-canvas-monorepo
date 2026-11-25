@@ -1,17 +1,29 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { attributeField } from '../../../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+} from '../../../testing/attributePicker.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testTypeId } from '../../../testing/testId.ts';
 import {
   composerEditor,
   composerHolding,
   openRow,
 } from './composerFixtures.tsx';
 
+const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
+/** A connection type the codebook has lost. */
+const FORMER_EDGE = testTypeId('former_edge');
+
 const KNOWS_ENTRY = {
   id: 'composer-edge-1',
-  subject: { entity: 'edge', type: 'knows' },
+  subject: { entity: 'edge', type: fixtureTypeId('edge', 'knows') },
 };
 
 /**
@@ -58,11 +70,7 @@ describe('the network composer sections, read in Spanish', () => {
     // that choice rather than the word for making one: the picker's own words
     // come from the same catalog as the label above it. Waited for, because
     // the field is drawn before the stage's own value reaches it.
-    await waitFor(() =>
-      expect(
-        within(quickAdd).getByRole('button', { name: 'Cambiar atributo' }),
-      ).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(attributeTrigger(quickAdd)).toBeInTheDocument());
     expect(
       attributeField('Crear o seleccionar un atributo categórico para agrupar'),
     ).toBeInTheDocument();
@@ -134,7 +142,7 @@ describe('the network composer sections, read in Spanish', () => {
     const harness = renderStageEditor({
       ...composerHolding({
         nodeForm: {
-          fields: [{ id: 'field-1', variable: 'age', component: 'Number' }],
+          fields: [{ id: 'field-1', variable: AGE, component: 'Number' }],
         },
       }),
       locale: 'es',
@@ -159,7 +167,7 @@ describe('the network composer sections, read in Spanish', () => {
         edges: [
           {
             id: 'gone-1',
-            subject: { entity: 'edge', type: 'former_edge' },
+            subject: { entity: 'edge', type: FORMER_EDGE },
             label: { en: 'Connection' },
           },
         ],
@@ -169,7 +177,7 @@ describe('the network composer sections, read in Spanish', () => {
 
     expect(
       await screen.findByText(
-        'former_edge: este tipo de vínculo ya no está en el libro de códigos',
+        `${FORMER_EDGE}: este tipo de vínculo ya no está en el libro de códigos`,
       ),
     ).toBeInTheDocument();
   });

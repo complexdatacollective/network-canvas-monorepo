@@ -3,11 +3,15 @@ import 'fake-indexeddb/auto';
 import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { testOptionId } from '@codaco/protocol-builder/testing/testId';
 import type {
   Finding,
   ReviewResult,
 } from '@codaco/protocol-review-worker/contract';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import {
   actionCreators,
@@ -30,6 +34,12 @@ import {
   makeFinding,
   makeProtocol,
   op,
+  WELCOME_STAGE_ID,
+  NAMES_STAGE_ID,
+  NAMES_PROMPT_ID,
+  FINISH_STAGE_ID,
+  FREQ,
+  PERSON,
 } from '~/protocolReview/__tests__/fixtures';
 import type { ReviewOutcome } from '~/protocolReview/reviewClient';
 import { keepProtocolReviewOnActiveProtocol } from '~/protocolReview/reviewListener';
@@ -123,7 +133,7 @@ const reload = async (id: string, protocol: CurrentProtocol) => {
 };
 
 const TITLE = makeFinding('title', [
-  op('set', '/stages/welcome/label/en', 'Welcome to our study'),
+  op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Welcome to our study'),
 ]);
 
 let store: Store;
@@ -186,7 +196,7 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
     };
     await reviewed(
       store,
-      [makeFinding('drop', [op('remove', '/stages/names')])],
+      [makeFinding('drop', [op('remove', `/stages/${NAMES_STAGE_ID}`)])],
       customised,
     );
     await store.dispatch(checkFixAvailability());
@@ -201,13 +211,13 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
 
   it('keeps the fix made, and withdraws Undo, once the researcher edits a member the fix inserted', async () => {
     const stage = {
-      id: 'added',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Added' },
       content: { en: '# Added' },
     };
     await reviewed(store, [
-      makeFinding('add', [op('insert', '/stages/finish', stage)]),
+      makeFinding('add', [op('insert', `/stages/${FINISH_STAGE_ID}`, stage)]),
     ]);
     await store.dispatch(checkFixAvailability());
     expect(await store.dispatch(decideFinding('add', 'fix'))).toEqual({
@@ -230,29 +240,29 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
       ok: false,
       reason: 'not_fixed',
     });
-    expect(protocolOf(store).stages.map((s) => s.id)).toContain('added');
+    expect(protocolOf(store).stages.map((s) => s.id)).toContain(stage.id);
   });
 
   it('withdraws Undo once the researcher re-creates what the fix removed', async () => {
     await reviewed(store, [
       makeFinding('drop', [
-        op('remove', '/codebook/node/person/variables/freq'),
+        op('remove', `/codebook/node/${PERSON}/variables/${FREQ}`),
       ]),
     ]);
     await store.dispatch(checkFixAvailability());
     await store.dispatch(decideFinding('drop', 'fix'));
-    const person = protocolOf(store).codebook.node?.person;
+    const person = protocolOf(store).codebook.node?.[PERSON];
     if (!person) throw new Error('fixture changed');
     store.dispatch(
       actionCreators.updateProtocol({
         codebook: {
           ...protocolOf(store).codebook,
           node: {
-            person: {
+            [PERSON]: {
               ...person,
               variables: {
                 ...person.variables,
-                freq: { name: 'freq', type: 'text' },
+                [FREQ]: { name: 'freq', type: 'text' },
               },
             },
           },
@@ -278,34 +288,36 @@ describe('B: Undo restores exactly what applying the fix changed, or is refused'
 });
 
 describe('C: an id-aware path reaches the member with that id, or nothing', () => {
-  it('does not fix the stage that took the place of a deleted stage with id 0', async () => {
-    const base = makeProtocol();
-    const [welcome, ...rest] = base.stages;
-    if (!welcome) throw new Error('fixture changed');
-    const protocol: CurrentProtocol = {
-      ...base,
-      stages: [{ ...welcome, id: '0' }, { ...welcome, id: 'second' }, ...rest],
-    };
-    await reviewed(
-      store,
-      [makeFinding('zero', [op('set', '/stages/0/label/en', 'Better')])],
-      protocol,
-    );
+  it('does not fix the stage that took the place of a deleted stage', async () => {
+    await reviewed(store, [
+      makeFinding('welcome', [
+        op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Better'),
+      ]),
+      makeFinding('by-index', [op('set', '/stages/0/label/en', 'Better')]),
+    ]);
+    expect(
+      await store.dispatch(decideFinding('by-index', 'fix')),
+    ).toMatchObject({ ok: false });
     store.dispatch(
       actionCreators.updateProtocol({
-        stages: protocolOf(store).stages.filter((stage) => stage.id !== '0'),
+        stages: protocolOf(store).stages.filter(
+          (stage) => stage.id !== WELCOME_STAGE_ID,
+        ),
       }),
     );
     await store.dispatch(checkFixAvailability());
-    expect(findingOf(store, 'zero').availability).toBe('changed');
-    expect(await store.dispatch(decideFinding('zero', 'fix'))).toEqual({
+    expect(findingOf(store, 'welcome').availability).toBe('changed');
+    expect(await store.dispatch(decideFinding('welcome', 'fix'))).toEqual({
       ok: false,
       reason: 'changed',
     });
     expect(protocolOf(store).stages[0]).toMatchObject({
-      id: 'second',
-      label: { en: 'Welcome' },
+      id: NAMES_STAGE_ID,
     });
+    expect(protocolOf(store).stages[0]).not.toHaveProperty(
+      'label.en',
+      'Better',
+    );
   });
 });
 
@@ -399,12 +411,14 @@ describe('F: the preview shows every text change a fix makes', () => {
   it('shows a replaced localized object as its changed translation', async () => {
     await reviewed(store, [
       makeFinding('prompt', [
-        op('set', '/stages/names/prompts/p1/text', { en: 'New wording' }),
+        op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
+          en: 'New wording',
+        }),
       ]),
     ]);
     expect(findingOf(store, 'prompt').textEdits).toEqual([
       {
-        path: '/stages/names/prompts/p1/text/en',
+        path: `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
         now: 'Name people',
         after: 'New wording',
         locale: 'en',
@@ -501,27 +515,36 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     expect(findingOf(store, 'title').status).toBe('fixed');
   });
 
-  it('does not read a removal by index as made because the list got shorter', async () => {
+  it('does not read a removal as made because the list got shorter', async () => {
+    const NEVER = testOptionId(FREQ, 3);
     const options = [
-      { label: { en: 'Often', fr: 'Souvent' }, value: 1 },
-      { label: { en: 'Rarely', fr: 'Rarement' }, value: 2 },
-      { label: { en: 'Never', fr: 'Jamais' }, value: 3 },
+      {
+        id: testOptionId(FREQ, 1),
+        label: { en: 'Often', fr: 'Souvent' },
+        value: 1,
+      },
+      {
+        id: testOptionId(FREQ, 2),
+        label: { en: 'Rarely', fr: 'Rarement' },
+        value: 2,
+      },
+      { id: NEVER, label: { en: 'Never', fr: 'Jamais' }, value: 3 },
     ];
     /** The fixture with `freq` offering `list`. */
     const offering = (list: typeof options): CurrentProtocol => {
       const protocol = makeProtocol();
-      const person = protocol.codebook.node?.person;
+      const person = protocol.codebook.node?.[PERSON];
       if (!person) throw new Error('fixture changed');
       return {
         ...protocol,
         codebook: {
           ...protocol.codebook,
           node: {
-            person: {
+            [PERSON]: {
               ...person,
               variables: {
                 ...person.variables,
-                freq: { name: 'freq', type: 'ordinal', options: list },
+                [FREQ]: { name: 'freq', type: 'ordinal', options: list },
               },
             },
           },
@@ -532,13 +555,16 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
       store,
       [
         makeFinding('drop', [
-          op('remove', '/codebook/node/person/variables/freq/options/2'),
+          op(
+            'remove',
+            `/codebook/node/${PERSON}/variables/${FREQ}/options/${NEVER}`,
+          ),
         ]),
       ],
       offering(options),
     );
     expect(findingOf(store, 'drop').status).toBe('undecided');
-    // The first option goes; the third is still there, now at index 1.
+    // The first option goes; the third is still there, at another index.
     store.dispatch(
       actionCreators.updateProtocol({
         codebook: offering(options.slice(1)).codebook,
@@ -556,11 +582,15 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     if (!welcome || !names) throw new Error('fixture changed');
     await reviewed(store, [
       makeFinding('move', [
-        op('remove', '/stages/names'),
-        op('insert', '/stages/welcome', names),
+        op('remove', `/stages/${NAMES_STAGE_ID}`),
+        op('insert', `/stages/${WELCOME_STAGE_ID}`, names),
       ]),
       makeFinding('prompt', [
-        op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
+        op(
+          'set',
+          `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
+          'Name everyone',
+        ),
       ]),
     ]);
     await store.dispatch(checkFixAvailability());
@@ -568,9 +598,9 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
       ok: true,
     });
     expect(protocolOf(store).stages.map((s) => s.id)).toEqual([
-      'names',
-      'welcome',
-      'finish',
+      NAMES_STAGE_ID,
+      WELCOME_STAGE_ID,
+      FINISH_STAGE_ID,
     ]);
     await store.dispatch(checkFixAvailability());
     expect(await store.dispatch(decideFinding('prompt', 'fix'))).toEqual({
@@ -586,9 +616,9 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     // Undoing the move puts the stage back with the other fix still in it.
     expect(await store.dispatch(undoFix('move'))).toEqual({ ok: true });
     expect(protocolOf(store).stages.map((s) => s.id)).toEqual([
-      'welcome',
-      'names',
-      'finish',
+      WELCOME_STAGE_ID,
+      NAMES_STAGE_ID,
+      FINISH_STAGE_ID,
     ]);
     expect(findingOf(store, 'move').status).toBe('undecided');
     expect(findingOf(store, 'prompt').status).toBe('fixed');
@@ -600,8 +630,8 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
     if (!names) throw new Error('fixture changed');
     await reviewed(store, [
       makeFinding('move', [
-        op('remove', '/stages/names'),
-        op('insert', '/stages/welcome', names),
+        op('remove', `/stages/${NAMES_STAGE_ID}`),
+        op('insert', `/stages/${WELCOME_STAGE_ID}`, names),
       ]),
     ]);
     store.dispatch(
@@ -620,7 +650,7 @@ describe('G: a problem reads as fixed only while its fix is made', () => {
       ok: true,
     });
     const [first] = protocolOf(store).stages;
-    expect(first?.id).toBe('names');
+    expect(first?.id).toBe(NAMES_STAGE_ID);
     expect(first?.label).toMatchObject({ en: 'Renamed since the review' });
   });
 });

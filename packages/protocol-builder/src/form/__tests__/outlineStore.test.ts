@@ -487,3 +487,100 @@ describe('schema issues in the outline', () => {
     expect(store.getSnapshot()).toBe(snapshot);
   });
 });
+
+describe('a problem inside a protocol object', () => {
+  const FIRST = '0b6f9c2e-3c55-4f43-9d7e-4f1b2a6c8d01';
+  const SECOND = '7d1e5a90-2b8c-4e6f-a1d3-5c9b0e7f4a02';
+
+  const inside = (
+    id: string,
+    objectPath: readonly (string | number)[],
+    rest: readonly (string | number)[],
+    message: string,
+  ): SectionValidationIssue => ({
+    ...said([...objectPath, ...rest], message),
+    object: { id, path: objectPath },
+  });
+
+  it('follows its object to where a reorder put it', () => {
+    const store = storeWith({
+      top: ['prompts[0].text'],
+      bottom: ['prompts[1].text'],
+    });
+    let where: Record<string, readonly (string | number)[]> = {
+      [FIRST]: ['prompts', 0],
+      [SECOND]: ['prompts', 1],
+    };
+    store.setObjectLocator((id) => where[id]);
+    store.setValidationIssues([
+      inside(SECOND, ['prompts', 1], ['text'], 'a prompt with no words'),
+    ]);
+    expect(sentences(sectionNamed(store, 'bottom'))).toEqual([
+      'a prompt with no words',
+    ]);
+
+    where = { [FIRST]: ['prompts', 1], [SECOND]: ['prompts', 0] };
+    store.revalidate();
+
+    expect(sentences(sectionNamed(store, 'top'))).toEqual([
+      'a prompt with no words',
+    ]);
+    expect(sentences(sectionNamed(store, 'bottom'))).toEqual([]);
+    expect(store.getValidationIssues()[0]?.path).toEqual([
+      'prompts',
+      0,
+      'text',
+    ]);
+  });
+
+  it('goes with its object when the object is deleted', () => {
+    const store = storeWith({ prompts: ['prompts'] });
+    let where: Record<string, readonly (string | number)[]> = {
+      [FIRST]: ['prompts', 0],
+    };
+    store.setObjectLocator((id) => where[id]);
+    store.setValidationIssues([
+      inside(FIRST, ['prompts', 0], ['text'], 'a prompt with no words'),
+    ]);
+    expect(sentences(sectionNamed(store, 'prompts'))).toEqual([
+      'a prompt with no words',
+    ]);
+
+    where = {};
+    store.revalidate();
+
+    expect(sentences(sectionNamed(store, 'prompts'))).toEqual([]);
+    expect(store.getValidationIssues()).toEqual([]);
+  });
+});
+
+describe('a control marked invalid and then cleared', () => {
+  /**
+   * A text field judges its text against the codebook, which may still be
+   * arriving when the stage opens: it is marked invalid, then cleared. The
+   * outline is read by more than one subscriber, and one of them reading in
+   * between must not hide the second change from the others.
+   */
+  it('tells every subscriber of both changes, whoever read in between', () => {
+    const store = storeWith({ content: ['content'] });
+    const control = document.createElement('div');
+    document.querySelector('[data-field-path="content"]')?.append(control);
+    let told = 0;
+    store.subscribe(() => {
+      told += 1;
+    });
+    const invalidNow = () =>
+      store.getSnapshot()[0]?.fields.some((field) => field.invalid);
+
+    control.setAttribute('aria-invalid', 'true');
+    store.revalidate();
+    expect(told).toBe(1);
+    expect(invalidNow()).toBe(true);
+
+    control.removeAttribute('aria-invalid');
+    // Another reader takes a snapshot before the change is announced.
+    expect(invalidNow()).toBe(false);
+    store.revalidate();
+    expect(told).toBe(2);
+  });
+});

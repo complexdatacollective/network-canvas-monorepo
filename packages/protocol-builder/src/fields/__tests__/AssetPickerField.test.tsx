@@ -20,7 +20,10 @@ import {
 } from '../../resources/components/__tests__/resourceHost.ts';
 import type { ProtocolBuilderAdapter } from '../../state/context.ts';
 import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
+import { fixtureTypeId } from '../../testing/protocolFixture.ts';
 import AssetPickerField from '../AssetPickerField.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
 
 const HOST_UNAVAILABLE = 'the resource host is temporarily unavailable';
 
@@ -1074,7 +1077,7 @@ function itemPicker(index: number, label: string) {
 
 const ASSET_ITEMS: SectionDoc = {
   label: en('People'),
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: PERSON },
   panels: [
     { id: 'panel-1', title: en('One'), dataSource: '' },
     { id: 'panel-2', title: en('Two'), dataSource: '' },

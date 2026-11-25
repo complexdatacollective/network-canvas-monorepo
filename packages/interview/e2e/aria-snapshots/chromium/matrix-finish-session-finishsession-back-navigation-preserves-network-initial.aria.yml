@@ -3,9 +3,9 @@
   - paragraph: You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.
   - button "Finish"
   - navigation:
-    - button "Settings"
-    - button "Previous Step"
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step"
     - button "Next Step" [disabled]
     - status
   - region "Interview notifications"

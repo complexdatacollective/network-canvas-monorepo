@@ -9,17 +9,26 @@ import userEvent from '@testing-library/user-event';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { dynamicValueNameFor } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import NodeLabelField from '../../../fields/NodeLabelField.tsx';
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import { testId, testTypeId, testVariableId } from '../../../testing/testId.ts';
 import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
 import { NodeLabelFieldProvider } from '../../nodeLabelFieldSlot.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
+
+const PERSON_ADULT = testTypeId('person:adult');
+const FRIENDS = testTypeId('friends');
+const PLACE = testTypeId('place');
+const NEW_PERSON = testTypeId('new:person');
+const NEW_RELATIONSHIP = testTypeId('new:relationship');
+const AGE = testVariableId('age');
 
 /** Every editor here edits a protocol written in English. */
 function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
@@ -37,10 +46,10 @@ function InEnglishProtocol({ children }: Readonly<{ children: ReactNode }>) {
 const render = (ui: ReactElement) =>
   renderUnwrapped(ui, { wrapper: InEnglishProtocol });
 
-const NODE_SUBJECT = { entity: 'node', type: 'person:adult' } as const;
+const NODE_SUBJECT = { entity: 'node', type: PERSON_ADULT } as const;
 const PERSON_SECTION = sectionId({
   kind: 'codebookNode',
-  typeId: 'person:adult',
+  typeId: PERSON_ADULT,
 });
 
 /** What a host says when it fails: the schema's own sentence about a path. */
@@ -52,7 +61,7 @@ const NODE_DOCUMENT: SectionDoc = {
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
-    age: {
+    [AGE]: {
       name: 'Age',
       type: 'number',
       component: 'Number',
@@ -114,7 +123,7 @@ describe('CodebookEntityEditor', () => {
       colorHint: 'Choose a color for this node type.',
     },
     {
-      subject: { entity: 'edge', type: 'friends' } as const,
+      subject: { entity: 'edge', type: FRIENDS } as const,
       document: {
         name: 'Friends',
         color: 'edge-color-seq-1',
@@ -473,7 +482,7 @@ describe('CodebookEntityEditor', () => {
   }>([
     {
       label: 'node',
-      subject: { entity: 'node', type: 'new:person' },
+      subject: { entity: 'node', type: NEW_PERSON },
       draft: {
         name: 'NewPerson',
         color: 'node-color-seq-2',
@@ -490,7 +499,7 @@ describe('CodebookEntityEditor', () => {
     },
     {
       label: 'edge',
-      subject: { entity: 'edge', type: 'new:relationship' },
+      subject: { entity: 'edge', type: NEW_RELATIONSHIP },
       draft: { name: 'Knows', color: 'edge-color-seq-2' },
       expected: {
         name: 'Knows',
@@ -630,7 +639,7 @@ describe('CodebookEntityEditor', () => {
       <CodebookEntityEditor
         mode="update"
         sessionKey="open-2"
-        subject={{ entity: 'node', type: 'place' }}
+        subject={{ entity: 'node', type: PLACE }}
         initialDraft={nextDocument}
         authoritativeDocument={nextDocument}
         existingEntityNames={[]}
@@ -650,13 +659,13 @@ describe('CodebookEntityEditor', () => {
 describe('a node type’s Dynamic label', () => {
   const CODEBOOK = {
     node: {
-      'person:adult': {
+      [PERSON_ADULT]: {
         name: 'Person',
         color: 'node-color-seq-1',
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
-          age: { name: 'Age', type: 'number', component: 'Number' },
+          [AGE]: { name: 'Age', type: 'number', component: 'Number' },
         },
       },
     },
@@ -739,6 +748,53 @@ describe('a node type’s Dynamic label', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('dynamicLabel');
+  });
+
+  it('drops a condition that no translation of the label names when it is saved', async () => {
+    const CLOSE = testId('condition/close');
+    const CLOSE_NAME = dynamicValueNameFor({
+      kind: 'condition',
+      conditionId: CLOSE,
+    });
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderWithCodebook(
+      {
+        ...NODE_DOCUMENT,
+        dynamicLabel: {
+          text: { en: `{${CLOSE_NAME}, select, true {Close} other {Friend}}` },
+          conditions: {
+            [CLOSE]: {
+              about: 'node',
+              rules: [
+                {
+                  id: testId('rule/close'),
+                  type: 'node',
+                  options: {
+                    type: PERSON_ADULT,
+                    attribute: AGE,
+                    operator: 'EXISTS',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+      onSubmit,
+    );
+
+    // The "If" is replaced in the label's only translation.
+    const label = await screen.findByRole('textbox', { name: /^Label/ });
+    await user.click(label);
+    await user.keyboard('{Control>}a{/Control}');
+    await user.keyboard('Friend');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0].dynamicLabel).toEqual({
+      text: { en: 'Friend' },
+    });
   });
 
   it('keeps the label through switching it off and on again in one edit', async () => {

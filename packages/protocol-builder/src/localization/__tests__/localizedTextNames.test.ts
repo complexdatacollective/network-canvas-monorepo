@@ -18,9 +18,34 @@ import { STAGE_TYPES } from '../../stage-types.ts';
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
 import { enIntl } from '../../testing/i18n.ts';
 import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
+import { testId, testVariableId } from '../../testing/testId.ts';
+import {
   nameLocalizedText,
   stageWordingSettings,
 } from '../localizedTextNames.ts';
+
+const WARMTH = testVariableId('warmth');
+const CONTACT_OTHER = testVariableId('contactOther');
+const FM_OCCUPATION = testVariableId('fm_occupation');
+const BOND = testVariableId('bond');
+const EGO_MOOD = testVariableId('ego_mood');
+const EGO_ENERGY = testVariableId('ego_energy');
+const RELATIVES_NOT_RECORDED = testVariableId('relativesNotRecorded');
+const SECRET_NOTE = testVariableId('secretNote');
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const CONTACT_TYPE = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'contactType',
+);
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
 
 type Path = readonly (string | number)[];
 
@@ -40,7 +65,7 @@ const scaleVariable = (name: string, minLabel: string, maxLabel: string) => ({
 });
 
 const composerScaleField = (variable: string, label: string) => ({
-  id: 'field-L33',
+  id: testId(`composer-scale-field-${variable}`),
   variable,
   component: 'VisualAnalogScale',
   label: en(label),
@@ -76,11 +101,11 @@ const validationMessage = (rule: string): string => {
     : `The ${rule} message.`;
 };
 
-const panel = {
-  id: 'panel-1',
+const panel = (name: string) => ({
+  id: testId(`panel-${name}`),
   title: en('People named'),
   dataSource: 'existing',
-};
+});
 
 /**
  * Every localized field the all-interfaces fixture leaves empty, filled, so
@@ -93,37 +118,34 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     { type: 'image', name: 'Picture', source: 'picture.png' },
   ],
   [
-    ['codebook', 'node', 'person', 'variables', 'flagged', 'name'],
+    ['codebook', 'node', PERSON, 'variables', FLAGGED, 'name'],
     'Flag for follow-up',
   ],
   [
-    ['codebook', 'node', 'person', 'dynamicLabel'],
-    {
-      text: en('Person {nodeLabel}'),
-      dynamicValues: { nodeLabel: { path: 'node.$label' } },
-    },
+    ['codebook', 'node', PERSON, 'dynamicLabel'],
+    { text: en('Person {node_label}') },
   ],
   [
-    ['codebook', 'node', 'person', 'variables', 'contactType', 'name'],
+    ['codebook', 'node', PERSON, 'variables', CONTACT_TYPE, 'name'],
     'Contact type',
   ],
   [
-    ['codebook', 'node', 'person', 'variables', 'flagged', 'options'],
+    ['codebook', 'node', PERSON, 'variables', FLAGGED, 'options'],
     [
       { label: en('Flagged'), value: true },
       { label: en('Not flagged'), value: false },
     ],
   ],
   [
-    ['codebook', 'node', 'person', 'variables', 'warmth'],
+    ['codebook', 'node', PERSON, 'variables', WARMTH],
     scaleVariable('Warmth', 'Cold', 'Warm'),
   ],
   [
-    ['codebook', 'node', 'person', 'variables', 'contactOther'],
+    ['codebook', 'node', PERSON, 'variables', CONTACT_OTHER],
     { name: 'contactOther', type: 'text', component: 'Text' },
   ],
   [
-    ['codebook', 'node', 'family_member', 'variables', 'fm_occupation'],
+    ['codebook', 'node', FAMILY_MEMBER, 'variables', FM_OCCUPATION],
     {
       name: 'Occupation',
       type: 'text',
@@ -131,23 +153,23 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     },
   ],
   [
-    ['codebook', 'edge', 'knows', 'variables', 'bond'],
+    ['codebook', 'edge', KNOWS, 'variables', BOND],
     scaleVariable('Bond', 'Weak', 'Strong'),
   ],
   [
-    ['codebook', 'ego', 'variables', 'ego_mood'],
+    ['codebook', 'ego', 'variables', EGO_MOOD],
     {
       name: 'Mood',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: en('Calm'), value: 'calm' },
-        { label: en('Busy'), value: 'busy' },
+        { id: testId('option/calm'), label: en('Calm'), value: 'calm' },
+        { id: testId('option/busy'), label: en('Busy'), value: 'busy' },
       ],
     },
   ],
   [
-    ['codebook', 'ego', 'variables', 'ego_energy'],
+    ['codebook', 'ego', 'variables', EGO_ENERGY],
     scaleVariable('Energy', 'Tired', 'Rested'),
   ],
   [
@@ -162,8 +184,8 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     [...fixtureStage('NameGenerator'), 'form', 'fields', 0, 'hint'],
     en('A first name is enough.'),
   ],
-  [[...fixtureStage('NameGenerator'), 'panels'], [panel]],
-  [[...fixtureStage('NameGeneratorQuickAdd'), 'panels'], [panel]],
+  [[...fixtureStage('NameGenerator'), 'panels'], [panel('name-generator')]],
+  [[...fixtureStage('NameGeneratorQuickAdd'), 'panels'], [panel('quick-add')]],
   // The messages a name generator shows around its limits and its panels,
   // and a map's search messages, which the fixture leaves unset.
   ...(['NameGenerator', 'NameGeneratorQuickAdd'] as const).flatMap(
@@ -198,7 +220,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   [['interfaceText', 'geospatial', 'searchFailed'], en('The search failed.')],
   [
     [...fixtureStage('CategoricalBin'), 'prompts', 0, 'otherVariable'],
-    'contactOther',
+    CONTACT_OTHER,
   ],
   [
     [...fixtureStage('CategoricalBin'), 'prompts', 0, 'otherVariablePrompt'],
@@ -221,8 +243,8 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     {
       fields: [
         {
-          id: 'field-1',
-          variable: 'fm_occupation',
+          id: testId('field-1'),
+          variable: FM_OCCUPATION,
           prompt: en('What do they do?'),
           hint: en('Their main work.'),
         },
@@ -230,12 +252,16 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     },
   ],
   [
-    ['codebook', 'node', 'family_member', 'variables', 'relativesNotRecorded'],
+    ['codebook', 'node', FAMILY_MEMBER, 'variables', RELATIVES_NOT_RECORDED],
     {
       name: 'relativesNotRecorded',
       type: 'categorical',
       options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(
-        ({ value, label }) => ({ value, label: en(label) }),
+        ({ value, label }) => ({
+          id: testId(`option/relatives-not-recorded/${value}`),
+          value,
+          label: en(label),
+        }),
       ),
     },
   ],
@@ -260,7 +286,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     {
       scope: 'firstDegree',
       enforcement: 'recommended',
-      relativesNotRecordedAttribute: 'relativesNotRecorded',
+      relativesNotRecordedAttribute: RELATIVES_NOT_RECORDED,
       itemText: {
         // Each names the person, as the supplied wording does.
         parents: { listItem: en('Add parents for {name}') },
@@ -305,16 +331,16 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   ],
   [
     [...fixtureStage('NetworkComposer'), 'nodeForm'],
-    { fields: [composerScaleField('warmth', 'How warm are they?')] },
+    { fields: [composerScaleField(WARMTH, 'How warm are they?')] },
   ],
   [
     [...fixtureStage('NetworkComposer'), 'edges'],
     [
       {
-        id: 'composer-knows',
-        subject: { entity: 'edge', type: 'knows' },
+        id: testId('composer-knows'),
+        subject: { entity: 'edge', type: KNOWS },
         label: en('Knows'),
-        form: { fields: [composerScaleField('bond', 'How strong is it?')] },
+        form: { fields: [composerScaleField(BOND, 'How strong is it?')] },
       },
     ],
   ],
@@ -326,7 +352,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   // Each setting a configuration switches on is held once that configuration is
   // on, so the fixture exercises it: grouping, automatic layout
   // and at-risk statuses.
-  [[...fixtureStage('NetworkComposer'), 'convexHullVariable'], 'contactType'],
+  [[...fixtureStage('NetworkComposer'), 'convexHullVariable'], CONTACT_TYPE],
   [['interfaceText', 'networkComposer', 'groupsHeading'], en('Groups')],
   [[...fixtureStage('Narrative'), 'behaviours', 'automaticLayout'], true],
   [[...fixtureStage('NarrativePedigree'), 'showAtRiskStatuses'], true],
@@ -345,7 +371,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     { interactionMode: 'select' },
   ],
   [
-    ['codebook', 'node', 'person', 'variables', 'secretNote'],
+    ['codebook', 'node', PERSON, 'variables', SECRET_NOTE],
     { name: 'secretNote', type: 'text', component: 'Text', encrypted: true },
   ],
   [['interfaceText', 'categoricalBin'], { placeHere: en('Place here') }],
@@ -371,7 +397,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       'This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer.',
     ),
   ],
-  // What the additions above make the interview show: an Information item
+  // What the additions above make the interview show: an Information page
   // that shows a file, a Family Pedigree that checks completeness, and a
   // Network Composer whose inspector shows a form.
   [
@@ -655,17 +681,20 @@ describe('nameLocalizedText', () => {
       name([
         'codebook',
         'node',
-        'person',
+        PERSON,
         'variables',
-        'contactType',
+        CONTACT_TYPE,
         'options',
         1,
         'label',
       ]),
     ).toEqual([
-      { key: '["variables","contactType"]', label: 'Contact type' },
       {
-        key: '["variables","contactType","options",1,"label"]',
+        key: JSON.stringify(['variables', CONTACT_TYPE]),
+        label: 'Contact type',
+      },
+      {
+        key: JSON.stringify(['variables', CONTACT_TYPE, 'options', 1, 'label']),
         label: 'Option 2 label',
       },
     ]);
@@ -676,16 +705,16 @@ describe('nameLocalizedText', () => {
       name([
         'codebook',
         'node',
-        'person',
+        PERSON,
         'variables',
-        'warmth',
+        WARMTH,
         'parameters',
         'minLabel',
       ]),
     ).toEqual([
-      { key: '["variables","warmth"]', label: 'Warmth' },
+      { key: JSON.stringify(['variables', WARMTH]), label: 'Warmth' },
       {
-        key: '["variables","warmth","parameters","minLabel"]',
+        key: JSON.stringify(['variables', WARMTH, 'parameters', 'minLabel']),
         label: 'Minimum label',
       },
     ]);
@@ -717,7 +746,7 @@ describe('nameLocalizedText', () => {
       ])?.at(-1),
     ).toEqual({
       key: '["presets",0,"edges","display",0,"label"]',
-      label: `Label for “${protocol.codebook.edge?.knows?.name}”`,
+      label: `Label for “${protocol.codebook.edge?.[KNOWS]?.name}”`,
     });
   });
 
@@ -726,7 +755,7 @@ describe('nameLocalizedText', () => {
       { key: '["edges"]', label: 'Edge configuration' },
       {
         key: '["edges",0]',
-        label: protocol.codebook.edge?.knows?.name,
+        label: protocol.codebook.edge?.[KNOWS]?.name,
       },
       { key: '["edges",0,"label"]', label: 'Label' },
     ]);

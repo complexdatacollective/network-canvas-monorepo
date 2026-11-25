@@ -259,10 +259,11 @@ const stagesSlice = createSlice({
           return;
         }
 
-        const stageIndex = state.findIndex(({ id }) => id === stageId);
-        if (stageIndex === -1) return;
+        const existing = state.findIndex(({ id }) => id === stageId);
+        const current = state[existing];
+        if (current === undefined) return;
 
-        state[stageIndex] = prune({ ...stage, id: stageId });
+        state[existing] = prune({ ...stage, id: current.id });
       });
   },
 });

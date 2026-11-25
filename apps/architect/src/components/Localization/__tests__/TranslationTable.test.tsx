@@ -5,6 +5,12 @@ import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
+import {
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -16,6 +22,9 @@ import TranslationTable from '../TranslationTable';
 // French is missing the welcome name and content, both thanks texts and the
 // person type's one answer option; Spanish is missing only the thanks texts,
 // which exist only in English.
+const PERSON = testTypeId('person');
+const KNOWS = testTypeId('knows');
+
 const trilingual: CurrentProtocol = {
   name: 'Study',
   schemaVersion: 9,
@@ -23,17 +32,21 @@ const trilingual: CurrentProtocol = {
   assetManifest: {},
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          closeness: {
+          [testVariableId('closeness')]: {
             name: 'closeness',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { value: 'close', label: { en: 'Close', es: 'Cercano' } },
+              {
+                id: testOptionId(testVariableId('closeness'), 'close'),
+                value: 'close',
+                label: { en: 'Close', es: 'Cercano' },
+              },
             ],
           },
         },
@@ -44,13 +57,13 @@ const trilingual: CurrentProtocol = {
   },
   stages: [
     {
-      id: 'welcome',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome', es: 'Bienvenida' },
       content: { en: 'Read **this** first', es: 'Lea esto primero' },
     },
     {
-      id: 'thanks',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Thanks' },
       content: { en: 'See you **soon**' },
@@ -775,7 +788,7 @@ describe('TranslationTable', () => {
       });
     });
 
-    it('edits a prompt as one line, even where a translation holds a line break', async () => {
+    it('draws a one-line text in a paragraph, as each paragraph of several lines', () => {
       const census = {
         ...structuredClone(trilingual),
         codebook: {
@@ -783,6 +796,7 @@ describe('TranslationTable', () => {
           edge: { knows: { name: 'Knows', color: 'edge-color-seq-1' } },
         },
         stages: [
+          ...structuredClone(trilingual.stages),
           {
             id: 'census',
             type: 'DyadCensus',
@@ -791,8 +805,45 @@ describe('TranslationTable', () => {
             prompts: [
               {
                 id: 'knows',
-                text: { en: 'Who knows\neach other?' },
+                text: { en: 'Do they *know* each other?' },
                 createEdge: 'knows',
+              },
+            ],
+          },
+        ],
+      } as unknown as CurrentProtocol;
+      renderTable(census);
+
+      // The welcome page's text, which its field holds as several lines.
+      const [bold] = screen.getAllByText('this');
+      const page = bold?.closest('p');
+      expect(page).not.toBeNull();
+      // The prompt's own cell, and the French cell that shows it in English.
+      const prompts = screen.getAllByText('Do they', { exact: false });
+      expect(prompts.length).toBeGreaterThan(0);
+      for (const prompt of prompts) {
+        expect(prompt.closest('p')?.className).toBe(page?.className);
+      }
+    });
+
+    it('edits a prompt as one line, even where a translation holds a line break', async () => {
+      const census = {
+        ...structuredClone(trilingual),
+        codebook: {
+          ...structuredClone(trilingual.codebook),
+          edge: { [KNOWS]: { name: 'Knows', color: 'edge-color-seq-1' } },
+        },
+        stages: [
+          {
+            id: createProtocolObjectId(),
+            type: 'DyadCensus',
+            label: { en: 'Census' },
+            subject: { entity: 'node', type: PERSON },
+            prompts: [
+              {
+                id: createProtocolObjectId(),
+                text: { en: 'Who knows\neach other?' },
+                createEdge: KNOWS,
               },
             ],
           },

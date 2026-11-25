@@ -95,13 +95,13 @@ describe('the page a new screen starts with', () => {
   it('makes an Information stage that validates, with content and no title or items', () => {
     const localization = { defaultLocale: 'en', locales: ['en', 'fr'] };
     const stage = {
-      id: 'new-screen',
+      id: randomUUID(),
       type: 'Information',
       label: untitledScreenText(localization),
       content: untitledScreenContent(localization),
     };
 
-    assert.deepStrictEqual(sectionShapeIssues('stage:new-screen', stage), []);
+    assert.deepStrictEqual(sectionShapeIssues(`stage:${stage.id}`, stage), []);
     assert.deepStrictEqual(stage.label, { en: 'Untitled screen' });
     assert.deepStrictEqual(stage.content, { en: '# Untitled screen' });
     assert.isFalse('title' in stage);

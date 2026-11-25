@@ -6,16 +6,8 @@ import {
 } from '../../../localization/messageSyntax.ts';
 import { SkipLogicSchema } from '../common/index.ts';
 import { ConditionsSchema } from '../conditions.ts';
-import { DynamicValuesSchema } from '../dynamic-values.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
-
-/**
- * Longest stage id a protocol may carry. Hosts store stage ids in bounded
- * columns (Studio records the current and finish stage of each interview), so
- * the schema guarantees an id fits rather than letting a host reject an
- * interview mid-session.
- */
-export const MAX_STAGE_ID_LENGTH = 128;
+import { protocolObjectId } from '../protocol-object-id.ts';
 
 /**
  * The most characters a stage's name may have in any language. A name is
@@ -54,12 +46,7 @@ export const stageLabelText = () =>
  * Base schema for all stages.
  */
 export const baseStageSchema = z.strictObject({
-  id: z
-    .string()
-    .min(1, { message: 'A stage id must not be empty.' })
-    .max(MAX_STAGE_ID_LENGTH, {
-      message: `A stage id must be at most ${MAX_STAGE_ID_LENGTH} characters long.`,
-    }),
+  id: protocolObjectId('stage'),
   // `interviewScript` is authoring guidance and is never shown to a
   // participant. `label` is: the interview's stages menu lists it. It is
   // required, and every translation must say something, so it cannot be
@@ -72,10 +59,8 @@ export const baseStageSchema = z.strictObject({
     lines: 'single',
   }),
   skipLogic: SkipLogicSchema.optional(),
-  // Values from the interview the stage's text may show, by the argument name
-  // its messages use (see `dynamic-values.ts`).
-  dynamicValues: DynamicValuesSchema.optional(),
   // The conditions the stage's text chooses its wording by (see
-  // `conditions.ts`); a binding names one by `$condition.<id>`.
+  // `conditions.ts`); text names one by `condition_<id>` (see
+  // `dynamic-values.ts`).
   conditions: ConditionsSchema.optional(),
 });

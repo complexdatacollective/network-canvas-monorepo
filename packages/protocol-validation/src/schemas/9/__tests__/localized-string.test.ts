@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { escapeMessageText } from '../../../localization/messageSyntax.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { VersionedProtocolSchema } from '../../index.ts';
@@ -316,7 +317,7 @@ describe('line breaks', () => {
 
 describe('Information stage content', () => {
   const stage = (content: unknown) => ({
-    id: 'welcome',
+    id: testId('welcome'),
     type: 'Information',
     label: { en: 'Welcome' },
     content,
@@ -464,10 +465,6 @@ describe('a value inside a link address of formatted text', () => {
       'in a version that opens with spaces',
       '{today, select, missing {hello} other {    [you](https://example.com/{today})}}',
     ],
-    [
-      'inside what would be a tag',
-      '<span title="[you](https://example.com/{today})">',
-    ],
     ['in the title', '[Your page](https://example.com "For {name}")'],
     [
       'in an address written between angle brackets',
@@ -501,6 +498,16 @@ describe('a value inside a link address of formatted text', () => {
     expect(
       issuesOf(stageTextOf('plain'), {
         en: '[Your page](https://example.com/{today})',
+      }),
+    ).toEqual([]);
+  });
+
+  // Raw HTML is shown as the characters typed, so what looks like a link
+  // inside a tag is words.
+  it('is accepted inside a tag', () => {
+    expect(
+      issuesOf(stageTextOf('markdown'), {
+        en: '<span title="[you](https://example.com/{today})">',
       }),
     ).toEqual([]);
   });

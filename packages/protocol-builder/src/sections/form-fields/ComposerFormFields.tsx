@@ -31,6 +31,10 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
+  attributeAvailabilityMessages,
+  markListed,
+} from '../../codebook/attributeAvailability.ts';
+import {
   useCodebookSectionDocument,
   useCreateCodebookVariable,
   useSetVariableOptions,
@@ -813,6 +817,7 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
   const offered = useVariableChoices({
     subject,
     types: COLLECTABLE_TYPES,
+    forFormField: true,
     // A form field collects its answer through the codebook's own rules, so it
     // may not take an attribute something else writes around them.
     writerClass: 'validated',
@@ -891,16 +896,22 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
   }, [chosen, editIndex, renderedElsewhere, rows]);
   const variableOptions = useMemo(
     () =>
-      offered.filter(
-        // The row's own pick is always offered back, whatever the filters say:
-        // a picker that dropped its value would blank the control and write
-        // the blank over the reference the researcher has to resolve.
-        (option) =>
-          option.value === chosen ||
-          (!siblingVariables.has(option.value) &&
-            !draftUnvalidated.has(option.value)),
+      // The row's own pick is never marked: the researcher has to be able to
+      // keep the reference while they resolve it.
+      markListed(
+        markListed(
+          offered,
+          draftUnvalidated,
+          intl.formatMessage(
+            attributeAvailabilityMessages.draftUnvalidatedHere,
+          ),
+          chosen,
+        ),
+        siblingVariables,
+        intl.formatMessage(attributeAvailabilityMessages.sameStageField),
+        chosen,
       ),
-    [chosen, draftUnvalidated, offered, siblingVariables],
+    [chosen, draftUnvalidated, intl, offered, siblingVariables],
   );
 
   /**

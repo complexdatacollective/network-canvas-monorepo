@@ -1,12 +1,11 @@
 import {
   asOneLine,
   CodebookNameSchema,
-  entitySecureAttributesMeta,
   holdsLineBreak,
   normalizeCodebookName,
 } from '@codaco/shared-consts';
 
-import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
+import { isBlankText } from '../../localization/blankText.ts';
 import { labelComparisonKey } from '../../localization/duplicateLabels.ts';
 import { DYNAMIC_VALUE_MARKER } from '../../localization/dynamicValueMessages.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
@@ -14,13 +13,12 @@ import {
   escapeMarkdownText,
   headingMarkdown,
 } from '../../localization/markdownText.ts';
+import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import {
-  escapeMessageText,
-  messageText,
-} from '../../localization/messageSyntax.ts';
-import { createMigration } from '../../migration/index.ts';
+  createMigration,
+  type ProtocolDocument,
+} from '../../migration/index.ts';
 import { recordOriginalPositions } from '../../migration/originalPositions.ts';
-import type { SessionDocument } from '../../migration/session.ts';
 import {
   collectLocalizedStringSites,
   type LocalizedStringSite,
@@ -29,17 +27,22 @@ import {
   migrateFamilyPedigreeStages,
   migrateNarrativePedigreeStages,
 } from './family-pedigree-migration.ts';
-import {
-  migrateFamilyPedigreeSessionRecords,
-  resumeUnstartedPedigreeAtIntroduction,
-} from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
 import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { combineInformationContent } from './information-content-migration.ts';
-import { ProtocolLocalizationSchema } from './localized-string.ts';
+import {
+  legacyMarkdownAsStandard,
+  type TextsWrittenAsStandard,
+  textsWrittenAsStandard,
+} from './legacy-markdown.ts';
+import { assignCodebookIds } from './migration-codebook-ids.ts';
+import {
+  assignOptionIds,
+  assignProtocolObjectIds,
+} from './migration-object-ids.ts';
+import { createProtocolObjectId } from './protocol-object-id.ts';
 import { withoutUnshownWording } from './protocol-wording.ts';
 import { ProtocolSchemaV9 } from './schema.ts';
-import { freshStageId } from './stage-ids.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
 import { optionValueKey } from './variables/variable.ts';
 
@@ -50,19 +53,6 @@ const DEFAULT_LOCALE = 'en';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * The languages the migrated protocol declares. A document already written in
- * schema 9 form keeps its own: Fresco's deploy normalization re-runs this
- * migration over rows stored at schema 9, and declaring them English would
- * leave their text in languages the protocol no longer declares.
- */
-const localizationOf = (doc: Record<string, unknown>) => {
-  const declared = ProtocolLocalizationSchema.safeParse(doc.localization);
-  return declared.success
-    ? declared.data
-    : { defaultLocale: DEFAULT_LOCALE, locales: [DEFAULT_LOCALE] };
-};
 
 // Under schema 8 the runtime encrypted an attribute marked `encrypted` only
 // while `experiments.encryptedVariables` was on; otherwise it stored the
@@ -129,9 +119,15 @@ const removeContradictoryPassphraseRules = (protocol: unknown) => {
  * schema 8 had a title the interview showed as a heading above it. The title
  * becomes the text's first line, written as a heading and escaped to show as
  * written. A part that showed nothing is left out; when neither shows
- * anything, the explanation is left for validation to report.
+ * anything, the explanation is left for validation to report. The text,
+ * markdown of several lines, was read the legacy way, and is written as
+ * standard markdown here, before the heading joins it (see
+ * `legacyMarkdownAsStandard`).
  */
-const moveAnonymisationTitlesIntoText = (protocol: unknown) => {
+const moveAnonymisationTitlesIntoText = (
+  protocol: unknown,
+  written: TextsWrittenAsStandard,
+) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   for (const stage of protocol.stages) {
     if (!isRecord(stage) || stage.type !== 'Anonymisation') continue;
@@ -143,10 +139,14 @@ const moveAnonymisationTitlesIntoText = (protocol: unknown) => {
         ? headingMarkdown(title)
         : undefined;
     const text =
-      typeof body === 'string' && !isBlankText(body) ? body : undefined;
+      typeof body === 'string' && !isBlankText(body)
+        ? legacyMarkdownAsStandard(body, { lines: 'multiple' })
+        : undefined;
     const parts = [heading, text].filter((part) => part !== undefined);
-    if (parts.length > 0) stage.explanationText = parts.join('\n\n');
-    else if (typeof body === 'string') stage.explanationText = body;
+    if (parts.length > 0) {
+      stage.explanationText = parts.join('\n\n');
+      written.add(stage, 'explanationText');
+    } else if (typeof body === 'string') stage.explanationText = body;
   }
 };
 
@@ -211,9 +211,9 @@ const removeContradictionsOf = (
  * between them cannot be recovered, and their export columns collide. Each
  * later option whose value repeats an earlier one goes, compared as schema 9
  * compares them (`optionValueKey`), so `1` and `"1"` collide. Where the two
- * are exactly equal, answers already recorded, and filters and skip logic
- * that name the value, still refer to the option kept; where they differ in
- * type, `remapMergedOptionValues` and the session step rewrite them to it.
+ * are exactly equal, filters and skip logic that name the value still refer
+ * to the option kept; where they differ in type, `remapMergedOptionValues`
+ * rewrites them to it.
  */
 const removeDuplicateOptionValues = (codebook: unknown) => {
   for (const variables of variableRecordsOf(codebook)) {
@@ -306,8 +306,8 @@ const optionValueRewrites = (
  * An attribute whose option values `removeDuplicateOptionValues` rewrites,
  * each mapped to the value it becomes (`optionValueRewrites`): one that was
  * not a valid name, or that merges into an earlier option across types.
- * Answers and rules compare option values exactly, so either still holding
- * the old value would name no option.
+ * Rules and shape mappings compare option values exactly, so one still
+ * holding the old value would name no option.
  */
 type MergedOptionValues = {
   entity: 'node' | 'edge' | 'ego';
@@ -429,52 +429,17 @@ const remapShapeMappings = (
 };
 
 /**
- * Rewrites a session's answers that hold a removed option value to the
- * value kept, reading which values were merged from the schema 8 codebook.
+ * A schema 8 string that shows nothing becomes `undefined`. Anything else is
+ * returned as it is, including the localized default an earlier repair
+ * wrote, which always says something.
  */
-const remapMergedOptionAnswers = (
-  network: SessionDocument['network'],
-  schema8Protocol: unknown,
-) => {
-  const merged = mergedOptionValuesOf(
-    isRecord(schema8Protocol) ? schema8Protocol.codebook : undefined,
-  );
-  for (const { entity, type, attribute, kept } of merged) {
-    const entities =
-      entity === 'ego'
-        ? [network.ego]
-        : network[entity === 'node' ? 'nodes' : 'edges'].filter(
-            (candidate) => candidate.type === type,
-          );
-    for (const candidate of entities) {
-      const { attributes } = candidate;
-      if (!isRecord(attributes) || !Object.hasOwn(attributes, attribute))
-        continue;
-      // An encrypted answer holds ciphertext, not option values: rewriting
-      // it would corrupt the protected answer, so it is left as stored.
-      const secure: unknown = candidate[entitySecureAttributesMeta];
-      if (isRecord(secure) && Object.hasOwn(secure, attribute)) continue;
-      attributes[attribute] = withKeptValues(attributes[attribute], kept);
-    }
-  }
-};
+const withoutBlankText = (text: unknown): unknown =>
+  typeof text === 'string' && isBlankText(text) ? undefined : text;
 
 /**
- * Text that shows nothing in any language: a schema 8 string, or the
- * translations of text already localized. Blank translations are removed
- * from localized text, so the text left says something in every language it
- * has, or is `undefined` when nothing is left.
+ * Text that says something: a schema 8 string, or the localized default an
+ * earlier repair wrote.
  */
-const withoutBlankText = (text: unknown): unknown => {
-  if (typeof text === 'string') return isBlankText(text) ? undefined : text;
-  if (!isRecord(text)) return text;
-  const kept = Object.entries(text).filter(
-    ([, message]) => typeof message !== 'string' || !isBlankMessage(message),
-  );
-  return kept.length === 0 ? undefined : Object.fromEntries(kept);
-};
-
-/** Text that says something, as a schema 8 string or a localized record. */
 const shownText = (text: unknown) => {
   const shown = withoutBlankText(text);
   return typeof shown === 'string' || isRecord(shown) ? shown : undefined;
@@ -484,70 +449,6 @@ const shownText = (text: unknown) => {
 // as the 7 to 8 migration gives a panel with no title, else "Introduction".
 const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
   shownText(label) ?? { [defaultLocale]: 'Introduction' };
-
-/**
- * Schema 9 gives every form field an `id`, a stable identity apart from its
- * position and its attribute, which schema 8 did not require. A field without
- * a usable one is given `field-` and its position in the form, or the next
- * free number if that is taken, so migrating one document twice gives one
- * result. A field that has an id keeps it; a blank, non-text or repeated one
- * is not usable, as ids must be unique within a form, and is replaced.
- */
-const giveFieldsIds = (fields: unknown) => {
-  if (!Array.isArray(fields)) return;
-  const taken = new Set<string>();
-  const needsId = new Set<Record<string, unknown>>();
-  for (const field of fields) {
-    if (!isRecord(field)) continue;
-    const { id } = field;
-    if (typeof id === 'string' && id !== '' && !taken.has(id)) {
-      taken.add(id);
-    } else {
-      needsId.add(field);
-    }
-  }
-  fields.forEach((field: unknown, index: number) => {
-    if (!isRecord(field) || !needsId.has(field)) return;
-    let count = index + 1;
-    while (taken.has(`field-${count}`)) count += 1;
-    const id = `field-${count}`;
-    field.id = id;
-    taken.add(id);
-  });
-};
-
-/**
- * Every form of every stage: the `form` of an Ego Form, Alter Form, Alter Edge
- * Form, Name Generator and the Family Pedigree conversion, and a Network
- * Composer's node form and each edge type's form.
- */
-const addFormFieldIds = (protocol: unknown) => {
-  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  for (const stage of protocol.stages) {
-    if (!isRecord(stage)) continue;
-    if (stage.type === 'NetworkComposer') {
-      if (isRecord(stage.nodeForm)) giveFieldsIds(stage.nodeForm.fields);
-      if (!Array.isArray(stage.edges)) continue;
-      for (const edge of stage.edges) {
-        if (isRecord(edge) && isRecord(edge.form)) {
-          giveFieldsIds(edge.form.fields);
-        }
-      }
-    } else if (isRecord(stage.form)) {
-      giveFieldsIds(stage.form.fields);
-    }
-  }
-};
-
-/** The ids the stages already use, which a stage the migration adds must not. */
-const takenStageIds = (stages: unknown): Set<string> =>
-  new Set(
-    Array.isArray(stages)
-      ? stages.flatMap((stage) =>
-          isRecord(stage) && typeof stage.id === 'string' ? [stage.id] : [],
-        )
-      : [],
-  );
 
 /**
  * Schema 9 gives a participant instructions between tasks with an
@@ -566,15 +467,13 @@ const takenStageIds = (stages: unknown): Set<string> =>
  * published protocols use a body of spaces on purpose to show a panel with
  * only a title. Text that shows nothing is left out, and a title that shows
  * nothing takes the stage's label, as the 7 to 8 migration does for a panel
- * with no title. Text a document in schema 9 form already localized loses
- * only the translations that show nothing, which then fall back to another.
+ * with no title.
  */
 const moveIntroductionPanelsToInformationStages = (
   protocol: unknown,
   { defaultLocale }: LocalizationDeclaration,
 ) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
-  const taken = takenStageIds(protocol.stages);
   const retargets = new Map<string, string>();
   const stages: unknown[] = [];
   for (const stage of protocol.stages) {
@@ -593,22 +492,16 @@ const moveIntroductionPanelsToInformationStages = (
       stages.push(stage);
       continue;
     }
-    const id = freshStageId(
-      typeof stage.id === 'string' ? stage.id : 'stage',
-      '-introduction',
-      taken,
-    );
-    taken.add(id);
+    // Unique only so skip logic can be retargeted to the new stage below;
+    // `assignProtocolObjectIds` replaces it with every other id.
+    const id = createProtocolObjectId();
     if (typeof stage.id === 'string') retargets.set(stage.id, id);
     stages.push({
       id,
       type: 'Information',
       label: structuredClone(title),
       title,
-      items:
-        text === undefined
-          ? []
-          : [{ id: 'introduction-text', type: 'text', content: text }],
+      items: text === undefined ? [] : [{ type: 'text', content: text }],
       ...(stage.skipLogic !== undefined && {
         skipLogic: structuredClone(stage.skipLogic),
       }),
@@ -632,9 +525,7 @@ const moveIntroductionPanelsToInformationStages = (
  * Schema 9 requires the caption of a Categorical Bin's bin for answers not
  * listed to say something, where schema 8 accepted text of only spaces, which
  * showed an unlabelled bin. One that shows nothing takes the default the 7 to
- * 8 migration gives a missing one, "Other". Text already localized loses only
- * its translations that show nothing, as an introduction panel's does. The
- * question that bin asks (`otherVariablePrompt`) is not repaired: the
+ * 8 migration gives a missing one, "Other". The question that bin asks (`otherVariablePrompt`) is not repaired: the
  * migration does not write a question, so a blank one is refused.
  */
 const repairOtherBinText = (
@@ -661,9 +552,7 @@ const repairOtherBinText = (
  * A Tie-Strength Census prompt's decline label must say something in schema 9,
  * where schema 8 accepted text of only spaces, which showed the participant an
  * unnamed decline option. One that shows nothing takes the default the 7 to 8
- * migration gives a missing one, "No relationship". Text already localized
- * loses only its translations that show nothing, as an introduction panel's
- * does.
+ * migration gives a missing one, "No relationship".
  */
 const repairTieStrengthDeclineLabels = (
   protocol: unknown,
@@ -825,6 +714,7 @@ const addLegendLabels = (protocol: unknown) => {
 const addFieldCaptions = (
   form: unknown,
   variables: Record<string, unknown>,
+  written: TextsWrittenAsStandard,
 ) => {
   if (!isRecord(form) || !Array.isArray(form.fields)) return;
   for (const field of form.fields) {
@@ -833,6 +723,7 @@ const addFieldCaptions = (
     field.label = escapeMarkdownText(
       nameOrKey(variables[field.variable], field.variable),
     );
+    written.add(field, 'label');
   }
 };
 
@@ -854,7 +745,10 @@ const addFieldCaptions = (
  * copied as written and schema 9 refuses it, so the protocol is corrected in
  * the Architect that made it (see `findRefusedContent`).
  */
-const addComposerCaptions = (protocol: unknown) => {
+const addComposerCaptions = (
+  protocol: unknown,
+  written: TextsWrittenAsStandard,
+) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   const { codebook } = protocol;
   for (const stage of protocol.stages) {
@@ -862,6 +756,7 @@ const addComposerCaptions = (protocol: unknown) => {
     addFieldCaptions(
       stage.nodeForm,
       subjectVariables(codebook, 'node', stage.subject),
+      written,
     );
     if (!Array.isArray(stage.edges)) continue;
     for (const edge of stage.edges) {
@@ -869,6 +764,7 @@ const addComposerCaptions = (protocol: unknown) => {
       addFieldCaptions(
         edge.form,
         subjectVariables(codebook, 'edge', edge.subject),
+        written,
       );
       // A schema 8 toolbar named each edge type by its name, so each edge
       // keeps that name as its label.
@@ -886,8 +782,7 @@ const addComposerCaptions = (protocol: unknown) => {
  * label of only spaces, which showed a preset with no name. A preset label
  * that shows nothing takes the default the 7 to 8 migration gives a missing
  * one, "Preset" and its position; a highlight label, the attribute's name, as
- * `addLegendLabels` gives one. Text already localized loses only its
- * translations that show nothing, which then fall back to another.
+ * `addLegendLabels` gives one.
  */
 const repairNarrativeLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -917,8 +812,7 @@ const repairNarrativeLabels = (protocol: unknown) => {
  * where schema 8 accepted a title of only spaces, which showed a form with no
  * heading. One that shows nothing takes the default the 7 to 8 migration
  * gives a missing one: "Add" and the name of the stage's node type, or "Add"
- * alone. Text already localized loses only its translations that show
- * nothing, which then fall back to another.
+ * alone.
  */
 const repairFormTitles = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -940,12 +834,11 @@ const repairFormTitles = (protocol: unknown) => {
 };
 
 /**
- * Whether a value is text the repairs below may replace: a schema 8 string or
- * text already localized. Anything else, missing or of another type, schema 8
- * already rejected, so it is left for validation to report.
+ * Whether a value is text the repairs below may replace: a schema 8 string.
+ * Anything else, missing or of another type, schema 8 already rejected, so it
+ * is left for validation to report.
  */
-const isText = (value: unknown): value is string | Record<string, unknown> =>
-  typeof value === 'string' || isRecord(value);
+const isText = (value: unknown): value is string => typeof value === 'string';
 
 /**
  * Schema 9 requires a stage's name to say something, as the stages menu lists
@@ -953,8 +846,7 @@ const isText = (value: unknown): value is string | Record<string, unknown> =>
  * takes the name the 7 to 8 migration gives a stage with none, "Stage" and
  * its position, such as "Stage 3". It runs before the migration adds any
  * stage, so the position is the one the stage had in schema 8, and before
- * anything that reads the name. Text already localized loses only its
- * translations that show nothing, which then fall back to another.
+ * anything that reads the name.
  */
 const repairStageLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -986,10 +878,11 @@ const optionLabelFor = (value: unknown): string | undefined => {
  * runs after the option values are normalized, so the label reads the value
  * as schema 9 stores it. The label is markdown, so the value is escaped to
  * show as written. Only the label changes, never the value an answer records.
- * Text already localized loses only its translations that show nothing, which
- * then fall back to another.
  */
-const repairOptionLabels = (codebook: unknown) => {
+const repairOptionLabels = (
+  codebook: unknown,
+  written: TextsWrittenAsStandard,
+) => {
   for (const variables of variableRecordsOf(codebook)) {
     for (const variable of Object.values(variables)) {
       if (!isRecord(variable) || !Array.isArray(variable.options)) continue;
@@ -1007,6 +900,7 @@ const repairOptionLabels = (codebook: unknown) => {
         if (shown !== undefined) option.label = shown;
         else if (fallback !== undefined) {
           option.label = escapeMarkdownText(fallback);
+          written.add(option, 'label');
         }
       }
     }
@@ -1018,8 +912,6 @@ const repairOptionLabels = (codebook: unknown) => {
  * something, where schema 8 accepted a title of only spaces, which showed a
  * panel with no heading. One that shows nothing takes the default the 7 to 8
  * migration gives a missing one, "Panel" and its position, such as "Panel 1".
- * Text already localized loses only its translations that show nothing,
- * which then fall back to another.
  */
 const repairPanelTitles = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -1039,8 +931,7 @@ const repairPanelTitles = (protocol: unknown) => {
  * with no name. One that shows nothing takes the name of the attribute it
  * reads, as a form field's question does, looked up on the stage's node
  * type; the roster column's own name stands in when the node type has no
- * such attribute. Text already localized loses only its translations that
- * show nothing, which then fall back to another.
+ * such attribute.
  */
 const repairRosterPropertyLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -1069,19 +960,6 @@ const repairRosterPropertyLabels = (protocol: unknown) => {
 };
 
 /**
- * Every text a label shows: a schema 8 string, which is plain text, or each
- * translation of text already localized, which is a message and so is read
- * back to the text it shows (`Type '{'A'}'` shows `Type {A}`).
- */
-const textsOf = (label: unknown): string[] => {
-  if (typeof label === 'string') return [label];
-  if (!isRecord(label)) return [];
-  return Object.values(label)
-    .filter((text): text is string => typeof text === 'string')
-    .map(messageText);
-};
-
-/**
  * Schema 9 requires a Narrative Pedigree condition's label to say something,
  * where schema 8 accepted a label of only spaces, which showed the participant
  * an unnamed condition. One that shows nothing takes the name of the attribute
@@ -1089,8 +967,7 @@ const textsOf = (label: unknown): string[] => {
  * on the node type of the Family Pedigree the stage shows; the attribute's id
  * stands in for a missing name. Two conditions on one stage must have
  * different labels, so a name another condition already uses is followed by a
- * number, such as "Diabetes 2". Text already localized loses only its
- * translations that show nothing, which then fall back to another.
+ * number, such as "Diabetes 2".
  */
 const repairDiseaseLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
@@ -1119,8 +996,11 @@ const repairDiseaseLabels = (protocol: unknown) => {
       const used = new Set(
         diseases
           .filter((other) => other !== disease)
-          .flatMap((other) => textsOf(other.label))
-          .filter((text) => !isBlankText(text))
+          .flatMap((other) =>
+            isText(other.label) && !isBlankText(other.label)
+              ? [other.label]
+              : [],
+          )
           .map(labelComparisonKey),
       );
       const name = nameOrKey(variables[disease.attribute], disease.attribute);
@@ -1133,57 +1013,18 @@ const repairDiseaseLabels = (protocol: unknown) => {
   }
 };
 
-// The id the appended finish stage takes, unless a schema 8 stage already
-// has it. Deterministic, so migrating one document twice gives one result.
-const FINISH_STAGE_ID = 'finish';
-
-const finishStageId = (stages: unknown): string =>
-  freshStageId(FINISH_STAGE_ID, '', takenStageIds(stages));
-
 /**
  * Schema 8 ended every interview with a built-in screen the runtime added.
  * Schema 9 makes that screen a stage, so every migrated protocol gains one at
- * the end, carrying the text that screen showed, recorded in the protocol's
- * default language.
+ * the end, carrying the text that screen showed, in English, the language
+ * the migrated protocol is recorded in.
  */
-/**
- * A session the framework left past the last stage, where the interview
- * engine's own finish screen used to be, resumes on the finish stage the
- * migration appended in its place.
- */
-const resumeAtAppendedFinishStage = (
-  session: { currentStep: number },
-  after: unknown,
-) => {
-  const stages =
-    typeof after === 'object' && after !== null && 'stages' in after
-      ? after.stages
-      : undefined;
-  if (!Array.isArray(stages) || stages.length === 0) return;
-  session.currentStep = Math.min(session.currentStep, stages.length - 1);
-};
-
-/**
- * A document that already ends at its finish stage keeps it: Fresco's deploy
- * normalization re-runs this migration over rows stored at schema 9, and a
- * second finish stage would make every such row invalid.
- */
-const endsAtFinishStage = (stages: unknown): boolean => {
-  if (!Array.isArray(stages)) return false;
-  const last: unknown = stages.at(-1);
-  return isRecord(last) && last.type === 'FinishSession';
-};
-
-/**
- * The finish stage the migration appends, with the supplied text in each of
- * the protocol's languages that has it: English for a schema 8 document, which
- * is recorded as English, and a schema 9 document's own languages otherwise.
- */
-const finishStageFor = (
-  stages: unknown,
-  localization: LocalizationDeclaration,
-) =>
-  createDefaultFinishSessionStage({ id: finishStageId(stages), localization });
+const finishStageFor = (localization: LocalizationDeclaration) =>
+  createDefaultFinishSessionStage({
+    // Replaced, with every other id, by `assignProtocolObjectIds`.
+    id: createProtocolObjectId(),
+    localization,
+  });
 
 type SiteChange =
   | { kind: 'set'; value: unknown }
@@ -1191,83 +1032,50 @@ type SiteChange =
   | { kind: 'keep' };
 
 /**
- * Schema 9 reserves `DYNAMIC_VALUE_MARKER` in text that may show dynamic
- * values, as the place the interview puts each value. Schema 8 text could
- * hold it, as a private-use character no font draws, so it is dropped there
- * rather than leaving the text invalid, or an optional text left out.
- */
-const holdsMarker = (text: unknown): text is string =>
-  typeof text === 'string' && text.includes(DYNAMIC_VALUE_MARKER);
-
-const withoutMarker = (text: unknown) =>
-  holdsMarker(text) ? text.replaceAll(DYNAMIC_VALUE_MARKER, '') : text;
-
-const withoutReservedMarker = (site: LocalizedStringSite): unknown => {
-  if (site.dynamicValues === undefined) return site.value;
-  if (!isRecord(site.value)) return withoutMarker(site.value);
-  if (!Object.values(site.value).some(holdsMarker)) return site.value;
-  return Object.fromEntries(
-    Object.entries(site.value).map(([locale, text]) => [
-      locale,
-      withoutMarker(text),
-    ]),
-  );
-};
-
-/**
  * A string that shows nothing follows the site's own rule: where the field
  * accepts it, it is kept as data, and where it does not, an optional field is
  * left out. A required field is wrapped regardless, so validation reports what
  * schema 8 already rejected.
  *
+ * Schema 9 reserves `DYNAMIC_VALUE_MARKER` in text that may show dynamic
+ * values, as the place the interview puts each value. Schema 8 text could
+ * hold it, as a private-use character no font draws, so it is dropped there
+ * rather than leaving the text invalid, or an optional text left out.
+ *
  * Schema 8 typed every site as a string except the end labels of a Network
  * Composer scale, whose parameter record accepted any value. The interview
  * only ever rendered string end labels there, so any other value is dropped.
  * A non-string anywhere else was already invalid and is left for validation.
+ * The localized default an earlier repair wrote is kept as it is.
  *
- * Text that is already localized is kept, so a document written in schema 9
- * form comes through with its text in the languages it declares, less any
- * translation of an optional text that shows nothing. A string in
- * such a document is recorded in its default language. Either loses the
- * reserved marker first (see `withoutReservedMarker`).
+ * A string in a markdown field was read the legacy way, and is written as
+ * standard markdown first (see `legacyMarkdownAsStandard`), before it is
+ * escaped as a message, unless the migration wrote it itself (`standard`).
  */
 const localizeSite = (
-  original: LocalizedStringSite,
+  site: LocalizedStringSite,
   defaultLocale: string,
+  standard: boolean,
 ): SiteChange => {
-  const value = withoutReservedMarker(original);
-  // Stripped text must be written back even where it would otherwise be kept.
-  const changed = value !== original.value;
-  const site = changed ? { ...original, value } : original;
   if (typeof site.value === 'string') {
-    const localized = { [defaultLocale]: escapeMessageText(site.value) };
+    const text =
+      site.dynamicValues === undefined
+        ? site.value
+        : site.value.replaceAll(DYNAMIC_VALUE_MARKER, '');
+    const markdown =
+      site.format === 'markdown' && !standard
+        ? legacyMarkdownAsStandard(text, { lines: site.lines })
+        : text;
+    const localized = { [defaultLocale]: escapeMessageText(markdown) };
     if (site.schema.safeParse(localized).success || !site.optional) {
       return { kind: 'set', value: localized };
     }
     return { kind: 'remove' };
   }
-  // Text already localized, in a document written in schema 9 form. An
-  // optional text loses its translations that show nothing, which schema 9
-  // rejects, so those languages fall back to another; text left with none is
-  // left out, as it would have shown nothing.
-  if (site.optional && isRecord(site.value)) {
-    const shown = withoutBlankText(site.value);
-    if (shown === undefined) return { kind: 'remove' };
-    if (isRecord(shown) && site.schema.safeParse(shown).success) {
-      return Object.keys(shown).length === Object.keys(site.value).length &&
-        !changed
-        ? { kind: 'keep' }
-        : { kind: 'set', value: shown };
-    }
-  }
-  if (site.schema.safeParse(site.value).success) {
-    return changed ? { kind: 'set', value: site.value } : { kind: 'keep' };
-  }
+  if (site.schema.safeParse(site.value).success) return { kind: 'keep' };
   return site.looseContainer && site.optional
     ? { kind: 'remove' }
-    : changed
-      ? { kind: 'set', value: site.value }
-      : { kind: 'keep' };
+    : { kind: 'keep' };
 };
 
 /**
@@ -1280,25 +1088,12 @@ const joinSingleLineText = (protocol: unknown) => {
   for (const site of collectLocalizedStringSites(ProtocolSchemaV9, protocol)) {
     const key = site.path.at(-1);
     if (site.lines !== 'single' || key === undefined) continue;
-    const texts = isRecord(site.value)
-      ? Object.entries(site.value)
-      : [['', site.value] as const];
-    let changed = false;
-    const joined = texts.map(([locale, text]) => {
-      if (typeof text !== 'string' || !holdsLineBreak(text)) {
-        return [locale, text] as const;
-      }
-      const line = asOneLine(text);
-      if (isBlankText(line)) return [locale, text] as const;
-      changed = true;
-      return [locale, line] as const;
-    });
-    if (!changed) continue;
-    Reflect.set(
-      containerAt(protocol, site.path.slice(0, -1)),
-      key,
-      isRecord(site.value) ? Object.fromEntries(joined) : joined[0]?.[1],
-    );
+    if (typeof site.value !== 'string' || !holdsLineBreak(site.value)) {
+      continue;
+    }
+    const line = asOneLine(site.value);
+    if (isBlankText(line)) continue;
+    Reflect.set(containerAt(protocol, site.path.slice(0, -1)), key, line);
   }
 };
 
@@ -1317,6 +1112,95 @@ const containerAt = (
   return node;
 };
 
+const migrateDocument = (input: ProtocolDocument<8>) => {
+  const { experiments, ...doc } = input;
+  const migrated = structuredClone(doc);
+  // Before any repair removes or reorders a list item, so a refusal names
+  // each item where the researcher will find it.
+  recordOriginalPositions(migrated);
+  const localization = {
+    defaultLocale: DEFAULT_LOCALE,
+    locales: [DEFAULT_LOCALE],
+  };
+  // Text the migration writes as standard markdown itself, which is not
+  // read the legacy way again when it is localized.
+  const written = textsWrittenAsStandard();
+  // Before any stage is added, and before anything reads a stage's name.
+  repairStageLabels(migrated);
+  if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
+  removeContradictoryPassphraseRules(migrated);
+  moveAnonymisationTitlesIntoText(migrated, written);
+  removeEncryptedAttributeComparisons(migrated);
+  // Before the pedigree conversion, which reads the options it keeps.
+  remapMergedOptionValues(migrated, mergedOptionValuesOf(migrated.codebook));
+  removeDuplicateOptionValues(migrated.codebook);
+  // Before the localization pass, so the attribute and stage the
+  // conversion adds are localized with the rest.
+  migrateFamilyPedigreeStages(migrated);
+  migrateNarrativePedigreeStages(migrated);
+  addLegendLabels(migrated);
+  // After the filters are rewritten above, which read each stage's own.
+  moveNarrativeFiltersIntoPresets(migrated);
+  addComposerCaptions(migrated, written);
+  moveIntroductionPanelsToInformationStages(migrated, localization);
+  combineInformationContent(migrated, localization, written);
+  repairNarrativeLabels(migrated);
+  repairFormTitles(migrated);
+  // After the option values are normalized and the pedigree conversion has
+  // given its options their labels.
+  repairOptionLabels(migrated.codebook, written);
+  repairPanelTitles(migrated);
+  repairRosterPropertyLabels(migrated);
+  repairDiseaseLabels(migrated);
+  repairOtherBinText(migrated, localization);
+  repairTieStrengthDeclineLabels(migrated, localization);
+  joinSingleLineText(migrated);
+
+  // Every site is found before any is rewritten, so the walk reads the
+  // document as schema 8 left it.
+  for (const site of collectLocalizedStringSites(ProtocolSchemaV9, migrated)) {
+    const key = site.path.at(-1);
+    if (key === undefined) continue;
+    const container = containerAt(migrated, site.path.slice(0, -1));
+    const change = localizeSite(
+      site,
+      localization.defaultLocale,
+      written.has(container, key),
+    );
+    if (change.kind === 'keep') continue;
+    if (change.kind === 'set') Reflect.set(container, key, change.value);
+    else Reflect.deleteProperty(container, key);
+  }
+
+  const assembled = {
+    ...migrated,
+    stages: [
+      ...(Array.isArray(migrated.stages) ? migrated.stages : []),
+      finishStageFor(localization),
+    ],
+    ...(experiments !== undefined && {
+      experiments: withoutEncryptedVariables(experiments),
+    }),
+    schemaVersion: 9 as const,
+    localization,
+  };
+  // Last, so that every object the steps above add or move is given its id
+  // where it ends up, and every stage reference they wrote is rewritten.
+  assignProtocolObjectIds(assembled);
+  // Before the codebook's keys change: each option's id is named by where
+  // its variable is in the codebook the protocol was written with.
+  assignOptionIds(assembled);
+  // Last for the same reason: the steps above add variables (a Family
+  // Pedigree's relativesNotRecorded) and read and write references by the
+  // keys schema 8 gave, so one pass at the end renames each type and
+  // variable that needs a new id, and every reference any step wrote.
+  assignCodebookIds(assembled);
+
+  // None of the wording Network Canvas supplies is written in: the
+  // interview shows it for a protocol that does not hold it.
+  return withoutUnshownWording(assembled);
+};
+
 const migrationV8toV9 = createMigration({
   from: 8,
   to: 9,
@@ -1330,7 +1214,7 @@ const migrationV8toV9 = createMigration({
 - A protocol cannot be upgraded while a prompt or question, the value of an option of an ordinal or categorical attribute, or the name of a node type, edge type or attribute is empty or contains only spaces, because the upgrade cannot know what it should be. This includes form field questions, the label given to a field of a Network Composer form, a Family Pedigree's prompt and nomination prompts, and the question a Categorical Bin stage asks participants to describe an answer that is not listed. Correct each in the version of Architect that made the protocol, then upgrade it.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
 - Ordinal and categorical option values must now be unique. Where existing options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
-- The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
+- The rules for ordinal and categorical option values are now stricter. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. Options whose values are then identical are merged as above, and skip logic, filters and node shapes are updated to the new value. Data already collected with the original protocol is not changed, so the answers in it keep the old option values.
 - Several places that accepted empty text, or text made up only of spaces, now require some text:
   - On a Categorical Bin stage, the label of the bin for answers not listed must now contain some text. Where it contained only spaces, it now reads "Other".
   - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
@@ -1350,100 +1234,7 @@ const migrationV8toV9 = createMigration({
 - A Narrative stage's filter now belongs to each of its presets, so each preset can show a different part of the network. A filter on an existing Narrative stage is copied to every preset of that stage, so the stage shows the same people as before.
 - A Name Generator Roster stage now has a panel title, shown above the list of people participants choose from, so you can change it and translate it like the rest of your protocol. It starts with the heading the interview has always shown there, "Available to add".
 - Text that participants read as a single line, such as the name of a stage, a prompt, a form field question and its hint, or the label of an answer, can no longer contain line breaks. Where it did, each line break, together with any spaces around it, is replaced by a single space.`,
-  migrate: ({ experiments, ...doc }) => {
-    const migrated = structuredClone(doc);
-    // Before any repair removes or reorders a list item, so a refusal names
-    // each item where the researcher will find it.
-    recordOriginalPositions(migrated);
-    const localization = localizationOf(migrated);
-    // Before any stage is added, and before anything reads a stage's name.
-    repairStageLabels(migrated);
-    if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
-    removeContradictoryPassphraseRules(migrated);
-    moveAnonymisationTitlesIntoText(migrated);
-    removeEncryptedAttributeComparisons(migrated);
-    // Before the pedigree conversion, which reads the options it keeps.
-    remapMergedOptionValues(migrated, mergedOptionValuesOf(migrated.codebook));
-    removeDuplicateOptionValues(migrated.codebook);
-    // Before the localization pass, so the attribute and stage the
-    // conversion adds are localized with the rest.
-    migrateFamilyPedigreeStages(migrated);
-    migrateNarrativePedigreeStages(migrated);
-    // After the pedigree conversion, which builds its form from schema 8's.
-    addFormFieldIds(migrated);
-    addLegendLabels(migrated);
-    // After the filters are rewritten above, which read each stage's own.
-    moveNarrativeFiltersIntoPresets(migrated);
-    addComposerCaptions(migrated);
-    moveIntroductionPanelsToInformationStages(migrated, localization);
-    combineInformationContent(migrated, localization);
-    repairNarrativeLabels(migrated);
-    repairFormTitles(migrated);
-    // After the option values are normalized and the pedigree conversion has
-    // given its options their labels.
-    repairOptionLabels(migrated.codebook);
-    repairPanelTitles(migrated);
-    repairRosterPropertyLabels(migrated);
-    repairDiseaseLabels(migrated);
-    repairOtherBinText(migrated, localization);
-    repairTieStrengthDeclineLabels(migrated, localization);
-    joinSingleLineText(migrated);
-
-    // Every site is found before any is rewritten, so the walk reads the
-    // document as schema 8 left it.
-    for (const site of collectLocalizedStringSites(
-      ProtocolSchemaV9,
-      migrated,
-    )) {
-      const key = site.path.at(-1);
-      if (key === undefined) continue;
-      const change = localizeSite(site, localization.defaultLocale);
-      if (change.kind === 'keep') continue;
-      const container = containerAt(migrated, site.path.slice(0, -1));
-      if (change.kind === 'set') Reflect.set(container, key, change.value);
-      else Reflect.deleteProperty(container, key);
-    }
-
-    // None of the wording Network Canvas supplies is written in: the
-    // interview shows it for a protocol that does not hold it. A document
-    // already in schema 9 form keeps the wording it holds for the text it
-    // shows. The words are the interview's, so a copy of them cannot be told
-    // from a rewording here; the tool that next stores the protocol removes
-    // it (`withoutSuppliedWording`).
-    return withoutUnshownWording({
-      ...migrated,
-      stages: endsAtFinishStage(migrated.stages)
-        ? migrated.stages
-        : [
-            ...(Array.isArray(migrated.stages) ? migrated.stages : []),
-            finishStageFor(migrated.stages, localization),
-          ],
-      ...(experiments !== undefined && {
-        experiments: withoutEncryptedVariables(experiments),
-      }),
-      schemaVersion: 9 as const,
-      localization,
-    });
-  },
-  // A pedigree's introduction screen becomes a stage of its own, which moves
-  // the pedigree and every stage after it one place on; the framework moves
-  // each session's stage records and resume position with their stages
-  // before this runs. A session on a pedigree it had not started had not yet
-  // seen the introduction, so it resumes on the new stage instead. The
-  // redesigned pedigree keeps a different stage record, which is translated
-  // without losing anything the participant recorded.
-  //
-  // The finish stage this step appends is the screen the interview engine
-  // used to add after the last stage. The framework keeps a session that was
-  // on that screen past the end of the stages, so it resumes on the finish
-  // stage instead.
-  migrateSession: (session, { before, after }) => {
-    remapMergedOptionAnswers(session.network, before);
-    resumeAtAppendedFinishStage(session, after);
-    resumeUnstartedPedigreeAtIntroduction(session, after, before);
-    migrateFamilyPedigreeSessionRecords(session, after, before);
-    return session;
-  },
+  migrate: migrateDocument,
 });
 
 export default migrationV8toV9;

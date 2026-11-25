@@ -1,25 +1,18 @@
 import {
   CASED_VARIABLE_TYPES,
-  DYNAMIC_VALUE_NAME,
-  type DynamicValueBinding,
   type DynamicValueRole,
-  type DynamicValues,
   type DynamicValueSiteContext,
-  dynamicValueConditionPathFor,
-  dynamicValueLabelPathFor,
+  dynamicValueNameFor,
   dynamicValueNamesIn,
-  dynamicValueParticipantPathFor,
-  dynamicValuePathFor,
   dynamicValueStatus,
   dynamicValueUnshowableReason,
+  FALSE_CASE,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
   isAttributeDynamicValueRole,
   isLabelledDynamicValueRole,
-  type MessageNode,
-  MISSING_CASE,
-  messageStructure,
-  PARTICIPANT_CASE,
+  optionCaseKey,
+  type ParsedDynamicValuePath,
   TRUE_CASE,
 } from '@codaco/protocol-validation';
 
@@ -30,7 +23,12 @@ import {
  * rules the protocol is validated against (`dynamicValueStatus`).
  */
 export type DynamicValueChoice = Readonly<{
-  path: string;
+  /**
+   * The name the text uses for it (`dynamicValueNameFor`), such as
+   * `ego_<variable id>`. A researcher never reads it: its pill is labelled
+   * from the attribute's name.
+   */
+  name: string;
   /**
    * What it is: a value the interview knows, an attribute, the label the
    * interview shows on a node, or whether that node is the participant.
@@ -50,7 +48,7 @@ export type DynamicValueChoice = Readonly<{
   condition?: Readonly<{ id: string }>;
   /** The role whose value it is, or undefined for an interview value. */
   role: DynamicValueRole | undefined;
-  /** The attribute's name, or the interview value's key; empty for a label. */
+  /** The attribute's id, or the interview value's key; empty for a label. */
   variableId: string;
   /** The codebook's name for the attribute; undefined for an interview value. */
   variableName: string | undefined;
@@ -61,7 +59,7 @@ export type DynamicValueChoice = Readonly<{
   numeric: boolean;
   /**
    * The answers text can choose a version by, for a categorical, ordinal or
-   * boolean attribute, each with the case key a new binding would give it.
+   * boolean attribute, each with the case key that chooses it.
    */
   options: readonly DynamicValueOption[];
   /**
@@ -74,26 +72,16 @@ export type DynamicValueChoice = Readonly<{
 }>;
 
 export type DynamicValueOption = Readonly<{
+  /**
+   * The select case key that chooses this answer: the option's id written
+   * as a name (`optionCaseKey`), or `true` and `false` for a yes/no value.
+   */
+  caseKey: string;
   /** The stored option value. */
   value: string | number | boolean;
   /** The option's label as the codebook holds it, if it has one. */
   label: unknown;
 }>;
-
-const INTRINSIC_NAMES: Readonly<Record<IntrinsicDynamicValue, string>> = {
-  now: 'today',
-};
-
-const ROLE_PREFIXES: Readonly<Record<DynamicValueRole, string>> = {
-  ego: '',
-  node: '',
-  edge: '',
-  dyadSource: 'first',
-  dyadTarget: 'second',
-  focal: 'focal',
-  edgeFrom: 'first',
-  edgeTo: 'second',
-};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -107,23 +95,47 @@ const isOptionValue = (value: unknown): value is string | number | boolean =>
 // anything: a value that is not a cased type is simply not in it.
 const casedTypes: ReadonlySet<unknown> = CASED_VARIABLE_TYPES;
 
+/**
+ * The answers text can give a version for: a yes/no attribute's two, with
+ * the labels its options give them, and each option of a categorical or
+ * ordinal attribute that has an id, in codebook order.
+ */
 const optionsOf = (variable: Record<string, unknown>): DynamicValueOption[] => {
   if (!casedTypes.has(variable.type)) return [];
-  const options = Array.isArray(variable.options) ? variable.options : [];
-  const listed = options.flatMap((option: unknown) =>
-    isRecord(option) && isOptionValue(option.value)
-      ? [{ value: option.value, label: option.label }]
-      : [],
-  );
-  // A boolean with no labels of its own is answered yes or no.
-  if (listed.length === 0 && variable.type === 'boolean') {
+  const options: unknown[] = Array.isArray(variable.options)
+    ? variable.options
+    : [];
+  if (variable.type === 'boolean') {
+    const labelFor = (value: boolean): unknown => {
+      const option = options.find(
+        (each) => isRecord(each) && each.value === value,
+      );
+      return isRecord(option) ? option.label : undefined;
+    };
     return [
-      { value: true, label: undefined },
-      { value: false, label: undefined },
+      { caseKey: TRUE_CASE, value: true, label: labelFor(true) },
+      { caseKey: FALSE_CASE, value: false, label: labelFor(false) },
     ];
   }
-  return listed;
+  return options.flatMap((option) =>
+    isRecord(option) &&
+    typeof option.id === 'string' &&
+    isOptionValue(option.value)
+      ? [
+          {
+            caseKey: optionCaseKey(option.id),
+            value: option.value,
+            label: option.label,
+          },
+        ]
+      : [],
+  );
 };
+
+/** The one case a yes/no value that is never shown is worded for. */
+const FLAG_OPTIONS: readonly DynamicValueOption[] = [
+  { caseKey: TRUE_CASE, value: true, label: undefined },
+];
 
 /**
  * Everything text at this place can show: for each available role its node's
@@ -134,16 +146,17 @@ const optionsOf = (variable: Record<string, unknown>): DynamicValueOption[] => {
 export const dynamicValueChoices = (
   context: DynamicValueSiteContext,
 ): DynamicValueChoice[] => {
+  const available = (parsed: ParsedDynamicValuePath) =>
+    dynamicValueStatus(parsed, context);
   const intrinsics =
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the keys of a const object are exactly IntrinsicDynamicValue, which is defined as keyof it
     (Object.keys(INTRINSIC_DYNAMIC_VALUES) as IntrinsicDynamicValue[])
       // A node type's own label shows none of them.
       .filter(
-        (name) =>
-          dynamicValueStatus({ path: name }, context).status === 'available',
+        (name) => available({ kind: 'intrinsic', name }).status === 'available',
       )
       .map((name): DynamicValueChoice => ({
-        path: name,
+        name: dynamicValueNameFor({ kind: 'intrinsic', name }),
         kind: 'intrinsic',
         role: undefined,
         variableId: name,
@@ -156,12 +169,12 @@ export const dynamicValueChoices = (
       }));
   const labelOf = (role: DynamicValueRole): DynamicValueChoice[] => {
     if (!isLabelledDynamicValueRole(role)) return [];
-    const path = dynamicValueLabelPathFor(role);
-    const status = dynamicValueStatus({ path }, context);
+    const parsed: ParsedDynamicValuePath = { kind: 'label', role };
+    const status = available(parsed);
     if (status.status !== 'available') return [];
     return [
       {
-        path,
+        name: dynamicValueNameFor(parsed),
         kind: 'label',
         role,
         variableId: '',
@@ -183,13 +196,14 @@ export const dynamicValueChoices = (
   // only ever worded for, as an "If".
   const conditions = [...(context.conditions ?? [])].flatMap(
     ([id, { about }]): DynamicValueChoice[] => {
-      const path = dynamicValueConditionPathFor(id);
-      if (dynamicValueStatus({ path }, context).status !== 'available') {
-        return [];
-      }
+      const parsed: ParsedDynamicValuePath = {
+        kind: 'condition',
+        conditionId: id,
+      };
+      if (available(parsed).status !== 'available') return [];
       return [
         {
-          path,
+          name: dynamicValueNameFor(parsed),
           kind: 'condition',
           condition: { id },
           role: about ?? 'ego',
@@ -198,7 +212,7 @@ export const dynamicValueChoices = (
           variableType: 'boolean',
           optional: false,
           numeric: false,
-          options: [{ value: true, label: undefined }],
+          options: FLAG_OPTIONS,
           unshowable: 'switch',
         },
       ];
@@ -208,13 +222,11 @@ export const dynamicValueChoices = (
   // the participant, and the other for everyone else.
   const participantOf = (role: DynamicValueRole): DynamicValueChoice[] => {
     if (role !== 'node') return [];
-    const path = dynamicValueParticipantPathFor(role);
-    if (dynamicValueStatus({ path }, context).status !== 'available') {
-      return [];
-    }
+    const parsed: ParsedDynamicValuePath = { kind: 'participant', role };
+    if (available(parsed).status !== 'available') return [];
     return [
       {
-        path,
+        name: dynamicValueNameFor(parsed),
         kind: 'participant',
         role,
         variableId: '',
@@ -222,7 +234,7 @@ export const dynamicValueChoices = (
         variableType: 'boolean',
         optional: false,
         numeric: false,
-        options: [{ value: true, label: undefined }],
+        options: FLAG_OPTIONS,
         unshowable: 'switch',
       },
     ];
@@ -231,16 +243,18 @@ export const dynamicValueChoices = (
     isAttributeDynamicValueRole(role)
       ? Object.entries(context.variablesFor(role) ?? {}).flatMap(
           ([variableId, variable]): DynamicValueChoice[] => {
-            const path = dynamicValuePathFor(role, variableId);
-            if (dynamicValueStatus({ path }, context).status !== 'available') {
-              return [];
-            }
+            const parsed: ParsedDynamicValuePath = {
+              kind: 'attribute',
+              role,
+              variableId,
+            };
+            if (available(parsed).status !== 'available') return [];
             const full: Record<string, unknown> = isRecord(variable)
               ? variable
               : {};
             return [
               {
-                path,
+                name: dynamicValueNameFor(parsed),
                 kind: 'attribute',
                 role,
                 variableId,
@@ -285,228 +299,10 @@ export const dynamicValueChoices = (
 export const isFlagChoice = (choice: DynamicValueChoice): boolean =>
   choice.kind === 'participant' || choice.kind === 'condition';
 
-/** Words of `text` as an argument name: ASCII letters and digits, camel-cased. */
-const identifierFrom = (text: string): string => {
-  const words = text
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .split(/[^A-Za-z0-9]+/)
-    .filter((word) => word !== '');
-  const joined = words
-    .map((word, index) =>
-      index === 0
-        ? word.charAt(0).toLowerCase() + word.slice(1)
-        : word.charAt(0).toUpperCase() + word.slice(1),
-    )
-    .join('');
-  return /^[A-Za-z]/.test(joined) ? joined : '';
-};
-
-const unique = (base: string, taken: (name: string) => boolean): string => {
-  if (!taken(base)) return base;
-  for (let suffix = 2; ; suffix += 1) {
-    const candidate = `${base}${suffix}`;
-    if (!taken(candidate)) return candidate;
-  }
-};
-
-const isIntrinsicName = (id: string): id is IntrinsicDynamicValue =>
-  Object.hasOwn(INTRINSIC_NAMES, id);
-
-/**
- * The argument name a new binding for `choice` gets: the attribute's name as
- * an identifier, so a translator reads `{partnerName}`, prefixed for the
- * first and second node of a pair or an edge and the node being asked about,
- * and numbered when the stage already uses the name. A node's label is
- * `{nodeLabel}`, or `{firstLabel}` and the like.
- */
-const nameFor = (
-  choice: DynamicValueChoice,
-  taken: (name: string) => boolean,
-): string => {
-  if (choice.role === undefined) {
-    return unique(
-      isIntrinsicName(choice.variableId)
-        ? INTRINSIC_NAMES[choice.variableId]
-        : identifierFrom(choice.variableId) || 'value',
-      taken,
-    );
-  }
-  const prefix = ROLE_PREFIXES[choice.role];
-  if (choice.kind === 'label') {
-    return unique(prefix === '' ? 'nodeLabel' : `${prefix}Label`, taken);
-  }
-  if (choice.kind === 'participant') return unique('isParticipant', taken);
-  if (choice.kind === 'condition') {
-    return unique(
-      identifierFrom(choice.condition?.id ?? '') || 'condition',
-      taken,
-    );
-  }
-  const own =
-    identifierFrom(choice.variableName ?? '') ||
-    identifierFrom(choice.variableId) ||
-    'value';
-  const base =
-    prefix === '' ? own : prefix + own.charAt(0).toUpperCase() + own.slice(1);
-  return unique(base, taken);
-};
-
-const isCaseKey = (key: string) =>
-  DYNAMIC_VALUE_NAME.test(key) && key !== MISSING_CASE && key !== 'other';
-
-/**
- * The cases a binding names each of `options` by, added to the cases it
- * already records (`recorded`), whose names they do not take.
- */
-const casesFor = (
-  options: readonly DynamicValueOption[],
-  labelText: (label: unknown) => string,
-  recorded: Readonly<Record<string, string | number | boolean>> = {},
-): Record<string, string | number | boolean> => {
-  const cases: Record<string, string | number | boolean> = { ...recorded };
-  options.forEach((option, index) => {
-    const fromValue =
-      typeof option.value === 'boolean'
-        ? option.value
-          ? 'yes'
-          : 'no'
-        : identifierFrom(String(option.value));
-    const base = [fromValue, identifierFrom(labelText(option.label))].find(
-      isCaseKey,
-    );
-    const key = unique(
-      base ?? `option${index + 1}`,
-      (candidate) => !isCaseKey(candidate) || Object.hasOwn(cases, candidate),
-    );
-    cases[key] = option.value;
-  });
-  return cases;
-};
-
-/**
- * The stage's binding for `choice`: one that already shows the same value
- * (preferring one that names all its answers), or a new one. A value with
- * answers keeps the name the stage binds it under however many of its
- * answers that binding records cases for (a save keeps only the cases text
- * uses), offered with a case for each answer it lacks, which a by-answer
- * insertion adds to it.
- */
-export const bindingFor = (
-  choice: DynamicValueChoice,
-  bindings: DynamicValues,
-  pending: DynamicValues,
-  labelText: (label: unknown) => string,
-): Readonly<{ name: string; binding: DynamicValueBinding }> => {
-  const covers = (binding: DynamicValueBinding) => {
-    const values = Object.values(binding.cases ?? {});
-    return choice.options.every((option) => values.includes(option.value));
-  };
-  for (const source of [bindings, pending]) {
-    for (const [name, binding] of Object.entries(source)) {
-      if (binding.path === choice.path && covers(binding)) {
-        return { name, binding };
-      }
-    }
-  }
-  // Whether the node is the participant has its one case, for the
-  // participant, under the name the schema gives it; so has anything else
-  // that is only true or false (a condition).
-  const participantCases: Record<string, boolean> = {
-    [choice.kind === 'participant' ? PARTICIPANT_CASE : TRUE_CASE]: true,
-  };
-  if (isFlagChoice(choice)) {
-    const bound = Object.entries(bindings).find(
-      ([, binding]) => binding.path === choice.path,
-    );
-    if (bound !== undefined) {
-      return {
-        name: bound[0],
-        binding: { path: choice.path, cases: participantCases },
-      };
-    }
-  }
-  for (const [name, binding] of Object.entries(bindings)) {
-    if (binding.path !== choice.path) continue;
-    const recorded = Object.values(binding.cases ?? {});
-    const lacking = choice.options.filter(
-      (option) => !recorded.includes(option.value),
-    );
-    return {
-      name,
-      binding: {
-        path: choice.path,
-        cases: casesFor(lacking, labelText, binding.cases),
-      },
-    };
-  }
-  const name = nameFor(
-    choice,
-    (candidate) =>
-      Object.hasOwn(bindings, candidate) || Object.hasOwn(pending, candidate),
-  );
-  return {
-    name,
-    binding: isFlagChoice(choice)
-      ? { path: choice.path, cases: participantCases }
-      : choice.options.length === 0
-        ? { path: choice.path }
-        : { path: choice.path, cases: casesFor(choice.options, labelText) },
-  };
-};
-
-/** Whether `nodes` show a version for one of `cases` of the value `name`. */
-const selectsOnCases = (
-  nodes: readonly MessageNode[],
-  name: string,
-  cases: Readonly<Record<string, unknown>>,
-): boolean =>
-  nodes.some(
-    (node) =>
-      node.kind === 'switch' &&
-      ((node.argument === name &&
-        node.type === 'select' &&
-        node.versions.some((version) => Object.hasOwn(cases, version.key))) ||
-        node.versions.some((version) =>
-          selectsOnCases(version.nodes, name, cases),
-        )),
-  );
-
-/**
- * What an edit that leaves the text as `nodes` records for the value `name`,
- * offered as `offered`, when the stage binds it as `existing`; undefined when
- * the stage's binding stays as it is. Cases are recorded only once the text
- * shows a version for one of them: a value only ever shown as itself is
- * bound without cases, so a later change to its attribute's options leaves
- * no stale case behind for a researcher who never wrote one.
- */
-export const bindingRecordedFor = (
-  name: string,
-  offered: DynamicValueBinding,
-  existing: DynamicValueBinding | undefined,
-  nodes: readonly MessageNode[],
-): DynamicValueBinding | undefined => {
-  if (offered.cases === undefined) {
-    return existing === undefined ? offered : undefined;
-  }
-  if (existing === undefined) {
-    return selectsOnCases(nodes, name, offered.cases)
-      ? offered
-      : { path: offered.path };
-  }
-  // Only a version for a case the stage does not record yet changes it.
-  const added = Object.fromEntries(
-    Object.entries(offered.cases).filter(
-      ([key]) => !Object.hasOwn(existing.cases ?? {}, key),
-    ),
-  );
-  return selectsOnCases(nodes, name, added) ? offered : undefined;
-};
-
 /**
  * Every value name the text in `value` uses, anywhere in it: what keeps a
- * binding needed. Over-counting is safe; a binding is only ever dropped when
- * no text names it.
+ * condition needed. Over-counting is safe; a condition is only ever dropped
+ * when no text names it.
  */
 export const dynamicValueNamesUsedIn = (
   value: unknown,
@@ -524,45 +320,4 @@ export const dynamicValueNamesUsedIn = (
     }
   }
   return names;
-};
-
-/**
- * The versions the text in `value` shows for each value it selects on, by
- * the value's name: what keeps a binding's cases needed. A value named in a
- * message this cannot read keeps all of its cases (`'all'`): over-counting is
- * safe, and a case is only ever dropped when no text shows a version for it.
- */
-export const dynamicValueCasesUsedIn = (
-  value: unknown,
-  cases: Map<string, Set<string> | 'all'> = new Map(),
-): Map<string, Set<string> | 'all'> => {
-  const visit = (nodes: readonly MessageNode[]) => {
-    for (const node of nodes) {
-      if (node.kind !== 'switch') continue;
-      if (node.type === 'select') {
-        const keys = cases.get(node.argument) ?? new Set<string>();
-        if (keys !== 'all') {
-          for (const version of node.versions) keys.add(version.key);
-          cases.set(node.argument, keys);
-        }
-      }
-      for (const version of node.versions) visit(version.nodes);
-    }
-  };
-  if (typeof value === 'string') {
-    if (value.includes('{')) {
-      const structure = messageStructure(value);
-      if ('nodes' in structure) visit(structure.nodes);
-      else {
-        for (const name of dynamicValueNamesIn(value)) cases.set(name, 'all');
-      }
-    }
-  } else if (Array.isArray(value)) {
-    for (const item of value) dynamicValueCasesUsedIn(item, cases);
-  } else if (isRecord(value)) {
-    for (const item of Object.values(value)) {
-      dynamicValueCasesUsedIn(item, cases);
-    }
-  }
-  return cases;
 };

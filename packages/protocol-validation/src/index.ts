@@ -1,16 +1,12 @@
 import { asEntityAttributeReference } from './schemas/9/entity-attribute-reference.ts';
 import { getAssetMimeType } from './utils/asset-mime-type.ts';
 import {
-  type AssetReferenceHit,
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectEntityTypeReferencesFromSchema,
   collectStageReferences,
   declaredStageReferenceSites,
-  type EntityAttributeReferenceHit,
-  type EntityTypeReferenceHit,
-  type StageReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
 import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
@@ -37,6 +33,12 @@ import {
   type ProtocolFileErrorKind,
 } from './utils/protocolFileErrorKind.ts';
 import { toReportableProtocolError } from './utils/reportableProtocolError.ts';
+import type {
+  AssetReferenceHit,
+  EntityAttributeReferenceHit,
+  EntityTypeReferenceHit,
+  StageReferenceHit,
+} from './utils/schemaReferenceWalk.ts';
 import {
   findCollidingAttributeNames,
   getVariableNamesFromNetwork,
@@ -99,11 +101,12 @@ export {
 // message reads for given values.
 export {
   DYNAMIC_VALUE_MARKER,
-  DYNAMIC_VALUE_NAME,
   type DynamicValueArgument,
   type DynamicValueArguments,
   type DynamicValueState,
+  type DynamicValueStateOf,
   dynamicMessageParts,
+  dynamicValueCaseKeysIn,
   dynamicValueNamesIn,
   findDynamicValueProblem,
   MISSING_CASE,
@@ -136,11 +139,15 @@ export {
   assetInManifest,
 } from './localization/assetBlockDisplay.ts';
 export {
+  ASCII_PUNCTUATION,
+  CHARACTER_REFERENCE,
   escapeMarkdownText,
   headingMarkdown,
+  linkDestinationMarkdown,
+  linkTitleMarkdown,
   VERSION_LINE_LEAD,
 } from './localization/markdownText.ts';
-export { markdownAsEdited } from './localization/markdownTree.ts';
+export { markdownTree } from './localization/markdownTree.ts';
 export {
   escapeMessageText,
   messageText,
@@ -160,7 +167,6 @@ export {
 export {
   MigrationChain,
   type ProtocolMigration as Migration,
-  type SessionMigrationStep,
 } from './migration/index.ts';
 export * from './migration/errors.ts';
 export {
@@ -173,19 +179,10 @@ export {
   type MigrationInfo,
   type MigrationNote,
   migrateProtocol,
-  migrateProtocolWithSessions,
   protocolMigrations,
-  type ProtocolWithSessionMigrator,
   ProtocolMigrator,
   protocolMigrator,
 } from './migration/migrate-protocol.ts';
-export type {
-  MigratedSession,
-  PersistedSession,
-  SessionDocument,
-  SessionMigrationResult,
-  SessionMigrator,
-} from './migration/session.ts';
 
 // Export schema types and constants (Protocol, Codebook, etc)
 export * from './schemas/index.ts';
@@ -230,40 +227,46 @@ export {
   type InformationPagePart,
   informationPageContent,
 } from './schemas/9/information-content-migration.ts';
-// A stage's dynamic values: the bindings, the path vocabulary, and the one
-// table of what each site can show, which validation and Architect share.
+// The values text shows: the names a message uses for them, the cases it
+// chooses versions by, and the one table of what each site can show, which
+// validation, Architect and the interview share.
 export {
   CASED_VARIABLE_TYPES,
-  DYNAMIC_VALUE_ROLE_PREFIXES,
+  DYNAMIC_VALUE_ROLES,
   DYNAMIC_VALUE_VARIABLE_TYPES,
   type AttributeDynamicValueRole,
-  type DynamicValueBinding,
   type DynamicValueForm,
+  type DynamicValueReference,
   type DynamicValueRole,
-  type DynamicValues,
   type DynamicValueSite,
   type DynamicValueSiteContext,
   type DynamicValueStatus,
+  type DynamicValueVariable,
   dynamicValueArgumentsAt,
-  dynamicValueConditionPathFor,
-  dynamicValueLabelPathFor,
-  dynamicValueParticipantPathFor,
+  dynamicValueCaseOf,
+  dynamicValueNameFor,
   dynamicValueParticipantRolesAt,
-  dynamicValuePathFor,
+  dynamicValueReferencesIn,
   dynamicValueRolesAt,
   dynamicValueStatus,
   dynamicValueUnshowableReason,
+  FALSE_CASE,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
   isAttributeDynamicValueRole,
   isLabelledDynamicValueRole,
   type LabelledDynamicValueRole,
-  PARTICIPANT_CASE,
+  optionCaseKey,
+  optionIdFromCaseKey,
   type ParsedDynamicValuePath,
-  FALSE_CASE,
-  parseDynamicValuePath,
+  parseDynamicValueName,
+  rewriteDynamicValueReferences,
   TRUE_CASE,
 } from './schemas/9/dynamic-values.ts';
+export {
+  removedOptionIds,
+  withoutRemovedOptionVersions,
+} from './localization/removedOptionVersions.ts';
 // The conditions text chooses its wording by: a stage's, or a node label's.
 export {
   type Condition,
@@ -273,6 +276,7 @@ export {
   type Conditions,
   ConditionSchema,
   ConditionsSchema,
+  createConditionId,
   type EdgeCountComparison,
   EdgeCountComparisons,
   edgeCountNeedsValue,
@@ -291,6 +295,7 @@ export {
   dynamicValueContextFor,
   type DynamicValueProblem,
   findDynamicValueProblems,
+  findSiteMessageProblem,
   stageDynamicValueContext,
 } from './schemas/9/dynamic-value-validation.ts';
 // What the Family Pedigree's localized messages may use, for an editor of
@@ -447,6 +452,50 @@ export {
   localizedTextShapeAt,
   type LocalizedStringHit,
 } from './utils/collectLocalizedStrings.ts';
+// The ids of the objects a researcher edits on their own (see
+// `schemas/9/protocol-object-id.ts`): their schema, how a new one is made, and
+// how a host finds, checks and renews the ids a protocol or a part of one holds.
+export {
+  createProtocolObjectId,
+  deterministicProtocolObjectId,
+  isProtocolObjectId,
+  type ProtocolObjectId,
+  ProtocolObjectIdSchema,
+  type ProtocolObjectKind,
+} from './schemas/9/protocol-object-id.ts';
+// The ids node types, edge types and variables are stored under in the
+// codebook (see `schemas/9/codebook-ids.ts`): their schemas, how a new one is
+// made, and how a document's codebook is given new ones with every reference
+// following.
+export {
+  createEntityTypeId,
+  createVariableId,
+  deterministicEntityTypeId,
+  deterministicVariableId,
+  EntityTypeIdSchema,
+  isEntityTypeId,
+  isVariableId,
+  VariableIdSchema,
+} from './schemas/9/codebook-ids.ts';
+export type {
+  CodebookIdRenames,
+  VariableOwner,
+} from './utils/codebookIdRewrite.ts';
+export { renameCodebookIds } from './schemas/9/migration-codebook-ids.ts';
+export {
+  collectProtocolObjectIdsFromSchema,
+  DUPLICATE_OBJECT_ID,
+  enclosingProtocolObjects,
+  withEnclosingObjectIds,
+} from './utils/protocolObjectIds.ts';
+export {
+  collectProtocolObjectIds,
+  findDuplicateProtocolObjectIds,
+} from './utils/collectProtocolObjectIds.ts';
+export {
+  type FreshenedProtocolFragment,
+  freshenProtocolFragmentIds,
+} from './utils/freshenProtocolFragmentIds.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';
 export {
   findRosterCharacterProblems,

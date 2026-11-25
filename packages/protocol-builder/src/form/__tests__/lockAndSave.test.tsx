@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { translationText } from '../../localization/localizedText.ts';
@@ -31,11 +32,13 @@ import {
   fixtureProtocolSections,
   fixtureStageIds,
   loadFixtureStage,
+  fixtureStageId,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
 import StageEditorShell from '../StageEditorShell.tsx';
 
-const STAGE_ID = 'information-1';
+const STAGE_ID = fixtureStageId('information-1');
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
 
 const en = (text: string) => ({ 'en-US': text });
@@ -517,7 +520,10 @@ describe('a stage the protocol will not open', () => {
         <ResourceClientProvider>
           <StageEditSession
             target={{
-              sectionId: sectionId({ kind: 'stage', stageId: 'deleted-stage' }),
+              sectionId: sectionId({
+                kind: 'stage',
+                stageId: testId('deleted-stage'),
+              }),
             }}
           >
             <StageEditorShell>{nameSection}</StageEditorShell>
@@ -563,7 +569,7 @@ describe('a stage the protocol does not hold yet', () => {
     expect(written).not.toBeNull();
     const order = orderOf(harness.protocolSections());
     const created = written?.stageDocument.id;
-    expect(typeof created).toBe('string');
+    expect(isProtocolObjectId(created)).toBe(true);
     expect(order[1]).toBe(created);
     expect(order.length).toBe(before.length + 1);
   });

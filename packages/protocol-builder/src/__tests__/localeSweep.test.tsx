@@ -19,7 +19,10 @@ import PageContentSection from '../sections/page-content/PageContentSection.tsx'
 import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/skip-logic/SkipLogicSection.tsx';
 import SubjectSection from '../sections/subject-picker/SubjectSection.tsx';
-import { attributeField } from '../testing/attributePicker.ts';
+import {
+  attributeField,
+  attributeTrigger,
+} from '../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   localeLeaks,
@@ -29,6 +32,12 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../testing/renderStageEditor.tsx';
+import { testTypeId, testVariableId } from '../testing/testId.ts';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
+const RELATIONSHIP_TO_EGO = testVariableId('relationship_to_ego');
+const ALIVE = testVariableId('alive');
 
 /**
  * The labels the row-editor stand-ins put on screen.
@@ -232,7 +241,7 @@ describe('the row dialogs under es', () => {
     // Drawn rather than merely mounted: the attribute picker is the last of the
     // dialog's controls to arrive, and a sweep taken before it is there reads
     // half a surface.
-    await screen.findByRole('button', { name: 'Seleccionar atributo' });
+    await screen.findByRole('combobox', { name: /^Atributo/u });
 
     expectNoLocaleLeaks(
       'the add-a-form-field dialog',
@@ -272,11 +281,7 @@ describe('the row dialogs under es', () => {
     // The window the attribute is chosen in is a fifth surface, with copy none
     // of the four above render: its search box, the list under it, and what it
     // says when nothing a researcher types matches.
-    await harness.user.click(
-      within(attributeField('Atributo', row)).getByRole('button', {
-        name: 'Seleccionar atributo',
-      }),
-    );
+    await harness.user.click(attributeTrigger(attributeField('Atributo', row)));
     const picker = await waitFor(() => {
       const found = screen
         .getAllByRole('dialog')
@@ -289,7 +294,7 @@ describe('the row dialogs under es', () => {
 
     expectNoLocaleLeaks('the attribute window', researcherWords(harness));
 
-    const search = within(picker).getByRole('searchbox', {
+    const search = within(picker).getByRole('combobox', {
       name: 'Find or create an attribute',
     });
     await harness.user.type(search, 'apodo');
@@ -303,7 +308,7 @@ describe('the row dialogs under es', () => {
     // below, whose input control is how this knows the surface is up.
     await harness.user.click(
       within(picker).getByRole('option', {
-        name: 'Crear un atributo nuevo llamado «apodo».',
+        name: 'Crear «apodo»',
       }),
     );
     await screen.findByRole('combobox', { name: 'Control de entrada' });
@@ -516,22 +521,20 @@ describe('the sweep itself', () => {
 describe('what the sweep treats as protocol content', () => {
   const alterForm = {
     title: 'Add a person',
-    fields: [
-      { id: 'field-1', variable: 'name', prompt: 'What is their name?' },
-    ],
+    fields: [{ id: 'field-1', variable: NAME, prompt: 'What is their name?' }],
     items: [{ id: 'block-1', type: 'text', content: 'Read this.' }],
   };
   const codebook = {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         variables: {
-          relationship_to_ego: {
+          [RELATIONSHIP_TO_EGO]: {
             name: 'Relationship to ego',
             type: 'text',
             component: 'Text',
           },
-          alive: { name: 'Alive', type: 'boolean', component: 'Boolean' },
+          [ALIVE]: { name: 'Alive', type: 'boolean', component: 'Boolean' },
         },
       },
     },
@@ -543,8 +546,8 @@ describe('what the sweep treats as protocol content', () => {
     expect(content.has('Person')).toBe(true);
     expect(content.has('Relationship to ego')).toBe(true);
     // The keys the codebook indexes by are ids the editors show as well.
-    expect(content.has('relationship_to_ego')).toBe(true);
-    expect(content.has('person')).toBe(true);
+    expect(content.has(RELATIONSHIP_TO_EGO)).toBe(true);
+    expect(content.has(PERSON)).toBe(true);
     // And the sentences they wrote.
     expect(content.has('What is their name?')).toBe(true);
     expect(content.has('Add a person')).toBe(true);

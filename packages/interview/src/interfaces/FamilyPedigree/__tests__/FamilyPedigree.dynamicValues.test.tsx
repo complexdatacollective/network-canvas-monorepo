@@ -14,7 +14,10 @@ import {
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { FramingSetting } from '@codaco/protocol-validation';
+import {
+  dynamicValueNameFor,
+  type FramingSetting,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -112,7 +115,7 @@ type InterviewOptions = {
 
 // The question is worded the same in either language: what a German
 // protocol changes here is the word the stage supplies for a relative.
-const QUESTION = 'How old is {who}?';
+const QUESTION = `How old is {${dynamicValueNameFor({ kind: 'label', role: 'node' })}}?`;
 const QUESTION_START = /^How old is/;
 
 /**
@@ -143,7 +146,6 @@ async function interview({
     askGenderIdentity: false,
     ...(framing ? { framing } : {}),
   });
-  stage.stageEntry.dynamicValues = { who: { path: 'node.$label' } };
   stage.addFormField({
     component: 'Number',
     prompt: { [language]: QUESTION },

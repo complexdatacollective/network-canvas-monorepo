@@ -24,7 +24,18 @@ import {
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { useDeleteCodebookVariable } from '../writes.ts';
+
+const PERSON_TYPE = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+const RELATIONSHIP_TO_EGO = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'relationship_to_ego',
+);
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
@@ -34,8 +45,8 @@ const catalogs = createCatalogSource(
 );
 await catalogs.load('es');
 
-const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+const PERSON = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
+const SUBJECT = { entity: 'node', type: PERSON_TYPE } as const;
 
 const ANA = { sessionId: 'session-ana', userId: 'ana', displayName: 'Ana' };
 const BLAKE = {
@@ -126,7 +137,7 @@ describe('a codebook deletion the protocol still has references for', () => {
     });
     // `name` is the quick-add stage's whole reason to exist and the name
     // generator's only form field, so the host cannot strip either reference.
-    const { user, said } = renderDeleting(host, 'name');
+    const { user, said } = renderDeleting(host, NAME);
 
     await user.click(
       screen.getByRole('button', { name: 'Delete the attribute' }),
@@ -137,14 +148,14 @@ describe('a codebook deletion the protocol still has references for', () => {
         /other parts of the protocol still use this, so nothing was deleted\. Change those first, then delete it\./,
       ),
     );
-    expect(personStillHas(host, 'name')).toBe(true);
+    expect(personStillHas(host, NAME)).toBe(true);
   });
 
   it('says it in Spanish too', async () => {
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(FIXTURE),
     });
-    const { user, said } = renderDeleting(host, 'name', 'es');
+    const { user, said } = renderDeleting(host, NAME, 'es');
 
     await user.click(
       screen.getByRole('button', { name: 'Delete the attribute' }),
@@ -163,7 +174,7 @@ describe('a codebook deletion a collaborator is standing in the way of', () => {
     const host = createInMemoryHost({
       sections: sectionsFromProtocol(FIXTURE),
     });
-    const [first, second] = sectionsARefactorWrites('relationship_to_ego');
+    const [first, second] = sectionsARefactorWrites(RELATIONSHIP_TO_EGO);
     // Two sections, two people: a refactor writes everywhere the attribute is
     // named, so one refusal can be about more than one collaborator.
     if (first === undefined || second === undefined) {
@@ -174,7 +185,7 @@ describe('a codebook deletion a collaborator is standing in the way of', () => {
     host.store.acquire(first, ANA);
     host.store.acquire(second, BLAKE);
 
-    const { user, said } = renderDeleting(host, 'relationship_to_ego');
+    const { user, said } = renderDeleting(host, RELATIONSHIP_TO_EGO);
 
     await user.click(
       screen.getByRole('button', { name: 'Delete the attribute' }),
@@ -185,7 +196,7 @@ describe('a codebook deletion a collaborator is standing in the way of', () => {
         'Ana and Blake are currently editing sections needed for this change.',
       ),
     );
-    expect(personStillHas(host, 'relationship_to_ego')).toBe(true);
+    expect(personStillHas(host, RELATIONSHIP_TO_EGO)).toBe(true);
   });
 });
 

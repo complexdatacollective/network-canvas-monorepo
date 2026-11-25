@@ -23,6 +23,11 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import {
+  testId,
+  testTypeId,
+  testVariableId,
+} from '../../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../../contract/types';
 import { writeSubmissionResult } from '../../../../forms/writeSubmissionResult';
@@ -51,8 +56,8 @@ beforeAll(() => {
   vi.stubGlobal('ResizeObserver', StubResizeObserver);
 });
 
-const NODE_TYPE = 'person';
-const VARIABLE = 'answer';
+const NODE_TYPE = testTypeId('person');
+const VARIABLE = testVariableId('answer');
 const FIELD_LABEL = 'Your answer';
 const UNIQUE_ERROR = 'Must be unique.';
 
@@ -60,7 +65,7 @@ const form: TForm = {
   title: { en: 'Add a person' },
   fields: [
     {
-      id: 'field-1',
+      id: testId('field-1'),
       variable: asEntityAttributeReference(VARIABLE),
       prompt: { en: FIELD_LABEL },
     },
@@ -70,12 +75,12 @@ const form: TForm = {
 type NameGeneratorStage = StageProps<'NameGenerator'>['stage'];
 
 const stage: NameGeneratorStage = {
-  id: 'name-generator-stage',
+  id: testId('name-generator-stage'),
   type: 'NameGenerator',
   label: { en: 'Add people' },
   subject: { entity: 'node', type: NODE_TYPE },
   form,
-  prompts: [{ id: 'prompt-1', text: { en: 'Who do you know?' } }],
+  prompts: [{ id: testId('prompt-1'), text: { en: 'Who do you know?' } }],
 };
 
 function buildProtocol(variable: Variable): ProtocolPayload {
@@ -291,8 +296,8 @@ const cases: Record<string, UniqueCase> = {
       type: 'ordinal',
       component: 'RadioGroup',
       options: [
-        { label: { en: 'Low' }, value: 1 },
-        { label: { en: 'High' }, value: 2 },
+        { id: testId('NodeForm option 1'), label: { en: 'Low' }, value: 1 },
+        { id: testId('NodeForm option 2'), label: { en: 'High' }, value: 2 },
       ],
       validation: { unique: true },
     },
@@ -305,9 +310,21 @@ const cases: Record<string, UniqueCase> = {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: { en: 'Family' }, value: 'family' },
-        { label: { en: 'Work' }, value: 'work' },
-        { label: { en: 'School' }, value: 'school' },
+        {
+          id: testId('NodeForm option 3'),
+          label: { en: 'Family' },
+          value: 'family',
+        },
+        {
+          id: testId('NodeForm option 4'),
+          label: { en: 'Work' },
+          value: 'work',
+        },
+        {
+          id: testId('NodeForm option 5'),
+          label: { en: 'School' },
+          value: 'school',
+        },
       ],
       validation: { unique: true },
     },

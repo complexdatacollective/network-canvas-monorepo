@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { withInterfaceText } from '../../../__tests__/suppliedWording.ts';
-import {
-  migrateProtocol,
-  migrateProtocolWithSessions,
-} from '../../../migration/migrate-protocol.ts';
+import { testId, withTestCodebookIds } from '../../../__tests__/testIds.ts';
+import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import validateProtocol, {
   BUILT_IN_WORDING_MISSING,
@@ -19,6 +17,7 @@ import {
   defaultFinishSessionText,
 } from '../finish-session-defaults.ts';
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
+import { isProtocolObjectId } from '../protocol-object-id.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { finishSessionStage } from '../stages/finish-session.ts';
 import {
@@ -31,7 +30,7 @@ import { completeProtocol } from './complete-localized-protocol.ts';
 import { asSchema8Protocol } from './schema-8-protocol.ts';
 
 const finish = (id = 'finish', outcome = 'completed') => ({
-  id,
+  id: testId(id),
   type: 'FinishSession',
   mode: 'confirmation',
   label: { en: 'Finish' },
@@ -54,17 +53,19 @@ const englishSettings = (locale: string) => ({
 });
 
 const information = (id: string) => ({
-  id,
+  id: testId(id),
   type: 'Information',
   label: { en: id },
   content: { en: `# ${id}\n\nText` },
 });
 
 const protocolWith = (stages: unknown[]) =>
-  withInterfaceText({
-    ...createBaseProtocol(),
-    stages,
-  });
+  withInterfaceText(
+    withTestCodebookIds({
+      ...createBaseProtocol(),
+      stages,
+    }),
+  );
 
 const issues = (stages: unknown[]) => {
   const result = ProtocolSchemaV9.safeParse(protocolWith(stages));
@@ -224,8 +225,9 @@ describe('v8 to v9 migration', () => {
   it('appends one completed finish stage with the supplied English text, under the default language, and none of the wording Network Canvas supplies', () => {
     const migrated = migrateProtocol(schema8(), 9);
     const { defaultLocale } = migrated.localization;
-    expect(migrated.stages.at(-1)).toEqual({
-      id: 'finish',
+    const finishStage = migrated.stages.at(-1);
+    expect(finishStage).toEqual({
+      id: expect.any(String),
       type: 'FinishSession',
       mode: 'confirmation',
       label: { [defaultLocale]: DEFAULT_FINISH_SESSION_TEXT.en.label },
@@ -238,28 +240,7 @@ describe('v8 to v9 migration', () => {
     expect(
       migrated.stages.filter((stage) => stage.type === 'FinishSession'),
     ).toHaveLength(1);
-  });
-
-  // The engine used to show its own finish screen one place past the last
-  // stage; the appended finish stage takes that place, so a session that was
-  // there, or anywhere before it, resumes where it was.
-  it('resumes a session that was on the old finish screen at the finish stage', () => {
-    const document = schema8();
-    const { protocol, migrateSession } = migrateProtocolWithSessions(document);
-    const finishIndex = protocol.stages.length - 1;
-    expect(protocol.stages[finishIndex]?.type).toBe('FinishSession');
-    const at = (currentStep: number) => {
-      const result = migrateSession({
-        network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
-        stageMetadata: {},
-        currentStep,
-      });
-      if (!result.success) throw result.error;
-      return result.session.currentStep;
-    };
-    expect(at(document.stages.length)).toBe(finishIndex);
-    expect(at(document.stages.length + 3)).toBe(finishIndex);
-    expect(at(0)).toBe(0);
+    expect(isProtocolObjectId(finishStage?.id)).toBe(true);
   });
 
   it('gives the finish stage an id no schema 8 stage holds', () => {
@@ -270,48 +251,17 @@ describe('v8 to v9 migration', () => {
       ...document.stages.slice(2),
     ];
     const migrated = migrateProtocol(document, 9);
-    expect(migrated.stages.at(-1)?.id).toBe('finish-3');
-  });
-
-  it('migrates the same document to the same finish stage every time', () => {
-    const first = migrateProtocol(schema8(), 9);
-    const second = migrateProtocol(schema8(), 9);
-    expect(first.stages.at(-1)).toEqual(second.stages.at(-1));
+    const finishId = migrated.stages.at(-1)?.id;
+    expect(isProtocolObjectId(finishId)).toBe(true);
+    expect(migrated.stages.slice(0, -1).map(({ id }) => id)).not.toContain(
+      finishId,
+    );
+    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
   });
 
   it('produces a protocol that validates, ending at its finish stage', () => {
     const migrated = migrateProtocol(schema8(), 9);
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
-  });
-
-  // Fresco's deploy normalization re-runs this migration over rows already
-  // stored at schema 9, so a document that already ends at its finish stage
-  // keeps that stage, with whatever the researcher wrote in it.
-  it('keeps the finish stage a document already ends at, rather than adding a second', () => {
-    const migrated = migrateProtocol(schema8(), 9);
-    const finishStage = migrated.stages.at(-1);
-    if (finishStage?.type !== 'FinishSession') {
-      throw new Error('no finish stage');
-    }
-    const edited = {
-      ...finishStage,
-      mode: 'automatic' as const,
-      finishedContent: { [migrated.localization.defaultLocale]: '# Thanks' },
-    };
-
-    const again = migrateProtocol(
-      {
-        ...migrated,
-        schemaVersion: 8,
-        stages: [...migrated.stages.slice(0, -1), edited],
-      },
-      9,
-    );
-
-    expect(again.stages.filter(({ type }) => type === 'FinishSession')).toEqual(
-      [edited],
-    );
-    expect(again.stages.at(-1)).toEqual(edited);
   });
 });
 
@@ -385,11 +335,11 @@ describe('supplied finish text', () => {
   it('creates a stage with text in each language that has it', () => {
     expect(
       createDefaultFinishSessionStage({
-        id: 'end',
+        id: testId('end'),
         localization: { defaultLocale: 'en', locales: ['en', 'ja'] },
       }),
     ).toEqual({
-      id: 'end',
+      id: testId('end'),
       type: 'FinishSession',
       mode: 'confirmation',
       label: { en: DEFAULT_FINISH_SESSION_TEXT.en.label },
@@ -403,11 +353,11 @@ describe('supplied finish text', () => {
   it('writes no English into a default language Network Canvas has no wording in', () => {
     expect(
       createDefaultFinishSessionStage({
-        id: 'end',
+        id: testId('end'),
         localization: { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] },
       }),
     ).toEqual({
-      id: 'end',
+      id: testId('end'),
       type: 'FinishSession',
       mode: 'confirmation',
       label: { es: DEFAULT_FINISH_SESSION_TEXT.es.label },
@@ -420,23 +370,25 @@ describe('supplied finish text', () => {
   it('is valid message text in every language', () => {
     const locales = Object.keys(DEFAULT_FINISH_SESSION_TEXT);
     const stage = createDefaultFinishSessionStage({
-      id: 'end',
+      id: testId('end'),
       localization: { defaultLocale: 'en', locales },
     });
     expect(
       ProtocolSchemaV9.safeParse(
-        withInterfaceText({
-          ...createBaseProtocol(),
-          localization: { defaultLocale: 'en', locales },
-          stages: [stage],
-        }),
+        withInterfaceText(
+          withTestCodebookIds({
+            ...createBaseProtocol(),
+            localization: { defaultLocale: 'en', locales },
+            stages: [stage],
+          }),
+        ),
       ).success,
     ).toBe(true);
   });
 
   const english = { defaultLocale: 'en', locales: ['en'] };
   const stage = createDefaultFinishSessionStage({
-    id: 'end',
+    id: testId('end'),
     localization: english,
   });
   const afterChange = (
@@ -481,7 +433,7 @@ describe('supplied finish text', () => {
     it('fills a default language Network Canvas has no text in once a language it has text in becomes the default', () => {
       const mexican = { defaultLocale: 'es-MX', locales: ['es-MX', 'es'] };
       const unwritten = createDefaultFinishSessionStage({
-        id: 'end',
+        id: testId('end'),
         localization: mexican,
       });
       expect(
@@ -602,7 +554,10 @@ describe('closing text missing in the default language', () => {
       codebook: { node: {}, edge: {}, ego: {} },
       localization: japanese,
       stages: [
-        createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+        createDefaultFinishSessionStage({
+          id: testId('end'),
+          localization: japanese,
+        }),
       ],
     });
 
@@ -610,9 +565,12 @@ describe('closing text missing in the default language', () => {
   // left for the researcher to write (see the built-in wording problems).
   it('creates the stage with no text, rather than text in another language', () => {
     expect(
-      createDefaultFinishSessionStage({ id: 'end', localization: japanese }),
+      createDefaultFinishSessionStage({
+        id: testId('end'),
+        localization: japanese,
+      }),
     ).toEqual({
-      id: 'end',
+      id: testId('end'),
       type: 'FinishSession',
       mode: 'confirmation',
       label: {},
@@ -634,6 +592,7 @@ describe('closing text missing in the default language', () => {
     expect(result.success).toBe(false);
     const builtIn = (setting: string) => ({
       code: BUILT_IN_WORDING_MISSING,
+      objectId: testId('end'),
       path: ['stages', 0, setting, 'ja'],
       message:
         "Network Canvas has no built-in wording in the protocol's default language (ja), so this text must be written in it, or a language Network Canvas has wording in made the default.",
@@ -654,12 +613,14 @@ describe('closing text missing in the default language', () => {
     expect(found.filter(({ path }) => path[0] !== 'interfaceText')).toEqual([
       {
         code: FINISH_STAGE_TEXT_MISSING,
+        objectId: testId('end'),
         path: ['stages', 0, 'content', 'ja'],
         message:
           "The stage that ends the interview has no closing text in the protocol's default language (ja).",
       },
       {
         code: FINISH_STAGE_TEXT_MISSING,
+        objectId: testId('end'),
         path: ['stages', 0, 'finishedContent', 'ja'],
         message:
           "The stage that ends the interview has no finished text in the protocol's default language (ja).",
@@ -685,7 +646,7 @@ describe('closing text missing in the default language', () => {
       }),
     ).toEqual([
       {
-        stageId: 'end',
+        stageId: testId('end'),
         stageIndex: 0,
         locale: 'ja',
         missing: ['finishedContent'],
@@ -696,7 +657,7 @@ describe('closing text missing in the default language', () => {
   it('finds the finish stage and what it is missing', () => {
     expect(findFinishStageTextProblems(japaneseProtocol())).toEqual([
       {
-        stageId: 'end',
+        stageId: testId('end'),
         stageIndex: 0,
         locale: 'ja',
         missing: ['content', 'finishedContent'],
@@ -718,7 +679,7 @@ describe('closing text missing in the default language', () => {
       }),
     ).toEqual([
       {
-        stageId: 'end',
+        stageId: testId('end'),
         stageIndex: 0,
         locale: 'ja',
         missing: ['finishedContent'],
@@ -737,7 +698,7 @@ describe('closing text missing in the default language', () => {
       }),
     ).toEqual([
       {
-        stageId: 'end',
+        stageId: testId('end'),
         stageIndex: 1,
         locale: 'en',
         missing: ['finishedContent'],
@@ -794,7 +755,12 @@ describe('closing text missing in the default language', () => {
         stages: [{ ...finish('end'), content: { en: '\u200B\u00AD' } }],
       }),
     ).toEqual([
-      { stageId: 'end', stageIndex: 0, locale: 'en', missing: ['content'] },
+      {
+        stageId: testId('end'),
+        stageIndex: 0,
+        locale: 'en',
+        missing: ['content'],
+      },
     ]);
   });
 

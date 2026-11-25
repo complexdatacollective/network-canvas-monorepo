@@ -12,7 +12,7 @@
 // protocol it is given. Keep it as short as accuracy allows: it is sent with
 // every review. Bump the version when the text changes.
 
-export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v2
+export const PROTOCOL_REFERENCE = `# Protocol reference (schema 9), v4
 
 This is what you need to write fixes that leave the protocol valid. For anything not described here, copy the shape the protocol already uses.
 
@@ -28,7 +28,7 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 
 - Write ONLY the protocol's default language (localization.defaultLocale). To change a text, set its default-language key: /stages/<stageId>/prompts/<promptId>/text/en. A new text object holds only that key: { "en": "…" }. Never add, change or remove another language's key: a text needs a version in only one language, and the researcher's translators own the others.
 - Write protocol text in the protocol's default language, whatever language your findings are in.
-- Each value is an ICU MessageFormat message that must be literal text. Write a literal { or } as '{' or '}'. An apostrophe is literal ("Don't", "the participant's") except directly before another apostrophe, {, }, < or >, where it must be doubled (''). Plural, select and placeholders such as {name} are not allowed, with two exceptions: keep a placeholder that is already in a text you edit (it names one of the stage's dynamicValues), and write the minimum notice's plural exactly as shown below.
+- Each value is an ICU MessageFormat message that must be literal text. Write a literal { or } as '{' or '}'. An apostrophe is literal ("Don't", "the participant's") except directly before another apostrophe, {, }, < or >, where it must be doubled (''). Plural, select and placeholders such as {name} are not allowed, with two exceptions: keep a placeholder or select that is already in a text you edit, and write the minimum notice's plural exactly as shown below. A placeholder already in a text shows an attribute, a node's label or today's date, or chooses the text's wording by an answer or a condition. It names the value directly: {ego_<variable id>} for one of the participant's attributes, {node_label} for a person's label, {condition_<condition id>}, {now}, always with each - of an id written as _. A select chooses by an option's id written the same way, or by true and false.
 - Single-line texts (stage labels, prompts, form questions and hints, option labels, titles) cannot contain a line break. Information content and FinishSession content may have several lines.
 - Markdown (**bold**, *italic*) is allowed in prompts, form questions and hints, option labels and Information content; stage labels and titles are plain text. Bold the key phrase of a prompt.
 - A stage label is at most 100 characters.
@@ -39,7 +39,7 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 
 - NodeType: { "name", "color": "node-color-seq-1" … "node-color-seq-8", "shape": { "default": "circle" | "square" | "diamond" }, "icon"?, "variables"?: { <variableId>: Variable } }
 - EdgeType: { "name", "color"?: "edge-color-seq-1" … "edge-color-seq-8", "variables"? }
-- Type and variable ids are object keys matching [a-zA-Z0-9._:-]+; use a fresh UUID v4. A variable id must be unique across the whole codebook. A variable's name is its column name in exported data: unique within its entity, no leading or trailing spaces.
+- Every type id and every variable id is a UUID, used as the object key; a readable key such as "person" or "age" makes the protocol invalid. A new type or variable gets a fresh UUID v4. A type id must be unique among the node types or among the edge types, and a variable id must be unique across the whole codebook. A variable's name is its column name in exported data: unique within its entity, no leading or trailing spaces.
 - Variable: { "name", "type", "component"?, "options"?, "parameters"?, "validation"? }. A variable shown in a form field must have a component.
 
 | type | component | answer recorded | settings |
@@ -53,7 +53,11 @@ Every participant-facing text is an object keyed by language tag: { "en": "Who d
 | datetime | RelativeDatePicker | a date | parameters: { "anchor"?: yyyy-MM-dd, "before"?: days, "after"?: days } |
 | layout, location | none | set by Sociogram and Geospatial | never in a form |
 
-Options: [{ "label": { "en": "…" }, "value": 1 }, …]. A value is a whole number or text, unique within the variable. Filters and skip logic compare values, never labels. When you relabel an option, keep its value: data already collected uses it.
+Options of an ordinal or categorical variable: [{ "id": <UUID>, "label": { "en": "…" }, "value": 1 }, …]. A value is a whole number or text, unique within the variable. Filters and skip logic compare values, never labels. When you relabel an option, keep its id and its value: data already collected uses the value, and text that chooses its wording by the answer uses the id. A new option gets a fresh UUID v4. A boolean variable's options have no id.
+
+## Object ids
+
+Each of these objects has an "id": a stage, a prompt, a panel, a form field, a filter rule, a sort rule (sortOptions.sortOrder), an additionalAttributes row, a roster card or sort property (cardOptions.additionalProperties, sortOptions.sortableProperties), a Narrative preset and the rows of its edges.display and highlight lists, a FamilyPedigree disease, a NetworkComposer edge setting and an option of an ordinal or categorical variable. Every such id is a UUID, and no two objects anywhere in the protocol share one. Keep an object's id when you change the object. A finish stage is any stage whose type is FinishSession; its id is a UUID like any other.
 
 ## Stages
 
@@ -76,13 +80,13 @@ Every stage: { "id", "type", "label": { "en": "…" }, "skipLogic"?, "interviewS
 - Narrative (filter?): "presets": [ … ], interviewer-led; NetworkComposer, FamilyPedigree, NarrativePedigree, Anonymisation, LanguageChooser: change only their text, and copy any other shape from the protocol.
 - FinishSession: ends the interview. It cannot have skipLogic. The finish stages form the end of the stage list: the last stage is a FinishSession, and every stage after the first FinishSession must itself be a FinishSession, whatever the skip logic (a stage after it is unreachable and the protocol is invalid). Keep at least one FinishSession. Several in a row let routes end differently: a skip destination can send a route past the first to a later one.
 
-Name generator prompts: { "id", "text", "additionalAttributes"?: [{ "variable": <boolean variableId of the subject>, "value": true }] }. additionalAttributes tags everyone named at that prompt.
+Name generator prompts: { "id", "text", "additionalAttributes"?: [{ "id", "variable": <boolean variableId of the subject>, "value": true }] }. additionalAttributes tags everyone named at that prompt.
 
 Name generator limits: "behaviours": { "minNodes"?: whole number ≥ 0, "maxNodes"?: whole number ≥ 1, at least minNodes }. When minNodes is above 0 the stage needs "minNodesNotice", which must count with a plural of count and #, for example { "en": "{count, plural, one {Name at least # person before you continue.} other {Name at least # people before you continue.}}" }. When maxNodes is set it needs "maxNodesNotice", plain text, for example { "en": "You have named as many people as this task allows." }. When you remove a limit, remove its notice too.
 
 A bin stage whose behaviours.requireCompletePlacement is true needs "unplacedNodesNotice": {…}.
 
-Form field: { "id": <text, unique within the form>, "variable": <variableId>, "prompt": {…}, "hint"?: {…} }. A form keeps at least one field and asks each variable once and gives each field its own id. A variable recorded by a bin, a Sociogram highlight, a census or a prompt tag must not also be asked in a form.
+Form field: { "id", "variable": <variableId>, "prompt": {…}, "hint"?: {…} }. A form keeps at least one field and asks each variable once. A variable recorded by a bin, a Sociogram highlight, a census or a prompt tag must not also be asked in a form.
 
 ## Filters and skip logic
 
@@ -107,12 +111,12 @@ A fix is a list of operations, applied in order; a later operation may rely on a
 
 { "op": "set" | "remove" | "insert", "path": "/…", "value": <JSON text> | null }
 
-- path is a JSON Pointer from the protocol root (segments joined by /; inside a segment write ~1 for / and ~0 for ~), except that a segment addressing a member of an array whose members have an "id" (stages, prompts, form fields that have one, filter rules, panels, presets) is that member's id, not its index. Use an index only for arrays whose members have no id (option lists, form fields without an id, additionalAttributes). Codebook types and variables are object keys, so their id is the segment anyway.
+- path is a JSON Pointer from the protocol root (segments joined by /; inside a segment write ~1 for / and ~0 for ~), except that a segment addressing a member of an array whose members have an "id" (every object listed under Object ids) is that member's id, not its index. Use an index only for arrays whose members have no id, such as a boolean variable's options. Codebook types and variables are object keys, so their id is the segment anyway.
 - set writes value at path, replacing what is there or adding the key. Use it for object keys, and to replace a whole array member.
 - remove deletes the key or array member at path; value is null.
 - insert adds value as a new array member. The last segment says where: - appends; an existing member's id (or index) inserts before that member. Never append a stage that is not a FinishSession with -: insert it before the first FinishSession, or before the stage it should precede.
 - value is the new content as JSON text: a string is written with its quotes ("\\"Close friends\\""), a number as "15", an object as "{…}". It must parse as JSON.
-- New ids (stages, prompts, form fields, rules, codebook types and variables) are fresh UUID v4s.
+- Every new object listed under Object ids, and every new codebook type and variable, gets a fresh UUID v4 that the protocol does not already use.
 - Change only the default-language key of a text; never touch another language's.
 - Make the smallest edit that fixes the problem, and leave the protocol valid: every id a fix refers to must exist (or be created by an earlier operation), and every required setting must be present.
 - Removing a stage or a variable: first check that nothing else refers to it (skip destinations, filters, forms, prompts, panels, other stages' settings), and change those too. Prefer removing a form field to deleting its variable.
@@ -127,12 +131,11 @@ Worked examples (the protocol's default language is "en"; <…> stands for ids f
 { "op": "set", "path": "/stages/<stageId>/filter", "value": "{\\"rules\\":[{\\"id\\":\\"<new UUID>\\",\\"type\\":\\"node\\",\\"options\\":{\\"type\\":\\"<nodeTypeId>\\",\\"attribute\\":\\"<variableId>\\",\\"operator\\":\\"EXACTLY\\",\\"value\\":true}}]}" }
 To add a rule to an existing filter of one rule, insert the rule at /stages/<stageId>/filter/rules/- and set /stages/<stageId>/filter/join to "\\"AND\\"".
 
-3. Remove a form field (one with an id, then one without):
+3. Remove a form field:
 { "op": "remove", "path": "/stages/<stageId>/form/fields/<fieldId>", "value": null }
-{ "op": "remove", "path": "/stages/<stageId>/form/fields/2", "value": null }
 
 4. Add an ordinal variable to a node type, and a field for it at the end of a form:
-{ "op": "set", "path": "/codebook/node/<nodeTypeId>/variables/<new UUID A>", "value": "{\\"name\\":\\"closeness\\",\\"type\\":\\"ordinal\\",\\"component\\":\\"RadioGroup\\",\\"options\\":[{\\"label\\":{\\"en\\":\\"Not close\\"},\\"value\\":1},{\\"label\\":{\\"en\\":\\"Close\\"},\\"value\\":2},{\\"label\\":{\\"en\\":\\"Very close\\"},\\"value\\":3}],\\"validation\\":{\\"required\\":true}}" }
+{ "op": "set", "path": "/codebook/node/<nodeTypeId>/variables/<new UUID A>", "value": "{\\"name\\":\\"closeness\\",\\"type\\":\\"ordinal\\",\\"component\\":\\"RadioGroup\\",\\"options\\":[{\\"id\\":\\"<new UUID C>\\",\\"label\\":{\\"en\\":\\"Not close\\"},\\"value\\":1},{\\"id\\":\\"<new UUID D>\\",\\"label\\":{\\"en\\":\\"Close\\"},\\"value\\":2},{\\"id\\":\\"<new UUID E>\\",\\"label\\":{\\"en\\":\\"Very close\\"},\\"value\\":3}],\\"validation\\":{\\"required\\":true}}" }
 { "op": "insert", "path": "/stages/<stageId>/form/fields/-", "value": "{\\"id\\":\\"<new UUID B>\\",\\"variable\\":\\"<new UUID A>\\",\\"prompt\\":{\\"en\\":\\"How close are you to this person?\\"}}" }
 
 5. Move a stage so it comes before another:

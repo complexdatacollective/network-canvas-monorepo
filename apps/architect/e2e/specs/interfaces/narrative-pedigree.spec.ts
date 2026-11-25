@@ -2,10 +2,16 @@ import type { Page } from '@playwright/test';
 
 import { familyPedigreeWordingIn } from '@codaco/interview/supplied-wording';
 import {
+  testOptionId,
+  withTestCodebookIds,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   asEntityAttributeReference,
   type CurrentProtocol,
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+  createProtocolObjectId,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
@@ -16,7 +22,9 @@ import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
 import { chooseAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
-const SOURCE_STAGE_ID = 'family-pedigree-1';
+const SOURCE_STAGE_ID = ProtocolObjectIdSchema.parse(
+  'b3f1c2d4-5e6a-4b7c-8d9e-0f1a2b3c4d5e',
+);
 
 // Unlike every other interface spec in this suite, the seeded protocol here
 // already has ONE stage (the FamilyPedigree prerequisite) before this spec's
@@ -69,11 +77,17 @@ async function readNarrativePedigreeStage(
 // than cast here. The interface-owned option sets carry plain-string labels;
 // a protocol's codebook localizes them.
 const localizedOptions = (
+  variableName: string,
   options: readonly { value: string; label: string }[],
-) => options.map(({ value, label }) => ({ value, label: { en: label } }));
+) =>
+  options.map(({ value, label }) => ({
+    id: testOptionId(variableName, value),
+    value,
+    label: { en: label },
+  }));
 
 function protocolWithFamilyPedigreeStage(): CurrentProtocol {
-  return {
+  return withTestCodebookIds({
     ...emptyProtocol(),
     codebook: {
       node: {
@@ -87,7 +101,10 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
             sexAssignedAtBirth: {
               name: 'sexAssignedAtBirth',
               type: 'categorical',
-              options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
+              options: localizedOptions(
+                'sexAssignedAtBirth',
+                PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
+              ),
             },
             hasConditionX: {
               name: 'hasConditionX',
@@ -104,7 +121,10 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
             relationshipKind: {
               name: 'relationshipKind',
               type: 'categorical',
-              options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
+              options: localizedOptions(
+                'relationshipKind',
+                PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
+              ),
             },
             isGestationalCarrier: {
               name: 'isGestationalCarrier',
@@ -144,7 +164,7 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
         },
         nominationPrompts: [
           {
-            id: 'nomination-1',
+            id: createProtocolObjectId(),
             text: {
               en: 'Who in your family has been diagnosed with condition X?',
             },
@@ -154,7 +174,7 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
       },
       ...emptyProtocol().stages,
     ],
-  };
+  });
 }
 
 test('creates a valid NarrativePedigree stage from scratch', async ({
@@ -195,8 +215,9 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
         .click();
 
       // Pick-only: a disease READS an attribute the source pedigree records,
-      // so the picker lists only `hasConditionX`, which the seeded nomination
-      // prompt records.
+      // so the only attribute the picker lets a researcher choose is
+      // `hasConditionX`, which the seeded nomination prompt records; any other
+      // is listed under "Not available here".
       await chooseAttribute(
         architectPage
           .getByRole('dialog', { name: 'Create disease' })

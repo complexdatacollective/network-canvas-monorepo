@@ -1,4 +1,4 @@
-import { type ComponentType, useCallback, useMemo } from 'react';
+import { type ComponentType, useMemo } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -8,6 +8,7 @@ import ArrayField, {
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
+import { rowId, rowTemplate } from '../rowDialog.tsx';
 import Attribute, {
   assignAttributeCrossClassIssue,
   AssignAttributesContext,
@@ -49,27 +50,6 @@ const messages = defineMessages({
       'Shown in place of the list while a prompt stamps nothing onto the nodes it creates. Not a problem to fix: assigning nothing is the ordinary case.',
   },
 });
-
-const ALLOWED_TYPES = ['boolean'];
-
-/**
- * Narrows the shared pool to variables this control can stamp, and disables
- * the ones another row in the same list already claims.
- */
-const getAssignableVariableOptions = (
-  variableOptions: VariableOption[],
-  usedVariables: Array<string | undefined>,
-) =>
-  variableOptions
-    .filter(
-      ({ type: optionType }) =>
-        optionType && ALLOWED_TYPES.includes(optionType),
-    )
-    .map(({ value, ...rest }) => ({
-      ...rest,
-      value,
-      disabled: usedVariables.includes(value),
-    }));
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -162,6 +142,8 @@ export const makeAssignAttributesValidation = (
 });
 
 const EMPTY_ATTRIBUTES: AttributeValue[] = [];
+
+const newAttributeRow = rowTemplate<AttributeValue>();
 const NO_COMMITTED_VARIABLES: ReadonlySet<string> = new Set();
 
 export type AssignAttributesProps = Omit<
@@ -170,6 +152,7 @@ export type AssignAttributesProps = Omit<
   | 'confirmDelete'
   | 'editorComponent'
   | 'emptyStateMessage'
+  | 'getId'
   | 'immediateAdd'
   | 'itemClasses'
   | 'itemComponent'
@@ -179,9 +162,10 @@ export type AssignAttributesProps = Omit<
   /** Whose codebook the pickable attributes come from. */
   subject: CodebookSubject;
   /**
-   * The codebook pool for this subject, already filtered for uses this control
-   * must not offer. Rows this list already uses are disabled here, from the
-   * live value.
+   * The codebook pool for this subject, with every attribute the host's rules
+   * rule out (its type, a use elsewhere) already marked with the reason. Each
+   * row also marks, from the live value, the attributes the other rows
+   * assign.
    */
   variableOptions: VariableOption[];
   /** The host's variable picker — see `AssignAttributesContextValue`. */
@@ -244,13 +228,11 @@ export default function AssignAttributes({
     () => ({
       arrayName: name,
       subject,
-      variableOptions: getAssignableVariableOptions(
-        variableOptions,
-        rows.map((row) =>
-          isRecord(row) && typeof row.variable === 'string'
-            ? row.variable
-            : undefined,
-        ),
+      variableOptions,
+      rowVariables: rows.map((row) =>
+        isRecord(row) && typeof row.variable === 'string'
+          ? row.variable
+          : undefined,
       ),
       variablePickerComponent,
       onCreateVariable,
@@ -277,11 +259,6 @@ export default function AssignAttributes({
     ],
   );
 
-  const itemTemplate = useCallback(
-    () => ({}) satisfies Partial<AttributeValue>,
-    [],
-  );
-
   return (
     <AssignAttributesContext value={context}>
       <ArrayField<AttributeValue>
@@ -291,7 +268,8 @@ export default function AssignAttributes({
         value={value}
         onChange={onChange}
         itemComponent={Attribute}
-        itemTemplate={itemTemplate}
+        itemTemplate={newAttributeRow}
+        getId={rowId}
         // The row renders its own Surface, so ArrayField's wrapper stays bare
         // rather than nesting two levels of padded, shadowed surface.
         itemClasses="p-0! shadow-none bg-transparent"

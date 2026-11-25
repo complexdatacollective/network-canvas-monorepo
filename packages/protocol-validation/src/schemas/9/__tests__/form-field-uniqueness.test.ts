@@ -3,16 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
 import { familyPedigreeWordingIn } from '../../../__tests__/suppliedWording.ts';
+import { testId, testVariableId } from '../../../__tests__/testIds.ts';
+import { DUPLICATE_OBJECT_ID } from '../../../utils/protocolObjectIds.ts';
 import {
   createBaseProtocol,
   localized,
   localizedOptions,
 } from '../../../utils/test-utils.ts';
-import {
-  FormFieldArraySchema,
-  FormSchema,
-  TitlelessFormSchema,
-} from '../common/index.ts';
+import { FormSchema, TitlelessFormSchema } from '../common/index.ts';
 import {
   PEDIGREE_RELATIONSHIP_KIND_OPTIONS,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
@@ -31,14 +29,14 @@ let fieldCount = 0;
 const field = (variable: string, prompt: string) => {
   fieldCount += 1;
   return {
-    id: `field-${fieldCount}`,
+    id: testId(`field-${fieldCount}`),
     variable,
     prompt: localized(prompt),
   };
 };
 
 const pedigreeStage = (form?: ReturnType<typeof field>[]) => ({
-  id: 'fp1',
+  id: testId('fp1'),
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
   wording: familyPedigreeWordingIn(),
@@ -179,7 +177,8 @@ describe('form field variable uniqueness', () => {
     expect(
       result.error?.issues.some(
         (issue) =>
-          issue.message === 'Form fields contain duplicate attribute "age"',
+          issue.message ===
+          `Form fields contain duplicate attribute "${testVariableId('age')}"`,
       ),
     ).toBe(true);
   });
@@ -192,7 +191,7 @@ describe('form field variable uniqueness', () => {
         stages: [
           ...protocol.stages,
           {
-            id: 'af1',
+            id: testId('af1'),
             type: 'AlterForm',
             label: localized('Alter form'),
             subject: { entity: 'node', type: 'person' },
@@ -217,7 +216,8 @@ describe('form field variable uniqueness', () => {
     const flaggedBySchema = (result.error?.issues ?? [])
       .filter(
         (issue) =>
-          issue.message === 'Form fields contain duplicate attribute "age"',
+          issue.message ===
+          `Form fields contain duplicate attribute "${testVariableId('age')}"`,
       )
       .map((issue) => issue.path[issue.path.length - 2]);
     expect(flaggedBySchema).toEqual([2, 3]);
@@ -231,7 +231,7 @@ describe('form field variable uniqueness', () => {
         stages: [
           ...protocol.stages,
           {
-            id: 'af1',
+            id: testId('af1'),
             type: 'AlterForm',
             label: localized('Alter form'),
             subject: { entity: 'node', type: 'person' },
@@ -244,7 +244,7 @@ describe('form field variable uniqueness', () => {
       {
         path: 'stages.2.form.fields.1.variable',
         code: 'custom',
-        message: 'Form fields contain duplicate attribute "name"',
+        message: `Form fields contain duplicate attribute "${testVariableId('name')}"`,
       },
     ]);
   });
@@ -253,7 +253,33 @@ describe('form field variable uniqueness', () => {
 describe('form field id uniqueness', () => {
   const fieldWithId = (id: string, variable: string) => ({
     ...field(variable, `${variable}?`),
-    id,
+    id: testId(id),
+  });
+
+  // Any issue other than a repeated id shows up as its message, so that the
+  // repeat is the only thing wrong with the fixture.
+  const duplicateIdPaths = (protocol: unknown) =>
+    (
+      ProtocolSchemaV9.safeParse(withFinishStage(protocol)).error?.issues ?? []
+    ).map((issue) =>
+      issue.code === 'custom' && issue.params?.rule === DUPLICATE_OBJECT_ID
+        ? issue.path.join('.')
+        : issue.message,
+    );
+
+  const alterForm = (id: string, fields: unknown[]) => ({
+    id: testId(id),
+    type: 'AlterForm',
+    label: localized('Alter form'),
+    subject: { entity: 'node', type: 'person' },
+    form: { fields },
+  });
+
+  const composerField = (id: string, variable: string, component: string) => ({
+    id: testId(id),
+    variable,
+    label: localized(variable),
+    component,
   });
 
   it('accepts a form whose fields each have a different id', () => {
@@ -264,47 +290,54 @@ describe('form field id uniqueness', () => {
     ).toBe(true);
   });
 
-  it.each([
-    [
-      'FormSchema',
-      (fields: unknown[]) =>
-        FormSchema.safeParse({ title: localized('Add'), fields }),
-    ],
-    [
-      'TitlelessFormSchema',
-      (fields: unknown[]) => TitlelessFormSchema.safeParse({ fields }),
-    ],
-    [
-      'FormFieldArraySchema',
-      (fields: unknown[]) => FormFieldArraySchema.safeParse(fields),
-    ],
-  ])('rejects the second field of a %s sharing an id', (_name, parse) => {
-    const result = parse([
-      fieldWithId('same', 'name'),
-      fieldWithId('other', 'age'),
-      fieldWithId('same', 'category'),
-    ]);
-    expect(result.success).toBe(false);
-    const issues = result.error?.issues ?? [];
-    expect(issues.map(({ message }) => message)).toContain(
-      'Form fields contain duplicate id "same"',
-    );
-    // On the repeat, never the first occurrence, and on its own `id`.
-    expect(issues.map(({ path }) => path.slice(-2))).toContainEqual([2, 'id']);
-    expect(issues.map(({ path }) => path.slice(-2))).not.toContainEqual([
-      0,
-      'id',
+  it('refuses a field id repeated in two forms of one stage', () => {
+    const protocol = createBaseProtocol();
+    const paths = duplicateIdPaths({
+      ...protocol,
+      stages: [
+        ...protocol.stages,
+        {
+          id: testId('nc1'),
+          label: localized('Build the network'),
+          type: 'NetworkComposer',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          layoutVariable: 'layoutPosition',
+          background: { concentricCircles: 4 },
+          nodeForm: { fields: [composerField('same', 'age', 'Number')] },
+          edges: [
+            {
+              id: testId('nc1-knows'),
+              subject: { entity: 'edge', type: 'knows' },
+              label: localized('Knows'),
+              form: {
+                fields: [composerField('same', 'duration', 'Number')],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(paths).toEqual([
+      'stages.2.nodeForm.fields.0.id',
+      'stages.2.edges.0.form.fields.0.id',
     ]);
   });
 
-  it('allows two forms to use the same id', () => {
-    const a = TitlelessFormSchema.safeParse({
-      fields: [fieldWithId('x', 'name')],
+  it('refuses a field id repeated in the forms of two stages', () => {
+    const protocol = createBaseProtocol();
+    const paths = duplicateIdPaths({
+      ...protocol,
+      stages: [
+        ...protocol.stages,
+        alterForm('af1', [fieldWithId('same', 'name')]),
+        alterForm('af2', [fieldWithId('same', 'age')]),
+      ],
     });
-    const b = TitlelessFormSchema.safeParse({
-      fields: [fieldWithId('x', 'age')],
-    });
-    expect(a.success && b.success).toBe(true);
+    expect(paths).toEqual([
+      'stages.2.form.fields.0.id',
+      'stages.3.form.fields.0.id',
+    ]);
   });
 
   it.each([

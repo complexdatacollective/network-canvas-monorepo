@@ -12,12 +12,14 @@ import {
   useContext,
   useMemo,
 } from 'react';
-import ReactMarkdown, { type Components, type Options } from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkGemoji from 'remark-gemoji';
-import remarkGfm from 'remark-gfm';
+import ReactMarkdown, {
+  type Components,
+  defaultUrlTransform,
+  type Options,
+  type UrlTransform,
+} from 'react-markdown';
 
+import { linkAddress } from './linkAddress';
 import {
   BLOCK_IMAGE_ELEMENT,
   blockImageOf,
@@ -25,21 +27,27 @@ import {
   rehypeBlockImages,
   remarkBlockImages,
 } from './markdownBlockImages';
+import { showHtmlAsTyped } from './markdownTypedHtml';
 import { NativeLink } from './NativeLink';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 import { OrderedList, UnorderedList } from './typography/UnorderedList';
 
-export const ALLOWED_MARKDOWN_LABEL_TAGS = [
+/**
+ * What text of one line is drawn with: the formatting the editor offers for
+ * one line, bold and italics, and nothing else. A link, a list or anything
+ * else markdown reads in one line is drawn as its words, as the editor shows
+ * it, so what a participant sees is what the researcher saw when writing it.
+ */
+export const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong'];
+/** What text of several lines is drawn with: what the editor offers for it. */
+export const ALLOWED_MARKDOWN_SECTION_TAGS: string[] = [
   'em',
   'strong',
+  'a',
   'ul',
   'ol',
   'li',
-  'a',
-];
-export const ALLOWED_MARKDOWN_SECTION_TAGS = [
-  ...ALLOWED_MARKDOWN_LABEL_TAGS,
   'h1',
   'h2',
   'h3',
@@ -47,21 +55,44 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   'p',
   'br',
   'hr',
-  'a',
 ];
 
 /**
- * The HTML handling every rendering gets unless it passes its own: raw HTML
- * is parsed, then sanitized. A caller adding a plugin of its own appends it to
- * these, so it runs on sanitized output.
+ * What protocol text of one line, or of several lines, is drawn with: what
+ * the editor offers for that text.
  */
-export const DEFAULT_MARKDOWN_REHYPE_PLUGINS = [rehypeRaw, rehypeSanitize];
+export const markdownElementsFor = (singleLine: boolean): readonly string[] =>
+  singleLine ? ALLOWED_MARKDOWN_LABEL_TAGS : ALLOWED_MARKDOWN_SECTION_TAGS;
+
+// Text is read as standard CommonMark and nothing more: no syntax
+// extensions, and no HTML. What the parser reads as HTML is shown as the
+// characters typed (see `markdownTypedHtml`), as Architect's editor shows it.
+// A caller whose text is not protocol text, such as release notes, may add
+// plugins of its own; this one always runs first.
+const showHtmlAsTypedPlugin = () => showHtmlAsTyped;
+
+// The defaults are for protocol text. A link is drawn only where its address
+// passes the one rule the editor shares (see `linkAddress`); any other is
+// drawn as its words. Every other address, such as an image's, keeps
+// react-markdown's own handling.
+const urlTransform: UrlTransform = (url, key, node) =>
+  node.tagName === 'a' && key === 'href'
+    ? (linkAddress(url) ?? null)
+    : defaultUrlTransform(url);
+
+/**
+ * How text the application wrote itself (site pages, release notes, help)
+ * treats addresses, passed as `urlTransform`: a link keeps any address that
+ * cannot run code, a relative one such as `/protocol-gallery` included.
+ * Protocol text never uses this.
+ */
+export const applicationTextUrlTransform: UrlTransform = defaultUrlTransform;
 
 const defaultMarkdownOptions = {
   allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
-  remarkPlugins: [remarkGemoji, remarkGfm],
-  rehypePlugins: DEFAULT_MARKDOWN_REHYPE_PLUGINS,
+  remarkPlugins: [showHtmlAsTypedPlugin],
   unwrapDisallowed: true,
+  urlTransform,
 } satisfies Options;
 
 const renderedText = (node: unknown): string => {
@@ -80,9 +111,10 @@ const renderedText = (node: unknown): string => {
 };
 
 /**
- * Text produced by RenderMarkdown's default label dialect, including GFM,
- * emoji, sanitized HTML and unwrapped tags. Does not apply custom components
- * or section options. Useful for grammar around an unchanged authored label.
+ * The text RenderMarkdown shows for markdown with its default options: the
+ * label elements, with every other element unwrapped and HTML shown as typed.
+ * Does not apply custom components or section options. Useful for grammar
+ * around an unchanged authored label.
  */
 const getMarkdownLabelText = (markdown: string): string =>
   // react-markdown's synchronous entry point processes to an intrinsic React
@@ -103,15 +135,17 @@ const attributeText = (node: unknown): string[] => {
 
 /**
  * Every attribute value (a link's destination or title, an image's source or
- * text) that RenderMarkdown's default dialect produces from markdown, with
- * every element allowed. Lets a caller that splices text into markdown find
- * where the parser put it without a second parser.
+ * text) that the parser puts in markdown, read as RenderMarkdown reads it,
+ * with every element allowed and every address kept, whether or not it would
+ * be drawn. Lets a caller that splices text into markdown find where the
+ * parser put it without a second parser.
  */
 const getMarkdownAttributeValues = (markdown: string): string[] =>
   attributeText(
     ReactMarkdown({
       ...defaultMarkdownOptions,
       allowedElements: undefined,
+      urlTransform: (url) => url,
       children: markdown,
     }),
   );
@@ -242,8 +276,11 @@ const RenderMarkdown = ({
     [matches],
   );
   const allowed = allowedElements ?? defaultMarkdownOptions.allowedElements;
-  const remark = remarkPlugins ?? defaultMarkdownOptions.remarkPlugins;
-  const rehype = rehypePlugins ?? defaultMarkdownOptions.rehypePlugins;
+  const remark = [
+    ...defaultMarkdownOptions.remarkPlugins,
+    ...(remarkPlugins ?? []),
+  ];
+  const rehype = rehypePlugins ?? [];
 
   const markdownContent = (
     <ReactMarkdown
@@ -260,13 +297,14 @@ const RenderMarkdown = ({
       remarkPlugins={
         remarkBlocks === undefined ? remark : [...remark, remarkBlocks]
       }
-      // Last, after the HTML has been sanitized (see `markdownBlockImages`).
+      // Last, on the finished structure (see `markdownBlockImages`).
       rehypePlugins={
         remarkBlocks === undefined ? rehype : [...rehype, rehypeBlockImages]
       }
       unwrapDisallowed={
         unwrapDisallowed ?? defaultMarkdownOptions.unwrapDisallowed
       }
+      urlTransform={defaultMarkdownOptions.urlTransform}
       {...props}
     >
       {children}

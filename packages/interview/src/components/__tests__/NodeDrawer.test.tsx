@@ -17,7 +17,10 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId } from '../../__tests__/testIds';
 import NodeDrawer from '../NodeDrawer';
+
+const PERSON = testTypeId('person');
 
 // The drawer sits inside a stage, whose node type its drop hint may name.
 vi.mock('../../hooks/useStageSubjectName', () => ({
@@ -116,7 +119,7 @@ describe('NodeDrawer', () => {
       nodes: ['a', 'b', 'c'].map((id) => ({
         [entityPrimaryKeyProperty]: id,
         [entityAttributesProperty]: {},
-        type: 'person',
+        type: PERSON,
       })),
     });
 
@@ -135,7 +138,7 @@ describe('NodeDrawer', () => {
       nodes: ['a', 'b'].map((id) => ({
         [entityPrimaryKeyProperty]: id,
         [entityAttributesProperty]: {},
-        type: 'person',
+        type: PERSON,
       })),
     });
     expect(screen.queryByRole('button', { name: /drawer/i })).toBeNull();
@@ -146,7 +149,7 @@ describe('NodeDrawer', () => {
     const nodes = ['a', 'b'].map((id) => ({
       [entityPrimaryKeyProperty]: id,
       [entityAttributesProperty]: {},
-      type: 'person',
+      type: PERSON,
     }));
     const { rerender } = render(
       <DndStoreProvider>
@@ -170,7 +173,7 @@ describe('NodeDrawer', () => {
     const nodes = ['a', 'b'].map((id) => ({
       [entityPrimaryKeyProperty]: id,
       [entityAttributesProperty]: {},
-      type: 'person',
+      type: PERSON,
     }));
     const { rerender } = render(
       <DndStoreProvider>
@@ -204,7 +207,7 @@ describe('NodeDrawer', () => {
     const nodes = ['a', 'b'].map((id) => ({
       [entityPrimaryKeyProperty]: id,
       [entityAttributesProperty]: {},
-      type: 'person',
+      type: PERSON,
     }));
     function ControlledHost() {
       const [expanded, setExpanded] = useState(true);
@@ -238,7 +241,7 @@ describe('NodeDrawer', () => {
     const people = ['a', 'b'].map((id) => ({
       [entityPrimaryKeyProperty]: id,
       [entityAttributesProperty]: {},
-      type: 'person',
+      type: PERSON,
     }));
     const onExpandedChange = vi.fn();
     const drawer = (nodes: NcNode[]) => (
@@ -266,7 +269,7 @@ describe('NodeDrawer', () => {
     const nodes = ['a', 'b', 'c'].map((id) => ({
       [entityPrimaryKeyProperty]: id,
       [entityAttributesProperty]: {},
-      type: 'person',
+      type: PERSON,
     }));
     const { rerender } = render(
       <DndStoreProvider>
@@ -302,7 +305,7 @@ describe('NodeDrawer', () => {
     const nodes = ['a', 'b', 'c'].map((id) => ({
       [entityPrimaryKeyProperty]: id,
       [entityAttributesProperty]: {},
-      type: 'person',
+      type: PERSON,
     }));
     render(
       <DndStoreProvider>
@@ -340,6 +343,7 @@ describe('NodeDrawer', () => {
       dropTarget: {
         accepts: ['PLACED_NODE'],
         announcedName: 'Drawer',
+        dropSound: 'toggle-off',
         onDrop: vi.fn(),
       },
     });
@@ -362,6 +366,7 @@ describe('NodeDrawer', () => {
       dropTarget: {
         accepts: ['PLACED_NODE'],
         announcedName: 'Drawer',
+        dropSound: 'toggle-off',
         onDrop: vi.fn(),
       },
     });
@@ -420,6 +425,7 @@ describe('NodeDrawer', () => {
       dropTarget: {
         accepts: ['PLACED_NODE'],
         announcedName: 'Drawer',
+        dropSound: 'toggle-off',
         onDrop,
       },
     });
@@ -460,6 +466,7 @@ describe('NodeDrawer', () => {
       dropTarget: {
         accepts: ['PLACED_NODE'],
         announcedName: 'Drawer',
+        dropSound: 'toggle-off',
         onDrop,
       },
     });

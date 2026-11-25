@@ -11,6 +11,7 @@ import Form from '@codaco/fresco-ui/form/Form';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
+import { testVariableId } from '../../testing/testId.ts';
 import { DialogDraftRegistrarContext } from '../dialogDraftRegistrar.ts';
 import DialogForm, {
   type DialogFormErrors,
@@ -80,6 +81,8 @@ function renderEditor(options: EditorOptions = {}) {
   );
 }
 
+const AGE = testVariableId('age');
+
 const ruleLabel = () => screen.getByRole('textbox', { name: 'Rule label' });
 
 describe('DialogForm', () => {
@@ -91,7 +94,7 @@ describe('DialogForm', () => {
 
   it("prefers a field's own initial value to the dialog's", async () => {
     renderEditor({
-      document: { label: 'From the dialog', variable: 'age' },
+      document: { label: 'From the dialog', variable: AGE },
       children: (
         <>
           <Field
@@ -109,9 +112,7 @@ describe('DialogForm', () => {
     // The sibling that states nothing of its own still opens on the dialog's
     // value, so the field above is winning a contest rather than the dialog's
     // values going unread.
-    expect(screen.getByRole('textbox', { name: 'Attribute' })).toHaveValue(
-      'age',
-    );
+    expect(screen.getByRole('textbox', { name: 'Attribute' })).toHaveValue(AGE);
   });
 
   it('hands the dialog the shared-element identity it was opened with', async () => {

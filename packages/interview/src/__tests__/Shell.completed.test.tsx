@@ -16,6 +16,7 @@ import type {
   InterviewPayload,
 } from '../contract/types';
 import Shell from '../Shell';
+import { testId } from './testIds';
 
 // Keep the actual Information and FinishSession interfaces, Navigation and
 // dialogs; avoid importing unrelated WebGL stages into jsdom.
@@ -47,14 +48,14 @@ beforeAll(() => {
 const FINISHED_TEXT = 'Thank you for participating!';
 
 const information = {
-  id: 'overview',
+  id: testId('overview'),
   type: 'Information' as const,
   label: { en: 'Overview' },
   content: { en: '# Study overview' },
 };
 
 const finishStage = {
-  id: 'end-ineligible',
+  id: testId('end-ineligible'),
   type: 'FinishSession' as const,
   mode: 'confirmation' as const,
   label: { en: 'Finish' },
@@ -457,8 +458,8 @@ describe('Shell completed state', () => {
   it('shows a review with only finish stages the first one', async () => {
     const payload = makePayload(null);
     payload.protocol.stages = [
-      { ...finishStage, id: 'end-first', mode: 'automatic' },
-      { ...finishStage, id: 'end-second' },
+      { ...finishStage, id: testId('end-first'), mode: 'automatic' },
+      { ...finishStage, id: testId('end-second') },
     ];
     renderShell({ payload, reviewMode: true });
 

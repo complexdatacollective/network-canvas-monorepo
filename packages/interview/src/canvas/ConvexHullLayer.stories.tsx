@@ -7,8 +7,14 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../__tests__/testIds';
 import ConvexHullLayer from './ConvexHullLayer';
 import { createCanvasStore } from './useCanvasStore';
+
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
+const GROUP = testVariableId('group');
+const LAYOUT = testVariableId('layout');
 
 type CategoricalValue = string | number | boolean;
 
@@ -28,11 +34,11 @@ function makeNode(
   return {
     [entityPrimaryKeyProperty]: id,
     [entityAttributesProperty]: {
-      name,
-      group,
-      layout: { x, y },
+      [NAME]: name,
+      [GROUP]: group,
+      [LAYOUT]: { x, y },
     },
-    type: 'person',
+    type: PERSON,
     promptIDs: [],
     stageId: 'stage-1',
   };
@@ -66,7 +72,7 @@ function ConvexHullLayerWrapper({ nodes }: { nodes: NcNode[] }) {
   const [store] = useState(() => createCanvasStore());
 
   useEffect(() => {
-    store.getState().syncFromNodes(nodes, 'layout');
+    store.getState().syncFromNodes(nodes, LAYOUT);
   }, [nodes, store]);
 
   return (
@@ -74,14 +80,14 @@ function ConvexHullLayerWrapper({ nodes }: { nodes: NcNode[] }) {
       <ConvexHullLayer
         store={store}
         nodes={nodes}
-        groupVariable="group"
+        groupVariable={GROUP}
         categoricalOptions={CATEGORICAL_OPTIONS}
       />
       {/* Render node dots for visual reference */}
       {nodes.map((node) => {
         const attrs = node[entityAttributesProperty];
-        const pos = attrs.layout as { x: number; y: number };
-        const raw = attrs.group;
+        const pos = attrs[LAYOUT] as { x: number; y: number };
+        const raw = attrs[GROUP];
         const firstValue = Array.isArray(raw) ? raw[0] : raw;
         const colorIndex =
           CATEGORICAL_OPTIONS.findIndex((o) => o.value === firstValue) + 1;

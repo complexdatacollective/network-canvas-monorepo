@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { createEntityTypeId } from '@codaco/protocol-validation';
+
 vi.mock('server-only', () => ({}));
 vi.mock('next/cache', () => ({ cacheLife: vi.fn() }));
 vi.mock('~/lib/cache', () => ({ safeCacheTag: vi.fn() }));
@@ -14,21 +16,25 @@ describe('getInterviewFilterOptions', () => {
   // parse offers no types of its own rather than failing the whole dashboard,
   // and never offers types read out of data that did not parse.
   it('offers the types of every codebook it can read, and none from one it cannot', async () => {
+    const friend = createEntityTypeId();
     findMany.mockResolvedValue([
       {
         name: 'Readable',
         codebook: {
-          edge: { friend: { name: 'Friend' } },
+          edge: { [friend]: { name: 'Friend' } },
         },
       },
-      { name: 'Damaged', codebook: { edge: { rival: 'not an entity type' } } },
+      {
+        name: 'Damaged',
+        codebook: { edge: { [createEntityTypeId()]: 'not an entity type' } },
+      },
       { name: 'Missing', codebook: null },
     ]);
 
     const options = await getInterviewFilterOptions();
 
     expect(options.protocolNames).toEqual(['Damaged', 'Missing', 'Readable']);
-    expect(options.edgeTypes).toEqual([{ value: 'friend', label: 'Friend' }]);
+    expect(options.edgeTypes).toEqual([{ value: friend, label: 'Friend' }]);
     expect(options.nodeTypes).toEqual([]);
   });
 });

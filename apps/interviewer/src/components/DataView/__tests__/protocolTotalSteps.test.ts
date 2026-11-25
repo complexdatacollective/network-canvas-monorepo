@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { createProtocolObjectId } from '@codaco/protocol-validation';
 import type {
   StoredCurrentProtocol,
   StoredSchema8Protocol,
@@ -16,11 +17,11 @@ const informationStage = (id: string) => ({
 
 type CurrentStage = StoredCurrentProtocol['protocol']['stages'][number];
 
-const currentInformationStage = (id: string): CurrentStage => ({
-  id,
+const currentInformationStage = (name: string): CurrentStage => ({
+  id: createProtocolObjectId(),
   type: 'Information',
-  label: { en: id },
-  content: { en: `# ${id}` },
+  label: { en: name },
+  content: { en: `# ${name}` },
 });
 
 const stageIds = ['one', 'two', 'three', 'four', 'five'];

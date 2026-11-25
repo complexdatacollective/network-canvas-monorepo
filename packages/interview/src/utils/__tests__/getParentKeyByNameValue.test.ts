@@ -2,41 +2,81 @@ import { describe, expect, it } from 'vitest';
 
 import type { EntityDefinition } from '@codaco/protocol-validation';
 
+import { testId, testVariableId } from '../../__tests__/testIds';
 import getParentKeyByNameValue from '../getParentKeyByNameValue';
 
+const CAFE = testVariableId('cafe');
+const CJK = testVariableId('cjk');
+const CONSTRUCTOR = testVariableId('constructor');
+const CONTACTS = testVariableId('contacts');
+const DOTTED = testVariableId('dotted');
+const NAME = testVariableId('name');
+const PLACE = testVariableId('place');
+const POSITION = testVariableId('position');
+const PROTO = testVariableId('proto');
+const RATING = testVariableId('rating');
+
 const variables: NonNullable<EntityDefinition['variables']> = {
-  'id-name': { name: 'Full name', type: 'text' },
-  'id-dotted': { name: 'a.b', type: 'text' },
-  'id-position': {
+  [NAME]: { name: 'Full name', type: 'text' },
+  [DOTTED]: { name: 'a.b', type: 'text' },
+  [POSITION]: {
     name: 'Position',
     type: 'layout',
   },
-  'id-cjk': { name: '年龄', type: 'number' },
-  'id-cafe': { name: 'Café', type: 'text' },
-  'id-contacts': {
+  [CJK]: { name: '年龄', type: 'number' },
+  [CAFE]: { name: 'Café', type: 'text' },
+  [CONTACTS]: {
     name: 'Contacts_kind',
     type: 'categorical',
     options: [
-      { label: { en: 'Close friend' }, value: 'close friend' },
-      { label: { en: 'Colleague' }, value: '同事' },
-      { label: { en: 'Snake' }, value: 'under_score' },
-      { label: { en: 'One' }, value: 1 },
-      { label: { en: 'Cafe' }, value: 'Café' },
+      {
+        id: testId('getParentKeyByNameValue option 1'),
+        label: { en: 'Close friend' },
+        value: 'close friend',
+      },
+      {
+        id: testId('getParentKeyByNameValue option 2'),
+        label: { en: 'Colleague' },
+        value: '同事',
+      },
+      {
+        id: testId('getParentKeyByNameValue option 3'),
+        label: { en: 'Snake' },
+        value: 'under_score',
+      },
+      {
+        id: testId('getParentKeyByNameValue option 4'),
+        label: { en: 'One' },
+        value: 1,
+      },
+      {
+        id: testId('getParentKeyByNameValue option 5'),
+        label: { en: 'Cafe' },
+        value: 'Café',
+      },
     ],
   },
-  'id-rating': {
+  [RATING]: {
     name: 'Rating',
     type: 'ordinal',
     options: [
-      { label: { en: 'Low' }, value: 1 },
-      { label: { en: 'High' }, value: 2 },
+      {
+        id: testId('getParentKeyByNameValue option 6'),
+        label: { en: 'Low' },
+        value: 1,
+      },
+      {
+        id: testId('getParentKeyByNameValue option 7'),
+        label: { en: 'High' },
+        value: 2,
+      },
     ],
   },
 };
 
 describe('getParentKeyByNameValue', () => {
   it('returns a key that is already a variable id', () => {
-    expect(getParentKeyByNameValue(variables, 'id-name')).toBe('id-name');
+    expect(getParentKeyByNameValue(variables, NAME)).toBe(NAME);
   });
 
   it('returns the text unchanged when there is no entity definition', () => {
@@ -49,16 +89,16 @@ describe('getParentKeyByNameValue', () => {
   });
 
   it.each([
-    ['a name with a space', 'Full name', 'id-name'],
-    ['a name in another script', '年龄', 'id-cjk'],
-    ['a name with a dot', 'a.b', 'id-dotted'],
+    ['a name with a space', 'Full name', NAME],
+    ['a name in another script', '年龄', CJK],
+    ['a name with a dot', 'a.b', DOTTED],
   ])('matches %s', (_description, name, id) => {
     expect(getParentKeyByNameValue(variables, name)).toBe(id);
   });
 
   it('does not read a dotted name as a path through the variables', () => {
-    expect(getParentKeyByNameValue(variables, 'id-name.name')).toBe(
-      'id-name.name',
+    expect(getParentKeyByNameValue(variables, `${NAME}.name`)).toBe(
+      `${NAME}.name`,
     );
     expect(getParentKeyByNameValue(variables, 'a')).toBe('a');
   });
@@ -67,17 +107,15 @@ describe('getParentKeyByNameValue', () => {
     const decomposed = 'Café';
 
     expect(decomposed).not.toBe('Café');
-    expect(getParentKeyByNameValue(variables, decomposed)).toBe('id-cafe');
+    expect(getParentKeyByNameValue(variables, decomposed)).toBe(CAFE);
   });
 
   it('matches an NFC header against a name stored in NFD', () => {
     const decomposedVariables: NonNullable<EntityDefinition['variables']> = {
-      'id-cafe': { name: 'Café', type: 'text' },
+      [CAFE]: { name: 'Café', type: 'text' },
     };
 
-    expect(getParentKeyByNameValue(decomposedVariables, 'Café')).toBe(
-      'id-cafe',
-    );
+    expect(getParentKeyByNameValue(decomposedVariables, 'Café')).toBe(CAFE);
   });
 
   describe('names that are also properties of every object', () => {
@@ -90,58 +128,41 @@ describe('getParentKeyByNameValue', () => {
 
     it('matches a variable that is named after one', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
-        'id-proto': {
+        [PROTO]: {
           name: '__proto__',
           type: 'text',
         },
-        'id-constructor': {
+        [CONSTRUCTOR]: {
           name: 'constructor',
           type: 'text',
         },
       };
 
-      expect(getParentKeyByNameValue(named, '__proto__')).toBe('id-proto');
-      expect(getParentKeyByNameValue(named, 'constructor')).toBe(
-        'id-constructor',
-      );
-    });
-
-    it('matches a variable id that is named after one', () => {
-      const named: NonNullable<EntityDefinition['variables']> =
-        Object.fromEntries([
-          [
-            '__proto__',
-            {
-              name: 'Anything',
-              type: 'text' as const,
-            },
-          ],
-        ]);
-
-      expect(getParentKeyByNameValue(named, '__proto__')).toBe('__proto__');
+      expect(getParentKeyByNameValue(named, '__proto__')).toBe(PROTO);
+      expect(getParentKeyByNameValue(named, 'constructor')).toBe(CONSTRUCTOR);
     });
   });
 
   describe('layout columns', () => {
     it('resolves the _x and _y columns to the variable id', () => {
       expect(getParentKeyByNameValue(variables, 'Position_x')).toBe(
-        'id-position_x',
+        `${POSITION}_x`,
       );
       expect(getParentKeyByNameValue(variables, 'Position_y')).toBe(
-        'id-position_y',
+        `${POSITION}_y`,
       );
     });
 
     it('resolves a decomposed name', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
-        'id-place': {
+        [PLACE]: {
           name: 'Café position',
           type: 'layout',
         },
       };
 
       expect(getParentKeyByNameValue(named, 'Café position_x')).toBe(
-        'id-place_x',
+        `${PLACE}_x`,
       );
     });
   });
@@ -158,32 +179,38 @@ describe('getParentKeyByNameValue', () => {
       ['a number option', 'Contacts_kind_1', '1'],
     ])('resolves %s', (_description, column, option) => {
       expect(getParentKeyByNameValue(variables, column)).toBe(
-        `id-contacts_${option}`,
+        `${CONTACTS}_${option}`,
       );
     });
 
     it('spells the option as the codebook does when the column is decomposed', () => {
       expect(getParentKeyByNameValue(variables, 'Contacts_kind_Café')).toBe(
-        'id-contacts_Café',
+        `${CONTACTS}_Café`,
       );
     });
 
     it('resolves a decomposed variable name', () => {
       const named: NonNullable<EntityDefinition['variables']> = {
-        'id-cafe': {
+        [CAFE]: {
           name: 'Café',
           type: 'categorical',
-          options: [{ label: { en: 'Open' }, value: 'open' }],
+          options: [
+            {
+              id: testId('getParentKeyByNameValue option 8'),
+              label: { en: 'Open' },
+              value: 'open',
+            },
+          ],
         },
       };
 
-      expect(getParentKeyByNameValue(named, 'Café_open')).toBe('id-cafe_open');
+      expect(getParentKeyByNameValue(named, 'Café_open')).toBe(`${CAFE}_open`);
     });
 
     it('resolves a column spelling an option as it was before the schema 9 migration renamed it', () => {
       expect(
         getParentKeyByNameValue(variables, 'Contacts_kind_close friend '),
-      ).toBe('id-contacts_close friend');
+      ).toBe(`${CONTACTS}_close friend`);
     });
 
     it('leaves a column whose option is not in the codebook alone', () => {

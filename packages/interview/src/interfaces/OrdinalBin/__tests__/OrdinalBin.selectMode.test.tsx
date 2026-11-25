@@ -17,6 +17,7 @@ import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
   asEntityAttributeReference,
   type Codebook,
+  dynamicValueNameFor,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -24,11 +25,14 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import BinSelectAnnouncer from '../../../components/BinSelectAnnouncer';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { createSoundSpy } from '../../../sounds/__tests__/soundSpy';
+import { InteractionSoundsProvider } from '../../../sounds/InteractionSounds';
 import protocol from '../../../store/modules/protocol';
 import session, {
   type SessionState,
@@ -117,14 +121,18 @@ beforeEach(() => {
   track.mockClear();
 });
 
-const NODE_TYPE = 'person';
-const STAGE_ID = 'ordinal-bin-stage';
-const PROMPT_ID = 'prompt-1';
+const NODE_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('name');
+const CLOSENESS_VAR = testVariableId('closeness');
+const STAGE_ID = testId('ordinal-bin-stage');
+const PROMPT_ID = testId('prompt-1');
+/** The name text gives the label of the node being placed. */
+const NODE_LABEL = dynamicValueNameFor({ kind: 'label', role: 'node' });
 
 const person = (id: string, name: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   type: NODE_TYPE,
-  [entityAttributesProperty]: { name },
+  [entityAttributesProperty]: { [NAME_VAR]: name },
 });
 
 const codebook: Codebook = {
@@ -134,14 +142,18 @@ const codebook: Codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        name: { name: 'name', type: 'text', component: 'Text' },
-        closeness: {
+        [NAME_VAR]: { name: 'name', type: 'text', component: 'Text' },
+        [CLOSENESS_VAR]: {
           name: 'Closeness',
           type: 'ordinal',
           component: 'LikertScale',
           options: [
-            { label: { en: 'Distant' }, value: 1 },
-            { label: { en: 'Close' }, value: 2 },
+            {
+              id: testId('option distant'),
+              label: { en: 'Distant' },
+              value: 1,
+            },
+            { id: testId('option close'), label: { en: 'Close' }, value: 2 },
           ],
         },
       },
@@ -155,7 +167,7 @@ type Mode = 'drag' | 'select';
 
 type StageOptions = {
   sortByName?: boolean;
-  /** Prompt text naming the person being placed, by `{nodeLabel}`. */
+  /** Prompt text naming the person being placed, by `{node_label}`. */
   namingFocal?: string;
 };
 
@@ -168,18 +180,19 @@ const buildStage = (
   label: { en: 'Rate people' },
   subject: { entity: 'node', type: NODE_TYPE },
   ...(mode === 'select' && { behaviours: { interactionMode: 'select' } }),
-  ...(namingFocal !== undefined && {
-    dynamicValues: { nodeLabel: { path: 'node.$label' } },
-  }),
   prompts: [
     {
       id: PROMPT_ID,
       text: { en: namingFocal ?? 'How close?' },
-      variable: asEntityAttributeReference('closeness'),
+      variable: asEntityAttributeReference(CLOSENESS_VAR),
       color: 'ord-color-seq-1',
       ...(sortByName && {
         bucketSortOrder: [
-          { property: asEntityAttributeReference('name'), direction: 'asc' },
+          {
+            id: testId('sort-name'),
+            property: asEntityAttributeReference(NAME_VAR),
+            direction: 'asc',
+          },
         ],
       }),
     },
@@ -232,7 +245,12 @@ function CaptureDndStore({
   return null;
 }
 
-function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
+function renderStage(
+  mode: Mode,
+  nodes?: NcNode[],
+  options?: StageOptions,
+  sounds = createSoundSpy(),
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -240,7 +258,9 @@ function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
       protocol: buildProtocol(mode, options),
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
+      getDefaultMiddleware({ serializableCheck: false }).concat(
+        sounds.middleware,
+      ),
   });
 
   let dndStore: StoreApi<DndStore> | null = null;
@@ -253,20 +273,22 @@ function renderStage(mode: Mode, nodes?: NcNode[], options?: StageOptions) {
             <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
               <DialogProvider>
                 <DndStoreProvider>
-                  <CaptureDndStore
-                    onStore={(s) => {
-                      dndStore = s;
-                    }}
-                  />
-                  <StageDynamicValues stage={buildStage(mode, options)}>
-                    <OrdinalBin
-                      stage={buildStage(mode, options)}
-                      getNavigationHelpers={() => ({
-                        moveForward: () => {},
-                        moveBackward: () => {},
-                      })}
+                  <InteractionSoundsProvider engine={sounds.engine}>
+                    <CaptureDndStore
+                      onStore={(s) => {
+                        dndStore = s;
+                      }}
                     />
-                  </StageDynamicValues>
+                    <StageDynamicValues stage={buildStage(mode, options)}>
+                      <OrdinalBin
+                        stage={buildStage(mode, options)}
+                        getNavigationHelpers={() => ({
+                          moveForward: () => {},
+                          moveBackward: () => {},
+                        })}
+                      />
+                    </StageDynamicValues>
+                  </InteractionSoundsProvider>
                 </DndStoreProvider>
               </DialogProvider>
             </CurrentStepProvider>
@@ -306,6 +328,23 @@ const announcement = (name: string) =>
   screen.findAllByText(`Choose where ${name} belongs.`);
 
 describe('OrdinalBin in select mode (#1652)', () => {
+  it('plays the drop sound once when a person is placed, and nothing else', async () => {
+    const sounds = createSoundSpy();
+    const { attributesOf } = renderStage(
+      'select',
+      undefined,
+      undefined,
+      sounds,
+    );
+
+    await announcement('Ann');
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
+    await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(2));
+    await announcement('Ben');
+
+    expect(sounds.play.mock.calls).toEqual([['toggle-on']]);
+  });
+
   it('places the focal person in the tapped bin and moves on to the next', async () => {
     const { attributesOf } = renderStage('select');
 
@@ -318,7 +357,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
 
-    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(2));
+    await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(2));
     await announcement('Ben');
     expect(screen.getByRole('button', { name: 'Ben' })).toHaveAttribute(
       'aria-pressed',
@@ -336,8 +375,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     // The prompt's natural sentence, without the marks around its values.
     const prompt = () => screen.getByTestId('prompt').getAttribute('title');
     renderStage('select', [person('a', 'Ann'), person('b', 'Ben')], {
-      namingFocal:
-        '{nodeLabel, select, missing {Everyone is placed.} other {How close is {nodeLabel}?}}',
+      namingFocal: `{${NODE_LABEL}, select, missing {Everyone is placed.} other {How close is {${NODE_LABEL}}?}}`,
     });
 
     await announcement('Ann');
@@ -361,11 +399,14 @@ describe('OrdinalBin in select mode (#1652)', () => {
     const selected = renderStage('select');
     await announcement('Ann');
     fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
-    await waitFor(() => expect(selected.attributesOf('a')?.closeness).toBe(2));
+    await waitFor(() =>
+      expect(selected.attributesOf('a')?.[CLOSENESS_VAR]).toBe(2),
+    );
     const selectedNodes = selected.store.getState().session.network?.nodes;
     selected.view.unmount();
 
-    const dragged = renderStage('drag');
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, undefined, sounds);
     startDragOf(dragged.getDndStore, person('a', 'Ann'));
     await waitFor(() =>
       expect(
@@ -377,11 +418,37 @@ describe('OrdinalBin in select mode (#1652)', () => {
       dragged.getDndStore().getState().setActiveDropTarget(binListZone(1));
       dragged.getDndStore().getState().endDrag();
     });
-    await waitFor(() => expect(dragged.attributesOf('a')?.closeness).toBe(2));
+    await waitFor(() =>
+      expect(dragged.attributesOf('a')?.[CLOSENESS_VAR]).toBe(2),
+    );
 
     expect(dragged.store.getState().session.network?.nodes).toEqual(
       selectedNodes,
     );
+    // The drop is heard as it lands, through the bin's drop sound, and the
+    // placement it saves adds no second sound.
+    expect(sounds.play.mock.calls).toEqual([['toggle-on']]);
+  });
+
+  it('makes no sound for a drop whose placement is refused', async () => {
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, undefined, sounds);
+    // Someone the session does not have cannot be given an answer.
+    startDragOf(dragged.getDndStore, person('z', 'Zed'));
+    await waitFor(() =>
+      expect(
+        dragged.getDndStore().getState().getDropTargetState(binListZone(1))
+          ?.canDrop,
+      ).toBe(true),
+    );
+    await act(async () => {
+      dragged.getDndStore().getState().setActiveDropTarget(binListZone(1));
+      dragged.getDndStore().getState().endDrag();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(dragged.attributesOf('z')).toBeUndefined();
+    expect(sounds.play).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -431,7 +498,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Ann in Distant' }),
     );
-    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(1));
+    await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(1));
     expect(track).toHaveBeenCalledWith('node_rebinned', {
       node_id: 'a',
       node_type_index: 0,
@@ -445,7 +512,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
   it('records moving someone placed before the stage was left as a move', async () => {
     const placedBefore: NcNode = {
       ...person('a', 'Ann'),
-      [entityAttributesProperty]: { name: 'Ann', closeness: 2 },
+      [entityAttributesProperty]: { [NAME_VAR]: 'Ann', [CLOSENESS_VAR]: 2 },
     };
     const { attributesOf } = renderStage('select', [
       placedBefore,
@@ -459,7 +526,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
       screen.getByRole('button', { name: 'Place Ann in Distant' }),
     );
 
-    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(1));
+    await waitFor(() => expect(attributesOf('a')?.[CLOSENESS_VAR]).toBe(1));
     expect(track).toHaveBeenCalledWith('node_rebinned', {
       node_id: 'a',
       node_type_index: 0,

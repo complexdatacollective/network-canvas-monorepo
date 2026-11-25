@@ -1,15 +1,39 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  testId,
+  testVariableId,
+  withTestIds,
+} from '../../../__tests__/testIds.ts';
 import { collectLocalizedStringsFromSchema } from '../../../utils/collectLocalizedStrings.ts';
 import { ConditionSchema } from '../conditions.ts';
 import {
-  dynamicValueConditionPathFor,
-  parseDynamicValuePath,
+  dynamicValueNameFor,
+  optionCaseKey,
+  parseDynamicValueName,
 } from '../dynamic-values.ts';
 import { findNodeLabelProblems, NodeLabelSchema } from '../node-label.ts';
 import { ProtocolStructureSchema } from '../protocol-structure.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
+
+const HOSPITAL_ID = testId('hospital');
+const HOSPITAL = optionCaseKey(HOSPITAL_ID);
+const BIG_ID = testId('big');
+const BIG = dynamicValueNameFor({ kind: 'condition', conditionId: BIG_ID });
+const NAME_VAR = testVariableId('nameVar');
+const KIND_VAR = testVariableId('kind');
+const SECRET_VAR = testVariableId('secret');
+const KIND = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: KIND_VAR,
+});
+const NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: NAME_VAR,
+});
 
 const codebook = (label: unknown) => ({
   node: {
@@ -18,16 +42,16 @@ const codebook = (label: unknown) => ({
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        nameVar: { name: 'name', type: 'text' },
-        kind: {
+        [NAME_VAR]: { name: 'name', type: 'text' },
+        [KIND_VAR]: {
           name: 'kind',
           type: 'ordinal',
           options: [
-            { label: { en: 'Hospital' }, value: 'hospital' },
-            { label: { en: 'School' }, value: 'school' },
+            { id: HOSPITAL_ID, label: { en: 'Hospital' }, value: 'hospital' },
+            { id: testId('school'), label: { en: 'School' }, value: 'school' },
           ],
         },
-        secret: { name: 'secret', type: 'text', encrypted: true },
+        [SECRET_VAR]: { name: 'secret', type: 'text', encrypted: true },
       },
       dynamicLabel: label,
     },
@@ -47,23 +71,23 @@ const problemsOf = (label: unknown) => {
 
 const LABEL_PATH = ['codebook', 'node', 'place', 'dynamicLabel'];
 
-describe('condition paths', () => {
-  it('round-trips a condition path', () => {
-    expect(
-      parseDynamicValuePath(dynamicValueConditionPathFor('isBig')),
-    ).toEqual({ kind: 'condition', conditionId: 'isBig' });
+describe('condition names', () => {
+  it('round-trips a condition name', () => {
+    expect(parseDynamicValueName(BIG)).toEqual({
+      kind: 'condition',
+      conditionId: BIG_ID,
+    });
   });
 
-  it('names nothing for any other path that starts with $', () => {
-    expect(parseDynamicValuePath('$nothing')).toBeUndefined();
-    expect(parseDynamicValuePath('$condition.')).toBeUndefined();
+  it('names nothing for a condition without an id', () => {
+    expect(parseDynamicValueName('condition_')).toBeUndefined();
   });
 });
 
 describe('ConditionSchema', () => {
   const nodeRule = (id: string) => ({
     type: 'node',
-    id,
+    id: testId(id),
     options: { type: 'place', attribute: 'nameVar', operator: 'EXISTS' },
   });
 
@@ -75,10 +99,10 @@ describe('ConditionSchema', () => {
         rules: [
           {
             type: 'edge',
-            id: 'a',
+            id: testId('a'),
             options: { type: 'near', count: 'GREATER_THAN', value: 2 },
           },
-          { type: 'edge', id: 'b', options: { count: 'MOST' } },
+          { type: 'edge', id: testId('b'), options: { count: 'MOST' } },
         ],
       }).success,
     ).toBe(true);
@@ -92,7 +116,7 @@ describe('ConditionSchema', () => {
     expect(
       ConditionSchema.safeParse({
         about: 'node',
-        rules: [{ type: 'edge', id: 'a', options }],
+        rules: [{ type: 'edge', id: testId('a'), options }],
       }).success,
     ).toBe(false);
   });
@@ -114,20 +138,15 @@ describe('NodeLabelSchema', () => {
   it('accepts a label with nested versions', () => {
     const result = NodeLabelSchema.safeParse({
       text: {
-        en: '{kind, select, missing {} hospital {🏥 {linked, select, yes {🔗} other {}}} other {}}{nodeLabel}',
-      },
-      dynamicValues: {
-        kind: { path: 'node.kind', cases: { hospital: 'hospital' } },
-        linked: { path: '$condition.linked', cases: { yes: true } },
-        nodeLabel: { path: 'node.$label' },
+        en: `{${KIND}, select, missing {} ${HOSPITAL} {🏥 {${BIG}, select, true {🔗} other {}}} other {}}{node_label}`,
       },
       conditions: {
-        linked: {
+        [BIG_ID]: {
           about: 'node',
           rules: [
             {
               type: 'edge',
-              id: 'r1',
+              id: testId('r1'),
               options: { count: 'GREATER_THAN', value: 0 },
             },
           ],
@@ -137,23 +156,29 @@ describe('NodeLabelSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('refuses a condition id that cannot be an argument name', () => {
+  it('refuses a condition id that is not a UUID', () => {
     const result = NodeLabelSchema.safeParse({
       text: { en: 'x' },
       conditions: {
-        'not ok': {
+        big: {
           about: 'node',
           rules: [
             {
               type: 'node',
-              id: 'r1',
+              id: testId('r1'),
               options: { type: 'place', operator: 'EXISTS' },
             },
           ],
         },
       },
     });
-    expect(result.success).toBe(false);
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ['conditions', 'big'],
+        message:
+          'The condition id "big" is not a UUID. Every condition id must be a UUID.',
+      }),
+    ]);
   });
 });
 
@@ -163,8 +188,8 @@ describe('findNodeLabelProblems', () => {
     rules: [
       {
         type: 'node',
-        id: 'r1',
-        options: { type: 'place', attribute: 'nameVar', operator: 'EXISTS' },
+        id: testId('r1'),
+        options: { type: 'place', attribute: NAME_VAR, operator: 'EXISTS' },
       },
     ],
   };
@@ -173,23 +198,16 @@ describe('findNodeLabelProblems', () => {
     expect(
       problemsOf({
         text: {
-          en: '{kind, select, missing {} hospital {🏥 } other {}}{big, select, yes {⭐ } other {}}{small, select, no {· } other {}}{nodeLabel}',
+          en: `{${KIND}, select, missing {} ${HOSPITAL} {🏥 } other {}}{${BIG}, select, true {⭐ } other {}}{${BIG}, select, false {· } other {}}{node_label}`,
         },
-        dynamicValues: {
-          kind: { path: 'node.kind', cases: { hospital: 'hospital' } },
-          big: { path: '$condition.big', cases: { yes: true } },
-          small: { path: '$condition.big', cases: { no: false } },
-          nodeLabel: { path: 'node.$label' },
-        },
-        conditions: { big },
+        conditions: { [BIG_ID]: big },
       }),
     ).toEqual([]);
   });
 
   it('requires a version for when an attribute is missing', () => {
     const problems = problemsOf({
-      text: { en: '{name}' },
-      dynamicValues: { name: { path: 'node.nameVar' } },
+      text: { en: `{${NAME}}` },
     });
     expect(problems.map((problem) => problem.path)).toEqual([
       [...LABEL_PATH, 'text', 'en'],
@@ -197,43 +215,95 @@ describe('findNodeLabelProblems', () => {
   });
 
   it.each([
-    ['today’s date', { path: 'now' }],
-    ['an ego attribute', { path: 'ego.anything' }],
-    ['an encrypted attribute', { path: 'node.secret' }],
-    ['a condition that does not exist', { path: '$condition.gone' }],
-  ])('refuses %s', (_, binding) => {
-    const problems = problemsOf({
-      text: { en: 'x' },
-      dynamicValues: { value: binding },
-    });
-    expect(problems.map((problem) => problem.path)).toEqual([
-      [...LABEL_PATH, 'dynamicValues', 'value', 'path'],
-    ]);
-  });
+    [
+      'today’s date',
+      'now',
+      'This label cannot use today’s date: a node’s label can show only what is known about that node.',
+    ],
+    [
+      'an ego attribute',
+      dynamicValueNameFor({
+        kind: 'attribute',
+        role: 'ego',
+        variableId: testVariableId('anything'),
+      }),
+      'This label cannot use an attribute of the participant, because the text does not refer to the participant.',
+    ],
+    [
+      'an encrypted attribute',
+      dynamicValueNameFor({
+        kind: 'attribute',
+        role: 'node',
+        variableId: SECRET_VAR,
+      }),
+      'This label cannot use the "secret" attribute of the node that the label is on, because the attribute is encrypted.',
+    ],
+    [
+      'an attribute that does not exist',
+      dynamicValueNameFor({
+        kind: 'attribute',
+        role: 'node',
+        variableId: testVariableId('gone'),
+      }),
+      'This label refers to an attribute that no longer exists.',
+    ],
+    [
+      'a condition that does not exist',
+      dynamicValueNameFor({ kind: 'condition', conditionId: testId('gone') }),
+      'This label has an If block whose rules no longer exist.',
+    ],
+    [
+      'a name that refers to nothing',
+      'node_kind',
+      'This label cannot use "node_kind": it does not refer to an attribute, a node’s label, a condition or today’s date.',
+    ],
+  ])(
+    'refuses %s, and names it as a researcher knows it',
+    (_, name, message) => {
+      expect(
+        problemsOf({ text: { en: `{${name}, select, missing {} other {x}}` } }),
+      ).toEqual([{ path: [...LABEL_PATH, 'text', 'en'], message }]);
+    },
+  );
 
   it('refuses showing a condition as words', () => {
     const problems = problemsOf({
-      text: { en: '{big}' },
-      dynamicValues: { big: { path: '$condition.big' } },
-      conditions: { big },
+      text: { en: `{${BIG}}` },
+      conditions: { [BIG_ID]: big },
     });
-    expect(problems[0]?.message).toContain('only chooses wording');
+    expect(problems[0]?.message).toBe(
+      'An If block cannot be shown as words. It chooses which version of the text is shown. Give the text a version for when its rules are met and a version for when they are not.',
+    );
   });
 
-  it('refuses a case that stands for neither true nor false', () => {
-    const problems = problemsOf({
-      text: { en: '{big, select, maybe {a} other {b}}' },
-      dynamicValues: {
-        big: { path: '$condition.big', cases: { maybe: true } },
+  it('refuses a case that is neither true nor false', () => {
+    expect(
+      problemsOf({
+        text: { en: `{${BIG}, select, yes {a} other {b}}` },
+        conditions: { [BIG_ID]: big },
+      }),
+    ).toEqual([
+      {
+        path: [...LABEL_PATH, 'text', 'en'],
+        message:
+          'This label chooses its wording by an If block, but one of its versions is neither for when its rules are met nor for when they are not.',
       },
-      conditions: { big },
-    });
-    expect(problems.map((problem) => problem.path)).toContainEqual([
-      ...LABEL_PATH,
-      'dynamicValues',
-      'big',
-      'cases',
-      'maybe',
+    ]);
+  });
+
+  it('refuses a case that is not one of the attribute’s options', () => {
+    expect(
+      problemsOf({
+        text: {
+          en: `{${KIND}, select, hospital {a} ${optionCaseKey(testId('deleted'))} {c} other {b}}`,
+        },
+      }),
+    ).toEqual([
+      {
+        path: [...LABEL_PATH, 'text', 'en'],
+        message:
+          'This label chooses its wording by the "kind" attribute of the node that the label is on, but one of its versions is for an option that no longer exists.',
+      },
     ]);
   });
 });
@@ -247,7 +317,7 @@ describe('a protocol whose text chooses its wording by conditions', () => {
     Reflect.get(variable, 'encrypted') !== true;
 
   const fixture = () => {
-    const protocol: Draft = completeProtocol();
+    const protocol: Draft = withTestIds(completeProtocol());
     const nodeTypes: Record<string, { variables?: Record<string, unknown> }> =
       protocol.codebook.node;
     const nodeType = Object.keys(nodeTypes).find((id) =>
@@ -285,13 +355,14 @@ describe('a protocol whose text chooses its wording by conditions', () => {
       : result.error.issues.map((issue) => issue.path.join('.'));
   };
 
+  const NAMED_ID = testId('named');
   const labelWith = (rules: unknown[], join?: string) => ({
-    text: { en: '{named, select, yes {⭐ } other {}}{nodeLabel}' },
-    dynamicValues: {
-      named: { path: '$condition.named', cases: { yes: true } },
-      nodeLabel: { path: 'node.$label' },
+    text: {
+      en: `{${dynamicValueNameFor({ kind: 'condition', conditionId: NAMED_ID })}, select, true {⭐ } other {}}{node_label}`,
     },
-    conditions: { named: { about: 'node', ...(join && { join }), rules } },
+    conditions: {
+      [NAMED_ID]: { about: 'node', ...(join && { join }), rules },
+    },
   });
 
   it('is valid with an attribute rule, an edge rule and an edge count', () => {
@@ -301,7 +372,7 @@ describe('a protocol whose text chooses its wording by conditions', () => {
         [
           {
             type: 'node',
-            id: 'r1',
+            id: testId('r1'),
             options: {
               type: nodeType,
               attribute: textVariable,
@@ -310,17 +381,17 @@ describe('a protocol whose text chooses its wording by conditions', () => {
           },
           {
             type: 'edge',
-            id: 'r2',
+            id: testId('r2'),
             options: { type: edgeType, operator: 'EXISTS' },
           },
           {
             type: 'edge',
-            id: 'r3',
+            id: testId('r3'),
             options: { type: edgeType, count: 'MOST' },
           },
           {
             type: 'edge',
-            id: 'r4',
+            id: testId('r4'),
             options: { count: 'GREATER_THAN_OR_EQUAL', value: 2 },
           },
         ],
@@ -337,20 +408,24 @@ describe('a protocol whose text chooses its wording by conditions', () => {
         [
           {
             type: 'node',
-            id: 'r1',
+            id: testId('r1'),
             options: { type: 'someOtherType', operator: 'EXISTS' },
           },
           {
             type: 'ego',
-            id: 'r2',
+            id: testId('r2'),
             options: { attribute: egoVariable, operator: 'EXISTS' },
           },
-          { type: 'edge', id: 'r3', options: { type: 'gone', count: 'MOST' } },
+          {
+            type: 'edge',
+            id: testId('r3'),
+            options: { type: 'gone', count: 'MOST' },
+          },
         ],
         'OR',
       ),
     );
-    const base = `codebook.node.${nodeType}.dynamicLabel.conditions.named.rules`;
+    const base = `codebook.node.${nodeType}.dynamicLabel.conditions.${NAMED_ID}.rules`;
     const paths = issuePathsOf(protocol);
     expect(paths).toContain(`${base}.0.options.type`);
     expect(paths).toContain(`${base}.1.type`);
@@ -364,11 +439,11 @@ describe('a protocol whose text chooses its wording by conditions', () => {
     const stage = stages[index];
     if (stage === undefined) throw new Error('No Information stage');
     stage.conditions = {
-      answered: {
+      [testId('answered')]: {
         rules: [
           {
             type: 'ego',
-            id: 'r1',
+            id: testId('r1'),
             options: { attribute: egoVariable, operator: 'EXISTS' },
           },
         ],
@@ -377,13 +452,13 @@ describe('a protocol whose text chooses its wording by conditions', () => {
     expect(issuePathsOf(protocol)).toEqual([]);
 
     stage.conditions = {
-      linked: {
+      [testId('linked')]: {
         about: 'node',
-        rules: [{ type: 'edge', id: 'r1', options: { count: 'MOST' } }],
+        rules: [{ type: 'edge', id: testId('r1'), options: { count: 'MOST' } }],
       },
     };
     expect(issuePathsOf(protocol)).toContain(
-      `stages.${index}.conditions.linked.about`,
+      `stages.${index}.conditions.${testId('linked')}.about`,
     );
   });
 });

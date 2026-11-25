@@ -11,6 +11,7 @@ import {
 
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
+import type { DropOutcome } from '@codaco/fresco-ui/dnd/types';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
   entityAttributesProperty,
@@ -19,8 +20,10 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import type { DropSound } from '../sounds/InteractionSounds';
 import CanvasNode, { type NodeActivationDetails } from './CanvasNode';
 import EdgeLayer from './EdgeLayer';
+import type { CanvasNodeDragEnd } from './useCanvasDrag';
 import type { CanvasStoreApi } from './useCanvasStore';
 
 /** Which interaction, if any, makes a node a toggle for the current prompt. */
@@ -65,8 +68,9 @@ type CanvasProps = {
    * must not be announced as something that can be pressed.
    */
   nodeToggle?: NodeToggle;
-  onNodeDragEnd?: (nodeId: string, position: { x: number; y: number }) => void;
-  onDrop?: (nodeId: string, position: { x: number; y: number }) => void;
+  onNodeDragEnd?: CanvasNodeDragEnd;
+  /** Places a node dropped from outside; says whether it took it. */
+  onDrop?: (nodeId: string, position: { x: number; y: number }) => DropOutcome;
   allowRepositioning?: boolean;
   disabled?: boolean;
   simulation?: {
@@ -134,7 +138,7 @@ export default function Canvas({
   const handleDrop = useCallback(
     (metadata?: Record<string, unknown>) => {
       const nodeId = metadata?.nodeId;
-      if (typeof nodeId !== 'string' || !nodeId) return;
+      if (typeof nodeId !== 'string' || !nodeId) return false;
 
       let position = { x: 0.5, y: 0.5 };
       const canvas = canvasRef.current;
@@ -148,7 +152,7 @@ export default function Canvas({
         };
       }
 
-      onDrop?.(nodeId, position);
+      return onDrop?.(nodeId, position);
     },
     [onDrop],
   );
@@ -157,6 +161,7 @@ export default function Canvas({
     id: 'sociogram-canvas',
     accepts: ['UNPOSITIONED_NODE'],
     announcedName: 'Placement area',
+    dropFeedback: 'drop-node' satisfies DropSound,
     onDrop: handleDrop,
     focusBehaviorOnDrop: 'follow-item',
     disabled,

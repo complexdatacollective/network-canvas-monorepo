@@ -182,8 +182,10 @@ const arrayFieldVariants = cva({
   ],
 });
 
+// A row takes focus only when a host sends it there (see `getId`), and then
+// it shows that it has it however the researcher arrived.
 const itemVariants = cva({
-  base: 'w-full rounded select-none',
+  base: 'focus:focus-styles w-full rounded outline-(--focus-color) select-none',
 });
 
 /**
@@ -371,6 +373,9 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
    * @example
    * // For items without IDs (all get internal IDs)
    * // Simply omit this prop
+   *
+   * An id it returns is also written on the item's element as
+   * `data-item-id`, so a host can find the row an item is drawn in.
    */
   getId?: (item: T) => string | undefined;
 
@@ -556,6 +561,8 @@ export function ArrayFieldDragHandle({
 
 type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   item: WithItemProperties<T>;
+  /** The item's own id, from `getId`. */
+  itemId: string | undefined;
   index: number;
   committedIndex?: number;
   itemCount: number;
@@ -599,6 +606,7 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
 function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
   {
     item,
+    itemId,
     index,
     committedIndex,
     itemCount,
@@ -680,6 +688,7 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
       noContainer
       series="accent"
       ref={itemRefs}
+      data-item-id={itemId}
       style={{ borderRadius: itemRadius }}
       // Motion 14.6 makes every Reorder.Item a tab stop for its own
       // grab-and-move keys. Items reorder through their drag handle, so the
@@ -1275,6 +1284,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
                 <ArrayFieldItemWrapper
                   key={item._internalId}
                   item={item}
+                  itemId={getId?.(item)}
                   index={index}
                   committedIndex={committedIndex}
                   itemCount={items.length}

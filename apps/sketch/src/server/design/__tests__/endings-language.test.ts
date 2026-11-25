@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { friendshipDesign } from '../__fixtures__/example.ts';
 import { preflight } from '../build.ts';
+import { sketchStageId } from '../objectIds.ts';
 import type { StudyDesign } from '../schema.ts';
 import { NOW, parseDesign } from './helpers.ts';
 
@@ -66,20 +67,23 @@ describe('endings', () => {
     const stages = stagesOf(result.protocol);
     const finishes = stages.filter((s) => s.type === 'FinishSession');
     expect(finishes.map((s) => [s.id, s.outcome, s.mode])).toEqual([
-      ['finish', 'completed', 'confirmation'],
-      ['consent_declined', 'ineligible', 'automatic'],
-      ['ending_not_in_halls', 'ineligible', 'automatic'],
+      [sketchStageId('finish'), 'completed', 'confirmation'],
+      [sketchStageId('consent_declined'), 'ineligible', 'automatic'],
+      [sketchStageId('ending_not_in_halls'), 'ineligible', 'automatic'],
     ]);
     expect(stages.slice(-3).every((s) => s.type === 'FinishSession')).toBe(
       true,
     );
-    const generator = stages.find((s) => s.id === 'name_friends');
+    const generator = stages.find(
+      (s) => s.id === sketchStageId('name_friends'),
+    );
     expect(generator?.skipLogic?.destination).toEqual({
       type: 'stage',
-      stageId: 'ending_not_in_halls',
+      stageId: sketchStageId('ending_not_in_halls'),
     });
     const gate = stages.find(
-      (s) => s.skipLogic?.destination?.stageId === 'consent_declined',
+      (s) =>
+        s.skipLogic?.destination?.stageId === sketchStageId('consent_declined'),
     );
     expect(gate).toBeDefined();
   });
@@ -103,7 +107,9 @@ describe('endings', () => {
     expect(result.issues.map((i) => i.code)).toContain('ENDING_UNUSED');
     expect(result.retry).toBe(true);
     expect(
-      stagesOf(result.protocol).some((s) => s.id === 'ending_orphan'),
+      stagesOf(result.protocol).some(
+        (s) => s.id === sketchStageId('ending_orphan'),
+      ),
     ).toBe(false);
   });
 });
@@ -126,7 +132,9 @@ describe('language', () => {
       defaultLocale: 'es',
       locales: ['es'],
     });
-    const finish = protocol.stages.find((s) => s.id === 'finish');
+    const finish = protocol.stages.find(
+      (s) => s.id === sketchStageId('finish'),
+    );
     expect(finish?.label).toEqual({ es: 'Finalizar entrevista' });
     expect(JSON.stringify(result.protocol)).not.toContain('"en":');
   });

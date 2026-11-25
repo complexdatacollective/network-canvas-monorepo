@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import { testVariableId } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { ComponentTypes } from '../variables/types.ts';
@@ -32,7 +33,7 @@ const baseStage = {
       form: {
         fields: [
           {
-            id: 'field-1',
+            id: 'edge-field-1',
             // `closeness` is an ordinal variable, so its control must be one
             // ordinal can render (thirteenth-wave Finding 3); this fixture
             // previously paired it with a VisualAnalogScale.
@@ -93,13 +94,15 @@ describe('NetworkComposer cross-reference validation', () => {
     'rejects a layoutVariable naming the non-layout variable "%s"',
     (variable) => {
       const result = ProtocolSchemaV9.safeParse(
-        composerProtocol({ ...baseStage, layoutVariable: variable }),
+        withFinishStage(
+          composerProtocol({ ...baseStage, layoutVariable: variable }),
+        ),
       );
       expect(result.success).toBe(false);
       expect(result.error?.issues).toContainEqual(
         expect.objectContaining({
           path: ['stages', 0, 'layoutVariable'],
-          message: `The attribute "${variable}" must be of type layout`,
+          message: `The attribute "${testVariableId(variable)}" must be of type layout`,
         }),
       );
     },
@@ -123,13 +126,15 @@ describe('NetworkComposer cross-reference validation', () => {
     'rejects a convexHullVariable naming the non-categorical variable "%s"',
     (variable) => {
       const result = ProtocolSchemaV9.safeParse(
-        composerProtocol({ ...baseStage, convexHullVariable: variable }),
+        withFinishStage(
+          composerProtocol({ ...baseStage, convexHullVariable: variable }),
+        ),
       );
       expect(result.success).toBe(false);
       expect(result.error?.issues).toContainEqual(
         expect.objectContaining({
           path: ['stages', 0, 'convexHullVariable'],
-          message: `The attribute "${variable}" must be of type categorical`,
+          message: `The attribute "${testVariableId(variable)}" must be of type categorical`,
         }),
       );
     },
@@ -177,7 +182,7 @@ describe('NetworkComposer cross-reference validation', () => {
               form: {
                 fields: [
                   {
-                    id: 'field-1',
+                    id: 'edge-field-1',
                     variable: 'age',
                     component: ComponentTypes.Number,
                     label: localized('x'),
@@ -298,7 +303,7 @@ describe('NetworkComposer stage-effective overlay resolution (seventh-wave Findi
               form: {
                 fields: [
                   {
-                    id: 'field-1',
+                    id: 'edge-field-1',
                     variable: 'edge_event_a',
                     label: localized('edge_event_a'),
                     component: ComponentTypes.DatePicker,
@@ -870,7 +875,7 @@ describe('NetworkComposer stage-field component/variable-type pairing', () => {
                 form: {
                   fields: [
                     {
-                      id: 'field-1',
+                      id: 'edge-field-1',
                       variable: 'duration',
                       label: localized('duration'),
                       component: ComponentTypes.RadioGroup,

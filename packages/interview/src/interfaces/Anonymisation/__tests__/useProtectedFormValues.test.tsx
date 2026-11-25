@@ -18,18 +18,20 @@ import { unlockEncryption } from '../unlockEncryption';
 import { useProtectedFormValues } from '../useProtectedFormValues';
 import {
   createEncryptionStore,
+  AGE_VARIABLE,
   encryptedVariables,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from './encryptionFixtures';
 
-const fields = [{ variable: 'name' }, { variable: 'age' }];
+const fields = [{ variable: NAME_VARIABLE }, { variable: AGE_VARIABLE }];
 
 /** The codebook of a protocol re-imported without the name's encryption. */
 const unmarkedVariables: Record<string, Variable> = {
   ...encryptedVariables,
-  name: { name: 'name', type: 'text', component: 'Text' },
+  [NAME_VARIABLE]: { name: 'name', type: 'text', component: 'Text' },
 };
 
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
@@ -84,7 +86,7 @@ describe('useProtectedFormValues', () => {
   it('hands a form the same values object while the answers are unchanged', async () => {
     const { result, rerender, person, store } = await renderValues();
     const opened = readyValues(result);
-    expect(opened).toEqual({ name: 'Alice', age: 40 });
+    expect(opened).toEqual({ [NAME_VARIABLE]: 'Alice', [AGE_VARIABLE]: 40 });
 
     rerender({ entity: person });
     expect(readyValues(result)).toBe(opened);
@@ -93,7 +95,7 @@ describe('useProtectedFormValues', () => {
       await store.dispatch(
         addNode({
           type: NODE_TYPE,
-          attributeData: { age: 30 },
+          attributeData: { [AGE_VARIABLE]: 30 },
           useEncryption: true,
           currentStep: 0,
         }),
@@ -112,14 +114,14 @@ describe('useProtectedFormValues', () => {
         ...person,
         [entityAttributesProperty]: {
           ...person[entityAttributesProperty],
-          age: 41,
+          [AGE_VARIABLE]: 41,
         },
       },
     });
 
     const changed = readyValues(result);
     expect(changed).not.toBe(opened);
-    expect(changed).toEqual({ name: 'Alice', age: 41 });
+    expect(changed).toEqual({ [NAME_VARIABLE]: 'Alice', [AGE_VARIABLE]: 41 });
   });
 
   it('is locked, and asks for the passphrase, while the key is not in memory', async () => {
@@ -145,7 +147,7 @@ describe('useProtectedFormValues', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(result.current).toEqual({
       status: 'ready',
-      values: { name: 'Alice', age: 40 },
+      values: { [NAME_VARIABLE]: 'Alice', [AGE_VARIABLE]: 40 },
       unavailable: [],
     });
   });
@@ -162,8 +164,8 @@ describe('useProtectedFormValues', () => {
 
     expect(result.current).toEqual({
       status: 'ready',
-      values: { age: 40 },
-      unavailable: ['name'],
+      values: { [AGE_VARIABLE]: 40 },
+      unavailable: [NAME_VARIABLE],
     });
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
     expect(captureException).toHaveBeenCalledTimes(1);
@@ -177,9 +179,15 @@ describe('useProtectedFormValues', () => {
     const legacy: NcNode = {
       [entityPrimaryKeyProperty]: 'legacy-1',
       type: NODE_TYPE,
-      [entityAttributesProperty]: { name: [9, 8, 7, 6], age: 40 },
+      [entityAttributesProperty]: {
+        [NAME_VARIABLE]: [9, 8, 7, 6],
+        [AGE_VARIABLE]: 40,
+      },
       [entitySecureAttributesMeta]: {
-        name: { iv: Array.from({ length: 12 }, () => 1), salt: [2, 3, 4] },
+        [NAME_VARIABLE]: {
+          iv: Array.from({ length: 12 }, () => 1),
+          salt: [2, 3, 4],
+        },
       },
     };
     const store = createEncryptionStore([legacy]);
@@ -193,8 +201,8 @@ describe('useProtectedFormValues', () => {
 
     expect(result.current).toEqual({
       status: 'ready',
-      values: { age: 40 },
-      unavailable: ['name'],
+      values: { [AGE_VARIABLE]: 40 },
+      unavailable: [NAME_VARIABLE],
     });
     expect(captureException.mock.calls.map(([, props]) => props)).toEqual([
       { feature: 'encrypted-attributes', reason: 'legacy-format' },

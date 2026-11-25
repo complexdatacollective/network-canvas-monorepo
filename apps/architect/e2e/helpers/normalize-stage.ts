@@ -2,10 +2,11 @@ import { format } from 'oxfmt';
 
 // Replace generated ids with stable, position-based placeholders so a stage
 // read back via `readStageJson` (Task 3) can be snapshotted deterministically
-// across runs. Ids the app generates at runtime are real `uuid` v4 strings
-// (`import { v4 as uuid } from 'uuid'` — ducks/modules/protocol/codebook.ts
-// for variable/type ids, fresco-ui's `ArrayField` for prompt/field array item
-// ids), so a plain UUID-shaped regex genuinely covers them.
+// across runs. Ids the app generates at runtime are real UUIDs
+// (`createVariableId` / `createEntityTypeId` for variable and type ids,
+// fresco-ui's `ArrayField` for prompt/field array item ids), and so are the
+// codebook ids of every seeded fixture, so a plain UUID-shaped regex genuinely
+// covers them.
 //
 // Every key literally named `id` is *also* remapped unconditionally (not just
 // when its value happens to be UUID-shaped): a freshly-created stage's own

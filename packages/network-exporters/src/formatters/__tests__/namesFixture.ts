@@ -13,6 +13,11 @@ import {
   sessionStartTimeProperty,
 } from '@codaco/shared-consts';
 
+import {
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../__tests__/testIds';
 import type { FormattedSession, SessionWithResequencedIDs } from '../../input';
 import type { ExportOptions } from '../../options';
 import { insertEgoIntoSessionNetwork } from '../../session/insertEgoIntoSessionNetworks';
@@ -31,79 +36,103 @@ export const exportOptions = (
 });
 
 /*
- * Record ids stay in `[a-zA-Z0-9._:-]`; every name is what a researcher might
+ * Record ids are UUIDs; every name is what a researcher might
  * type once names are free: other scripts, spaces, punctuation, quotes and
  * commas (which CSV must quote).
  */
 export const namesCodebook = {
   ego: {
     variables: {
-      'ego-name': {
+      [testVariableId('ego-name')]: {
         name: 'Nom (prénom)',
         type: 'text',
       },
-      'ego-answer': {
+      [testVariableId('ego-answer')]: {
         name: 'Réponse oui/non',
         type: 'categorical',
         options: [
-          { label: { en: 'Yes' }, value: 'oui' },
-          { label: { en: 'Maybe' }, value: 'peut être' },
-          { label: { en: 'No' }, value: 'non' },
+          {
+            id: testOptionId('Réponse oui/non/oui'),
+            label: { en: 'Yes' },
+            value: 'oui',
+          },
+          {
+            id: testOptionId('Réponse oui/non/peut être'),
+            label: { en: 'Maybe' },
+            value: 'peut être',
+          },
+          {
+            id: testOptionId('Réponse oui/non/non'),
+            label: { en: 'No' },
+            value: 'non',
+          },
         ],
       },
     },
   },
   node: {
-    person: {
+    [testTypeId('person')]: {
       name: 'Close Friend',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-name': {
+        [testVariableId('p-name')]: {
           name: 'Full name',
           type: 'text',
         },
-        'p-age': {
+        [testVariableId('p-age')]: {
           name: '年齢 (years)',
           type: 'number',
         },
-        'p-pos': {
+        [testVariableId('p-pos')]: {
           name: 'map position',
           type: 'layout',
         },
-        'p-eyes': {
+        [testVariableId('p-eyes')]: {
           name: 'Eye colour, "natural"',
           type: 'categorical',
           options: [
-            { label: { en: 'Light blue' }, value: 'light blue' },
-            { label: { en: 'Brown' }, value: '褐色' },
-            { label: { en: 'Five' }, value: 5 },
+            {
+              id: testOptionId('Eye colour, "natural"/light blue'),
+              label: { en: 'Light blue' },
+              value: 'light blue',
+            },
+            {
+              id: testOptionId('Eye colour, "natural"/褐色'),
+              label: { en: 'Brown' },
+              value: '褐色',
+            },
+            {
+              id: testOptionId('Eye colour, "natural"/5'),
+              label: { en: 'Five' },
+              value: 5,
+            },
           ],
         },
-        'p-rank': {
+        [testVariableId('p-rank')]: {
           name: 'Rank #',
           type: 'ordinal',
           options: [
-            { label: { en: 'Low' }, value: 1 },
-            { label: { en: 'High' }, value: 2 },
+            { id: testOptionId('Rank #/1'), label: { en: 'Low' }, value: 1 },
+            { id: testOptionId('Rank #/2'), label: { en: 'High' }, value: 2 },
           ],
         },
-        'p-close': {
+        [testVariableId('p-close')]: {
           name: 'Is this person close?',
           type: 'boolean',
         },
       },
     },
-    place: {
+    [testTypeId('place')]: {
       name: '場所',
       color: 'node-color-seq-2',
       shape: { default: 'square' },
       variables: {
-        'pl-name': {
+        [testVariableId('pl-name')]: {
           name: 'Full name',
           type: 'text',
         },
-        'pl-note': {
+        [testVariableId('pl-note')]: {
           name: 'Note / remarks',
           type: 'text',
         },
@@ -111,19 +140,27 @@ export const namesCodebook = {
     },
   },
   edge: {
-    knows: {
+    [testTypeId('knows')]: {
       name: 'Knows well',
       color: 'edge-color-seq-1',
       variables: {
-        'k-kind': {
+        [testVariableId('k-kind')]: {
           name: 'Kind of tie',
           type: 'categorical',
           options: [
-            { label: { en: 'Family' }, value: 'family member' },
-            { label: { en: 'Friend' }, value: 'ami' },
+            {
+              id: testOptionId('Kind of tie/family member'),
+              label: { en: 'Family' },
+              value: 'family member',
+            },
+            {
+              id: testOptionId('Kind of tie/ami'),
+              label: { en: 'Friend' },
+              value: 'ami',
+            },
           ],
         },
-        'k-weight': {
+        [testVariableId('k-weight')]: {
           name: 'weight (%)',
           type: 'number',
         },
@@ -136,27 +173,30 @@ export const namesSession = (): FormattedSession => ({
   nodes: [
     {
       [entityPrimaryKeyProperty]: 'node-a',
-      type: 'person',
+      type: testTypeId('person'),
       [entityAttributesProperty]: {
-        'p-name': 'Dee',
-        'p-age': 40,
-        'p-pos': { x: 0.25, y: 0.5 },
-        'p-eyes': ['light blue', 5],
-        'p-rank': 2,
-        'p-close': true,
+        [testVariableId('p-name')]: 'Dee',
+        [testVariableId('p-age')]: 40,
+        [testVariableId('p-pos')]: { x: 0.25, y: 0.5 },
+        [testVariableId('p-eyes')]: ['light blue', 5],
+        [testVariableId('p-rank')]: 2,
+        [testVariableId('p-close')]: true,
       },
     },
     {
       [entityPrimaryKeyProperty]: 'node-b',
-      type: 'person',
-      [entityAttributesProperty]: { 'p-name': 'Carl, "C"', 'p-age': 3.5 },
+      type: testTypeId('person'),
+      [entityAttributesProperty]: {
+        [testVariableId('p-name')]: 'Carl, "C"',
+        [testVariableId('p-age')]: 3.5,
+      },
     },
     {
       [entityPrimaryKeyProperty]: 'node-c',
-      type: 'place',
+      type: testTypeId('place'),
       [entityAttributesProperty]: {
-        'pl-name': 'Home',
-        'pl-note': 'next to the café',
+        [testVariableId('pl-name')]: 'Home',
+        [testVariableId('pl-note')]: 'next to the café',
       },
     },
   ],
@@ -165,18 +205,18 @@ export const namesSession = (): FormattedSession => ({
       [entityPrimaryKeyProperty]: 'edge-a',
       from: 'node-a',
       to: 'node-b',
-      type: 'knows',
+      type: testTypeId('knows'),
       [entityAttributesProperty]: {
-        'k-kind': ['family member'],
-        'k-weight': 2,
+        [testVariableId('k-kind')]: ['family member'],
+        [testVariableId('k-weight')]: 2,
       },
     },
   ],
   ego: {
     [entityPrimaryKeyProperty]: 'ego-1',
     [entityAttributesProperty]: {
-      'ego-name': 'Enzo',
-      'ego-answer': ['peut être'],
+      [testVariableId('ego-name')]: 'Enzo',
+      [testVariableId('ego-answer')]: ['peut être'],
     },
   },
   sessionVariables: {

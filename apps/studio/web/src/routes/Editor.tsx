@@ -54,6 +54,8 @@ import {
 import {
   CurrentProtocolSchema,
   findTimelineStructureProblems,
+  type ProtocolObjectId,
+  withEnclosingObjectIds,
 } from '@codaco/protocol-validation';
 import {
   StageId,
@@ -159,6 +161,8 @@ type DraftValidationIssue =
       message: string;
       /** The draft holds nothing at this path, so the fault is that it is missing. */
       absent: boolean;
+      /** The nearest object holding the path that has an id of its own. */
+      objectId?: ProtocolObjectId;
     }>
   /** The sections could not be put together into one document to check. */
   | Readonly<{ kind: 'unassembled'; path: readonly [] }>;
@@ -1015,7 +1019,7 @@ function EditorWorkspace({
     // screen and draws nothing until that screen has been read, so no field
     // found here belongs to the screen that was open before. The screen's own
     // entry in the outline names it, and is the selected one.
-    focusField(target.fieldNames, () =>
+    focusField(target, () =>
       outlineRef.current
         ?.querySelector<HTMLElement>('[aria-current="page"]')
         ?.focus(),
@@ -1481,16 +1485,20 @@ function useDraftValidation(reading: ProtocolReading): DraftValidation {
       try {
         const protocol = assembleProtocolSections(sections);
         const result = await CurrentProtocolSchema.safeParseAsync(protocol);
-        settle(
-          result.success
-            ? { status: 'valid', issues: [] }
-            : {
-                status: 'invalid',
-                issues: result.error.issues.map((issue) =>
-                  toDraftValidationIssue(issue, protocol),
-                ),
-              },
-        );
+        if (result.success) {
+          settle({ status: 'valid', issues: [] });
+          return;
+        }
+        settle({
+          status: 'invalid',
+          issues: withEnclosingObjectIds(
+            CurrentProtocolSchema,
+            protocol,
+            result.error.issues.map((issue) =>
+              toDraftValidationIssue(issue, protocol),
+            ),
+          ),
+        });
       } catch {
         // Why the sections do not fit together is about the document's
         // structure, which nothing in the editor lets a researcher change; the
@@ -1523,7 +1531,7 @@ function toDraftValidationIssue(
     message: string;
   }>,
   protocol: Record<string, unknown>,
-): DraftValidationIssue {
+): Extract<DraftValidationIssue, { kind: 'schema' }> {
   const path = issue.path.map((segment) =>
     typeof segment === 'symbol' ? String(segment) : segment,
   );
@@ -1630,7 +1638,11 @@ function ProtocolProblems(props: {
       {props.validation.status === 'invalid' && (
         <ul className="m-0 flex list-none flex-col gap-1 p-0">
           {props.validation.issues.map((issue, index) => {
-            const target = locateProblem(issue.path, props.stages);
+            const target = locateProblem(
+              issue.path,
+              props.stages,
+              issue.kind === 'schema' ? issue.objectId : undefined,
+            );
             const location = problemLocation(intl, target, props.stages);
             return (
               <li key={`${issue.path.join('.')}-${index}`}>

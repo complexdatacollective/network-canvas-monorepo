@@ -22,11 +22,15 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
+  type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { createSoundSpy } from '../../../sounds/__tests__/soundSpy';
+import { InteractionSoundsProvider } from '../../../sounds/InteractionSounds';
 import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -102,19 +106,22 @@ beforeEach(() => {
   track.mockClear();
 });
 
-const NODE_TYPE = 'person';
-const STAGE_ID = 'categorical-bin-stage';
-const PROMPT_ID = 'prompt-1';
+const NODE_TYPE = testTypeId('person');
+const NAME_VARIABLE = testVariableId('name');
+const CATEGORY_VARIABLE = testVariableId('category');
+const OTHER_REASON_VARIABLE = testVariableId('otherReason');
+const STAGE_ID = testId('categorical-bin-stage');
+const PROMPT_ID = testId('prompt-1');
 const OTHER_BIN_INDEX = 2;
 
 const person = (
   id: string,
   name: string,
-  attributes: Record<string, unknown> = {},
+  attributes: Record<string, VariableValue> = {},
 ): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   type: NODE_TYPE,
-  [entityAttributesProperty]: { name, ...attributes },
+  [entityAttributesProperty]: { [NAME_VARIABLE]: name, ...attributes },
 });
 
 const codebook: Codebook = {
@@ -124,17 +131,25 @@ const codebook: Codebook = {
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        name: { name: 'name', type: 'text', component: 'Text' },
-        category: {
+        [NAME_VARIABLE]: { name: 'name', type: 'text', component: 'Text' },
+        [CATEGORY_VARIABLE]: {
           name: 'Category',
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: { en: 'Family' }, value: 1 },
-            { label: { en: 'Friend' }, value: 2 },
+            {
+              id: testId('CategoricalBin option 1'),
+              label: { en: 'Family' },
+              value: 1,
+            },
+            {
+              id: testId('CategoricalBin option 2'),
+              label: { en: 'Friend' },
+              value: 2,
+            },
           ],
         },
-        otherReason: {
+        [OTHER_REASON_VARIABLE]: {
           name: 'Other reason',
           type: 'text',
           component: 'Text',
@@ -158,8 +173,8 @@ const buildStage = (mode: Mode): StageProps<'CategoricalBin'>['stage'] => ({
     {
       id: PROMPT_ID,
       text: { en: 'Which category?' },
-      variable: asEntityAttributeReference('category'),
-      otherVariable: asEntityAttributeReference('otherReason'),
+      variable: asEntityAttributeReference(CATEGORY_VARIABLE),
+      otherVariable: asEntityAttributeReference(OTHER_REASON_VARIABLE),
       otherVariablePrompt: { en: 'Which other category?' },
       otherOptionLabel: { en: 'Other' },
     },
@@ -209,7 +224,11 @@ function CaptureDndStore({
   return null;
 }
 
-function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
+function renderStage(
+  mode: Mode,
+  nodes: NcNode[] = defaultNodes(),
+  sounds = createSoundSpy(),
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -217,7 +236,9 @@ function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
       protocol: buildProtocol(mode),
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
+      getDefaultMiddleware({ serializableCheck: false }).concat(
+        sounds.middleware,
+      ),
   });
 
   let dndStore: StoreApi<DndStore> | null = null;
@@ -230,18 +251,20 @@ function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
             <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
               <DialogProvider>
                 <DndStoreProvider>
-                  <CaptureDndStore
-                    onStore={(s) => {
-                      dndStore = s;
-                    }}
-                  />
-                  <CategoricalBin
-                    stage={buildStage(mode)}
-                    getNavigationHelpers={() => ({
-                      moveForward: () => {},
-                      moveBackward: () => {},
-                    })}
-                  />
+                  <InteractionSoundsProvider engine={sounds.engine}>
+                    <CaptureDndStore
+                      onStore={(s) => {
+                        dndStore = s;
+                      }}
+                    />
+                    <CategoricalBin
+                      stage={buildStage(mode)}
+                      getNavigationHelpers={() => ({
+                        moveForward: () => {},
+                        moveBackward: () => {},
+                      })}
+                    />
+                  </InteractionSoundsProvider>
                 </DndStoreProvider>
               </DialogProvider>
             </CurrentStepProvider>
@@ -278,6 +301,22 @@ const announcement = (name: string) =>
   screen.findAllByText(`Choose where ${name} belongs.`);
 
 describe('CategoricalBin in select mode (#1652)', () => {
+  it('plays the drop sound once when a person is placed, and nothing else', async () => {
+    const sounds = createSoundSpy();
+    const { attributesOf } = renderStage('select', undefined, sounds);
+
+    await announcement('Ann');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Place Ann in Family' }),
+    );
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([1]),
+    );
+    await announcement('Ben');
+
+    expect(sounds.play.mock.calls).toEqual([['toggle-on']]);
+  });
+
   it('places the focal person in the tapped bin and moves on to the next', async () => {
     const { attributesOf } = renderStage('select');
 
@@ -292,7 +331,9 @@ describe('CategoricalBin in select mode (#1652)', () => {
       screen.getByRole('button', { name: 'Place Ann in Family' }),
     );
 
-    await waitFor(() => expect(attributesOf('a')?.category).toEqual([1]));
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([1]),
+    );
     await announcement('Ben');
     expect(screen.getByRole('button', { name: 'Ben' })).toHaveAttribute(
       'aria-pressed',
@@ -313,12 +354,13 @@ describe('CategoricalBin in select mode (#1652)', () => {
       screen.getByRole('button', { name: 'Place Ann in Family' }),
     );
     await waitFor(() =>
-      expect(selected.attributesOf('a')?.category).toEqual([1]),
+      expect(selected.attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([1]),
     );
     const selectedNetwork = selected.store.getState().session.network;
     selected.view.unmount();
 
-    const dragged = renderStage('drag');
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, sounds);
     const dropTargetId = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, 0);
     startDragOf(dragged.getDndStore, person('a', 'Ann'));
     await waitFor(() =>
@@ -332,12 +374,38 @@ describe('CategoricalBin in select mode (#1652)', () => {
       dragged.getDndStore().getState().endDrag();
     });
     await waitFor(() =>
-      expect(dragged.attributesOf('a')?.category).toEqual([1]),
+      expect(dragged.attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([1]),
     );
 
     expect(dragged.store.getState().session.network?.nodes).toEqual(
       selectedNetwork?.nodes,
     );
+    // The drop is heard as it lands, through the bin's drop sound, and the
+    // placement it saves adds no second sound.
+    expect(sounds.play.mock.calls).toEqual([['toggle-on']]);
+  });
+
+  it('makes no sound for a drop whose placement is refused', async () => {
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, sounds);
+    const dropTargetId = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, 0);
+    // Someone the session does not have cannot be given an answer.
+    const stranger = person('z', 'Zed');
+    startDragOf(dragged.getDndStore, stranger);
+    await waitFor(() =>
+      expect(
+        dragged.getDndStore().getState().getDropTargetState(dropTargetId)
+          ?.canDrop,
+      ).toBe(true),
+    );
+    await act(async () => {
+      dragged.getDndStore().getState().setActiveDropTarget(dropTargetId);
+      dragged.getDndStore().getState().endDrag();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(dragged.attributesOf('z')).toBeUndefined();
+    expect(sounds.play).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -390,7 +458,9 @@ describe('CategoricalBin in select mode (#1652)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Ann in Friend' }),
     );
-    await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([2]),
+    );
     expect(track).toHaveBeenCalledWith('node_rebinned', {
       node_id: 'a',
       node_type_index: 0,
@@ -413,7 +483,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
         expect(screen.queryByTestId('dialog-cancel')).not.toBeInTheDocument(),
       { timeout: 10_000 },
     );
-    expect(attributesOf('a')?.otherReason).toBeUndefined();
+    expect(attributesOf('a')?.[OTHER_REASON_VARIABLE]).toBeUndefined();
     expect(
       screen.getByRole('button', { name: 'Place Ann in Other' }),
     ).toBeInTheDocument();
@@ -425,9 +495,9 @@ describe('CategoricalBin in select mode (#1652)', () => {
     fireEvent.click(screen.getByTestId('dialog-submit'));
 
     await waitFor(() =>
-      expect(attributesOf('a')?.otherReason).toBe('Neighbour'),
+      expect(attributesOf('a')?.[OTHER_REASON_VARIABLE]).toBe('Neighbour'),
     );
-    expect(attributesOf('a')?.category).toBeUndefined();
+    expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toBeUndefined();
     await announcement('Ben');
   });
 
@@ -456,13 +526,15 @@ describe('CategoricalBin in select mode (#1652)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Cal in Family' }),
     );
-    await waitFor(() => expect(attributesOf('c')?.category).toEqual([1]));
+    await waitFor(() =>
+      expect(attributesOf('c')?.[CATEGORY_VARIABLE]).toEqual([1]),
+    );
     await announcement('Ann');
   });
 
   it('records moving someone placed before the stage was left as a move', async () => {
     const { attributesOf } = renderStage('select', [
-      person('a', 'Ann', { category: [1] }),
+      person('a', 'Ann', { [CATEGORY_VARIABLE]: [1] }),
       person('b', 'Ben'),
     ]);
 
@@ -476,7 +548,9 @@ describe('CategoricalBin in select mode (#1652)', () => {
       screen.getByRole('button', { name: 'Place Ann in Friend' }),
     );
 
-    await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([2]),
+    );
     expect(track).toHaveBeenCalledWith('node_rebinned', {
       node_id: 'a',
       node_type_index: 0,
@@ -492,7 +566,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
 
   it('narrows a person with several answers to the bin tapped', async () => {
     const { attributesOf } = renderStage('select', [
-      person('a', 'Ann', { category: [1, 2] }),
+      person('a', 'Ann', { [CATEGORY_VARIABLE]: [1, 2] }),
       person('b', 'Ben'),
     ]);
 
@@ -506,12 +580,14 @@ describe('CategoricalBin in select mode (#1652)', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Ann in Friend' }),
     );
-    await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([2]),
+    );
   });
 
   it('asks about "other" again when an "other" person taps it, so the answer can be edited', async () => {
     renderStage('select', [
-      person('a', 'Ann', { otherReason: 'Neighbour' }),
+      person('a', 'Ann', { [OTHER_REASON_VARIABLE]: 'Neighbour' }),
       person('b', 'Ben'),
     ]);
 

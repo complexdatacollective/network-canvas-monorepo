@@ -21,6 +21,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
@@ -149,12 +150,12 @@ beforeAll(() => {
   }
 });
 
-const NODE_TYPE = 'person';
-const QUICK_ADD_VAR = 'var-quick-add';
-const LAYOUT_VAR = 'var-layout';
-const NOTES_VAR = 'var-notes';
-const PLACE_VAR = 'var-place';
-const GROUP_VAR = 'var-group';
+const NODE_TYPE = testTypeId('person');
+const QUICK_ADD_VAR = testVariableId('var-quick-add');
+const LAYOUT_VAR = testVariableId('var-layout');
+const NOTES_VAR = testVariableId('var-notes');
+const PLACE_VAR = testVariableId('var-place');
+const GROUP_VAR = testVariableId('var-group');
 const NODE_ID = 'node-a';
 const PASSPHRASE = 'composer passphrase';
 
@@ -188,7 +189,7 @@ const uniqueNameVariables: Record<string, Variable> = {
 };
 
 const stage: StageProps<'NetworkComposer'>['stage'] = {
-  id: 'nc1',
+  id: testId('nc1'),
   type: 'NetworkComposer',
   label: { en: 'Network Composer' },
   subject: { entity: 'node', type: NODE_TYPE },
@@ -197,13 +198,13 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
   nodeForm: {
     fields: [
       {
-        id: 'field-1',
+        id: testId('field-1'),
         variable: asEntityAttributeReference(NOTES_VAR),
         component: 'Text',
         label: { en: 'Notes' },
       },
       {
-        id: 'field-2',
+        id: testId('field-2'),
         variable: asEntityAttributeReference(PLACE_VAR),
         component: 'Text',
         label: { en: 'Place' },
@@ -601,7 +602,13 @@ describe('NetworkComposer validating an encrypted name', () => {
     [GROUP_VAR]: {
       name: 'team',
       type: 'categorical',
-      options: [{ value: 'red', label: { en: 'Team Red' } }],
+      options: [
+        {
+          id: testId('NetworkComposer option 1'),
+          value: 'red',
+          label: { en: 'Team Red' },
+        },
+      ],
     },
   };
   const groupedStage: StageProps<'NetworkComposer'>['stage'] = {
@@ -999,7 +1006,7 @@ describe('NetworkComposer side panel checking an answer against a protected one'
     nodeForm: {
       fields: [
         {
-          id: 'field-1',
+          id: testId('field-1'),
           variable: asEntityAttributeReference(PLACE_VAR),
           component: 'Text',
           label: { en: 'Place' },

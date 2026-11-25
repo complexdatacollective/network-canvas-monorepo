@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { enIntl as intl, readMessage } from '../../testing/i18n.ts';
+import { testId } from '../../testing/testId.ts';
 import {
   exportColumnRefusals,
   type ScopedVariable,
@@ -191,6 +192,8 @@ describe('the rule for an attribute name', () => {
   });
 });
 
+const CLOSE = testId('option/closeness/1');
+
 describe('the attributes of one type as the rule reads them', () => {
   it('carries each attribute with its record id and the parts its columns depend on', () => {
     expect(
@@ -198,7 +201,7 @@ describe('the attributes of one type as the rule reads them', () => {
         'v-a': {
           name: 'closeness',
           type: 'ordinal',
-          options: [{ label: { en: 'Close' }, value: 1 }],
+          options: [{ id: CLOSE, label: { en: 'Close' }, value: 1 }],
         },
         'v-b': { name: 'note', type: 'text' },
       }),
@@ -209,7 +212,7 @@ describe('the attributes of one type as the rule reads them', () => {
           id: 'v-a',
           name: 'closeness',
           type: 'ordinal',
-          options: [{ label: { en: 'Close' }, value: 1 }],
+          options: [{ id: CLOSE, label: { en: 'Close' }, value: 1 }],
         },
         { id: 'v-b', name: 'note', type: 'text' },
       ],

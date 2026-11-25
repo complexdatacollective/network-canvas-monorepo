@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 
 import type { ProtocolBuilderTag } from '@codaco/protocol-builder-core/contract';
 import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
+import { createEntityTypeId } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
@@ -431,7 +432,7 @@ export function useCreateCodebookEntity(): (
       if (stagedCodebook !== undefined) {
         return stageCodebookChange(
           stagedCodebook,
-          sectionId({ kind, typeId: uuid() }),
+          sectionId({ kind, typeId: createEntityTypeId() }),
           () => document,
           {},
         );

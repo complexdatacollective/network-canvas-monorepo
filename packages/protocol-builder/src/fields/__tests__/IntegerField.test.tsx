@@ -5,7 +5,15 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import AlterLimitsSection from '../../sections/alter-limits/AlterLimitsSection.tsx';
 import { nameGeneratorWording } from '../../sections/name-generator-wording/nameGeneratorWording.tsx';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId } from '../../testing/testId.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
 const en = (text: string) => ({ 'en-US': text });
@@ -19,15 +27,22 @@ const Wording = nameGeneratorWording('NameGenerator');
 
 const unlimitedStage = {
   stage: {
+    id: testId('integer-field-stage'),
     type: 'NameGenerator' as const,
     fields: {
       label: en('Name Generator'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
       form: {
         title: en('Add a person'),
-        fields: [{ id: 'field-1', variable: 'name', prompt: en('Name?') }],
+        fields: [
+          {
+            id: testId('field-1'),
+            variable: NAME,
+            prompt: en('Name?'),
+          },
+        ],
       },
-      prompts: [{ id: 'prompt-a', text: en('Who do you know?') }],
+      prompts: [{ id: testId('prompt-a'), text: en('Who do you know?') }],
     },
   },
   // The messages section is what seeds a maximum's notice once the researcher
@@ -122,6 +137,7 @@ describe('a control that counts people', () => {
   it('does not delete a saved maximum that has been part-typed over', async () => {
     const harness = renderStageEditor({
       stage: {
+        id: testId('integer-field-stage'),
         type: 'NameGenerator' as const,
         fields: {
           ...unlimitedStage.stage.fields,

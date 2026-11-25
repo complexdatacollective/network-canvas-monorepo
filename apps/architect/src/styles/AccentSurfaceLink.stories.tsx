@@ -3,7 +3,10 @@ import type { CSSProperties } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import { contrastRatio } from '@codaco/fresco-ui/storybook-support/colorContrast';
 
 const AA_NORMAL_TEXT = 4.5;
@@ -28,16 +31,36 @@ export const LinkOnAccentSurface: Story = {
     <>
       <div style={{ '--link': AUTHOR_LINK } as CSSProperties}>
         <Surface noContainer data-testid="author-default">
-          <RenderMarkdown render={<div />}>{PROSE}</RenderMarkdown>
+          <RenderMarkdown
+            allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+            render={<div />}
+          >
+            {PROSE}
+          </RenderMarkdown>
         </Surface>
       </div>
       <Surface series="accent" noContainer data-testid="accent">
-        <RenderMarkdown render={<div />}>{PROSE}</RenderMarkdown>
+        <RenderMarkdown
+          allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+          render={<div />}
+        >
+          {PROSE}
+        </RenderMarkdown>
         <Surface series="accent" noContainer data-testid="accent-nested">
-          <RenderMarkdown render={<div />}>{PROSE}</RenderMarkdown>
+          <RenderMarkdown
+            allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+            render={<div />}
+          >
+            {PROSE}
+          </RenderMarkdown>
         </Surface>
         <Surface series="default" noContainer data-testid="nested-default">
-          <RenderMarkdown render={<div />}>{PROSE}</RenderMarkdown>
+          <RenderMarkdown
+            allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+            render={<div />}
+          >
+            {PROSE}
+          </RenderMarkdown>
         </Surface>
       </Surface>
     </>

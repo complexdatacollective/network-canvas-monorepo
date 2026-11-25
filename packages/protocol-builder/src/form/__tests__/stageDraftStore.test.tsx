@@ -3,6 +3,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import SubjectSection from '../../sections/subject-picker/SubjectSection.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   useStageDraftStore,
@@ -67,7 +68,7 @@ describe('the stage draft a host follows', () => {
 
     await waitFor(() => expect(seen.draft?.editing).toBe(true));
     expect(seen.draft?.stage).toMatchObject({
-      id: 'name-generator-quick-add-1',
+      id: fixtureStageId('name-generator-quick-add-1'),
       type: 'NameGeneratorQuickAdd',
     });
     expect(seen.draft?.unsaved).toBe(false);

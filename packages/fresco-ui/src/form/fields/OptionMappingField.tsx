@@ -16,6 +16,7 @@ import {
 } from '../../styles/controlVariants';
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 
@@ -98,10 +99,15 @@ export default function OptionMappingField<T extends OptionMappingOption>(
   const current = Array.isArray(value) ? value : [];
   const headingId = useId();
 
+  const { onOptionToggle } = useFormFeedback();
+
+  // Base UI calls this only for the person's own choice in a row.
   const handleRowChange = (rowId: string, next: unknown) => {
     if (readOnly) return;
     const option = options.find((candidate) => candidate.value === next);
-    if (option !== undefined) onRowChange?.(rowId, option.value);
+    if (option === undefined) return;
+    onRowChange?.(rowId, option.value);
+    onOptionToggle(true);
   };
 
   return (

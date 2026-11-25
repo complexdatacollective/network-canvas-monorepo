@@ -136,7 +136,8 @@ export default function PresetSwitcher({
         getNetworkNodes,
         (codebook, subjectType, nodes) => {
           const edges = (currentPreset?.edges?.display ?? []).map(
-            ({ type, label }) => ({
+            ({ id, type, label }) => ({
+              id,
               label,
               color: codebook?.edge?.[type]?.color ?? 'edge-color-seq-1',
             }),
@@ -294,7 +295,7 @@ export default function PresetSwitcher({
                       const radioId = `highlight-radio-${index}`;
                       return (
                         <RadioItem
-                          key={index}
+                          key={highlight.id}
                           id={radioId}
                           value={String(index)}
                           label={resolve(highlight.label).text}
@@ -313,9 +314,9 @@ export default function PresetSwitcher({
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">
-                    {edges.map((edge, index) => (
+                    {edges.map((edge) => (
                       <div
-                        key={index}
+                        key={edge.id}
                         className="flex items-center gap-4 text-base"
                       >
                         <EdgeSwatch color={edge.color} />
@@ -334,9 +335,9 @@ export default function PresetSwitcher({
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">
-                    {groupLegend.map((entry, index) => (
+                    {groupLegend.map((entry) => (
                       <div
-                        key={index}
+                        key={entry.colorIndex}
                         className="flex items-center gap-4 text-base"
                       >
                         <span

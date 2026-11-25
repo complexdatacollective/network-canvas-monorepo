@@ -84,13 +84,14 @@ vi.mock('../../../resources/client.tsx', async (importOriginal) => {
 const openEditor = (
   changes: Readonly<Record<string, unknown>> = {},
 ): StageEditorHarness => {
-  const { type, fields } = loadFixtureStage('geospatial-1');
+  const { id, type, fields } = loadFixtureStage('geospatial-1');
   const options =
     typeof fields.mapOptions === 'object' && fields.mapOptions !== null
       ? fields.mapOptions
       : {};
   return renderStageEditor({
     stage: {
+      id,
       type,
       fields: { ...fields, mapOptions: { ...options, ...changes } },
     },

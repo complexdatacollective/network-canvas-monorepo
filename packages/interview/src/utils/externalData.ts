@@ -15,7 +15,8 @@ import {
 import { asOptionName } from './optionName';
 
 /**
- * Attribute and variable keys here are researcher-chosen text, so they are read
+ * Attribute keys here can be the headings of a data file, which are anyone's
+ * text, so they are read
  * as own properties only, and never as lodash paths: a key containing a dot or
  * a bracket is a key, not a path, and `constructor` or `__proto__` must not
  * resolve to anything on `Object.prototype`.

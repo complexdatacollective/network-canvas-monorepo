@@ -17,6 +17,7 @@ import Node, {
 } from '@codaco/fresco-ui/Node';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import {
+  createEntityTypeId,
   type ColorReference,
   EdgeColorSequence,
   NodeColorSequence as NodeColorReferences,
@@ -562,7 +563,7 @@ function EntityTypeCodebookControls({
               openSession({
                 key: uuid(),
                 entity: entityType,
-                typeId: uuid(),
+                typeId: createEntityTypeId(),
                 mode: 'create',
               })
             }

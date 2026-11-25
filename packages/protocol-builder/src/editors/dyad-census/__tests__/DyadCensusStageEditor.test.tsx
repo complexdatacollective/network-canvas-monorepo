@@ -4,13 +4,20 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureStageId,
+  fixtureTypeId,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { dyadCensusStageEditor } from '../DyadCensusStageEditor.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
 
 /**
  * The editor as a host reaches it: through its own registry entry, so every
@@ -23,7 +30,9 @@ const mountFixture = () =>
   });
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
-const DYAD_CENSUS_INDEX = fixtureStageIds().indexOf('dyad-census-1');
+const DYAD_CENSUS_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('dyad-census-1'),
+);
 
 const createFixture = () => ({
   create: { type: 'DyadCensus' as const, position: DYAD_CENSUS_INDEX },
@@ -137,7 +146,7 @@ describe('the dyad census editor', () => {
     const request = await harness.submit();
     const saved = prompts(request?.stageDocument ?? {})[0];
     expect(saved?.createEdge).toEqual(expect.any(String));
-    expect(saved?.createEdge).not.toBe('knows');
+    expect(saved?.createEdge).not.toBe(KNOWS);
     // The edge type the prompt names is the one the save created.
     expect(worksWith()?.[0]).toBe(saved?.createEdge);
   });
@@ -194,13 +203,13 @@ describe('creating a dyad census stage', () => {
     expect(request?.stageDocument).toMatchObject({
       type: 'DyadCensus',
       label: { 'en-US': 'Person Dyad Census' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: PERSON },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         text: { 'en-US': 'Do they know?' },
-        createEdge: 'knows',
+        createEdge: KNOWS,
       },
     ]);
   });

@@ -2,8 +2,9 @@
  * Reading and writing an object's OWN property by a key that came from the
  * protocol, such as a codebook attribute id.
  *
- * An attribute id may legally be `__proto__` (`CodebookIdSchema` admits it).
- * On a plain object, assigning that key calls the inherited setter, which
+ * A codebook variable id is a UUID, but an entity's attributes can hold other
+ * keys: a roster column that matches no variable keeps its heading as its
+ * key, and a heading may be `__proto__`. On a plain object, assigning that key calls the inherited setter, which
  * changes the object's prototype and records nothing, and reading it while
  * the object has no such own property returns `Object.prototype` rather than
  * `undefined`. Define and read the property as the object's own instead.

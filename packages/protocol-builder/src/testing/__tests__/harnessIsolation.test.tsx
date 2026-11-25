@@ -4,6 +4,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
+import { fixtureStageId } from '../protocolFixture.ts';
 import { renderStageEditor } from '../renderStageEditor.tsx';
 
 /**
@@ -109,7 +110,11 @@ describe('two harnesses mounted in one test', () => {
       sections: <></>,
     });
 
-    expect((await second.submit())?.stageDocument.id).toBe('ego-form-1');
-    expect((await first.submit())?.stageDocument.id).toBe('information-1');
+    expect((await second.submit())?.stageDocument.id).toBe(
+      fixtureStageId('ego-form-1'),
+    );
+    expect((await first.submit())?.stageDocument.id).toBe(
+      fixtureStageId('information-1'),
+    );
   });
 });

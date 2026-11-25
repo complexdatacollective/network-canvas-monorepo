@@ -4,6 +4,11 @@ import { dateWithinPickerRange } from '@codaco/shared-consts';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import {
+  testId,
+  testVariableId,
+  withTestCodebookIds,
+} from '../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import { findValidationContradictions } from '../variables/validation-contradictions.ts';
@@ -12,6 +17,16 @@ import {
   VariableSchema,
   VariablesSchema,
 } from '../variables/variable.ts';
+
+// A variables record written with readable keys, keyed and referring by
+// `testVariableId` of each.
+const withVariableIds = (variables: Record<string, unknown>) =>
+  withTestCodebookIds({ codebook: { ego: { variables } } }).codebook.ego
+    .variables;
+const parseVariables = (variables: Record<string, unknown>) =>
+  VariablesSchema.safeParse(withVariableIds(variables));
+const parseEgoVariables = (variables: Record<string, unknown>) =>
+  EgoVariablesSchema.safeParse(withVariableIds(variables));
 
 describe('findValidationContradictions — local checks', () => {
   it('reports minLength > maxLength, stripping both members', () => {
@@ -45,8 +60,16 @@ describe('findValidationContradictions — local checks', () => {
         name: 'colors',
         type: 'categorical',
         options: [
-          { label: localized('Red'), value: 'red' },
-          { label: localized('Blue'), value: 'blue' },
+          {
+            id: testId('validation-contradictions-option-1'),
+            label: localized('Red'),
+            value: 'red',
+          },
+          {
+            id: testId('validation-contradictions-option-2'),
+            label: localized('Blue'),
+            value: 'blue',
+          },
         ],
         validation: { minSelected: 4, maxSelected: 1 },
       },
@@ -64,8 +87,16 @@ describe('findValidationContradictions — local checks', () => {
         name: 'colors',
         type: 'categorical',
         options: [
-          { label: localized('Red'), value: 'red' },
-          { label: localized('Blue'), value: 'blue' },
+          {
+            id: testId('validation-contradictions-option-3'),
+            label: localized('Red'),
+            value: 'red',
+          },
+          {
+            id: testId('validation-contradictions-option-4'),
+            label: localized('Blue'),
+            value: 'blue',
+          },
         ],
         validation: { minSelected: 3 },
       },
@@ -133,9 +164,21 @@ describe('findValidationContradictions — local checks', () => {
         name: 'colors',
         type: 'categorical',
         options: [
-          { label: localized('Red'), value: 'x' },
-          { label: localized('Red (again)'), value: 'x' },
-          { label: localized('Blue'), value: 'y' },
+          {
+            id: testId('validation-contradictions-option-5'),
+            label: localized('Red'),
+            value: 'x',
+          },
+          {
+            id: testId('validation-contradictions-option-6'),
+            label: localized('Red (again)'),
+            value: 'x',
+          },
+          {
+            id: testId('validation-contradictions-option-7'),
+            label: localized('Blue'),
+            value: 'y',
+          },
         ],
         validation: { minSelected: 3 },
       },
@@ -157,9 +200,21 @@ describe('findValidationContradictions — local checks', () => {
           name: 'colors',
           type: 'categorical',
           options: [
-            { label: localized('Red'), value: 'x' },
-            { label: localized('Red (again)'), value: 'x' },
-            { label: localized('Blue'), value: 'y' },
+            {
+              id: testId('validation-contradictions-option-8'),
+              label: localized('Red'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-9'),
+              label: localized('Red (again)'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-10'),
+              label: localized('Blue'),
+              value: 'y',
+            },
           ],
           validation: { minSelected: 2 },
         },
@@ -179,8 +234,16 @@ describe('findValidationContradictions — local checks', () => {
           name: 'colors',
           type: 'categorical',
           options: [
-            { label: localized('Red'), value: 'red' },
-            { label: localized('Blue'), value: 'blue' },
+            {
+              id: testId('validation-contradictions-option-11'),
+              label: localized('Red'),
+              value: 'red',
+            },
+            {
+              id: testId('validation-contradictions-option-12'),
+              label: localized('Blue'),
+              value: 'blue',
+            },
           ],
           validation: { minSelected: 2, maxSelected: 2 },
         },
@@ -2461,7 +2524,7 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
   });
 
   it('rejects the record schema for the pinned anchorless differentFrom pair', () => {
-    const result = VariablesSchema.safeParse({
+    const result = parseVariables({
       a: {
         name: 'a',
         type: 'datetime',
@@ -2482,7 +2545,11 @@ describe('findValidationContradictions — fourteenth-wave Finding 1: anchorless
       const issue = result.error.issues.find((candidate) =>
         candidate.message.includes('pin both to the same value'),
       );
-      expect(issue?.path).toEqual(['a', 'validation', 'differentFrom']);
+      expect(issue?.path).toEqual([
+        testVariableId('a'),
+        'validation',
+        'differentFrom',
+      ]);
     }
   });
 });
@@ -2736,7 +2803,7 @@ describe('findValidationContradictions — fifteenth-wave Finding 1: equality gr
 
 describe('record schema conformance — contradiction refinement', () => {
   it('rejects a node variables record with inverted bounds, anchored at the offending rule', () => {
-    const result = VariablesSchema.safeParse({
+    const result = parseVariables({
       a: {
         name: 'age',
         type: 'number',
@@ -2751,12 +2818,16 @@ describe('record schema conformance — contradiction refinement', () => {
           'minValue (10) is greater than maxValue (2)',
         ),
       );
-      expect(issue?.path).toEqual(['a', 'validation', 'minValue']);
+      expect(issue?.path).toEqual([
+        testVariableId('a'),
+        'validation',
+        'minValue',
+      ]);
     }
   });
 
   it('rejects an ego variables record with a strict comparator cycle', () => {
-    const result = EgoVariablesSchema.safeParse({
+    const result = parseEgoVariables({
       a: {
         name: 'start',
         type: 'number',
@@ -2772,7 +2843,7 @@ describe('record schema conformance — contradiction refinement', () => {
     });
     expect(parseIssues(result)).toEqual([
       {
-        path: 'a.validation.greaterThanVariable',
+        path: `${testVariableId('a')}.validation.greaterThanVariable`,
         code: 'custom',
         message:
           'Attributes "start", "end" form an impossible comparison cycle',
@@ -2781,7 +2852,7 @@ describe('record schema conformance — contradiction refinement', () => {
   });
 
   it('accepts the same constraint stated from both sides', () => {
-    const result = VariablesSchema.safeParse({
+    const result = parseVariables({
       a: {
         name: 'start',
         type: 'number',
@@ -2808,7 +2879,7 @@ describe('record schema conformance — contradiction refinement', () => {
   // composer overlay (exercised end-to-end in the twenty-first-wave protocol
   // block below); the record schema must ACCEPT this shape.
   it('accepts a node variables record whose boolean differentFrom parity would only be unsatisfiable under codebook-declared renderings', () => {
-    const result = VariablesSchema.safeParse({
+    const result = parseVariables({
       a: {
         name: 'a',
         type: 'boolean',
@@ -2846,7 +2917,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
     ).toBe(true);
     expect(
       parseIssues(
-        VariablesSchema.safeParse({
+        parseVariables({
           first_name: {
             name: 'first_name',
             type: 'text',
@@ -2857,7 +2928,7 @@ describe('R1 — absolute floors on count-valued rules', () => {
       ),
     ).toEqual([
       {
-        path: 'first_name.validation.maxLength',
+        path: `${testVariableId('first_name')}.validation.maxLength`,
         code: 'custom',
         message:
           'Attribute "first_name": required answers cannot satisfy maxLength (0)',
@@ -2881,8 +2952,16 @@ describe('R1 — absolute floors on count-valued rules', () => {
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
-        { label: localized('Red'), value: 'red' },
-        { label: localized('Blue'), value: 'blue' },
+        {
+          id: testId('validation-contradictions-option-13'),
+          label: localized('Red'),
+          value: 'red',
+        },
+        {
+          id: testId('validation-contradictions-option-14'),
+          label: localized('Blue'),
+          value: 'blue',
+        },
       ],
       validation,
     });
@@ -2891,13 +2970,13 @@ describe('R1 — absolute floors on count-valued rules', () => {
     ).toBe(true);
     expect(
       parseIssues(
-        VariablesSchema.safeParse({
+        parseVariables({
           colors: categorical({ required: true, maxSelected: 0 }),
         }),
       ),
     ).toEqual([
       {
-        path: 'colors.validation.maxSelected',
+        path: `${testVariableId('colors')}.validation.maxSelected`,
         code: 'custom',
         message:
           'Attribute "colors": required answers cannot satisfy maxSelected (0)',
@@ -3763,7 +3842,13 @@ describe('findValidationContradictions — twenty-first-wave Finding 2: coarse p
     ) => ({
       name,
       type: 'categorical',
-      options: [{ label: localized('X'), value: 'x' }],
+      options: [
+        {
+          id: testId('validation-contradictions-option-15'),
+          label: localized('X'),
+          value: 'x',
+        },
+      ],
       // Stray fields a prior schema revision or hand-edited fixture could
       // still carry; a categorical variable never reads these.
       component: 'DatePicker',
@@ -4533,7 +4618,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
   });
 
   it('anchors the schema issue at the first stripped comparator', () => {
-    const result = VariablesSchema.safeParse({
+    const result = parseVariables({
       a: {
         name: 'a',
         type: 'number',
@@ -4552,7 +4637,7 @@ describe('findValidationContradictions — twenty-first-wave Finding 3: bounds p
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual([
-      'b',
+      testVariableId('b'),
       'validation',
       'greaterThanVariable',
     ]);
@@ -5373,22 +5458,42 @@ describe('findValidationContradictions — Twenty-fourth-wave Finding 1: sameAs 
       a: {
         name: 'a',
         type: 'categorical',
-        options: [{ label: localized('X'), value: 'x' }],
+        options: [
+          {
+            id: testId('validation-contradictions-option-16'),
+            label: localized('X'),
+            value: 'x',
+          },
+        ],
         validation: { sameAs: 'c' },
       },
       c: {
         name: 'c',
         type: 'categorical',
         options: [
-          { label: localized('X'), value: 'x' },
-          { label: localized('Y'), value: 'y' },
+          {
+            id: testId('validation-contradictions-option-17'),
+            label: localized('X'),
+            value: 'x',
+          },
+          {
+            id: testId('validation-contradictions-option-18'),
+            label: localized('Y'),
+            value: 'y',
+          },
         ],
         validation: { differentFrom: 'd' },
       },
       d: {
         name: 'd',
         type: 'categorical',
-        options: [{ label: localized('X'), value: 'x' }],
+        options: [
+          {
+            id: testId('validation-contradictions-option-19'),
+            label: localized('X'),
+            value: 'x',
+          },
+        ],
       },
     });
     expect(result).toHaveLength(1);
@@ -6468,22 +6573,44 @@ describe('findValidationContradictions — Twenty-seventh-wave Finding 1: sameAs
         name: 'a',
         type: 'ordinal',
         options: [
-          { label: localized('One'), value: 1 },
-          { label: localized('Two'), value: 2 },
+          {
+            id: testId('validation-contradictions-option-20'),
+            label: localized('One'),
+            value: 1,
+          },
+          {
+            id: testId('validation-contradictions-option-21'),
+            label: localized('Two'),
+            value: 2,
+          },
         ],
         validation: { sameAs: 'e', differentFrom: 'd' },
       },
       d: {
         name: 'd',
         type: 'ordinal',
-        options: [{ label: localized('Two'), value: 2 }],
+        options: [
+          {
+            id: testId('validation-contradictions-option-22'),
+            label: localized('Two'),
+            value: 2,
+          },
+        ],
       },
       e: {
         name: 'e',
         type: 'ordinal',
         options: [
-          { label: localized('Two'), value: 2 },
-          { label: localized('Three'), value: 3 },
+          {
+            id: testId('validation-contradictions-option-23'),
+            label: localized('Two'),
+            value: 2,
+          },
+          {
+            id: testId('validation-contradictions-option-24'),
+            label: localized('Three'),
+            value: 3,
+          },
         ],
       },
     });
@@ -7585,8 +7712,16 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
           name: 'x',
           type: 'categorical',
           options: [
-            { label: localized('X'), value: 'x' },
-            { label: localized('Y'), value: 'y' },
+            {
+              id: testId('validation-contradictions-option-25'),
+              label: localized('X'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-26'),
+              label: localized('Y'),
+              value: 'y',
+            },
           ],
           validation: { differentFrom: 'y' },
         },
@@ -7594,8 +7729,16 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
           name: 'y',
           type: 'categorical',
           options: [
-            { label: localized('X'), value: 'x' },
-            { label: localized('Y'), value: 'y' },
+            {
+              id: testId('validation-contradictions-option-27'),
+              label: localized('X'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-28'),
+              label: localized('Y'),
+              value: 'y',
+            },
           ],
           validation: { differentFrom: 'z' },
         },
@@ -7603,8 +7746,16 @@ describe('findValidationContradictions — Thirtieth wave Fix 3: two-valued ordi
           name: 'z',
           type: 'categorical',
           options: [
-            { label: localized('X'), value: 'x' },
-            { label: localized('Y'), value: 'y' },
+            {
+              id: testId('validation-contradictions-option-29'),
+              label: localized('X'),
+              value: 'x',
+            },
+            {
+              id: testId('validation-contradictions-option-30'),
+              label: localized('Y'),
+              value: 'y',
+            },
           ],
           validation: { differentFrom: 'x' },
         },
@@ -8832,9 +8983,7 @@ describe("findValidationContradictions — Thirty-third wave: scalar chains resp
   // reviewer's chain at parse time, before any stage exists — the
   // single-legal-control proof is exactly what licenses judging it there.
   it('rejects the chain at the VariablesSchema layer', () => {
-    const result = VariablesSchema.safeParse(
-      scalarChainOf(1_002, 'greaterThanVariable'),
-    );
+    const result = parseVariables(scalarChainOf(1_002, 'greaterThanVariable'));
     expect(result.success).toBe(false);
     if (!result.success) {
       const issue = result.error.issues.find((candidate) =>

@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { ToggleFieldSkeleton } from '@codaco/fresco-ui/form/fields/ToggleFieldSkeleton';
 import AnonymousRecruitmentSwitch from '~/components/AnonymousRecruitmentSwitch';
 import FreezeInterviewsSwitch from '~/components/FreezeInterviewsSwitch';
+import InteractionSoundsSwitch from '~/components/InteractionSoundsSwitch';
 import LimitInterviewsSwitch from '~/components/LimitInterviewsSwitch';
 import SettingsCard from '~/components/settings/SettingsCard';
 import SettingsField from '~/components/settings/SettingsField';
@@ -59,6 +60,19 @@ const messages = defineMessages({
       'When enabled, completed interviews will silently reject any further data sync updates. This prevents modifications to submitted data if an interview is re-opened.',
     description:
       'Hint under the freeze completed interviews toggle in Interview Settings. Data sync updates are the automatic saves a browser sends while an interview is open.',
+  },
+  playSoundsDuringInterviews: {
+    id: 'fresco.settings.InterviewSettingsSection.playSoundsDuringInterviews',
+    defaultMessage: 'Play Sounds During Interviews',
+    description:
+      "Label of the toggle in Interview Settings that controls whether participants' devices play short sounds while they take an interview. Off by default. Also the toggle's accessible name. English uses title case for these labels; follow the usual capitalisation of your language.",
+  },
+  ifThisOptionIsEnabledShortSoundsPlay: {
+    id: 'fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledShortSoundsPlay',
+    defaultMessage:
+      'If this option is enabled, short sounds play when participants change their network, choose an answer, move between stages or try to submit a form that has errors, and when the interview ends.',
+    description:
+      'Hint under the Play Sounds During Interviews toggle in Interview Settings; lists the moments in an interview when a sound plays. Changing their network means adding, removing, connecting or highlighting the people or other entries in the participant\'s network, sorting them into categories, or placing them on a sociogram. Choosing an answer means selecting an option, ticking or unticking a box, or turning a toggle on or off in a question. Moving between stages means going to the next or previous screen with the Back or Next button. A form has errors when a required answer is missing or an answer is not valid. Interviewer shows the same sentence without "If this option is enabled,"; keep the two translations the same, including the words for "choose an answer".',
   },
   disableSmallScreenWarning: {
     id: 'fresco.settings.InterviewSettingsSection.disableSmallScreenWarning',
@@ -135,6 +149,20 @@ export default async function InterviewSettingsSection() {
           <Suspense fallback={<ToggleFieldSkeleton />}>
             <FreezeInterviewsSwitch
               label={intl.formatMessage(messages.freezeCompletedInterviews)}
+            />
+          </Suspense>
+        }
+      />
+      <SettingsField
+        label={intl.formatMessage(messages.playSoundsDuringInterviews)}
+        testId="interaction-sounds-field"
+        description={intl.formatMessage(
+          messages.ifThisOptionIsEnabledShortSoundsPlay,
+        )}
+        control={
+          <Suspense fallback={<ToggleFieldSkeleton />}>
+            <InteractionSoundsSwitch
+              label={intl.formatMessage(messages.playSoundsDuringInterviews)}
             />
           </Suspense>
         }

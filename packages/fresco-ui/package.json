@@ -60,12 +60,15 @@
     "./pageActivity": "./src/pageActivity.ts",
     "./Pips": "./src/Pips.tsx",
     "./Popover": "./src/Popover.tsx",
+    "./popoverArrow": "./src/popoverArrow.ts",
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./PresentationalText": "./src/PresentationalText.ts",
     "./ProgressBar": "./src/ProgressBar.tsx",
     "./ProgressRing": "./src/ProgressRing.tsx",
     "./reducedMotion": "./src/reducedMotion.ts",
     "./ProtocolCard": "./src/ProtocolCard.tsx",
+    "./linkAddress": "./src/linkAddress.ts",
+    "./markdownTypedHtml": "./src/markdownTypedHtml.ts",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
     "./RichTextRenderer": "./src/RichTextRenderer.tsx",
@@ -109,6 +112,7 @@
     "./dialogs/useDialogSession": "./src/dialogs/useDialogSession.ts",
     "./dialogs/useWizard": "./src/dialogs/useWizard.tsx",
     "./dnd/DndStoreProvider": "./src/dnd/DndStoreProvider.tsx",
+    "./dnd/DragFeedbackListener": "./src/dnd/DragFeedbackListener.tsx",
     "./dnd/dnd": "./src/dnd/dnd.ts",
     "./dnd/types": "./src/dnd/types.ts",
     "./dnd/useAccessibilityAnnouncements": "./src/dnd/useAccessibilityAnnouncements.ts",
@@ -129,6 +133,7 @@
     "./form/FieldNamespace": "./src/form/FieldNamespace.tsx",
     "./form/Form": "./src/form/Form.tsx",
     "./form/FormErrors": "./src/form/FormErrors.tsx",
+    "./form/FormFeedbackListener": "./src/form/FormFeedbackListener.tsx",
     "./form/Hint": "./src/form/Hint.tsx",
     "./form/ResetFormWhenClosed": "./src/form/ResetFormWhenClosed.tsx",
     "./form/SubmitButton": "./src/form/SubmitButton.tsx",
@@ -175,6 +180,7 @@
     "./form/validation/functions": "./src/form/validation/functions.ts",
     "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./form/validation/utils/isUnanswered": "./src/form/validation/utils/isUnanswered.ts",
+    "./hooks/useComboboxTriggerEscape": "./src/hooks/useComboboxTriggerEscape.ts",
     "./hooks/useFitText": "./src/hooks/useFitText.ts",
     "./hooks/useHasHydrated": "./src/hooks/useHasHydrated.ts",
     "./hooks/useNodeInteractions": "./src/hooks/useNodeInteractions.ts",
@@ -222,6 +228,7 @@
     "./utils/cva": "./src/utils/cva.ts",
     "./utils/finalFocus": "./src/utils/finalFocus.ts",
     "./utils/foldText": "./src/utils/foldText.ts",
+    "./utils/fuzzyMatch": "./src/utils/fuzzyMatch.ts",
     "./utils/saveBlob": "./src/utils/saveBlob.ts"
   },
   "publishConfig": {
@@ -402,6 +409,10 @@
         "types": "./dist/Popover.d.ts",
         "default": "./dist/Popover.js"
       },
+      "./popoverArrow": {
+        "types": "./dist/popoverArrow.d.ts",
+        "default": "./dist/popoverArrow.js"
+      },
       "./PortalContainer": {
         "types": "./dist/PortalContainer.d.ts",
         "default": "./dist/PortalContainer.js"
@@ -425,6 +436,14 @@
       "./ProtocolCard": {
         "types": "./dist/ProtocolCard.d.ts",
         "default": "./dist/ProtocolCard.js"
+      },
+      "./linkAddress": {
+        "types": "./dist/linkAddress.d.ts",
+        "default": "./dist/linkAddress.js"
+      },
+      "./markdownTypedHtml": {
+        "types": "./dist/markdownTypedHtml.d.ts",
+        "default": "./dist/markdownTypedHtml.js"
       },
       "./RenderMarkdown": {
         "types": "./dist/RenderMarkdown.d.ts",
@@ -598,6 +617,10 @@
         "types": "./dist/dnd/DndStoreProvider.d.ts",
         "default": "./dist/dnd/DndStoreProvider.js"
       },
+      "./dnd/DragFeedbackListener": {
+        "types": "./dist/dnd/DragFeedbackListener.d.ts",
+        "default": "./dist/dnd/DragFeedbackListener.js"
+      },
       "./dnd/dnd": {
         "types": "./dist/dnd/dnd.d.ts",
         "default": "./dist/dnd/dnd.js"
@@ -677,6 +700,10 @@
       "./form/FormErrors": {
         "types": "./dist/form/FormErrors.d.ts",
         "default": "./dist/form/FormErrors.js"
+      },
+      "./form/FormFeedbackListener": {
+        "types": "./dist/form/FormFeedbackListener.d.ts",
+        "default": "./dist/form/FormFeedbackListener.js"
       },
       "./form/Hint": {
         "types": "./dist/form/Hint.d.ts",
@@ -861,6 +888,10 @@
       "./form/validation/utils/isUnanswered": {
         "types": "./dist/form/validation/utils/isUnanswered.d.ts",
         "default": "./dist/form/validation/utils/isUnanswered.js"
+      },
+      "./hooks/useComboboxTriggerEscape": {
+        "types": "./dist/hooks/useComboboxTriggerEscape.d.ts",
+        "default": "./dist/hooks/useComboboxTriggerEscape.js"
       },
       "./hooks/useFitText": {
         "types": "./dist/hooks/useFitText.d.ts",
@@ -1047,6 +1078,10 @@
         "types": "./dist/utils/foldText.d.ts",
         "default": "./dist/utils/foldText.js"
       },
+      "./utils/fuzzyMatch": {
+        "types": "./dist/utils/fuzzyMatch.d.ts",
+        "default": "./dist/utils/fuzzyMatch.js"
+      },
       "./utils/saveBlob": {
         "types": "./dist/utils/saveBlob.d.ts",
         "default": "./dist/utils/saveBlob.js"
@@ -1092,9 +1127,6 @@
     "react-aria-components": "^1.22.1",
     "react-best-merge-refs": "^1.0.2",
     "react-markdown": "^10.1.0",
-    "rehype-raw": "^7.0.0",
-    "rehype-sanitize": "^6.0.0",
-    "remark-gemoji": "^8.0.0",
     "remark-gfm": "^4.0.1",
     "saxes": "^6.0.0",
     "tailwind-merge": "catalog:",

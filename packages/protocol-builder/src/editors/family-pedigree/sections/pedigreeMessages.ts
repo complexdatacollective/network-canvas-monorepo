@@ -966,7 +966,7 @@ export const familyPedigreeMessages = defineMessages({
   nominationVariableEmpty: {
     id: 'protocolBuilder.pedigree.nominationVariableEmpty',
     defaultMessage:
-      'This type has no boolean attributes yet. Create one to record who the participant selects.',
+      'This type has no Boolean attributes yet. Create one to record who the participant selects.',
     description:
       'Shown in place of the attribute picker’s options when the person node type has no attribute holding true or false.',
   },
@@ -1098,6 +1098,13 @@ export const familyPedigreeMessages = defineMessages({
       'The interface already records this attribute itself, so these fields cannot collect it as well. Choose another attribute, or remove the field.',
     description:
       'Refusal shown when an additional person field collects an attribute already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets.',
+  },
+  personFormReservedReason: {
+    id: 'protocolBuilder.pedigree.personFormReservedReason',
+    defaultMessage:
+      'This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.',
+    description:
+      'Shown under an attribute in the attribute list of an additional person field, when the attribute is already chosen as one of the Family Pedigree’s own person attributes (name, gender identity, sex assigned at birth, participant marker or relationship to the participant) or as the attribute a nomination prompt sets.',
   },
   wordingPlaceholderParentsNote: {
     id: 'protocolBuilder.pedigree.wording.placeholderParentsNote',

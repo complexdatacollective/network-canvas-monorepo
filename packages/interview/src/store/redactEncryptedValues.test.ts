@@ -7,21 +7,26 @@ import {
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../__tests__/testIds';
 import { createEncryptedValueRedaction } from './redactEncryptedValues';
 
+const PERSON = testTypeId('person');
+const NAME = testVariableId('name');
+const AGE = testVariableId('age');
+
 const variables: Record<string, Variable> = {
-  name: {
+  [NAME]: {
     name: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  age: { name: 'age', type: 'number', component: 'Number' },
+  [AGE]: { name: 'age', type: 'number', component: 'Number' },
 };
 
 const redaction = createEncryptedValueRedaction({
   node: {
-    person: {
+    [PERSON]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
@@ -37,7 +42,7 @@ describe('redacting encrypted values for development tools', () => {
       meta: {
         arg: {
           nodeId: 'node-1',
-          attributePatch: { set: { name: 'Alice', age: 40 }, unset: [] },
+          attributePatch: { set: { [NAME]: 'Alice', [AGE]: 40 }, unset: [] },
         },
       },
     };
@@ -47,53 +52,8 @@ describe('redacting encrypted values for development tools', () => {
       meta: {
         arg: {
           nodeId: 'node-1',
-          attributePatch: { set: { name: '[encrypted]', age: 40 }, unset: [] },
-        },
-      },
-    });
-  });
-
-  // A protocol may give an encrypted variable any id, including the one an
-  // entity uses for what it records about its encrypted values.
-  it('hides an encrypted variable whose id is the metadata property name', () => {
-    const named = createEncryptedValueRedaction({
-      node: {
-        person: {
-          name: 'Person',
-          color: 'node-color-seq-1',
-          shape: { default: 'circle' },
-          variables: {
-            [entitySecureAttributesMeta]: {
-              name: entitySecureAttributesMeta,
-              type: 'text',
-              component: 'Text',
-              encrypted: true,
-            },
-          },
-        },
-      },
-    });
-
-    expect(
-      named.action({
-        type: 'NETWORK/UPDATE_NODE/pending',
-        meta: {
-          arg: {
-            nodeId: 'node-1',
-            attributePatch: {
-              set: { [entitySecureAttributesMeta]: 'Alice' },
-              unset: [],
-            },
-          },
-        },
-      }),
-    ).toEqual({
-      type: 'NETWORK/UPDATE_NODE/pending',
-      meta: {
-        arg: {
-          nodeId: 'node-1',
           attributePatch: {
-            set: { [entitySecureAttributesMeta]: '[encrypted]' },
+            set: { [NAME]: '[encrypted]', [AGE]: 40 },
             unset: [],
           },
         },
@@ -102,7 +62,7 @@ describe('redacting encrypted values for development tools', () => {
   });
 
   it('leaves the action it copies as it was', () => {
-    const attributeData = { name: 'Alice', age: 40 };
+    const attributeData = { [NAME]: 'Alice', [AGE]: 40 };
     const action = {
       type: 'NETWORK/ADD_NODE/pending',
       meta: { attributeData },
@@ -111,11 +71,11 @@ describe('redacting encrypted values for development tools', () => {
     redaction.action(action);
 
     expect(action.meta.attributeData).toBe(attributeData);
-    expect(attributeData).toEqual({ name: 'Alice', age: 40 });
+    expect(attributeData).toEqual({ [NAME]: 'Alice', [AGE]: 40 });
   });
 
   it('returns an action holding no encrypted value unchanged, and unfrozen', () => {
-    const action = { type: 'ui/setFormIsReady', payload: { age: 40 } };
+    const action = { type: 'ui/setFormIsReady', payload: { [AGE]: 40 } };
 
     expect(redaction.action(action)).toBe(action);
     expect(Object.isFrozen(action.payload)).toBe(false);
@@ -128,24 +88,24 @@ describe('redacting encrypted values for development tools', () => {
           nodes: [
             {
               [entityPrimaryKeyProperty]: 'node-1',
-              type: 'person',
-              [entityAttributesProperty]: { name: [1, 2, 3], age: 40 },
-              [entitySecureAttributesMeta]: { name: { iv: [4, 5, 6] } },
+              type: PERSON,
+              [entityAttributesProperty]: { [NAME]: [1, 2, 3], [AGE]: 40 },
+              [entitySecureAttributesMeta]: { [NAME]: { iv: [4, 5, 6] } },
             },
             {
               [entityPrimaryKeyProperty]: 'node-2',
-              type: 'person',
-              [entityAttributesProperty]: { name: 'Bob', age: null },
+              type: PERSON,
+              [entityAttributesProperty]: { [NAME]: 'Bob', [AGE]: null },
             },
             {
               [entityPrimaryKeyProperty]: 'node-3',
-              type: 'person',
-              [entityAttributesProperty]: { name: null },
+              type: PERSON,
+              [entityAttributesProperty]: { [NAME]: null },
             },
           ],
         },
       },
-      protocol: { codebook: { node: { person: { variables } } } },
+      protocol: { codebook: { node: { [PERSON]: { variables } } } },
     };
 
     const redacted = redaction.state(state);
@@ -153,25 +113,25 @@ describe('redacting encrypted values for development tools', () => {
     expect(redacted.session.network.nodes).toEqual([
       {
         [entityPrimaryKeyProperty]: 'node-1',
-        type: 'person',
-        [entityAttributesProperty]: { name: '[encrypted]', age: 40 },
-        [entitySecureAttributesMeta]: { name: { iv: [4, 5, 6] } },
+        type: PERSON,
+        [entityAttributesProperty]: { [NAME]: '[encrypted]', [AGE]: 40 },
+        [entitySecureAttributesMeta]: { [NAME]: { iv: [4, 5, 6] } },
       },
       {
         [entityPrimaryKeyProperty]: 'node-2',
-        type: 'person',
-        [entityAttributesProperty]: { name: '[encrypted]', age: null },
+        type: PERSON,
+        [entityAttributesProperty]: { [NAME]: '[encrypted]', [AGE]: null },
       },
       {
         [entityPrimaryKeyProperty]: 'node-3',
-        type: 'person',
-        [entityAttributesProperty]: { name: null },
+        type: PERSON,
+        [entityAttributesProperty]: { [NAME]: null },
       },
     ]);
     expect(redacted.protocol).toBe(state.protocol);
     expect(state.session.network.nodes[1]?.[entityAttributesProperty]).toEqual({
-      name: 'Bob',
-      age: null,
+      [NAME]: 'Bob',
+      [AGE]: null,
     });
   });
 });

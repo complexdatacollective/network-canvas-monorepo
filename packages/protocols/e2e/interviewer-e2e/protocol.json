@@ -9,14 +9,14 @@
   "lastModified": "2026-07-12T00:00:00.000Z",
   "codebook": {
     "node": {
-      "person": {
+      "6c139b87-6a3c-5590-819d-1fe9355f6863": {
         "name": "Person",
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
         },
         "variables": {
-          "name": {
+          "8247c57c-644d-5638-af6a-36765e0925a8": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -24,7 +24,7 @@
               "required": true
             }
           },
-          "close": {
+          "a6f25c5e-6f70-5963-8fdb-0596c5ec864e": {
             "name": "close",
             "type": "boolean",
             "component": "Boolean",
@@ -43,7 +43,7 @@
               }
             ]
           },
-          "layout": {
+          "38c54f1a-e9dd-50d7-926b-b50eefbe7b2b": {
             "name": "layout",
             "type": "layout"
           }
@@ -51,14 +51,14 @@
       }
     },
     "edge": {
-      "knows": {
+      "65c6495c-b0da-58f9-965c-a7ca10ad018e": {
         "name": "Knows",
         "color": "edge-color-seq-1"
       }
     },
     "ego": {
       "variables": {
-        "ego_name": {
+        "24e65450-80d5-5fa3-a557-05ed04e578ba": {
           "name": "ego_name",
           "type": "text",
           "component": "Text",
@@ -71,7 +71,7 @@
   },
   "stages": [
     {
-      "id": "stage-info",
+      "id": "f62aed0d-b6a3-5c12-9864-f28ea9b3cca6",
       "type": "Information",
       "label": {
         "en-US": "Welcome"
@@ -81,7 +81,7 @@
       }
     },
     {
-      "id": "stage-ego",
+      "id": "f11f8918-b324-55c7-80ca-4f473bceb34f",
       "type": "EgoForm",
       "label": {
         "en-US": "About you"
@@ -97,8 +97,8 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "ego_name",
+            "id": "6c796996-4804-5e39-a916-76c2f4b9125f",
+            "variable": "24e65450-80d5-5fa3-a557-05ed04e578ba",
             "prompt": {
               "en-US": "What is your name?"
             }
@@ -107,7 +107,7 @@
       }
     },
     {
-      "id": "stage-ng",
+      "id": "6b2105ff-d414-53ab-9060-71b2228196bb",
       "minNodesNotice": {
         "en-US": "{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}"
       },
@@ -120,16 +120,16 @@
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "6c139b87-6a3c-5590-819d-1fe9355f6863"
       },
-      "quickAdd": "name",
+      "quickAdd": "8247c57c-644d-5638-af6a-36765e0925a8",
       "behaviours": {
         "minNodes": 1,
         "maxNodes": 8
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "e830a268-23c3-547e-9a9a-a8d02e81a06d",
           "text": {
             "en-US": "Who are the people you know?"
           }
@@ -140,14 +140,14 @@
       }
     },
     {
-      "id": "stage-socio",
+      "id": "1710422d-2b59-5d80-8c4d-9b6520529c46",
       "type": "Sociogram",
       "label": {
         "en-US": "Connect people"
       },
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "6c139b87-6a3c-5590-819d-1fe9355f6863"
       },
       "background": {
         "concentricCircles": 4,
@@ -155,22 +155,22 @@
       },
       "prompts": [
         {
-          "id": "p1",
+          "id": "309d8350-43f5-5b9f-b3d5-d98252e52da5",
           "text": {
             "en-US": "Drag to place; link people who know each other."
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "38c54f1a-e9dd-50d7-926b-b50eefbe7b2b"
           },
           "edges": {
-            "create": "knows",
-            "display": ["knows"]
+            "create": "65c6495c-b0da-58f9-965c-a7ca10ad018e",
+            "display": ["65c6495c-b0da-58f9-965c-a7ca10ad018e"]
           }
         }
       ]
     },
     {
-      "id": "finish",
+      "id": "2db7ec32-a68e-55c7-b5fb-87a72220bd8a",
       "finishLabel": {
         "en-US": "Finish"
       },

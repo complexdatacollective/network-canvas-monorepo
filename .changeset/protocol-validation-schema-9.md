@@ -144,8 +144,7 @@ Schema 9:
   only its title, and gives a blank title the stage's label. A Categorical Bin
   prompt's `otherOptionLabel` and `otherVariablePrompt` must also contain text;
   the migration gives a blank `otherOptionLabel` the text `Other`, and refuses
-  a blank `otherVariablePrompt`. In a document already in schema 9 form, only
-  the blank translations of these fields are removed.
+  a blank `otherVariablePrompt`.
 
 - Schema 8 still refuses names outside `a-z`, `A-Z`, digits and `. _ - :`, with
   a message that says so. `VersionlessProtocolSchema`, the version 8 body

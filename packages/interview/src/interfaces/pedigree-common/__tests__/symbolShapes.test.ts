@@ -5,12 +5,15 @@ import {
   type NodeDefinition,
 } from '@codaco/protocol-validation';
 
+import { testVariableId } from '../../../__tests__/testIds';
 import type { Person } from '../../FamilyPedigree/model';
 import {
   notationShapesOf,
   symbolOutlinesOf,
   symbolShapesOf,
 } from '../symbolShapes';
+
+const SEX_VAR = testVariableId('sex');
 
 const WIDE =
   '<svg viewBox="0 0 200 100"><rect width="200" height="100"/></svg>';
@@ -20,7 +23,7 @@ const definition: Pick<NodeDefinition, 'shape' | 'customShapes'> = {
   shape: {
     default: 'custom:wide',
     dynamic: {
-      variable: asEntityAttributeReference('sex'),
+      variable: asEntityAttributeReference(SEX_VAR),
       type: 'discrete',
       map: [
         { value: 'female', shape: 'circle' },
@@ -36,9 +39,9 @@ const definition: Pick<NodeDefinition, 'shape' | 'customShapes'> = {
 };
 
 const people: Pick<Person, 'id' | 'attributes'>[] = [
-  { id: 'mother', attributes: { sex: 'female' } },
-  { id: 'father', attributes: { sex: 'male' } },
-  { id: 'child', attributes: { sex: 'intersex' } },
+  { id: 'mother', attributes: { [SEX_VAR]: 'female' } },
+  { id: 'father', attributes: { [SEX_VAR]: 'male' } },
+  { id: 'child', attributes: { [SEX_VAR]: 'intersex' } },
   { id: 'cousin', attributes: {} },
 ];
 

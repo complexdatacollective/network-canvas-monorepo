@@ -6,10 +6,13 @@
     - button "Rob"
     - button "Julie"
     - button "Dan"
+    - button "Gia"
+    - button "Eve’s biological mother"
     - button "Lee"
     - button "You"
     - button "Bea"
     - button "Cal"
+    - button "Eve"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
       - button "Add and edit" [pressed]
@@ -24,8 +27,9 @@
     - button "Zoom in"
     - button "Show the whole family"
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
+    - status
   - region "Interview notifications"

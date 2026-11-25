@@ -7,6 +7,8 @@ import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
 import { readMessage } from '../../testing/i18n.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
+import { testId } from '../../testing/testId.ts';
 import { schemaProblemSentence } from '../schemaProblems.ts';
 
 /**
@@ -146,7 +148,7 @@ describe('a cross-reference rule reported where nothing is', () => {
     const protocol = structuredClone(allInterfaces) as Record<string, unknown>;
     const stages = protocol.stages as Record<string, unknown>[];
     const stageIndex = stages.findIndex(
-      (stage) => stage.id === 'name-generator-roster-1',
+      (stage) => stage.id === fixtureStageId('name-generator-roster-1'),
     );
     const stage = stages[stageIndex] as Record<string, unknown>;
     stage.skipLogic = {
@@ -155,7 +157,11 @@ describe('a cross-reference rule reported where nothing is', () => {
         join: 'OR',
         rules: [
           // No `attribute`, which is the fault the rule reports.
-          { id: 'probe-rule-1', type: 'ego', options: { operator: 'EXISTS' } },
+          {
+            id: testId('probe-rule-1'),
+            type: 'ego',
+            options: { operator: 'EXISTS' },
+          },
         ],
       },
     };

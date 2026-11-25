@@ -2,7 +2,11 @@ import { useCallback, type ReactNode } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { useDialogSession } from '@codaco/fresco-ui/dialogs/useDialogSession';
-import type { VariableOption, VariableType } from '@codaco/protocol-validation';
+import {
+  createOptionId,
+  createVariableId,
+  type VariableType,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditorDialog from '../../codebook/components/VariableEditorDialog.tsx';
@@ -12,6 +16,7 @@ import {
 } from '../../codebook/editing.ts';
 import type {
   OptionRowChoiceValue,
+  OptionSeed,
   VariableEditorHostOptions,
 } from '../../codebook/optionRowChoice.ts';
 import { useCodebookSectionWrite } from '../../codebook/writes.ts';
@@ -44,13 +49,13 @@ export type CreateVariableEditorOptions = Readonly<{
    * researcher may not edit them — and the schema refuses an attribute bound
    * to one of these slots whose options differ.
    */
-  lockedOptions?: readonly VariableOption[];
+  lockedOptions?: readonly OptionSeed[];
   /**
    * Options the new attribute starts with, which the researcher may edit, add
    * to and remove from. The counterpart of `lockedOptions` for an interface
    * that suggests a starting list but does not own the values.
    */
-  seedOptions?: readonly VariableOption[];
+  seedOptions?: readonly OptionSeed[];
   /** Title of the editor's dialog, already formatted. */
   title: string;
   /**
@@ -233,7 +238,7 @@ export function useCreateVariableEditor({
         }
         openSession({
           key: uuid(),
-          variableId: uuid(),
+          variableId: createVariableId(),
           name: variableName,
           settle: resolve,
           ...target,
@@ -316,7 +321,14 @@ export function useCreateVariableEditor({
           ...(onlyType === undefined ? {} : { type: onlyType }),
           ...(seedOptions === undefined
             ? {}
-            : { options: seedOptions.map((option) => ({ ...option })) }),
+            : {
+                // Fresh ids for every attribute created from the seed: an
+                // option id is unique across the protocol.
+                options: seedOptions.map((option) => ({
+                  ...option,
+                  id: createOptionId(),
+                })),
+              }),
           ...(seedValidation === undefined
             ? {}
             : { validation: seedValidation }),

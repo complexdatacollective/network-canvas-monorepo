@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { familyPedigreeWordingIn } from '../../__tests__/suppliedWording.ts';
+import { testId } from '../../__tests__/testIds.ts';
 import { collectEntityTypeReferences } from '../collectEntityAttributeReferences.ts';
 import { localized } from '../test-utils.ts';
 
@@ -156,15 +157,14 @@ describe('a node type’s own label', () => {
           shape: { default: 'circle' },
           variables: { name: { name: 'name', type: 'text' } },
           dynamicLabel: {
-            text: localized('{known, select, yes {Named} other {Unnamed}}'),
-            dynamicValues: {
-              known: { path: '$condition.known', cases: { yes: true } },
-            },
+            text: localized(
+              `{condition_${testId('known').replaceAll('-', '_')}, select, true {Named} other {Unnamed}}`,
+            ),
             conditions: {
-              known: {
+              [testId('known')]: {
                 rules: [
                   {
-                    id: 'own',
+                    id: testId('own'),
                     type: 'node',
                     options: {
                       type: 'person',
@@ -173,7 +173,7 @@ describe('a node type’s own label', () => {
                     },
                   },
                   {
-                    id: 'tie',
+                    id: testId('tie'),
                     type: 'edge',
                     options: { type: 'friendship', operator: 'EXISTS' },
                   },

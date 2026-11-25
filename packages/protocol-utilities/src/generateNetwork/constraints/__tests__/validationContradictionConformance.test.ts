@@ -9,6 +9,7 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testId.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import { buildEntityConstraints } from '../buildConstraints.ts';
 import { resolveGenerationOrder } from '../dependencyOrder.ts';
@@ -41,6 +42,7 @@ const nameGenerator = {
 
 const reference = asEntityAttributeReference;
 const option = (value: string | number) => ({
+  id: testId(`option-${String(value)}`),
   label: { 'en-US': `Option ${String(value)}` },
   value,
 });
@@ -392,7 +394,13 @@ describe('validation contradiction delegation conformance', () => {
   });
 
   it('uses record-level Boolean domains until every stage occurrence is resolved', () => {
-    const trueOnly = [{ label: { 'en-US': 'Yes' }, value: true }];
+    const trueOnly = [
+      {
+        id: testId('validationContradictionConformance/option-1'),
+        label: { 'en-US': 'Yes' },
+        value: true,
+      },
+    ];
     const choiceRendered: Variables = {
       a: {
         name: 'Choice A',

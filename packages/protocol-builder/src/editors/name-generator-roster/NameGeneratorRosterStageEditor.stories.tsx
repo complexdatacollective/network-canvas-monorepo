@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { nameGeneratorRosterStageEditor } from './NameGeneratorRosterStageEditor.ts';
 
@@ -11,7 +12,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Name Generator (roster)',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'name-generator-roster-1',
+    stageId: fixtureStageId('name-generator-roster-1'),
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (

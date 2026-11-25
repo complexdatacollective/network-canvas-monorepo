@@ -42,8 +42,8 @@ const storableAttributes = (
   const stored: Record<string, VariableValue> = {};
   for (const [name, value] of Object.entries(attributes)) {
     const parsed = VariableValueSchema.safeParse(value);
-    // Written as its own property: an attribute's id is any string a
-    // protocol holds, `__proto__` among them.
+    // Written as its own property: an attribute stored from a roster is
+    // keyed by its column's heading, which may be `__proto__`.
     if (parsed.success) writeOwnProperty(stored, name, parsed.data);
   }
   return stored;
@@ -178,8 +178,8 @@ export function FormDynamicValues({
 
   const liveAttributes = useMemo(() => {
     if (!describesStageSubject || formSubject == null) return undefined;
-    // Attribute ids come from the protocol and may be `__proto__`, so every
-    // key is written as the record's own.
+    // The stored attributes can be keyed by a roster column's heading, which
+    // may be `__proto__`, so every key is written as the record's own.
     const merged: Record<string, unknown> = {
       ...(entityId === undefined ? newEntityAttributes : undefined),
       ...stored,

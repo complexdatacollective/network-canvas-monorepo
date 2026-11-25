@@ -1,8 +1,8 @@
 /**
  * The review service's paths: RFC 6901 JSON Pointers in which a segment that
- * addresses a member of an array is that member's `id` when it has one, and
- * its index only when it has none (see `FixOperation` in
- * `@codaco/protocol-review-worker/contract`).
+ * addresses a member of an array is that member's `id` in a list of protocol
+ * objects, and its index only in a list whose members carry no ids (see
+ * `FixOperation` in `@codaco/protocol-review-worker/contract`).
  *
  * Pure: nothing here changes the value it is handed.
  */
@@ -58,28 +58,27 @@ export const isIdArray = (array: readonly unknown[]): boolean =>
 const INDEX_PATTERN = /^(0|[1-9]\d*)$/u;
 
 /**
- * The position of the member `segment` names, or -1. A member with an id is
- * reached only by that id, never by the index it happens to stand at (a stage
- * whose id is `0` is deleted, and `/stages/0` must not then reach the new
- * first stage). A member without an id is reached by its index, unless
- * another member's id is that same text: the id wins, and that member has no
- * path (see `segmentBackTo` in the engine, which refuses to leave one so).
- *
- * How a member is addressed depends only on the member, never on the others
- * beside it, so giving one member of a list an id does not change what
- * reaches the rest.
+ * The position of the member `segment` names, or -1. A list that holds any
+ * member with an id is a list of protocol objects, and its members are reached
+ * only by id: an index never reaches one, so a fix written for a member that
+ * has since moved or been deleted cannot land on whatever now stands in its
+ * place. Only a list whose members carry no ids at all (option values, plain
+ * strings) is addressed by index. A member without an id in a list of
+ * protocol objects has no path (see `segmentBackTo` in the engine, which
+ * refuses to leave one so).
  */
 export const findArrayMember = (
   array: readonly unknown[],
   segment: string,
 ): number => {
-  const byId = array.findIndex(
-    (member) => hasStringId(member) && member.id === segment,
-  );
-  if (byId !== -1) return byId;
+  if (array.some(hasStringId)) {
+    return array.findIndex(
+      (member) => hasStringId(member) && member.id === segment,
+    );
+  }
   if (!INDEX_PATTERN.test(segment)) return -1;
   const index = Number(segment);
-  return index < array.length && !hasStringId(array[index]) ? index : -1;
+  return index < array.length ? index : -1;
 };
 
 /** The segment that addresses the member at `index`: its id, or the index. */

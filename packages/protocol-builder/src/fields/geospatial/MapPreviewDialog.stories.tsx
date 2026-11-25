@@ -9,6 +9,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import { REQUIRED } from '../../form/requiredField.ts';
 import { FieldStoryHost } from '../../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import MapPreviewDialog from './MapPreviewDialog.tsx';
 import MapViewField from './MapViewField.tsx';
 
@@ -102,7 +103,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'geospatial-1',
+    stageId: fixtureStageId('geospatial-1'),
     sectionTitle: 'Starting map view',
     children: (
       <PreviewOn tokenAssetId={KEY_ASSET} center={[-74, 40.7]} zoom={10} />

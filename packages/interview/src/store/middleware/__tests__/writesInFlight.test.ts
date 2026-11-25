@@ -6,14 +6,16 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testVariableId } from '../../../__tests__/testIds';
 import {
+  AGE_VARIABLE,
   createEncryptionStore,
   NODE_TYPE,
 } from '../../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { updateEgo, updateNode } from '../../modules/session';
 import { createWritesInFlightMiddleware } from '../writesInFlight';
 
-const patch = { set: { agrees: true }, unset: [] };
+const patch = { set: { [testVariableId('agrees')]: true }, unset: [] };
 
 const unchanged: Reducer<number> = (state = 0) => state;
 
@@ -155,14 +157,14 @@ describe('writes in flight', () => {
       {
         [entityPrimaryKeyProperty]: 'n1',
         type: NODE_TYPE,
-        [entityAttributesProperty]: { age: 40 },
+        [entityAttributesProperty]: { [AGE_VARIABLE]: 40 },
       },
     ]);
 
     const write = interview.dispatch(
       updateNode({
         nodeId: 'n1',
-        attributePatch: { set: { age: 41 }, unset: [] },
+        attributePatch: { set: { [AGE_VARIABLE]: 41 }, unset: [] },
         currentStep: 0,
       }),
     );

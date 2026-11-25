@@ -62,8 +62,19 @@ const isLocalizedStringValue = (value: unknown): value is LocalizedString =>
   Object.values(value).every((text) => typeof text === 'string');
 
 // A pipe is read from its input side, which carries the same tags at the same
-// paths as its narrowed output and still matches an in-progress edit.
+// paths as its narrowed output and still matches an in-progress edit. The
+// schema is static, so each node is unwrapped once: reading its metadata and
+// running zod's `instanceof` checks at every node of every walk was most of a
+// walk's cost.
+const unwrapped = new WeakMap<z.ZodType, z.ZodType>();
 const unwrap = (schema: z.ZodType): z.ZodType => {
+  const cached = unwrapped.get(schema);
+  if (cached !== undefined) return cached;
+  const result = unwrapUncached(schema);
+  unwrapped.set(schema, result);
+  return result;
+};
+const unwrapUncached = (schema: z.ZodType): z.ZodType => {
   let current = schema;
   for (;;) {
     if (getLocalizedStringDescriptor(current)) return current;
@@ -132,10 +143,16 @@ const literalValuesOf = (schema: z.ZodType): unknown[] | undefined => {
  * no transform runs. A value no branch accepts is walked against every branch,
  * so an invalid document still reports the copy it holds.
  */
-const candidateOptions = (
-  union: z.ZodUnion,
-  value: Record<string, unknown>,
-): z.ZodType[] => {
+type UnionLayout = {
+  options: z.ZodType[];
+  // Each field that every branch pins, with the values each branch accepts.
+  pinnedFields: { field: string; accepted: unknown[][] }[];
+};
+
+const unionLayouts = new WeakMap<z.ZodUnion, UnionLayout>();
+const unionLayout = (union: z.ZodUnion): UnionLayout => {
+  const cached = unionLayouts.get(union);
+  if (cached !== undefined) return cached;
   const options = union.options.filter(isZodType);
   const shapes = options.map((option) => {
     const node = unwrap(option);
@@ -145,12 +162,26 @@ const candidateOptions = (
     union instanceof z.ZodDiscriminatedUnion
       ? [union.def.discriminator]
       : Object.keys(shapes[0] ?? {});
-  for (const field of fields) {
+  const pinnedFields = fields.flatMap((field) => {
     const accepted = shapes.map((shape) => {
       const fieldSchema: unknown = shape?.[field];
       return isZodType(fieldSchema) ? literalValuesOf(fieldSchema) : undefined;
     });
-    if (!accepted.every((values) => values !== undefined)) continue;
+    return accepted.every((values): values is unknown[] => values !== undefined)
+      ? [{ field, accepted }]
+      : [];
+  });
+  const layout = { options, pinnedFields };
+  unionLayouts.set(union, layout);
+  return layout;
+};
+
+const candidateOptions = (
+  union: z.ZodUnion,
+  value: Record<string, unknown>,
+): z.ZodType[] => {
+  const { options, pinnedFields } = unionLayout(union);
+  for (const { field, accepted } of pinnedFields) {
     const matching = options.filter((_option, index) =>
       accepted[index]?.includes(value[field]),
     );

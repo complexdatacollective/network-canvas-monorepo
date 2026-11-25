@@ -10,13 +10,27 @@ import { NO_RULES_MESSAGE } from '../rules/ruleSet.ts';
 import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../testing/protocolFixture.ts';
+import { testId } from '../testing/testId.ts';
 import { FilterRuleSetField, QueryRuleSetField } from './RuleSetField.tsx';
+
+const PERSON = fixtureTypeId('node', 'person');
+const KNOWS = fixtureTypeId('edge', 'knows');
+const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
 
 /** Where the schema keeps a stage's skip-logic rules, and its own filter. */
 const SKIP_LOGIC_RULES = 'skipLogic.filter';
 const FILTER_RULES = 'filter';
 
-const SKIP_LOGIC_STAGE = sectionId({ kind: 'stage', stageId: 'information-1' });
+const SKIP_LOGIC_STAGE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
 
 /**
  * The skip-logic rule builder, mounted the way `SkipLogicSection` mounts it.
@@ -76,23 +90,23 @@ const holdingSkipLogic =
 
 /** Everyone over 65 the participant knows: two rules, so they must combine. */
 const OLDER_THAN_65: RuleDraft = {
-  id: 'rule-older',
+  id: testId('rule-older'),
   type: 'node',
   options: {
-    type: 'person',
-    attribute: 'age',
+    type: PERSON,
+    attribute: AGE,
     operator: 'GREATER_THAN',
     value: 65,
   },
 };
 
 const KNOWS_SOMEBODY: RuleDraft = {
-  id: 'rule-knows',
+  id: testId('rule-knows'),
   type: 'edge',
-  options: { type: 'knows', operator: 'EXISTS' },
+  options: { type: KNOWS, operator: 'EXISTS' },
 };
 
-const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const PERSON_TYPE = sectionId({ kind: 'codebookNode', typeId: PERSON });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -101,27 +115,27 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const encryptingNames = (host: InMemoryHost) => {
   const { document } = host.store.read(PERSON_TYPE);
   const variables = isRecord(document.variables) ? document.variables : {};
-  const name = isRecord(variables.name) ? variables.name : {};
+  const name = isRecord(variables[NAME]) ? variables[NAME] : {};
   host.store.applyAsCollaborator(PERSON_TYPE, {
     ...document,
-    variables: { ...variables, name: { ...name, encrypted: true } },
+    variables: { ...variables, [NAME]: { ...name, encrypted: true } },
   });
 };
 
 /** Anyone the participant has not named. */
 const NAME_UNANSWERED: RuleDraft = {
-  id: 'rule-unnamed',
+  id: testId('rule-unnamed'),
   type: 'node',
-  options: { type: 'person', attribute: 'name', operator: 'NOT_EXISTS' },
+  options: { type: PERSON, attribute: NAME, operator: 'NOT_EXISTS' },
 };
 
 /** Anyone named Ada, which an encrypted name cannot be checked for. */
 const NAMED_ADA: RuleDraft = {
-  id: 'rule-ada',
+  id: testId('rule-ada'),
   type: 'node',
   options: {
-    type: 'person',
-    attribute: 'name',
+    type: PERSON,
+    attribute: NAME,
     operator: 'EXACTLY',
     value: 'Ada',
   },
@@ -140,7 +154,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'information-1',
+    stageId: fixtureStageId('information-1'),
     sectionTitle: 'Skip logic',
     children: <SkipLogicRules />,
   },
@@ -314,7 +328,7 @@ export const TheSaveIsRefusedWithNoRules: Story = {
  */
 export const AFilterCannotAskAboutTheEgo: Story = {
   args: {
-    stageId: 'name-generator-1',
+    stageId: fixtureStageId('name-generator-1'),
     sectionTitle: 'Filter network',
     children: <StageFilterRules />,
   },
@@ -404,13 +418,15 @@ export const WritingARuleOnAnEncryptedAttribute: Story = {
       await within(dialog).findByRole('option', { name: /Attribute/ }),
     );
     await userEvent.click(
-      await within(dialog).findByRole('button', { name: 'Select attribute' }),
+      await within(dialog).findByRole('combobox', {
+        name: /^Node attribute/u,
+      }),
     );
     // The attribute window opens over the rule dialog, so it is found by its
     // own marker: the dialog underneath is still in the accessibility tree.
     const attributes = await waitFor(() => {
       const opened = document.body.querySelector<HTMLElement>(
-        '[data-variable-spotlight]',
+        '[data-attribute-picker-popup][data-open]',
       );
       if (opened === null) throw new Error('The attribute window is closed.');
       return opened;

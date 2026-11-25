@@ -49,26 +49,16 @@ const authoredFieldLabel = (text: string | undefined): string | undefined => {
  * validator falls back to a complete label-free sentence — which is also what a
  * comparison against a variable answered on an earlier stage gets, since it has
  * no caption on this screen.
- *
- * ACCUMULATED THROUGH A MAP. `CodebookIdSchema` is `/^[a-zA-Z0-9._:-]+$/`,
- * which admits `__proto__` as a codebook variable id, and
- * `labels.__proto__ = 'How old are you?'` on an ordinary object hits
- * `Object.prototype`'s setter rather than defining anything: the caption is
- * dropped, and the later `variableLabels?.[attribute]` lookup answers
- * `Object.prototype`, so the participant's validation hint names their question
- * as `[object Object]` instead of the words the researcher wrote.
- * `Object.fromEntries` defines own properties, so the returned map is still an
- * ordinary object every caller can index.
  */
 export const buildVariableLabels = (
   fields: readonly VariableCaption[],
 ): Readonly<Record<string, string>> => {
-  const labels = new Map<string, string>();
+  const labels: Record<string, string> = {};
   for (const field of fields) {
     const authored = authoredFieldLabel(field.label);
-    if (authored !== undefined) labels.set(field.variable, authored);
+    if (authored !== undefined) labels[field.variable] = authored;
   }
-  return Object.fromEntries(labels);
+  return labels;
 };
 
 /**

@@ -5,11 +5,18 @@ import {
   attributeField,
   awaitOfferedAttributes,
   offeredAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
+import {
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testId, testVariableId } from '../../../testing/testId.ts';
 import { narrativePedigreeStageEditor } from '../NarrativePedigreeStageEditor.ts';
 import {
   addDisease,
@@ -24,17 +31,33 @@ import {
   stageOrder,
 } from './narrativePedigreeFixtures.tsx';
 
-/**
- * What the attribute picker says when it can offer nothing.
- *
- * Reached two ways — a pedigree that records no condition, and one whose
- * conditions are all mapped already — so the sentence names neither cause.
- */
-const NOTHING_LEFT_TO_MAP = /There is no attribute for this disease to map/;
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const familyMemberVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'family member' }, name);
+const IS_EGO = familyMemberVariable('is_ego');
+const HAS_CONDITION_X = familyMemberVariable('hasConditionX');
+/** Attributes the tests add to the family member type. */
+const HAS_CONDITION_Z = testVariableId('hasConditionZ');
+const CONDITION_NOTES = testVariableId('conditionNotes');
+
+/** What the attribute field says while none of the attributes it lists can be used. */
+const NONE_AVAILABLE =
+  'None of the existing attributes can be used here. Open the list to see why.';
+
+/** Why one attribute in the disease's list cannot be chosen. */
+const reasonFor = (
+  harness: StageEditorHarness,
+  attributeId: string,
+): Promise<string> =>
+  unavailableReason(
+    harness.user,
+    attributeField('Node attribute', screen.getByRole('dialog')),
+    attributeId,
+  );
 
 const openFixture = (): StageEditorHarness =>
   renderStageEditor({
-    stageId: 'narrative-pedigree-1',
+    stageId: fixtureStageId('narrative-pedigree-1'),
     registry: narrativePedigreeStageEditor,
   });
 
@@ -100,7 +123,7 @@ const pedigreeRecordingNothing = () => {
  * with, and every exclusion below would read as vacuously true.
  *
  * `added` names attributes the codebook does not carry yet, by the type each
- * one records. `alsoPrompted` names attributes it already carries: a prompt
+ * one records; each is given the id `testVariableId` gives its name. `alsoPrompted` names attributes it already carries: a prompt
  * writing one of those is how an exclusion that is NOT about being recorded —
  * the type, the pedigree's own slots — is asked a question it can fail.
  */
@@ -117,20 +140,22 @@ const alsoRecording = (
     ...pedigree,
     nominationPrompts: [
       ...prompts,
-      ...[...Object.keys(added), ...alsoPrompted].map((variableId) => ({
-        id: `nomination-${variableId}`,
-        text: { 'en-US': 'Who?' },
-        attribute: variableId,
-      })),
+      ...[...Object.keys(added).map(testVariableId), ...alsoPrompted].map(
+        (variableId) => ({
+          id: testId(`nomination-${variableId}`),
+          text: { 'en-US': 'Who?' },
+          attribute: variableId,
+        }),
+      ),
     ],
   });
   harness.receiveCodebookUpdate({
     node: {
-      family_member: familyMemberCodebook({
+      [FAMILY_MEMBER]: familyMemberCodebook({
         add: Object.fromEntries(
-          Object.entries(added).map(([variableId, type]) => [
-            variableId,
-            { name: variableId, type },
+          Object.entries(added).map(([name, type]) => [
+            testVariableId(name),
+            { name, type },
           ]),
         ),
       }),
@@ -221,8 +246,8 @@ describe('a source pedigree that stops being usable', () => {
     await screen.findByRole('combobox', { name: 'Source stage' });
 
     reorderStages(harness, (stages) => [
-      ...stages.filter((id) => id !== 'family-pedigree-1'),
-      'family-pedigree-1',
+      ...stages.filter((id) => id !== fixtureStageId('family-pedigree-1')),
+      fixtureStageId('family-pedigree-1'),
     ]);
 
     expect(
@@ -236,7 +261,7 @@ describe('a source pedigree that stops being usable', () => {
     await screen.findByRole('combobox', { name: 'Source stage' });
 
     reorderStages(harness, (stages) =>
-      stages.filter((id) => id !== 'family-pedigree-1'),
+      stages.filter((id) => id !== fixtureStageId('family-pedigree-1')),
     );
 
     expect(
@@ -255,8 +280,8 @@ describe('a source pedigree that stops being usable', () => {
     const order = stageOrder(harness);
 
     reorderStages(harness, (stages) => [
-      ...stages.filter((id) => id !== 'family-pedigree-1'),
-      'family-pedigree-1',
+      ...stages.filter((id) => id !== fixtureStageId('family-pedigree-1')),
+      fixtureStageId('family-pedigree-1'),
     ]);
     // Waited for, not assumed: the re-ordered section reaches this editor over
     // the protocol channel, so a submit asked before it arrived would be a
@@ -286,20 +311,27 @@ describe('the diseases a narrative pedigree defines', () => {
    */
   it('never offers an attribute the source pedigree derives for itself', async () => {
     const harness = openFixture();
-    alsoRecording(harness, { hasConditionZ: 'boolean' }, ['is_ego']);
+    alsoRecording(harness, { hasConditionZ: 'boolean' }, [IS_EGO]);
 
     await addDisease(harness);
     // The prompt and the codebook both arrive over the protocol's own channel,
     // so the window is read until it has been told about the attribute this
     // case turns on rather than once, before either landed.
     const offered = await awaitOfferedAttributesOf(harness, (list) =>
-      expect(list).toContain('hasConditionZ'),
+      expect(list).toContain(HAS_CONDITION_Z),
     );
     // `is_ego` is the pedigree's participant marker, so a disease mapped to it
     // would paint the participant as affected in every interview;
     // `hasConditionX` is already mapped by the disease this stage holds.
-    expect(offered).not.toContain('is_ego');
-    expect(offered).not.toContain('hasConditionX');
+    expect(offered).not.toContain(IS_EGO);
+    expect(offered).not.toContain(HAS_CONDITION_X);
+    // Both listed, each with its reason.
+    expect(await reasonFor(harness, IS_EGO)).toBe(
+      'The “Family Pedigree” stage sets this attribute for its own use, so it cannot be used here.',
+    );
+    expect(await reasonFor(harness, HAS_CONDITION_X)).toBe(
+      'The disease “Condition X” already uses this attribute.',
+    );
   });
 
   /**
@@ -307,7 +339,7 @@ describe('the diseases a narrative pedigree defines', () => {
    * attribute that is not one cannot carry it. The prompt is what makes the
    * type the only thing keeping it out of the list.
    */
-  it('never offers a recorded attribute that cannot hold a yes-or-no answer', async () => {
+  it('never offers a recorded attribute that is not a Boolean', async () => {
     const harness = openFixture();
     alsoRecording(harness, {
       hasConditionZ: 'boolean',
@@ -316,9 +348,12 @@ describe('the diseases a narrative pedigree defines', () => {
 
     await addDisease(harness);
     const offered = await awaitOfferedAttributesOf(harness, (list) =>
-      expect(list).toContain('hasConditionZ'),
+      expect(list).toContain(HAS_CONDITION_Z),
     );
-    expect(offered).not.toContain('conditionNotes');
+    expect(offered).not.toContain(CONDITION_NOTES);
+    expect(await reasonFor(harness, CONDITION_NOTES)).toBe(
+      'Only Boolean attributes can be used here.',
+    );
   });
 
   /**
@@ -332,14 +367,13 @@ describe('the diseases a narrative pedigree defines', () => {
     receiveSection(harness, SOURCE_STAGE_SECTION, pedigreeRecordingNothing());
 
     const dialog = await addDisease(harness);
-    expect(await dialog.findByText(NOTHING_LEFT_TO_MAP)).toBeInTheDocument();
-    // The picker is gone, not merely empty: its trigger is the only way into
-    // the window, so a control that still offered one would be a door onto an
-    // empty list. Asked by the trigger's own name, because the control stopped
-    // being a select when the window replaced it.
-    expect(
-      dialog.queryByRole('button', { name: 'Select attribute' }),
-    ).toBeNull();
+    expect(await dialog.findByText(NONE_AVAILABLE)).toBeInTheDocument();
+    expect(await offeredAttributesOf(harness)).toEqual([]);
+    // The condition the pedigree used to record is listed, with the reason
+    // and the remedy.
+    expect(await reasonFor(harness, HAS_CONDITION_X)).toBe(
+      'Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.',
+    );
   });
 
   /**
@@ -356,7 +390,10 @@ describe('the diseases a narrative pedigree defines', () => {
     const harness = openFixture();
 
     const dialog = await addDisease(harness);
-    expect(await dialog.findByText(NOTHING_LEFT_TO_MAP)).toBeInTheDocument();
+    expect(await dialog.findByText(NONE_AVAILABLE)).toBeInTheDocument();
+    expect(await reasonFor(harness, HAS_CONDITION_X)).toBe(
+      'The disease “Condition X” already uses this attribute.',
+    );
   });
 
   it('keeps a mapping the protocol already holds saveable', async () => {
@@ -364,7 +401,7 @@ describe('the diseases a narrative pedigree defines', () => {
 
     const dialog = await openDisease(harness);
     await dialog.findByText('Node attribute', { selector: 'label' });
-    expect(await offeredAttributesOf(harness)).toContain('hasConditionX');
+    expect(await offeredAttributesOf(harness)).toContain(HAS_CONDITION_X);
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     expect(await harness.submit()).not.toBeNull();
@@ -383,10 +420,10 @@ describe('the diseases a narrative pedigree defines', () => {
         diseases: [
           fixtureDisease(),
           {
-            id: 'disease-2',
+            id: testId('disease-2'),
             label: { 'en-US': 'Condition X, again' },
             color: 'node-color-seq-2',
-            attribute: 'hasConditionX',
+            attribute: HAS_CONDITION_X,
             inheritancePattern: 'unknown',
           },
         ],
@@ -409,10 +446,10 @@ describe('the diseases a narrative pedigree defines', () => {
         diseases: [
           fixtureDisease(),
           {
-            id: 'disease-2',
+            id: testId('disease-2'),
             label: { 'en-US': 'Condition Z' },
             color: 'node-color-seq-2',
-            attribute: 'hasConditionZ',
+            attribute: HAS_CONDITION_Z,
             inheritancePattern: 'unknown',
           },
         ],
@@ -505,7 +542,7 @@ describe('a disease the source pedigree stopped recording', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        family_member: familyMemberCodebook({ remove: 'hasConditionX' }),
+        [FAMILY_MEMBER]: familyMemberCodebook({ remove: HAS_CONDITION_X }),
       },
     });
 
@@ -523,9 +560,9 @@ describe('a disease the source pedigree stopped recording', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        family_member: familyMemberCodebook({
+        [FAMILY_MEMBER]: familyMemberCodebook({
           add: {
-            hasConditionX: {
+            [HAS_CONDITION_X]: {
               name: 'hasConditionX',
               type: 'text',
             },
@@ -538,7 +575,7 @@ describe('a disease the source pedigree stopped recording', () => {
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     expect(
-      await screen.findByText(/no longer records a yes-or-no answer/),
+      await screen.findByText(/is no longer a Boolean attribute/),
     ).toBeInTheDocument();
   });
 });
@@ -580,7 +617,7 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        family_member: familyMemberCodebook({ remove: 'hasConditionX' }),
+        [FAMILY_MEMBER]: familyMemberCodebook({ remove: HAS_CONDITION_X }),
       },
     });
 
@@ -602,9 +639,9 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        family_member: familyMemberCodebook({
+        [FAMILY_MEMBER]: familyMemberCodebook({
           add: {
-            hasConditionX: {
+            [HAS_CONDITION_X]: {
               name: 'hasConditionX',
               type: 'text',
             },
@@ -614,11 +651,11 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
     });
 
     expect(
-      await screen.findByText(/no longer records a yes-or-no answer/),
+      await screen.findByText(/is no longer a Boolean attribute/),
     ).toBeInTheDocument();
     const row = diseaseRow('Condition X');
     expect(row).toContainElement(
-      screen.getByText(/no longer records a yes-or-no answer/),
+      screen.getByText(/is no longer a Boolean attribute/),
     );
     expect(row.querySelector('[aria-invalid="true"]')).not.toBeNull();
     expect(diseasesOutline(harness)).toBe('Has a problem');
@@ -639,13 +676,13 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
    * afterwards is the slot rule alone.
    */
   it('reports an attribute the pedigree derives for itself, and saves the stage', async () => {
-    const mappedToEgo = { ...fixtureDisease(), attribute: 'is_ego' };
+    const mappedToEgo = { ...fixtureDisease(), attribute: IS_EGO };
     const harness = renderStageEditor(
       narrativePedigreeHolding({ diseases: [mappedToEgo] }),
     );
     await screen.findByText('Condition X');
 
-    alsoRecording(harness, {}, ['is_ego']);
+    alsoRecording(harness, {}, [IS_EGO]);
     await waitFor(() =>
       expect(screen.queryByText('Nothing records this attribute')).toBeNull(),
     );
@@ -669,7 +706,10 @@ describe('changing which pedigree a stage reads', () => {
     const harness = openFixture();
     await screen.findByText('Condition X');
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
 
     // The fixture has one pedigree, so re-choosing it is the only change on
     // offer — and the question is asked whatever is currently chosen, because
@@ -683,7 +723,10 @@ describe('changing which pedigree a stage reads', () => {
     const harness = openFixture();
     await screen.findByText('Condition X');
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Cancel' }),
     );
@@ -712,7 +755,10 @@ describe('changing which pedigree a stage reads', () => {
     );
     expect(await screen.findByText('Condition X')).toBeInTheDocument();
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Change the pedigree' }),
     );
@@ -720,7 +766,7 @@ describe('changing which pedigree a stage reads', () => {
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
     );
-    expect(sourceSelect()).toHaveValue('family-pedigree-1');
+    expect(sourceSelect()).toHaveValue(fixtureStageId('family-pedigree-1'));
     // The stage is now one the save refuses, which is the point: the diseases
     // are gone rather than silently re-pointed at a family they never described.
     expect(await harness.submit()).toBeNull();
@@ -744,16 +790,21 @@ describe('changing which pedigree a stage reads', () => {
     );
     expect(await screen.findByText('Condition X')).toBeInTheDocument();
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
     await screen.findByRole('button', { name: 'Change the pedigree' });
     reorderStages(harness, (stages) => [
-      ...stages.filter((id) => id !== 'family-pedigree-1'),
-      'family-pedigree-1',
+      ...stages.filter((id) => id !== fixtureStageId('family-pedigree-1')),
+      fixtureStageId('family-pedigree-1'),
     ]);
     // The control has withdrawn it — read from the DOM, because the open
     // question makes the page behind it inert and so unreachable by role.
     await waitFor(() =>
-      expect(offeredSources()).not.toContain('family-pedigree-1'),
+      expect(offeredSources()).not.toContain(
+        fixtureStageId('family-pedigree-1'),
+      ),
     );
 
     await harness.user.click(
@@ -782,11 +833,14 @@ describe('changing which pedigree a stage reads', () => {
     );
     await screen.findByRole('combobox', { name: 'Source stage' });
 
-    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.selectOptions(
+      sourceSelect(),
+      fixtureStageId('family-pedigree-1'),
+    );
 
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(sourceSelect()).toHaveValue('family-pedigree-1'),
+      expect(sourceSelect()).toHaveValue(fixtureStageId('family-pedigree-1')),
     );
   });
 });

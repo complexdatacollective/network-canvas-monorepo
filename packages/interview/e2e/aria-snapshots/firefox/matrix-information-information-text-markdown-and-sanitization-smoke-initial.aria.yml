@@ -10,11 +10,11 @@
   - list:
     - listitem: first
     - listitem: second
-  - text: plain tail text
+  - paragraph: <script>window.__pwned=1</script> plain tail text
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
     - status
   - region "Interview notifications"

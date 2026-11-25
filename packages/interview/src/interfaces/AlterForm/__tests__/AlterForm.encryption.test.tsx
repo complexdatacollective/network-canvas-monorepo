@@ -22,6 +22,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
@@ -29,11 +30,15 @@ import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
+  AGE_VARIABLE,
   alterFormStages,
   createEncryptionStore,
   encryptedVariables,
   encryptionFor,
   makeEncryptedPerson,
+  NAME_VARIABLE,
+  NICKNAME_VARIABLE,
+  NODE_TYPE,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
@@ -185,7 +190,7 @@ async function unreadablePerson(): Promise<NcNode> {
 async function storedName(store: ReturnType<typeof createEncryptionStore>) {
   const [saved] = store.getState().session.network.nodes;
   const stored = saved
-    ? readEncryptedAttribute(saved, 'name', encryptedVariables)
+    ? readEncryptedAttribute(saved, NAME_VARIABLE, encryptedVariables)
     : undefined;
   if (stored?.status !== 'encrypted') {
     throw new Error('Expected the name to be stored encrypted');
@@ -234,7 +239,9 @@ describe('AlterForm with an encrypted question', () => {
     await waitFor(() => expect(onStepChange).toHaveBeenCalled());
     await expect(storedName(store)).resolves.toBe('Alicia');
     expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty].age,
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        AGE_VARIABLE
+      ],
     ).toBe(41);
   });
 
@@ -261,7 +268,7 @@ describe('AlterForm with an encrypted question', () => {
     const [saved] = store.getState().session.network.nodes;
     expect(saved?.[entityAttributesProperty]).toEqual({
       ...person[entityAttributesProperty],
-      age: 41,
+      [AGE_VARIABLE]: 41,
     });
     expect(saved?.[entitySecureAttributesMeta]).toEqual(
       person[entitySecureAttributesMeta],
@@ -334,24 +341,24 @@ describe('AlterForm going back from the first person', () => {
 describe('AlterForm comparing an answer with a protected one', () => {
   const variables: Record<string, Variable> = {
     ...encryptedVariables,
-    nickname: {
+    [NICKNAME_VARIABLE]: {
       name: 'nickname',
       type: 'text',
       component: 'Text',
-      validation: { differentFrom: asEntityAttributeReference('name') },
+      validation: { differentFrom: asEntityAttributeReference(NAME_VARIABLE) },
     },
   };
   const stages: Stages = [
     {
-      id: 'alter-form',
+      id: testId('alter-form'),
       type: 'AlterForm',
       label: { en: 'Alter form' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: NODE_TYPE },
       form: {
         fields: [
           {
-            id: 'field-1',
-            variable: asEntityAttributeReference('nickname'),
+            id: testId('field-1'),
+            variable: asEntityAttributeReference(NICKNAME_VARIABLE),
             prompt: { en: 'Nickname' },
           },
         ],
@@ -466,8 +473,9 @@ describe('AlterForm comparing an answer with a protected one', () => {
 
     await waitFor(() => expect(onStepChange).toHaveBeenCalled());
     expect(
-      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
-        .nickname,
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty][
+        NICKNAME_VARIABLE
+      ],
     ).toBe('Ali');
   });
 });

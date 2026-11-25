@@ -6,9 +6,12 @@ import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { fixtureMessage } from '../../testing/i18n.ts';
+import { fixtureTypeId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 import { useOnResearcherChange } from '../researcherChange.ts';
+
+const PERSON = fixtureTypeId('node', 'person');
 
 /** Copy in the fixture protocol's only language, as schema 9 holds it. */
 const en = (text: string) => ({ 'en-US': text });
@@ -23,7 +26,7 @@ const en = (text: string) => ({ 'en-US': text });
  */
 const rosterFields: SectionDoc = {
   label: en('People you know'),
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: PERSON },
   prompts: [{ id: 'prompt-1', text: en('Pick someone you know') }],
   cardOptions: {
     additionalProperties: [{ label: en('Nickname'), variable: 'nickname' }],

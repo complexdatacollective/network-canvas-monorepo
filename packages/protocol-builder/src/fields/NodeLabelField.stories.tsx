@@ -3,11 +3,26 @@ import { expect, waitFor, within } from 'storybook/test';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
-import { CodebookSchema } from '@codaco/protocol-validation';
+import {
+  CodebookSchema,
+  dynamicValueNameFor,
+  optionCaseKey,
+} from '@codaco/protocol-validation';
 
 import { ProtocolLocalizationProvider } from '../localization/ProtocolLocalization.tsx';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
+import { testId, testTypeId, testVariableId } from '../testing/testId.ts';
 import NodeLabelField, { type NodeLabelDraft } from './NodeLabelField.tsx';
+
+const PLACE = testTypeId('place');
+const NEAR = testTypeId('near');
+const PLACE_NAME = testVariableId('placeName');
+const KIND = testVariableId('kind');
+const BEDS = testVariableId('beds');
+const HOSPITAL = testId('option/hospital');
+const SCHOOL = testId('option/school');
+const LINKED = testId('condition/linked');
 
 const LABEL = 'Label';
 const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
@@ -15,47 +30,49 @@ const ENGLISH_ONLY = { defaultLocale: 'en', locales: ['en'] };
 /** A place with a kind, and one way of joining two places. */
 const CODEBOOK = CodebookSchema.parse({
   node: {
-    place: {
+    [PLACE]: {
       name: 'Place',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        placeName: { name: 'name', type: 'text' },
-        kind: {
+        [PLACE_NAME]: { name: 'name', type: 'text' },
+        [KIND]: {
           name: 'kind',
           type: 'ordinal',
           options: [
-            { label: { en: 'Hospital' }, value: 'hospital' },
-            { label: { en: 'School' }, value: 'school' },
+            { id: HOSPITAL, label: { en: 'Hospital' }, value: 'hospital' },
+            { id: SCHOOL, label: { en: 'School' }, value: 'school' },
           ],
         },
-        beds: { name: 'beds', type: 'number' },
+        [BEDS]: { name: 'beds', type: 'number' },
       },
     },
   },
-  edge: { near: { name: 'Near', color: 'edge-color-seq-1' } },
+  edge: { [NEAR]: { name: 'Near', color: 'edge-color-seq-1' } },
+});
+
+const KIND_NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: KIND,
+});
+const LINKED_NAME = dynamicValueNameFor({
+  kind: 'condition',
+  conditionId: LINKED,
 });
 
 const SWITCH_ON_KIND: NodeLabelDraft = {
   text: {
-    en: '{kind, select, missing {} hospital {🏥 } school {🏫 } other {}}{nodeLabel}{linked, select, yes { 🔗} other {}}',
-  },
-  dynamicValues: {
-    kind: {
-      path: 'node.kind',
-      cases: { hospital: 'hospital', school: 'school' },
-    },
-    nodeLabel: { path: 'node.$label' },
-    linked: { path: '$condition.linked', cases: { yes: true } },
+    en: `{${KIND_NAME}, select, missing {} ${optionCaseKey(HOSPITAL)} {🏥 } ${optionCaseKey(SCHOOL)} {🏫 } other {}}{node_label}{${LINKED_NAME}, select, true { 🔗} other {}}`,
   },
   conditions: {
-    linked: {
+    [LINKED]: {
       about: 'node',
       rules: [
         {
-          id: 'has-near',
+          id: testId('has-near'),
           type: 'edge',
-          options: { type: 'near', operator: 'EXISTS' },
+          options: { type: NEAR, operator: 'EXISTS' },
         },
       ],
     },
@@ -76,7 +93,7 @@ function NodeLabel({
         label={LABEL}
         hint="Shown on every node of this type."
         codebook={CODEBOOK}
-        nodeType={isNew ? undefined : 'place'}
+        nodeType={isNew ? undefined : PLACE}
         {...(initialValue === undefined ? {} : { initialValue })}
       />
     </ProtocolLocalizationProvider>
@@ -96,7 +113,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'categorical-bin-1',
+    stageId: fixtureStageId('categorical-bin-1'),
     sectionTitle: 'Dynamic label',
     children: <NodeLabel />,
   },

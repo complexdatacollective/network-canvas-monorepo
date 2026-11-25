@@ -3,10 +3,33 @@ import { render as renderBare, screen, within } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
+  type CurrentProtocol,
+  dynamicValueNameFor,
+} from '@codaco/protocol-validation';
 
 import SummaryContext from '../../SummaryContext';
 import Stage from '../Stage';
+
+const KNOWS = testTypeId('knows');
+const PERSON = testTypeId('person');
+const NICK = testVariableId('nick');
+const LAYOUT = testVariableId('layout');
+const HOURS = testVariableId('hours');
+const NODE_NICK = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'node',
+  variableId: NICK,
+});
+const EGO_HOURS = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: HOURS,
+});
 
 const protocol = {
   schemaVersion: 9,
@@ -184,7 +207,7 @@ describe('Protocol Summary edge labels participants see', () => {
     ...protocol,
     codebook: {
       node: {},
-      edge: { knows: { name: 'knows', color: 'edge-color-seq-1' } },
+      edge: { [KNOWS]: { name: 'knows', color: 'edge-color-seq-1' } },
       ego: {},
     },
   } satisfies CurrentProtocol;
@@ -217,8 +240,8 @@ describe('Protocol Summary edge labels participants see', () => {
         {
           id: 'preset',
           label: { en: 'Everyone' },
-          layoutVariable: 'layout',
-          edges: { display: [{ type: 'knows', label: { en: 'Friends' } }] },
+          layoutVariable: LAYOUT,
+          edges: { display: [{ type: KNOWS, label: { en: 'Friends' } }] },
         },
       ],
     });
@@ -234,18 +257,18 @@ describe('Protocol Summary edge labels participants see', () => {
         {
           id: 'filtered',
           label: { en: 'Friends only' },
-          layoutVariable: 'layout',
+          layoutVariable: LAYOUT,
           filter: {
             rules: [
               {
                 id: 'rule',
                 type: 'edge',
-                options: { type: 'knows', operator: 'EXISTS' },
+                options: { type: KNOWS, operator: 'EXISTS' },
               },
             ],
           },
         },
-        { id: 'everyone', label: { en: 'Everyone' }, layoutVariable: 'layout' },
+        { id: 'everyone', label: { en: 'Everyone' }, layoutVariable: LAYOUT },
       ],
     });
 
@@ -267,7 +290,7 @@ describe('Protocol Summary edge labels participants see', () => {
     renderConfigured('NetworkComposer', {
       edges: [
         {
-          subject: { entity: 'edge', type: 'knows' },
+          subject: { entity: 'edge', type: KNOWS },
           label: { en: 'Friends' },
         },
       ],
@@ -300,7 +323,8 @@ describe('Protocol Summary stage wording that the interview fills in', () => {
 
     const row = screen.getByRole('row', { name: /Minimum not reached/ });
     // The wording that fits the number folds to the number's pill, which the
-    // declaration names; a stage binding would print `count`.
+    // declaration names; read as a value the stage shows, it would print
+    // `count`.
     const pill = row.querySelector('[data-token="count"]');
     expect(pill).toHaveTextContent('Number');
     expect(within(row).queryByText('count')).not.toBeInTheDocument();
@@ -313,12 +337,12 @@ describe('Protocol Summary form text that shows values', () => {
       ...protocol,
       codebook: {
         node: {
-          person: {
+          [PERSON]: {
             name: 'Person',
             color: 'node-color-seq-1',
             variables: {
-              nick: { name: 'Preferred name', type: 'text' },
-              age: { name: 'Age', type: 'number' },
+              [NICK]: { name: 'Preferred name', type: 'text' },
+              [testVariableId('age')]: { name: 'Age', type: 'number' },
             },
           },
         },
@@ -340,14 +364,13 @@ describe('Protocol Summary form text that shows values', () => {
           stageNumber={5}
           type="AlterForm"
           configuration={{
-            subject: { entity: 'node', type: 'person' },
-            dynamicValues: { nick: { path: 'node.nick' } },
+            subject: { entity: 'node', type: PERSON },
             form: {
               fields: [
                 {
                   id: 'field-1',
-                  variable: 'age',
-                  prompt: { en: 'How old is {nick}?' },
+                  variable: testVariableId('age'),
+                  prompt: { en: `How old is {${NODE_NICK}}?` },
                 },
               ],
             },
@@ -370,7 +393,11 @@ describe('Protocol Summary text that reads by a number answer', () => {
       codebook: {
         node: {},
         edge: {},
-        ego: { variables: { hours: { name: 'Hours', type: 'number' } } },
+        ego: {
+          variables: {
+            [HOURS]: { name: 'Hours', type: 'number' },
+          },
+        },
       },
     } as unknown as CurrentProtocol;
     render(
@@ -388,9 +415,8 @@ describe('Protocol Summary text that reads by a number answer', () => {
           type="Information"
           configuration={{
             content: {
-              cs: '{hours, select, missing {} other {{hours, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}',
+              cs: `{${EGO_HOURS}, select, missing {} other {{${EGO_HOURS}, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}`,
             },
-            dynamicValues: { hours: { path: 'ego.hours' } },
           }}
         />
       </SummaryContext.Provider>,
@@ -400,7 +426,7 @@ describe('Protocol Summary text that reads by a number answer', () => {
     // and the numbers each is for, are read in the editor.
     const pills = document.querySelectorAll('[data-token]');
     expect(pills).toHaveLength(1);
-    expect(pills[0]).toHaveAttribute('data-token', 'hours');
+    expect(pills[0]).toHaveAttribute('data-token', EGO_HOURS);
     expect(pills[0]).toHaveTextContent('Hours');
     expect(screen.queryByText(/When it is/)).not.toBeInTheDocument();
     expect(screen.queryByText(/hodin/)).not.toBeInTheDocument();

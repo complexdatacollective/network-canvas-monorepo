@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { fixtureVariableId } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { composerHolding } from './composerFixtures.tsx';
 
@@ -13,13 +14,15 @@ import { composerHolding } from './composerFixtures.tsx';
  * package showed a second, differently worded label ("Form fields") under the
  * section, which P1c renamed to Architect's own "Editable attributes".
  */
+const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
+
 describe('the composer’s node attribute list', () => {
   /** A composer whose node form already holds a field, so the section is open. */
   const openNodeAttributes = async () => {
     renderStageEditor(
       composerHolding({
         nodeForm: {
-          fields: [{ id: 'field-1', variable: 'age', component: 'Number' }],
+          fields: [{ id: 'field-1', variable: AGE, component: 'Number' }],
         },
       }),
     );

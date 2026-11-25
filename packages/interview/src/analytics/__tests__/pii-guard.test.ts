@@ -8,6 +8,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testTypeId } from '../../__tests__/testIds';
 import { createAnalyticsListenerMiddleware } from '../../store/middleware/analyticsListener';
 import protocol from '../../store/modules/protocol';
 import session, {
@@ -24,6 +25,9 @@ import ui from '../../store/modules/ui';
 import { makeVariableUUIDReplacer } from '../../utils/loadExternalData';
 import { createTracker, type Tracker } from '../tracker';
 
+const NODE_TYPE_KEY = testTypeId('Close_Friend_TYPE_KEY_TRIGGER');
+const EDGE_TYPE_KEY = testTypeId('Shared_Secret_TYPE_KEY_TRIGGER');
+
 const SENTINELS = [
   'CODEBOOK_LABEL_TRIGGER',
   'PROMPT_TEXT_TRIGGER',
@@ -31,12 +35,9 @@ const SENTINELS = [
   'PARTICIPANT_INPUT_TRIGGER',
   'PASSPHRASE_TRIGGER',
   'SESSION_ID_TRIGGER',
-  'Close_Friend_TYPE_KEY_TRIGGER',
-  'Shared_Secret_TYPE_KEY_TRIGGER',
+  NODE_TYPE_KEY,
+  EDGE_TYPE_KEY,
 ];
-
-const NODE_TYPE_KEY = 'Close_Friend_TYPE_KEY_TRIGGER';
-const EDGE_TYPE_KEY = 'Shared_Secret_TYPE_KEY_TRIGGER';
 
 function containsSentinel(value: unknown): boolean {
   if (value == null) return false;
@@ -179,9 +180,11 @@ describe('PII guard — global listener events never leak sentinels', () => {
 // every interview that offers that row. These tests drive the real listener
 // through the real tracker — the boundary that pseudonymises — because that is
 // the only place the emitted identifier can be observed.
+const PERSON = testTypeId('person');
+
 const rosterCodebook: Codebook = {
   node: {
-    person: {
+    [PERSON]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
@@ -194,7 +197,7 @@ const rosterRow: Partial<NcNode> = {
   [entityAttributesProperty]: { name: 'Enumerable Person', age: '31' },
 };
 
-const rosterUid = makeVariableUUIDReplacer(rosterCodebook, 'person')(
+const rosterUid = makeVariableUUIDReplacer(rosterCodebook, PERSON)(
   rosterRow,
   0,
 )[entityPrimaryKeyProperty];
@@ -256,7 +259,7 @@ async function runRosterSession(distinctId: string) {
 
   await store.dispatch(
     addNode({
-      type: 'person',
+      type: PERSON,
       modelData: { [entityPrimaryKeyProperty]: rosterUid },
       attributeData: rosterRow[entityAttributesProperty],
       currentStep: 1,

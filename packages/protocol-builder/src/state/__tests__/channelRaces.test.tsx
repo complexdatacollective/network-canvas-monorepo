@@ -19,6 +19,8 @@ import {
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
+import { testTypeId } from '../../testing/testId.ts';
 import {
   lockQueryKey,
   presenceQueryKey,
@@ -35,8 +37,12 @@ const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
-const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
-const PLACE = sectionId({ kind: 'codebookNode', typeId: 'place' });
+const PLACE_TYPE = testTypeId('place');
+const INFORMATION = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('information-1'),
+});
+const PLACE = sectionId({ kind: 'codebookNode', typeId: PLACE_TYPE });
 
 const COLLABORATOR = {
   sessionId: 'session-2',
@@ -72,7 +78,7 @@ type Race = Readonly<{
 function fixtureHost(): InMemoryHost {
   return createInMemoryHost({
     sections: sectionsFromProtocol(FIXTURE),
-    nextId: () => 'place',
+    nextId: () => PLACE_TYPE,
   });
 }
 

@@ -1,23 +1,40 @@
 import { withInterfaceText } from '@codaco/interview/supplied-wording';
 import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   type CurrentProtocol,
   CurrentProtocolSchema,
+  deterministicProtocolObjectId,
+  dynamicValueNameFor,
 } from '@codaco/protocol-validation';
 
 import { emptyProtocol } from './seed.js';
 
-export const EGO_FIRST_NAME_ID = 'firstName';
-export const EGO_AGE_ID = 'age';
-export const EGO_MOOD_ID = 'mood';
-const NODE_NICKNAME_ID = 'nickname';
+export const EGO_FIRST_NAME_ID = testVariableId('firstName');
+export const EGO_AGE_ID = testVariableId('age');
+export const EGO_MOOD_ID = testVariableId('mood');
+const NODE_NICKNAME_ID = testVariableId('nickname');
+const PERSON_TYPE_ID = testTypeId('person');
 
 /** Stage ids the specs open by address. */
-const EGO_FORM_STAGE_ID = 'ego-form';
-export const INFO_STAGE_ID = 'info';
-export const ANSWERS_STAGE_ID = 'answers';
+const objectId = deterministicProtocolObjectId(
+  '6f1d2c3b-4a5e-4f60-8a71-9b2c3d4e5f60',
+);
+const EGO_FORM_STAGE_ID = objectId('ego-form');
+export const INFO_STAGE_ID = objectId('info');
+export const ANSWERS_STAGE_ID = objectId('answers');
+
+/** The mood attribute's options, by the id text chooses each by. */
+export const MOOD_OPTION_IDS = {
+  happy: objectId('mood-happy'),
+  sad: objectId('mood-sad'),
+  calm: objectId('mood-calm'),
+} as const;
 
 /** An ego attribute no form collects, so only a stage's text can use it. */
-export const EGO_NICKNAME_ID = 'egoNickname';
+export const EGO_NICKNAME_ID = testVariableId('egoNickname');
 
 /**
  * A protocol with an ego form that collects three attributes (a name, an age
@@ -51,15 +68,19 @@ export function pipedTextProtocol(
               type: 'categorical',
               component: 'CheckboxGroup',
               options: [
-                { value: 'happy', label: en('Happy') },
-                { value: 'sad', label: en('Sad') },
-                { value: 'calm', label: en('Calm') },
+                {
+                  id: MOOD_OPTION_IDS.happy,
+                  value: 'happy',
+                  label: en('Happy'),
+                },
+                { id: MOOD_OPTION_IDS.sad, value: 'sad', label: en('Sad') },
+                { id: MOOD_OPTION_IDS.calm, value: 'calm', label: en('Calm') },
               ],
             },
           },
         },
         node: {
-          person: {
+          [PERSON_TYPE_ID]: {
             name: 'Person',
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
@@ -82,12 +103,20 @@ export function pipedTextProtocol(
           form: {
             fields: [
               {
-                id: 'f1',
+                id: objectId('f1'),
                 variable: EGO_FIRST_NAME_ID,
                 prompt: en('Your name?'),
               },
-              { id: 'f2', variable: EGO_AGE_ID, prompt: en('Your age?') },
-              { id: 'f3', variable: EGO_MOOD_ID, prompt: en('Your mood?') },
+              {
+                id: objectId('f2'),
+                variable: EGO_AGE_ID,
+                prompt: en('Your age?'),
+              },
+              {
+                id: objectId('f3'),
+                variable: EGO_MOOD_ID,
+                prompt: en('Your mood?'),
+              },
             ],
           },
         },
@@ -109,8 +138,15 @@ export function pipedTextProtocol(
   );
 }
 
-/** The ICU message a stage holds for text that shows `{nick}` when it is known. */
-const NICKNAME_TITLE = 'Hello{nick, select, missing {} other {, {nick}}}';
+/** The name text uses for the ego nickname: its id, written as a name. */
+const EGO_NICKNAME_NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: EGO_NICKNAME_ID,
+});
+
+/** The ICU message a stage holds for text that shows the nickname when it is known. */
+const NICKNAME_TITLE = `Hello{${EGO_NICKNAME_NAME}, select, missing {} other {, {${EGO_NICKNAME_NAME}}}}`;
 
 /**
  * The protocol above with an ego attribute that no form collects. With
@@ -141,26 +177,22 @@ export function protocolWithNickname({
     stages: protocol.stages.map((stage) =>
       stage.id === INFO_STAGE_ID && stage.type === 'Information'
         ? shown
-          ? {
-              ...stage,
-              content: { en: NICKNAME_TITLE },
-              dynamicValues: { nick: { path: `ego.${EGO_NICKNAME_ID}` } },
-            }
+          ? { ...stage, content: { en: NICKNAME_TITLE } }
           : { ...stage, content: { en: 'Hello' } }
         : stage,
     ),
   });
 }
 
-/** The imported text a stage holds that names a value it does not bind. */
+/** The imported text a stage holds that names a value that does not exist. */
 export const GHOST_TITLE = '{ghost} welcome';
 
 /**
- * A protocol whose Information stage text names a value its stage never
- * binds, as a protocol written by hand or by another tool can. Not parsed:
+ * A protocol whose Information stage text names a value that stands for
+ * nothing, as a protocol written by hand or by another tool can. Not parsed:
  * the app's own checks are what refuse it.
  */
-export function protocolNamingUnboundValue(): CurrentProtocol {
+export function protocolNamingUnknownValue(): CurrentProtocol {
   const protocol = pipedTextProtocol();
   return {
     ...protocol,

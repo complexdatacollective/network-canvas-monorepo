@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { tieStrengthCensusStageEditor } from './TieStrengthCensusStageEditor.ts';
 
@@ -11,7 +12,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Tie-Strength Census',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'tie-strength-census-1',
+    stageId: fixtureStageId('tie-strength-census-1'),
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
@@ -57,23 +58,29 @@ export const EditingAPrompt: Story = {
       panel.querySelector('[data-attribute-type]'),
     ).toHaveTextContent('closeness');
 
-    // Choosing a different attribute happens in a second overlay, opened from
-    // inside this dialog. It dims the dialog behind it the same way the dialog
-    // dims the editor — Base UI's own default would give a nested overlay no
-    // dimmed layer at all, leaving the spotlight floating over a live-looking
-    // dialog.
+    // Choosing a different attribute happens in a popup anchored to the
+    // field, opened from inside this dialog. It is not a second modal, so the
+    // dialog keeps its one dimmed layer, and the popup paints above the dialog
+    // rather than behind it.
+    await userEvent.click(dialog.getByRole('combobox', { name: /closeness/u }));
+
+    const popup = await waitFor(() => {
+      const opened = document.body.querySelector<HTMLElement>(
+        '[data-attribute-picker-popup][data-open]',
+      );
+      if (opened === null) throw new Error('The attribute popup is closed.');
+      return opened;
+    });
     await expect(
       document.querySelectorAll('[data-modal-backdrop]'),
     ).toHaveLength(1);
-
-    await userEvent.click(
-      dialog.getByRole('button', { name: 'Change attribute' }),
-    );
-
     await waitFor(async () => {
-      await expect(
-        document.querySelectorAll('[data-modal-backdrop]'),
-      ).toHaveLength(2);
+      const { left, top, width, height } = popup.getBoundingClientRect();
+      const front = document.elementFromPoint(
+        left + width / 2,
+        top + height / 2,
+      );
+      await expect(popup.contains(front)).toBe(true);
     });
   },
 };

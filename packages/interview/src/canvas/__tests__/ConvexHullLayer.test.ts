@@ -8,7 +8,12 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { groupNodesByVariable } from '../ConvexHullLayer';
+
+const COLOR = testVariableId('color');
+const SIZE = testVariableId('size');
+const SHAPE = testVariableId('shape');
 
 function makeNode(
   id: string,
@@ -17,32 +22,44 @@ function makeNode(
   return {
     [entityPrimaryKeyProperty]: id,
     [entityAttributesProperty]: attributes,
-    type: 'person',
+    type: testTypeId('person'),
     promptIDs: [],
     stageId: '',
   };
 }
 
 const OPTIONS: VariableOption[] = [
-  { value: 'red', label: { en: 'Red' } },
-  { value: 'blue', label: { en: 'Blue' } },
-  { value: 'green', label: { en: 'Green' } },
+  {
+    id: testId('ConvexHullLayer option 1'),
+    value: 'red',
+    label: { en: 'Red' },
+  },
+  {
+    id: testId('ConvexHullLayer option 2'),
+    value: 'blue',
+    label: { en: 'Blue' },
+  },
+  {
+    id: testId('ConvexHullLayer option 3'),
+    value: 'green',
+    label: { en: 'Green' },
+  },
 ];
 
 describe('groupNodesByVariable', () => {
   it('returns an empty map when given an empty nodes array', () => {
-    const result = groupNodesByVariable([], 'color', OPTIONS);
+    const result = groupNodesByVariable([], COLOR, OPTIONS);
     expect(result.size).toBe(0);
   });
 
   it('correctly groups nodes by a single string value', () => {
     const nodes = [
-      makeNode('node-1', { color: 'red' }),
-      makeNode('node-2', { color: 'red' }),
-      makeNode('node-3', { color: 'blue' }),
+      makeNode('node-1', { [COLOR]: 'red' }),
+      makeNode('node-2', { [COLOR]: 'red' }),
+      makeNode('node-3', { [COLOR]: 'blue' }),
     ];
 
-    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+    const result = groupNodesByVariable(nodes, COLOR, OPTIONS);
 
     expect(result.size).toBe(2);
 
@@ -59,9 +76,9 @@ describe('groupNodesByVariable', () => {
   });
 
   it('places a node with an array of values into multiple groups', () => {
-    const nodes = [makeNode('node-multi', { color: ['red', 'blue'] })];
+    const nodes = [makeNode('node-multi', { [COLOR]: ['red', 'blue'] })];
 
-    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+    const result = groupNodesByVariable(nodes, COLOR, OPTIONS);
 
     expect(result.size).toBe(2);
     expect(result.get('red')!.nodeIds).toContain('node-multi');
@@ -70,12 +87,12 @@ describe('groupNodesByVariable', () => {
 
   it('excludes nodes that do not have the group variable', () => {
     const nodes = [
-      makeNode('node-with', { color: 'red' }),
-      makeNode('node-without', { size: 10 }),
-      makeNode('node-missing', { shape: 'round' }),
+      makeNode('node-with', { [COLOR]: 'red' }),
+      makeNode('node-without', { [SIZE]: 10 }),
+      makeNode('node-missing', { [SHAPE]: 'round' }),
     ];
 
-    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+    const result = groupNodesByVariable(nodes, COLOR, OPTIONS);
 
     expect(result.size).toBe(1);
     const group = result.get('red')!;
@@ -86,15 +103,23 @@ describe('groupNodesByVariable', () => {
 
   it('handles numeric scalar values', () => {
     const numericOptions: VariableOption[] = [
-      { value: 1, label: { en: 'One' } },
-      { value: 2, label: { en: 'Two' } },
+      {
+        id: testId('ConvexHullLayer option 4'),
+        value: 1,
+        label: { en: 'One' },
+      },
+      {
+        id: testId('ConvexHullLayer option 5'),
+        value: 2,
+        label: { en: 'Two' },
+      },
     ];
     const nodes = [
-      makeNode('node-1', { color: 1 }),
-      makeNode('node-2', { color: 2 }),
+      makeNode('node-1', { [COLOR]: 1 }),
+      makeNode('node-2', { [COLOR]: 2 }),
     ];
 
-    const result = groupNodesByVariable(nodes, 'color', numericOptions);
+    const result = groupNodesByVariable(nodes, COLOR, numericOptions);
 
     expect(result.size).toBe(2);
     expect(result.get(1)!.nodeIds).toContain('node-1');
@@ -103,12 +128,12 @@ describe('groupNodesByVariable', () => {
 
   it('maps colorIndex as 1-based position from categoricalOptions', () => {
     const nodes = [
-      makeNode('node-a', { color: 'red' }),
-      makeNode('node-b', { color: 'blue' }),
-      makeNode('node-c', { color: 'green' }),
+      makeNode('node-a', { [COLOR]: 'red' }),
+      makeNode('node-b', { [COLOR]: 'blue' }),
+      makeNode('node-c', { [COLOR]: 'green' }),
     ];
 
-    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+    const result = groupNodesByVariable(nodes, COLOR, OPTIONS);
 
     expect(result.get('red')!.colorIndex).toBe(1);
     expect(result.get('blue')!.colorIndex).toBe(2);
@@ -120,11 +145,11 @@ describe('groupNodesByVariable', () => {
     // It must NOT collide with the first option's color (index 1), and
     // should be allocated the next index after the known options.
     const nodes = [
-      makeNode('node-known', { color: 'red' }),
-      makeNode('node-unknown', { color: 'purple' }),
+      makeNode('node-known', { [COLOR]: 'red' }),
+      makeNode('node-unknown', { [COLOR]: 'purple' }),
     ];
 
-    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+    const result = groupNodesByVariable(nodes, COLOR, OPTIONS);
 
     // Known option keeps its stable, 1-based position.
     expect(result.get('red')!.colorIndex).toBe(1);
@@ -137,11 +162,11 @@ describe('groupNodesByVariable', () => {
 
   it('gives multiple distinct out-of-codebook values distinct, deterministic colors', () => {
     const nodes = [
-      makeNode('node-z', { color: 'zeta' }),
-      makeNode('node-a', { color: 'alpha' }),
+      makeNode('node-z', { [COLOR]: 'zeta' }),
+      makeNode('node-a', { [COLOR]: 'alpha' }),
     ];
 
-    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+    const result = groupNodesByVariable(nodes, COLOR, OPTIONS);
 
     // 3 known options -> out-of-codebook indices start at 4, assigned in a
     // stable (sorted) order so they don't depend on node iteration order.
@@ -154,17 +179,29 @@ describe('groupNodesByVariable', () => {
 
   it('handles array of numeric values (from CheckboxGroup forms)', () => {
     const numericOptions: VariableOption[] = [
-      { value: 1, label: { en: 'One' } },
-      { value: 2, label: { en: 'Two' } },
-      { value: 3, label: { en: 'Three' } },
+      {
+        id: testId('ConvexHullLayer option 6'),
+        value: 1,
+        label: { en: 'One' },
+      },
+      {
+        id: testId('ConvexHullLayer option 7'),
+        value: 2,
+        label: { en: 'Two' },
+      },
+      {
+        id: testId('ConvexHullLayer option 8'),
+        value: 3,
+        label: { en: 'Three' },
+      },
     ];
     const nodes = [
-      makeNode('node-a', { color: [1] }),
-      makeNode('node-b', { color: [1, 2] }),
-      makeNode('node-c', { color: [3] }),
+      makeNode('node-a', { [COLOR]: [1] }),
+      makeNode('node-b', { [COLOR]: [1, 2] }),
+      makeNode('node-c', { [COLOR]: [3] }),
     ];
 
-    const result = groupNodesByVariable(nodes, 'color', numericOptions);
+    const result = groupNodesByVariable(nodes, COLOR, numericOptions);
 
     expect(result.size).toBe(3);
     expect(result.get(1)!.nodeIds).toEqual(['node-a', 'node-b']);
@@ -174,11 +211,11 @@ describe('groupNodesByVariable', () => {
 
   it('handles array of string values (from CheckboxGroup forms)', () => {
     const nodes = [
-      makeNode('node-a', { color: ['red', 'blue'] }),
-      makeNode('node-b', { color: ['blue'] }),
+      makeNode('node-a', { [COLOR]: ['red', 'blue'] }),
+      makeNode('node-b', { [COLOR]: ['blue'] }),
     ];
 
-    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+    const result = groupNodesByVariable(nodes, COLOR, OPTIONS);
 
     expect(result.size).toBe(2);
     expect(result.get('red')!.nodeIds).toEqual(['node-a']);
@@ -186,9 +223,9 @@ describe('groupNodesByVariable', () => {
   });
 
   it('handles nodes where the group variable is an empty array', () => {
-    const nodes = [makeNode('node-empty', { color: [] })];
+    const nodes = [makeNode('node-empty', { [COLOR]: [] })];
 
-    const result = groupNodesByVariable(nodes, 'color', OPTIONS);
+    const result = groupNodesByVariable(nodes, COLOR, OPTIONS);
 
     expect(result.size).toBe(0);
   });

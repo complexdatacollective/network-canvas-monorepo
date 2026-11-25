@@ -14,6 +14,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import protocol from '../../../store/modules/protocol';
@@ -47,8 +48,8 @@ beforeAll(() => {
   vi.stubGlobal('IntersectionObserver', NoopObserver);
 });
 
-const NODE_TYPE = 'person';
-const CATEGORY_VARIABLE = 'category';
+const NODE_TYPE = testTypeId('person');
+const CATEGORY_VARIABLE = testVariableId('category');
 
 const LOCALIZATION: LocalizationDeclaration = {
   defaultLocale: 'en',
@@ -56,13 +57,13 @@ const LOCALIZATION: LocalizationDeclaration = {
 };
 
 const stage: StageProps<'CategoricalBin'>['stage'] = {
-  id: 'stage',
+  id: testId('stage'),
   type: 'CategoricalBin',
   label: { en: 'Categorise people', ar: 'تصنيف الأشخاص' },
   subject: { entity: 'node', type: NODE_TYPE },
   prompts: [
     {
-      id: 'prompt',
+      id: testId('prompt'),
       text: { en: 'Which group?', ar: 'أي مجموعة؟' },
       variable: asEntityAttributeReference(CATEGORY_VARIABLE),
     },
@@ -89,9 +90,17 @@ const protocolPayload: ProtocolPayload = {
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: { en: 'Family', ar: 'العائلة' }, value: 'family' },
+              {
+                id: testId('CategoricalBin option 1'),
+                label: { en: 'Family', ar: 'العائلة' },
+                value: 'family',
+              },
               // No Arabic translation: the participant sees the default.
-              { label: { en: 'Friends' }, value: 'friends' },
+              {
+                id: testId('CategoricalBin option 2'),
+                label: { en: 'Friends' },
+                value: 'friends',
+              },
             ],
           },
         },

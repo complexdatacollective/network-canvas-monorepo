@@ -48,9 +48,10 @@ const errorMessages = defineMessages({
 });
 import { createSlice, current, type PayloadAction } from '@reduxjs/toolkit';
 import { find, get, has, omit, size } from 'es-toolkit/compat';
-import { v4 as uuid } from 'uuid';
 
 import {
+  createEntityTypeId,
+  createVariableId,
   type Codebook,
   type EdgeDefinition,
   type EntityDefinition,
@@ -150,7 +151,7 @@ export const createTypeAsync = createAppAsyncThunk(
     }: { entity: Entity; configuration: Partial<EntityDefinition> },
     { dispatch, getState },
   ) => {
-    const type = uuid();
+    const type = createEntityTypeId();
     const payload: CreateTypePayload = {
       entity,
       type,
@@ -194,7 +195,7 @@ export const createEdgeAsync = createAppAsyncThunk(
   'codebook/createEdgeAsync',
   async (configuration: Partial<EdgeDefinition>, { dispatch, getState }) => {
     const entity: Entity = 'edge';
-    const type = uuid();
+    const type = createEntityTypeId();
 
     const payload: CreateTypePayload<EdgeDefinition> = {
       entity,
@@ -255,7 +256,7 @@ export const createVariableAsync = createAppAsyncThunk(
       );
     }
 
-    const variable = uuid();
+    const variable = createVariableId();
     const payload: CreateVariablePayload = {
       entity,
       type,

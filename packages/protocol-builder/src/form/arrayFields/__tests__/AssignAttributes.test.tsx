@@ -5,12 +5,26 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { CreateOptionOutcome } from '../../../fields/VariablePickerField.tsx';
+import VariablePickerField, {
+  type CreateOptionOutcome,
+} from '../../../fields/VariablePickerField.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import {
+  chooseAttributeById,
+  offeredAttributes,
+  unavailableAttributes,
+  unavailableReason,
+} from '../../../testing/attributePicker.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../testing/testId.ts';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
 import AssignAttributes, {
   committedAttributeVariableIds,
@@ -20,11 +34,26 @@ import AssignAttributes, {
   type CreateAttributeVariable,
 } from '../AssignAttributes.tsx';
 
+const INVENTED = testVariableId('invented');
+const HELPFUL = testVariableId('helpful');
+const PERSON = fixtureTypeId('node', 'person');
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
+const HIGHLIGHTED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'highlighted',
+);
+
 type HarnessUser = ReturnType<typeof userEvent.setup>;
 
 const NO_DRAFT_VARIABLES: ReadonlySet<string> = new Set();
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
+/** A row just added: nothing chosen yet, and an id of its own. */
+const NEW_ROW = { id: expect.any(String) };
+
+const SUBJECT = { entity: 'node', type: PERSON } as const;
 
 /**
  * A stand-in for the host's variable picker. Everything this list needs from a
@@ -53,9 +82,25 @@ const STAGE_FIELDS: SectionDoc = {
 };
 
 const VARIABLE_OPTIONS = [
-  { label: 'Flagged', value: 'flagged', type: 'boolean' },
-  { label: 'Highlighted', value: 'highlighted', type: 'boolean' },
+  { label: 'Flagged', value: FLAGGED, type: 'boolean' as const },
+  { label: 'Highlighted', value: HIGHLIGHTED, type: 'boolean' as const },
 ];
+
+/** The picker every host actually injects. */
+const RealVariablePicker = VariablePickerField as ComponentType<
+  Record<string, unknown>
+>;
+
+/** One row's attribute field, by the row's position in the list. */
+const rowAttributeField = (index: number): HTMLElement => {
+  const field = document.querySelector<HTMLElement>(
+    `[data-field-name="additionalAttributes[${index}].variable"]`,
+  );
+  if (field === null) {
+    throw new Error(`row ${index} has no attribute field`);
+  }
+  return field;
+};
 
 /**
  * What the row answered the picker with, newest last.
@@ -120,7 +165,8 @@ function renderAttributeList(
     const validation = useMemo(
       () =>
         makeAssignAttributesValidation({
-          allVariables: protocolContext.codebook.node?.person?.variables ?? {},
+          allVariables:
+            protocolContext.codebook.node?.[PERSON]?.variables ?? {},
           committedVariableIds,
           draftValidatedVariables: NO_DRAFT_VARIABLES,
           hasValidatedUseElsewhere: () => false,
@@ -186,7 +232,7 @@ describe('AssignAttributes', () => {
   it('reads the codebook role a variable already plays from the protocol', async () => {
     const { user } = renderAttributeList([], []);
 
-    await user.selectOptions(await addRow(user), 'flagged');
+    await user.selectOptions(await addRow(user), FLAGGED);
 
     // `name` is collected by another stage's form, which the package's own
     // protocol context is the only source for here. Choosing it must be
@@ -202,36 +248,99 @@ describe('AssignAttributes', () => {
   it('lets a stamp keep a variable that nothing else validates', async () => {
     const { user, attributes } = renderAttributeList([], []);
 
-    await user.selectOptions(await addRow(user), 'highlighted');
+    await user.selectOptions(await addRow(user), HIGHLIGHTED);
 
     // The second cell only appears once an attribute is chosen, which is also
     // the proof that the pick was accepted.
     await screen.findByText('Value to assign');
     expect(screen.queryByText(/is collected by a form elsewhere/)).toBeNull();
     await waitFor(() =>
-      expect(attributes()).toEqual([{ variable: 'highlighted' }]),
+      expect(attributes()).toEqual([
+        { id: expect.any(String), variable: HIGHLIGHTED },
+      ]),
     );
   });
 
-  it('stops a second row claiming an attribute the first already stamps', async () => {
-    const { user } = renderAttributeList([], []);
+  it('keeps each row’s id through an add, an edit and a delete', async () => {
+    const STORED = '3f2a7c10-5e4b-4d8a-9b6c-1a2b3c4d5e6f';
+    const { user, attributes } = renderAttributeList(
+      [{ id: STORED, variable: HIGHLIGHTED, value: true }],
+      [{ id: STORED, variable: HIGHLIGHTED, value: true }],
+    );
+    const idsNow = (): unknown[] => {
+      const rows = attributes();
+      return Array.isArray(rows)
+        ? rows.map((row: unknown) =>
+            typeof row === 'object' && row !== null
+              ? Reflect.get(row, 'id')
+              : undefined,
+          )
+        : [];
+    };
 
-    await user.selectOptions(await addRow(user), 'highlighted');
-    await screen.findByText('Value to assign');
     await addRow(user);
+    await waitFor(() => expect(idsNow()).toHaveLength(2));
+    const [first, added] = idsNow();
+    expect(first).toBe(STORED);
+    expect(isProtocolObjectId(added)).toBe(true);
+    expect(added).not.toBe(STORED);
 
     const pickers = await screen.findAllByRole('combobox', {
       name: 'Create or select an attribute',
     });
-    const secondRow = within(pickers[1]!);
+    await user.selectOptions(pickers[0]!, FLAGGED);
+    await waitFor(() =>
+      expect(attributes()).toEqual([
+        expect.objectContaining({ id: STORED, variable: FLAGGED }),
+        expect.objectContaining({ id: added }),
+      ]),
+    );
+
+    const [deleteFirst] = screen.getAllByRole('button', {
+      name: 'Delete attribute',
+    });
+    await user.click(deleteFirst!);
+    await waitFor(() => expect(idsNow()).toEqual([added]));
+  });
+
+  it('stops a second row claiming an attribute the first already stamps', async () => {
+    // Through the picker every host injects: an attribute another row stamps
+    // has to reach it as one that cannot be chosen, with the reason.
+    const { user, attributes } = renderAttributeList([], [], {
+      picker: RealVariablePicker,
+    });
+    const add = () =>
+      user.click(
+        screen.getByRole('button', { name: 'Add new attribute to assign' }),
+      );
+
+    await add();
+    await chooseAttributeById(user, rowAttributeField(0), HIGHLIGHTED);
+    await screen.findByText('Value to assign');
+    await add();
+    await waitFor(() => rowAttributeField(1));
+    const secondRow = rowAttributeField(1);
+
     // One variable holds one value per node, so a second row stamping the same
     // attribute is not a second stamp — it silently overwrites the first.
-    expect(
-      secondRow.getByRole('option', { name: 'Highlighted' }),
-    ).toBeDisabled();
+    expect(await unavailableAttributes(user, secondRow)).toEqual([HIGHLIGHTED]);
     // Everything else the pool offers is still open, so this is the used
     // attribute being withdrawn rather than the list being closed.
-    expect(secondRow.getByRole('option', { name: 'Flagged' })).toBeEnabled();
+    expect(await offeredAttributes(user, secondRow)).toEqual([FLAGGED]);
+    // Choosing it explains rather than chooses.
+    expect(await unavailableReason(user, secondRow, HIGHLIGHTED)).toBe(
+      'Another row in this list already assigns a value to this attribute.',
+    );
+    await waitFor(() =>
+      expect(attributes()).toEqual([
+        { id: expect.any(String), variable: HIGHLIGHTED },
+        NEW_ROW,
+      ]),
+    );
+    // The row that stamps it keeps it.
+    expect(await offeredAttributes(user, rowAttributeField(0))).toContain(
+      HIGHLIGHTED,
+    );
   });
 
   it('shows which row is incomplete when the save is refused', async () => {
@@ -284,11 +393,11 @@ describe('a stage document holding something that is not a list', () => {
    * them.
    */
   const foreignValues = {
-    'a bare string': ['highlighted', [{}]],
-    'a single record': [{ variable: 'highlighted', value: true }, [{}]],
+    'a bare string': [HIGHLIGHTED, [NEW_ROW]],
+    'a single record': [{ variable: HIGHLIGHTED, value: true }, [NEW_ROW]],
     'a list with a hole in it': [
-      [null, { variable: 'highlighted', value: true }],
-      [{}],
+      [null, { variable: HIGHLIGHTED, value: true }],
+      [NEW_ROW],
     ],
   } as const satisfies Record<string, readonly [unknown, unknown[]]>;
 
@@ -337,13 +446,9 @@ describe('a stage document holding something that is not a list', () => {
 
 /**
  * Creating a codebook variable is a round trip through the host, and the list
- * carries on moving while it runs. These rows carry no id of their own, so
- * `ArrayField` identifies them by an internal id it infers from each row's
- * content whenever the value is replaced — which holds a row's update handle
- * on it however the list moves around it, and cannot hold it there when the
- * row's own content is what changed. The deletion path already answers this by
- * removing by the row's own identity rather than by a handle captured when
- * the dialog opened; the creation path is the same window.
+ * carries on moving while it runs. A row's update handle follows its id, so it
+ * holds however the list moves around it, and the creation still has to notice
+ * when the row's own content is what changed, or when the row has gone.
  */
 describe('a variable created while the list is moving', () => {
   const openList = (
@@ -376,14 +481,14 @@ describe('a variable created while the list is moving', () => {
 
   it('assigns the new attribute to the row it was created from', async () => {
     const { user, attributes } = openList(
-      [{ variable: 'highlighted', value: true }],
-      () => Promise.resolve({ status: 'created', variableId: 'invented' }),
+      [{ variable: HIGHLIGHTED, value: true }],
+      () => Promise.resolve({ status: 'created', variableId: INVENTED }),
     );
 
     await startCreating(user);
 
     await waitFor(() =>
-      expect(attributes()).toEqual([{ variable: 'invented', value: true }]),
+      expect(attributes()).toEqual([{ variable: INVENTED, value: true }]),
     );
     // Which is what the picker is told, so it empties the name box.
     await waitFor(() => expect(answered).toEqual([{ status: 'created' }]));
@@ -402,7 +507,7 @@ describe('a variable created while the list is moving', () => {
       finishCreation = (variableId: string) =>
         resolve({ status: 'created', variableId });
     });
-    const held = [{ variable: 'highlighted', value: true }];
+    const held = [{ variable: HIGHLIGHTED, value: true }];
     const { user, attributes, stopAcceptingChanges } = openList(
       held,
       () => created,
@@ -415,7 +520,7 @@ describe('a variable created while the list is moving', () => {
     stopAcceptingChanges();
 
     await act(async () => {
-      finishCreation('invented');
+      finishCreation(INVENTED);
       await created;
     });
 
@@ -444,7 +549,7 @@ describe('a variable created while the list is moving', () => {
         resolve({ status: 'created', variableId });
     });
     const { user, attributes } = openList(
-      [{ variable: 'highlighted', value: true }],
+      [{ variable: HIGHLIGHTED, value: true }],
       () => created,
     );
 
@@ -457,7 +562,7 @@ describe('a variable created while the list is moving', () => {
     await waitFor(() => expect(attributes()).toEqual([]));
 
     await act(async () => {
-      finishCreation('invented');
+      finishCreation(INVENTED);
       await created;
     });
 
@@ -475,7 +580,7 @@ describe('a variable created while the list is moving', () => {
    * nothing to say about where it went.
    */
   it('answers a create the host refused with a refusal', async () => {
-    const held = [{ variable: 'highlighted', value: true }];
+    const held = [{ variable: HIGHLIGHTED, value: true }];
     const { user, attributes } = openList(held, () =>
       Promise.resolve({ status: 'refused' }),
     );
@@ -499,9 +604,9 @@ describe('committedAttributeVariableIds', () => {
       ...committedAttributeVariableIds([
         null,
         'worried',
-        { variable: 'helpful', value: true },
+        { variable: HELPFUL, value: true },
       ]),
-    ]).toEqual(['helpful']);
+    ]).toEqual([HELPFUL]);
   });
 
   it('answers with nothing for a value that is not a list', () => {
@@ -509,7 +614,7 @@ describe('committedAttributeVariableIds', () => {
     // gate with. Erring towards the gate FIRING is the safe direction: the
     // escape only ever excuses a contradiction the protocol already saved.
     expect([
-      ...committedAttributeVariableIds({ variable: 'helpful', value: true }),
+      ...committedAttributeVariableIds({ variable: HELPFUL, value: true }),
     ]).toEqual([]);
   });
 
@@ -522,8 +627,8 @@ describe('committedAttributeVariableIds', () => {
       ...committedAttributeVariableIds([
         { value: true },
         { variable: '', value: false },
-        { variable: 'helpful', value: true },
+        { variable: HELPFUL, value: true },
       ]),
-    ]).toEqual(['helpful']);
+    ]).toEqual([HELPFUL]);
   });
 });

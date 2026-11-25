@@ -4,6 +4,7 @@ import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
   type Protocol,
+  createProtocolObjectId,
 } from '@codaco/protocol-validation';
 
 import {
@@ -289,6 +290,11 @@ export function emptyProtocol(
     schemaVersion: 9,
     localization,
     codebook: {},
-    stages: [createDefaultFinishSessionStage({ id: 'finish', localization })],
+    stages: [
+      createDefaultFinishSessionStage({
+        id: createProtocolObjectId(),
+        localization,
+      }),
+    ],
   };
 }

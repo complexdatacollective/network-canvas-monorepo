@@ -2,8 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { dynamicValueNameFor } from '@codaco/protocol-validation';
 
 import StageEditor from '../../StageEditor.tsx';
+import {
+  fixtureStageId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { informationStageEditor } from './InformationStageEditor.ts';
 
@@ -11,7 +16,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Information',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'information-1',
+    stageId: fixtureStageId('information-1'),
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
@@ -67,9 +72,15 @@ export const Spectating: Story = {
 /**
  * A value the interview fills in, inserted into the page: typing `{`
  * offers what the page can show, and choosing the participant's name
- * binds it to the stage, inside versions for when it is known and when it is
- * not.
+ * writes it into the text by its attribute's id, inside versions for when it
+ * is known and when it is not.
  */
+const EGO_NAME = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: fixtureVariableId('ego', 'ego_name'),
+});
+
 export const ShowingAValue: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -95,7 +106,9 @@ export const ShowingAValue: Story = {
         canvas.getByRole('region', {
           name: 'What the host was asked to commit',
         }),
-      ).toHaveTextContent('"path": "ego.ego_name"');
+      ).toHaveTextContent(
+        `{${EGO_NAME}, select, missing {} other {{${EGO_NAME}}}}`,
+      );
     });
   },
 };

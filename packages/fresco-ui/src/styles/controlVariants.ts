@@ -439,7 +439,10 @@ export const dropdownItemVariants = cva({
     // Set on the item rather than its list so every menu, select and combobox
     // gets the same spacing.
     '[:is([role^=menuitem],[role=option])+&]:mt-1',
-    'transition-colors outline-none select-none',
+    // No colour transition: the highlight follows the pointer and the arrow
+    // keys, and an eased fill trails behind them — the row the pointer has
+    // left still shows its fill while the next one is only starting to.
+    'outline-none select-none',
     // Hover / highlighted / open: subtle translucent background
     'not-data-selected:not-data-checked:hover:bg-surface-1 not-data-selected:not-data-checked:hover:text-surface-1-contrast',
     'not-data-selected:not-data-checked:data-highlighted:bg-surface-1 not-data-selected:not-data-checked:data-highlighted:text-surface-1-contrast',

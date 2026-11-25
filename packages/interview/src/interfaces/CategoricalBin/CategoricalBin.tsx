@@ -63,6 +63,7 @@ import {
   getNodeTypeDefinition,
   resolveNodeShape,
 } from '../../selectors/session';
+import { useInteractionSound } from '../../sounds/InteractionSounds';
 import { getCodebook } from '../../store/modules/protocol';
 import { updateNode } from '../../store/modules/session';
 import { type RootState, useAppDispatch } from '../../store/store';
@@ -223,6 +224,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const selectMode = stage.behaviours?.interactionMode === 'select';
   const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
   const track = useTrack();
+  const { play: playSound } = useInteractionSound();
   const codebook = useSelector(getCodebook);
   const previousExpandedRef = useRef<number | null>(null);
 
@@ -281,9 +283,22 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   // Reset expanded bin when prompt changes. Compared during render so the new
   // prompt is never painted with the previous prompt's bin still expanded.
   const [expandedPromptId, setExpandedPromptId] = useState(id);
+  // The bin whose panel last closed back into its circle. That circle has to
+  // know, so that its corners animate (see CategoricalBinItem). Worked out
+  // during render, like the reset above, so the circle knows from its first
+  // render.
+  const [shownExpandedIndex, setShownExpandedIndex] =
+    useState(expandedBinIndex);
+  const [closingBinIndex, setClosingBinIndex] = useState<number | null>(null);
   if (expandedPromptId !== id) {
     setExpandedPromptId(id);
     setExpandedBinIndex(null);
+    // A new prompt's bins are new circles, not the old prompt's panel closing.
+    setShownExpandedIndex(null);
+    setClosingBinIndex(null);
+  } else if (shownExpandedIndex !== expandedBinIndex) {
+    setShownExpandedIndex(expandedBinIndex);
+    setClosingBinIndex(shownExpandedIndex);
   }
 
   const hasExpanded = expandedBinIndex !== null;
@@ -369,7 +384,13 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
         (binNode) => binNode[entityPrimaryKeyProperty] === nodeId,
       ),
     );
+    // Every placement the session stored, by drag or by selection, sounds
+    // once. A drag is heard through the bin's drop sound, which plays once
+    // this resolves that the placement was saved (for the "other" bin, once
+    // its question is answered); a placement by selection is heard here. The
+    // answer behind it is an ordinary update, which makes no sound of its own.
     const recordCommittedDrop = () => {
+      if (selectMode) playSound('toggle-on');
       if (previousIndex === -1) {
         track('node_binned', {
           node_id: nodeId,
@@ -612,6 +633,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
                         index={index}
                         label={bin.label}
                         isExpanded={false}
+                        isClosingFromPanel={index === closingBinIndex}
                         onToggleExpand={() => setExpandedBinIndex(index)}
                         catColor={getCatColor(index)}
                         onDropNode={(node) => handleDropNode(node, index)}

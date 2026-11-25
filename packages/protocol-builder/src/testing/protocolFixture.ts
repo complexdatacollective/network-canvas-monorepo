@@ -23,24 +23,22 @@ import { isStageType } from '../stage-types.ts';
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
 /**
- * Which interface each of the fixture's stages configures, written down.
+ * The name a test opens each of the fixture's stages by, and the interface it
+ * configures.
  *
- * The protocol is JSON, so a `type` read out of it is a `string` as far as the
- * compiler is concerned, and the harness could not tell an `Information`
- * editor mounted over `ego-form-1` from one mounted over `information-1`: the
- * stage type reached the editor as a runtime string that the call's own type
- * parameter relabelled. Written down here, "which interface is
- * `ego-form-1`?" becomes a question the compiler can answer — see
- * `FixtureStageId`, and `RenderStageEditorOptions.stageId`, which is typed
- * from it.
+ * A stage's own id is a UUID nobody can read, so a test names a stage by the
+ * handle written here instead, and the harness finds the one stage of that
+ * interface the fixture holds. The fixture holds exactly one stage of every
+ * interface, and `loadFixtureStage` refuses a handle that does not find exactly
+ * one.
  *
- * Hand-written, and therefore capable of lying: `assertDeclaredStageType`
- * refuses a stage whose protocol document says something else, so the lie is
- * caught the first time the stage is opened rather than becoming a false claim
- * the type system enforces. `protocolFixture.test.ts` asks the same question
- * of every stage at once.
- *
- * One entry per line, in the order the protocol holds them.
+ * Written down rather than read out of the protocol, because the protocol is
+ * JSON: a `type` read out of it is a `string` as far as the compiler is
+ * concerned, and the harness could not tell an `Information` editor mounted
+ * over `ego-form-1` from one mounted over `information-1`. Written down here,
+ * "which interface is `ego-form-1`?" becomes a question the compiler can
+ * answer. See `FixtureStageId`, and `RenderStageEditorOptions.stageId`, which
+ * is typed from it.
  */
 const FIXTURE_STAGE_TYPES = {
   'anonymisation-1': 'Anonymisation',
@@ -69,49 +67,20 @@ const FIXTURE_STAGE_TYPES = {
 type FixtureStageTypes = typeof FIXTURE_STAGE_TYPES;
 
 /**
- * The fixture stages that configure `T`.
+ * The handles of the fixture stages that configure `T`.
  *
- * `FixtureStageId<StageType>` is every id the fixture holds, which is what a
- * call that has not named an interface may pass. Narrow `T` — by naming the
- * editor under test, or by building the stage — and it narrows to the stages
- * that interface actually has.
+ * `FixtureStageId<StageType>` is every handle, which is what a call that has
+ * not named an interface may pass. Narrow `T` (by naming the editor under
+ * test, or by building the stage) and it narrows to the stages that interface
+ * actually has.
  */
 export type FixtureStageId<T extends StageType = StageType> = {
   [Id in keyof FixtureStageTypes]: FixtureStageTypes[Id] extends T ? Id : never;
 }[keyof FixtureStageTypes];
 
-/** The same map, for the runtime half, which is asked about arbitrary ids. */
 const DECLARED_STAGE_TYPES: ReadonlyMap<string, StageType> = new Map(
   Object.entries(FIXTURE_STAGE_TYPES),
 );
-
-/**
- * The interface a fixture stage is written down as, refusing anything else.
- *
- * The runtime half of `FIXTURE_STAGE_TYPES`. What is written down decides how
- * a call naming this id is typed, so a map that has drifted from the protocol
- * is a claim the compiler enforces and nothing checks — an editor written for
- * one interface would be accepted over a stage that is now another, which is
- * the very thing the map exists to refuse. Both types are in the message,
- * because which of the two is wrong is not this function's to decide.
- */
-export function assertDeclaredStageType(
-  stageId: string,
-  type: StageType,
-): StageType {
-  const declared = DECLARED_STAGE_TYPES.get(stageId);
-  if (declared === undefined) {
-    throw new Error(
-      `The all-interfaces protocol has a stage "${stageId}" that \`FIXTURE_STAGE_TYPES\` does not name, so nothing says which interface it configures. Add it.`,
-    );
-  }
-  if (declared !== type) {
-    throw new Error(
-      `\`FIXTURE_STAGE_TYPES\` says the all-interfaces stage "${stageId}" is a "${declared}", and the protocol says it is a "${type}". A call naming this stage is typed from the first, so an editor written for "${declared}" would be mounted over a "${type}".`,
-    );
-  }
-  return declared;
-}
 
 /** The stage's identity, and the document without it. */
 export type FixtureStage = Readonly<{
@@ -130,11 +99,10 @@ function fixtureStages(): Record<string, unknown>[] {
 }
 
 /**
- * Every stage the fixture holds, in the order it holds them.
+ * Every stage id the fixture holds, in the order it holds them.
  *
  * Part of the harness's surface, for a test that asks something of all of them
- * at once rather than of one it names — which is how the interface each of
- * them configures is held level with `FIXTURE_STAGE_TYPES`.
+ * at once rather than of one it names.
  */
 export function fixtureStageIds(): string[] {
   return fixtureStages().flatMap((stage) =>
@@ -143,30 +111,39 @@ export function fixtureStageIds(): string[] {
 }
 
 /**
- * One stage of the fixture, split into what the section owns and what the
- * editor edits.
+ * One stage of the fixture, named by its handle in `FIXTURE_STAGE_TYPES`,
+ * split into what the section owns and what the editor edits.
  *
- * Throws rather than answering with a blank stage: a test naming a stage that
- * is not there would otherwise mount an empty editor and pass, proving nothing
- * about the interface it was written for.
+ * A name that is not a handle is read as the stage's own id. Throws rather
+ * than answering with a blank stage: a test naming a stage that is not there
+ * would otherwise mount an empty editor and pass, proving nothing about the
+ * interface it was written for.
  */
-export function loadFixtureStage(stageId: string): FixtureStage {
-  const stage = fixtureStages().find((candidate) => candidate.id === stageId);
-  if (stage === undefined) {
+export function loadFixtureStage(handle: string): FixtureStage {
+  const declared = DECLARED_STAGE_TYPES.get(handle);
+  const matches = fixtureStages().filter((candidate) =>
+    declared === undefined
+      ? candidate.id === handle
+      : candidate.type === declared,
+  );
+  const [stage] = matches;
+  if (stage === undefined || matches.length > 1) {
     throw new Error(
-      `The all-interfaces protocol has no stage "${stageId}". It has: ${fixtureStageIds().join(', ')}.`,
+      declared === undefined
+        ? `The all-interfaces protocol has no stage "${handle}". It has: ${fixtureStageIds().join(', ')}.`
+        : `The all-interfaces protocol holds ${matches.length} "${declared}" stages, and the handle "${handle}" needs exactly one.`,
     );
   }
-  const { id: _id, type, ...fields } = stage;
-  if (!isStageType(type)) {
-    throw new Error(`Fixture stage "${stageId}" has no known interface type.`);
+  const { id, type, ...fields } = stage;
+  if (typeof id !== 'string' || !isStageType(type)) {
+    throw new Error(`Fixture stage "${handle}" has no id or known type.`);
   }
-  // Checked here rather than trusted, because this is where a stage is opened:
-  // what `FIXTURE_STAGE_TYPES` says about this id is what typed the call that
-  // asked for it.
-  assertDeclaredStageType(stageId, type);
-  return { id: stageId, type, fields };
+  return { id, type, fields };
 }
+
+/** The id the fixture holds the stage named by `handle` under. */
+export const fixtureStageId = (handle: FixtureStageId): string =>
+  loadFixtureStage(handle).id;
 
 /**
  * The fixture protocol as the client-safe section model holds it.
@@ -211,6 +188,93 @@ export function fixtureProtocolSections(): Record<string, SectionDoc> {
   }
 
   return sections;
+}
+
+const fixtureCodebook = (): Record<string, unknown> =>
+  isRecord(FIXTURE.codebook) ? FIXTURE.codebook : {};
+
+const keyNamed = (record: unknown, name: string): string | undefined =>
+  isRecord(record)
+    ? Object.keys(record).find((key) => {
+        const entry = record[key];
+        return isRecord(entry) && entry.name === name;
+      })
+    : undefined;
+
+/**
+ * The id the fixture keeps its node or edge type called `name` under.
+ *
+ * Codebook ids are UUIDs nobody can read, so a test names a type by its name.
+ * Throws for a name the fixture does not have, rather than handing a test an
+ * id that names nothing.
+ */
+export function fixtureTypeId(entity: 'node' | 'edge', name: string): string {
+  const key = keyNamed(fixtureCodebook()[entity], name);
+  if (key === undefined) {
+    throw new Error(
+      `The all-interfaces protocol has no ${entity} type "${name}".`,
+    );
+  }
+  return key;
+}
+
+type VariableOwner =
+  | 'ego'
+  | Readonly<{ entity: 'node' | 'edge'; typeName: string }>;
+
+/** The variables the fixture keeps on the ego or on one node or edge type. */
+const variablesOf = (owner: VariableOwner): unknown => {
+  const codebook = fixtureCodebook();
+  const definition =
+    owner === 'ego'
+      ? codebook.ego
+      : (() => {
+          const types = codebook[owner.entity];
+          return isRecord(types)
+            ? types[fixtureTypeId(owner.entity, owner.typeName)]
+            : undefined;
+        })();
+  return isRecord(definition) ? definition.variables : undefined;
+};
+
+/**
+ * The id the fixture keeps the variable called `name` under, on the ego or
+ * on the node or edge type called `typeName`.
+ */
+export function fixtureVariableId(owner: VariableOwner, name: string): string {
+  const key = keyNamed(variablesOf(owner), name);
+  if (key === undefined) {
+    throw new Error(`The all-interfaces protocol has no variable "${name}".`);
+  }
+  return key;
+}
+
+/**
+ * The id of the option whose value is `value` on the fixture's variable
+ * called `name`, owned as `fixtureVariableId` takes it.
+ */
+export function fixtureOptionId(
+  owner: VariableOwner,
+  name: string,
+  value: string | number,
+): string {
+  const variables = variablesOf(owner);
+  const variable = isRecord(variables)
+    ? variables[fixtureVariableId(owner, name)]
+    : undefined;
+  const options =
+    isRecord(variable) && Array.isArray(variable.options)
+      ? variable.options
+      : [];
+  const option: unknown = options.find(
+    (each: unknown) => isRecord(each) && each.value === value,
+  );
+  if (!isRecord(option) || typeof option.id !== 'string') {
+    throw new Error(
+      `The all-interfaces protocol's "${name}" has no option ${JSON.stringify(value)}.`,
+    );
+  }
+  return option.id;
 }
 
 /** The languages the fixture protocol declares. */

@@ -30,11 +30,15 @@ import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { beforeCall } from '../../../testing/host/beforeCall.ts';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 
 /**
  * The shared words a stage uses, edited in its stage editor. A change to one
@@ -58,7 +62,10 @@ const ENGLISH_AND_SPANISH: ProtocolLocalization = {
   locales: ['en-US', 'es'],
 };
 const SETTINGS = sectionId({ kind: 'settings' });
-const MAP_STAGE = sectionId({ kind: 'stage', stageId: 'geospatial-1' });
+const MAP_STAGE = sectionId({
+  kind: 'stage',
+  stageId: fixtureStageId('geospatial-1'),
+});
 const SEARCH_FAILED = 'Search failed message';
 const COLLABORATOR = {
   sessionId: 'collaborator-tab',
@@ -132,7 +139,7 @@ const editorReads = (text: string) =>
 
 const openMapStage = (localization?: ProtocolLocalization) =>
   renderStageEditor({
-    stageId: 'geospatial-1',
+    stageId: fixtureStageId('geospatial-1'),
     sections: (
       <>
         {geospatialSections}
@@ -424,7 +431,10 @@ describe('a new stage of a kind the protocol has none of', () => {
     // The protocol as it would be without its one Categorical Bin: the stage
     // goes, and with it the words only a Categorical Bin shows.
     expect(
-      harness.host.store.deleteStage('categorical-bin-1', COLLABORATOR).status,
+      harness.host.store.deleteStage(
+        fixtureStageId('categorical-bin-1'),
+        COLLABORATOR,
+      ).status,
     ).toBe('applied');
     const settings = harness.host.store.read(SETTINGS).document;
     const { categoricalBin: _bin, ...interfaceText } =
@@ -544,7 +554,7 @@ describe('a stage saved with its shared words, whose answer is lost', () => {
     const requestIds: string[] = [];
     let lost = false;
     const harness = renderStageEditor({
-      stageId: 'geospatial-1',
+      stageId: fixtureStageId('geospatial-1'),
       sections: geospatialSections,
       adapter: (host) =>
         host.adapterWith({
@@ -589,7 +599,10 @@ const collaboratorSaves = (
   harness: StageEditorHarness,
   value: LocalizedString,
 ) => {
-  const other = sectionId({ kind: 'stage', stageId: 'geospatial-2' });
+  const other = sectionId({
+    kind: 'stage',
+    stageId: testId('geospatial-2'),
+  });
   const order = sectionId({ kind: 'stageOrder' });
   const sections = harness.protocolSections();
   const map = sections[MAP_STAGE];
@@ -598,11 +611,14 @@ const collaboratorSaves = (
     const options = map.mapOptions as Readonly<Record<string, unknown>>;
     harness.host.store.applyAsCollaborator(other, {
       ...map,
-      id: 'geospatial-2',
+      id: testId('geospatial-2'),
       mapOptions: { ...options, allowSearch: true },
     });
     harness.host.store.applyAsCollaborator(order, {
-      stages: [...(Array.isArray(stages) ? stages : []), 'geospatial-2'],
+      stages: [
+        ...(Array.isArray(stages) ? stages : []),
+        testId('geospatial-2'),
+      ],
     });
   }
   const settings = harness.host.store.read(SETTINGS).document;
@@ -684,7 +700,7 @@ describe('a shared word the protocol holds that a collaborator rewords while the
   const openRecordingMapStage = () => {
     const sent: (readonly InterfaceTextUpdate[])[] = [];
     const harness = renderStageEditor({
-      stageId: 'geospatial-1',
+      stageId: fixtureStageId('geospatial-1'),
       sections: (
         <>
           {geospatialSections}
@@ -994,7 +1010,7 @@ describe('a shared word held with a stage whose save was refused', () => {
   it('takes the wording a collaborator saved while they held the settings, when the researcher had not changed it', async () => {
     const sent: (readonly InterfaceTextUpdate[])[] = [];
     const harness = renderStageEditor({
-      stageId: 'geospatial-1',
+      stageId: fixtureStageId('geospatial-1'),
       sections: geospatialSections,
       adapter: (host) =>
         host.adapterWith({
@@ -1115,7 +1131,7 @@ describe('a shared word held with a stage whose save was refused', () => {
     async (_name, refusal) => {
       const transport = refusingTheFirst('Submit', refusal);
       const harness = renderStageEditor({
-        stageId: 'geospatial-1',
+        stageId: fixtureStageId('geospatial-1'),
         sections: geospatialSections,
         adapter: transport.adapter,
       });

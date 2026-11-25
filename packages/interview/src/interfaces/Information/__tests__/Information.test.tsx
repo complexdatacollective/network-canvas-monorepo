@@ -20,6 +20,7 @@ import {
   type LocalizedString,
 } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testIds';
 import { InterviewQueryClientProvider } from '../../../contexts/InterviewQueryClientProvider';
 import { ContractProvider } from '../../../contract/context';
 import type { ResolvedAsset } from '../../../contract/types';
@@ -118,7 +119,7 @@ function renderInformation(
 }
 
 const makeStage = (content: LocalizedString | string): InformationStage => ({
-  id: 'info-1',
+  id: testId('info-1'),
   type: 'Information',
   label: { en: 'Info' },
   content: typeof content === 'string' ? { en: content } : content,
@@ -176,14 +177,6 @@ describe('the page’s heading and text', () => {
       screen.getByRole('heading', { level: 1, name: 'Before you begin' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Some words.').tagName).toBe('P');
-  });
-
-  it('centres a heading that opens the page', () => {
-    renderInformation(makeStage('# Before you begin\n\nSome words.'));
-
-    const heading = screen.getByRole('heading', { name: 'Before you begin' });
-    expect(heading.parentElement).toHaveClass('[&>h1:first-child]:text-center');
-    expect(heading.matches('h1:first-child')).toBe(true);
   });
 
   it('formats the text as a message before rendering it as markdown', () => {

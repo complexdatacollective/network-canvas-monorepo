@@ -1,11 +1,17 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
   attributeField,
+  attributeTrigger,
   createRowIn,
 } from '../../../testing/attributePicker.ts';
+import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testTypeId } from '../../../testing/testId.ts';
 import {
   openPrompt,
   sociogramSections,
@@ -93,9 +99,9 @@ describe('the canvas sections, read in Spanish', () => {
     // This prompt already positions by an attribute, which is the state the
     // trigger says "change" rather than "select" in.
     expect(
-      within(
+      attributeTrigger(
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
-      ).getByRole('button', { name: 'Cambiar atributo' }),
+      ),
     ).toBeInTheDocument();
     // Inventing one is offered from inside that window, on the term the
     // researcher typed, and in their language: the sections no longer carry a
@@ -105,7 +111,7 @@ describe('the canvas sections, read in Spanish', () => {
         harness.user,
         attributeField('Atributo de disposición', screen.getByRole('dialog')),
         'Find or create an attribute',
-        (term) => `Crear un atributo nuevo llamado «${term}».`,
+        (term) => `Crear «${term}»`,
       ),
     ).not.toBeNull();
     expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();
@@ -116,19 +122,24 @@ describe('the canvas sections, read in Spanish', () => {
    * spliced into the Spanish sentence rather than into the English one.
    */
   it('splices a lost connection type’s id into the Spanish tick list', async () => {
-    const LOST_EDGE = 'former_edge';
+    const LOST_EDGE = testTypeId('former_edge');
     const harness = renderStageEditor({
       stage: {
         type: 'Sociogram' as const,
         fields: {
           label: 'Sociogram',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
           background: { concentricCircles: 4 },
           prompts: [
             {
               id: 'sociogram-prompt-1',
               text: 'Coloca a las personas que se conocen cerca',
-              layout: { layoutVariable: 'layout' },
+              layout: {
+                layoutVariable: fixtureVariableId(
+                  { entity: 'node', typeName: 'person' },
+                  'layout',
+                ),
+              },
               edges: { display: [LOST_EDGE] },
             },
           ],

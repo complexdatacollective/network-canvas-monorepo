@@ -21,12 +21,19 @@ import type {
   StageEditorProps,
 } from '../../stage-editor-contract.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
-import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
+import {
+  fixtureStageIds,
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+  fixtureStageId,
+} from '../protocolFixture.ts';
 import {
   renderStageEditor,
   type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../renderStageEditor.tsx';
+import { testId, testVariableId } from '../testId.ts';
 
 const commonSections = (
   <>
@@ -169,7 +176,7 @@ describe('the stage-editor test harness', () => {
     expect(() => loadFixtureStage('not-a-stage')).toThrow(
       /has no stage "not-a-stage"/,
     );
-    expect(fixtureStageIds()).toContain('information-1');
+    expect(fixtureStageIds()).toContain(fixtureStageId('information-1'));
   });
 
   it('lists the mounted sections, in order, with their states', async () => {
@@ -231,14 +238,9 @@ describe('the stage-editor test harness', () => {
 
     // `label` is owned without a section owning it: the stage's name is drawn
     // by the harness's own host chrome, as a host draws it, so it is a field of
-    // the form wherever it sits on the page. `dynamicValues` likewise: the
-    // shell registers the stage's bindings whichever sections it holds.
-    expect(harness.ownedKeys()).toEqual([
-      'conditions',
-      'dynamicValues',
-      'label',
-      'subject',
-    ]);
+    // the form wherever it sits on the page. `conditions` likewise: the
+    // shell registers the stage's conditions whichever sections it holds.
+    expect(harness.ownedKeys()).toEqual(['conditions', 'label', 'subject']);
     await expect(harness.roundTrip()).rejects.toThrow(/keys: form, prompts/);
 
     // Declared, the same mount round-trips: the list is a statement an editor
@@ -662,7 +664,9 @@ const fixtureStageLabels = (): string[] =>
   );
 
 /** Where `information-1` sits in that interview. */
-const INFORMATION_INDEX = fixtureStageIds().indexOf('information-1');
+const INFORMATION_INDEX = fixtureStageIds().indexOf(
+  fixtureStageId('information-1'),
+);
 
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
@@ -748,9 +752,12 @@ describe('a stage being created', () => {
             filter: {
               rules: [
                 {
-                  id: 'rule-a',
+                  id: testId('rule-a'),
                   type: 'ego',
-                  options: { attribute: 'ego_name', operator: 'EXISTS' },
+                  options: {
+                    attribute: fixtureVariableId('ego', 'ego_name'),
+                    operator: 'EXISTS',
+                  },
                 },
               ],
             },
@@ -803,7 +810,7 @@ describe('a stage the interview already contains', () => {
   it('leaves an empty name empty', async () => {
     renderStageEditor({
       stage: {
-        id: 'information-1',
+        id: fixtureStageId('information-1'),
         type: 'Information',
         fields: { label: {}, content: { 'en-US': 'A page' } },
       },
@@ -883,7 +890,9 @@ describe('the harness editor slot', () => {
  * something no host would ever have sent.
  */
 describe('a codebook change the harness seeds', () => {
-  const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+  const PERSON = fixtureTypeId('node', 'person');
+  const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON });
+  const NICKNAME_ID = testVariableId('nickname');
   const NICKNAME = Object.freeze({
     name: 'nickname',
     type: 'text',
@@ -906,18 +915,20 @@ describe('a codebook change the harness seeds', () => {
       throw new Error('the fixture has no "person" node type');
     }
     const variables = isRecord(person.variables) ? person.variables : {};
-    if (Object.hasOwn(variables, 'nickname')) {
+    if (Object.hasOwn(variables, NICKNAME_ID)) {
       throw new Error(
         'the fixture already gives "person" a "nickname" attribute, so seeding one proves nothing',
       );
     }
-    return { ...person, variables: { ...variables, nickname: NICKNAME } };
+    return { ...person, variables: { ...variables, [NICKNAME_ID]: NICKNAME } };
   };
 
   /** A section reading the codebook, the way every attribute picker does. */
   function NodeConfigurationSection() {
     const { codebook } = useProtocolContext();
-    const names = Object.keys(codebook.node?.person?.variables ?? {});
+    const names = Object.values(codebook.node?.[PERSON]?.variables ?? {}).map(
+      ({ name }) => name,
+    );
     return (
       <BuilderSection sectionKey="person-attributes" title="Person attributes">
         <p>{`Attributes: ${names.toSorted().join(', ')}`}</p>
@@ -939,7 +950,7 @@ describe('a codebook change the harness seeds', () => {
     expect(before).not.toHaveTextContent('nickname');
 
     harness.receiveCodebookUpdate({
-      node: { person: personWithNickname(harness) },
+      node: { [PERSON]: personWithNickname(harness) },
     });
 
     // The revision reaches the section over the channel, which is a microtask.
@@ -947,7 +958,7 @@ describe('a codebook change the harness seeds', () => {
       await screen.findByText(/^Attributes: .*\bnickname\b/),
     ).toBeInTheDocument();
     expect(
-      harness.hostCodebook().node?.person?.variables?.nickname,
+      harness.hostCodebook().node?.[PERSON]?.variables?.[NICKNAME_ID],
     ).toMatchObject({ name: 'nickname' });
   });
 });

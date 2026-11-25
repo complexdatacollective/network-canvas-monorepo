@@ -4,21 +4,21 @@ import {
   type ParserOptions,
   TYPE,
 } from '@formatjs/icu-messageformat-parser';
-import { fromMarkdown } from 'mdast-util-from-markdown';
 
 import { holdsLineBreak } from '@codaco/shared-consts';
 
 import { isBlankText } from './blankText.ts';
 import type { LocaleTag } from './localeTag.ts';
 import { versionLineMarkdown } from './markdownText.ts';
-import { markdownAsEdited } from './markdownTree.ts';
+import { markdownTree } from './markdownTree.ts';
 import type { MessagePart } from './messageArguments.ts';
 
 /**
- * A value from the interview that a stage's text may show (see the stage's
- * `dynamicValues`), as the message checker sees it:
+ * A value from the interview that a stage's text may show (see
+ * `schemas/9/dynamic-values.ts`), as the message checker sees it:
+ * - `description`, how the problems that concern it name it;
  * - `cases`, the keys a select on the value may name besides `missing` and
- *   `other` (a categorical, ordinal or boolean value's binding cases);
+ *   `other` (the option or yes/no cases the text gives a version for);
  * - `numeric`, whether a plural may choose a version by it;
  * - `optional`, whether it can be missing where the text is shown. Such a
  *   value is shown only inside a version of a select on it that is for when
@@ -28,6 +28,12 @@ import type { MessagePart } from './messageArguments.ts';
  *   answers), or undefined when it can.
  */
 export type DynamicValueArgument = Readonly<{
+  /**
+   * The value as a researcher knows it, for the problems that concern it:
+   * `the "Age" attribute of the participant`, `today’s date`, `an If block`.
+   * Never the name the message uses for it.
+   */
+  description: string;
   cases: readonly string[];
   numeric: boolean;
   optional: boolean;
@@ -36,6 +42,13 @@ export type DynamicValueArgument = Readonly<{
    * answer of a yes/no or option attribute, so its `other` is never read.
    */
   exhaustive?: boolean;
+  /**
+   * The value can be several of `cases` at once, as a categorical answer can
+   * hold several options. Each select then chooses, of the cases it gives a
+   * version for, the first in the order of `cases` that the value is, so
+   * two selects on the value may choose different versions.
+   */
+  multiple?: boolean;
   unshowable?: string;
 }>;
 
@@ -56,9 +69,6 @@ export const MISSING_CASE = 'missing';
  * never become markdown or HTML. Authored text cannot contain it.
  */
 export const DYNAMIC_VALUE_MARKER = '';
-
-/** An argument name: ASCII letters and digits, starting with a letter. */
-export const DYNAMIC_VALUE_NAME = /^[A-Za-z][A-Za-z0-9]*$/;
 
 // The same parse as every other protocol message check: tags stay text.
 const PARSE_OPTIONS: ParserOptions = { ignoreTag: true };
@@ -100,14 +110,45 @@ const parseMessage = (message: string): MessageFormatElement[] | string => {
 
 /**
  * What one value is, as far as choosing a version goes: missing, or present
- * with the case and plural category that choose for it.
+ * with the plural category that chooses for it and what the versions chosen
+ * so far prove about its cases: the ones it is (`is`), and the ones it is not
+ * (`isNot`).
  */
 type ChoiceState = Readonly<
-  { missing: true } | { missing: false; case?: string; category: string }
+  | { missing: true }
+  | {
+      missing: false;
+      category: string;
+      is: ReadonlySet<string>;
+      isNot: ReadonlySet<string>;
+    }
 >;
 
-/** The states each value may be in, by name. */
-type ChoiceStates = ReadonlyMap<string, readonly ChoiceState[]>;
+/**
+ * How a value chooses between the versions of a select, by name:
+ * - `answers`: `one` case at most; `several`, each select choosing the first
+ *   of its cases in the order of `cases`; or `unknown`, judged without the
+ *   stage, where a select may choose any case not yet ruled out;
+ * - `cases`: the value's cases, in the order that chooses between them;
+ * - `exhaustive`: a present value is at least one of `cases`.
+ */
+type ChoiceRule = Readonly<{
+  answers: 'one' | 'several' | 'unknown';
+  cases: readonly string[];
+  exhaustive: boolean;
+}>;
+
+/** The states each value may be in, and how it chooses, by name. */
+type ChoiceStates = ReadonlyMap<
+  string,
+  Readonly<{ states: readonly ChoiceState[]; rule: ChoiceRule }>
+>;
+
+const UNKNOWN_RULE: ChoiceRule = {
+  answers: 'unknown',
+  cases: [],
+  exhaustive: false,
+};
 
 const optionFor = (
   options: Readonly<Record<string, { value: MessageFormatElement[] }>>,
@@ -117,22 +158,73 @@ const optionFor = (
     ? options[key]
     : undefined) ?? options.other;
 
-/** The version key a select or plural on a value in `state` reads. */
-const choiceKey = (node: MessageFormatElement, state: ChoiceState) => {
-  if (node.type === TYPE.plural) {
-    return state.missing ? 'other' : state.category;
+/**
+ * The versions a select on a value in `state` may read, each with the state
+ * that reading it proves the value is in. The interview chooses for each
+ * select by itself (`dynamicValueCaseOf`), so a value that can be several
+ * cases at once may read a version of one case here and of another case in a
+ * select inside it.
+ */
+const selectReadings = (
+  node: Readonly<{
+    options: Record<string, { value: MessageFormatElement[] }>;
+  }>,
+  state: ChoiceState,
+  rule: ChoiceRule,
+): readonly (readonly [key: string, next: ChoiceState])[] => {
+  if (state.missing) return [[MISSING_CASE, state]];
+  const given = Object.keys(node.options).filter(
+    (key) => key !== MISSING_CASE && key !== 'other',
+  );
+  const keys =
+    rule.answers === 'several'
+      ? rule.cases.filter((key) => given.includes(key))
+      : given;
+  const readings: (readonly [string, ChoiceState])[] = [];
+  keys.forEach((key, index) => {
+    const before = rule.answers === 'several' ? keys.slice(0, index) : [];
+    const possible =
+      !state.isNot.has(key) &&
+      before.every((earlier) => !state.is.has(earlier)) &&
+      (rule.answers !== 'one' || [...state.is].every((known) => known === key));
+    if (possible) {
+      readings.push([
+        key,
+        {
+          ...state,
+          is: new Set([...state.is, key]),
+          isNot: new Set([...state.isNot, ...before]),
+        },
+      ]);
+    }
+  });
+  const isNot = new Set([...state.isNot, ...keys]);
+  if (
+    keys.every((key) => !state.is.has(key)) &&
+    !(
+      rule.exhaustive &&
+      rule.cases.length > 0 &&
+      rule.cases.every((key) => isNot.has(key))
+    )
+  ) {
+    readings.push(['other', { ...state, isNot }]);
   }
-  return state.missing ? MISSING_CASE : state.case;
+  return readings;
 };
+
+/** Whether the value `name` may have a value in `states`. */
+const mayBePresent = (states: ChoiceStates, name: string) =>
+  (states.get(name)?.states ?? []).some((state) => !state.missing);
 
 /**
  * Whether some version of `nodes` that values in `states` reach shows
  * anything: visible text, a value or a count. Text shows when any one of its
  * pieces does, and pieces on different values do not constrain each other,
- * so each version of a choice is read under only the states that choose it.
- * Choices on one value therefore agree (text only in a present version
- * inside a missing one shows nothing), and the check never enumerates
- * combinations of values.
+ * so each version of a choice is read under only the states that choose it,
+ * narrowed by what choosing it proves. Choices on one value therefore agree
+ * (text only in a present version inside a missing one shows nothing, nor
+ * text only in a version of a case inside one that rules the case out), and
+ * the check never enumerates combinations of values.
  */
 const anyVersionShows = (
   nodes: readonly MessageFormatElement[],
@@ -144,24 +236,26 @@ const anyVersionShows = (
       case TYPE.literal:
         return !isBlankText(node.value);
       case TYPE.argument:
-        return (states.get(node.value) ?? []).some((state) => !state.missing);
+        return mayBePresent(states, node.value);
       case TYPE.pound:
-        return (
-          plural === undefined ||
-          (states.get(plural) ?? []).some((state) => !state.missing)
-        );
+        return plural === undefined || mayBePresent(states, plural);
       case TYPE.select:
       case TYPE.plural: {
         const name = node.value;
-        const possible = states.get(name) ?? [];
+        const value = states.get(name);
+        const rule = value?.rule ?? UNKNOWN_RULE;
+        const readings = (value?.states ?? []).flatMap((state) =>
+          node.type === TYPE.plural
+            ? [[state.missing ? 'other' : state.category, state] as const]
+            : selectReadings(node, state, rule),
+        );
         return Object.values(node.options).some((option) => {
-          const choosing = possible.filter(
-            (state) =>
-              optionFor(node.options, choiceKey(node, state)) === option,
+          const choosing = readings.flatMap(([key, next]) =>
+            optionFor(node.options, key) === option ? [next] : [],
           );
           if (choosing.length === 0) return false;
           const inner = new Map(states);
-          inner.set(name, choosing);
+          inner.set(name, { states: choosing, rule });
           return anyVersionShows(
             option.value,
             inner,
@@ -179,68 +273,55 @@ const anyVersionShows = (
   });
 
 /**
- * Every state of a value that has `cases` and may be in `categories`. A
- * present value matches none of its cases only when they are not
- * `exhaustive`.
+ * The states a value may start in: missing, when it is `optional`, and
+ * present in each of `categories`, with nothing yet proved about its cases.
  */
 const choiceStates = (
-  cases: readonly string[],
   categories: Iterable<string>,
   optional: boolean,
-  exhaustive = false,
-): readonly ChoiceState[] => {
-  const states: ChoiceState[] = optional ? [{ missing: true }] : [];
-  const allCategories = [...new Set(categories)];
-  const keys = exhaustive && cases.length > 0 ? cases : [undefined, ...cases];
-  for (const key of keys) {
-    for (const category of allCategories) {
-      states.push(
-        key === undefined
-          ? { missing: false, category }
-          : { missing: false, case: key, category },
-      );
-    }
-  }
-  return states;
-};
+): readonly ChoiceState[] => [
+  ...(optional ? [{ missing: true } as const] : []),
+  ...[...new Set(categories)].map((category) => ({
+    missing: false as const,
+    category,
+    is: new Set<string>(),
+    isNot: new Set<string>(),
+  })),
+];
 
 /**
  * The states each value `elements` uses may be in, judged without the stage:
- * possibly missing, and present with each case and plural category the text
- * names. The check errs towards accepting.
+ * possibly missing, and present in each plural category the text names. A
+ * select may choose any case it gives that the versions around it do not rule
+ * out, as a value that can be several cases at once may. The check errs
+ * towards accepting.
  */
 const statesNamedIn = (
   elements: readonly MessageFormatElement[],
 ): ChoiceStates => {
-  const cases = new Map<string, Set<string>>();
   const categories = new Map<string, Set<string>>();
   const collect = (nodes: readonly MessageFormatElement[]) => {
     for (const node of nodes) {
-      if (node.type === TYPE.argument && !cases.has(node.value)) {
-        cases.set(node.value, new Set());
-      }
-      if (node.type === TYPE.select || node.type === TYPE.plural) {
-        const own = cases.get(node.value) ?? new Set<string>();
-        cases.set(node.value, own);
-        const keys = Object.keys(node.options);
-        if (node.type === TYPE.select) {
-          for (const key of keys) {
-            if (key !== MISSING_CASE && key !== 'other') own.add(key);
-          }
-        } else {
-          const counted = categories.get(node.value) ?? new Set<string>();
-          for (const key of keys) counted.add(key);
-          categories.set(node.value, counted);
+      if (
+        node.type === TYPE.argument ||
+        node.type === TYPE.select ||
+        node.type === TYPE.plural
+      ) {
+        const counted =
+          categories.get(node.value) ?? new Set<string>(['other']);
+        categories.set(node.value, counted);
+        if (node.type === TYPE.plural) {
+          for (const key of Object.keys(node.options)) counted.add(key);
         }
-        for (const version of versionsOf(node)) collect(version);
       }
+      for (const version of versionsOf(node)) collect(version);
     }
   };
   collect(elements);
   return new Map(
-    [...cases].map(([name, keys]) => [
+    [...categories].map(([name, counted]) => [
       name,
-      choiceStates([...keys], ['other', ...(categories.get(name) ?? [])], true),
+      { states: choiceStates(counted, true), rule: UNKNOWN_RULE },
     ]),
   );
 };
@@ -280,7 +361,7 @@ const versionHoldsLineBreak = (
         ),
   );
 
-type MarkdownTree = ReturnType<typeof fromMarkdown>;
+type MarkdownTree = ReturnType<typeof markdownTree>;
 type MarkdownNode = MarkdownTree | MarkdownTree['children'][number];
 
 const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
@@ -296,10 +377,8 @@ const linkAddressHoldsValue = (node: MarkdownNode): boolean => {
 /**
  * Whether a link's address or title holds a value or a choice of versions:
  * both are fixed text. The text and each of its versions is read as markdown
- * of its own, twice: as written, which is how the interview renders it, and
- * as the editor reads it (`markdownAsEdited`, with a version behind
- * `versionLineMarkdown`). The two differ where a `>`, a `<` or a version's
- * leading spaces decide what is a link, and a link in either reading counts.
+ * of its own (`markdownTree`), a version as it reads inside the line it sits
+ * in (`versionLineMarkdown`).
  */
 const linkHoldsValue = (
   nodes: readonly MessageFormatElement[],
@@ -310,13 +389,11 @@ const linkHoldsValue = (
       node.type === TYPE.literal ? node.value : DYNAMIC_VALUE_MARKER,
     )
     .join('');
-  const readings = () => [
-    fromMarkdown(markdown),
-    markdownAsEdited(inVersion ? versionLineMarkdown(markdown) : markdown),
-  ];
   return (
     (markdown.includes(DYNAMIC_VALUE_MARKER) &&
-      readings().some(linkAddressHoldsValue)) ||
+      linkAddressHoldsValue(
+        markdownTree(inVersion ? versionLineMarkdown(markdown) : markdown),
+      )) ||
     nodes.some((node) =>
       versionsOf(node).some((version) => linkHoldsValue(version, true)),
     )
@@ -345,7 +422,7 @@ export const findFormattedMessageProblem = (
 
 /**
  * Why `message` cannot be the text of a site that may show dynamic values,
- * judged without knowing which values the stage binds, or undefined when it
+ * judged without knowing which values the site offers, or undefined when it
  * may be: it parses, holds no number, date or time formatting, no marker
  * character, and shows something in at least one version. Which values it shows, and how, is `findDynamicValueProblem`'s
  * to judge, against the stage.
@@ -390,24 +467,24 @@ export const findDynamicMessageSyntaxProblem = (
 };
 
 /**
- * The argument `name` stands for, read as an own property: a name such as
- * `constructor` must not find `Object.prototype`'s.
+ * What a site's text may do with each name it uses: the argument the name
+ * stands for, or, for a name the text cannot use there, the problem to
+ * report, as a sentence that names the value as a researcher knows it.
  */
-const argumentOf = (
-  values: DynamicValueArguments,
+export type DynamicValueLookup = (
   name: string,
-): DynamicValueArgument | undefined =>
-  Object.hasOwn(values, name) ? values[name] : undefined;
+) => DynamicValueArgument | string;
 
-const unknownValue = (name: string): string =>
-  `This text refers to a value that does not exist: "${name}".`;
+/** `description` with its first letter in capitals, to start a sentence. */
+const atSentenceStart = (description: string): string =>
+  description.charAt(0).toUpperCase() + description.slice(1);
 
-const unguarded = (name: string): string =>
-  `"${name}" can be missing, so the text needs a version for when it is missing ({${name}, select, ${MISSING_CASE} {…} other {…}}), and can show it only in the other versions.`;
+const unguarded = (value: DynamicValueArgument): string =>
+  `${atSentenceStart(value.description)} can be missing, so the text needs a version for when it is missing, and can show it only in its other versions.`;
 
 const findElementsProblem = (
   elements: readonly MessageFormatElement[],
-  values: DynamicValueArguments,
+  argumentOf: DynamicValueLookup,
   guarded: ReadonlySet<string>,
 ): string | undefined => {
   for (const element of elements) {
@@ -416,20 +493,20 @@ const findElementsProblem = (
       case TYPE.pound:
         break;
       case TYPE.argument: {
-        const value = argumentOf(values, element.value);
-        if (value === undefined) return unknownValue(element.value);
+        const value = argumentOf(element.value);
+        if (typeof value === 'string') return value;
         if (value.unshowable !== undefined) {
-          return `"${element.value}" cannot be shown as words: ${value.unshowable}`;
+          return `${atSentenceStart(value.description)} cannot be shown as words. ${atSentenceStart(value.unshowable)}`;
         }
         if (value.optional && !guarded.has(element.value)) {
-          return unguarded(element.value);
+          return unguarded(value);
         }
         break;
       }
       case TYPE.select: {
         const name = element.value;
-        const value = argumentOf(values, name);
-        if (value === undefined) return unknownValue(name);
+        const value = argumentOf(name);
+        if (typeof value === 'string') return value;
         const hasMissing = MISSING_CASE in element.options;
         for (const [key, option] of Object.entries(element.options)) {
           if (
@@ -437,7 +514,7 @@ const findElementsProblem = (
             key !== MISSING_CASE &&
             !value.cases.includes(key)
           ) {
-            return `"${key}" is not a version "${name}" can choose. Its versions are ${[MISSING_CASE, ...value.cases, 'other'].map((each) => `"${each}"`).join(', ')}.`;
+            return `This text has a version that ${value.description} can never choose.`;
           }
           // A case version is read only when the value is that case, so it
           // has a value; `other` only once `missing` has taken the rest. A
@@ -449,27 +526,31 @@ const findElementsProblem = (
             (key !== 'other' || hasMissing || !value.optional);
           const inner = new Set(guarded);
           if (present) inner.add(name);
-          const problem = findElementsProblem(option.value, values, inner);
+          const problem = findElementsProblem(option.value, argumentOf, inner);
           if (problem !== undefined) return problem;
         }
         break;
       }
       case TYPE.plural: {
         const name = element.value;
-        const value = argumentOf(values, name);
-        if (value === undefined) return unknownValue(name);
+        const value = argumentOf(name);
+        if (typeof value === 'string') return value;
         if (!value.numeric || element.pluralType !== 'cardinal') {
-          return `"${name}" is not a number, so it cannot choose a version of the text by number.`;
+          return `${atSentenceStart(value.description)} is not a number, so it cannot choose a version of the text by number.`;
         }
         if (element.offset !== 0) {
-          return `The plural of "${name}" cannot use an offset.`;
+          return `The singular and plural versions for ${value.description} cannot use an offset.`;
         }
-        if (value.optional && !guarded.has(name)) return unguarded(name);
+        if (value.optional && !guarded.has(name)) return unguarded(value);
         for (const [key, option] of Object.entries(element.options)) {
           if (!PLURAL_CATEGORIES.has(key)) {
             return `"${key}" is not a plural category. Use "zero", "one", "two", "few", "many" or "other".`;
           }
-          const problem = findElementsProblem(option.value, values, guarded);
+          const problem = findElementsProblem(
+            option.value,
+            argumentOf,
+            guarded,
+          );
           if (problem !== undefined) return problem;
         }
         break;
@@ -487,38 +568,53 @@ const findElementsProblem = (
 
 /**
  * Why `message`, written in `locale`, cannot be the text of a site whose
- * stage binds `values` there, or undefined when it can. One pass checks that
- * it parses, holds no marker, names only those values, chooses versions only
- * by a value's presence (`missing`), its cases or, for a number, its plural
- * category, and shows a value that can be missing only inside a version for
- * when it has one. Then it checks that some version the values can reach
- * shows something: only a value that can be missing reads `missing`, only
- * the binding's cases are chosen, and only the plural categories `locale`
- * gives some number.
+ * values `argumentOf` gives, or undefined when it can. One pass checks that
+ * it parses, contains no marker, uses only names the site can show (else it
+ * reports the problem `argumentOf` gives for the first one that it cannot),
+ * chooses versions only by a value's presence (`missing`), its cases or, for
+ * a number, its plural category, and shows a value that can be missing only
+ * inside a version for when it has one. Then it checks that some version the
+ * values can reach shows something: only a value that can be missing reads
+ * `missing`, only the value's cases are chosen, and only the plural
+ * categories `locale` gives some number.
  */
 export const findDynamicValueProblem = (
   message: string,
-  values: DynamicValueArguments,
+  argumentOf: DynamicValueLookup,
   locale: LocaleTag,
 ): string | undefined => {
   const syntax = findDynamicMessageSyntaxProblem(message);
   if (syntax !== undefined) return syntax;
   const elements = parseMessage(message);
   if (typeof elements === 'string') return elements;
-  const problem = findElementsProblem(elements, values, new Set());
+  const problem = findElementsProblem(elements, argumentOf, new Set());
   if (problem !== undefined) return problem;
   if (!hasChoice(elements)) return undefined;
   const categories = reachableCategories(locale);
+  // Every name the message uses has an argument here: the walk above
+  // reported any that does not.
   const states: ChoiceStates = new Map(
-    Object.entries(values).map(([name, value]) => [
-      name,
-      choiceStates(
-        value.cases,
-        value.numeric ? categories : ['other'],
-        value.optional,
-        value.exhaustive,
-      ),
-    ]),
+    dynamicValueNamesIn(message).flatMap((name) => {
+      const value = argumentOf(name);
+      return typeof value === 'string'
+        ? []
+        : [
+            [
+              name,
+              {
+                states: choiceStates(
+                  value.numeric ? categories : ['other'],
+                  value.optional,
+                ),
+                rule: {
+                  answers: value.multiple === true ? 'several' : 'one',
+                  cases: value.cases,
+                  exhaustive: value.exhaustive === true,
+                },
+              },
+            ],
+          ];
+    }),
   );
   return anyVersionShows(elements, states, undefined)
     ? undefined
@@ -544,6 +640,35 @@ export const dynamicValueNamesIn = (message: string): readonly string[] => {
 };
 
 /**
+ * The case keys a message gives a version for in its selects on each name,
+ * besides `missing` and `other`, in the order it first gives them. A message
+ * that does not parse gives none.
+ */
+export const dynamicValueCaseKeysIn = (
+  message: string,
+): ReadonlyMap<string, readonly string[]> => {
+  const keys = new Map<string, string[]>();
+  const elements = parseMessage(message);
+  if (typeof elements === 'string') return keys;
+  const visit = (nodes: readonly MessageFormatElement[]) => {
+    for (const node of nodes) {
+      if (node.type === TYPE.select) {
+        const own = keys.get(node.value) ?? [];
+        for (const key of Object.keys(node.options)) {
+          if (key !== MISSING_CASE && key !== 'other' && !own.includes(key)) {
+            own.push(key);
+          }
+        }
+        keys.set(node.value, own);
+      }
+      for (const version of versionsOf(node)) visit(version);
+    }
+  };
+  visit(elements);
+  return keys;
+};
+
+/**
  * What a value is at one moment, as far as choosing a version goes: missing,
  * or present, with the select case it matches and the number it is, when it
  * has either.
@@ -551,6 +676,17 @@ export const dynamicValueNamesIn = (message: string): readonly string[] => {
 export type DynamicValueState =
   | Readonly<{ missing: true }>
   | Readonly<{ missing: false; case?: string; count?: number }>;
+
+/**
+ * The state of the value `name` stands for, as the select or plural being
+ * read sees it: `caseKeys` are the cases that select gives a version for
+ * (none for a plural), so a value that can match several cases (a
+ * categorical answer of several options) chooses one this select has.
+ */
+export type DynamicValueStateOf = (
+  name: string,
+  caseKeys: readonly string[],
+) => DynamicValueState;
 
 const pushText = (parts: MessagePart[], text: string) => {
   const last = parts.at(-1);
@@ -637,7 +773,7 @@ const selectableCount = (count: number): number => {
 const flatten = (
   elements: readonly MessageFormatElement[],
   locale: LocaleTag,
-  stateOf: (name: string) => DynamicValueState,
+  stateOf: DynamicValueStateOf,
   plural: string | undefined,
   parts: MessagePart[],
 ) => {
@@ -649,7 +785,12 @@ const flatten = (
       if (plural === undefined) pushText(parts, '#');
       else parts.push({ argument: plural });
     } else if (element.type === TYPE.select) {
-      const state = stateOf(element.value);
+      const state = stateOf(
+        element.value,
+        Object.keys(element.options).filter(
+          (key) => key !== MISSING_CASE && key !== 'other',
+        ),
+      );
       const key = state.missing ? MISSING_CASE : state.case;
       const option =
         (key !== undefined && Object.hasOwn(element.options, key)
@@ -659,7 +800,7 @@ const flatten = (
         flatten(option.value, locale, stateOf, plural, parts);
       }
     } else if (element.type === TYPE.plural) {
-      const state = stateOf(element.value);
+      const state = stateOf(element.value, []);
       const count =
         !state.missing && state.count !== undefined ? state.count : undefined;
       // An exact arm ("=0") is chosen before the count's category, as ICU
@@ -684,15 +825,15 @@ const flatten = (
 /**
  * The version of `message`, written in `locale`, that values in the given
  * states read: its text, and where each value it shows goes. A select on a
- * value takes `missing` when the value is missing, else the version for its
- * case, else `other`; a plural takes its count's category in `locale`. `#`
+ * value takes `missing` when the value is missing, else the version for the
+ * case `stateOf` gives it for that select, else `other`; a plural takes its count's category in `locale`. `#`
  * inside a plural is that plural's value. The interview fills the values in;
  * nothing here formats them. A message that does not parse reads as itself.
  */
 export const dynamicMessageParts = (
   message: string,
   locale: LocaleTag,
-  stateOf: (name: string) => DynamicValueState,
+  stateOf: DynamicValueStateOf,
 ): readonly MessagePart[] => {
   const elements = parseMessage(message);
   if (typeof elements === 'string') return [message];

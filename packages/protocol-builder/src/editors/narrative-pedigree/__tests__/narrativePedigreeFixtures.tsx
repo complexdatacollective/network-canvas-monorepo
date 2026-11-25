@@ -8,6 +8,8 @@ import {
 
 import {
   fixtureProtocolSections,
+  fixtureStageId,
+  fixtureTypeId,
   loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
@@ -15,12 +17,12 @@ import { narrativePedigreeStageEditor } from '../NarrativePedigreeStageEditor.ts
 
 export const SOURCE_STAGE_SECTION = sectionId({
   kind: 'stage',
-  stageId: 'family-pedigree-1',
+  stageId: fixtureStageId('family-pedigree-1'),
 });
 const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
 const FAMILY_MEMBER_SECTION = sectionId({
   kind: 'codebookNode',
-  typeId: 'family_member',
+  typeId: fixtureTypeId('node', 'family member'),
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

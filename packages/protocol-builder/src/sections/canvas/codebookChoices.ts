@@ -1,13 +1,18 @@
 import { useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import {
+  attributeChoices,
+  formCannotCollectReason,
+  markCrossClassUses,
+  markInterfaceOwned,
+  onlyTypesReason,
+} from '../../codebook/attributeAvailability.ts';
+import {
   buildExclusiveVariableSlotMap,
   buildVariableRoleMap,
-  excludeInterfaceOwned,
-  excludeUnvalidatedUses,
-  excludeValidatedUses,
   type WriterClass,
 } from '../../codebook/variableRoles.ts';
 import {
@@ -75,6 +80,11 @@ export type VariableChoiceQuery = Readonly<{
   subject: CodebookSubject | undefined;
   types: readonly VariableType[];
   /**
+   * Set by a form field's picker, so an attribute of a type outside `types`
+   * is described as one a form cannot collect rather than as the wrong type.
+   */
+  forFormField?: boolean;
+  /**
    * What the interview does with this attribute through the control being
    * offered, which decides what the control may not be pointed at.
    *
@@ -92,9 +102,11 @@ export type VariableChoiceQuery = Readonly<{
    */
   writerClass?: WriterClass;
   /**
-   * What the field currently holds. Always offered back, whatever the filters
-   * say: a picker that dropped its own value would blank the control and then
-   * write the blank over the reference the researcher has to resolve.
+   * What the field currently holds. Never marked unavailable by a rule about
+   * where else the attribute is used: the save lets the committed value
+   * through, so a stage that arrives already breaking one of those rules stays
+   * editable. An attribute held that is of the wrong TYPE is still marked,
+   * because nothing can be recorded in it here.
    *
    * A LIST where the control holds one — a tick list of highlight attributes
    * keeps every attribute it has ticked, for the same reason a select keeps
@@ -104,30 +116,38 @@ export type VariableChoiceQuery = Readonly<{
 }>;
 
 /**
- * What one canvas picker may offer.
+ * What one canvas picker lists: every attribute of the subject, with the ones
+ * it cannot use marked with the reason (see `attributeAvailability.ts`).
  *
  * The codebook, the roles every attribute already plays and the structural
  * slots other interfaces claim are all read from the protocol here, so an
  * attribute a collaborator adds, renames or deletes while the editor is open
  * changes the list without the section using this doing anything.
  *
- * An attribute a form field collects is offered only to a picker that READS it
- * or collects it the same way. A sociogram prompt names attributes the
- * interview writes around the codebook's validation rules — a position the
- * participant drags a node to, a mark a tap toggles — and two writers would
- * disagree about whether the value was checked; a narrative preset writes
- * nothing at all, so `writerClass` says which of the three this picker is.
+ * An attribute of another type than `types` is marked for its type. A picker
+ * that needs one type says "Only Layout attributes can be used here."; the
+ * one picker that takes several, a form field's, says which types a form
+ * cannot collect.
  *
- * Ordered by name rather than by the order the codebook happens to hold them
- * in: a researcher looking for an attribute they authored months ago scans an
- * alphabetical list.
+ * An attribute a form field collects is marked for a picker that WRITES it
+ * without validation, and the other way round. A sociogram prompt names
+ * attributes the interview writes around the codebook's validation rules — a
+ * position the participant drags a node to, a mark a tap toggles — and two
+ * writers would disagree about whether the value was checked; a narrative
+ * preset writes nothing at all, so `writerClass` says which of the three this
+ * picker is.
+ *
+ * Something that is not a picker — a tick list, a check of whether a stored
+ * reference is still usable — reads only the options that can be chosen,
+ * through `availableOnly`.
  */
 export function useVariableChoices(
   query: VariableChoiceQuery,
 ): readonly VariablePickerOption[] {
+  const intl = useAppIntl();
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
-  const { subject, types, writerClass, currentValue } = query;
+  const { subject, types, forFormField, writerClass, currentValue } = query;
 
   // This stage's own committed uses are excluded from the role map: the
   // attribute a picker is already holding is claimed BY this picker, and
@@ -143,32 +163,40 @@ export function useVariableChoices(
 
   return useMemo(() => {
     if (subject === undefined) return NO_OPTIONS;
-    const typed = Object.entries(variablesForSubject(protocolContext, subject))
-      .filter(([, variable]) => types.includes(variable.type))
-      .map(([value, variable]) => ({
-        value,
-        label: variable.name,
-        type: variable.type,
-      }))
-      .toSorted(byLabel);
-    const roleFiltered =
-      writerClass === 'unvalidated'
-        ? excludeValidatedUses(roleMap, subject, typed, currentValue)
-        : writerClass === 'validated'
-          ? excludeUnvalidatedUses(roleMap, subject, typed, currentValue)
-          : typed;
-    // Structural slots are excluded from WRITERS only. An attribute another
-    // interface owns — a pedigree's ego marker — is exactly what a picker
-    // that only reads exists to look at: a narrative preset highlights by it,
-    // groups by it, positions by it, and writes nothing back. Run over a
-    // reading picker the exclusion dropped precisely those.
+    const typed = attributeChoices(
+      variablesForSubject(protocolContext, subject),
+      (type) => types.includes(type),
+      forFormField === true
+        ? formCannotCollectReason(intl)
+        : onlyTypesReason(intl, types),
+    );
+    // Neither rule applies to a picker that only reads. An attribute another
+    // interface owns — a pedigree's ego marker — is exactly what a reading
+    // picker exists to look at: a narrative preset highlights by it, groups
+    // by it, positions by it, and writes nothing back. Interface ownership
+    // comes first, as it does in the save-time gates.
+    if (writerClass === undefined) return Object.freeze(typed);
+    const owned = markInterfaceOwned(
+      slotMap,
+      subject,
+      typed,
+      intl,
+      currentValue,
+    );
     return Object.freeze(
-      writerClass === undefined
-        ? roleFiltered
-        : excludeInterfaceOwned(slotMap, subject, roleFiltered, currentValue),
+      markCrossClassUses(
+        roleMap,
+        subject,
+        owned,
+        writerClass,
+        intl,
+        currentValue,
+      ),
     );
   }, [
     currentValue,
+    forFormField,
+    intl,
     protocolContext,
     roleMap,
     slotMap,

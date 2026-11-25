@@ -13,36 +13,50 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
   encryptedVariables,
   makeEncryptedPerson,
+  NAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { useCategoricalBins } from '../useCategoricalBins';
 
+const GROUP_VARIABLE = testVariableId('group');
+
 const variables: Record<string, Variable> = {
   ...encryptedVariables,
-  group: {
+  [GROUP_VARIABLE]: {
     name: 'group',
     type: 'categorical',
     component: 'CheckboxGroup',
-    options: [{ label: { en: 'Friends' }, value: 'friends' }],
+    options: [
+      {
+        id: testId('useCategoricalBins option 1'),
+        label: { en: 'Friends' },
+        value: 'friends',
+      },
+    ],
   },
 };
 
 const byName = [
-  { property: asEntityAttributeReference('name'), direction: 'asc' as const },
+  {
+    id: testId('sort-name'),
+    property: asEntityAttributeReference(NAME_VARIABLE),
+    direction: 'asc' as const,
+  },
 ];
 
 const inGroup = (node: NcNode): NcNode => ({
   ...node,
   [entityAttributesProperty]: {
     ...node[entityAttributesProperty],
-    group: ['friends'],
+    [GROUP_VARIABLE]: ['friends'],
   },
 });
 
@@ -54,15 +68,15 @@ async function unlockedStore(nodes: NcNode[]) {
     nodes,
     [
       {
-        id: 'categorical-bin',
+        id: testId('categorical-bin'),
         type: 'CategoricalBin',
         label: { en: 'Categorise' },
         subject: { entity: 'node', type: NODE_TYPE },
         prompts: [
           {
-            id: 'prompt-1',
+            id: testId('prompt-1'),
             text: { en: 'Which group?' },
-            variable: asEntityAttributeReference('group'),
+            variable: asEntityAttributeReference(GROUP_VARIABLE),
             bucketSortOrder: byName,
             binSortOrder: byName,
           },

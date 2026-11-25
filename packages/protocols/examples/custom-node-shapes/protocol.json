@@ -10,7 +10,7 @@
   "experiments": {},
   "codebook": {
     "node": {
-      "world_illustrated": {
+      "4a31d1a4-c474-5343-8d68-43ac59eff8a3": {
         "name": "Part of my world",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -67,7 +67,7 @@
         "shape": {
           "default": "custom:other",
           "dynamic": {
-            "variable": "world_illustrated_type",
+            "variable": "410ab843-3b47-5a5e-b40c-caad9450fb87",
             "type": "discrete",
             "map": [
               {
@@ -122,7 +122,7 @@
           }
         },
         "variables": {
-          "world_illustrated_name": {
+          "c4c7b2fa-28ad-520b-8a14-4290131b90a4": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -130,78 +130,90 @@
               "required": true
             }
           },
-          "world_illustrated_type": {
+          "410ab843-3b47-5a5e-b40c-caad9450fb87": {
             "name": "type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "9f6c8391-73ab-53f9-810b-1d4a078a76f3",
                 "label": {
                   "en": "A person"
                 },
                 "value": "person"
               },
               {
+                "id": "1a799a06-a9b3-57fb-b0ba-9b0406c4bda2",
                 "label": {
                   "en": "A group"
                 },
                 "value": "group"
               },
               {
+                "id": "2849aa7c-7184-574f-b8b2-6c958a82dfcf",
                 "label": {
                   "en": "A home"
                 },
                 "value": "home"
               },
               {
+                "id": "0bb78e1b-291e-5d89-954e-4997f4603134",
                 "label": {
                   "en": "A school"
                 },
                 "value": "school"
               },
               {
+                "id": "4664108f-1930-564f-9278-d38ddf0ccb68",
                 "label": {
                   "en": "A place"
                 },
                 "value": "place"
               },
               {
+                "id": "980201db-e343-5212-a76c-e3603243d46f",
                 "label": {
                   "en": "An activity"
                 },
                 "value": "activity"
               },
               {
+                "id": "c6caef83-aeb8-5439-8452-e56392ec440e",
                 "label": {
                   "en": "A community or faith setting"
                 },
                 "value": "community"
               },
               {
+                "id": "cc127874-82f2-5cd4-8a85-97dfb32c9ba6",
                 "label": {
                   "en": "A professional or service"
                 },
                 "value": "professional"
               },
               {
+                "id": "363bdbc1-d221-5bb2-8091-de2f84c309e6",
                 "label": {
                   "en": "An animal"
                 },
                 "value": "animal"
               },
               {
+                "id": "cdf17ab9-2613-57df-a0b8-055233a23e77",
                 "label": {
                   "en": "An online space"
                 },
                 "value": "online"
               },
               {
+                "id": "942a854b-bb28-564d-81fe-a97e18e13c11",
                 "label": {
                   "en": "An object or memory"
                 },
                 "value": "memory"
               },
               {
+                "id": "3acb925d-d063-58c0-870b-d6d6d9fceec8",
                 "label": {
                   "en": "Something else"
                 },
@@ -213,13 +225,13 @@
               "maxSelected": 1
             }
           },
-          "world_illustrated_layout": {
+          "7cc7af0b-0e6b-5304-b820-722005269399": {
             "name": "layout",
             "type": "layout"
           }
         }
       },
-      "world_accented": {
+      "a1403c8c-070e-5a3f-b201-dd1283371c86": {
         "name": "Part of my world (node colour)",
         "color": "node-color-seq-6",
         "icon": "add-a-person",
@@ -276,7 +288,7 @@
         "shape": {
           "default": "custom:other",
           "dynamic": {
-            "variable": "world_accented_type",
+            "variable": "2b034e63-5b7a-576d-befb-f51153e228b1",
             "type": "discrete",
             "map": [
               {
@@ -331,7 +343,7 @@
           }
         },
         "variables": {
-          "world_accented_name": {
+          "75ca71f7-a45e-5f14-9fa2-b65c43e64dab": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -339,78 +351,90 @@
               "required": true
             }
           },
-          "world_accented_type": {
+          "2b034e63-5b7a-576d-befb-f51153e228b1": {
             "name": "type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
               {
+                "id": "a8562499-5601-5b33-a790-ce4adf27603b",
                 "label": {
                   "en": "A person"
                 },
                 "value": "person"
               },
               {
+                "id": "a61ad7f9-65eb-5143-b624-ae9407846f92",
                 "label": {
                   "en": "A group"
                 },
                 "value": "group"
               },
               {
+                "id": "5d4025cf-f967-5e76-a371-886a85f926ab",
                 "label": {
                   "en": "A home"
                 },
                 "value": "home"
               },
               {
+                "id": "899aa649-4c04-56d6-9890-0e3cb3d5dfc6",
                 "label": {
                   "en": "A school"
                 },
                 "value": "school"
               },
               {
+                "id": "72dc9b70-dd6f-5bb6-b41d-fdb83ad4f912",
                 "label": {
                   "en": "A place"
                 },
                 "value": "place"
               },
               {
+                "id": "7d638de9-f651-5982-8d00-d5a76d6bf83d",
                 "label": {
                   "en": "An activity"
                 },
                 "value": "activity"
               },
               {
+                "id": "cae7786b-7671-5e09-9e00-305a647d6beb",
                 "label": {
                   "en": "A community or faith setting"
                 },
                 "value": "community"
               },
               {
+                "id": "4eba7b81-a33a-5c3c-8f52-463e76a86e6f",
                 "label": {
                   "en": "A professional or service"
                 },
                 "value": "professional"
               },
               {
+                "id": "987e75c9-db2f-568d-a052-b03d3aafe2ff",
                 "label": {
                   "en": "An animal"
                 },
                 "value": "animal"
               },
               {
+                "id": "c1001489-44b9-507b-8b14-07848ebe459f",
                 "label": {
                   "en": "An online space"
                 },
                 "value": "online"
               },
               {
+                "id": "bba7b11a-346d-5196-9f1c-5ef98c892318",
                 "label": {
                   "en": "An object or memory"
                 },
                 "value": "memory"
               },
               {
+                "id": "27aaed41-ad67-5585-b379-9575d4b320ee",
                 "label": {
                   "en": "Something else"
                 },
@@ -422,7 +446,7 @@
               "maxSelected": 1
             }
           },
-          "world_accented_layout": {
+          "5d3e49be-a12b-5673-b0e3-3b8aaae36a38": {
             "name": "layout",
             "type": "layout"
           }
@@ -430,11 +454,11 @@
       }
     },
     "edge": {
-      "goes_with": {
+      "d1afb5e2-5112-5902-ba02-255ed7976153": {
         "name": "Goes with",
         "color": "edge-color-seq-1"
       },
-      "goes_with_accented": {
+      "3723a5c7-6898-5390-8451-23072d8f5be7": {
         "name": "Goes with (node colour)",
         "color": "edge-color-seq-3"
       }
@@ -588,7 +612,7 @@
   },
   "stages": [
     {
-      "id": "welcome",
+      "id": "bee34e9c-ecec-5bf0-bc28-ae213961856a",
       "type": "Information",
       "label": {
         "en": "Welcome"
@@ -598,14 +622,14 @@
       }
     },
     {
-      "id": "name-illustrated",
+      "id": "eb2714b2-54ab-51a2-ae1d-c97af1a3e213",
       "type": "NameGenerator",
       "label": {
         "en": "Who and what is in your world?"
       },
       "subject": {
         "entity": "node",
-        "type": "world_illustrated"
+        "type": "4a31d1a4-c474-5343-8d68-43ac59eff8a3"
       },
       "form": {
         "title": {
@@ -613,15 +637,15 @@
         },
         "fields": [
           {
-            "id": "field-world_illustrated_name",
-            "variable": "world_illustrated_name",
+            "id": "b540ded0-fd58-5c0b-9c7b-8757d73eb56b",
+            "variable": "c4c7b2fa-28ad-520b-8a14-4290131b90a4",
             "prompt": {
               "en": "What do you call them or it?"
             }
           },
           {
-            "id": "field-world_illustrated_type",
-            "variable": "world_illustrated_type",
+            "id": "9c9eda96-c4d5-5454-9e1d-23004abb3857",
+            "variable": "410ab843-3b47-5a5e-b40c-caad9450fb87",
             "prompt": {
               "en": "What kind of thing is it?"
             }
@@ -630,7 +654,7 @@
       },
       "prompts": [
         {
-          "id": "name-illustrated-prompt",
+          "id": "daf63cf0-f670-5f9f-a886-496c88d0a93c",
           "text": {
             "en": "Who and what is **important to you**? Add each one, and choose what kind of thing it is."
           }
@@ -638,14 +662,14 @@
       ]
     },
     {
-      "id": "map-illustrated",
+      "id": "30024a6b-a788-55d1-a49a-cd940426c3f7",
       "type": "Sociogram",
       "label": {
         "en": "Make your map"
       },
       "subject": {
         "entity": "node",
-        "type": "world_illustrated"
+        "type": "4a31d1a4-c474-5343-8d68-43ac59eff8a3"
       },
       "background": {
         "concentricCircles": 3,
@@ -653,22 +677,22 @@
       },
       "prompts": [
         {
-          "id": "map-illustrated-prompt",
+          "id": "d68ec0c3-0264-533d-9709-b59676488e28",
           "text": {
             "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
           },
           "layout": {
-            "layoutVariable": "world_illustrated_layout"
+            "layoutVariable": "7cc7af0b-0e6b-5304-b820-722005269399"
           },
           "edges": {
-            "create": "goes_with",
-            "display": ["goes_with"]
+            "create": "d1afb5e2-5112-5902-ba02-255ed7976153",
+            "display": ["d1afb5e2-5112-5902-ba02-255ed7976153"]
           }
         }
       ]
     },
     {
-      "id": "accented-introduction",
+      "id": "b90ebaac-6f64-5cea-b332-bd4505e1a740",
       "type": "Information",
       "label": {
         "en": "Node-coloured shapes"
@@ -678,14 +702,14 @@
       }
     },
     {
-      "id": "name-accented",
+      "id": "47c4537b-72cf-5765-93aa-d221712bd04b",
       "type": "NameGenerator",
       "label": {
         "en": "Add some more"
       },
       "subject": {
         "entity": "node",
-        "type": "world_accented"
+        "type": "a1403c8c-070e-5a3f-b201-dd1283371c86"
       },
       "form": {
         "title": {
@@ -693,15 +717,15 @@
         },
         "fields": [
           {
-            "id": "field-world_accented_name",
-            "variable": "world_accented_name",
+            "id": "e2efdcae-d80b-53f5-80bf-4a44849feb6b",
+            "variable": "75ca71f7-a45e-5f14-9fa2-b65c43e64dab",
             "prompt": {
               "en": "What do you call them or it?"
             }
           },
           {
-            "id": "field-world_accented_type",
-            "variable": "world_accented_type",
+            "id": "f351137e-0b3a-5902-9e82-354752cf3d60",
+            "variable": "2b034e63-5b7a-576d-befb-f51153e228b1",
             "prompt": {
               "en": "What kind of thing is it?"
             }
@@ -710,7 +734,7 @@
       },
       "prompts": [
         {
-          "id": "name-accented-prompt",
+          "id": "e2d413db-2705-50f3-8d18-744d20b1432a",
           "text": {
             "en": "Add a few more things from your world, and choose what kind of thing each one is."
           }
@@ -718,14 +742,14 @@
       ]
     },
     {
-      "id": "map-accented",
+      "id": "34be153a-e50b-5933-8f4d-1c09566aa0db",
       "type": "Sociogram",
       "label": {
         "en": "Make another map"
       },
       "subject": {
         "entity": "node",
-        "type": "world_accented"
+        "type": "a1403c8c-070e-5a3f-b201-dd1283371c86"
       },
       "background": {
         "concentricCircles": 3,
@@ -733,22 +757,22 @@
       },
       "prompts": [
         {
-          "id": "map-accented-prompt",
+          "id": "ca59c43b-a6b5-54a6-bc61-6e53b00dda3b",
           "text": {
             "en": "Put the things that matter **most** to you in the middle. Then tap two things to join them up if they **go together**."
           },
           "layout": {
-            "layoutVariable": "world_accented_layout"
+            "layoutVariable": "5d3e49be-a12b-5673-b0e3-3b8aaae36a38"
           },
           "edges": {
-            "create": "goes_with_accented",
-            "display": ["goes_with_accented"]
+            "create": "3723a5c7-6898-5390-8451-23072d8f5be7",
+            "display": ["3723a5c7-6898-5390-8451-23072d8f5be7"]
           }
         }
       ]
     },
     {
-      "id": "finish",
+      "id": "f97e9a98-3bc5-5ed5-a760-46e980e4d14e",
       "finishLabel": {
         "en": "Finish"
       },

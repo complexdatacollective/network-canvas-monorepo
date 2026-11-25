@@ -7,6 +7,7 @@ import type { MessageArguments } from '@codaco/protocol-validation';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import LocalizedMessageField from './LocalizedMessageField.tsx';
 
 /** A person, and a count: a select and a plural. */
@@ -46,7 +47,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'family-pedigree-1',
+    stageId: fixtureStageId('family-pedigree-1'),
     sectionTitle: 'Completeness checklist',
     children: parentsItem,
   },

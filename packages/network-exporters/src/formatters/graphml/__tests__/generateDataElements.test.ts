@@ -9,6 +9,7 @@ import {
   nodeExportIDProperty,
 } from '@codaco/shared-consts';
 
+import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import type { NodeWithResequencedID } from '../../../input';
 import type { ExportOptions } from '../../../options';
 import getDataElementGenerator from '../generateDataElements';
@@ -26,12 +27,16 @@ const exportOptions: ExportOptions = {
 
 const codebookWithName = (encrypted: boolean): Codebook => ({
   node: {
-    person: {
+    [testTypeId('person')]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'name-uuid': { name: 'name', type: 'text', encrypted },
+        [testVariableId('name-uuid')]: {
+          name: 'name',
+          type: 'text',
+          encrypted,
+        },
       },
     },
   },
@@ -63,10 +68,12 @@ describe('GraphML node labels', () => {
       [entityPrimaryKeyProperty]: '1',
       [egoProperty]: 'ego-1',
       [nodeExportIDProperty]: 1,
-      type: 'person',
-      [entityAttributesProperty]: { 'name-uuid': [12, 34, 56] },
+      type: testTypeId('person'),
+      [entityAttributesProperty]: {
+        [testVariableId('name-uuid')]: [12, 34, 56],
+      },
       [entitySecureAttributesMeta]: {
-        'name-uuid': { iv: [1], salt: [2] },
+        [testVariableId('name-uuid')]: { iv: [1], salt: [2] },
       },
     };
 
@@ -78,8 +85,8 @@ describe('GraphML node labels', () => {
       [entityPrimaryKeyProperty]: '1',
       [egoProperty]: 'ego-1',
       [nodeExportIDProperty]: 1,
-      type: 'person',
-      [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+      type: testTypeId('person'),
+      [entityAttributesProperty]: { [testVariableId('name-uuid')]: 'Alice' },
     };
 
     expect(await getNodeLabel(node, codebookWithName(true))).toBe('Alice');
@@ -90,10 +97,10 @@ describe('GraphML node labels', () => {
       [entityPrimaryKeyProperty]: '1',
       [egoProperty]: 'ego-1',
       [nodeExportIDProperty]: 1,
-      type: 'person',
-      [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+      type: testTypeId('person'),
+      [entityAttributesProperty]: { [testVariableId('name-uuid')]: 'Alice' },
       [entitySecureAttributesMeta]: {
-        'name-uuid': { iv: [1], salt: [2] },
+        [testVariableId('name-uuid')]: { iv: [1], salt: [2] },
       },
     };
 

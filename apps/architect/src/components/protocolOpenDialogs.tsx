@@ -18,11 +18,15 @@ import type {
   ChoiceDialog,
   DialogContextType,
 } from '@codaco/fresco-ui/dialogs/DialogProvider';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  applicationTextUrlTransform,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { formatMigrationNotes } from '@codaco/protocol-validation/messages';
 import ExternalLink from '~/components/ExternalLink';
-import Markdown from '~/components/Markdown';
 import type { ProtocolOpenResult } from '~/ducks/modules/userActions/userActions';
 import { documentationLinks } from '~/utils/documentationLinks';
 import {
@@ -184,7 +188,15 @@ const MigrationNotes = ({
   notes: string;
 }) => {
   const intl = useAppIntl();
-  return <Markdown label={formatMigrationNotes(version, notes, intl)} />;
+  return (
+    <RenderMarkdown
+      allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      urlTransform={applicationTextUrlTransform}
+      render={<span />}
+    >
+      {formatMigrationNotes(version, notes, intl)}
+    </RenderMarkdown>
+  );
 };
 
 const renderDocumentationLink = (chunks: ReactNode[]) => (

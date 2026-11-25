@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  testOptionId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
   type CurrentProtocol,
   validateProtocol,
 } from '@codaco/protocol-validation';
@@ -21,7 +25,17 @@ import {
   recordFix,
   writesPlaceholder,
 } from '../protocolFix';
-import { makeFinding, makeProtocol, op } from './fixtures';
+import {
+  makeFinding,
+  makeProtocol,
+  op,
+  WELCOME_STAGE_ID,
+  NAMES_STAGE_ID,
+  NAMES_PROMPT_ID,
+  FINISH_STAGE_ID,
+  FREQ,
+  PERSON,
+} from './fixtures';
 
 const promptText = (protocol: unknown) => {
   const stage = (protocol as CurrentProtocol).stages[1];
@@ -40,10 +54,18 @@ describe('translations, as Architect’s editors treat them', () => {
   it('writes plain text over a localized string as the default language, keeping other translations', () => {
     const protocol = makeProtocol();
     const [normalized] = normalizeOperations(protocol, [
-      op('set', '/stages/names/prompts/p1/text', 'Name everyone you know'),
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
+        'Name everyone you know',
+      ),
     ]);
     expect(normalized).toEqual(
-      op('set', '/stages/names/prompts/p1/text/en', 'Name everyone you know'),
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
+        'Name everyone you know',
+      ),
     );
     const applied = applyOperations(protocol, normalized ? [normalized] : []);
     expect(applied.ok && promptText(applied.result)).toEqual({
@@ -55,7 +77,9 @@ describe('translations, as Architect’s editors treat them', () => {
   it('merges a localized string into the one it replaces', () => {
     const protocol = makeProtocol();
     const [normalized] = normalizeOperations(protocol, [
-      op('set', '/stages/names/prompts/p1/text', { en: 'New' }),
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
+        en: 'New',
+      }),
     ]);
     expect(normalized?.value).toBe(JSON.stringify({ en: 'New', fr: 'Nommez' }));
   });
@@ -63,8 +87,12 @@ describe('translations, as Architect’s editors treat them', () => {
   it('leaves a translation path, and anything not localized, as written', () => {
     const protocol = makeProtocol();
     const operations = [
-      op('set', '/stages/names/prompts/p1/text/fr', 'Nommez tout le monde'),
-      op('set', '/codebook/node/person/name', 'Friend'),
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/fr`,
+        'Nommez tout le monde',
+      ),
+      op('set', `/codebook/node/${PERSON}/name`, 'Friend'),
     ];
     expect(normalizeOperations(protocol, operations)).toEqual(operations);
   });
@@ -72,13 +100,13 @@ describe('translations, as Architect’s editors treat them', () => {
 
 describe('a fix that replaces more than one text', () => {
   const variable = (protocol: unknown) =>
-    (protocol as CurrentProtocol).codebook.node?.person?.variables?.freq;
+    (protocol as CurrentProtocol).codebook.node?.[PERSON]?.variables?.[FREQ];
 
   it('keeps the other translations of a prompt it replaces whole', () => {
     const protocol = makeProtocol();
     const normalized = normalizeOperations(protocol, [
-      op('set', '/stages/names/prompts/p1', {
-        id: 'p1',
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}`, {
+        id: NAMES_PROMPT_ID,
         text: { en: 'In the past 6 months, who?' },
       }),
     ]);
@@ -89,21 +117,25 @@ describe('a fix that replaces more than one text', () => {
     });
   });
 
-  it('keeps each option’s translations when the list is rewritten, matching options by value', () => {
+  it('keeps each option’s translations when the list is rewritten, matching options by id', () => {
     const protocol = makeProtocol();
+    const OFTEN = testOptionId(FREQ, 1);
+    const RARELY = testOptionId(FREQ, 2);
+    const SOMETIMES = testOptionId(FREQ, 3);
     const normalized = normalizeOperations(protocol, [
-      op('set', '/codebook/node/person/variables/freq/options', [
-        { label: { en: 'Seldom' }, value: 2 },
-        { label: { en: 'Sometimes' }, value: 3 },
-        { label: { en: 'Frequently' }, value: 1 },
+      op('set', `/codebook/node/${PERSON}/variables/${FREQ}/options`, [
+        { id: RARELY, label: { en: 'Seldom' }, value: 2 },
+        { id: SOMETIMES, label: { en: 'Sometimes' }, value: 3 },
+        // Recoded as well as reworded: the id says which option it is.
+        { id: OFTEN, label: { en: 'Frequently' }, value: 4 },
       ]),
     ]);
     const applied = applyOperations(protocol, normalized);
     expect(applied.ok && variable(applied.result)).toMatchObject({
       options: [
-        { label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
-        { label: { en: 'Sometimes' }, value: 3 },
-        { label: { en: 'Frequently', fr: 'Souvent' }, value: 1 },
+        { id: RARELY, label: { en: 'Seldom', fr: 'Rarement' }, value: 2 },
+        { id: SOMETIMES, label: { en: 'Sometimes' }, value: 3 },
+        { id: OFTEN, label: { en: 'Frequently', fr: 'Souvent' }, value: 4 },
       ],
     });
   });
@@ -112,7 +144,7 @@ describe('a fix that replaces more than one text', () => {
     const protocol = makeProtocol();
     const stage = protocol.stages[0];
     const normalized = normalizeOperations(protocol, [
-      op('set', '/stages/welcome', {
+      op('set', `/stages/${WELCOME_STAGE_ID}`, {
         ...stage,
         label: { en: 'Start' },
         content: { en: '# Hi' },
@@ -137,7 +169,11 @@ describe('a fix that replaces more than one text', () => {
     const applied = applyOperations(
       protocol,
       normalizeOperations(protocol, [
-        op('set', '/codebook/node/person/variables/freq/options', options),
+        op(
+          'set',
+          `/codebook/node/${PERSON}/variables/${FREQ}/options`,
+          options,
+        ),
       ]),
     );
     return applied.ok && variable(applied.result);
@@ -289,8 +325,8 @@ describe('a fix that replaces more than one text', () => {
   it('writes only the default language of a value that names other translations', () => {
     const protocol = makeProtocol();
     const normalized = normalizeOperations(protocol, [
-      op('set', '/stages/names/prompts/p1', {
-        id: 'p1',
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}`, {
+        id: NAMES_PROMPT_ID,
         text: { en: 'Who?', fr: 'Qui ?' },
       }),
     ]);
@@ -304,13 +340,13 @@ describe('a fix that replaces more than one text', () => {
   it('writes nothing new in another language of a text it adds', () => {
     const protocol = makeProtocol();
     const normalized = normalizeOperations(protocol, [
-      op('set', '/stages/welcome/introductionPanel', {
+      op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel`, {
         en: 'Before you start',
         fr: 'Avant de commencer',
       }),
     ]);
     expect(normalized).toEqual([
-      op('set', '/stages/welcome/introductionPanel', {
+      op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel`, {
         en: 'Before you start',
       }),
     ]);
@@ -319,8 +355,14 @@ describe('a fix that replaces more than one text', () => {
 
 describe('a fix that changes another language', () => {
   it.each([
-    ['sets a translation', op('set', '/stages/welcome/content/fr', '# Salut')],
-    ['removes a translation', op('remove', '/stages/welcome/content/fr')],
+    [
+      'sets a translation',
+      op('set', `/stages/${WELCOME_STAGE_ID}/content/fr`, '# Salut'),
+    ],
+    [
+      'removes a translation',
+      op('remove', `/stages/${WELCOME_STAGE_ID}/content/fr`),
+    ],
     [
       'adds something translated',
       op('insert', '/stages/-', {
@@ -336,8 +378,10 @@ describe('a fix that changes another language', () => {
   it('is not offered when it writes a translation of a text an earlier edit adds', () => {
     expect(
       recordFix(makeProtocol(), [
-        op('set', '/stages/welcome/introductionPanel', { en: 'Before' }),
-        op('set', '/stages/welcome/introductionPanel/fr', 'Avant'),
+        op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel`, {
+          en: 'Before',
+        }),
+        op('set', `/stages/${WELCOME_STAGE_ID}/introductionPanel/fr`, 'Avant'),
       ]).targets,
     ).toBeNull();
   });
@@ -346,8 +390,8 @@ describe('a fix that changes another language', () => {
     const protocol = makeProtocol();
     const [welcome] = protocol.stages;
     const { operations, targets } = recordFix(protocol, [
-      op('remove', '/stages/welcome'),
-      op('insert', '/stages/names', {
+      op('remove', `/stages/${WELCOME_STAGE_ID}`),
+      op('insert', `/stages/${NAMES_STAGE_ID}`, {
         ...welcome,
         label: { en: 'Welcome' },
         content: { en: '# Hi there' },
@@ -358,7 +402,7 @@ describe('a fix that changes another language', () => {
     expect(
       applied.ok && (applied.result as CurrentProtocol).stages[0],
     ).toMatchObject({
-      id: 'welcome',
+      id: WELCOME_STAGE_ID,
       label: { fr: 'Bienvenue' },
       content: { en: '# Hi there', fr: '# Bonjour\n\nSalut' },
     });
@@ -369,7 +413,7 @@ describe('a fix that changes another language', () => {
     const [welcome] = protocol.stages;
     expect(
       recordFix(protocol, [
-        op('remove', '/stages/welcome'),
+        op('remove', `/stages/${WELCOME_STAGE_ID}`),
         op('insert', '/stages/-', welcome),
       ]).targets,
     ).not.toBeNull();
@@ -390,8 +434,12 @@ describe('a fix that reaches outside the interview and its data model', () => {
 
   it('is offered for edits to stages and the codebook', () => {
     const operations = [
-      op('set', '/stages/names/prompts/p1/text', 'Name people you know'),
-      op('set', '/codebook/node/person/name', 'Friend'),
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
+        'Name people you know',
+      ),
+      op('set', `/codebook/node/${PERSON}/name`, 'Friend'),
     ];
     expect(fixStaysInBounds(operations)).toBe(true);
     expect(recordFix(makeProtocol(), operations).targets).not.toBeNull();
@@ -400,7 +448,13 @@ describe('a fix that reaches outside the interview and its data model', () => {
 
 describe('what counts as a placeholder', () => {
   const writes = (text: string) =>
-    writesPlaceholder(op('set', '/stages/names/prompts/p1/text/en', text));
+    writesPlaceholder(
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
+        text,
+      ),
+    );
 
   it.each([
     '[PHONE NUMBER]',
@@ -437,7 +491,11 @@ describe('what counts as a placeholder', () => {
 describe('recordFix', () => {
   it('records what the reviewed protocol held at each target', () => {
     const record = recordFix(makeProtocol(), [
-      op('set', '/stages/names/prompts/p1/text', 'Name people you know'),
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
+        'Name people you know',
+      ),
     ]);
     expect(record.targets).toEqual([
       { op: 'set', present: true, value: 'Name people' },
@@ -472,11 +530,11 @@ describe('a fix that writes a placeholder', () => {
   it('is made only once the researcher has replaced the placeholder', () => {
     const protocol = makeProtocol();
     const operations = [
-      op('set', '/stages/names/prompts/p1/text', {
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
         en: 'Name people, or call [PHONE NUMBER]',
       }),
     ];
-    const path = '/stages/names/prompts/p1/text/en';
+    const path = `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`;
     expect(applyFixEdits(protocol, operations, {})).toBeNull();
     expect(
       applyFixEdits(protocol, operations, { [path]: 'Name people' }),
@@ -490,15 +548,15 @@ describe('a fix that writes a placeholder', () => {
     const protocol = makeProtocol();
     expect(
       placeholdersReplaceable(protocol, [
-        op('set', '/stages/names/prompts/p1/text', {
+        op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
           en: 'Name people, or call [PHONE NUMBER]',
         }),
       ]),
     ).toBe(true);
     expect(
       placeholdersReplaceable(protocol, [
-        op('set', '/stages/names/prompts/p1', {
-          id: 'p1',
+        op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}`, {
+          id: NAMES_PROMPT_ID,
           text: { en: 'Name people, or call [PHONE NUMBER]' },
         }),
       ]),
@@ -514,7 +572,9 @@ describe('a fix that writes a placeholder', () => {
     ).toBe(false);
     expect(
       placeholdersReplaceable(protocol, [
-        op('set', '/stages/names/prompts/p1/text', { en: 'Name people' }),
+        op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
+          en: 'Name people',
+        }),
       ]),
     ).toBe(true);
   });
@@ -532,8 +592,8 @@ describe('a fix that keeps a translation holding bracketed text', () => {
   it('is offered and made, since the fix does not write that text', () => {
     const protocol = withFrenchPrompt('Appuyez sur [OK]');
     const operations = normalizeOperations(protocol, [
-      op('set', '/stages/names/prompts/p1', {
-        id: 'p1',
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}`, {
+        id: NAMES_PROMPT_ID,
         text: { en: 'In the past 6 months, who?' },
       }),
     ]);
@@ -545,8 +605,8 @@ describe('a fix that keeps a translation holding bracketed text', () => {
   it('is still refused when the fix writes a new placeholder beside it', () => {
     const protocol = withFrenchPrompt('Appuyez sur [OK]');
     const operations = normalizeOperations(protocol, [
-      op('set', '/stages/names/prompts/p1', {
-        id: 'p1',
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}`, {
+        id: NAMES_PROMPT_ID,
         text: { en: 'Call [PHONE NUMBER]' },
       }),
     ]);
@@ -559,7 +619,7 @@ describe('editProtocol', () => {
   it('returns the edited protocol when the result is valid', async () => {
     const protocol = makeProtocol();
     const edit = await editProtocol(protocol, [
-      op('set', '/stages/welcome/label/en', 'Welcome to the study'),
+      op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Welcome to the study'),
     ]);
     expect(edit.ok).toBe(true);
     if (!edit.ok) return;
@@ -572,14 +632,14 @@ describe('editProtocol', () => {
   it('refuses edits that leave the protocol invalid', async () => {
     const edit = await editProtocol(makeProtocol(), [
       // A stage type that does not exist.
-      op('set', '/stages/welcome/type', 'NotAStage'),
+      op('set', `/stages/${WELCOME_STAGE_ID}/type`, 'NotAStage'),
     ]);
     expect(edit).toEqual({ ok: false, reason: 'invalid' });
   });
 
   it('refuses edits that remove a type a stage refers to', async () => {
     const edit = await editProtocol(makeProtocol(), [
-      op('remove', '/codebook/node/person'),
+      op('remove', `/codebook/node/${PERSON}`),
     ]);
     expect(edit).toEqual({ ok: false, reason: 'invalid' });
   });
@@ -606,12 +666,15 @@ describe('applyFixEdits', () => {
   it('writes the researcher’s text and number in place of the suggestion', () => {
     const protocol = makeProtocol();
     const operations = [
-      op('set', '/stages/names/prompts/p1/text', { en: 'Name people you see' }),
-      op('set', '/stages/names/behaviours/maxNodes', 20),
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
+        en: 'Name people you see',
+      }),
+      op('set', `/stages/${NAMES_STAGE_ID}/behaviours/maxNodes`, 20),
     ];
     const edited = applyFixEdits(protocol, operations, {
-      '/stages/names/prompts/p1/text/en': 'Name {everyone} you see',
-      '/stages/names/behaviours/maxNodes': '15',
+      [`/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`]:
+        'Name {everyone} you see',
+      [`/stages/${NAMES_STAGE_ID}/behaviours/maxNodes`]: '15',
     });
     expect(
       edited?.map((operation) => JSON.parse(operation.value ?? '')),
@@ -620,20 +683,22 @@ describe('applyFixEdits', () => {
 
   it('refuses a number field that holds no number', () => {
     const protocol = makeProtocol();
-    const operations = [op('set', '/stages/names/behaviours/maxNodes', 20)];
+    const operations = [
+      op('set', `/stages/${NAMES_STAGE_ID}/behaviours/maxNodes`, 20),
+    ];
     expect(
       applyFixEdits(protocol, operations, {
-        '/stages/names/behaviours/maxNodes': '',
+        [`/stages/${NAMES_STAGE_ID}/behaviours/maxNodes`]: '',
       }),
     ).toBeNull();
   });
 
   it('leaves a text the researcher cannot change here as suggested', () => {
     const protocol = makeProtocol();
-    const operations = [op('set', '/codebook/node/person/name', 'Friend')];
+    const operations = [op('set', `/codebook/node/${PERSON}/name`, 'Friend')];
     expect(
       applyFixEdits(protocol, operations, {
-        '/codebook/node/person/name': 'Someone',
+        [`/codebook/node/${PERSON}/name`]: 'Someone',
       }),
     ).toEqual(operations);
   });
@@ -645,11 +710,11 @@ describe('describeFixTextEdits', () => {
     const edits = describeFixTextEdits(protocol, [
       op(
         'set',
-        '/codebook/node/person/variables/freq/validation/maxSelected',
+        `/codebook/node/${PERSON}/variables/${FREQ}/validation/maxSelected`,
         1,
       ),
-      op('set', '/stages/names/behaviours/maxNodes', 20),
-      op('set', '/stages/names/behaviours/someCount', 3),
+      op('set', `/stages/${NAMES_STAGE_ID}/behaviours/maxNodes`, 20),
+      op('set', `/stages/${NAMES_STAGE_ID}/behaviours/someCount`, 3),
     ]);
     expect(
       edits.map((edit) =>
@@ -666,14 +731,22 @@ describe('describeFixTextEdits', () => {
   it('gives the text now and after, its language, and the translations it leaves alone', () => {
     const protocol = makeProtocol();
     const { operations } = recordFix(protocol, [
-      op('set', '/stages/names/prompts/p1/text', 'Name everyone'),
-      op('set', '/codebook/node/person/name', 'Friend'),
-      op('remove', '/stages/welcome'),
-      op('set', '/stages/names/prompts/p1/id', 'not text'),
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`,
+        'Name everyone',
+      ),
+      op('set', `/codebook/node/${PERSON}/name`, 'Friend'),
+      op('remove', `/stages/${WELCOME_STAGE_ID}`),
+      op(
+        'set',
+        `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/id`,
+        'not text',
+      ),
     ]);
     expect(describeFixTextEdits(protocol, operations)).toEqual([
       {
-        path: '/stages/names/prompts/p1/text/en',
+        path: `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
         now: 'Name people',
         after: 'Name everyone',
         locale: 'en',
@@ -685,7 +758,7 @@ describe('describeFixTextEdits', () => {
         editable: true,
       },
       {
-        path: '/codebook/node/person/name',
+        path: `/codebook/node/${PERSON}/name`,
         now: 'Person',
         after: 'Friend',
         locale: null,
@@ -697,8 +770,8 @@ describe('describeFixTextEdits', () => {
         editable: false,
       },
       {
-        path: '/stages/names/prompts/p1/id',
-        now: 'p1',
+        path: `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/id`,
+        now: NAMES_PROMPT_ID,
         after: 'not text',
         locale: null,
         otherTranslations: [],
@@ -714,7 +787,7 @@ describe('describeFixTextEdits', () => {
   it('shows message syntax as the plain text a participant reads', () => {
     const protocol = makeProtocol();
     const [edit] = describeFixTextEdits(protocol, [
-      op('set', '/stages/welcome/label/en', "It''s '{'here'}'"),
+      op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, "It''s '{'here'}'"),
     ]);
     expect(edit?.after).toBe("It's {here}");
   });
@@ -722,14 +795,16 @@ describe('describeFixTextEdits', () => {
   it('marks text the protocol declares as markdown, and only that text', () => {
     const protocol = makeProtocol();
     const edits = describeFixTextEdits(protocol, [
-      op('set', '/stages/names/prompts/p1/text', { en: '**Name** people' }),
-      op('set', '/stages/welcome/label/en', 'Hi there'),
-      op('set', '/stages/welcome/content/en', '*Hi*'),
+      op('set', `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text`, {
+        en: '**Name** people',
+      }),
+      op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Hi there'),
+      op('set', `/stages/${WELCOME_STAGE_ID}/content/en`, '*Hi*'),
     ]);
     expect(edits.map(({ path, markdown }) => [path, markdown])).toEqual([
-      ['/stages/names/prompts/p1/text/en', true],
-      ['/stages/welcome/label/en', false],
-      ['/stages/welcome/content/en', true],
+      [`/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`, true],
+      [`/stages/${WELCOME_STAGE_ID}/label/en`, false],
+      [`/stages/${WELCOME_STAGE_ID}/content/en`, true],
     ]);
   });
 });
@@ -739,25 +814,28 @@ describe('resolveFixPlace', () => {
   const problemAt = resolveFindingLocation(protocol, {
     stageId: null,
     codebookEntity: 'node',
-    codebookTypeId: 'person',
+    codebookTypeId: PERSON,
   });
   const placeOf = (...operations: ReturnType<typeof op>[]) =>
     resolveFixPlace(protocol, operations, problemAt);
 
   it('sends a fix that adds or removes a stage to the Stages screen', () => {
-    expect(placeOf(op('remove', '/stages/welcome'))).toEqual({
+    expect(placeOf(op('remove', `/stages/${WELCOME_STAGE_ID}`))).toEqual({
       kind: 'stages',
       href: '/protocol',
     });
     expect(
       placeOf(
-        op('insert', '/stages/finish', { id: 'new', type: 'Information' }),
+        op('insert', `/stages/${FINISH_STAGE_ID}`, {
+          id: 'new',
+          type: 'Information',
+        }),
       ),
     ).toMatchObject({ kind: 'stages' });
   });
 
   it('sends a fix that adds a stage to that stage, once it is there', () => {
-    const add = op('insert', '/stages/finish', {
+    const add = op('insert', `/stages/${FINISH_STAGE_ID}`, {
       id: 'knows',
       type: 'Information',
       label: { en: 'Who knows whom' },
@@ -773,27 +851,45 @@ describe('resolveFixPlace', () => {
   it('sends a fix that edits one stage, even with the codebook, to that stage', () => {
     expect(
       placeOf(
-        op('set', '/codebook/node/person/variables/extra', { name: 'extra' }),
-        op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
+        op(
+          'set',
+          `/codebook/node/${PERSON}/variables/${testVariableId('extra')}`,
+          {
+            name: 'extra',
+          },
+        ),
+        op(
+          'set',
+          `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
+          'Name everyone',
+        ),
       ),
-    ).toMatchObject({ kind: 'stage', stageId: 'names', position: 2 });
+    ).toMatchObject({ kind: 'stage', stageId: NAMES_STAGE_ID, position: 2 });
   });
 
   it('sends a fix that edits several stages to the Stages screen', () => {
     expect(
       placeOf(
-        op('set', '/stages/welcome/label/en', 'Hi'),
-        op('set', '/stages/names/prompts/p1/text/en', 'Name everyone'),
+        op('set', `/stages/${WELCOME_STAGE_ID}/label/en`, 'Hi'),
+        op(
+          'set',
+          `/stages/${NAMES_STAGE_ID}/prompts/${NAMES_PROMPT_ID}/text/en`,
+          'Name everyone',
+        ),
       ),
     ).toMatchObject({ kind: 'stages' });
   });
 
   it('sends a fix to one type, or to the ego, to that part of the codebook', () => {
     expect(
-      placeOf(op('set', '/codebook/node/person/name', 'Friend')),
-    ).toMatchObject({ kind: 'codebook', entity: 'node', typeId: 'person' });
+      placeOf(op('set', `/codebook/node/${PERSON}/name`, 'Friend')),
+    ).toMatchObject({ kind: 'codebook', entity: 'node', typeId: PERSON });
     expect(
-      placeOf(op('set', '/codebook/ego/variables/age', { name: 'age' })),
+      placeOf(
+        op('set', `/codebook/ego/variables/${testVariableId('age')}`, {
+          name: 'age',
+        }),
+      ),
     ).toMatchObject({ kind: 'codebook', entity: 'ego', typeId: null });
   });
 
@@ -809,14 +905,14 @@ describe('resolveFindingLocation', () => {
     expect(
       resolveFindingLocation(
         protocol,
-        makeFinding('f', [], { stageId: 'names' }),
+        makeFinding('f', [], { stageId: NAMES_STAGE_ID }),
       ),
     ).toEqual({
       kind: 'stage',
-      stageId: 'names',
+      stageId: NAMES_STAGE_ID,
       position: 2,
       label: 'Names',
-      href: '/protocol/stage/names',
+      href: `/protocol/stage/${NAMES_STAGE_ID}`,
     });
   });
 
@@ -826,15 +922,15 @@ describe('resolveFindingLocation', () => {
         protocol,
         makeFinding('f', [], {
           codebookEntity: 'node',
-          codebookTypeId: 'person',
+          codebookTypeId: PERSON,
         }),
       ),
     ).toEqual({
       kind: 'codebook',
       entity: 'node',
-      typeId: 'person',
+      typeId: PERSON,
       typeName: 'Person',
-      href: '/protocol/codebook?entity=node&type=person',
+      href: `/protocol/codebook?entity=node&type=${PERSON}`,
     });
   });
 

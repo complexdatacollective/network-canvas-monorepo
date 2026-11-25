@@ -88,20 +88,23 @@ import {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../__tests__/testIds';
 import useProtocolForm from './useProtocolForm';
+
+const PERSON = testTypeId('person');
 
 // Mock protocol data
 const mockProtocol = {
   name: 'Test Protocol',
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
-        displayVariable: 'name',
+        displayVariable: testVariableId('name'),
         iconVariant: 'add-a-person',
         variables: {
-          name: {
-            name: 'Name',
+          [testVariableId('name')]: {
+            [testVariableId('name')]: 'Name',
             type: 'text',
             component: 'Text',
             validation: {
@@ -110,16 +113,16 @@ const mockProtocol = {
               maxLength: 100,
             },
           },
-          email: {
-            name: 'Email',
+          [testVariableId('email')]: {
+            [testVariableId('name')]: 'Email',
             type: 'text',
             component: 'Text',
             validation: {
               required: true,
             },
           },
-          age: {
-            name: 'Age',
+          [testVariableId('age')]: {
+            [testVariableId('name')]: 'Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -127,8 +130,8 @@ const mockProtocol = {
               maxValue: 100,
             },
           },
-          gender: {
-            name: 'Gender',
+          [testVariableId('gender')]: {
+            [testVariableId('name')]: 'Gender',
             type: 'categorical',
             component: 'RadioGroup',
             options: [
@@ -141,13 +144,13 @@ const mockProtocol = {
               required: true,
             },
           },
-          occupation: {
-            name: 'Occupation',
+          [testVariableId('occupation')]: {
+            [testVariableId('name')]: 'Occupation',
             type: 'text',
             component: 'Text',
           },
-          favoriteColors: {
-            name: 'Favorite Colors',
+          [testVariableId('favoriteColors')]: {
+            [testVariableId('name')]: 'Favorite Colors',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
@@ -164,8 +167,8 @@ const mockProtocol = {
               maxSelected: 3,
             },
           },
-          birthDate: {
-            name: 'Birth Date',
+          [testVariableId('birthDate')]: {
+            [testVariableId('name')]: 'Birth Date',
             type: 'datetime',
             component: 'DatePicker',
             parameters: {
@@ -174,8 +177,8 @@ const mockProtocol = {
               max: '2010-12-31',
             },
           },
-          startDate: {
-            name: 'Start Date',
+          [testVariableId('startDate')]: {
+            [testVariableId('name')]: 'Start Date',
             type: 'datetime',
             component: 'RelativeDatePicker',
             parameters: {
@@ -184,8 +187,8 @@ const mockProtocol = {
               after: 90,
             },
           },
-          happiness: {
-            name: 'Happiness Level',
+          [testVariableId('happiness')]: {
+            [testVariableId('name')]: 'Happiness Level',
             type: 'scalar',
             component: 'VisualAnalogScale',
             parameters: {
@@ -193,8 +196,8 @@ const mockProtocol = {
               maxLabel: { en: 'Very Happy' },
             },
           },
-          satisfaction: {
-            name: 'Job Satisfaction',
+          [testVariableId('satisfaction')]: {
+            [testVariableId('name')]: 'Job Satisfaction',
             type: 'ordinal',
             component: 'LikertScale',
             options: [
@@ -205,18 +208,18 @@ const mockProtocol = {
               { label: { en: 'Very Satisfied' }, value: 5 },
             ],
           },
-          isEmployed: {
-            name: 'Currently Employed',
+          [testVariableId('isEmployed')]: {
+            [testVariableId('name')]: 'Currently Employed',
             type: 'boolean',
             component: 'Toggle',
           },
-          acceptTerms: {
-            name: 'Accept Terms',
+          [testVariableId('acceptTerms')]: {
+            [testVariableId('name')]: 'Accept Terms',
             type: 'boolean',
             component: 'Boolean',
           },
-          preferredContact: {
-            name: 'Preferred Contact Method',
+          [testVariableId('preferredContact')]: {
+            [testVariableId('name')]: 'Preferred Contact Method',
             type: 'categorical',
             component: 'ToggleButtonGroup',
             placeholder: 'Select a method...',
@@ -226,24 +229,24 @@ const mockProtocol = {
               { label: { en: 'SMS' }, value: 'sms' },
             ],
           },
-          bio: {
-            name: 'Biography',
+          [testVariableId('bio')]: {
+            [testVariableId('name')]: 'Biography',
             type: 'text',
             component: 'TextArea',
             validation: {
               maxLength: 500,
             },
           },
-          nickname: {
-            name: 'Nickname',
+          [testVariableId('nickname')]: {
+            [testVariableId('name')]: 'Nickname',
             type: 'text',
             component: 'Text',
             validation: {
               unique: true,
             },
           },
-          password: {
-            name: 'Password',
+          [testVariableId('password')]: {
+            [testVariableId('name')]: 'Password',
             type: 'text',
             component: 'Text',
             validation: {
@@ -251,38 +254,38 @@ const mockProtocol = {
               minLength: 8,
             },
           },
-          confirmPassword: {
-            name: 'Confirm Password',
+          [testVariableId('confirmPassword')]: {
+            [testVariableId('name')]: 'Confirm Password',
             type: 'text',
             component: 'Text',
             validation: {
               required: true,
-              sameAs: 'password',
+              sameAs: testVariableId('password'),
             },
           },
-          startAge: {
-            name: 'Start Age',
+          [testVariableId('startAge')]: {
+            [testVariableId('name')]: 'Start Age',
             type: 'number',
             component: 'Number',
             validation: {
               required: true,
             },
           },
-          endAge: {
-            name: 'End Age',
+          [testVariableId('endAge')]: {
+            [testVariableId('name')]: 'End Age',
             type: 'number',
             component: 'Number',
             validation: {
               required: true,
-              greaterThanVariable: 'startAge',
+              greaterThanVariable: testVariableId('startAge'),
             },
           },
-          alternateEmail: {
-            name: 'Alternate Email',
+          [testVariableId('alternateEmail')]: {
+            [testVariableId('name')]: 'Alternate Email',
             type: 'text',
             component: 'Text',
             validation: {
-              differentFrom: 'email',
+              differentFrom: testVariableId('email'),
             },
           },
         },
@@ -295,7 +298,7 @@ const mockProtocol = {
       label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
-        type: 'person',
+        type: PERSON,
       },
     },
   ],
@@ -322,20 +325,20 @@ const createMockStore = () => {
         // Existing nodes for testing unique validation
         {
           _uid: 'existing-node-1',
-          type: 'person',
+          type: PERSON,
           [entityAttributesProperty]: {
-            name: 'John',
-            nickname: 'Johnny',
-            email: 'john@example.com',
+            [testVariableId('name')]: 'John',
+            [testVariableId('nickname')]: 'Johnny',
+            [testVariableId('email')]: 'john@example.com',
           },
         },
         {
           _uid: 'existing-node-2',
-          type: 'person',
+          type: PERSON,
           [entityAttributesProperty]: {
-            name: 'Jane',
-            nickname: 'JaneD',
-            email: 'jane@example.com',
+            [testVariableId('name')]: 'Jane',
+            [testVariableId('nickname')]: 'JaneD',
+            [testVariableId('email')]: 'jane@example.com',
           },
         },
       ],
@@ -432,18 +435,18 @@ export const BasicFields: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('name'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('name')),
         prompt: { en: 'What is your name?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('email'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('email')),
         prompt: { en: 'What is your email?' },
       },
       {
-        id: 'field-3',
-        variable: asEntityAttributeReference('age'),
+        id: testId('field-3'),
+        variable: asEntityAttributeReference(testVariableId('age')),
         prompt: { en: 'How old are you?' },
       },
     ],
@@ -463,13 +466,13 @@ export const WithAutoFocus: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('name'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('name')),
         prompt: { en: 'What is your name?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('occupation'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('occupation')),
         prompt: { en: 'What is your occupation?' },
       },
     ],
@@ -489,13 +492,13 @@ export const SelectionFields: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('gender'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('gender')),
         prompt: { en: 'What is your gender?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('favoriteColors'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('favoriteColors')),
         prompt: { en: 'Select your favorite colors (1-3)' },
       },
     ],
@@ -514,18 +517,20 @@ export const ToggleFields: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('isEmployed'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('isEmployed')),
         prompt: { en: 'Are you currently employed?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('acceptTerms'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('acceptTerms')),
         prompt: { en: 'I accept the terms and conditions' },
       },
       {
-        id: 'field-3',
-        variable: asEntityAttributeReference('preferredContact'),
+        id: testId('field-3'),
+        variable: asEntityAttributeReference(
+          testVariableId('preferredContact'),
+        ),
         prompt: { en: 'Preferred contact method' },
       },
     ],
@@ -544,13 +549,13 @@ export const DateFields: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('birthDate'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('birthDate')),
         prompt: { en: 'When were you born?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('startDate'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('startDate')),
         prompt: { en: 'When did you start your current job?' },
       },
     ],
@@ -569,13 +574,13 @@ export const ScaleFields: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('happiness'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('happiness')),
         prompt: { en: 'How happy are you overall?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('satisfaction'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('satisfaction')),
         prompt: { en: 'How satisfied are you with your job?' },
       },
     ],
@@ -594,13 +599,13 @@ export const TextAreaField: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('name'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('name')),
         prompt: { en: 'What is your name?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('bio'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('bio')),
         prompt: { en: 'Tell us about yourself (max 500 characters)' },
       },
     ],
@@ -618,43 +623,44 @@ export const WithInitialValues: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('name'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('name')),
         prompt: { en: 'What is your name?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('age'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('age')),
         prompt: { en: 'How old are you?' },
       },
       {
-        id: 'field-3',
-        variable: asEntityAttributeReference('gender'),
+        id: testId('field-3'),
+        variable: asEntityAttributeReference(testVariableId('gender')),
         prompt: { en: 'What is your gender?' },
       },
       {
-        id: 'field-4',
-        variable: asEntityAttributeReference('favoriteColors'),
+        id: testId('field-4'),
+        variable: asEntityAttributeReference(testVariableId('favoriteColors')),
         prompt: { en: 'Select your favorite colors' },
       },
       {
-        id: 'field-5',
-        variable: asEntityAttributeReference('isEmployed'),
+        id: testId('field-5'),
+        variable: asEntityAttributeReference(testVariableId('isEmployed')),
         prompt: { en: 'Are you currently employed?' },
       },
       {
-        id: 'field-6',
-        variable: asEntityAttributeReference('bio'),
+        id: testId('field-6'),
+        variable: asEntityAttributeReference(testVariableId('bio')),
         prompt: { en: 'Tell us about yourself' },
       },
     ],
     initialValues: {
-      name: 'John Doe',
-      age: 32,
-      gender: 'male',
-      favoriteColors: ['blue', 'green'],
-      isEmployed: true,
-      bio: 'A software developer passionate about building great user experiences.',
+      [testVariableId('name')]: 'John Doe',
+      [testVariableId('age')]: 32,
+      [testVariableId('gender')]: 'male',
+      [testVariableId('favoriteColors')]: ['blue', 'green'],
+      [testVariableId('isEmployed')]: true,
+      [testVariableId('bio')]:
+        'A software developer passionate about building great user experiences.',
     },
   },
   parameters: {
@@ -671,53 +677,55 @@ export const ComprehensiveForm: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('name'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('name')),
         prompt: { en: 'What is your name?' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('email'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('email')),
         prompt: { en: 'What is your email?' },
       },
       {
-        id: 'field-3',
-        variable: asEntityAttributeReference('age'),
+        id: testId('field-3'),
+        variable: asEntityAttributeReference(testVariableId('age')),
         prompt: { en: 'How old are you?' },
       },
       {
-        id: 'field-4',
-        variable: asEntityAttributeReference('gender'),
+        id: testId('field-4'),
+        variable: asEntityAttributeReference(testVariableId('gender')),
         prompt: { en: 'What is your gender?' },
       },
       {
-        id: 'field-5',
-        variable: asEntityAttributeReference('occupation'),
+        id: testId('field-5'),
+        variable: asEntityAttributeReference(testVariableId('occupation')),
         prompt: { en: 'What is your occupation?' },
       },
       {
-        id: 'field-6',
-        variable: asEntityAttributeReference('isEmployed'),
+        id: testId('field-6'),
+        variable: asEntityAttributeReference(testVariableId('isEmployed')),
         prompt: { en: 'Are you currently employed?' },
       },
       {
-        id: 'field-7',
-        variable: asEntityAttributeReference('satisfaction'),
+        id: testId('field-7'),
+        variable: asEntityAttributeReference(testVariableId('satisfaction')),
         prompt: { en: 'How satisfied are you with your job?' },
       },
       {
-        id: 'field-8',
-        variable: asEntityAttributeReference('favoriteColors'),
+        id: testId('field-8'),
+        variable: asEntityAttributeReference(testVariableId('favoriteColors')),
         prompt: { en: 'What are your favorite colors? (Select 1-3)' },
       },
       {
-        id: 'field-9',
-        variable: asEntityAttributeReference('preferredContact'),
+        id: testId('field-9'),
+        variable: asEntityAttributeReference(
+          testVariableId('preferredContact'),
+        ),
         prompt: { en: 'How should we contact you?' },
       },
       {
-        id: 'field-10',
-        variable: asEntityAttributeReference('bio'),
+        id: testId('field-10'),
+        variable: asEntityAttributeReference(testVariableId('bio')),
         prompt: { en: 'Tell us about yourself' },
       },
     ],
@@ -737,8 +745,8 @@ export const MinimalForm: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('name'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('name')),
         prompt: { en: 'What is your name?' },
       },
     ],
@@ -756,8 +764,8 @@ export const UniqueValidation: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('nickname'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('nickname')),
         prompt: {
           en: 'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
         },
@@ -778,13 +786,13 @@ export const SameAsValidation: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('password'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('password')),
         prompt: { en: 'Enter your password' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('confirmPassword'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('confirmPassword')),
         prompt: { en: 'Confirm your password' },
       },
     ],
@@ -803,13 +811,13 @@ export const DifferentFromValidation: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('email'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('email')),
         prompt: { en: 'Enter your primary email' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('alternateEmail'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('alternateEmail')),
         prompt: {
           en: 'Enter an alternate email (must be different from primary)',
         },
@@ -830,13 +838,13 @@ export const GreaterThanVariableValidation: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('startAge'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('startAge')),
         prompt: { en: 'Enter start age' },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('endAge'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('endAge')),
         prompt: { en: 'Enter end age (must be greater than start age)' },
       },
     ],
@@ -855,42 +863,42 @@ export const ContextDependentValidations: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('nickname'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('nickname')),
         prompt: {
           en: 'Enter a unique nickname (try "Johnny" or "JaneD" to see validation error)',
         },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('password'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('password')),
         prompt: { en: 'Enter your password' },
       },
       {
-        id: 'field-3',
-        variable: asEntityAttributeReference('confirmPassword'),
+        id: testId('field-3'),
+        variable: asEntityAttributeReference(testVariableId('confirmPassword')),
         prompt: { en: 'Confirm your password (must match password)' },
       },
       {
-        id: 'field-4',
-        variable: asEntityAttributeReference('email'),
+        id: testId('field-4'),
+        variable: asEntityAttributeReference(testVariableId('email')),
         prompt: { en: 'Enter your primary email' },
       },
       {
-        id: 'field-5',
-        variable: asEntityAttributeReference('alternateEmail'),
+        id: testId('field-5'),
+        variable: asEntityAttributeReference(testVariableId('alternateEmail')),
         prompt: {
           en: 'Enter an alternate email (must be different from primary)',
         },
       },
       {
-        id: 'field-6',
-        variable: asEntityAttributeReference('startAge'),
+        id: testId('field-6'),
+        variable: asEntityAttributeReference(testVariableId('startAge')),
         prompt: { en: 'Enter start age' },
       },
       {
-        id: 'field-7',
-        variable: asEntityAttributeReference('endAge'),
+        id: testId('field-7'),
+        variable: asEntityAttributeReference(testVariableId('endAge')),
         prompt: { en: 'Enter end age (must be greater than start age)' },
       },
     ],
@@ -909,22 +917,22 @@ export const HintText: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('name'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('name')),
         prompt: { en: 'What is your name?' },
         hint: {
           en: 'Enter your full legal name as it appears on official documents.',
         },
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('email'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('email')),
         prompt: { en: 'What is your email?' },
         hint: { en: 'We will use this to send you a confirmation.' },
       },
       {
-        id: 'field-3',
-        variable: asEntityAttributeReference('age'),
+        id: testId('field-3'),
+        variable: asEntityAttributeReference(testVariableId('age')),
         prompt: { en: 'How old are you?' },
       },
     ],
@@ -943,27 +951,27 @@ export const ValidationHints: Story = {
   args: {
     fields: [
       {
-        id: 'field-1',
-        variable: asEntityAttributeReference('name'),
+        id: testId('field-1'),
+        variable: asEntityAttributeReference(testVariableId('name')),
         prompt: { en: 'What is your name?' },
         hint: { en: 'Enter your full legal name.' },
         showValidationHints: true,
       },
       {
-        id: 'field-2',
-        variable: asEntityAttributeReference('email'),
+        id: testId('field-2'),
+        variable: asEntityAttributeReference(testVariableId('email')),
         prompt: { en: 'What is your email?' },
         showValidationHints: true,
       },
       {
-        id: 'field-3',
-        variable: asEntityAttributeReference('age'),
+        id: testId('field-3'),
+        variable: asEntityAttributeReference(testVariableId('age')),
         prompt: { en: 'How old are you?' },
         showValidationHints: true,
       },
       {
-        id: 'field-4',
-        variable: asEntityAttributeReference('favoriteColors'),
+        id: testId('field-4'),
+        variable: asEntityAttributeReference(testVariableId('favoriteColors')),
         prompt: { en: 'Select your favorite colors' },
         hint: { en: 'Pick the colors you like most.' },
         showValidationHints: true,

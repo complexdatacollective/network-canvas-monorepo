@@ -6,16 +6,23 @@ import {
   within,
 } from '@testing-library/react';
 import { useLayoutEffect, useMemo, useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { isProtocolObjectId } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { fixtureMessage } from '../../../testing/i18n.ts';
+import {
+  MINTED_OPTION_ID,
+  stubbedOptionId,
+} from '../../../testing/mintedId.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testId } from '../../../testing/testId.ts';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
+import { rowsOf } from '../../rowDialog.tsx';
 import MultiSelect, {
   makeMultiSelectValidation,
   type PropertyField,
@@ -79,7 +86,11 @@ function renderList(
   }
 
   const harness = renderStageEditor({
-    stage: { type: 'Information', fields },
+    stage: {
+      id: testId('array-editors-stage'),
+      type: 'Information',
+      fields,
+    },
     sections: <Section />,
   });
 
@@ -139,11 +150,25 @@ const SAVEABLE_STAGE = {
   content: { 'en-US': 'Welcome' },
 };
 
+// Option rows take their ids from the function made for option ids.
+vi.mock('@codaco/protocol-validation', async (importActual) => {
+  const actual =
+    await importActual<typeof import('@codaco/protocol-validation')>();
+  let made = 0;
+  return { ...actual, createOptionId: () => stubbedOptionId((made += 1)) };
+});
+
 describe('Options', () => {
   it('adds a row and lands every keystroke after it on that row alone', async () => {
     const { user, draft } = renderOptions({
       ...SAVEABLE_STAGE,
-      options: [{ label: { 'en-US': 'Yes' }, value: 'yes' }],
+      options: [
+        {
+          id: testId('option/yes'),
+          label: { 'en-US': 'Yes' },
+          value: 'yes',
+        },
+      ],
     });
 
     await user.click(
@@ -159,8 +184,9 @@ describe('Options', () => {
     // on every keystroke could not promise.
     await waitFor(() =>
       expect(draft().options).toEqual([
-        { label: { 'en-US': 'Yes' }, value: 'yes' },
-        { value: 'no' },
+        { id: testId('option/yes'), label: { 'en-US': 'Yes' }, value: 'yes' },
+        // A row is given its id the moment it is added.
+        { id: MINTED_OPTION_ID, value: 'no' },
       ]),
     );
   });
@@ -190,7 +216,13 @@ describe('Options', () => {
   it('says nothing about an option the researcher has not touched', async () => {
     const { user } = renderOptions({
       ...SAVEABLE_STAGE,
-      options: [{ label: { 'en-US': 'Yes' }, value: 'yes' }],
+      options: [
+        {
+          id: testId('option/yes'),
+          label: { 'en-US': 'Yes' },
+          value: 'yes',
+        },
+      ],
     });
 
     await user.click(
@@ -223,8 +255,16 @@ describe('Options', () => {
     const { user } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: { 'en-US': 'Alpha' }, value: 'yes' },
-        { label: { 'en-US': 'Bravo' }, value: 'yes\tplease' },
+        {
+          id: testId('option/yes'),
+          label: { 'en-US': 'Alpha' },
+          value: 'yes',
+        },
+        {
+          id: testId('option/yes\tplease'),
+          label: { 'en-US': 'Bravo' },
+          value: 'yes\tplease',
+        },
       ],
     });
 
@@ -257,8 +297,16 @@ describe('Options', () => {
     const { user } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: { 'en-US': 'Alpha' }, value: 'yes' },
-        { label: { 'en-US': 'Bravo' }, value: 'no' },
+        {
+          id: testId('option/yes'),
+          label: { 'en-US': 'Alpha' },
+          value: 'yes',
+        },
+        {
+          id: testId('option/no'),
+          label: { 'en-US': 'Bravo' },
+          value: 'no',
+        },
       ],
     });
 
@@ -298,8 +346,16 @@ describe('Options', () => {
     const { user, draft } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: { 'en-US': 'Alpha' }, value: 'alpha' },
-        { label: { 'en-US': 'Bravo' }, value: 'bravo' },
+        {
+          id: testId('option/alpha'),
+          label: { 'en-US': 'Alpha' },
+          value: 'alpha',
+        },
+        {
+          id: testId('option/bravo'),
+          label: { 'en-US': 'Bravo' },
+          value: 'bravo',
+        },
       ],
     });
 
@@ -312,7 +368,11 @@ describe('Options', () => {
 
     await waitFor(() =>
       expect(draft().options).toEqual([
-        { label: { 'en-US': 'Alpha' }, value: 'alpha' },
+        {
+          id: testId('option/alpha'),
+          label: { 'en-US': 'Alpha' },
+          value: 'alpha',
+        },
       ]),
     );
   });
@@ -329,8 +389,16 @@ describe('Options', () => {
     const { user, draft, stopAcceptingChanges } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: { 'en-US': 'Alpha' }, value: 'alpha' },
-        { label: { 'en-US': 'Bravo' }, value: 'bravo' },
+        {
+          id: testId('option/alpha'),
+          label: { 'en-US': 'Alpha' },
+          value: 'alpha',
+        },
+        {
+          id: testId('option/bravo'),
+          label: { 'en-US': 'Bravo' },
+          value: 'bravo',
+        },
       ],
     });
 
@@ -351,8 +419,16 @@ describe('Options', () => {
       ),
     ).toBeInTheDocument();
     expect(draft().options).toEqual([
-      { label: { 'en-US': 'Alpha' }, value: 'alpha' },
-      { label: { 'en-US': 'Bravo' }, value: 'bravo' },
+      {
+        id: testId('option/alpha'),
+        label: { 'en-US': 'Alpha' },
+        value: 'alpha',
+      },
+      {
+        id: testId('option/bravo'),
+        label: { 'en-US': 'Bravo' },
+        value: 'bravo',
+      },
     ]);
   });
 
@@ -360,8 +436,16 @@ describe('Options', () => {
     const { harness, user, draft } = renderOptions({
       ...SAVEABLE_STAGE,
       options: [
-        { label: { 'en-US': 'Yes' }, value: 'yes' },
-        { label: { 'en-US': 'No' }, value: 'no' },
+        {
+          id: testId('option/yes'),
+          label: { 'en-US': 'Yes' },
+          value: 'yes',
+        },
+        {
+          id: testId('option/no'),
+          label: { 'en-US': 'No' },
+          value: 'no',
+        },
       ],
     });
 
@@ -375,9 +459,9 @@ describe('Options', () => {
     // protocol carrying an option with neither half.
     await waitFor(() =>
       expect(draft().options).toEqual([
-        { label: { 'en-US': 'Yes' }, value: 'yes' },
-        { label: { 'en-US': 'No' }, value: 'no' },
-        {},
+        { id: testId('option/yes'), label: { 'en-US': 'Yes' }, value: 'yes' },
+        { id: testId('option/no'), label: { 'en-US': 'No' }, value: 'no' },
+        { id: MINTED_OPTION_ID },
       ]),
     );
 
@@ -397,8 +481,16 @@ describe('Options', () => {
       {
         ...SAVEABLE_STAGE,
         options: [
-          { label: { 'en-US': 'Yes' }, value: 'yes' },
-          { label: { 'en-US': 'No' }, value: 'no' },
+          {
+            id: testId('option/yes'),
+            label: { 'en-US': 'Yes' },
+            value: 'yes',
+          },
+          {
+            id: testId('option/no'),
+            label: { 'en-US': 'No' },
+            value: 'no',
+          },
         ],
       },
       { optional: true },
@@ -440,7 +532,13 @@ describe('Options', () => {
     const { user, draft } = renderOptions(
       {
         ...SAVEABLE_STAGE,
-        options: [{ label: { 'en-US': 'Yes' }, value: 'yes' }],
+        options: [
+          {
+            id: testId('option/yes'),
+            label: { 'en-US': 'Yes' },
+            value: 'yes',
+          },
+        ],
       },
       { optional: true },
     );
@@ -463,7 +561,7 @@ describe('Options', () => {
     // the list the next save will write are the same list.
     await waitFor(() =>
       expect(draft().options).toEqual([
-        { label: { 'en-US': 'No' }, value: 'no' },
+        { id: MINTED_OPTION_ID, label: { 'en-US': 'No' }, value: 'no' },
       ]),
     );
     expect(screen.getAllByRole('textbox', { name: 'Label' })).toHaveLength(1);
@@ -484,7 +582,9 @@ describe('Options', () => {
       await screen.findByRole('button', { name: 'Create new option' }),
     );
 
-    await waitFor(() => expect(draft().options).toEqual([{}]));
+    await waitFor(() =>
+      expect(draft().options).toEqual([{ id: MINTED_OPTION_ID }]),
+    );
   });
 });
 
@@ -522,7 +622,10 @@ describe('MultiSelect', () => {
       await screen.findByRole('button', { name: 'Add new sort rule' }),
     );
 
-    await waitFor(() => expect(draft().sortOrder).toEqual([{}]));
+    await waitFor(() =>
+      expect(draft().sortOrder).toEqual([{ id: expect.any(String) }]),
+    );
+    expect(isProtocolObjectId(rowsOf(draft().sortOrder)[0]?.id)).toBe(true);
   });
 });
 
@@ -577,13 +680,17 @@ describe('a row removal confirm the list stops accepting', () => {
  * researcher a list they could see perfectly well had changed underneath them.
  */
 describe('a list holding rows the researcher cannot tell apart', () => {
+  const first = testId('sort-rule-first');
+  const second = testId('sort-rule-second');
+  const third = testId('sort-rule-third');
+
   it('moves the rule the researcher took hold of past the one between the copies', async () => {
     const { user, draft } = renderSortRules({
       ...SAVEABLE_STAGE,
       sortOrder: [
-        { property: 'name', direction: 'asc' },
-        { property: 'age', direction: 'desc' },
-        { property: 'name', direction: 'asc' },
+        { id: first, property: 'name', direction: 'asc' },
+        { id: second, property: 'age', direction: 'desc' },
+        { id: third, property: 'name', direction: 'asc' },
       ],
     });
 
@@ -605,10 +712,10 @@ describe('a list holding rows the researcher cannot tell apart', () => {
 
     await waitFor(() =>
       expect(draft().sortOrder).toEqual([
-        { property: 'name', direction: 'asc' },
-        { property: 'name', direction: 'asc' },
-        { property: 'age', direction: 'desc' },
-        {},
+        { id: first, property: 'name', direction: 'asc' },
+        { id: third, property: 'name', direction: 'asc' },
+        { id: second, property: 'age', direction: 'desc' },
+        { id: expect.any(String) },
       ]),
     );
     await waitFor(() =>
@@ -624,8 +731,8 @@ describe('a list holding rows the researcher cannot tell apart', () => {
     const { user, draft } = renderSortRules({
       ...SAVEABLE_STAGE,
       sortOrder: [
-        { property: 'name', direction: 'asc' },
-        { property: 'name', direction: 'asc' },
+        { id: first, property: 'name', direction: 'asc' },
+        { id: second, property: 'name', direction: 'asc' },
       ],
     });
 
@@ -646,9 +753,9 @@ describe('a list holding rows the researcher cannot tell apart', () => {
 
     await waitFor(() =>
       expect(draft().sortOrder).toEqual([
-        { property: 'name', direction: 'asc' },
-        {},
-        { property: 'name', direction: 'asc' },
+        { id: first, property: 'name', direction: 'asc' },
+        { id: expect.any(String) },
+        { id: second, property: 'name', direction: 'asc' },
       ]),
     );
     await waitFor(() =>

@@ -1,7 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { testTypeId } from '@codaco/protocol-builder/testing/testId';
+import {
+  type CurrentProtocol,
+  isEntityTypeId,
+  isVariableId,
+} from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import {
   createEdgeAsync,
@@ -11,6 +16,8 @@ import {
 import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 
+const PERSON = testTypeId('person');
+
 const protocol: CurrentProtocol = {
   name: 'Study',
   schemaVersion: 9,
@@ -19,7 +26,7 @@ const protocol: CurrentProtocol = {
   stages: [],
   codebook: {
     node: {
-      person: {
+      [PERSON]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
@@ -44,7 +51,7 @@ const codebookOf = (store: ReturnType<typeof makeStore>) =>
   getProtocol(store.getState())?.codebook;
 
 // Participants never see a codebook name, so a codebook entry has only its
-// name: nothing writes a label beside it.
+// name: nothing writes a label beside it. Its id is a new UUID.
 describe('new codebook entries', () => {
   it('gives a new node type only its name', async () => {
     const store = makeStore();
@@ -62,6 +69,7 @@ describe('new codebook entries', () => {
       )
       .unwrap();
 
+    expect(isEntityTypeId(type)).toBe(true);
     const created = codebookOf(store)?.node?.[type];
     expect(created?.name).toBe('Ami');
     expect(created).not.toHaveProperty('label');
@@ -74,6 +82,7 @@ describe('new codebook entries', () => {
       .dispatch(createEdgeAsync({ name: 'Connaît' }))
       .unwrap();
 
+    expect(isEntityTypeId(type)).toBe(true);
     const created = codebookOf(store)?.edge?.[type];
     expect(created?.name).toBe('Connaît');
     expect(created).not.toHaveProperty('label');
@@ -86,13 +95,14 @@ describe('new codebook entries', () => {
       .dispatch(
         createVariableAsync({
           entity: 'node',
-          type: 'person',
+          type: PERSON,
           configuration: { name: 'âge {années}', type: 'number' },
         }),
       )
       .unwrap();
 
-    const created = codebookOf(store)?.node?.person?.variables?.[variable];
+    expect(isVariableId(variable)).toBe(true);
+    const created = codebookOf(store)?.node?.[PERSON]?.variables?.[variable];
     expect(created?.name).toBe('âge {années}');
     expect(created).not.toHaveProperty('label');
   });

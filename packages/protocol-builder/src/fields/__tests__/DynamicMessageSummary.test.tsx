@@ -2,12 +2,13 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
-  dynamicValuePathFor,
+  dynamicValueNameFor,
   type LocaleTag,
 } from '@codaco/protocol-validation';
 
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
+import { testVariableId } from '../../testing/testId.ts';
 import {
   type DynamicMessageSite,
   DynamicMessageSummary,
@@ -16,13 +17,19 @@ import {
 const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 const LOCALE: LocaleTag = 'en';
 
-const SITE: Pick<DynamicMessageSite, 'context' | 'bindings'> = {
+const SITE: Pick<DynamicMessageSite, 'context'> = {
   context: {
     roles: new Set(),
     variablesFor: () => undefined,
   },
-  bindings: {},
 };
+
+const TEAM_ID = testVariableId('team');
+const TEAM = dynamicValueNameFor({
+  kind: 'attribute',
+  role: 'ego',
+  variableId: TEAM_ID,
+});
 
 const renderSummary = (message: string, markdown: boolean, multiline = false) =>
   render(
@@ -40,9 +47,10 @@ const renderSummary = (message: string, markdown: boolean, multiline = false) =>
   );
 
 describe('DynamicMessageSummary', () => {
-  it('keeps the emphasis and links of markdown around its values', () => {
+  it('keeps the emphasis and links of markdown of several lines around its values', () => {
     const { getByTestId } = renderSummary(
       'Read **{name}** at [this site](https://example.com) with _{place}_',
+      true,
       true,
     );
     const summary = getByTestId('summary');
@@ -162,7 +170,7 @@ describe('DynamicMessageSummary pills', () => {
       <ProtocolLocalizationProvider localization={ENGLISH}>
         <div data-testid="summary">
           <DynamicMessageSummary
-            message="{team} {today}"
+            message={`{${TEAM}} {now}`}
             markdown={false}
             multiline={false}
             locale={LOCALE}
@@ -171,12 +179,8 @@ describe('DynamicMessageSummary pills', () => {
                 roles: new Set(['ego']),
                 variablesFor: (role) =>
                   role === 'ego'
-                    ? { v1: { name: 'team-b!', type: 'text' } }
+                    ? { [TEAM_ID]: { name: 'team-b!', type: 'text' } }
                     : undefined,
-              },
-              bindings: {
-                team: { path: dynamicValuePathFor('ego', 'v1') },
-                today: { path: 'now' },
               },
             }}
           />
@@ -187,14 +191,58 @@ describe('DynamicMessageSummary pills', () => {
 
     // The researcher's name, which reads in its own direction whatever the
     // interface's is.
-    const attribute = summary.querySelector('[data-token="team"]');
+    const attribute = summary.querySelector(`[data-token="${TEAM}"]`);
     expect(attribute).toHaveTextContent('team-b!');
     expect(attribute).toHaveAttribute('dir', 'auto');
     expect(attribute).not.toHaveAttribute('lang');
 
     // A value the interface names, in the interface's language.
-    const today = summary.querySelector('[data-token="today"]');
+    const today = summary.querySelector('[data-token="now"]');
     expect(today).toHaveAttribute('lang', 'en');
     expect(today).toHaveAttribute('dir', 'ltr');
+  });
+});
+
+describe('DynamicMessageSummary of a value the place does not offer', () => {
+  it('says that a deleted attribute was deleted, in a pill and in a set of versions', () => {
+    const { getByTestId } = renderSummary(
+      `{${TEAM}} and {${TEAM}, select, missing {} other {known}}`,
+      false,
+    );
+    const summary = getByTestId('summary');
+
+    expect(summary).toHaveTextContent(
+      'Deleted attribute and Deleted attribute',
+    );
+    expect(summary).not.toHaveTextContent(TEAM);
+  });
+
+  it('calls an attribute the codebook still has by its name', () => {
+    const { getByTestId } = render(
+      <ProtocolLocalizationProvider localization={ENGLISH}>
+        <div data-testid="summary">
+          <DynamicMessageSummary
+            message={`Hi {${TEAM}}`}
+            markdown={false}
+            multiline={false}
+            locale={LOCALE}
+            site={{
+              ...SITE,
+              conditions: {
+                values: {},
+                codebook: {
+                  ego: {
+                    variables: { [TEAM_ID]: { name: 'team', type: 'text' } },
+                  },
+                },
+                subject: undefined,
+                allowEgoRules: true,
+              },
+            }}
+          />
+        </div>
+      </ProtocolLocalizationProvider>,
+    );
+    expect(getByTestId('summary')).toHaveTextContent('Hi team');
   });
 });

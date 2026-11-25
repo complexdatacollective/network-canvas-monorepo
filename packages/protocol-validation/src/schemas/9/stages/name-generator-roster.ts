@@ -4,19 +4,20 @@ import {
   EVERY_VERSION,
   type MessageArguments,
 } from '../../../localization/messageArguments.ts';
-import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { assetReference } from '../asset-reference.ts';
 import {
   NodeStageSubjectSchema,
   nameGeneratorPromptSchema,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import { SortOrderSchema } from '../filters/index.ts';
+import { DataSourceSortOrderSchema } from '../filters/index.ts';
 import {
   localizedMessage,
   localizedString,
   nonBlankText,
 } from '../localized-string.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import { baseStageSchema } from './base.ts';
 import {
@@ -28,9 +29,11 @@ import {
 /**
  * A roster column name. The roster is an external data source, so this is NOT
  * guaranteed to be a codebook variable — but in a Network Canvas-format roster
- * it usually is one: the shipped development protocol's roster keys its node
- * attributes by the venue type's own variable ids, and one of those variables
- * (`Abbreviated_Name`) is referenced nowhere else in the protocol.
+ * it usually is one: the development protocol's roster (`HIVServices.json`)
+ * keys its node attributes by the venue type's own variable ids, and one of
+ * those variables (`Abbreviated_Name`) is referenced nowhere else in the
+ * protocol. Those ids are UUIDs, which the schema 8 to 9 migration keeps, so
+ * the roster still matches the codebook after migration.
  *
  * Tagging it as an existence-unchecked reference is what keeps the Codebook
  * from offering to delete a variable the roster still reads (#1392); leaving it
@@ -45,6 +48,7 @@ const rosterColumnReference = () =>
   entityAttributeReference({
     subject: 'stageSubject',
     existence: 'unchecked',
+    dataSourceColumn: true,
   });
 
 /**
@@ -78,70 +82,61 @@ const rosterWording = {
   }).optional(),
 };
 
-export const nameGeneratorRosterStage = baseStageSchema.extend({
-  type: z.literal('NameGeneratorRoster'),
-  subject: NodeStageSubjectSchema,
-  dataSource: assetReference(),
-  // The heading above the people the participant can add. The roster IS the
-  // panel, so it is named for what it heads rather than as the stage's title.
-  panelTitle: localizedString(
-    nonBlankText(),
-    { format: 'plain', lines: 'single' },
-    {
-      dynamicValues: 'stageText',
-    },
-  ).optional(),
-  cardOptions: z
-    .strictObject({
-      additionalProperties: z
-        .array(
-          z.strictObject({
-            label: localizedString(nonBlankText(), {
-              format: 'plain',
-              lines: 'single',
+export const nameGeneratorRosterStage = withUniqueObjectIds(
+  baseStageSchema.extend({
+    type: z.literal('NameGeneratorRoster'),
+    subject: NodeStageSubjectSchema,
+    dataSource: assetReference(),
+    // The heading above the people the participant can add. The roster IS the
+    // panel, so it is named for what it heads rather than as the stage's title.
+    panelTitle: localizedString(
+      nonBlankText(),
+      { format: 'plain', lines: 'single' },
+      {
+        dynamicValues: 'stageText',
+      },
+    ).optional(),
+    cardOptions: z
+      .strictObject({
+        additionalProperties: z
+          .array(
+            z.strictObject({
+              id: protocolObjectId('rosterCardProperty'),
+              label: localizedString(nonBlankText(), {
+                format: 'plain',
+                lines: 'single',
+              }),
+              variable: rosterColumnReference(),
             }),
-            variable: rosterColumnReference(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  sortOptions: z
-    .strictObject({
-      sortOrder: SortOrderSchema.optional(),
-      sortableProperties: z
-        .array(
-          z.strictObject({
-            label: localizedString(nonBlankText(), {
-              format: 'plain',
-              lines: 'single',
+          )
+          .optional(),
+      })
+      .optional(),
+    sortOptions: z
+      .strictObject({
+        sortOrder: DataSourceSortOrderSchema.optional(),
+        sortableProperties: z
+          .array(
+            z.strictObject({
+              id: protocolObjectId('rosterSortableProperty'),
+              label: localizedString(nonBlankText(), {
+                format: 'plain',
+                lines: 'single',
+              }),
+              variable: rosterColumnReference(),
             }),
-            variable: rosterColumnReference(),
-          }),
-        )
-        .optional(),
-    })
-    .optional(),
-  searchOptions: z
-    .strictObject({
-      fuzziness: z.number(),
-      matchProperties: z.array(rosterColumnReference()).min(1),
-    })
-    .optional(),
-  prompts: z
-    .array(nameGeneratorPromptSchema)
-    .min(1)
-    .superRefine((prompts, ctx) => {
-      // Check for duplicate prompt IDs
-      const duplicatePromptId = findDuplicateId(prompts);
-      if (duplicatePromptId) {
-        ctx.addIssue({
-          code: 'custom' as const,
-          message: `Prompts contain duplicate ID "${duplicatePromptId}"`,
-          path: [],
-        });
-      }
-    }),
-  behaviours: nameGeneratorBehavioursSchema,
-  ...rosterWording,
-});
+          )
+          .optional(),
+      })
+      .optional(),
+    searchOptions: z
+      .strictObject({
+        fuzziness: z.number(),
+        matchProperties: z.array(rosterColumnReference()).min(1),
+      })
+      .optional(),
+    prompts: z.array(nameGeneratorPromptSchema).min(1),
+    behaviours: nameGeneratorBehavioursSchema,
+    ...rosterWording,
+  }),
+);

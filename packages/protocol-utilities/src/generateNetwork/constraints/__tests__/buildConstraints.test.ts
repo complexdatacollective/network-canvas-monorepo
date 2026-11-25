@@ -6,6 +6,7 @@ import {
   VARIABLE_REFERENCE_VALIDATIONS,
 } from '@codaco/protocol-validation';
 
+import { testId } from '../../../__tests__/testId.ts';
 import { ValueGenerator } from '../../../ValueGenerator.ts';
 import { resolveGenerationConfig } from '../../config.ts';
 import {
@@ -967,7 +968,7 @@ describe('a date field whose floor is later than today, through feasibility', ()
   const config = resolveGenerationConfig({ today: TODAY });
 
   const nameGenerator: Stage = {
-    id: 'stage-1',
+    id: testId('stage-1'),
     type: 'NameGenerator',
     maxNodesNotice: {
       'en-US':
@@ -976,7 +977,7 @@ describe('a date field whose floor is later than today, through feasibility', ()
     label: { 'en-US': 'Name generator' },
     subject: { entity: 'node', type: 'person' },
     form: { title: { 'en-US': 'About this person' }, fields: [] },
-    prompts: [{ id: 'p1', text: { 'en-US': 'Name people' } }],
+    prompts: [{ id: testId('p1'), text: { 'en-US': 'Name people' } }],
     behaviours: { maxNodes: 4 },
   };
 

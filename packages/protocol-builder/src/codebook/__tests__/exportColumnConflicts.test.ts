@@ -6,6 +6,12 @@ import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import { readMessage } from '../../testing/i18n.ts';
 import {
+  testId,
+  testOptionId,
+  testTypeId,
+  testVariableId,
+} from '../../testing/testId.ts';
+import {
   type CodebookSubject,
   DuplicateVariableNameError,
   documentForNewEntity,
@@ -22,7 +28,7 @@ import {
  * together: every create, rename, option edit and change of type ends here, so
  * a control that offered a name the export cannot carry is still refused.
  */
-const NODE: CodebookSubject = { entity: 'node', type: 'person' };
+const NODE: CodebookSubject = { entity: 'node', type: testTypeId('person') };
 const EGO: CodebookSubject = { entity: 'ego' };
 
 const LOCALIZATION: ProtocolLocalization = {
@@ -42,21 +48,33 @@ const categorical = (name: string, values: readonly string[]) => ({
   name,
   type: 'categorical',
   component: 'CheckboxGroup',
-  options: values.map((value) => ({ label: { en: value }, value })),
+  options: values.map((value) => ({
+    id: testOptionId(name, value),
+    label: { en: value },
+    value,
+  })),
 });
 
 const text = (name: string) => ({ name, type: 'text', component: 'Text' });
 
 const layout = (name: string) => ({ name, type: 'layout' });
 
-/** A section as the codebook stores it. */
+/**
+ * A section as the codebook stores it. Its variables are written here by a
+ * readable label and stored under that label's test id.
+ */
 const sectionOf = (
   variables: Record<string, Record<string, unknown>>,
 ): SectionDoc => ({
   name: 'Person',
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
-  variables,
+  variables: Object.fromEntries(
+    Object.entries(variables).map(([label, variable]) => [
+      testVariableId(label),
+      variable,
+    ]),
+  ),
 });
 
 /** What a write refused with, as the researcher would read it. */
@@ -83,29 +101,32 @@ const create = (
   documentWithCreatedVariable({
     subject,
     authoritativeDocument,
-    variableId: 'new-variable',
+    variableId: testVariableId('new-variable'),
     protocolContext: EMPTY_CONTEXT,
     draft,
   });
 
 const update = (
   authoritativeDocument: SectionDoc,
-  variableId: string,
+  variableLabel: string,
   draft: Record<string, unknown>,
   replaceProperties?: readonly string[],
 ) =>
   documentWithUpdatedVariable({
     subject: NODE,
     authoritativeDocument,
-    variableId,
+    variableId: testVariableId(variableLabel),
     draft,
     ...(replaceProperties === undefined ? {} : { replaceProperties }),
   });
 
-const storedVariable = (document: SectionDoc, variableId: string): unknown => {
+const storedVariable = (
+  document: SectionDoc,
+  variableLabel: string,
+): unknown => {
   const variables: unknown = document.variables;
   return typeof variables === 'object' && variables !== null
-    ? Reflect.get(variables, variableId)
+    ? Reflect.get(variables, testVariableId(variableLabel))
     : undefined;
 };
 
@@ -216,8 +237,16 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
           {
             options: [
-              { label: { en: 'Bar' }, value: 'bar' },
-              { label: { en: 'Qux' }, value: 'qux' },
+              {
+                id: testId('option/other/bar'),
+                label: { en: 'Bar' },
+                value: 'bar',
+              },
+              {
+                id: testId('option/other/qux'),
+                label: { en: 'Qux' },
+                value: 'qux',
+              },
             ],
           },
           ['options'],
@@ -241,8 +270,16 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
           {
             options: [
-              { label: { en: 'Bar' }, value: 'bar' },
-              { label: { en: 'Baz' }, value: 'qux' },
+              {
+                id: testId('option/other/bar'),
+                label: { en: 'Bar' },
+                value: 'bar',
+              },
+              {
+                id: testId('option/other/qux'),
+                label: { en: 'Baz' },
+                value: 'qux',
+              },
             ],
           },
           ['options'],
@@ -265,8 +302,16 @@ describe('changing an attribute that is already in the codebook', () => {
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
-              { label: { en: 'Bar' }, value: 'bar' },
-              { label: { en: 'Baz' }, value: 'baz' },
+              {
+                id: testId('option/options/bar'),
+                label: { en: 'Bar' },
+                value: 'bar',
+              },
+              {
+                id: testId('option/options/baz'),
+                label: { en: 'Baz' },
+                value: 'baz',
+              },
             ],
           },
           ['type', 'component', 'options'],
@@ -295,8 +340,16 @@ describe('changing an attribute that is already in the codebook', () => {
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
-            { label: { en: 'Bar' }, value: 'bar' },
-            { label: { en: 'Qux' }, value: 'qux' },
+            {
+              id: testId('option/options/bar'),
+              label: { en: 'Bar' },
+              value: 'bar',
+            },
+            {
+              id: testId('option/options/qux'),
+              label: { en: 'Qux' },
+              value: 'qux',
+            },
           ],
         },
         ['type', 'component', 'options'],
@@ -313,8 +366,12 @@ describe('changing an attribute that is already in the codebook', () => {
         'foo',
         {
           options: [
-            { label: { en: 'Bar' }, value: 'bar' },
-            { label: { en: 'Z' }, value: 'z' },
+            {
+              id: testId('option/Foo/bar'),
+              label: { en: 'Bar' },
+              value: 'bar',
+            },
+            { id: testId('option/Foo/z'), label: { en: 'Z' }, value: 'z' },
           ],
         },
         ['options'],
@@ -342,9 +399,21 @@ describe('changing an attribute that is already in the codebook', () => {
             'foo',
             {
               options: [
-                { label: { en: 'Bar' }, value: 'bar' },
-                { label: { en: 'Baz' }, value: 'baz' },
-                { label: { en: 'Qux' }, value: 'qux' },
+                {
+                  id: testId('option/foo_bar/bar'),
+                  label: { en: 'Bar' },
+                  value: 'bar',
+                },
+                {
+                  id: testId('option/foo_bar/baz'),
+                  label: { en: 'Baz' },
+                  value: 'baz',
+                },
+                {
+                  id: testId('option/foo_bar/qux'),
+                  label: { en: 'Qux' },
+                  value: 'qux',
+                },
               ],
             },
             ['options'],
@@ -352,7 +421,11 @@ describe('changing an attribute that is already in the codebook', () => {
           'foo',
         ),
       ).toMatchObject({
-        options: [{ value: 'bar' }, { value: 'baz' }, { value: 'qux' }],
+        options: [
+          { id: testId('option/foo_bar/bar'), value: 'bar' },
+          { id: testId('option/foo_bar/baz'), value: 'baz' },
+          { id: testId('option/foo_bar/qux'), value: 'qux' },
+        ],
       });
     });
 
@@ -385,7 +458,7 @@ describe('saving a nested editor’s finished document', () => {
           submittedDocument: sectionOf({
             foo: categorical('foo', ['bar', 'qux']),
           }),
-          variableId: 'foo',
+          variableId: testVariableId('foo'),
         }),
       )?.path,
     ).toEqual(['options']);
@@ -422,14 +495,18 @@ describe('the names the write stores', () => {
         'foo',
         {
           options: [
-            { label: { en: 'First' }, value },
-            { label: { en: 'Second' }, value: 'baz' },
+            { id: testOptionId('foo', 'first'), label: { en: 'First' }, value },
+            {
+              id: testOptionId('foo', 'baz'),
+              label: { en: 'Second' },
+              value: 'baz',
+            },
           ],
         },
         ['options'],
       );
       expect(storedVariable(written, 'foo')).toMatchObject({
-        options: [{ value }, { value: 'baz' }],
+        options: [{ value }, { id: testOptionId('foo', 'baz'), value: 'baz' }],
       });
     },
   );
@@ -441,16 +518,24 @@ describe('the names the write stores', () => {
       {
         options: [
           {
+            id: testOptionId('foo', 'first'),
             label: { en: 'First' },
             value: `  ${'Collègue'.normalize('NFD')}  `,
           },
-          { label: { en: 'Second' }, value: 'baz' },
+          {
+            id: testOptionId('foo', 'baz'),
+            label: { en: 'Second' },
+            value: 'baz',
+          },
         ],
       },
       ['options'],
     );
     expect(storedVariable(written, 'foo')).toMatchObject({
-      options: [{ value: 'Collègue' }, { value: 'baz' }],
+      options: [
+        { id: testOptionId('foo', 'first'), value: 'Collègue' },
+        { id: testOptionId('foo', 'baz'), value: 'baz' },
+      ],
     });
   });
 
@@ -466,7 +551,11 @@ describe('the names the write stores', () => {
         {
           options: [
             { label: { en: 'First' }, value },
-            { label: { en: 'Second' }, value: 'baz' },
+            {
+              id: testId('option/options/baz'),
+              label: { en: 'Second' },
+              value: 'baz',
+            },
           ],
         },
         ['options'],
@@ -481,8 +570,16 @@ describe('the names the write stores', () => {
         'foo',
         {
           options: [
-            { label: { en: 'First' }, value: 'yes\tplease' },
-            { label: { en: 'Second' }, value: 'baz' },
+            {
+              id: testId('option/options/yes\tplease'),
+              label: { en: 'First' },
+              value: 'yes\tplease',
+            },
+            {
+              id: testId('option/options/baz'),
+              label: { en: 'Second' },
+              value: 'baz',
+            },
           ],
         },
         ['options'],

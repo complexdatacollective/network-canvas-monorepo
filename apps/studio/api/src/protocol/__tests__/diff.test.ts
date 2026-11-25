@@ -3,18 +3,28 @@ import { describe, expect, it } from 'vitest';
 import {
   type CurrentProtocol,
   escapeMessageText,
+  ProtocolObjectIdSchema,
 } from '@codaco/protocol-validation';
 import { type SectionDoc, contentHash } from '@codaco/studio-sync/apply';
 
 import { type SectionSet, diffProtocolSections } from '../diff.ts';
 import { sectionizeProtocol } from '../sectionize.ts';
-import { baseProtocol } from './helpers.ts';
+import {
+  BASE_CODEBOOK_IDS,
+  BASE_PROTOCOL_IDS,
+  baseProtocol,
+  testVariableId,
+} from './helpers.ts';
 
 type Stage = CurrentProtocol['stages'][number];
 type Variable = NonNullable<
   NonNullable<CurrentProtocol['codebook']['node']>[string]['variables']
 >[string];
 type Asset = NonNullable<CurrentProtocol['assetManifest']>[string];
+
+const INFO_STAGE_ID = ProtocolObjectIdSchema.parse(
+  '0f9c4a52-4d6e-4b0a-9f3e-2c8b7d1a6e40',
+);
 
 function sectionSetOf(sections: Record<string, SectionDoc>): {
   set: SectionSet;
@@ -57,7 +67,7 @@ function nameGenerator(protocol: CurrentProtocol) {
 
 function informationStage(label: Stage['label']): Stage {
   return {
-    id: 'info1',
+    id: INFO_STAGE_ID,
     type: 'Information',
     label,
     content: { en: '# About this study\n\nWelcome.' },
@@ -75,10 +85,10 @@ describe('diffProtocolSections', () => {
     nameGenerator(after).prompts[0]!.text = {
       en: 'Who do you spend time with?',
     };
-    const person = after.codebook.node!.person!;
+    const person = after.codebook.node![BASE_CODEBOOK_IDS.person]!;
     person.variables = {
       ...person.variables,
-      close_friend: {
+      [testVariableId('close_friend')]: {
         name: 'close_friend',
         type: 'boolean',
       },
@@ -91,9 +101,14 @@ describe('diffProtocolSections', () => {
       (change) => change.kind === 'stage-changed',
     );
     expect(stageChange).toMatchObject({
-      stageId: 'nameGenerator1',
+      stageId: BASE_PROTOCOL_IDS.nameGenerator,
       stageType: 'NameGenerator',
-      changes: [{ path: ['prompts', 'prompt1', 'text'], change: 'changed' }],
+      changes: [
+        {
+          path: ['prompts', BASE_PROTOCOL_IDS.namePrompt, 'text'],
+          change: 'changed',
+        },
+      ],
     });
 
     const entityChange = changes.find(
@@ -101,11 +116,15 @@ describe('diffProtocolSections', () => {
     );
     expect(entityChange).toMatchObject({
       entity: 'node',
-      typeId: 'person',
+      typeId: BASE_CODEBOOK_IDS.person,
       name: 'Person',
       changes: [],
       variables: [
-        { variableId: 'close_friend', name: 'close_friend', change: 'added' },
+        {
+          variableId: testVariableId('close_friend'),
+          name: 'close_friend',
+          change: 'added',
+        },
       ],
     });
   });
@@ -122,7 +141,7 @@ describe('diffProtocolSections', () => {
     expect(diff(before, after)).toMatchObject([
       {
         kind: 'stage-changed',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         changes: [{ path: ['content'], change: 'changed' }],
       },
@@ -143,7 +162,7 @@ describe('diffProtocolSections', () => {
     expect(added).toEqual([
       {
         kind: 'stage-added',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         label: 'About this study',
         index: 1,
@@ -154,7 +173,7 @@ describe('diffProtocolSections', () => {
     expect(removed).toEqual([
       {
         kind: 'stage-removed',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         label: 'About this study',
       },
@@ -181,7 +200,7 @@ describe('diffProtocolSections', () => {
     expect(diff(before, after)).toEqual([
       {
         kind: 'stage-added',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         label: "L'étude {pilote}",
         index: 2,
@@ -190,7 +209,7 @@ describe('diffProtocolSections', () => {
     expect(diff(after, before)).toEqual([
       {
         kind: 'stage-removed',
-        stageId: 'info1',
+        stageId: INFO_STAGE_ID,
         stageType: 'Information',
         label: "L'étude {pilote}",
       },
@@ -288,20 +307,20 @@ describe('diffProtocolSections', () => {
   it('reports a prompt reorder that leaves every prompt unchanged', () => {
     const before = baseProtocol();
     nameGenerator(before).prompts = [
-      { id: 'prompt1', text: { en: 'Who do you know?' } },
-      { id: 'prompt2', text: { en: 'Anyone else?' } },
+      { id: BASE_PROTOCOL_IDS.namePrompt, text: { en: 'Who do you know?' } },
+      { id: BASE_PROTOCOL_IDS.secondPrompt, text: { en: 'Anyone else?' } },
     ];
     const after = baseProtocol();
     nameGenerator(after).prompts = [
-      { id: 'prompt2', text: { en: 'Anyone else?' } },
-      { id: 'prompt1', text: { en: 'Who do you know?' } },
+      { id: BASE_PROTOCOL_IDS.secondPrompt, text: { en: 'Anyone else?' } },
+      { id: BASE_PROTOCOL_IDS.namePrompt, text: { en: 'Who do you know?' } },
     ];
 
     const changes = diff(before, after);
     expect(changes).toEqual([
       {
         kind: 'stage-changed',
-        stageId: 'nameGenerator1',
+        stageId: BASE_PROTOCOL_IDS.nameGenerator,
         stageType: 'NameGenerator',
         changes: [{ path: ['prompts'], change: 'changed' }],
       },
@@ -311,7 +330,7 @@ describe('diffProtocolSections', () => {
   it('classifies a variable named after a prototype member', () => {
     const before = baseProtocol();
     const after = baseProtocol();
-    const person = after.codebook.node!.person!;
+    const person = after.codebook.node![BASE_CODEBOOK_IDS.person]!;
     // Annotated apart: a literal key named `constructor` is not contextually
     // typed by the record it is assigned to.
     const variable: Variable = {
@@ -325,7 +344,7 @@ describe('diffProtocolSections', () => {
       {
         kind: 'entity-changed',
         entity: 'node',
-        typeId: 'person',
+        typeId: BASE_CODEBOOK_IDS.person,
         name: 'Person',
         changes: [],
         variables: [
@@ -365,8 +384,13 @@ describe('diffProtocolSections', () => {
 
     const changes = diff(before, after);
     expect(changes).toEqual([
-      { kind: 'stage-moved', stageId: 'nameGenerator1', from: 0, to: 2 },
-      { kind: 'stage-moved', stageId: 'info1', from: 2, to: 0 },
+      {
+        kind: 'stage-moved',
+        stageId: BASE_PROTOCOL_IDS.nameGenerator,
+        from: 0,
+        to: 2,
+      },
+      { kind: 'stage-moved', stageId: INFO_STAGE_ID, from: 2, to: 0 },
     ]);
   });
 

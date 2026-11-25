@@ -34,30 +34,35 @@
             "type": "ordinal",
             "options": [
               {
+                "id": "a447e09c-ad54-5c65-b901-8a7f58f86a16",
                 "label": {
                   "en": "Last 24 hours"
                 },
                 "value": 5
               },
               {
+                "id": "282e99df-eae6-50fc-9b8c-aa251acef67c",
                 "label": {
                   "en": "Last week"
                 },
                 "value": 4
               },
               {
+                "id": "75f4ec76-b3e6-5311-9e2a-8e010676dad0",
                 "label": {
                   "en": "Last six months"
                 },
                 "value": 3
               },
               {
+                "id": "b9dd4d81-7f5a-505b-9f4d-c9cfb783ca6a",
                 "label": {
                   "en": "Last two years"
                 },
                 "value": 2
               },
               {
+                "id": "6bac4fe0-778e-545d-971b-4aaeaae4fdb4",
                 "label": {
                   "en": "Over two years ago"
                 },
@@ -78,24 +83,28 @@
             "type": "categorical",
             "options": [
               {
+                "id": "a006cb91-34d0-59c5-a4ed-64c64fad5000",
                 "label": {
                   "en": "Family Member"
                 },
                 "value": "family"
               },
               {
+                "id": "eebeae2c-57d4-50f9-9f49-16b5566b9fab",
                 "label": {
                   "en": "Friends"
                 },
                 "value": "friends"
               },
               {
+                "id": "6eea9c9e-bfc0-5043-b1cc-e147b2d32523",
                 "label": {
                   "en": "Work Colleague"
                 },
                 "value": "colleague"
               },
               {
+                "id": "d3bfbd1c-9ea6-5ae8-a5d4-59ff261d60a2",
                 "label": {
                   "en": "School"
                 },
@@ -119,24 +128,28 @@
             "type": "categorical",
             "options": [
               {
+                "id": "36988700-aaae-5d9a-9da0-ddccf912f606",
                 "label": {
                   "en": "Work Colleague"
                 },
                 "value": "Work_Colleague"
               },
               {
+                "id": "83c2bccf-0397-5552-91a7-4efd19bc4b00",
                 "label": {
                   "en": "Classmate"
                 },
                 "value": "Classmate"
               },
               {
+                "id": "ee33c04f-6f29-5a02-93a1-8e7466754be0",
                 "label": {
                   "en": "Co-author"
                 },
                 "value": "Co-author"
               },
               {
+                "id": "e02502d6-d27d-5605-beb5-14aa687f4c05",
                 "label": {
                   "en": "Supervisor"
                 },
@@ -199,30 +212,35 @@
             "component": "LikertScale",
             "options": [
               {
+                "id": "68929010-86bf-57e8-acf6-9d8ec3565340",
                 "label": {
                   "en": "Excellent"
                 },
                 "value": 5
               },
               {
+                "id": "1e62a5ef-7d23-52d8-ba43-5eb0831c10e6",
                 "label": {
                   "en": "Above Average"
                 },
                 "value": 4
               },
               {
+                "id": "325e029e-cad9-58cd-a4c3-8695e1510abb",
                 "label": {
                   "en": "Average"
                 },
                 "value": 3
               },
               {
+                "id": "9ee02f19-7df2-5cb8-b53f-748ed041293a",
                 "label": {
                   "en": "Below Average"
                 },
                 "value": 2
               },
               {
+                "id": "51d3b24b-413c-513a-8c8f-06f879d6e811",
                 "label": {
                   "en": "Poor"
                 },
@@ -307,48 +325,56 @@
           "component": "ToggleButtonGroup",
           "options": [
             {
+              "id": "d6e19021-09f7-57e3-b533-caf596af99da",
               "label": {
                 "en": "English"
               },
               "value": "english"
             },
             {
+              "id": "2fd47c06-ccbc-5be2-89b6-d87c208486bc",
               "label": {
                 "en": "Mandarin Chinese"
               },
               "value": "mandarin-chinese"
             },
             {
+              "id": "d88aec65-8691-5437-be71-7a1ccd815188",
               "label": {
                 "en": "Hindi"
               },
               "value": "hindi"
             },
             {
+              "id": "3ab8b67c-452a-5faf-9dbc-854b123ac1f0",
               "label": {
                 "en": "Spanish"
               },
               "value": "spanish"
             },
             {
+              "id": "fb1e59d9-ccd0-5e97-b191-fe7e61df56b3",
               "label": {
                 "en": "French"
               },
               "value": "french"
             },
             {
+              "id": "1683d94d-fc76-5b28-bcc5-d65b3f63e6c2",
               "label": {
                 "en": "Arabic"
               },
               "value": "arabic"
             },
             {
+              "id": "f0a67afb-184f-571a-86f6-25b32b6806a7",
               "label": {
                 "en": "Bengali"
               },
               "value": "bengali"
             },
             {
+              "id": "d500d215-c85f-571e-acf5-b162af794300",
               "label": {
                 "en": "Russian"
               },
@@ -362,30 +388,35 @@
           "component": "RadioGroup",
           "options": [
             {
+              "id": "b0b3dc1d-d189-5626-be10-b20257dd50dd",
               "label": {
                 "en": "Very Satisfied"
               },
               "value": 5
             },
             {
+              "id": "7f70697f-3bde-57b4-82a6-516ff825f9cf",
               "label": {
                 "en": "Somewhat Satisfied"
               },
               "value": 4
             },
             {
+              "id": "7a55348c-0524-5ce5-943b-aa98ef099397",
               "label": {
                 "en": "Neither Satisfied or Dissatisfied"
               },
               "value": 3
             },
             {
+              "id": "2385b68b-8dde-57eb-8bcc-c9a518d5904c",
               "label": {
                 "en": "Somewhat Dissatisfied"
               },
               "value": 2
             },
             {
+              "id": "928ce264-e99c-50fb-99b8-cbff584f20b2",
               "label": {
                 "en": "Very Dissatisfied"
               },
@@ -399,30 +430,35 @@
           "component": "LikertScale",
           "options": [
             {
+              "id": "f2c222dc-35a9-5668-b366-d8d430607e9b",
               "label": {
                 "en": "Very Satisfied"
               },
               "value": 2
             },
             {
+              "id": "0fed9d35-2e30-555e-ba40-a11a01472b26",
               "label": {
                 "en": "Somewhat Satisfied"
               },
               "value": 1
             },
             {
+              "id": "aa8411a8-0785-5745-a80f-1722265cc46e",
               "label": {
                 "en": "Neither Satisfied or Dissatisfied"
               },
               "value": 0
             },
             {
+              "id": "27905f03-4b79-59b7-97c3-a4d5fe73a1a2",
               "label": {
                 "en": "Somewhat Dissatisfied"
               },
               "value": -1
             },
             {
+              "id": "2e5b3906-b11c-5c79-bb52-92aa22f58413",
               "label": {
                 "en": "Very Dissatisfied"
               },
@@ -454,24 +490,28 @@
           "component": "CheckboxGroup",
           "options": [
             {
+              "id": "b0382e14-965c-5eb3-a39a-6fde40eabb6b",
               "label": {
                 "en": "Email"
               },
               "value": "email"
             },
             {
+              "id": "9e910008-ee9f-5da9-b8ec-6b1dcd1e2221",
               "label": {
                 "en": "Post"
               },
               "value": "post"
             },
             {
+              "id": "e05f64f1-ef94-52a0-b683-a580a4fdba79",
               "label": {
                 "en": "SMS"
               },
               "value": "sms"
             },
             {
+              "id": "6a4484dd-174b-5220-84f0-10c8b5a906a2",
               "label": {
                 "en": "Phonecall"
               },
@@ -616,7 +656,7 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "ac012bec-9c52-59de-a63c-7fa4f96071df",
             "variable": "09306238-68e4-498c-8c12-923eb2eec760",
             "prompt": {
               "en": "Do you consent to participate in this study in accordance with the terms above?"
@@ -648,7 +688,7 @@
         },
         "destination": {
           "type": "stage",
-          "stageId": "finish-declined"
+          "stageId": "d3e0747e-bcf7-563e-a7fc-5dbf4f67b959"
         }
       },
       "introductionPanel": {
@@ -662,63 +702,63 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "36c00fb6-9255-5a80-9125-1d04dad32060",
             "variable": "4ab18994-a252-47cb-ba19-20b6ffc0e927",
             "prompt": {
               "en": "What is your first name?"
             }
           },
           {
-            "id": "field-2",
+            "id": "04514cfb-be8a-54a4-b307-814e41c7beac",
             "variable": "3b5197a9-d024-421c-8663-1e06e0587999",
             "prompt": {
               "en": "What is your last name?"
             }
           },
           {
-            "id": "field-3",
+            "id": "fa0224f3-b245-5604-a7fe-739ea1b4ff82",
             "variable": "198bdb95-9556-4775-9c82-22531a382aa5",
             "prompt": {
               "en": "What is your date of birth?"
             }
           },
           {
-            "id": "field-4",
+            "id": "51e436bd-9850-5e2b-a024-d7bafdc1ec43",
             "variable": "92326a8e-f5a1-4918-8717-a4d6917a9264",
             "prompt": {
               "en": "Which of the following languages do you speak fluently?"
             }
           },
           {
-            "id": "field-5",
+            "id": "de09e022-2c1d-57a5-bba5-42985bba073c",
             "variable": "aa418971-ce17-4f0f-8060-438197298a82",
             "prompt": {
               "en": "Overall, how satisfied are you with existing social network analysis software?"
             }
           },
           {
-            "id": "field-6",
+            "id": "5afaf01d-98ab-52f2-95ec-e10121109038",
             "variable": "d2ac00d6-337a-4ce4-87de-028eccd81617",
             "prompt": {
               "en": "How satisfied are you with the level of support you receive?"
             }
           },
           {
-            "id": "field-7",
+            "id": "4e2e4b34-5eef-589d-9510-d5d955ce64d5",
             "variable": "3609188b-dfbe-482a-995c-d71387e22054",
             "prompt": {
               "en": "Thinking back to your last medical procedure, how much pain do you feel you experienced?"
             }
           },
           {
-            "id": "field-8",
+            "id": "40bcd272-5772-5933-9880-3f71eb84bfa0",
             "variable": "835ea5b5-1fbf-472d-ad3a-df74ec1d6870",
             "prompt": {
               "en": "How would you prefer to be contacted about your next interview?"
             }
           },
           {
-            "id": "field-9",
+            "id": "02e8e4dd-6ae5-51ee-8757-9415af34b92a",
             "variable": "5a77b483-8120-4a64-aff1-c8c5d4ac33d1",
             "prompt": {
               "en": "Is there any other information you would like to provide at this time?"
@@ -795,6 +835,7 @@
           },
           "additionalAttributes": [
             {
+              "id": "b2722335-6389-5ae5-b504-4e686dec8c4a",
               "variable": "1d6a2675-3cff-4740-8c56-d5f26982eaeb",
               "value": true
             }
@@ -824,21 +865,21 @@
         },
         "fields": [
           {
-            "id": "field-1",
+            "id": "4934f76b-45c3-543c-9120-d09fa75fd176",
             "variable": "45a62b9c-42ec-4735-bf1a-4074a2001d2c",
             "prompt": {
               "en": "What is the name of this clinic or health care provider?"
             }
           },
           {
-            "id": "field-2",
+            "id": "7bc291c8-a9a4-5b81-9054-ee5ccdda7f66",
             "variable": "1d1460f2-8c11-4f66-8647-83801116aebf",
             "prompt": {
               "en": "When was your visit?"
             }
           },
           {
-            "id": "field-3",
+            "id": "8e6bea75-1646-5352-a0db-3b8d5ead71d9",
             "variable": "37fb19da-3ec0-4427-bb4b-3b59003a7e60",
             "prompt": {
               "en": "In your own words, what was the purpose of your visit?"
@@ -883,12 +924,14 @@
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "504e8af2-7559-56e8-846c-045f8bae4066",
             "label": {
               "en": "First Name"
             },
             "variable": "first_name"
           },
           {
+            "id": "60581a85-cdd4-5203-9d50-81860afb4d90",
             "label": {
               "en": "Last Name"
             },
@@ -899,18 +942,21 @@
       "sortOptions": {
         "sortOrder": [
           {
+            "id": "65e954d7-2693-54e3-aadf-efcae2e6c9b6",
             "property": "first_name",
             "direction": "asc"
           }
         ],
         "sortableProperties": [
           {
+            "id": "5292c122-7301-5b8c-8234-e7c401a96d30",
             "label": {
               "en": "First Name"
             },
             "variable": "first_name"
           },
           {
+            "id": "e99edd13-00ba-5d8c-9432-86af315e7b73",
             "label": {
               "en": "Last Name"
             },
@@ -941,12 +987,14 @@
       "cardOptions": {
         "additionalProperties": [
           {
+            "id": "bc1ae394-0962-566d-8b08-386a38dc7950",
             "label": {
               "en": "Website"
             },
             "variable": "website"
           },
           {
+            "id": "715c93a4-8a40-5c3f-b752-4421f0a8ae16",
             "label": {
               "en": "Country Code"
             },
@@ -968,7 +1016,7 @@
       ]
     },
     {
-      "id": "3ca90480-32f8-11eb-8503-3b4fa95b8bc6-introduction",
+      "id": "d194abe6-e9c8-5c58-ae16-280832df308b",
       "type": "Information",
       "label": {
         "en": "University Per-alter Form"
@@ -987,25 +1035,20 @@
         "entity": "node",
         "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
       },
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        }
-      },
       "form": {
         "fields": [
           {
-            "id": "field-1",
+            "id": "cc872b1a-a9b6-5198-9657-57dd05232e5e",
             "variable": "95c5bb4d-5ac2-4ddd-8dd9-fca518f15748",
             "prompt": {
-              "en": "Did you visit {nodeLabel} or study there?"
+              "en": "Did you visit {node_label} or study there?"
             }
           },
           {
-            "id": "field-2",
+            "id": "5adfd451-c357-595f-b406-4900d5f3d30b",
             "variable": "d91ca102-954d-4da1-b8b8-d9490c7bca44",
             "prompt": {
-              "en": "Overall, how would you describe your experience at {nodeLabel}?"
+              "en": "Overall, how would you describe your experience at {node_label}?"
             }
           }
         ]
@@ -1138,7 +1181,7 @@
       ]
     },
     {
-      "id": "b267f9e0-32ff-11eb-8982-61526ca14943-introduction",
+      "id": "903709bb-8e63-5216-8d64-20f49dc3d855",
       "type": "Information",
       "label": {
         "en": "Dyad Census"
@@ -1173,7 +1216,7 @@
           "rules": [
             {
               "type": "node",
-              "id": "f3de3b38-5317-46e3-ac4b-928fb84a86cc",
+              "id": "d4f36eb3-b59f-5887-9e10-9b695de88985",
               "options": {
                 "type": "83c596f7-2244-425c-b2ed-4186dbf4c815",
                 "operator": "NOT_EXISTS"
@@ -1187,19 +1230,11 @@
         "entity": "node",
         "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
       },
-      "dynamicValues": {
-        "firstLabel": {
-          "path": "dyad.source.$label"
-        },
-        "secondLabel": {
-          "path": "dyad.target.$label"
-        }
-      },
       "prompts": [
         {
           "id": "be867d80-1dce-49ed-984d-5de4ca344d5c",
           "text": {
-            "en": "To the best of your knowledge, do {firstLabel} and {secondLabel} spend time together outside of class?"
+            "en": "To the best of your knowledge, do {dyadSource_label} and {dyadTarget_label} spend time together outside of class?"
           },
           "createEdge": "a489e869-2555-4896-a760-2d38046b54f9"
         }
@@ -1451,12 +1486,14 @@
           "edges": {
             "display": [
               {
+                "id": "aeda4349-2b6d-5c9b-9a49-90e2ea98b7c3",
                 "type": "a489e869-2555-4896-a760-2d38046b54f9",
                 "label": {
                   "en": "know"
                 }
               },
               {
+                "id": "de94790a-888d-5d69-baba-b418dd4384af",
                 "type": "8487418e-cd64-452b-9064-b46ffff28a79",
                 "label": {
                   "en": "conflict"
@@ -1466,12 +1503,14 @@
           },
           "highlight": [
             {
+              "id": "caaa1641-476e-55f4-93f1-3ae5b3f18a1e",
               "variable": "7e84034b-9aa5-4996-a1c4-2deb3e38c645",
               "label": {
                 "en": "provides_advice"
               }
             },
             {
+              "id": "d3e68a24-8bcd-5349-87f8-4061f111b925",
               "variable": "20cf8ab4-9356-4568-81e2-8460258e1b45",
               "label": {
                 "en": "provides_material_support"
@@ -1489,7 +1528,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "01f266fd-047a-55f9-8324-292f8a544899",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {
@@ -1504,7 +1543,7 @@
       "outcome": "completed"
     },
     {
-      "id": "finish-declined",
+      "id": "d3e0747e-bcf7-563e-a7fc-5dbf4f67b959",
       "type": "FinishSession",
       "mode": "confirmation",
       "label": {

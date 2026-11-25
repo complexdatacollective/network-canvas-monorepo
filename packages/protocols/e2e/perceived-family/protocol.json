@@ -9,14 +9,14 @@
   "lastModified": "2026-10-05T00:00:00.000Z",
   "codebook": {
     "node": {
-      "person": {
+      "0c277a33-2b8f-5150-809e-c90a5ae1b63e": {
         "name": "Person",
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
         },
         "variables": {
-          "name": {
+          "f0d503d0-aa92-5698-ab50-a1d1102e99fc": {
             "name": "name",
             "type": "text",
             "component": "Text",
@@ -25,35 +25,39 @@
               "unique": true
             }
           },
-          "relationship_words": {
+          "8eef57b5-f05a-525c-af34-7d6632009601": {
             "name": "relationship_words",
             "type": "text",
             "component": "TextArea"
           },
-          "family_categories": {
+          "514a898b-76ad-5f5f-8f28-fe033ef4c9ef": {
             "name": "family_categories",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
               {
+                "id": "a97a0f1d-935b-5759-9f2f-e3db26180b01",
                 "label": {
                   "en-US": "Family I grew up with"
                 },
                 "value": "grew_up"
               },
               {
+                "id": "a48f7a32-d7df-5c51-ae07-2cc29f860f2f",
                 "label": {
                   "en-US": "Chosen family"
                 },
                 "value": "chosen"
               },
               {
+                "id": "d8c4190d-0698-5968-a885-02fd0a028478",
                 "label": {
                   "en-US": "Partner or partner's family"
                 },
                 "value": "partner"
               },
               {
+                "id": "84f91ce7-0bc9-5e3e-814c-461eb88330ae",
                 "label": {
                   "en-US": "Another kind of family"
                 },
@@ -61,49 +65,52 @@
               }
             ]
           },
-          "category_words": {
+          "59169f79-1200-5ccc-994d-7462b2528845": {
             "name": "category_words",
             "type": "text",
             "component": "Text"
           },
-          "feels_family": {
+          "b095f131-10a8-5eb2-8e30-b94b29a98769": {
             "name": "feels_family",
             "type": "boolean",
             "component": "Toggle"
           },
-          "emotional_support": {
+          "c3fedc1a-67c7-5751-a7e7-26ad69c4eb1a": {
             "name": "emotional_support",
             "type": "boolean",
             "component": "Toggle"
           },
-          "practical_support": {
+          "e30f5f02-6af0-54bf-8703-4fef629130a0": {
             "name": "practical_support",
             "type": "boolean",
             "component": "Toggle"
           },
-          "identity_affirming": {
+          "9495f2bf-b7d1-5a80-9e9c-6ea413cb96bc": {
             "name": "identity_affirming",
             "type": "boolean",
             "component": "Toggle"
           },
-          "closeness": {
+          "00c32401-d048-5a0a-b521-a1723f333746": {
             "name": "closeness",
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
               {
+                "id": "0cf9f0a4-e6c9-5694-84db-b8d562c9b739",
                 "label": {
                   "en-US": "Not close right now"
                 },
                 "value": 1
               },
               {
+                "id": "fee7c8cc-fcfc-51a4-b423-d925dfb10a4b",
                 "label": {
                   "en-US": "Somewhat close"
                 },
                 "value": 2
               },
               {
+                "id": "6f47ab2d-a3c4-5569-8d50-5f9346574ad3",
                 "label": {
                   "en-US": "Very close"
                 },
@@ -111,7 +118,7 @@
               }
             ]
           },
-          "family_layout": {
+          "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9": {
             "name": "family_layout",
             "type": "layout"
           }
@@ -119,7 +126,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "d55899cd-98bd-581e-a6d8-4251a45dd221": {
         "name": "Knows",
         "color": "edge-color-seq-1",
         "variables": {}
@@ -128,7 +135,7 @@
   },
   "stages": [
     {
-      "id": "researcher-notes",
+      "id": "a958f20f-d2bb-5e23-bc46-2be743e6d5b2",
       "label": {
         "en-US": "Prototype notes (delete before fielding)"
       },
@@ -138,7 +145,7 @@
       }
     },
     {
-      "id": "welcome",
+      "id": "a71c899e-e0bd-5283-9419-9d23cb56a929",
       "label": {
         "en-US": "Welcome"
       },
@@ -148,27 +155,27 @@
       }
     },
     {
-      "id": "name-family",
+      "id": "c0700cd3-da78-5979-a3b0-d4ab0a68bd03",
       "label": {
         "en-US": "People who matter"
       },
       "type": "NameGenerator",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "name",
+            "id": "aea4add8-64e5-5c6c-9730-6664434735e5",
+            "variable": "f0d503d0-aa92-5698-ab50-a1d1102e99fc",
             "prompt": {
               "en-US": "What name or nickname should we use?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "relationship_words",
+            "id": "464fc598-6a45-5953-889f-7319dac6d6fa",
+            "variable": "8eef57b5-f05a-525c-af34-7d6632009601",
             "prompt": {
               "en-US": "What words do you use for your relationship with this person?"
             },
@@ -183,13 +190,13 @@
       },
       "prompts": [
         {
-          "id": "family-now",
+          "id": "6511b101-acf8-5e9a-9ec8-674c3469df86",
           "text": {
             "en-US": "Who feels like family to you at the moment?"
           }
         },
         {
-          "id": "family-complicated",
+          "id": "8e94fdc6-d7ff-5536-81c5-764fb8c8bbf9",
           "text": {
             "en-US": "Are there people whose place in your family feels complicated, changing, or uncertain? Include them only if you want to."
           }
@@ -197,7 +204,7 @@
       ],
       "panels": [
         {
-          "id": "already-named",
+          "id": "d4de5025-4926-5c6a-acb8-34e48ac22494",
           "title": {
             "en-US": "People already mentioned"
           },
@@ -206,7 +213,7 @@
       ]
     },
     {
-      "id": "family-meanings-introduction",
+      "id": "626011fe-cb45-5630-8d14-707cc49a32c9",
       "type": "Information",
       "label": {
         "en-US": "Your words for family"
@@ -216,20 +223,20 @@
       }
     },
     {
-      "id": "family-meanings",
+      "id": "1265ac1a-45de-5cd0-9710-c37d691503a3",
       "label": {
         "en-US": "Your words for family"
       },
       "type": "AlterForm",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "family_categories",
+            "id": "1a61158f-3a65-552d-aa25-aa1a68fcf781",
+            "variable": "514a898b-76ad-5f5f-8f28-fe033ef4c9ef",
             "prompt": {
               "en-US": "Which descriptions fit this person?"
             },
@@ -238,8 +245,8 @@
             }
           },
           {
-            "id": "field-2",
-            "variable": "category_words",
+            "id": "70483994-835c-5784-9875-45477721f80e",
+            "variable": "59169f79-1200-5ccc-994d-7462b2528845",
             "prompt": {
               "en-US": "What other words would you use?"
             },
@@ -251,35 +258,35 @@
       }
     },
     {
-      "id": "closeness",
+      "id": "a57cfd21-4c9d-5729-af99-a628ba258785",
       "label": {
         "en-US": "Closeness now"
       },
       "type": "OrdinalBin",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
       },
       "prompts": [
         {
-          "id": "close-now",
+          "id": "faf8d037-8182-5213-9158-a27406b0a8d1",
           "text": {
             "en-US": "How close do you feel to each person right now?"
           },
-          "variable": "closeness",
+          "variable": "00c32401-d048-5a0a-b521-a1723f333746",
           "color": "ord-color-seq-1"
         }
       ]
     },
     {
-      "id": "family-map",
+      "id": "384a5c7d-1628-5260-ad81-285049562c44",
       "label": {
         "en-US": "Your family map"
       },
       "type": "Sociogram",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
       },
       "background": {
         "concentricCircles": 3,
@@ -287,95 +294,95 @@
       },
       "prompts": [
         {
-          "id": "place-people",
+          "id": "32653099-a030-57fe-a801-0b9ae86b6659",
           "text": {
             "en-US": "Place people on the map in a way that makes sense to you. You can put people closer to the centre if they feel closer to you."
           },
           "layout": {
-            "layoutVariable": "family_layout"
+            "layoutVariable": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9"
           }
         },
         {
-          "id": "connections",
+          "id": "aeba8608-4b99-58a0-813a-7e5602fc4605",
           "text": {
             "en-US": "Which people know one another? Connect them if you want to."
           },
           "layout": {
-            "layoutVariable": "family_layout"
+            "layoutVariable": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9"
           },
           "edges": {
-            "create": "knows",
-            "display": ["knows"]
+            "create": "d55899cd-98bd-581e-a6d8-4251a45dd221",
+            "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
           }
         },
         {
-          "id": "feels_family",
+          "id": "5672f97e-82d3-5618-bd4d-3148b917c84b",
           "text": {
             "en-US": "Who on this map feels like family to you right now?"
           },
           "layout": {
-            "layoutVariable": "family_layout"
+            "layoutVariable": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "feels_family"
+            "variable": "b095f131-10a8-5eb2-8e30-b94b29a98769"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
           }
         },
         {
-          "id": "emotional_support",
+          "id": "03d59d06-0e65-5148-9461-095845ea04a5",
           "text": {
             "en-US": "Who can you turn to when you need to talk about something personal?"
           },
           "layout": {
-            "layoutVariable": "family_layout"
+            "layoutVariable": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "emotional_support"
+            "variable": "c3fedc1a-67c7-5751-a7e7-26ad69c4eb1a"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
           }
         },
         {
-          "id": "practical_support",
+          "id": "dce616da-e2e4-590d-9f7c-9c13544be15b",
           "text": {
             "en-US": "Who helps with everyday needs, such as a place to stay, transport or practical advice?"
           },
           "layout": {
-            "layoutVariable": "family_layout"
+            "layoutVariable": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "practical_support"
+            "variable": "e30f5f02-6af0-54bf-8703-4fef629130a0"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
           }
         },
         {
-          "id": "identity_affirming",
+          "id": "55256163-12f5-5d1e-996c-66ad69687b57",
           "text": {
             "en-US": "Who helps you feel recognised and accepted as you are?"
           },
           "layout": {
-            "layoutVariable": "family_layout"
+            "layoutVariable": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9"
           },
           "highlight": {
             "allowHighlighting": true,
-            "variable": "identity_affirming"
+            "variable": "9495f2bf-b7d1-5a80-9e9c-6ea413cb96bc"
           },
           "edges": {
-            "display": ["knows"]
+            "display": ["d55899cd-98bd-581e-a6d8-4251a45dd221"]
           }
         }
       ]
     },
     {
-      "id": "family-story",
+      "id": "bbfc9a04-52b9-5a1f-b5a0-44a872a5dcc1",
       "attributesHeading": {
         "en-US": "Attributes"
       },
@@ -391,7 +398,7 @@
       "type": "Narrative",
       "subject": {
         "entity": "node",
-        "type": "person"
+        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
       },
       "background": {
         "concentricCircles": 3,
@@ -404,15 +411,16 @@
       },
       "presets": [
         {
-          "id": "everyone",
+          "id": "59addabd-e5d2-5d80-995b-1a1c4df3efaa",
           "label": {
             "en-US": "Everyone on your map"
           },
-          "layoutVariable": "family_layout",
+          "layoutVariable": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9",
           "edges": {
             "display": [
               {
-                "type": "knows",
+                "id": "1e60ec1a-506d-5be6-83fb-e1adbd9a8e84",
+                "type": "d55899cd-98bd-581e-a6d8-4251a45dd221",
                 "label": {
                   "en-US": "Knows"
                 }
@@ -421,33 +429,37 @@
           }
         },
         {
-          "id": "belonging",
+          "id": "d639c187-adb4-5281-85c4-d0757ecfcb5d",
           "label": {
             "en-US": "Belonging and support"
           },
-          "layoutVariable": "family_layout",
-          "groupVariable": "family_categories",
+          "layoutVariable": "934ccc36-1a68-5e1d-87dd-b78dd0dcaab9",
+          "groupVariable": "514a898b-76ad-5f5f-8f28-fe033ef4c9ef",
           "highlight": [
             {
-              "variable": "feels_family",
+              "id": "e84120c2-7bfc-586f-9ccc-c133b28273b5",
+              "variable": "b095f131-10a8-5eb2-8e30-b94b29a98769",
               "label": {
                 "en-US": "feels_family"
               }
             },
             {
-              "variable": "emotional_support",
+              "id": "ed134544-eb0f-57bf-ab2f-d5851f9ac49f",
+              "variable": "c3fedc1a-67c7-5751-a7e7-26ad69c4eb1a",
               "label": {
                 "en-US": "emotional_support"
               }
             },
             {
-              "variable": "practical_support",
+              "id": "7ae27ed3-9ad5-5780-9d55-929ca8bfd590",
+              "variable": "e30f5f02-6af0-54bf-8703-4fef629130a0",
               "label": {
                 "en-US": "practical_support"
               }
             },
             {
-              "variable": "identity_affirming",
+              "id": "4f9ca6b5-14e8-51f9-8444-8cbf7c1353a4",
+              "variable": "9495f2bf-b7d1-5a80-9e9c-6ea413cb96bc",
               "label": {
                 "en-US": "identity_affirming"
               }
@@ -456,7 +468,8 @@
           "edges": {
             "display": [
               {
-                "type": "knows",
+                "id": "ffcc808e-c4a8-5adb-9df9-cbb9182b59c5",
+                "type": "d55899cd-98bd-581e-a6d8-4251a45dd221",
                 "label": {
                   "en-US": "Knows"
                 }
@@ -468,7 +481,7 @@
       "interviewScript": "Ask: What makes someone family? Does this map capture your family as you experience it? Who is difficult to place, or missing? Can someone feel like family without offering support? How has this changed? What wording or symbols would you change? Never treat chosen family as an inferior substitute or assume conflict with birth family. Draw only to help discussion; drawings are not exported. Record the qualitative account using the approved procedure."
     },
     {
-      "id": "debrief",
+      "id": "838dfdb5-1168-5835-aadb-57fad0022a11",
       "label": {
         "en-US": "Reflection"
       },
@@ -478,7 +491,7 @@
       }
     },
     {
-      "id": "finish",
+      "id": "553e2eb0-0b9f-5412-9028-f4f16943546d",
       "finishLabel": {
         "en-US": "Finish"
       },

@@ -413,8 +413,13 @@ describe('a block whose address is written between angle brackets', () => {
     expect(roundTrip(saved)).toBe(saved);
   });
 
-  it('still shows a ">" typed in the text as itself, and not as the start of a quote', () => {
-    expect(roundTrip('> Not a quote\n\n![A map](<asset:a1>)')).toBe(
+  // A line opening with ">" is a quotation in schema 9 text; a ">" typed in
+  // an older protocol was escaped by the migration from schema 8.
+  it('shows a quotation beside a block as its words, as the interview does', () => {
+    expect(roundTrip('> A quotation\n\n![A map](<asset:a1>)')).toBe(
+      'A quotation\n\n![A map](asset:a1)',
+    );
+    expect(roundTrip('&gt; Not a quote\n\n![A map](<asset:a1>)')).toBe(
       '&gt; Not a quote\n\n![A map](asset:a1)',
     );
   });

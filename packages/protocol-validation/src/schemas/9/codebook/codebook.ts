@@ -1,11 +1,10 @@
 import { z } from 'zod';
 
-import { CodebookIdSchema } from '@codaco/shared-consts';
-
 import {
   findDuplicateName,
   getAllEntityNames,
 } from '../../../utils/validation-helpers.ts';
+import { codebookRecord, EntityTypeIdSchema } from '../codebook-ids.ts';
 import {
   type EdgeDefinition,
   EdgeDefinitionSchema,
@@ -17,8 +16,16 @@ import {
 
 export const CodebookSchema = z
   .strictObject({
-    node: z.record(CodebookIdSchema, NodeDefinitionSchema).optional(),
-    edge: z.record(CodebookIdSchema, EdgeDefinitionSchema).optional(),
+    node: codebookRecord(
+      EntityTypeIdSchema,
+      NodeDefinitionSchema,
+      'node type',
+    ).optional(),
+    edge: codebookRecord(
+      EntityTypeIdSchema,
+      EdgeDefinitionSchema,
+      'edge type',
+    ).optional(),
     ego: EgoDefinitionSchema.optional(),
   })
   .superRefine((codebook, ctx) => {

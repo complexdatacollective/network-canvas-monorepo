@@ -9,10 +9,33 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { attributeField } from '../../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  attributeField,
+  attributeTrigger,
+  closeAttributePicker,
+  unavailableAttributes,
+  unavailableReason,
+} from '../../../testing/attributePicker.ts';
+import {
+  loadFixtureStage,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../testing/testId.ts';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
+
+const CONTACTED = testVariableId('contacted');
+const PERSON = fixtureTypeId('node', 'person');
+const NAME = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'name');
+const FLAGGED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'flagged',
+);
+const HIGHLIGHTED = fixtureVariableId(
+  { entity: 'node', typeName: 'person' },
+  'highlighted',
+);
 
 /**
  * The prompt text is a rich-text editor, and its editing surface cannot be
@@ -70,10 +93,6 @@ const openPrompt = async (
 /** The field a stamp row picks its attribute in. */
 const STAMP_PICKER = 'Create or select an attribute';
 
-/** The two names the attribute picker's trigger goes by, before and after. */
-const isPickerTrigger = (name: string) =>
-  name === 'Select attribute' || name === 'Change attribute';
-
 const stampPicker = (dialog: OpenDialog): HTMLElement =>
   attributeField(STAMP_PICKER, dialog.element);
 
@@ -82,9 +101,7 @@ const openPicker = async (
   harness: Harness,
   dialog: OpenDialog,
 ): Promise<HTMLElement> => {
-  await harness.user.click(
-    within(stampPicker(dialog)).getByRole('button', { name: isPickerTrigger }),
-  );
+  await harness.user.click(attributeTrigger(stampPicker(dialog)));
   return await waitFor(() => {
     const window = screen
       .getAllByRole('dialog')
@@ -98,15 +115,22 @@ const openPicker = async (
 
 const expectWindowClosed = async (window: HTMLElement) => {
   await waitFor(() => {
-    if (window.isConnected) throw new Error('the attribute window is open');
+    // Closed rather than gone: Base UI keeps a combobox's popup mounted, and
+    // hidden, once its trigger has been used.
+    if (window.hasAttribute('data-open')) {
+      throw new Error('the attribute window is open');
+    }
   });
 };
 
 /** Every attribute the window is offering, by the id choosing it would store. */
+/** The attributes the window lists and that can be chosen. */
 const offeredIds = (window: HTMLElement): string[] =>
-  [...window.querySelectorAll('[role="option"]')].map(
-    (row) => row.getAttribute('data-attribute-id') ?? '',
-  );
+  [
+    ...window.querySelectorAll(
+      '[role="option"][data-attribute-id]:not([data-unavailable])',
+    ),
+  ].map((row) => row.getAttribute('data-attribute-id') ?? '');
 
 /** Points the stamp row at the attribute the codebook files under this id. */
 const chooseStamp = async (
@@ -129,7 +153,7 @@ const chooseStamp = async (
 
 /** The search box a name is typed into, which is also where one is invented. */
 const searchBox = (window: HTMLElement): HTMLElement =>
-  within(window).getByRole('searchbox', {
+  within(window).getByRole('combobox', {
     name: 'Find or create an attribute',
   });
 
@@ -188,7 +212,7 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await chooseStamp(harness, dialog, 'highlighted');
+    await chooseStamp(harness, dialog, HIGHLIGHTED);
     await harness.user.click(dialog.getByRole('radio', { name: 'True' }));
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -198,7 +222,7 @@ describe("a name generator's prompts", () => {
     const request = await harness.submit();
     const rows = request?.stageDocument.prompts;
     expect(Array.isArray(rows) && rows[0]).toMatchObject({
-      additionalAttributes: [{ variable: 'highlighted', value: true }],
+      additionalAttributes: [{ variable: HIGHLIGHTED, value: true }],
     });
   });
 
@@ -220,9 +244,23 @@ describe("a name generator's prompts", () => {
     );
     const offered = offeredIds(await openPicker(harness, dialog));
 
-    expect(offered).toContain('highlighted');
-    expect(offered).not.toContain('name');
-    expect(offered).not.toContain('flagged');
+    expect(offered).toContain(HIGHLIGHTED);
+    expect(offered).not.toContain(NAME);
+    expect(offered).not.toContain(FLAGGED);
+    await closeAttributePicker(harness.user);
+
+    // Listed, though, each with the reason it cannot be chosen: one a form
+    // collects, and one that is not a Boolean at all.
+    const picker = stampPicker(dialog);
+    expect(await unavailableAttributes(harness.user, picker)).toEqual(
+      expect.arrayContaining([NAME, FLAGGED]),
+    );
+    expect(await unavailableReason(harness.user, picker, FLAGGED)).toBe(
+      'The “Alter Form” stage collects this attribute and validates each answer, so it cannot also be set here without validation.',
+    );
+    expect(await unavailableReason(harness.user, picker, NAME)).toBe(
+      'Only Boolean attributes can be used here.',
+    );
   });
 
   /**
@@ -241,7 +279,7 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await chooseStamp(harness, dialog, 'highlighted');
+    await chooseStamp(harness, dialog, HIGHLIGHTED);
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     expect(
@@ -266,18 +304,18 @@ describe("a name generator's prompts", () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        person: personDefinition({
-          name: {
+        [PERSON]: personDefinition({
+          [NAME]: {
             name: 'name',
             type: 'text',
             component: 'Text',
           },
-          highlighted: {
+          [HIGHLIGHTED]: {
             name: 'highlighted',
             type: 'boolean',
             component: 'Boolean',
           },
-          contacted: {
+          [CONTACTED]: {
             name: 'contacted',
             type: 'boolean',
           },
@@ -292,7 +330,7 @@ describe("a name generator's prompts", () => {
     const window = await openPicker(harness, dialog);
     // The revision reaches the picker over the protocol channel, which is a
     // microtask rather than the click that opened the dialog.
-    await waitFor(() => expect(offeredIds(window)).toContain('contacted'));
+    await waitFor(() => expect(offeredIds(window)).toContain(CONTACTED));
   });
 
   /**
@@ -353,7 +391,7 @@ describe("a name generator's prompts", () => {
     await harness.user.type(searchBox(window), 'nominated_early');
     await harness.user.click(
       within(window).getByRole('option', {
-        name: 'Create new attribute called “nominated_early”.',
+        name: 'Create “nominated_early”',
       }),
     );
     // A create that landed closes the window, and the row now shows what it
@@ -375,7 +413,7 @@ describe("a name generator's prompts", () => {
     // joined the stage's draft with it, and is not in the protocol until the
     // stage is. The id it was filed under is the codebook's to choose, so the
     // stamp below is compared against whatever the codebook says it is.
-    const variables = harness.editorCodebook().node?.person?.variables ?? {};
+    const variables = harness.editorCodebook().node?.[PERSON]?.variables ?? {};
     const [created] =
       Object.entries(variables).find(
         ([, variable]) => variable.name === 'nominated_early',
@@ -388,14 +426,14 @@ describe("a name generator's prompts", () => {
       type: 'boolean',
     });
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).not.toContain('nominated_early');
 
     const request = await harness.submit();
     expect(
-      harness.hostCodebook().node?.person?.variables?.[created],
+      harness.hostCodebook().node?.[PERSON]?.variables?.[created],
     ).toMatchObject({ name: 'nominated_early', type: 'boolean' });
     const rows = request?.stageDocument.prompts;
     expect(Array.isArray(rows) && rows[0]).toMatchObject({
@@ -436,9 +474,12 @@ describe("a name generator's prompts", () => {
     // Said on the row that would have created it, which is switched off rather
     // than offering a write the codebook is going to refuse.
     const refused = within(window).getByRole('option', {
-      name: 'Cannot create attribute named “contactType_call”: The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
+      name: 'An attribute cannot be named “contactType_call”',
     });
     expect(refused).toHaveAttribute('aria-disabled', 'true');
+    expect(refused).toHaveAccessibleDescription(
+      'The export already has a column called “contactType_call” for option “call” of the attribute “contactType”. Choose a different name.',
+    );
     await harness.user.click(refused);
 
     // The name stays in the box: the refusal is ABOUT that name, and it is the
@@ -450,11 +491,7 @@ describe("a name generator's prompts", () => {
     // accessibility tree while it is up.
     await harness.user.keyboard('{Escape}');
     await expectWindowClosed(window);
-    expect(
-      within(stampPicker(dialog)).getByRole('button', {
-        name: 'Select attribute',
-      }),
-    ).toBeInTheDocument();
+    expect(attributeTrigger(stampPicker(dialog))).toBeInTheDocument();
   });
 
   /**
@@ -472,7 +509,7 @@ describe("a name generator's prompts", () => {
       sections: prompts,
       heldSections: [
         {
-          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          sectionId: sectionId({ kind: 'codebookNode', typeId: PERSON }),
           displayName: 'Priya Raman',
         },
       ],
@@ -486,7 +523,7 @@ describe("a name generator's prompts", () => {
     await harness.user.type(searchBox(window), 'nominatedEarly');
     await harness.user.click(
       within(window).getByRole('option', {
-        name: 'Create new attribute called “nominatedEarly”.',
+        name: 'Create “nominatedEarly”',
       }),
     );
     await expectWindowClosed(window);
@@ -502,14 +539,14 @@ describe("a name generator's prompts", () => {
       'Priya Raman is currently editing a section needed for this change.',
     );
     expect(
-      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+      Object.values(harness.hostCodebook().node?.[PERSON]?.variables ?? {}).map(
         (variable) => variable.name,
       ),
     ).not.toContain('nominatedEarly');
     expect(
-      Object.values(harness.editorCodebook().node?.person?.variables ?? {}).map(
-        (variable) => variable.name,
-      ),
+      Object.values(
+        harness.editorCodebook().node?.[PERSON]?.variables ?? {},
+      ).map((variable) => variable.name),
     ).toContain('nominatedEarly');
   });
 });
@@ -522,12 +559,11 @@ describe("a name generator prompt's preview", () => {
         type,
         fields: {
           ...fields,
-          dynamicValues: { today: { path: 'now' } },
           prompts: [
             {
               id: 'dated',
               text: en(
-                'Who did you see **{today}**? {today, select, missing {Anyone} other {Everyone}}',
+                'Who did you see **{now}**? {now, select, missing {Anyone} other {Everyone}}',
               ),
             },
           ],
@@ -538,14 +574,14 @@ describe("a name generator prompt's preview", () => {
 
     await waitFor(() =>
       expect(
-        document.querySelector('strong [data-token="today"]'),
+        document.querySelector('strong [data-token="now"]'),
       ).toHaveTextContent('Today’s date'),
     );
     // Outside the editor a value's versions fold into its pill.
     expect(
-      document.querySelectorAll('[data-token="today"]').length,
+      document.querySelectorAll('[data-token="now"]').length,
     ).toBeGreaterThan(1);
     expect(screen.queryByText('Everyone')).not.toBeInTheDocument();
-    expect(screen.queryByText(/\{today/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\{now/)).not.toBeInTheDocument();
   });
 });

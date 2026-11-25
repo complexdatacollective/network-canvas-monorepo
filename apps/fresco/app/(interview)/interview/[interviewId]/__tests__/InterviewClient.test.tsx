@@ -12,6 +12,7 @@ import type { InterviewView } from '../mapInterviewPayload';
 type ShellHandlers = {
   onSync: SyncHandler;
   openFinishedAsActive?: boolean;
+  interactionSounds?: boolean;
 };
 
 const { shell, query } = vi.hoisted(() => ({
@@ -56,7 +57,7 @@ const payload: InterviewPayload = {
   },
 };
 
-function clientFor(view: InterviewView) {
+function clientFor(view: InterviewView, { interactionSounds = false } = {}) {
   return (
     <InterviewClient
       payload={payload}
@@ -66,6 +67,7 @@ function clientFor(view: InterviewView) {
       requestedLocales={['en']}
       installationId="test-installation"
       disableAnalytics
+      interactionSounds={interactionSounds}
       view={view}
     />
   );
@@ -167,4 +169,13 @@ describe('InterviewClient', () => {
     };
     expect(body.currentStep).toBe(5);
   });
+
+  it.each([true, false])(
+    "hands the installation's interaction sounds setting (%s) to the Shell",
+    (interactionSounds) => {
+      render(clientFor('active', { interactionSounds }));
+
+      expect(lastShellProps().interactionSounds).toBe(interactionSounds);
+    },
+  );
 });

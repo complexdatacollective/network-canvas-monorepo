@@ -17,15 +17,31 @@ import {
   chooseAttributeById,
   offeredAttributes,
 } from '../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
+import {
+  loadFixtureStage,
+  fixtureStageId,
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { testId, testTypeId, testVariableId } from '../../testing/testId.ts';
 import { EntitySubjectPickerField } from '../EntityTypePickerField.tsx';
 import StageDestinationPickerField from '../StageDestinationPickerField.tsx';
 import VariablePickerField from '../VariablePickerField.tsx';
 
+const ORGANISATION = testTypeId('organisation');
+const NOMINATED_EARLY = testVariableId('nominated_early');
+const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const AGE = fixtureVariableId({ entity: 'node', typeName: 'person' }, 'age');
+const FM_NAME = fixtureVariableId(
+  { entity: 'node', typeName: 'family member' },
+  'fm_name',
+);
+
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
-const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON_SUBJECT: CodebookSubject = { entity: 'node', type: PERSON };
 
 /**
  * Every attribute the people this stage collects have, unnarrowed.
@@ -39,7 +55,7 @@ function AttributePicker() {
   const protocolContext = useProtocolContext();
   const options = useMemo(
     () =>
-      Object.entries(variablesForSubject(protocolContext, PERSON)).map(
+      Object.entries(variablesForSubject(protocolContext, PERSON_SUBJECT)).map(
         ([value, variable]) => ({
           value,
           label: variable.name,
@@ -96,9 +112,9 @@ const skippingTo = (destination?: Record<string, unknown>) => ({
       filter: {
         rules: [
           {
-            id: 'rule-a',
+            id: testId('rule-a'),
             type: 'node',
-            options: { type: 'person', operator: 'EXISTS' },
+            options: { type: PERSON, operator: 'EXISTS' },
           },
         ],
       },
@@ -110,7 +126,7 @@ const skippingTo = (destination?: Record<string, unknown>) => ({
 describe('the entity type picker', () => {
   it('offers a type a collaborator added while the editor was open', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: subjectPicker,
     });
     await harness.opened();
@@ -120,7 +136,7 @@ describe('the entity type picker', () => {
 
     harness.receiveCodebookUpdate({
       node: {
-        organisation: {
+        [ORGANISATION]: {
           name: 'organisation',
           color: 'node-color-seq-3',
           shape: { default: 'square' },
@@ -135,7 +151,7 @@ describe('the entity type picker', () => {
 
   it('saves the type the researcher picked, as the subject the schema stores', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: subjectPicker,
     });
 
@@ -146,18 +162,18 @@ describe('the entity type picker', () => {
 
     expect(saved?.stageDocument.subject).toEqual({
       entity: 'node',
-      type: 'family_member',
+      type: FAMILY_MEMBER,
     });
   });
 
   it('reports a type the codebook no longer holds rather than dropping it', async () => {
     const harness = renderStageEditor({
-      stageId: 'name-generator-1',
+      stageId: fixtureStageId('name-generator-1'),
       sections: subjectPicker,
     });
     await harness.opened();
 
-    harness.receiveCodebookUpdate({ node: { person: null } });
+    harness.receiveCodebookUpdate({ node: { [PERSON]: null } });
 
     expect(
       await screen.findByText(
@@ -170,23 +186,23 @@ describe('the entity type picker', () => {
 describe('the attribute picker', () => {
   it('offers an attribute a collaborator added while the editor was open', async () => {
     const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       sections: <AttributePicker />,
     });
     await harness.opened();
     const picker = attributeField('Attribute this question records');
     expect(await offeredAttributes(harness.user, picker)).not.toContain(
-      'nominated_early',
+      NOMINATED_EARLY,
     );
 
     harness.receiveCodebookUpdate({
       node: {
-        person: {
+        [PERSON]: {
           name: 'person',
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            nominated_early: {
+            [NOMINATED_EARLY]: {
               name: 'nominated_early',
               type: 'boolean',
               component: 'Boolean',
@@ -197,13 +213,13 @@ describe('the attribute picker', () => {
     });
 
     await awaitOfferedAttributes(harness.user, picker, (offered) =>
-      expect(offered).toContain('nominated_early'),
+      expect(offered).toContain(NOMINATED_EARLY),
     );
   });
 
   it('saves the attribute the researcher picked', async () => {
     const harness = renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       sections: <AttributePicker />,
     });
 
@@ -211,7 +227,7 @@ describe('the attribute picker', () => {
     await chooseAttributeById(
       harness.user,
       attributeField('Attribute this question records'),
-      'age',
+      AGE,
     );
     const saved = await harness.submit();
 
@@ -221,7 +237,7 @@ describe('the attribute picker', () => {
           | Record<string, unknown>
           | undefined
       )?.nameAttribute,
-    ).toBe('age');
+    ).toBe(AGE);
   });
 
   it('reports a stored attribute nothing offers rather than blanking the control', async () => {
@@ -229,7 +245,7 @@ describe('the attribute picker', () => {
     // picker offers the attributes of a PERSON — so what it holds is exactly
     // the case a deleted attribute produces: a stored id nothing describes.
     renderStageEditor({
-      stageId: 'family-pedigree-1',
+      stageId: fixtureStageId('family-pedigree-1'),
       sections: <AttributePicker />,
     });
 
@@ -242,7 +258,7 @@ describe('the attribute picker', () => {
     // blank over the reference the researcher has to resolve.
     expect(
       within(attributeField('Attribute this question records')).getByText(
-        'fm_name — this attribute is not available here',
+        `${FM_NAME} — this attribute is not available here`,
       ),
     ).toBeVisible();
   });
@@ -263,7 +279,11 @@ describe('the stage destination picker', () => {
     ).toBeInTheDocument();
 
     harness.host.store.applyAsCollaborator(STAGE_ORDER, {
-      stages: ['anonymisation-1', 'ego-form-1', 'information-1'],
+      stages: [
+        fixtureStageId('anonymisation-1'),
+        fixtureStageId('ego-form-1'),
+        fixtureStageId('information-1'),
+      ],
     });
 
     await waitFor(() =>
@@ -285,19 +305,22 @@ describe('the stage destination picker', () => {
       await screen.findByRole('combobox', {
         name: 'Where the interview continues',
       }),
-      'route:stage:sociogram-1',
+      `route:stage:${fixtureStageId('sociogram-1')}`,
     );
     const saved = await harness.submit();
 
     expect(
       (saved?.stageDocument.skipLogic as Record<string, unknown> | undefined)
         ?.destination,
-    ).toEqual({ type: 'stage', stageId: 'sociogram-1' });
+    ).toEqual({ type: 'stage', stageId: fixtureStageId('sociogram-1') });
   });
 
   it('reports a destination whose stage is gone rather than correcting it', async () => {
     const harness = renderStageEditor({
-      stage: skippingTo({ type: 'stage', stageId: 'no-such-stage' }),
+      stage: skippingTo({
+        type: 'stage',
+        stageId: testId('no-such-stage'),
+      }),
       sections: destinationPicker,
     });
 
@@ -311,6 +334,6 @@ describe('the stage destination picker', () => {
     expect(
       (saved?.stageDocument.skipLogic as Record<string, unknown> | undefined)
         ?.destination,
-    ).toEqual({ type: 'stage', stageId: 'no-such-stage' });
+    ).toEqual({ type: 'stage', stageId: testId('no-such-stage') });
   });
 });

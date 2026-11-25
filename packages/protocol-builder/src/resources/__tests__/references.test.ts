@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { testTypeId } from '../../testing/testId.ts';
 import { collectStageResourceReferences } from '../references.ts';
 
 const geospatialStage: SectionDoc = {
   id: 'stage-1',
   type: 'Geospatial',
   label: 'Where do you meet?',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: testTypeId('person') },
   mapOptions: {
     tokenAssetId: 'map-token',
     style: 'mapbox://styles/mapbox/standard',

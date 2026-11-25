@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { withFinishStage } from '../../../__tests__/finishStage.ts';
+import { testId } from '../../../__tests__/testIds.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import {
   type FilterOperator,
@@ -16,9 +17,13 @@ const COMPARING_TEXT_OPERATORS = TextOperators.filter(
   (operator) => !isPresence(operator),
 );
 
-const ruleOn = (attribute: string, operator: FilterOperator = 'EXACTLY') => ({
+const ruleOn = (
+  place: string,
+  attribute: string,
+  operator: FilterOperator = 'EXACTLY',
+) => ({
   type: 'node' as const,
-  id: `rule-${attribute}`,
+  id: testId(`${place}/rule-${attribute}`),
   options: {
     type: 'person',
     attribute,
@@ -27,8 +32,13 @@ const ruleOn = (attribute: string, operator: FilterOperator = 'EXACTLY') => ({
   },
 });
 
-const filterOn = (attribute: string, operator?: FilterOperator) => ({
-  rules: [ruleOn(attribute, operator)],
+// Each place a filter sits names it, so that every rule's id is its own.
+const filterOn = (
+  place: string,
+  attribute: string,
+  operator?: FilterOperator,
+) => ({
+  rules: [ruleOn(place, attribute, operator)],
 });
 
 // The base protocol, with `person.name` encrypted or not, and a rule on
@@ -60,17 +70,20 @@ const protocolWithRulesOn = (
     stages: [
       {
         ...nameGenerator,
-        skipLogic: { action: 'SKIP', filter: filterOn(attribute, operator) },
+        skipLogic: {
+          action: 'SKIP',
+          filter: filterOn('skip', attribute, operator),
+        },
         panels: [
           {
-            id: 'panel-1',
+            id: testId('panel-1'),
             title: localized('People already named'),
             dataSource: 'existing',
-            filter: filterOn(attribute, operator),
+            filter: filterOn('panel', attribute, operator),
           },
         ],
       },
-      { ...sociogram, filter: filterOn(attribute, operator) },
+      { ...sociogram, filter: filterOn('stage', attribute, operator) },
     ],
   };
 };
@@ -138,10 +151,10 @@ describe('Schema 9 rules on encrypted attributes', () => {
             skipLogic: undefined,
             panels: [
               {
-                id: 'panel-1',
+                id: testId('panel-1'),
                 title: localized('People from before'),
                 dataSource: 'previous-people',
-                filter: filterOn('name'),
+                filter: filterOn('panel', 'name'),
               },
             ],
           },
@@ -154,15 +167,15 @@ describe('Schema 9 rules on encrypted attributes', () => {
   it('accepts a rule that only asks whether the type exists', () => {
     const protocol = protocolWithRulesOn('name', true);
     const [nameGenerator, sociogram] = protocol.stages;
-    const typeOnly = {
+    const typeOnly = (place: string) => ({
       rules: [
         {
           type: 'node',
-          id: 'rule-type',
+          id: testId(`${place}/rule-type`),
           options: { type: 'person', operator: 'EXISTS' },
         },
       ],
-    };
+    });
 
     expect(
       issuesOf({
@@ -170,10 +183,10 @@ describe('Schema 9 rules on encrypted attributes', () => {
         stages: [
           {
             ...nameGenerator,
-            skipLogic: { action: 'SKIP', filter: typeOnly },
+            skipLogic: { action: 'SKIP', filter: typeOnly('skip') },
             panels: [],
           },
-          { ...sociogram, filter: typeOnly },
+          { ...sociogram, filter: typeOnly('stage') },
         ],
       }),
     ).toEqual([]);

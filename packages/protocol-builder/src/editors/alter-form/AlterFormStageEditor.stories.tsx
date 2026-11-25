@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditor from '../../StageEditor.tsx';
+import { fixtureStageId } from '../../testing/protocolFixture.ts';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { alterFormStageEditor } from './AlterFormStageEditor.ts';
 
@@ -11,7 +12,7 @@ const meta = {
   title: 'Protocol Builder/Stage editors/Per alter form',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'alter-form-1',
+    stageId: fixtureStageId('alter-form-1'),
     renderEditor: ({ actions, ...editor }) => (
       <StageEditor
         {...editor}
@@ -90,22 +91,28 @@ const revealsTheValuesOfAnInventedAttribute = (control: string): Story => ({
       }),
     );
     await userEvent.click(
-      dialog.getByRole('button', { name: 'Select attribute' }),
+      dialog.getByRole('combobox', { name: /^Attribute/u }),
     );
     const picker = within(
-      await within(document.body).findByRole('dialog', { name: 'Attribute' }),
+      await waitFor(() => {
+        const opened = document.body.querySelector<HTMLElement>(
+          '[data-attribute-picker-popup][data-open]',
+        );
+        if (opened === null) throw new Error('The attribute popup is closed.');
+        return opened;
+      }),
     );
     await userEvent.type(
-      picker.getByRole('searchbox', { name: 'Find or create an attribute' }),
+      picker.getByRole('combobox', { name: 'Find or create an attribute' }),
       'closeness',
     );
     await userEvent.click(
       picker.getByRole('option', {
-        name: 'Create new attribute called “closeness”.',
+        name: 'Create “closeness”',
       }),
     );
     await expect(
-      await dialog.findByRole('button', { name: 'Change attribute' }),
+      await dialog.findByRole('combobox', { name: /^Attribute closeness/u }),
     ).toBeInTheDocument();
 
     const select = dialog.getByRole('combobox', { name: 'Input control' });

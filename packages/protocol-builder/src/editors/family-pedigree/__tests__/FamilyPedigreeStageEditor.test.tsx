@@ -3,7 +3,12 @@ import { get } from 'es-toolkit/compat';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createOptionId,
+  createVariableId,
+  dynamicValueNameFor,
   familyPedigreeStage,
+  isProtocolObjectId,
+  optionCaseKey,
   PEDIGREE_DEFAULT_GENDER_IDENTITIES,
   PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT,
   PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS,
@@ -20,15 +25,29 @@ import {
   FIELD_LABEL,
   inventAttribute,
   offeredAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
-import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
+import {
+  MINTED_OPTION_ID,
+  stubbedOptionId,
+} from '../../../testing/mintedId.ts';
+import {
+  fixtureOptionId,
+  fixtureTypeId,
+  fixtureVariableId,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import {
+  testId,
+  testOptionId,
+  testVariableId,
+} from '../../../testing/testId.ts';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
-import { newNominationPromptId } from '../sections/NominationPromptsSection.tsx';
 import {
   familyPedigreeEditor,
   openStageWording,
@@ -46,6 +65,45 @@ import {
 } from './pedigreeFixtures.ts';
 
 shimMarkdownEditorMeasurement();
+
+// Option rows take their ids from the function made for option ids. A test
+// that writes text about an attribute or option before the editor creates it
+// names the id the next one is given.
+vi.mock('@codaco/protocol-validation', async (importActual) => {
+  const actual =
+    await importActual<typeof import('@codaco/protocol-validation')>();
+  let made = 0;
+  return {
+    ...actual,
+    createOptionId: vi.fn(() => stubbedOptionId((made += 1))),
+    createVariableId: vi.fn(actual.createVariableId),
+  };
+});
+
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
+const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
+const familyMemberVariable = (name: string) =>
+  fixtureVariableId({ entity: 'node', typeName: 'family member' }, name);
+const familyEdgeVariable = (name: string) =>
+  fixtureVariableId({ entity: 'edge', typeName: 'family_edge' }, name);
+const FM_NAME = familyMemberVariable('fm_name');
+const SEX_ASSIGNED_AT_BIRTH = familyMemberVariable('sexAssignedAtBirth');
+const IS_EGO = familyMemberVariable('is_ego');
+const GENDER_IDENTITY = familyMemberVariable('genderIdentity');
+const RELATIONSHIP_KIND = familyEdgeVariable('relationshipKind');
+const GESTATIONAL_CARRIER = familyEdgeVariable('isGestationalCarrier');
+const CURRENT_PARTNER = familyEdgeVariable('isCurrentPartner');
+
+/** Attributes the tests add to the fixture's family member type. */
+const OCCUPATION = testVariableId('fm_occupation');
+const OTHER_GENDER_ID = testVariableId('fm_otherGender');
+const RELATIVES_NOT_RECORDED = testVariableId('relativesNotRecorded');
+const HAS_PETS = testVariableId('has_pets');
+const NICKNAME = testVariableId('fm_nickname');
+const RELATIONSHIP = testVariableId('fm_relationship');
+const SOME_RELATIONSHIPS = testVariableId('fm_someRelationships');
+const CUSTOM_GENDER_ID = testVariableId('customGender');
+const OTHER_GENDER_VARIABLE_ID = testVariableId('otherGender');
 
 const openFixture = () =>
   renderStageEditor({
@@ -65,12 +123,14 @@ const openNewStage = () =>
  * default options. The fixture's own gender identity attribute is managed by
  * its pedigree stage, so a new stage may not take it.
  */
-const FRESH_GENDER_ID = 'fm_gender';
+const FRESH_GENDER = 'fm_gender';
+const FRESH_GENDER_ID = testVariableId(FRESH_GENDER);
 const addFreshGenderAttribute = (harness: StageEditorHarness): void => {
   addFamilyMemberVariable(harness, FRESH_GENDER_ID, {
-    name: FRESH_GENDER_ID,
+    name: FRESH_GENDER,
     type: 'categorical',
     options: PEDIGREE_DEFAULT_GENDER_IDENTITIES.map(({ value }) => ({
+      id: testOptionId(FRESH_GENDER_ID, value),
       value,
       label: { 'en-US': value },
     })),
@@ -111,7 +171,7 @@ const bindSlot = async (
 const editorPersonVariables = (
   harness: StageEditorHarness,
 ): Readonly<Record<string, unknown>> | undefined =>
-  harness.editorCodebook().node?.family_member?.variables;
+  harness.editorCodebook().node?.[FAMILY_MEMBER]?.variables;
 
 /** The id the codebook files a person attribute of this name under. */
 function variableIdByName(
@@ -183,8 +243,8 @@ describe('the family pedigree stage editor', () => {
         form: {
           fields: [
             {
-              id: 'field-1',
-              variable: 'fm_occupation',
+              id: testId('field-1'),
+              variable: OCCUPATION,
               prompt: { 'en-US': 'What do they do?' },
             },
           ],
@@ -192,7 +252,7 @@ describe('the family pedigree stage editor', () => {
       }),
       editor: familyPedigreeEditor,
     });
-    addFamilyMemberVariable(harness, 'fm_occupation', {
+    addFamilyMemberVariable(harness, OCCUPATION, {
       name: 'fm_occupation',
       type: 'text',
       component: 'Text',
@@ -224,17 +284,17 @@ describe('the family pedigree stage editor', () => {
       await screen.findByRole('radio', { name: 'family member' }),
     );
     addFreshGenderAttribute(harness);
-    await bindSlot(harness, 'Name', 'fm_name');
+    await bindSlot(harness, 'Name', FM_NAME);
     await bindSlot(harness, 'Gender identity', FRESH_GENDER_ID);
-    await bindSlot(harness, 'Sex assigned at birth', 'sexAssignedAtBirth');
-    await bindSlot(harness, 'Participant marker', 'is_ego');
+    await bindSlot(harness, 'Sex assigned at birth', SEX_ASSIGNED_AT_BIRTH);
+    await bindSlot(harness, 'Participant marker', IS_EGO);
 
     await harness.user.click(
       screen.getByRole('radio', { name: 'family_edge' }),
     );
-    await bindSlot(harness, 'Relationship kind', 'relationshipKind');
-    await bindSlot(harness, 'Gestational carrier', 'isGestationalCarrier');
-    await bindSlot(harness, 'Current partner', 'isCurrentPartner');
+    await bindSlot(harness, 'Relationship kind', RELATIONSHIP_KIND);
+    await bindSlot(harness, 'Gestational carrier', GESTATIONAL_CARRIER);
+    await bindSlot(harness, 'Current partner', CURRENT_PARTNER);
 
     await writePrompt(harness);
 
@@ -244,13 +304,13 @@ describe('the family pedigree stage editor', () => {
       type: 'FamilyPedigree',
       // Named for the person type and the interface until the researcher says otherwise.
       label: { 'en-US': expect.any(String) },
-      subject: { entity: 'node', type: 'family_member' },
+      subject: { entity: 'node', type: FAMILY_MEMBER },
       prompt: { 'en-US': PROMPT_TEXT },
       // None of the words Network Canvas supplies for the stage (the wording
       // group, the name question): the interview shows them, and the stage
       // holds only what the researcher wrote.
       nodeConfiguration: {
-        nameAttribute: 'fm_name',
+        nameAttribute: FM_NAME,
         genderIdentity: {
           attribute: FRESH_GENDER_ID,
           // The attribute's options are the interface's defaults, so binding
@@ -260,14 +320,14 @@ describe('the family pedigree stage editor', () => {
             words,
           })),
         },
-        sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
-        egoAttribute: 'is_ego',
+        sexAssignedAtBirthAttribute: SEX_ASSIGNED_AT_BIRTH,
+        egoAttribute: IS_EGO,
       },
       edgeConfiguration: {
-        type: 'family_edge',
-        kindAttribute: 'relationshipKind',
-        gestationalCarrierAttribute: 'isGestationalCarrier',
-        currentPartnerAttribute: 'isCurrentPartner',
+        type: FAMILY_EDGE,
+        kindAttribute: RELATIONSHIP_KIND,
+        gestationalCarrierAttribute: GESTATIONAL_CARRIER,
+        currentPartnerAttribute: CURRENT_PARTNER,
       },
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
@@ -292,9 +352,9 @@ describe('the family pedigree stage editor', () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         nodeConfiguration: {
-          nameAttribute: 'fm_name',
-          genderIdentity: { attribute: 'genderIdentity', terms: [] },
-          sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
+          nameAttribute: FM_NAME,
+          genderIdentity: { attribute: GENDER_IDENTITY, terms: [] },
+          sexAssignedAtBirthAttribute: SEX_ASSIGNED_AT_BIRTH,
         },
       }),
       editor: familyPedigreeEditor,
@@ -420,22 +480,43 @@ describe('the attribute slots', () => {
     const variable = editorPersonVariables(harness);
     // The attribute is the stage's draft until the stage is saved.
     expect(
-      harness.hostCodebook().node?.family_member?.variables?.[created ?? ''],
+      harness.hostCodebook().node?.[FAMILY_MEMBER]?.variables?.[created ?? ''],
     ).toBeUndefined();
     expect(
       isRecord(variable) ? variable[created ?? ''] : undefined,
     ).toMatchObject({
       type: 'categorical',
       options: [
-        { value: 'woman', label: { 'en-US': 'Woman' } },
-        { value: 'man', label: { 'en-US': 'Man' } },
-        { value: 'nonBinary', label: { 'en-US': 'Non-binary' } },
         {
+          id: MINTED_OPTION_ID,
+          value: 'woman',
+          label: { 'en-US': 'Woman' },
+        },
+        {
+          id: MINTED_OPTION_ID,
+          value: 'man',
+          label: { 'en-US': 'Man' },
+        },
+        {
+          id: MINTED_OPTION_ID,
+          value: 'nonBinary',
+          label: { 'en-US': 'Non-binary' },
+        },
+        {
+          id: MINTED_OPTION_ID,
           value: 'differentIdentity',
           label: { 'en-US': 'A different identity' },
         },
-        { value: 'unknown', label: { 'en-US': 'Don’t know' } },
-        { value: 'preferNotToSay', label: { 'en-US': 'Prefer not to say' } },
+        {
+          id: MINTED_OPTION_ID,
+          value: 'unknown',
+          label: { 'en-US': 'Don’t know' },
+        },
+        {
+          id: MINTED_OPTION_ID,
+          value: 'preferNotToSay',
+          label: { 'en-US': 'Prefer not to say' },
+        },
       ],
     });
     expect(
@@ -501,6 +582,7 @@ describe('the attribute slots', () => {
       : undefined;
     expect(isRecord(created) ? created.options : undefined).toEqual(
       PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+        id: MINTED_OPTION_ID,
         value,
         label: {
           'en-US': suppliedOptionLabel(
@@ -532,7 +614,7 @@ describe('the attribute slots', () => {
       created,
     );
     expect(
-      harness.hostCodebook().node?.family_member?.variables?.[created ?? ''],
+      harness.hostCodebook().node?.[FAMILY_MEMBER]?.variables?.[created ?? ''],
     ).toMatchObject({ name: 'nickname', type: 'text' });
   });
 
@@ -542,7 +624,7 @@ describe('the attribute slots', () => {
 
     expect(
       await offeredAttributes(harness.user, attributeField('Name')),
-    ).toEqual(['fm_name']);
+    ).toEqual([FM_NAME]);
   });
 
   /**
@@ -554,19 +636,26 @@ describe('the attribute slots', () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         edgeConfiguration: {
-          type: 'family_edge',
-          kindAttribute: 'relationshipKind',
+          type: FAMILY_EDGE,
+          kindAttribute: RELATIONSHIP_KIND,
         },
       }),
       editor: familyPedigreeEditor,
     });
     await harness.opened();
 
-    await bindSlot(harness, 'Gestational carrier', 'isGestationalCarrier');
+    await bindSlot(harness, 'Gestational carrier', GESTATIONAL_CARRIER);
 
     expect(
       await offeredAttributes(harness.user, attributeField('Current partner')),
-    ).toEqual(['isCurrentPartner']);
+    ).toEqual([CURRENT_PARTNER]);
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Current partner'),
+        GESTATIONAL_CARRIER,
+      ),
+    ).toBe('Another field on this stage already uses this attribute.');
   });
 
   /**
@@ -582,14 +671,21 @@ describe('the attribute slots', () => {
       harness.user,
       attributeField('Gender identity'),
     );
-    expect(offered).toContain('genderIdentity');
-    expect(offered).not.toContain('sexAssignedAtBirth');
+    expect(offered).toContain(GENDER_IDENTITY);
+    expect(offered).not.toContain(SEX_ASSIGNED_AT_BIRTH);
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Gender identity'),
+        SEX_ASSIGNED_AT_BIRTH,
+      ),
+    ).toBe('Another field on this stage already uses this attribute.');
   });
 
   it('keeps the person attributes out of the additional fields', async () => {
     const harness = openFixture();
     await harness.opened();
-    addFamilyMemberVariable(harness, 'fm_occupation', {
+    addFamilyMemberVariable(harness, OCCUPATION, {
       name: 'fm_occupation',
       type: 'text',
       component: 'Text',
@@ -607,15 +703,24 @@ describe('the attribute slots', () => {
       attributeField('Attribute', dialog),
     );
 
-    expect(offered).toContain('fm_occupation');
+    expect(offered).toContain(OCCUPATION);
     for (const bound of [
-      'fm_name',
-      'genderIdentity',
-      'sexAssignedAtBirth',
-      'is_ego',
+      FM_NAME,
+      GENDER_IDENTITY,
+      SEX_ASSIGNED_AT_BIRTH,
+      IS_EGO,
     ]) {
       expect(offered).not.toContain(bound);
     }
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Attribute', dialog),
+        FM_NAME,
+      ),
+    ).toBe(
+      'This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.',
+    );
   });
 });
 
@@ -667,10 +772,10 @@ describe('asking about gender identity', () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         nodeConfiguration: {
-          nameAttribute: 'fm_name',
+          nameAttribute: FM_NAME,
           nameField: FIXTURE_NAME_FIELD,
-          sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
-          egoAttribute: 'is_ego',
+          sexAssignedAtBirthAttribute: SEX_ASSIGNED_AT_BIRTH,
+          egoAttribute: IS_EGO,
         },
       }),
       editor: familyPedigreeEditor,
@@ -684,9 +789,9 @@ describe('asking about gender identity', () => {
 
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
-      nameAttribute: 'fm_name',
-      sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
-      egoAttribute: 'is_ego',
+      nameAttribute: FM_NAME,
+      sexAssignedAtBirthAttribute: SEX_ASSIGNED_AT_BIRTH,
+      egoAttribute: IS_EGO,
     });
   });
 
@@ -721,15 +826,15 @@ describe('asking about gender identity', () => {
     // Switched on for a new stage; switching it off leaves nothing behind.
     await harness.user.click(await genderIdentitySwitch());
     expect(screen.queryByRole('dialog')).toBeNull();
-    await bindSlot(harness, 'Name', 'fm_name');
-    await bindSlot(harness, 'Sex assigned at birth', 'sexAssignedAtBirth');
-    await bindSlot(harness, 'Participant marker', 'is_ego');
+    await bindSlot(harness, 'Name', FM_NAME);
+    await bindSlot(harness, 'Sex assigned at birth', SEX_ASSIGNED_AT_BIRTH);
+    await bindSlot(harness, 'Participant marker', IS_EGO);
     await harness.user.click(
       screen.getByRole('radio', { name: 'family_edge' }),
     );
-    await bindSlot(harness, 'Relationship kind', 'relationshipKind');
-    await bindSlot(harness, 'Gestational carrier', 'isGestationalCarrier');
-    await bindSlot(harness, 'Current partner', 'isCurrentPartner');
+    await bindSlot(harness, 'Relationship kind', RELATIONSHIP_KIND);
+    await bindSlot(harness, 'Gestational carrier', GESTATIONAL_CARRIER);
+    await bindSlot(harness, 'Current partner', CURRENT_PARTNER);
     await writePrompt(harness);
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
@@ -739,9 +844,9 @@ describe('asking about gender identity', () => {
     const request = await harness.submit();
 
     expect(nodeConfigurationOf(request?.stageDocument)).toEqual({
-      nameAttribute: 'fm_name',
-      sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
-      egoAttribute: 'is_ego',
+      nameAttribute: FM_NAME,
+      sexAssignedAtBirthAttribute: SEX_ASSIGNED_AT_BIRTH,
+      egoAttribute: IS_EGO,
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
@@ -775,7 +880,7 @@ describe('asking about gender identity', () => {
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
-    await bindSlot(harness, 'Name', 'fm_name');
+    await bindSlot(harness, 'Name', FM_NAME);
     await screen.findByText('Gender identity', { selector: FIELD_LABEL });
 
     expect(await harness.submit()).toBeNull();
@@ -797,7 +902,7 @@ describe('the gender identity options, which this stage manages', () => {
   const OPTIONS = (harness: StageEditorHarness): unknown => {
     const variables =
       harness.protocolSections()[FAMILY_MEMBER_SECTION]?.variables;
-    const gender = isRecord(variables) ? variables.genderIdentity : undefined;
+    const gender = isRecord(variables) ? variables[GENDER_IDENTITY] : undefined;
     return isRecord(gender) ? gender.options : undefined;
   };
 
@@ -821,12 +926,20 @@ describe('the gender identity options, which this stage manages', () => {
     await harness.user.click(
       await screen.findByRole('radio', { name: 'family member' }),
     );
-    addFamilyMemberVariable(harness, 'fm_otherGender', {
+    addFamilyMemberVariable(harness, OTHER_GENDER_ID, {
       name: 'fm_otherGender',
       type: 'categorical',
       options: [
-        { value: 'woman', label: { 'en-US': 'Woman' } },
-        { value: 'man', label: { 'en-US': 'Man' } },
+        {
+          id: testId('option/fm_otherGender/woman'),
+          value: 'woman',
+          label: { 'en-US': 'Woman' },
+        },
+        {
+          id: testId('option/fm_otherGender/man'),
+          value: 'man',
+          label: { 'en-US': 'Man' },
+        },
       ],
     });
     await screen.findByText('Gender identity', { selector: FIELD_LABEL });
@@ -835,8 +948,8 @@ describe('the gender identity options, which this stage manages', () => {
       harness.user,
       attributeField('Gender identity'),
       (offered) => {
-        expect(offered).toContain('fm_otherGender');
-        expect(offered).not.toContain('genderIdentity');
+        expect(offered).toContain(OTHER_GENDER_ID);
+        expect(offered).not.toContain(GENDER_IDENTITY);
       },
     );
   });
@@ -844,7 +957,7 @@ describe('the gender identity options, which this stage manages', () => {
   it('refuses another stage that holds it, naming the stage that manages it', async () => {
     const seeded = familyPedigreeStageWith({ label: 'Family again' });
     const harness = renderStageEditor({
-      stage: { ...seeded, id: 'family-pedigree-2' },
+      stage: { ...seeded, id: testId('family-pedigree-2') },
       editor: familyPedigreeEditor,
     });
     await harness.opened();
@@ -969,6 +1082,198 @@ describe('the gender identity options, which this stage manages', () => {
     ]);
   });
 
+  // The stage's own text may choose its wording by the person's gender
+  // identity. A version written for an option removed here names an option
+  // the attribute no longer has, which the stage's check refuses, so it goes
+  // with the option and the stage still saves.
+  it('takes the wording written for a removed option out of the stage’s text, and the stage saves', async () => {
+    const gender = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: GENDER_IDENTITY,
+    });
+    const woman = optionCaseKey(
+      fixtureOptionId(
+        { entity: 'node', typeName: 'family member' },
+        'genderIdentity',
+        'woman',
+      ),
+    );
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        form: {
+          fields: [
+            {
+              id: testId('field-1'),
+              variable: OCCUPATION,
+              prompt: {
+                'en-US': `{${gender}, select, ${woman} {What is her job?} other {What is their job?}}`,
+              },
+            },
+          ],
+        },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariable(harness, OCCUPATION, {
+      name: 'fm_occupation',
+      type: 'text',
+      component: 'Text',
+    });
+    await harness.opened();
+    const dialog = within(await openGenderOptions(harness));
+
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Remove option 1' }),
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(async () =>
+      expect((await summaryRows()).map(([label]) => label)).not.toContain(
+        'Woman',
+      ),
+    );
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(
+      get(request?.stageDocument, ['form', 'fields', 0, 'prompt']),
+    ).toEqual({ 'en-US': `{${gender}, select, other {What is their job?}}` });
+    // Saved with the option it no longer has a version for.
+    expect(get(OPTIONS(harness), [0, 'value'])).toBe('man');
+  });
+
+  // An attribute created in this edit, and its options, were never in the
+  // protocol, so a version for one of its options removed before the save
+  // goes too. Text about an attribute this edit did not change is kept.
+  it('takes out the wording for an option of an attribute created in the same edit, and the stage saves', async () => {
+    const created = testVariableId('gender_created');
+    const woman = testOptionId(created, 'woman');
+    const createdGender = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'node',
+      variableId: created,
+    });
+    // A participant's attribute, in a codebook section this edit leaves alone.
+    const egoMood = testVariableId('ego_mood');
+    const calm = testOptionId(egoMood, 'calm');
+    const mood = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: egoMood,
+    });
+    const aboutMood = `{${mood}, select, ${optionCaseKey(calm)} {Calm.} other {Not calm.}}`;
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        form: {
+          fields: [
+            {
+              id: testId('field-1'),
+              variable: OCCUPATION,
+              prompt: {
+                'en-US': `{${createdGender}, select, ${optionCaseKey(woman)} {What is her job?} other {What is their job?}} ${aboutMood}`,
+              },
+            },
+          ],
+        },
+      }),
+      editor: familyPedigreeEditor,
+    });
+    addFamilyMemberVariable(harness, OCCUPATION, {
+      name: 'fm_occupation',
+      type: 'text',
+      component: 'Text',
+    });
+    const ego = harness.hostCodebook().ego;
+    harness.receiveCodebookUpdate({
+      ego: {
+        ...ego,
+        variables: {
+          ...ego?.variables,
+          [egoMood]: {
+            name: 'ego_mood',
+            type: 'categorical',
+            component: 'CheckboxGroup',
+            options: [
+              { id: calm, value: 'calm', label: { 'en-US': 'Calm' } },
+              {
+                id: testOptionId(egoMood, 'tense'),
+                value: 'tense',
+                label: { 'en-US': 'Tense' },
+              },
+            ],
+          },
+        },
+      },
+    });
+    await harness.opened();
+
+    // The attribute, and its first option, get the ids the text names.
+    vi.mocked(createVariableId).mockReturnValueOnce(created);
+    vi.mocked(createOptionId).mockReturnValueOnce(woman);
+    await inventAttribute(
+      harness.user,
+      attributeField('Gender identity'),
+      'gender_created',
+    );
+    const editor = within(
+      await screen.findByRole('dialog', {
+        name: 'Create a new gender identity attribute',
+      }),
+    );
+    await harness.user.click(
+      editor.getByRole('button', { name: 'Create attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(variableIdByName(harness, 'gender_created')).toBe(created);
+    expect(
+      get(editorPersonVariables(harness), [created, 'options', 0]),
+    ).toMatchObject({ id: woman, value: 'woman' });
+
+    const dialog = within(await openGenderOptions(harness));
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Remove option 1' }),
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(async () =>
+      expect((await summaryRows()).map(([label]) => label)).not.toContain(
+        'Woman',
+      ),
+    );
+    // Neither the attribute nor the option was ever in the protocol.
+    expect(
+      harness.stagedCodebook()[FAMILY_MEMBER_SECTION]?.base?.variables,
+    ).not.toHaveProperty(created);
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(
+      get(request?.stageDocument, ['form', 'fields', 0, 'prompt']),
+    ).toEqual({
+      'en-US': `{${createdGender}, select, other {What is their job?}} ${aboutMood}`,
+    });
+    // Saved with the options the edit left it.
+    expect(
+      get(harness.protocolSections()[FAMILY_MEMBER_SECTION]?.variables, [
+        created,
+        'options',
+      ]),
+    ).toEqual(
+      [
+        'man',
+        'nonBinary',
+        'differentIdentity',
+        'unknown',
+        'preferNotToSay',
+      ].map((value) => expect.objectContaining({ value })),
+    );
+  });
+
   it('keeps the words a stage gave its options when the dialog is cancelled', async () => {
     const harness = openFixture();
     await harness.opened();
@@ -1079,11 +1384,11 @@ describe('the completeness requirement', () => {
     const harness = openFixture();
     await harness.opened();
     addFamilyMemberVariables(harness, {
-      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+      [RELATIVES_NOT_RECORDED]: RELATIVES_NOT_RECORDED_VARIABLE,
     });
 
     await switchOn(harness);
-    await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+    await bindSlot(harness, 'Relatives not recorded', RELATIVES_NOT_RECORDED);
 
     expect(
       await screen.findByRole('option', { name: /Both biological parents/ }),
@@ -1097,7 +1402,7 @@ describe('the completeness requirement', () => {
       completeness: {
         scope: 'parents',
         enforcement: 'required',
-        relativesNotRecordedAttribute: 'relativesNotRecorded',
+        relativesNotRecordedAttribute: RELATIVES_NOT_RECORDED,
       },
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
@@ -1109,7 +1414,7 @@ describe('the completeness requirement', () => {
     const harness = openFixture();
     await harness.opened();
     addFamilyMemberVariables(harness, {
-      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+      [RELATIVES_NOT_RECORDED]: RELATIVES_NOT_RECORDED_VARIABLE,
     });
     await openStageWording(harness);
     await screen.findByRole('textbox', { name: 'Carrier question' });
@@ -1118,7 +1423,7 @@ describe('the completeness requirement', () => {
     ).toBeNull();
 
     await switchOn(harness);
-    await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+    await bindSlot(harness, 'Relatives not recorded', RELATIVES_NOT_RECORDED);
     expect(
       await screen.findByRole('textbox', { name: 'Missing parents item' }),
     ).toBeVisible();
@@ -1140,11 +1445,11 @@ describe('the completeness requirement', () => {
     const harness = openFixture();
     await harness.opened();
     addFamilyMemberVariables(harness, {
-      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+      [RELATIVES_NOT_RECORDED]: RELATIVES_NOT_RECORDED_VARIABLE,
     });
 
     await switchOn(harness);
-    await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+    await bindSlot(harness, 'Relatives not recorded', RELATIVES_NOT_RECORDED);
     expect(
       screen.queryByRole('textbox', { name: 'Missing parents item' }),
     ).toBeNull();
@@ -1166,11 +1471,11 @@ describe('the completeness requirement', () => {
     const harness = openFixture();
     await harness.opened();
     addFamilyMemberVariables(harness, {
-      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+      [RELATIVES_NOT_RECORDED]: RELATIVES_NOT_RECORDED_VARIABLE,
     });
 
     await switchOn(harness);
-    await bindSlot(harness, 'Relatives not recorded', 'relativesNotRecorded');
+    await bindSlot(harness, 'Relatives not recorded', RELATIVES_NOT_RECORDED);
     await harness.user.click(
       await screen.findByRole('option', {
         name: /Three generations, to first cousins/,
@@ -1239,13 +1544,13 @@ describe('the completeness requirement', () => {
         completeness: {
           scope: 'firstDegree',
           enforcement: 'required',
-          relativesNotRecordedAttribute: 'relativesNotRecorded',
+          relativesNotRecordedAttribute: RELATIVES_NOT_RECORDED,
         },
       }),
       editor: familyPedigreeEditor,
     });
     addFamilyMemberVariables(harness, {
-      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+      [RELATIVES_NOT_RECORDED]: RELATIVES_NOT_RECORDED_VARIABLE,
     });
     await harness.opened();
 
@@ -1415,19 +1720,47 @@ describe('the gender identity words', () => {
       name: 'customGender',
       type: 'categorical',
       options: [
-        { value: 'woman', label: { 'en-US': 'Female' } },
-        { value: 'agender', label: { 'en-US': 'Agender' } },
-        { value: 'man', label: { 'en-US': 'Male' } },
-        { value: 'unknown', label: { 'en-US': 'Unsure' } },
+        {
+          id: testId('option/customGender/woman'),
+          value: 'woman',
+          label: { 'en-US': 'Female' },
+        },
+        {
+          id: testId('option/customGender/agender'),
+          value: 'agender',
+          label: { 'en-US': 'Agender' },
+        },
+        {
+          id: testId('option/customGender/man'),
+          value: 'man',
+          label: { 'en-US': 'Male' },
+        },
+        {
+          id: testId('option/customGender/unknown'),
+          value: 'unknown',
+          label: { 'en-US': 'Unsure' },
+        },
       ],
     };
     const OTHER_GENDER = {
       name: 'otherGender',
       type: 'categorical',
       options: [
-        { value: 'preferNotToSay', label: { 'en-US': 'No answer' } },
-        { value: 'woman', label: { 'en-US': 'W' } },
-        { value: 'nonbinary', label: { 'en-US': 'NB' } },
+        {
+          id: testId('option/otherGender/preferNotToSay'),
+          value: 'preferNotToSay',
+          label: { 'en-US': 'No answer' },
+        },
+        {
+          id: testId('option/otherGender/woman'),
+          value: 'woman',
+          label: { 'en-US': 'W' },
+        },
+        {
+          id: testId('option/otherGender/nonbinary'),
+          value: 'nonbinary',
+          label: { 'en-US': 'NB' },
+        },
       ],
     };
 
@@ -1436,16 +1769,16 @@ describe('the gender identity words', () => {
       const harness = renderStageEditor({
         stage: familyPedigreeStageWith({
           nodeConfiguration: {
-            nameAttribute: 'fm_name',
-            sexAssignedAtBirthAttribute: 'sexAssignedAtBirth',
-            egoAttribute: 'is_ego',
+            nameAttribute: FM_NAME,
+            sexAssignedAtBirthAttribute: SEX_ASSIGNED_AT_BIRTH,
+            egoAttribute: IS_EGO,
           },
         }),
         editor: familyPedigreeEditor,
       });
       addFamilyMemberVariables(harness, {
-        customGender: CUSTOM_GENDER,
-        otherGender: OTHER_GENDER,
+        [CUSTOM_GENDER_ID]: CUSTOM_GENDER,
+        [OTHER_GENDER_VARIABLE_ID]: OTHER_GENDER,
       });
       await harness.opened();
       await switchOnGenderIdentity(harness);
@@ -1455,7 +1788,7 @@ describe('the gender identity words', () => {
     it('prefills the words of the default each option’s value names, and neutral for the rest', async () => {
       const harness = await openUnbound();
 
-      await bindSlot(harness, 'Gender identity', 'customGender');
+      await bindSlot(harness, 'Gender identity', CUSTOM_GENDER_ID);
 
       expect(await summaryRows()).toEqual([
         ['Female', WORDS.feminine],
@@ -1495,7 +1828,7 @@ describe('the gender identity words', () => {
 
     it('replaces the mapping with one for the new options when another attribute is chosen', async () => {
       const harness = await openUnbound();
-      await bindSlot(harness, 'Gender identity', 'customGender');
+      await bindSlot(harness, 'Gender identity', CUSTOM_GENDER_ID);
       const dialog = within(await openGenderOptions(harness));
       await harness.user.selectOptions(
         dialog.getByRole('combobox', { name: 'Option 2 kinship words' }),
@@ -1508,7 +1841,7 @@ describe('the gender identity words', () => {
         expect((await summaryRows())[1]).toEqual(['Agender', WORDS.masculine]),
       );
 
-      await bindSlot(harness, 'Gender identity', 'otherGender');
+      await bindSlot(harness, 'Gender identity', OTHER_GENDER_VARIABLE_ID);
 
       await waitFor(async () =>
         expect(await summaryRows()).toEqual([
@@ -1706,7 +2039,7 @@ describe('the participant wording', () => {
         completeness: {
           scope: 'firstDegree',
           enforcement: 'recommended',
-          relativesNotRecordedAttribute: 'relativesNotRecorded',
+          relativesNotRecordedAttribute: RELATIVES_NOT_RECORDED,
         },
       },
       { defaultLocale: 'en-US', locales: ['en-US'] },
@@ -1716,7 +2049,7 @@ describe('the participant wording', () => {
       editor: familyPedigreeEditor,
     });
     addFamilyMemberVariables(harness, {
-      relativesNotRecorded: RELATIVES_NOT_RECORDED_VARIABLE,
+      [RELATIVES_NOT_RECORDED]: RELATIVES_NOT_RECORDED_VARIABLE,
     });
     await harness.opened();
     await openStageWording(harness);
@@ -1824,9 +2157,10 @@ describe('the participant wording', () => {
 });
 
 describe('the nomination prompts', () => {
-  const HEART_DISEASE = 'has_heart_disease';
+  const HEART_DISEASE_NAME = 'has_heart_disease';
+  const HEART_DISEASE = testVariableId(HEART_DISEASE_NAME);
   /** The boolean the fixture pedigree's own nomination prompt sets. */
-  const FIXTURE_PROMPT_FLAG = 'hasConditionX';
+  const FIXTURE_PROMPT_FLAG = familyMemberVariable('hasConditionX');
 
   const nominationPromptsOf = (
     document: SectionDoc | undefined,
@@ -1846,7 +2180,7 @@ describe('the nomination prompts', () => {
     });
 
   const savedPrompt = {
-    id: 'nomination-1',
+    id: testId('nomination-1'),
     text: { 'en-US': 'Who in your family has had heart disease?' },
     attribute: HEART_DISEASE,
     onlyForSexAssignedAtBirth: 'female',
@@ -1866,7 +2200,7 @@ describe('the nomination prompts', () => {
       editor: familyPedigreeEditor,
     });
     addFamilyMemberVariable(harness, HEART_DISEASE, {
-      name: HEART_DISEASE,
+      name: HEART_DISEASE_NAME,
       type: 'boolean',
     });
     await harness.opened();
@@ -1965,7 +2299,7 @@ describe('the nomination prompts', () => {
     const request = await harness.submit();
     // Saved with the stage that names it.
     expect(
-      harness.hostCodebook().node?.family_member?.variables?.[created ?? ''],
+      harness.hostCodebook().node?.[FAMILY_MEMBER]?.variables?.[created ?? ''],
     ).toMatchObject({ type: 'boolean' });
     expect(nominationPromptsOf(request?.stageDocument)).toEqual([
       {
@@ -1983,7 +2317,7 @@ describe('the nomination prompts', () => {
   it('writes no limit for a prompt open to anyone', async () => {
     const harness = openWithoutPrompts();
     addFamilyMemberVariable(harness, HEART_DISEASE, {
-      name: HEART_DISEASE,
+      name: HEART_DISEASE_NAME,
       type: 'boolean',
     });
     await harness.opened();
@@ -2055,17 +2389,6 @@ describe('the nomination prompts', () => {
   });
 
   it('never gives a prompt the id the interview keeps for building the family', async () => {
-    const randomUUID = vi
-      .spyOn(crypto, 'randomUUID')
-      .mockReturnValueOnce('pedigree' as ReturnType<typeof crypto.randomUUID>);
-    try {
-      expect(newNominationPromptId()).not.toBe('pedigree');
-      // The first draw was the reserved word, so a second one was made.
-      expect(randomUUID).toHaveBeenCalledTimes(2);
-    } finally {
-      randomUUID.mockRestore();
-    }
-
     const harness = openWithoutPrompts();
     await harness.opened();
     const dialog = await startAPrompt(harness);
@@ -2082,7 +2405,7 @@ describe('the nomination prompts', () => {
     await addThePrompt(harness);
     const request = await harness.submit();
     const [prompt] = nominationPromptsOf(request?.stageDocument);
-    expect(prompt?.id).toEqual(expect.any(String));
+    expect(isProtocolObjectId(prompt?.id)).toBe(true);
     expect(prompt?.id).not.toBe('pedigree');
   });
 
@@ -2092,8 +2415,8 @@ describe('the nomination prompts', () => {
         form: {
           fields: [
             {
-              id: 'field-1',
-              variable: 'has_pets',
+              id: testId('field-1'),
+              variable: HAS_PETS,
               prompt: { 'en-US': 'Any pets?' },
             },
           ],
@@ -2102,9 +2425,9 @@ describe('the nomination prompts', () => {
       editor: familyPedigreeEditor,
     });
     addFamilyMemberVariables(harness, {
-      [HEART_DISEASE]: { name: HEART_DISEASE, type: 'boolean' },
-      has_pets: { name: 'has_pets', type: 'boolean', component: 'Toggle' },
-      fm_nickname: { name: 'fm_nickname', type: 'text', component: 'Text' },
+      [HEART_DISEASE]: { name: HEART_DISEASE_NAME, type: 'boolean' },
+      [HAS_PETS]: { name: 'has_pets', type: 'boolean', component: 'Toggle' },
+      [NICKNAME]: { name: 'fm_nickname', type: 'text', component: 'Text' },
     });
     await harness.opened();
     const dialog = await startAPrompt(harness);
@@ -2128,12 +2451,13 @@ describe('the nomination prompts', () => {
    * validation at save.
    */
   describe('against the participant marker', () => {
-    const OTHER_FLAG = 'has_asthma';
+    const OTHER_FLAG_NAME = 'has_asthma';
+    const OTHER_FLAG = testVariableId(OTHER_FLAG_NAME);
 
     it('does not offer the participant marker an attribute a prompt sets', async () => {
       const harness = await openWithAPrompt();
       addFamilyMemberVariable(harness, OTHER_FLAG, {
-        name: OTHER_FLAG,
+        name: OTHER_FLAG_NAME,
         type: 'boolean',
       });
 
@@ -2149,8 +2473,8 @@ describe('the nomination prompts', () => {
     it('counts a prompt added in this edit, before anything is saved', async () => {
       const harness = openWithoutPrompts();
       addFamilyMemberVariables(harness, {
-        [HEART_DISEASE]: { name: HEART_DISEASE, type: 'boolean' },
-        [OTHER_FLAG]: { name: OTHER_FLAG, type: 'boolean' },
+        [HEART_DISEASE]: { name: HEART_DISEASE_NAME, type: 'boolean' },
+        [OTHER_FLAG]: { name: OTHER_FLAG_NAME, type: 'boolean' },
       });
       await harness.opened();
       const dialog = await startAPrompt(harness);
@@ -2173,8 +2497,8 @@ describe('the nomination prompts', () => {
     it('does not offer a prompt the attribute the participant marker has just taken', async () => {
       const harness = openWithoutPrompts();
       addFamilyMemberVariables(harness, {
-        [HEART_DISEASE]: { name: HEART_DISEASE, type: 'boolean' },
-        [OTHER_FLAG]: { name: OTHER_FLAG, type: 'boolean' },
+        [HEART_DISEASE]: { name: HEART_DISEASE_NAME, type: 'boolean' },
+        [OTHER_FLAG]: { name: OTHER_FLAG_NAME, type: 'boolean' },
       });
       await harness.opened();
       await bindSlot(harness, 'Participant marker', OTHER_FLAG);
@@ -2206,6 +2530,15 @@ describe('the nomination prompts', () => {
         attributeField('Attribute', dialog),
       ),
     ).not.toContain(HEART_DISEASE);
+    expect(
+      await unavailableReason(
+        harness.user,
+        attributeField('Attribute', dialog),
+        HEART_DISEASE,
+      ),
+    ).toBe(
+      'This Family Pedigree stage already uses this attribute, so a form field cannot also collect it.',
+    );
   });
 });
 
@@ -2274,6 +2607,7 @@ describe('recording the relationship to the participant', () => {
     name: 'fm_relationship',
     type: 'categorical',
     options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
+      id: testOptionId('fm_relationship', value),
       value,
       label: { 'en-US': value },
     })),
@@ -2301,13 +2635,21 @@ describe('recording the relationship to the participant', () => {
     const harness = openFixture();
     await harness.opened();
     addFamilyMemberVariables(harness, {
-      fm_relationship: RELATIONSHIP_VARIABLE,
-      fm_someRelationships: {
+      [RELATIONSHIP]: RELATIONSHIP_VARIABLE,
+      [SOME_RELATIONSHIPS]: {
         name: 'fm_someRelationships',
         type: 'categorical',
         options: [
-          { value: 'parent', label: { 'en-US': 'Parent' } },
-          { value: 'sibling', label: { 'en-US': 'Sibling' } },
+          {
+            id: testId('option/fm_someRelationships/parent'),
+            value: 'parent',
+            label: { 'en-US': 'Parent' },
+          },
+          {
+            id: testId('option/fm_someRelationships/sibling'),
+            value: 'sibling',
+            label: { 'en-US': 'Sibling' },
+          },
         ],
       },
     });
@@ -2318,16 +2660,16 @@ describe('recording the relationship to the participant', () => {
       harness.user,
       attributeField(LABEL),
       (ids) => {
-        expect(ids).toContain('fm_relationship');
+        expect(ids).toContain(RELATIONSHIP);
       },
     );
-    expect(offered).not.toContain('sexAssignedAtBirth');
-    expect(offered).not.toContain('fm_someRelationships');
+    expect(offered).not.toContain(SEX_ASSIGNED_AT_BIRTH);
+    expect(offered).not.toContain(SOME_RELATIONSHIPS);
 
-    await bindSlot(harness, LABEL, 'fm_relationship');
+    await bindSlot(harness, LABEL, RELATIONSHIP);
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument)).toMatchObject({
-      relationshipToParticipantAttribute: 'fm_relationship',
+      relationshipToParticipantAttribute: RELATIONSHIP,
     });
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
@@ -2369,11 +2711,11 @@ describe('recording the relationship to the participant', () => {
     const harness = openFixture();
     await harness.opened();
     addFamilyMemberVariables(harness, {
-      fm_relationship: RELATIONSHIP_VARIABLE,
+      [RELATIONSHIP]: RELATIONSHIP_VARIABLE,
     });
 
     await switchOn(harness);
-    await bindSlot(harness, LABEL, 'fm_relationship');
+    await bindSlot(harness, LABEL, RELATIONSHIP);
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Additional person fields' }),
     );
@@ -2385,6 +2727,6 @@ describe('recording the relationship to the participant', () => {
       harness.user,
       attributeField('Attribute', dialog),
     );
-    expect(offered).not.toContain('fm_relationship');
+    expect(offered).not.toContain(RELATIONSHIP);
   });
 });

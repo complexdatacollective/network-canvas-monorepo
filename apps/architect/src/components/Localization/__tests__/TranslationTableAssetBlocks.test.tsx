@@ -5,7 +5,14 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
+  createProtocolObjectId,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 import { testProtocol } from '~/__tests__/helpers';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -24,7 +31,7 @@ const protocol = testProtocol({
   },
   codebook: {
     node: {
-      person: {
+      [testTypeId('person')]: {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
@@ -35,21 +42,21 @@ const protocol = testProtocol({
   },
   stages: [
     {
-      id: 'welcome',
+      id: createProtocolObjectId(),
       type: 'Information',
       label: { en: 'Welcome', fr: 'Bienvenue' },
       content: { en: ENGLISH, fr: FRENCH },
     },
     {
-      id: 'names',
+      id: createProtocolObjectId(),
       type: 'DyadCensus',
       label: { en: 'Names', fr: 'Noms' },
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', type: testTypeId('person') },
       prompts: [
         {
-          id: 'p1',
+          id: createProtocolObjectId(),
           text: { en: 'Name people ![x](asset:map)' },
-          createEdge: 'knows',
+          createEdge: testTypeId('knows'),
         },
       ],
     },
@@ -93,21 +100,25 @@ describe('TranslationTable: files placed in the text of an Information stage', (
   });
 
   // Whether text is drawn with its blocks is the field's to say, not
-  // whether today's text runs over more than one line. A page whose stage
-  // binds a value is drawn as text that shows values.
+  // whether today's text runs over more than one line. A page whose text
+  // shows a value is drawn as text that shows values, in each language,
+  // including one whose translation is the file alone.
   it('names the file in a page that holds nothing else', () => {
     const [information, ...rest] = protocol.stages;
     renderTable({
       ...protocol,
       codebook: {
         ...protocol.codebook,
-        ego: { variables: { firstName: { name: 'first_name', type: 'text' } } },
+        ego: {
+          variables: {
+            [testVariableId('firstName')]: { name: 'first_name', type: 'text' },
+          },
+        },
       },
       stages: [
         {
           ...information,
-          content: { en: BLOCK, fr: BLOCK },
-          dynamicValues: { name: { path: 'ego.firstName' } },
+          content: { en: `${BLOCK}\n\nToday is {now}.`, fr: BLOCK },
         },
         ...rest,
       ],

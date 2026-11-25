@@ -20,7 +20,10 @@ import {
   attributeField,
   chooseAttribute,
   offeredAttributes,
+  unavailableAttributes,
+  unavailableReason,
 } from '../../../testing/attributePicker.ts';
+import { testTypeId, testVariableId, testId } from '../../../testing/testId.ts';
 import { CodebookEditorHost } from '../../__tests__/codebookEditorHost.tsx';
 import {
   shapeMappingDraft,
@@ -29,6 +32,14 @@ import {
 } from '../../shapeMapping.ts';
 import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
+
+const PERSON_TYPE = testTypeId('person');
+const AGE = testVariableId('age');
+const ALIVE = testVariableId('alive');
+const CONTACT = testVariableId('contact');
+const ETHNICITY = testVariableId('ethnicity');
+const NOTES = testVariableId('notes');
+const CLOSENESS = testVariableId('closeness');
 
 /**
  * Drawing a node type as a different shape depending on one of its attributes:
@@ -41,45 +52,61 @@ import CodebookEntityEditor from '../CodebookEntityEditor.tsx';
  * is the failure worth guarding.
  */
 
-const SUBJECT = { entity: 'node', type: 'person' } as const;
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const SUBJECT = { entity: 'node', type: PERSON_TYPE } as const;
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: PERSON_TYPE });
 
 const VARIABLES: Record<string, unknown> = {
-  ethnicity: {
+  [ETHNICITY]: {
     name: 'Ethnicity',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: { en: 'Asian' }, value: 'asian' },
-      { label: { en: 'White' }, value: 'white' },
+      {
+        id: testId('option/Ethnicity/asian'),
+        label: { en: 'Asian' },
+        value: 'asian',
+      },
+      {
+        id: testId('option/Ethnicity/white'),
+        label: { en: 'White' },
+        value: 'white',
+      },
     ],
   },
-  contact: {
+  [CONTACT]: {
     name: 'Contact',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
-      { label: { en: 'a.b [1]' }, value: 'a.b [1]' },
-      { label: { en: '友人' }, value: '友人' },
+      {
+        id: testId('option/Contact/a.b [1]'),
+        label: { en: 'a.b [1]' },
+        value: 'a.b [1]',
+      },
+      {
+        id: testId('option/Contact/友人'),
+        label: { en: '友人' },
+        value: '友人',
+      },
     ],
   },
-  alive: {
+  [ALIVE]: {
     name: 'Alive',
     type: 'boolean',
     component: 'Toggle',
   },
-  age: {
+  [AGE]: {
     name: 'Age',
     type: 'number',
     component: 'Number',
     validation: { minValue: 0, maxValue: 120 },
   },
-  closeness: {
+  [CLOSENESS]: {
     name: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
   },
-  notes: {
+  [NOTES]: {
     name: 'Notes',
     type: 'text',
     component: 'Text',
@@ -182,7 +209,7 @@ describe('the shape mapping switch', () => {
       person({
         default: 'circle',
         dynamic: {
-          variable: 'ethnicity',
+          variable: ETHNICITY,
           type: 'discrete',
           map: [{ value: 'asian', shape: 'square' }],
         },
@@ -210,7 +237,7 @@ describe('the shape mapping switch', () => {
       person({
         default: 'circle',
         dynamic: {
-          variable: 'ethnicity',
+          variable: ETHNICITY,
           type: 'discrete',
           map: [{ value: 'asian', shape: 'square' }],
         },
@@ -239,14 +266,20 @@ describe('the attribute a shape can follow', () => {
     await user.click(toggle());
 
     // The picker lists what it is offered by name; what matters here is that
-    // the text attribute is not among them.
+    // the text attribute is not among them, and is listed with the reason.
     expect(await offeredAttributes(user, attributeField('Attribute'))).toEqual([
-      'age',
-      'alive',
-      'closeness',
-      'contact',
-      'ethnicity',
+      AGE,
+      ALIVE,
+      CLOSENESS,
+      CONTACT,
+      ETHNICITY,
     ]);
+    expect(
+      await unavailableAttributes(user, attributeField('Attribute')),
+    ).toEqual([NOTES]);
+    expect(
+      await unavailableReason(user, attributeField('Attribute'), NOTES),
+    ).toBe('Node shapes cannot be based on Text attributes.');
   });
 
   it('replaces the whole mapping when a different kind of attribute is chosen', async () => {
@@ -267,7 +300,7 @@ describe('the attribute a shape can follow', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
     expect(dynamicOf(onSubmit)).toEqual({
-      variable: 'ethnicity',
+      variable: ETHNICITY,
       type: 'discrete',
       map: [
         { value: 'asian', shape: 'square' },
@@ -295,7 +328,7 @@ describe('a mapping that follows one answer at a time', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
     expect(dynamicOf(onSubmit)).toEqual({
-      variable: 'alive',
+      variable: ALIVE,
       type: 'discrete',
       map: [
         { value: true, shape: 'circle' },
@@ -322,7 +355,7 @@ describe('a mapping that follows one answer at a time', () => {
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
     expect(dynamicOf(onSubmit)).toEqual({
-      variable: 'contact',
+      variable: CONTACT,
       type: 'discrete',
       map: [
         { value: 'a.b [1]', shape: 'square' },
@@ -577,7 +610,7 @@ describe('a mapping that changes shape at a threshold', () => {
     await user.click(save());
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
     expect(dynamicOf(onSubmit)).toEqual({
-      variable: 'age',
+      variable: AGE,
       type: 'breakpoints',
       thresholds: [
         { value: 5, shape: 'square' },
@@ -657,7 +690,7 @@ describe('shapeMappingIssue', () => {
     expect(
       shapeMappingIssue(
         {
-          variable: asEntityAttributeReference('age'),
+          variable: asEntityAttributeReference(AGE),
           type: 'breakpoints',
           thresholds: [
             { value: 10, shape: 'square' },
@@ -673,7 +706,7 @@ describe('shapeMappingIssue', () => {
     expect(
       shapeMappingIssue(
         {
-          variable: asEntityAttributeReference('age'),
+          variable: asEntityAttributeReference(AGE),
           type: 'breakpoints',
           thresholds: [
             { value: 10, shape: 'square' },
@@ -712,7 +745,7 @@ describe('shapeMappingIssue', () => {
     expect(
       shapeMappingIssue(
         shapeMappingDraft({
-          variable: 'age',
+          variable: AGE,
           type: 'sometimes',
           thresholds: [{ value: 10, shape: 'square' }],
         }),
@@ -735,7 +768,7 @@ describe('a mapping left pointing at an attribute no shape can follow', () => {
       person({
         default: 'circle',
         dynamic: {
-          variable: 'notes',
+          variable: NOTES,
           type: 'discrete',
           map: [{ value: 'anything', shape: 'square' }],
         },
@@ -747,11 +780,11 @@ describe('a mapping left pointing at an attribute no shape can follow', () => {
       screen.getByRole('switch', { name: 'Map attribute to shape' }),
     ).toBeChecked();
     expect(await offeredAttributes(user, attributeField('Attribute'))).toEqual([
-      'age',
-      'alive',
-      'closeness',
-      'contact',
-      'ethnicity',
+      AGE,
+      ALIVE,
+      CLOSENESS,
+      CONTACT,
+      ETHNICITY,
     ]);
 
     // Through an edit that has nothing to do with the mapping, because an

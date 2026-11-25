@@ -4,6 +4,7 @@ import {
   shapeMappingDraft,
   type ShapeMappingVariable,
 } from '../../../../codebook/shapeMapping.ts';
+import { testVariableId } from '../../../../testing/testId.ts';
 import {
   pedigreeSymbolMapping,
   personSymbolState,
@@ -11,6 +12,10 @@ import {
   sexAssignedAtBirthSymbol,
   shapeWithPedigreeSymbols,
 } from '../personSymbols.ts';
+
+const SEX_ID = testVariableId('sex');
+const GENDER_ID = testVariableId('gender');
+const IS_EGO_ID = testVariableId('is_ego');
 
 const SEX: ShapeMappingVariable = {
   name: 'sex',
@@ -39,7 +44,7 @@ const TERMS = [
 ];
 
 const SEX_MAPPING = {
-  variable: 'sex',
+  variable: SEX_ID,
   type: 'discrete',
   map: [
     { value: 'female', shape: 'circle' },
@@ -49,7 +54,7 @@ const SEX_MAPPING = {
 };
 
 const GENDER_MAPPING = {
-  variable: 'gender',
+  variable: GENDER_ID,
   type: 'discrete',
   map: [
     { value: 'woman', shape: 'circle' },
@@ -61,9 +66,9 @@ const GENDER_MAPPING = {
 const stateOf = (overrides: Partial<PersonSymbolInputs>) =>
   personSymbolState({
     shape: { default: 'circle' },
-    variables: { sex: SEX, gender: GENDER },
-    sexAssignedAtBirthAttribute: 'sex',
-    genderIdentityAttribute: 'gender',
+    variables: { [SEX_ID]: SEX, [GENDER_ID]: GENDER },
+    sexAssignedAtBirthAttribute: SEX_ID,
+    genderIdentityAttribute: GENDER_ID,
     genderTerms: TERMS,
     earlierGenderTerms: [],
     ...overrides,
@@ -71,9 +76,9 @@ const stateOf = (overrides: Partial<PersonSymbolInputs>) =>
 
 describe('the pedigree symbol mapping', () => {
   it('gives female a circle, male a square and every other option a diamond', () => {
-    expect(pedigreeSymbolMapping('sex', SEX, sexAssignedAtBirthSymbol)).toEqual(
-      SEX_MAPPING,
-    );
+    expect(
+      pedigreeSymbolMapping(SEX_ID, SEX, sexAssignedAtBirthSymbol),
+    ).toEqual(SEX_MAPPING);
   });
 
   it('makes the default a diamond and keeps the rest of the shape', () => {
@@ -167,20 +172,20 @@ describe('what the symbols follow', () => {
         shape: {
           default: 'diamond',
           dynamic: {
-            variable: 'is_ego',
+            variable: IS_EGO_ID,
             type: 'discrete',
             map: [{ value: true, shape: 'square' }],
           },
         },
       }),
-    ).toEqual({ kind: 'other', variableId: 'is_ego' });
+    ).toEqual({ kind: 'other', variableId: IS_EGO_ID });
     // Gender identity, once the stage no longer asks about it.
     expect(
       stateOf({
         shape: { default: 'diamond', dynamic: GENDER_MAPPING },
         genderIdentityAttribute: undefined,
       }),
-    ).toEqual({ kind: 'other', variableId: 'gender' });
+    ).toEqual({ kind: 'other', variableId: GENDER_ID });
   });
 
   describe('gender identity symbols that are out of date', () => {
@@ -203,8 +208,8 @@ describe('what the symbols follow', () => {
         stateOf({
           shape: { default: 'diamond', dynamic: GENDER_MAPPING },
           variables: {
-            sex: SEX,
-            gender: {
+            [SEX_ID]: SEX,
+            [GENDER_ID]: {
               ...GENDER,
               options: [
                 ...(GENDER.options ?? []),
@@ -222,8 +227,8 @@ describe('what the symbols follow', () => {
         stateOf({
           shape: { default: 'diamond', dynamic: GENDER_MAPPING },
           variables: {
-            sex: SEX,
-            gender: {
+            [SEX_ID]: SEX,
+            [GENDER_ID]: {
               ...GENDER,
               options: [
                 { value: 'female', label: { en: 'Woman' } },

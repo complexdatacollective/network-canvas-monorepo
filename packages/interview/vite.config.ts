@@ -72,10 +72,18 @@ const interfaceImagesNoInlinePlugin = (): Plugin => ({
   enforce: 'pre',
   transform(code, id) {
     const p = id.replace(/\\/g, '/');
-    if (!p.startsWith(`${interfaceImagesRoot}/`)) return null;
+    // The interaction sounds (`src/sounds/assets/*.mp3`, 4–62 KB each) are
+    // emitted the same way, so the interview fetches them only when sounds
+    // are turned on, and an installed app can precache each file.
+    const extension = p.startsWith(`${interfaceImagesRoot}/`)
+      ? 'webp'
+      : p.startsWith(`${pkgRoot}/src/sounds/`)
+        ? 'mp3'
+        : null;
+    if (!extension) return null;
     if (!code.includes('import.meta.url')) return null;
     const tagged = code.replace(
-      /(new URL\((['"])[^'"]+?\.webp)\2/g,
+      new RegExp(`(new URL\\(\\s*(['"])[^'"]+?\\.${extension})\\2`, 'g'),
       '$1?no-inline$2',
     );
     return tagged === code ? null : { code: tagged, map: null };

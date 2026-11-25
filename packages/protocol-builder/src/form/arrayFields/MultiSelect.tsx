@@ -1,11 +1,5 @@
 import { Trash2 } from 'lucide-react';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  type ComponentType,
-} from 'react';
+import { createContext, useContext, useMemo, type ComponentType } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -23,6 +17,7 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { asLocalizedString } from '../../localization/localizedText.ts';
+import { rowId, rowTemplate } from '../rowDialog.tsx';
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
 import { cellIssues, requiredCell } from './cellRules.ts';
 import { useEditedCells } from './useEditedCells.ts';
@@ -371,11 +366,19 @@ function MultiSelectRow({
 
 const EMPTY_ITEMS: ItemValue[] = [];
 
+/**
+ * Every list this renders holds protocol objects with ids of their own (sort
+ * rules, a roster's card and sortable properties), so a row is keyed by its
+ * id and a new row has one before it reaches the list.
+ */
+const newRow = rowTemplate<ItemValue>();
+
 export type MultiSelectProps = Omit<
   ArrayFieldProps<ItemValue>,
   | 'addButtonLabel'
   | 'confirmDelete'
   | 'editorComponent'
+  | 'getId'
   | 'immediateAdd'
   | 'itemClasses'
   | 'itemComponent'
@@ -434,8 +437,6 @@ export default function MultiSelect({
     [name, options, properties, value],
   );
 
-  const itemTemplate = useCallback(() => ({}), []);
-
   return (
     <MultiSelectContext value={context}>
       <div className="flex w-full flex-col gap-5 [--rule-bg:oklch(var(--slate-blue))] [&_button]:m-0">
@@ -445,7 +446,8 @@ export default function MultiSelect({
           value={value}
           onChange={onChange}
           itemComponent={MultiSelectRow}
-          itemTemplate={itemTemplate}
+          itemTemplate={newRow}
+          getId={rowId}
           itemClasses="p-0! shadow-none"
           addButtonLabel={addButtonLabel}
           emptyStateMessage={

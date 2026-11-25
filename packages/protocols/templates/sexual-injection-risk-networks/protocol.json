@@ -11,7 +11,7 @@
   "codebook": {
     "ego": {
       "variables": {
-        "ego_hiv_status": {
+        "0d99c62b-a3e2-5e14-b9e7-6100c4662f8e": {
           "name": "ego_hiv_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
@@ -20,24 +20,28 @@
           },
           "options": [
             {
+              "id": "60ff3bc2-2559-599c-9100-86335df00f95",
               "label": {
                 "en": "Living with HIV"
               },
               "value": "positive"
             },
             {
+              "id": "0c430833-7e80-55c7-ad6b-0b4d30ee736d",
               "label": {
                 "en": "HIV-negative"
               },
               "value": "negative"
             },
             {
+              "id": "dea777c3-6ea7-5acb-bcee-c649f0faf1d3",
               "label": {
                 "en": "I don't know my status / never tested"
               },
               "value": "unknown"
             },
             {
+              "id": "26e6bdf1-0783-5f1c-8fe3-b1336a438fd1",
               "label": {
                 "en": "Prefer not to answer"
               },
@@ -45,7 +49,7 @@
             }
           ]
         },
-        "on_prep": {
+        "4b7d04c5-9d1d-5797-be11-e17867a9a958": {
           "name": "on_prep",
           "type": "boolean",
           "component": "Boolean",
@@ -64,7 +68,7 @@
             }
           ]
         },
-        "on_art": {
+        "c6970d36-c080-53c0-b77b-425bf37a4623": {
           "name": "on_art",
           "type": "boolean",
           "component": "Boolean",
@@ -83,7 +87,7 @@
             }
           ]
         },
-        "last_hiv_test": {
+        "f007a0cc-edb7-5a38-9ac7-dd6a64b85ee7": {
           "name": "last_hiv_test",
           "type": "datetime",
           "component": "DatePicker",
@@ -91,7 +95,7 @@
             "type": "month"
           }
         },
-        "injects_drugs": {
+        "e09ea66a-d993-5939-a046-e0137b0957ac": {
           "name": "injects_drugs",
           "type": "boolean",
           "component": "Boolean",
@@ -113,7 +117,7 @@
       }
     },
     "node": {
-      "partner": {
+      "6f6d2842-f372-5fdb-969e-45df0c5a8143": {
         "name": "Partner",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
@@ -121,7 +125,7 @@
           "default": "circle"
         },
         "variables": {
-          "partner_label": {
+          "1bff42bf-328d-5308-9397-333337ba13af": {
             "name": "partner_label",
             "type": "text",
             "component": "Text",
@@ -131,7 +135,7 @@
               "unique": true
             }
           },
-          "partner_type": {
+          "b4c0ecf9-f966-5ac8-84b6-e25f763b6cb7": {
             "name": "partner_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -140,24 +144,28 @@
             },
             "options": [
               {
+                "id": "46bf8ac9-5847-5eba-8b91-3168265727e5",
                 "label": {
                   "en": "Main or steady partner"
                 },
                 "value": "main"
               },
               {
+                "id": "ebaa44d9-26e1-5d5b-97bd-ef69b5a9b7d4",
                 "label": {
                   "en": "Casual partner"
                 },
                 "value": "casual"
               },
               {
+                "id": "ebc2ad05-f999-5cbd-ad52-16f232ddee6f",
                 "label": {
                   "en": "Exchange or transactional partner"
                 },
                 "value": "exchange"
               },
               {
+                "id": "3d5906d9-dd83-5b5c-b5a5-0fc793549a8c",
                 "label": {
                   "en": "Other"
                 },
@@ -165,7 +173,7 @@
               }
             ]
           },
-          "partner_age": {
+          "d9e8d4c8-6f33-59d7-8fd1-098a0a280c82": {
             "name": "partner_age",
             "type": "number",
             "component": "Number",
@@ -174,7 +182,7 @@
               "maxValue": 120
             }
           },
-          "partner_gender": {
+          "fc98f709-1cf5-52f2-a7b7-5d0b6f21a0ee": {
             "name": "partner_gender",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -183,36 +191,42 @@
             },
             "options": [
               {
+                "id": "e7c9c2f5-cda1-528b-a010-b227772769a2",
                 "label": {
                   "en": "Woman"
                 },
                 "value": "woman"
               },
               {
+                "id": "c5918017-a89e-5a63-adfd-49609e3f8ae1",
                 "label": {
                   "en": "Man"
                 },
                 "value": "man"
               },
               {
+                "id": "8df6d941-62c8-5753-b9b9-6140119950e1",
                 "label": {
                   "en": "Transgender woman"
                 },
                 "value": "trans_woman"
               },
               {
+                "id": "d967dbcd-879e-5f16-bb8e-65b2e714c29e",
                 "label": {
                   "en": "Transgender man"
                 },
                 "value": "trans_man"
               },
               {
+                "id": "71458dda-9a5c-50a7-a6f4-a8e2355b8263",
                 "label": {
                   "en": "Non-binary or another gender"
                 },
                 "value": "nonbinary"
               },
               {
+                "id": "3a1722a1-4ef5-58a3-b48d-295a8061039b",
                 "label": {
                   "en": "Don't know"
                 },
@@ -220,7 +234,7 @@
               }
             ]
           },
-          "partner_serostatus": {
+          "ef5cf096-ddfa-50de-9b80-7d740456cb8b": {
             "name": "partner_serostatus",
             "type": "categorical",
             "component": "ToggleButtonGroup",
@@ -229,18 +243,21 @@
             },
             "options": [
               {
+                "id": "dff3ab73-ad95-5871-ad0b-8169b4c370e9",
                 "label": {
                   "en": "Living with HIV"
                 },
                 "value": "positive"
               },
               {
+                "id": "23f3d36b-6481-5b05-9ccf-ba13c36027d9",
                 "label": {
                   "en": "HIV-negative"
                 },
                 "value": "negative"
               },
               {
+                "id": "3b746577-cfc8-5e1b-aefc-e91c5550dfe8",
                 "label": {
                   "en": "Unknown"
                 },
@@ -248,36 +265,41 @@
               }
             ]
           },
-          "condom_use": {
+          "2059e762-380a-56cb-9228-dce0e22145cb": {
             "name": "condom_use",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
               {
+                "id": "53c26206-5961-5534-a52c-b875e5586b6e",
                 "label": {
                   "en": "Never"
                 },
                 "value": 1
               },
               {
+                "id": "15069e65-b907-5f44-816e-d395b8691999",
                 "label": {
                   "en": "Sometimes"
                 },
                 "value": 2
               },
               {
+                "id": "e3c3cfde-00ac-5184-938b-d6769ceb78df",
                 "label": {
                   "en": "About half the time"
                 },
                 "value": 3
               },
               {
+                "id": "e20c9b74-d520-5c3b-a2c8-3dd50fd1863c",
                 "label": {
                   "en": "Usually"
                 },
                 "value": 4
               },
               {
+                "id": "4b697c74-728a-500b-93a3-58ee313b2848",
                 "label": {
                   "en": "Always"
                 },
@@ -285,7 +307,7 @@
               }
             ]
           },
-          "shared_injection_equipment": {
+          "d7684a37-d4de-5540-bda6-57652fe92659": {
             "name": "shared_injection_equipment",
             "type": "boolean",
             "component": "Boolean",
@@ -304,7 +326,7 @@
               }
             ]
           },
-          "partnership_start": {
+          "388dfe6a-24b3-5b36-98bc-289e6ac08e92": {
             "name": "partnership_start",
             "type": "datetime",
             "component": "DatePicker",
@@ -312,7 +334,7 @@
               "type": "month"
             }
           },
-          "partnership_end": {
+          "c8be35e2-203c-5bfc-b831-bc4db01c40c4": {
             "name": "partnership_end",
             "type": "datetime",
             "component": "DatePicker",
@@ -320,7 +342,7 @@
               "type": "month"
             }
           },
-          "layout": {
+          "18908d60-bec8-5c71-aa87-60e8e725e06c": {
             "name": "layout",
             "type": "layout"
           }
@@ -328,7 +350,7 @@
       }
     },
     "edge": {
-      "knows": {
+      "36005e0a-931e-5e15-ac5a-4f07c80ab47b": {
         "name": "Knows",
         "color": "edge-color-seq-1",
         "variables": {}
@@ -337,7 +359,7 @@
   },
   "stages": [
     {
-      "id": "information-researcher-notes",
+      "id": "7916338f-881c-5fd6-b5e9-32a5667c883d",
       "type": "Information",
       "label": {
         "en": "Template notes (delete before fielding)"
@@ -347,7 +369,7 @@
       }
     },
     {
-      "id": "information-intro",
+      "id": "c996c1c2-7ab0-57c8-bd06-03f7f98a0f89",
       "type": "Information",
       "label": {
         "en": "Welcome & Confidentiality"
@@ -357,7 +379,7 @@
       }
     },
     {
-      "id": "anonymisation",
+      "id": "c3f8973e-1060-502e-8e0f-7f2aec79e122",
       "type": "Anonymisation",
       "label": {
         "en": "Create your private passphrase"
@@ -371,15 +393,7 @@
       }
     },
     {
-      "id": "ego-form",
-      "dynamicValues": {
-        "egoHivStatus": {
-          "path": "ego.ego_hiv_status",
-          "cases": {
-            "positive": "positive"
-          }
-        }
-      },
+      "id": "3c5c3313-0f08-58f3-892e-81647d0ededa",
       "type": "EgoForm",
       "label": {
         "en": "About you"
@@ -395,15 +409,15 @@
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "ego_hiv_status",
+            "id": "e1e2a161-a14a-5e3d-8358-b81b6925258d",
+            "variable": "0d99c62b-a3e2-5e14-b9e7-6100c4662f8e",
             "prompt": {
               "en": "What is your current HIV status?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "on_prep",
+            "id": "78125377-94fc-590a-a1b5-98251813a801",
+            "variable": "4b7d04c5-9d1d-5797-be11-e17867a9a958",
             "prompt": {
               "en": "Are you currently taking PrEP to prevent HIV?"
             },
@@ -412,18 +426,18 @@
             }
           },
           {
-            "id": "field-3",
-            "variable": "on_art",
+            "id": "3398c3a2-6f26-5e89-8e7d-7271d0a13763",
+            "variable": "c6970d36-c080-53c0-b77b-425bf37a4623",
             "prompt": {
-              "en": "{egoHivStatus, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} positive {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
+              "en": "{ego_0d99c62b_a3e2_5e14_b9e7_6100c4662f8e, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} 60ff3bc2_2559_599c_9100_86335df00f95 {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
             },
             "hint": {
               "en": "Antiretroviral treatment is also known as ART."
             }
           },
           {
-            "id": "field-4",
-            "variable": "last_hiv_test",
+            "id": "39ecac05-f8ba-558e-8bec-1add04c28a15",
+            "variable": "f007a0cc-edb7-5a38-9ac7-dd6a64b85ee7",
             "prompt": {
               "en": "When did you most recently take an HIV test?"
             },
@@ -432,8 +446,8 @@
             }
           },
           {
-            "id": "field-5",
-            "variable": "injects_drugs",
+            "id": "88c7107a-04de-537e-8acf-cdc5ee6ef12c",
+            "variable": "e09ea66a-d993-5939-a046-e0137b0957ac",
             "prompt": {
               "en": "In the past 6 months, have you injected any drugs that were not prescribed to you?"
             }
@@ -442,14 +456,14 @@
       }
     },
     {
-      "id": "ng-sexual-partners",
+      "id": "6aaa0321-18f5-5412-80fe-a313b547d127",
       "type": "NameGenerator",
       "label": {
         "en": "Sexual partners"
       },
       "panels": [
         {
-          "id": "ng-sexual-partners-existing",
+          "id": "4bfc68ad-f868-509e-bb86-bdb5849e8261",
           "title": {
             "en": "Already listed"
           },
@@ -458,7 +472,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "partner"
+        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "form": {
         "title": {
@@ -466,8 +480,8 @@
         },
         "fields": [
           {
-            "id": "field-1",
-            "variable": "partner_label",
+            "id": "2878c819-e8d1-56c1-8e7d-83637aa1e411",
+            "variable": "1bff42bf-328d-5308-9397-333337ba13af",
             "prompt": {
               "en": "Enter initials or a code for this person."
             },
@@ -479,7 +493,7 @@
       },
       "prompts": [
         {
-          "id": "p-sexual",
+          "id": "d1c59bac-5974-5c8d-9825-909444faeeba",
           "text": {
             "en": "Thinking about the **past 6 months**, who are the people you have had any kind of **sexual contact** with? Add each person using initials or a private code — include main or steady partners, casual partners, and one-time partners."
           }
@@ -490,14 +504,14 @@
       }
     },
     {
-      "id": "ng-injection-partners",
+      "id": "72835c2a-717b-5199-a910-0ca2064ae5ac",
       "type": "NameGenerator",
       "label": {
         "en": "Injection partners"
       },
       "panels": [
         {
-          "id": "ng-injection-partners-existing",
+          "id": "d728f581-95a0-5412-9df8-64b63c409c11",
           "title": {
             "en": "Already listed"
           },
@@ -506,7 +520,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "partner"
+        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "form": {
         "title": {
@@ -514,8 +528,8 @@
         },
         "fields": [
           {
-            "id": "field-1",
-            "variable": "partner_label",
+            "id": "d31f2245-f9e1-5c5a-aea9-510971cc67ef",
+            "variable": "1bff42bf-328d-5308-9397-333337ba13af",
             "prompt": {
               "en": "Enter initials or a code for this person."
             },
@@ -527,7 +541,7 @@
       },
       "prompts": [
         {
-          "id": "p-injection",
+          "id": "e44d6d4a-102f-5af0-9fdc-a2207778dd3c",
           "text": {
             "en": "Still thinking about the **past 6 months**, who are the people you have **injected drugs with** — for example, people you injected alongside, or shared any injection equipment (needles, syringes, cookers, cotton, or water) with? Add anyone not already listed; if someone is both a sexual and an injection partner, drag them in from the 'Already listed' panel so they remain a single person in the data."
           }
@@ -538,7 +552,7 @@
       }
     },
     {
-      "id": "alter-form-partnership-introduction",
+      "id": "8b75b3eb-572a-5450-8073-ca3affd79e51",
       "type": "Information",
       "label": {
         "en": "Tell us about each partnership"
@@ -548,102 +562,94 @@
       }
     },
     {
-      "id": "alter-form-partnership",
-      "dynamicValues": {
-        "nodeLabel": {
-          "path": "node.$label"
-        },
-        "partnershipStart": {
-          "path": "node.partnership_start"
-        }
-      },
+      "id": "756e69ac-09e3-54e7-b836-9c5e02c4b3c4",
       "type": "AlterForm",
       "label": {
         "en": "About each partnership"
       },
       "subject": {
         "entity": "node",
-        "type": "partner"
+        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "form": {
         "fields": [
           {
-            "id": "field-1",
-            "variable": "partner_type",
+            "id": "61776abd-cf8c-538f-9402-4753f71cd5ce",
+            "variable": "b4c0ecf9-f966-5ac8-84b6-e25f763b6cb7",
             "prompt": {
-              "en": "How would you describe your relationship with {nodeLabel}?"
+              "en": "How would you describe your relationship with {node_label}?"
             }
           },
           {
-            "id": "field-2",
-            "variable": "partner_age",
+            "id": "60e226df-90b9-55ab-8dc2-0be26ee503b6",
+            "variable": "d9e8d4c8-6f33-59d7-8fd1-098a0a280c82",
             "prompt": {
-              "en": "About how old is {nodeLabel}, in years?"
+              "en": "About how old is {node_label}, in years?"
             }
           },
           {
-            "id": "field-3",
-            "variable": "partner_gender",
+            "id": "9af3d1fd-a7a8-5e46-9c31-c0e11d11e701",
+            "variable": "fc98f709-1cf5-52f2-a7b7-5d0b6f21a0ee",
             "prompt": {
-              "en": "What is {nodeLabel}'s gender?"
+              "en": "What is {node_label}'s gender?"
             }
           },
           {
-            "id": "field-4",
-            "variable": "partner_serostatus",
+            "id": "c676dac1-fa39-5435-9643-401b0ff4a58f",
+            "variable": "ef5cf096-ddfa-50de-9b80-7d740456cb8b",
             "prompt": {
-              "en": "As far as you know, what is {nodeLabel}'s HIV status?"
+              "en": "As far as you know, what is {node_label}'s HIV status?"
             }
           },
           {
-            "id": "field-5",
-            "variable": "condom_use",
+            "id": "f0c72086-6e18-55f8-88d8-1e65039803ec",
+            "variable": "2059e762-380a-56cb-9228-dce0e22145cb",
             "prompt": {
-              "en": "When you had sex with {nodeLabel}, how often did you use a condom?"
+              "en": "When you had sex with {node_label}, how often did you use a condom?"
             }
           },
           {
-            "id": "field-6",
-            "variable": "shared_injection_equipment",
+            "id": "5ea71954-3eff-589f-8545-02f6050f24c2",
+            "variable": "d7684a37-d4de-5540-bda6-57652fe92659",
             "prompt": {
-              "en": "Did you ever share injection equipment with {nodeLabel}?"
+              "en": "Did you ever share injection equipment with {node_label}?"
             },
             "hint": {
               "en": "Injection equipment includes needles, syringes, cookers, cotton, or water."
             }
           },
           {
-            "id": "field-7",
-            "variable": "partnership_start",
+            "id": "96a703b7-0ad6-5945-a3d0-4d3cdd4fc5df",
+            "variable": "388dfe6a-24b3-5b36-98bc-289e6ac08e92",
             "prompt": {
-              "en": "When did your sexual or injection relationship with {nodeLabel} begin?"
+              "en": "When did your sexual or injection relationship with {node_label} begin?"
             },
             "hint": {
               "en": "An approximate month and year is fine."
             }
           },
           {
-            "id": "field-8",
-            "variable": "partnership_end",
+            "id": "cab81d9d-0807-5c02-9920-83a4a51e1b05",
+            "variable": "c8be35e2-203c-5bfc-b831-bc4db01c40c4",
             "prompt": {
               "en": "When did it end?"
             },
             "hint": {
-              "en": "{partnershipStart, select, missing {} other {It began in {partnershipStart}. }}If it is still going on, you can leave this blank or choose this month."
+              "en": "{node_388dfe6a_24b3_5b36_98bc_289e6ac08e92, select, missing {} other {It began in {node_388dfe6a_24b3_5b36_98bc_289e6ac08e92}. }}If it is still going on, you can leave this blank or choose this month."
             }
           }
         ]
       }
     },
     {
-      "id": "sociogram-overlap",
+      "id": "20b81c52-f186-5046-a1a8-6926ef5afa06",
       "type": "Sociogram",
       "label": {
         "en": "Connections between partners"
       },
       "subject": {
         "entity": "node",
-        "type": "partner"
+        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
       },
       "background": {
         "concentricCircles": 4
@@ -653,16 +659,16 @@
       },
       "prompts": [
         {
-          "id": "p-overlap",
+          "id": "5174bbe3-136f-5969-93f6-f4e3a7499ad2",
           "text": {
             "en": "The people you mentioned are arranged for you automatically below. Please draw a line between any two who **know each other**, as far as you are aware. This helps us understand how the partners in your network are connected."
           },
           "layout": {
-            "layoutVariable": "layout"
+            "layoutVariable": "18908d60-bec8-5c71-aa87-60e8e725e06c"
           },
           "edges": {
-            "create": "knows",
-            "display": ["knows"]
+            "create": "36005e0a-931e-5e15-ac5a-4f07c80ab47b",
+            "display": ["36005e0a-931e-5e15-ac5a-4f07c80ab47b"]
           },
           "highlight": {
             "allowHighlighting": false
@@ -671,7 +677,7 @@
       ]
     },
     {
-      "id": "finish",
+      "id": "e8e11c03-2072-57d5-911b-8fd997e7cf7a",
       "finishLabel": {
         "en": "Finish"
       },

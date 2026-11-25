@@ -23,6 +23,7 @@ import {
 } from '../../styles/controlVariants';
 import { cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
+import { useFormFeedback } from '../FormFeedbackListener';
 import { getInputState } from '../utils/getInputState';
 
 const radioGroupWrapperOwnVariants = cva({
@@ -225,12 +226,17 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
   // base-ui compares and emits option values in their `String()` form, so map
   // the selection back to the original typed `option.value` to preserve number
   // (or string) type, matching LikertScale/CheckboxGroup/ToggleButtonGroup.
+  const { onOptionToggle } = useFormFeedback();
+
+  // Base UI calls this only for the person's own choice, never for a value
+  // the program sets.
   const handleValueChange = (newValue: unknown) => {
     if (readOnly) return;
     const selectedOption = options.find(
       (option) => String(option.value) === String(newValue),
     );
     onChange?.(selectedOption ? selectedOption.value : undefined);
+    if (selectedOption) onOptionToggle(true);
   };
 
   // Determine if controlled or uncontrolled mode

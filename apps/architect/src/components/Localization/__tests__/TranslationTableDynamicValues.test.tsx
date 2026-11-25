@@ -5,20 +5,25 @@ import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  testId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+import {
+  type CurrentProtocol,
+  dynamicValueNameFor,
+  optionCaseKey,
+} from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
 
 import TranslationTable from '../TranslationTable';
-import { dynamicValuesProtocol } from './dynamicValuesProtocol';
+import { dynamicValuesProtocol, FIRST_NAME } from './dynamicValuesProtocol';
 
-const WELCOME = 'Welcome back{name, select, missing {} other {, {name}}}';
+const WELCOME = `Welcome back{${FIRST_NAME}, select, missing {} other {, {${FIRST_NAME}}}}`;
 
-const BINDINGS = { name: { path: 'ego.firstName' } };
-const GHOST_TITLE = { en: '{ghost} welcome', fr: '{ghost} bienvenue' };
-
-const protocol = dynamicValuesProtocol({ en: WELCOME }, BINDINGS);
+const protocol = dynamicValuesProtocol({ en: WELCOME });
 
 const renderTable = (initial: CurrentProtocol = protocol) => {
   const store = configureStore({
@@ -59,8 +64,9 @@ describe('TranslationTable: text that shows values', () => {
     renderTable();
 
     const cell = titleCell('English').closest('td');
-    expect(cell?.querySelector('[data-token="name"]')).not.toBeNull();
-    expect(cell).not.toHaveTextContent('{name');
+    expect(cell?.querySelector(`[data-token="${FIRST_NAME}"]`)).not.toBeNull();
+    expect(cell).toHaveTextContent('first_name');
+    expect(cell).not.toHaveTextContent(FIRST_NAME);
   });
 
   it('keeps the values a translation shows when the table is saved', async () => {
@@ -97,6 +103,8 @@ describe('TranslationTable: text that shows values', () => {
     );
   });
 
+  // The stage shows no value anywhere yet: its text still offers them, as
+  // its editor on the stage does.
   it('saves a default-language edit that adds a value an untouched translation does not show', async () => {
     const [stage] = protocol.stages;
     const { store, user } = renderTable({
@@ -115,12 +123,12 @@ describe('TranslationTable: text that shows values', () => {
       }),
     );
     const [option] = await screen.findAllByRole('option', {
-      name: /first_name/,
+      name: /Today’s date/,
     });
     if (option === undefined) throw new Error('No value offered');
     await user.click(option);
     await waitFor(() =>
-      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+      expect(editor.querySelector('[data-token="now"]')).not.toBeNull(),
     );
     await leaveCell(user);
 
@@ -131,11 +139,18 @@ describe('TranslationTable: text that shows values', () => {
     await waitFor(() =>
       expect(title(store)).toMatchObject({ fr: 'Bon retour' }),
     );
-    expect(JSON.stringify(title(store))).toContain('{name');
+    expect(JSON.stringify(title(store))).toContain('{now');
   });
 
-  it('lets a translation insert a value whose binding records only some of its answers', async () => {
+  it('lets a translation insert any value its place can show', async () => {
     const [stage] = protocol.stages;
+    const mood = testVariableId('mood');
+    const happy = testId('option/happy');
+    const moodName = dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: mood,
+    });
     const { user } = renderTable({
       ...protocol,
       codebook: {
@@ -143,12 +158,16 @@ describe('TranslationTable: text that shows values', () => {
         ego: {
           variables: {
             ...protocol.codebook.ego?.variables,
-            mood: {
+            [mood]: {
               name: 'mood',
               type: 'categorical',
               options: [
-                { value: 'happy', label: 'Happy' },
-                { value: 'sad', label: 'Sad' },
+                { id: happy, value: 'happy', label: { en: 'Happy' } },
+                {
+                  id: testId('option/sad'),
+                  value: 'sad',
+                  label: { en: 'Sad' },
+                },
               ],
             },
           },
@@ -157,9 +176,8 @@ describe('TranslationTable: text that shows values', () => {
       stages: [
         {
           ...stage,
-          content: { en: '{mood, select, happy {Glad} other {Hello}}' },
-          dynamicValues: {
-            mood: { path: 'ego.mood', cases: { happy: 'happy' } },
+          content: {
+            en: `{${moodName}, select, ${optionCaseKey(happy)} {Glad} other {Hello}}`,
           },
         },
       ],
@@ -179,36 +197,57 @@ describe('TranslationTable: text that shows values', () => {
       (option) => option.textContent ?? '',
     );
     expect(offered.some((label) => label.includes('mood'))).toBe(true);
+    expect(offered.some((label) => label.includes('first_name'))).toBe(true);
   });
 });
 
+/**
+ * The pill of a value its place cannot offer says what the value was, and
+ * shows the name that the text uses for it only when that name refers to no
+ * kind of value at all.
+ */
 describe.each([
-  ['a stage that binds no value', undefined],
-  ['a stage that binds another value', BINDINGS],
-])('TranslationTable: a value %s does not bind', (_, bindings) => {
-  it('keeps the unbound name visible as a pill when reading', () => {
-    renderTable(dynamicValuesProtocol(GHOST_TITLE, bindings));
+  ['a name that refers to no kind of value', 'ghost', 'ghost'],
+  [
+    'an attribute the codebook does not have',
+    dynamicValueNameFor({
+      kind: 'attribute',
+      role: 'ego',
+      variableId: testVariableId('deleted'),
+    }),
+    'Deleted attribute',
+  ],
+])('TranslationTable: text naming %s', (_, ghost, shown) => {
+  const ghostTitle = {
+    en: `{${ghost}} welcome`,
+    fr: `{${ghost}} bienvenue`,
+  };
+
+  it('keeps the value as a pill when reading', () => {
+    renderTable(dynamicValuesProtocol(ghostTitle));
 
     const cell = titleCell('English').closest('td');
-    expect(cell?.querySelector('[data-token="ghost"]')).not.toBeNull();
-    expect(cell).toHaveTextContent('ghost');
+    expect(cell?.querySelector(`[data-token="${ghost}"]`)).toHaveTextContent(
+      shown,
+    );
+    expect(cell).toHaveTextContent(`${shown} welcome`);
   });
 
-  it('keeps the unbound name visible as a pill when editing', async () => {
-    const { user } = renderTable(dynamicValuesProtocol(GHOST_TITLE, bindings));
+  it('keeps the value as a pill when editing', async () => {
+    const { user } = renderTable(dynamicValuesProtocol(ghostTitle));
 
     await user.click(titleCell('English'));
     const editor = await screen.findByRole('textbox', {
       name: cellName('English'),
     });
     await waitFor(() =>
-      expect(editor.querySelector('[data-token="ghost"]')).not.toBeNull(),
+      expect(editor.querySelector(`[data-token="${ghost}"]`)).not.toBeNull(),
     );
-    expect(editor).toHaveTextContent('ghost');
+    expect(editor).toHaveTextContent(`${shown} welcome`);
   });
 
   it('refuses the text at its cell once the cell is left', async () => {
-    const { user } = renderTable(dynamicValuesProtocol(GHOST_TITLE, bindings));
+    const { user } = renderTable(dynamicValuesProtocol(ghostTitle));
 
     await user.click(titleCell('English'));
     const editor = await screen.findByRole('textbox', {
@@ -221,6 +260,5 @@ describe.each([
     await waitFor(() =>
       expect(titleCell('English')).toHaveAttribute('aria-invalid', 'true'),
     );
-    expect(screen.getAllByText(/ghost/).length).toBeGreaterThan(0);
   });
 });

@@ -27,12 +27,14 @@ import {
   type UnavailableStage,
 } from '../selectors/skip-logic';
 import { calculateProgress, getInterviewProgress } from '../selectors/utils';
+import { useInteractionSound } from '../sounds/InteractionSounds';
 import { getStages } from '../store/modules/protocol';
 import { transitionStage, updatePrompt } from '../store/modules/session';
 import type { RootState } from '../store/store';
 import { useWritesSettled } from '../store/WritesInFlightContext';
 import type {
   BeforeNextFunction,
+  BeforeNextResult,
   Direction,
   NavigationIntent,
   RegisterBeforeNext,
@@ -69,14 +71,17 @@ const whileNavigating = async (
 
 /**
  * Before navigation is allowed, we iterate all registered beforeNext handlers
- * in insertion order. If any returns false, navigation is blocked. If any
- * returns 'FORCE' (and none returned false), the prompt boundary is skipped.
+ * in insertion order. If any returns false, navigation is blocked; if any
+ * returns 'MOVED_WITHIN_STAGE', the stage has moved itself and the interview
+ * stays on this prompt. Either way the handlers after it are not asked. If
+ * any returns 'FORCE' (and every one allowed the move), the prompt boundary
+ * is skipped.
  */
 const canNavigate = async (
   handlers: ReadonlyMap<string, BeforeNextFunction>,
   direction: Direction,
   intent: NavigationIntent,
-) => {
+): Promise<BeforeNextResult> => {
   if (handlers.size === 0) {
     return true;
   }
@@ -86,12 +91,15 @@ const canNavigate = async (
     const result = await fn(direction, intent);
 
     invariant(
-      result === true || result === false || result === 'FORCE',
-      `beforeNextFunction must return a boolean or the string 'FORCE'`,
+      result === true ||
+        result === false ||
+        result === 'FORCE' ||
+        result === 'MOVED_WITHIN_STAGE',
+      `beforeNextFunction must return a boolean, 'FORCE' or 'MOVED_WITHIN_STAGE'`,
     );
 
-    if (result === false) {
-      return false;
+    if (result === false || result === 'MOVED_WITHIN_STAGE') {
+      return result;
     }
     if (result === 'FORCE') {
       hasForce = true;
@@ -112,6 +120,7 @@ export default function useInterviewNavigation(
   const dispatch = useDispatch();
   const interviewStore = useStore<RootState>();
   const writesSettled = useWritesSettled();
+  const { play: playSound } = useInteractionSound();
 
   // `currentStep` is the latest navigation target (updated synchronously when
   // the user presses next). `displayedStep` lags during a stage exit
@@ -125,9 +134,26 @@ export default function useInterviewNavigation(
     commitDisplayedStep,
   } = useCurrentStep();
   const currentStepRef = useRef(currentStep);
+  const displayedStepRef = useRef(displayedStep);
   useLayoutEffect(() => {
     currentStepRef.current = currentStep;
+    displayedStepRef.current = displayedStep;
   });
+
+  // Only the stage on screen can move the interview, and only while no other
+  // navigation has left it. A stage that has been left stays mounted while its
+  // exit animation runs, and something of its own, such as an answer that
+  // moves on by itself after a short pause, can still ask to navigate from
+  // there; and Next can be pressed while such a request is under way. If
+  // either were allowed, it would move on from the stage that was just
+  // reached, and the participant would never see that stage. So a navigation
+  // checks this when it starts and again just before it acts, after every
+  // wait.
+  const isStillOnScreen = useCallback(
+    (step: number) =>
+      currentStepRef.current === step && displayedStepRef.current === step,
+    [],
+  );
 
   const [forceNavigationDisabled, setForceNavigationDisabled] = useState(false);
   const [beforeNextHandlerCount, setBeforeNextHandlerCount] = useState(0);
@@ -246,134 +272,184 @@ export default function useInterviewNavigation(
     [],
   ) as RegisterBeforeNext;
 
-  const moveForward = useCallback(async () => {
-    if (blocksForward) return;
-    setHasAttemptedStageNavigation(true);
+  // A move the participant asked for with the Back or Next button (or the
+  // key that presses it) is heard as the press of a button, once the
+  // interview has actually moved: to another prompt or stage, or within the
+  // stage (to the next pair, person or slide). A move that is refused (an
+  // answer missing, a write refused) or has nowhere to go is not heard, and
+  // neither is one a stage makes by itself (an answer that moves on after a
+  // pause).
+  const moveForwardFrom = useCallback(
+    async (participantPressed: boolean) => {
+      const fromStep = displayedStepRef.current;
+      if (blocksForward || !isStillOnScreen(fromStep)) return;
+      setHasAttemptedStageNavigation(true);
+      const moved = () => {
+        if (participantPressed) playSound('tap-button');
+      };
 
-    await whileNavigating(setForceNavigationDisabled, async () => {
-      if (!(await allStored(writesSettled()))) {
+      await whileNavigating(setForceNavigationDisabled, async () => {
+        if (!(await allStored(writesSettled()))) {
+          setReviewBoundaryReached(false);
+          return;
+        }
+        const stageAllowsNavigation = await canNavigate(
+          beforeNextHandlers.current,
+          'forwards',
+          'step',
+        );
+
+        if (stageAllowsNavigation === 'MOVED_WITHIN_STAGE') {
+          setReviewBoundaryReached(false);
+          moved();
+          return;
+        }
+        if (!stageAllowsNavigation) {
+          setReviewBoundaryReached(false);
+          return;
+        }
+        if (!(await allStored(writesSettled()))) {
+          setReviewBoundaryReached(false);
+          return;
+        }
+        if (!isStillOnScreen(fromStep)) return;
+
+        // Advance the prompt if we're not at the last one.
+        if (stageAllowsNavigation !== 'FORCE' && !isLastPrompt) {
+          dispatch(updatePrompt(promptIndex + 1));
+          moved();
+          return;
+        }
+
+        // From this point on we are definitely navigating stages
+        // Read after beforeNext handlers finish: form submission can update the
+        // network, which can immediately change the active route.
+        const navigation = getNavigableStages(
+          interviewStore.getState(),
+          currentStepRef.current,
+        );
+        const nextStep = navigation.nextValidStageIndex;
+        if (reviewMode && nextStep >= reviewEnd) {
+          setReviewBoundaryReached(true);
+          return;
+        }
         setReviewBoundaryReached(false);
-        return;
-      }
-      const stageAllowsNavigation = await canNavigate(
-        beforeNextHandlers.current,
-        'forwards',
-        'step',
-      );
+        const meta = getInterviewProgress(protocolStages, nextStep);
+        setProgress(meta.progress);
+        registerBeforeNext(null);
+        setForcedStep(null);
 
-      if (!stageAllowsNavigation) {
+        setStep(nextStep, meta);
+        moved();
+      });
+    },
+    [
+      blocksForward,
+      dispatch,
+      isLastPrompt,
+      isStillOnScreen,
+      playSound,
+      promptIndex,
+      registerBeforeNext,
+      protocolStages,
+      reviewEnd,
+      reviewMode,
+      setStep,
+      interviewStore,
+      writesSettled,
+    ],
+  );
+
+  const moveBackwardFrom = useCallback(
+    async (participantPressed: boolean) => {
+      const fromStep = displayedStepRef.current;
+      if (blocksBackward || !isStillOnScreen(fromStep)) return;
+      setHasAttemptedStageNavigation(true);
+      const moved = () => {
+        if (participantPressed) playSound('tap-button');
+      };
+
+      await whileNavigating(setForceNavigationDisabled, async () => {
+        if (!(await allStored(writesSettled()))) {
+          setReviewBoundaryReached(false);
+          return;
+        }
+        const stageAllowsNavigation = await canNavigate(
+          beforeNextHandlers.current,
+          'backwards',
+          'step',
+        );
+
+        if (stageAllowsNavigation === 'MOVED_WITHIN_STAGE') {
+          setReviewBoundaryReached(false);
+          moved();
+          return;
+        }
+        if (!stageAllowsNavigation) {
+          setReviewBoundaryReached(false);
+          return;
+        }
+
         setReviewBoundaryReached(false);
-        return;
-      }
-      if (!(await allStored(writesSettled()))) {
-        setReviewBoundaryReached(false);
-        return;
-      }
+        if (!(await allStored(writesSettled()))) return;
+        if (!isStillOnScreen(fromStep)) return;
+        if (stageAllowsNavigation !== 'FORCE' && !isFirstPrompt) {
+          dispatch(updatePrompt(promptIndex - 1));
+          moved();
+          return;
+        }
 
-      // Advance the prompt if we're not at the last one.
-      if (stageAllowsNavigation !== 'FORCE' && !isLastPrompt) {
-        dispatch(updatePrompt(promptIndex + 1));
-        return;
-      }
+        const navigation = getNavigableStages(
+          interviewStore.getState(),
+          currentStepRef.current,
+        );
+        const previousStep = navigation.previousValidStageIndex;
+        // No earlier stage on the active route: there is nowhere to go, so bail
+        // out before clearing handlers — a same-step setStep never remounts the
+        // stage, and clearing would permanently detach its beforeNext handlers.
+        if (previousStep === currentStepRef.current) {
+          return;
+        }
+        const meta = getInterviewProgress(protocolStages, previousStep);
+        setProgress(meta.progress);
+        registerBeforeNext(null);
+        setForcedStep(null);
+        setStep(previousStep, meta);
+        moved();
+      });
+    },
+    [
+      blocksBackward,
+      setStep,
+      dispatch,
+      isFirstPrompt,
+      isStillOnScreen,
+      playSound,
+      promptIndex,
+      registerBeforeNext,
+      protocolStages,
+      interviewStore,
+      writesSettled,
+    ],
+  );
 
-      // From this point on we are definitely navigating stages
-      // Read after beforeNext handlers finish: form submission can update the
-      // network, which can immediately change the active route.
-      const navigation = getNavigableStages(
-        interviewStore.getState(),
-        currentStepRef.current,
-      );
-      const nextStep = navigation.nextValidStageIndex;
-      if (reviewMode && nextStep >= reviewEnd) {
-        setReviewBoundaryReached(true);
-        return;
-      }
-      setReviewBoundaryReached(false);
-      const meta = getInterviewProgress(protocolStages, nextStep);
-      setProgress(meta.progress);
-      registerBeforeNext(null);
-      setForcedStep(null);
-
-      setStep(nextStep, meta);
-    });
-  }, [
-    blocksForward,
-    dispatch,
-    isLastPrompt,
-    promptIndex,
-    registerBeforeNext,
-    protocolStages,
-    reviewEnd,
-    reviewMode,
-    setStep,
-    interviewStore,
-    writesSettled,
-  ]);
-
-  const moveBackward = useCallback(async () => {
-    if (blocksBackward) return;
-    setHasAttemptedStageNavigation(true);
-
-    await whileNavigating(setForceNavigationDisabled, async () => {
-      if (!(await allStored(writesSettled()))) {
-        setReviewBoundaryReached(false);
-        return;
-      }
-      const stageAllowsNavigation = await canNavigate(
-        beforeNextHandlers.current,
-        'backwards',
-        'step',
-      );
-
-      if (!stageAllowsNavigation) {
-        setReviewBoundaryReached(false);
-        return;
-      }
-
-      setReviewBoundaryReached(false);
-      if (!(await allStored(writesSettled()))) return;
-      if (stageAllowsNavigation !== 'FORCE' && !isFirstPrompt) {
-        dispatch(updatePrompt(promptIndex - 1));
-        return;
-      }
-
-      const navigation = getNavigableStages(
-        interviewStore.getState(),
-        currentStepRef.current,
-      );
-      const previousStep = navigation.previousValidStageIndex;
-      // No earlier stage on the active route: there is nowhere to go, so bail
-      // out before clearing handlers — a same-step setStep never remounts the
-      // stage, and clearing would permanently detach its beforeNext handlers.
-      if (previousStep === currentStepRef.current) {
-        return;
-      }
-      const meta = getInterviewProgress(protocolStages, previousStep);
-      setProgress(meta.progress);
-      registerBeforeNext(null);
-      setForcedStep(null);
-      setStep(previousStep, meta);
-    });
-  }, [
-    blocksBackward,
-    setStep,
-    dispatch,
-    isFirstPrompt,
-    promptIndex,
-    registerBeforeNext,
-    protocolStages,
-    interviewStore,
-    writesSettled,
-  ]);
+  // The Back and Next buttons. Their moves are heard.
+  const moveForward = useCallback(
+    () => moveForwardFrom(true),
+    [moveForwardFrom],
+  );
+  const moveBackward = useCallback(
+    () => moveBackwardFrom(true),
+    [moveBackwardFrom],
+  );
 
   const goToStage = useCallback(
     async (
       targetIndex: number,
       confirmUnavailable?: (availability: UnavailableStage) => Promise<boolean>,
     ): Promise<void> => {
-      if (targetIndex === currentStep || currentStep !== displayedStep) {
-        return;
-      }
+      const fromStep = displayedStepRef.current;
+      if (targetIndex === fromStep || !isStillOnScreen(fromStep)) return;
       // A review never reaches a finish stage: finishing is not something a
       // review can do.
       if (reviewMode && targetIndex >= reviewEnd) return;
@@ -417,30 +493,36 @@ export default function useInterviewNavigation(
         const targetAvailability = getStageAvailabilityMap(
           interviewStore.getState(),
         )[targetIndex];
-        if (targetAvailability && targetAvailability.kind !== 'available') {
+        const targetIsUnavailable =
+          targetAvailability !== undefined &&
+          targetAvailability.kind !== 'available';
+        if (targetIsUnavailable) {
           const confirmed =
             confirmedUnavailable ||
             ((await confirmUnavailable?.(targetAvailability)) ?? false);
           if (!confirmed) {
             return;
           }
-          setForcedStep(targetIndex);
-        } else {
-          setForcedStep(null);
         }
+        if (!isStillOnScreen(fromStep)) return;
+        setForcedStep(targetIsUnavailable ? targetIndex : null);
 
         const meta = getInterviewProgress(protocolStages, targetIndex);
         setReviewBoundaryReached(false);
         setProgress(meta.progress);
         registerBeforeNext(null);
         setStep(targetIndex, meta);
+        // Only the participant jumps, from the list of screens: heard as the
+        // Back and Next buttons are.
+        playSound('tap-button');
       });
     },
     [
       blocksBackward,
       blocksForward,
       currentStep,
-      displayedStep,
+      isStillOnScreen,
+      playSound,
       protocolStages,
       registerBeforeNext,
       reviewEnd,
@@ -451,12 +533,15 @@ export default function useInterviewNavigation(
     ],
   );
 
+  // A stage's own moves (an answer that moves on after a pause, a form
+  // submitted with Enter) are not presses of the Back or Next button, and are
+  // not heard as one.
   const getNavigationHelpers = useCallback(
     () => ({
-      moveForward,
-      moveBackward,
+      moveForward: () => moveForwardFrom(false),
+      moveBackward: () => moveBackwardFrom(false),
     }),
-    [moveForward, moveBackward],
+    [moveForwardFrom, moveBackwardFrom],
   );
 
   // AnimatePresence's onExitComplete callback. Runs synchronously after the
@@ -467,6 +552,11 @@ export default function useInterviewNavigation(
   // stale promptIndex from the previous stage and may crash trying to
   // access a prompt that doesn't exist on the new stage type.
   const handleExitComplete = useCallback(() => {
+    // The stage that was reached is on screen from here. Say so now rather
+    // than in the layout effect above: the stage mounts in the same commit,
+    // and its own layout effects run before this hook's, so a stage that
+    // navigates as it mounts would otherwise be taken for the one that left.
+    displayedStepRef.current = currentStepRef.current;
     commitDisplayedStep();
     dispatch(transitionStage());
     beforeNextHandlers.current.clear();

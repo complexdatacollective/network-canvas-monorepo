@@ -8,9 +8,12 @@ import {
 } from '@codaco/shared-consts';
 
 import {
+  AGE_VARIABLE,
   createEncryptionStore,
   encryptedVariables,
   makeEncryptedPerson,
+  NAME_VARIABLE,
+  NICKNAME_VARIABLE,
   NODE_TYPE,
   unlockWith,
 } from '../../../interfaces/Anonymisation/__tests__/encryptionFixtures';
@@ -23,7 +26,10 @@ import {
 import { decryptValue } from '../../../interfaces/Anonymisation/encryptionFormat';
 import { addNode, updateNode } from '../session';
 
-const mixedPatch = { set: { name: 'Bob', age: 41 }, unset: [] };
+const mixedPatch = {
+  set: { [NAME_VARIABLE]: 'Bob', [AGE_VARIABLE]: 41 },
+  unset: [],
+};
 
 async function lockedStore(nodes: NcNode[] = []) {
   return createEncryptionStore(nodes);
@@ -39,7 +45,7 @@ async function unlockedStore(nodes: NcNode[] = []) {
 
 function storedName(node: NcNode | undefined) {
   const stored = node
-    ? readEncryptedAttribute(node, 'name', encryptedVariables)
+    ? readEncryptedAttribute(node, NAME_VARIABLE, encryptedVariables)
     : undefined;
   if (stored?.status !== 'encrypted') {
     throw new Error('expected an encrypted name');
@@ -70,7 +76,7 @@ describe('encrypted writes', () => {
     const result = await store.dispatch(
       addNode({
         type: NODE_TYPE,
-        attributeData: { name: 'Bob' },
+        attributeData: { [NAME_VARIABLE]: 'Bob' },
         useEncryption: true,
         currentStep: 0,
       }),
@@ -90,8 +96,8 @@ describe('encrypted writes', () => {
     expect(updateNode.fulfilled.match(result)).toBe(true);
 
     const [updated] = store.getState().session.network.nodes;
-    expect(updated?.[entityAttributesProperty].age).toBe(41);
-    const secure = updated?.[entitySecureAttributesMeta]?.name;
+    expect(updated?.[entityAttributesProperty][AGE_VARIABLE]).toBe(41);
+    const secure = updated?.[entitySecureAttributesMeta]?.[NAME_VARIABLE];
     expect(secure && Object.keys(secure)).toEqual(['iv']);
     expect(secure?.iv).toHaveLength(12);
 
@@ -106,7 +112,7 @@ describe('encrypted writes', () => {
     await store.dispatch(
       addNode({
         type: NODE_TYPE,
-        attributeData: { name: 'Given id' },
+        attributeData: { [NAME_VARIABLE]: 'Given id' },
         modelData: { [entityPrimaryKeyProperty]: 'chosen-id' },
         useEncryption: true,
         currentStep: 0,
@@ -115,7 +121,7 @@ describe('encrypted writes', () => {
     await store.dispatch(
       addNode({
         type: NODE_TYPE,
-        attributeData: { name: 'Generated id' },
+        attributeData: { [NAME_VARIABLE]: 'Generated id' },
         useEncryption: true,
         currentStep: 0,
       }),
@@ -165,7 +171,7 @@ describe('plaintext of encrypted writes', () => {
     const written = storedName(updated);
 
     const copiedToNode = { ...written, nodeId: 'n2' };
-    const copiedToVariable = { ...written, variableId: 'nickname' };
+    const copiedToVariable = { ...written, variableId: NICKNAME_VARIABLE };
     expect(readCachedOutcome(scope, copiedToNode)).toBeUndefined();
     expect(readCachedOutcome(scope, copiedToVariable)).toBeUndefined();
     await expect(decryptInScope(scope, copiedToNode)).resolves.toEqual({

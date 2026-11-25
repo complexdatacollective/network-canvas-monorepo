@@ -2,7 +2,7 @@
   "name": "@codaco/protocol-builder-core",
   "version": "0.1.0",
   "private": true,
-  "description": "Host-neutral half of the protocol builder: the Effect rpc group, schemas and typed errors every authoring host implements and every editing client speaks.",
+  "description": "Host-neutral half of the protocol builder: the Effect rpc group, schemas and typed errors every authoring host implements and every editing client speaks, and the protocol a host starts a researcher with.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
   "repository": {
     "type": "git",
@@ -14,7 +14,8 @@
     "./contract": "./src/contract/group.ts",
     "./contract/errors": "./src/contract/errors.ts",
     "./contract/schemas": "./src/contract/schemas.ts",
-    "./contract/session": "./src/contract/session.ts"
+    "./contract/session": "./src/contract/session.ts",
+    "./empty-protocol": "./src/emptyProtocol.ts"
   },
   "scripts": {
     "test": "vitest run",

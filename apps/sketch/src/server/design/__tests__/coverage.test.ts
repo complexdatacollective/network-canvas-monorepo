@@ -5,6 +5,7 @@ import { coverageDesign } from '../__fixtures__/cases.ts';
 import { buildProtocol, preflight } from '../build.ts';
 import { GEOJSON_ASSET_ID, MAPBOX_ASSET_ID } from '../compile.ts';
 import { buildWordingRequest } from '../feedback.ts';
+import { sketchStageId } from '../objectIds.ts';
 import { worldCountriesGeojson } from '../world-countries.ts';
 import {
   NOW,
@@ -55,7 +56,7 @@ describe('the coverage design', () => {
     const { protocol, stageMap } = await preflight(design, { now: NOW });
     expect(stageMap[0]).toEqual({ added: 'researcher notes' });
     expect(stageMap[1]).toEqual({ added: 'consent' });
-    expect(protocol.stages[1]?.id).toBe('consent');
+    expect(protocol.stages[1]?.id).toBe(sketchStageId('consent'));
   });
 
   it('returns the roster, map token and GeoJSON assets', async () => {

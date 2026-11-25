@@ -143,6 +143,7 @@ async function InterviewContent({
   // Negotiated from the request rather than in the browser so the server
   // render and hydration choose the same protocol language.
   const requestedLocales = await getRequestedLocales();
+  const interactionSounds = await getAppSetting('interactionSounds');
 
   return (
     <InterviewClient
@@ -153,6 +154,7 @@ async function InterviewContent({
       requestedLocales={requestedLocales}
       installationId={installationId}
       disableAnalytics={disableAnalytics}
+      interactionSounds={interactionSounds}
       view={view}
     />
   );

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { testTypeId, testVariableId } from '../../testing/testId.ts';
 import type { RuleDraft } from '../rule.ts';
 import {
   describeRule,
@@ -18,6 +19,16 @@ import {
 } from '../ruleSet.ts';
 import { testCodebook } from './fixtures.ts';
 
+const PERSON = testTypeId('person');
+const GHOST = testTypeId('ghost');
+const AGE = testVariableId('age');
+const BORN = testVariableId('born');
+const EGO_NAME = testVariableId('egoName');
+const FAVOURITE_COLOUR = testVariableId('favouriteColour');
+const MOOD = testVariableId('mood');
+const NOTE = testVariableId('note');
+const SECRET = testVariableId('secret');
+
 const codebook = testCodebook;
 
 /**
@@ -33,15 +44,15 @@ const filterTargets = ruleSetTargets('filter');
 const presenceRule = (id: string) => ({
   id,
   type: 'node',
-  options: { type: 'person', operator: 'EXISTS' },
+  options: { type: PERSON, operator: 'EXISTS' },
 });
 
 const danglingAttributeRule = (id: string) => ({
   id,
   type: 'node',
   options: {
-    type: 'person',
-    attribute: 'favouriteColour',
+    type: PERSON,
+    attribute: FAVOURITE_COLOUR,
     operator: 'EXACTLY',
     value: 'blue',
   },
@@ -174,7 +185,7 @@ describe('ruleSetIssues', () => {
     // unintended presence test.
     expect(
       ruleSetIssues(
-        { rules: [{ id: 'a', type: 'node', options: { type: 'person' } }] },
+        { rules: [{ id: 'a', type: 'node', options: { type: PERSON } }] },
         codebook,
         targets,
       ),
@@ -203,14 +214,14 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
     missingEntityType: {
       id: 'a',
       type: 'node',
-      options: { type: 'ghost', operator: 'EXISTS' },
+      options: { type: GHOST, operator: 'EXISTS' },
     },
     missingAttribute: {
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'favouriteColour',
+        type: PERSON,
+        attribute: FAVOURITE_COLOUR,
         operator: 'EXACTLY',
         value: 'blue',
       },
@@ -222,8 +233,8 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'secret',
+        type: PERSON,
+        attribute: SECRET,
         operator: 'EXACTLY',
         value: 'blue',
       },
@@ -232,8 +243,8 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'note',
+        type: PERSON,
+        attribute: NOTE,
         operator: 'GREATER_THAN',
         value: 1,
       },
@@ -242,8 +253,8 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'mood',
+        type: PERSON,
+        attribute: MOOD,
         operator: 'EXACTLY',
         value: 5,
       },
@@ -252,8 +263,8 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'mood',
+        type: PERSON,
+        attribute: MOOD,
         operator: 'INCLUDES',
         value: ['retired'],
       },
@@ -262,8 +273,8 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'mood',
+        type: PERSON,
+        attribute: MOOD,
         operator: 'INCLUDES',
         value: [true],
       },
@@ -271,7 +282,7 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
     incomplete: {
       id: 'a',
       type: 'node',
-      options: { type: 'person', attribute: 'age', operator: 'EXACTLY' },
+      options: { type: PERSON, attribute: AGE, operator: 'EXACTLY' },
     },
     // Nothing about this rule is wrong; where it is sitting is. A stage's
     // node/edge filter cannot ask about the ego, and the protocol schema
@@ -279,7 +290,7 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
     targetNotOffered: {
       id: 'a',
       type: 'ego',
-      options: { attribute: 'egoName', operator: 'EXACTLY', value: 'Ada' },
+      options: { attribute: EGO_NAME, operator: 'EXACTLY', value: 'Ada' },
     },
     // A comparison pattern the interview cannot compile. The schema accepts
     // it — an uncompilable pattern is still a string — and the interview
@@ -288,8 +299,8 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'note',
+        type: PERSON,
+        attribute: NOTE,
         operator: 'CONTAINS',
         value: '(unclosed',
       },
@@ -299,8 +310,8 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'born',
+        type: PERSON,
+        attribute: BORN,
         operator: 'EXACTLY',
         value: '2020-05-14',
       },
@@ -311,8 +322,8 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       id: 'a',
       type: 'node',
       options: {
-        type: 'person',
-        attribute: 'mood',
+        type: PERSON,
+        attribute: MOOD,
         operator: 'OPTIONS_EQUALS',
         value: 3,
       },
@@ -321,7 +332,7 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
     // for, and the protocol schema requires, is not there.
     missingId: {
       type: 'node',
-      options: { type: 'person', operator: 'EXISTS' },
+      options: { type: PERSON, operator: 'EXISTS' },
     },
     // Nothing is wrong with this rule on its own — it is the rule BESIDE it,
     // filed under the same id, that the protocol schema refuses the set for.
@@ -329,7 +340,7 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
     duplicateId: {
       id: 'a',
       type: 'node',
-      options: { type: 'person', operator: 'EXISTS' },
+      options: { type: PERSON, operator: 'EXISTS' },
     },
   });
 
@@ -405,8 +416,8 @@ describe('a rule on an encrypted attribute', () => {
     id: 'a',
     type: 'node',
     options: {
-      type: 'person',
-      attribute: 'secret',
+      type: PERSON,
+      attribute: SECRET,
       operator: 'EXACTLY',
       value: 'Ada',
     },
@@ -456,8 +467,8 @@ describe('a rule on an encrypted attribute', () => {
                 id: 'a',
                 type: 'node',
                 options: {
-                  type: 'person',
-                  attribute: 'secret',
+                  type: PERSON,
+                  attribute: SECRET,
                   operator: 'EXISTS',
                 },
               },
@@ -528,8 +539,8 @@ describe('ruleSetValidationMessage', () => {
       id: 'a',
       type: 'node',
       options: {
-        type: 'ghost',
-        attribute: 'age',
+        type: GHOST,
+        attribute: AGE,
         operator: 'EXACTLY',
         value: 30,
       },
@@ -560,8 +571,8 @@ describe('ruleSetValidationMessage', () => {
               id: 'a',
               type: 'node',
               options: {
-                type: 'person',
-                attribute: 'mood',
+                type: PERSON,
+                attribute: MOOD,
                 operator: 'EXACTLY',
                 value: 5,
               },
@@ -588,8 +599,8 @@ describe('ruleSetValidationMessage', () => {
               id: 'a',
               type: 'node',
               options: {
-                type: 'person',
-                attribute: 'mood',
+                type: PERSON,
+                attribute: MOOD,
                 operator: 'INCLUDES',
                 value: ['retired'],
               },
@@ -616,8 +627,8 @@ describe('ruleSetValidationMessage', () => {
               id: 'a',
               type: 'node',
               options: {
-                type: 'person',
-                attribute: 'age',
+                type: PERSON,
+                attribute: AGE,
                 operator: 'EXACTLY',
               },
             },
@@ -635,7 +646,7 @@ describe('ruleSetValidationMessage', () => {
     const unfinished = (id: string) => ({
       id,
       type: 'node',
-      options: { type: 'person', attribute: 'age', operator: 'EXACTLY' },
+      options: { type: PERSON, attribute: AGE, operator: 'EXACTLY' },
     });
     expect(
       ruleSetValidationMessage(
@@ -660,8 +671,8 @@ describe('ruleSetValidationMessage', () => {
               id: 'a',
               type: 'node',
               options: {
-                type: 'person',
-                attribute: 'age',
+                type: PERSON,
+                attribute: AGE,
                 operator: 'EXACTLY',
               },
             },

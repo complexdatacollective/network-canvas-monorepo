@@ -5,14 +5,26 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import {
+  fixtureTypeId,
+  fixtureVariableId,
+} from '../../../testing/protocolFixture.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import { testVariableId } from '../../../testing/testId.ts';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection.tsx';
+
+const STORY = testVariableId('story');
+const RETELLING = testVariableId('retelling');
+const DELETED_ATTRIBUTE = testVariableId('deleted-attribute');
+
+const PERSON_TYPE = fixtureTypeId('node', 'person');
+const EGO_NAME = fixtureVariableId('ego', 'ego_name');
 
 const EGO: CodebookSubject = { entity: 'ego' };
 const EGO_SECTION = sectionId({ kind: 'codebookEgo' });
-const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON: CodebookSubject = { entity: 'node', type: PERSON_TYPE };
 
 /**
  * The section over one attribute, inside a stage editor.
@@ -50,20 +62,26 @@ const COMPONENTS: Readonly<Record<string, string>> = {
  * and leave unanswered, and it is offered only where another attribute of the
  * same kind could satisfy it.
  */
-const personHolding = (type: string) => ({
+const personHolding = (
+  type: string,
+  storyValidation?: Record<string, unknown>,
+) => ({
   node: {
-    person: {
+    [PERSON_TYPE]: {
       name: 'person',
       color: 'node-color-seq-1',
       icon: 'add-a-person',
       shape: { default: 'circle' },
       variables: {
-        story: {
+        [STORY]: {
           name: 'story',
           type,
           component: COMPONENTS[type],
+          ...(storyValidation === undefined
+            ? {}
+            : { validation: storyValidation }),
         },
-        retelling: {
+        [RETELLING]: {
           name: 'retelling',
           type,
           component: COMPONENTS[type],
@@ -100,7 +118,7 @@ const personEditorValidation = (
   variableId: string,
 ): unknown =>
   Reflect.get(
-    harness.editorCodebook().node?.person?.variables?.[variableId] ?? {},
+    harness.editorCodebook().node?.[PERSON_TYPE]?.variables?.[variableId] ?? {},
     'validation',
   );
 
@@ -109,7 +127,7 @@ const personValidation = (
   variableId: string,
 ): unknown =>
   Reflect.get(
-    harness.hostCodebook().node?.person?.variables?.[variableId] ?? {},
+    harness.hostCodebook().node?.[PERSON_TYPE]?.variables?.[variableId] ?? {},
     'validation',
   );
 
@@ -120,7 +138,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
    * schema's own mask says so, and Architect drops the rule for ego too.
    */
   it('does not offer uniqueness for the participant’s own attributes', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -143,7 +161,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
    * only holds them once the stage is saved.
    */
   it('keeps a rule for the attribute it was asked about with the stage, and saves it with the stage', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -152,17 +170,17 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
 
-    expect(egoEditorValidation(harness, 'ego_name')).toEqual({
+    expect(egoEditorValidation(harness, EGO_NAME)).toEqual({
       required: true,
     });
-    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+    expect(egoValidation(harness, EGO_NAME)).toBeUndefined();
 
     expect(await harness.submit()).not.toBeNull();
-    expect(egoValidation(harness, 'ego_name')).toEqual({ required: true });
+    expect(egoValidation(harness, EGO_NAME)).toEqual({ required: true });
   });
 
   it('discards a rule with the stage when the stage is cancelled', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -170,13 +188,13 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
-    expect(egoEditorValidation(harness, 'ego_name')).toEqual({
+    expect(egoEditorValidation(harness, EGO_NAME)).toEqual({
       required: true,
     });
 
     await harness.cancel();
 
-    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+    expect(egoValidation(harness, EGO_NAME)).toBeUndefined();
   });
 
   /**
@@ -204,7 +222,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
    * a row nobody can see and the section silently stops keeping anything.
    */
   it('drops a half-set rule the new kind of answer has no room for', async () => {
-    const harness = open(PERSON, 'story');
+    const harness = open(PERSON, STORY);
     harness.receiveCodebookUpdate(personHolding('number'));
 
     await harness.user.click(
@@ -217,7 +235,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
         name: 'Less than another attribute',
       }),
     );
-    expect(personEditorValidation(harness, 'story')).toBeUndefined();
+    expect(personEditorValidation(harness, STORY)).toBeUndefined();
 
     harness.receiveCodebookUpdate(personHolding('boolean'));
     await waitFor(() =>
@@ -233,7 +251,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     );
 
     await waitFor(() =>
-      expect(personEditorValidation(harness, 'story')).toEqual({
+      expect(personEditorValidation(harness, STORY)).toEqual({
         required: true,
       }),
     );
@@ -246,7 +264,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
    * from a surface that told them they could not.
    */
   it('offers no change on a stage this researcher may only read', async () => {
-    const harness = open(EGO, 'ego_name', { readOnly: true });
+    const harness = open(EGO, EGO_NAME, { readOnly: true });
 
     await harness.opened();
     expect(
@@ -255,7 +273,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
   });
 
   it('renders nothing for an attribute the codebook does not have', async () => {
-    const harness = open(PERSON, 'deleted-attribute');
+    const harness = open(PERSON, DELETED_ATTRIBUTE);
 
     await harness.opened();
     expect(
@@ -277,10 +295,10 @@ const collaboratorRules = (
 ): void => {
   const current = harness.host.store.read(EGO_SECTION).document;
   const variables = isRecord(current.variables) ? current.variables : {};
-  const ego_name = isRecord(variables.ego_name) ? variables.ego_name : {};
+  const ego_name = isRecord(variables[EGO_NAME]) ? variables[EGO_NAME] : {};
   harness.host.store.applyAsCollaborator(EGO_SECTION, {
     ...current,
-    variables: { ...variables, ego_name: { ...ego_name, validation } },
+    variables: { ...variables, [EGO_NAME]: { ...ego_name, validation } },
   });
 };
 
@@ -291,7 +309,7 @@ describe('rules changed while a collaborator is changing the same codebook', () 
    * is saved rather than deleted by a map written whole.
    */
   it('keeps a rule a collaborator added, when the stage is saved', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -301,7 +319,7 @@ describe('rules changed while a collaborator is changing the same codebook', () 
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
     expect(await harness.submit()).not.toBeNull();
-    expect(egoValidation(harness, 'ego_name')).toEqual({
+    expect(egoValidation(harness, EGO_NAME)).toEqual({
       minLength: 3,
       required: true,
     });
@@ -313,7 +331,7 @@ describe('rules changed while a collaborator is changing the same codebook', () 
    * made against it rather than deleting it.
    */
   it('brings the collaborator’s rule to the screen, so the next edit keeps it', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -331,7 +349,7 @@ describe('rules changed while a collaborator is changing the same codebook', () 
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
     expect(await harness.submit()).not.toBeNull();
-    expect(egoValidation(harness, 'ego_name')).toEqual({ minLength: 3 });
+    expect(egoValidation(harness, EGO_NAME)).toEqual({ minLength: 3 });
   });
 
   /**
@@ -340,7 +358,7 @@ describe('rules changed while a collaborator is changing the same codebook', () 
    * save for it.
    */
   it('holds nothing when a rule is switched on and straight back off', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -349,16 +367,16 @@ describe('rules changed while a collaborator is changing the same codebook', () 
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
     fireEvent.click(screen.getByRole('switch', { name: 'Required answer' }));
 
-    expect(egoEditorValidation(harness, 'ego_name')).toBeUndefined();
+    expect(egoEditorValidation(harness, EGO_NAME)).toBeUndefined();
     expect(
       screen.getByRole('switch', { name: 'Required answer' }),
     ).not.toBeChecked();
     expect(await harness.submit()).not.toBeNull();
-    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+    expect(egoValidation(harness, EGO_NAME)).toBeUndefined();
   });
 
   it('clears a rule just switched on when the section is switched off', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -368,10 +386,10 @@ describe('rules changed while a collaborator is changing the same codebook', () 
     fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
 
     await waitFor(() =>
-      expect(egoEditorValidation(harness, 'ego_name')).toBeUndefined(),
+      expect(egoEditorValidation(harness, EGO_NAME)).toBeUndefined(),
     );
     expect(await harness.submit()).not.toBeNull();
-    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+    expect(egoValidation(harness, EGO_NAME)).toBeUndefined();
   });
 
   /**
@@ -381,7 +399,7 @@ describe('rules changed while a collaborator is changing the same codebook', () 
    * lands it.
    */
   it('refuses the stage save naming the colleague holding the codebook, keeps the rule, and saves once they are done', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
     await harness.opened();
     const robin = harness.host.asCollaborator({
       sessionId: 'session-2',
@@ -412,8 +430,8 @@ describe('rules changed while a collaborator is changing the same codebook', () 
         'Robin is currently editing a section needed for this change.',
       ),
     ).toBeInTheDocument();
-    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
-    expect(egoEditorValidation(harness, 'ego_name')).toEqual({
+    expect(egoValidation(harness, EGO_NAME)).toBeUndefined();
+    expect(egoEditorValidation(harness, EGO_NAME)).toEqual({
       required: true,
     });
 
@@ -422,13 +440,13 @@ describe('rules changed while a collaborator is changing the same codebook', () 
       sectionId: EGO_SECTION,
     });
     expect(await harness.submit()).not.toBeNull();
-    expect(egoValidation(harness, 'ego_name')).toEqual({ required: true });
+    expect(egoValidation(harness, EGO_NAME)).toEqual({ required: true });
   });
 });
 
 describe('the switch, while a collaborator is changing the same attribute', () => {
   it('opens over a rule a collaborator added', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
 
     await harness.opened();
     expect(
@@ -438,7 +456,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
     harness.receiveCodebookUpdate({
       ego: {
         variables: {
-          ego_name: {
+          [EGO_NAME]: {
             name: 'ego_name',
             type: 'text',
             validation: { required: true },
@@ -456,11 +474,11 @@ describe('the switch, while a collaborator is changing the same attribute', () =
   });
 
   it('closes when a collaborator clears the rules', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
     harness.receiveCodebookUpdate({
       ego: {
         variables: {
-          ego_name: {
+          [EGO_NAME]: {
             name: 'ego_name',
             type: 'text',
             validation: { required: true },
@@ -476,7 +494,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
     harness.receiveCodebookUpdate({
       ego: {
         variables: {
-          ego_name: {
+          [EGO_NAME]: {
             name: 'ego_name',
             type: 'text',
           },
@@ -500,11 +518,11 @@ describe('the switch, while a collaborator is changing the same attribute', () =
    * close the panel under the gesture that is still in progress.
    */
   it('stays open when the researcher takes the last rule off', async () => {
-    const harness = open(EGO, 'ego_name');
+    const harness = open(EGO, EGO_NAME);
     harness.receiveCodebookUpdate({
       ego: {
         variables: {
-          ego_name: {
+          [EGO_NAME]: {
             name: 'ego_name',
             type: 'text',
             validation: { required: true },
@@ -518,7 +536,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
     );
 
     await waitFor(() =>
-      expect(egoEditorValidation(harness, 'ego_name')).toBeUndefined(),
+      expect(egoEditorValidation(harness, EGO_NAME)).toBeUndefined(),
     );
     expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked();
     expect(
@@ -535,7 +553,7 @@ describe('the switch, while a collaborator is changing the same attribute', () =
  */
 describe('a rule on screen that the stage draft has not taken yet', () => {
   it('is kept by the edit that finishes it', async () => {
-    const harness = open(PERSON, 'story');
+    const harness = open(PERSON, STORY);
     harness.receiveCodebookUpdate(personHolding('number'));
 
     await harness.user.click(
@@ -552,16 +570,16 @@ describe('a rule on screen that the stage draft has not taken yet', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Required answer' }),
     );
-    expect(personEditorValidation(harness, 'story')).toBeUndefined();
+    expect(personEditorValidation(harness, STORY)).toBeUndefined();
 
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Less than another attribute' }),
-      'retelling',
+      RETELLING,
     );
 
     await waitFor(() =>
-      expect(personEditorValidation(harness, 'story')).toEqual({
-        lessThanVariable: 'retelling',
+      expect(personEditorValidation(harness, STORY)).toEqual({
+        lessThanVariable: RETELLING,
         required: true,
       }),
     );
@@ -581,28 +599,12 @@ describe('a rule the mounting stage rules out', () => {
       sections: (
         <CodebookVariableValidationSection
           subject={PERSON}
-          variableId="story"
+          variableId={STORY}
           unavailableRules={{ required: REASON }}
         />
       ),
     });
-  const holdingRequired = () => {
-    const codebook = personHolding('text');
-    return {
-      node: {
-        person: {
-          ...codebook.node.person,
-          variables: {
-            ...codebook.node.person.variables,
-            story: {
-              ...codebook.node.person.variables.story,
-              validation: { required: true },
-            },
-          },
-        },
-      },
-    };
-  };
+  const holdingRequired = () => personHolding('text', { required: true });
 
   it('cannot be switched on', async () => {
     const harness = openRulingOut();
@@ -617,7 +619,7 @@ describe('a rule the mounting stage rules out', () => {
     expect(required).toHaveAttribute('aria-disabled', 'true');
     expect(required).toHaveAccessibleDescription(REASON);
     await harness.user.click(required);
-    expect(personEditorValidation(harness, 'story')).toBeUndefined();
+    expect(personEditorValidation(harness, STORY)).toBeUndefined();
   });
 
   it('can be taken off, and put back on, while the codebook holds it', async () => {
@@ -632,16 +634,16 @@ describe('a rule the mounting stage rules out', () => {
     expect(standing).toHaveAccessibleDescription(REASON);
     expect(standing).not.toHaveAttribute('aria-disabled');
     await harness.user.click(standing);
-    expect(personEditorValidation(harness, 'story')).toBeUndefined();
+    expect(personEditorValidation(harness, STORY)).toBeUndefined();
 
     // Off in the editor, still held by the protocol until the stage is saved.
     const taken = await screen.findByRole('switch', {
       name: 'Required answer',
     });
     expect(taken).not.toBeChecked();
-    expect(personValidation(harness, 'story')).toEqual({ required: true });
+    expect(personValidation(harness, STORY)).toEqual({ required: true });
 
     expect(await harness.submit()).not.toBeNull();
-    expect(personValidation(harness, 'story')).toBeUndefined();
+    expect(personValidation(harness, STORY)).toBeUndefined();
   });
 });

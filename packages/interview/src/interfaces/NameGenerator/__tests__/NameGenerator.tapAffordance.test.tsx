@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Form } from '@codaco/protocol-validation';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { testTypeId } from '../../../__tests__/testIds';
 import type { StageProps } from '../../../types';
 import type { usePassphrase } from '../../Anonymisation/usePassphrase';
 
@@ -72,7 +73,7 @@ const stage = (overrides: Record<string, unknown>) =>
   ({
     id: 'stage-1',
     label: { en: 'Stage' },
-    subject: { entity: 'node' as const, type: 'person' },
+    subject: { entity: 'node' as const, type: testTypeId('person') },
     prompts: [{ id: 'p1', text: { en: 'Prompt' } }],
     ...overrides,
   }) as unknown as StageProps<'NameGenerator'>['stage'];

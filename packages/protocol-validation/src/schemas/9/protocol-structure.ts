@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { findDuplicateId } from '../../utils/validation-helpers.ts';
+import {
+  collectProtocolObjectIdsFromSchema,
+  groupDuplicateProtocolObjectIds,
+  reportDuplicateProtocolObjectIds,
+} from '../../utils/protocolObjectIds.ts';
 import { assetSchema } from './assets/index.ts';
 import { CodebookSchema } from './codebook/index.ts';
 import { ExperimentsSchema } from './common/index.ts';
@@ -16,7 +20,7 @@ import { findTimelineStructureProblems } from './timeline-structure.ts';
  * reference walkers in `utils/`, which walk this schema. Holding the shape here
  * keeps the walkers from having to import the module that calls them.
  */
-export const ProtocolStructureSchema = z.strictObject({
+const protocolStructureShape = z.strictObject({
   name: z.string().min(1),
   description: z.string().optional(),
   localization: ProtocolLocalizationSchema,
@@ -29,16 +33,6 @@ export const ProtocolStructureSchema = z.strictObject({
   interfaceText: InterfaceTextSchema.optional(),
   assetManifest: z.record(z.string(), assetSchema).optional(),
   stages: z.array(stageSchema).superRefine((stages, ctx) => {
-    // Check for duplicate stage IDs
-    const duplicateStageId = findDuplicateId(stages);
-    if (duplicateStageId) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: `Stages contain duplicate ID "${duplicateStageId}"`,
-        path: [],
-      });
-    }
-
     // Every route ends at a finish stage, and every stage is on a route.
     for (const problem of findTimelineStructureProblems(stages)) {
       switch (problem.kind) {
@@ -70,3 +64,28 @@ export const ProtocolStructureSchema = z.strictObject({
   }),
   schemaVersion: z.literal(9),
 });
+
+const stageIndexOf = (
+  path: readonly (string | number)[],
+): number | undefined =>
+  path[0] === 'stages' && typeof path[1] === 'number' ? path[1] : undefined;
+
+/**
+ * One id used by two objects anywhere in the protocol is refused, with an
+ * issue at each. A repeat whose every use is inside one stage is left to that
+ * stage's own refinement (`withUniqueObjectIds`), which reports it already.
+ */
+export const ProtocolStructureSchema = protocolStructureShape.superRefine(
+  (protocol, ctx) => {
+    const duplicates = groupDuplicateProtocolObjectIds(
+      collectProtocolObjectIdsFromSchema(protocolStructureShape, protocol),
+    ).filter(({ paths }) => {
+      const stageIndex = stageIndexOf(paths[0] ?? []);
+      return (
+        stageIndex === undefined ||
+        paths.some((path) => stageIndexOf(path) !== stageIndex)
+      );
+    });
+    reportDuplicateProtocolObjectIds(duplicates, ctx, 'protocol');
+  },
+);

@@ -9,8 +9,8 @@ can use any script.
 value is:
 
 - A codebook record key (the ID a node type, edge type or variable is stored
-  under) or another internal identifier: use `CodebookIdSchema`. It keeps the
-  old `[a-zA-Z0-9._:-]` rule and also refuses `__proto__`.
+  under): in schema 9 this ID is a UUID, so use `VariableIdSchema` or
+  `EntityTypeIdSchema` from `@codaco/protocol-validation`.
 - A name a researcher types (an entity type's name, a variable's name or an
   option value): use `CodebookNameSchema`. It accepts any script, spaces and
   punctuation. It refuses an empty name, leading or trailing whitespace, text

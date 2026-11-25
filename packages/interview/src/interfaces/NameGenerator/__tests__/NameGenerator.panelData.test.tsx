@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
 import {
   asEntityAttributeReference,
   type Variable,
@@ -13,6 +14,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
@@ -26,13 +28,10 @@ import { decryptValue } from '../../Anonymisation/encryptionFormat';
 
 // The main list's drop handler is the subject; everything else the stage
 // renders is stubbed.
-const mainListDrops: ((metadata?: Record<string, unknown>) => void)[] = [];
+const mainListDrops: DropCallback[] = [];
 
 vi.mock('../../../components/NodeList', () => ({
-  default: (props: {
-    id?: string;
-    onDrop?: (metadata?: Record<string, unknown>) => void;
-  }) => {
+  default: (props: { id?: string; onDrop?: DropCallback }) => {
     if (props.id === 'MAIN_NODE_LIST' && props.onDrop) {
       mainListDrops.push(props.onDrop);
     }
@@ -49,9 +48,9 @@ vi.mock('../../../hooks/useMediaQuery', () => ({ default: () => false }));
 
 const { default: NameGenerator } = await import('../NameGenerator');
 
-const NODE_TYPE = 'person';
-const NAME_VAR = 'var-name';
-const NICKNAME_VAR = 'var-nickname';
+const NODE_TYPE = testTypeId('person');
+const NAME_VAR = testVariableId('var-name');
+const NICKNAME_VAR = testVariableId('var-nickname');
 const PASSPHRASE = 'name generator passphrase';
 
 const variables: Record<string, Variable> = {
@@ -71,7 +70,7 @@ const variables: Record<string, Variable> = {
 // The stage's own form asks only for a value that is not encrypted, so the
 // encrypted name can only arrive through the panel's external data.
 const stage: StageProps<'NameGenerator'>['stage'] = {
-  id: 'ng1',
+  id: testId('ng1'),
   type: 'NameGenerator',
   label: { en: 'Name Generator' },
   subject: { entity: 'node', type: NODE_TYPE },
@@ -79,16 +78,20 @@ const stage: StageProps<'NameGenerator'>['stage'] = {
     title: { en: 'Add a person' },
     fields: [
       {
-        id: 'field-1',
+        id: testId('field-1'),
         variable: asEntityAttributeReference(NICKNAME_VAR),
         prompt: { en: 'Nickname' },
       },
     ],
   },
   panels: [
-    { id: 'panel-1', title: { en: 'Roster' }, dataSource: 'roster-asset' },
+    {
+      id: testId('panel-1'),
+      title: { en: 'Roster' },
+      dataSource: 'roster-asset',
+    },
   ],
-  prompts: [{ id: 'p1', text: { en: 'Name the people you know' } }],
+  prompts: [{ id: testId('p1'), text: { en: 'Name the people you know' } }],
 };
 
 const externalNode: NcNode = {
@@ -136,9 +139,13 @@ describe('NameGenerator with an encrypted variable in panel data', () => {
     const store = await makeStore({ unlocked: true });
     const drop = renderStage(store);
 
-    act(() => {
-      drop(externalNode);
+    // The list says it took the drop once the person is stored, which is
+    // when its drop sound plays.
+    let taken: Awaited<ReturnType<DropCallback>> = undefined;
+    await act(async () => {
+      taken = await drop(externalNode);
     });
+    expect(taken).toBe(true);
 
     await waitFor(() => {
       expect(store.getState().session.network.nodes).toHaveLength(1);
@@ -164,11 +171,14 @@ describe('NameGenerator with an encrypted variable in panel data', () => {
     const before = store.getState().session.network;
     expect(store.getState().ui.showPassphrasePrompter).toBe(false);
 
+    let taken: Awaited<ReturnType<DropCallback>> = undefined;
     await act(async () => {
-      drop(externalNode);
+      taken = await drop(externalNode);
       await encryptionFor(PASSPHRASE);
     });
 
+    // Refused, so the list's drop sound does not play.
+    expect(taken).toBe(false);
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
     expect(store.getState().session.network).toBe(before);
   });

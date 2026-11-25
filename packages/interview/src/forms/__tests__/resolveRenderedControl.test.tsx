@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import Form from '@codaco/fresco-ui/form/Form';
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 
+import { testId, testVariableId } from '../../__tests__/testIds';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import { selectFieldMetadataFromVariables } from '../../selectors/forms';
 import ProtocolField from '../ProtocolField';
@@ -66,7 +67,7 @@ describe('every path through the correction agrees', () => {
       { consented: REQUIRED_BOOLEAN },
       [
         {
-          id: 'field-L68',
+          id: testId('field-L68'),
           variable: asEntityAttributeReference('consented'),
           prompt: { en: 'Do you consent?' },
         },
@@ -92,7 +93,7 @@ describe('every path through the correction agrees', () => {
         <Form onSubmit={() => ({ success: true })}>
           <ProtocolField
             field={{
-              variable: 'consented',
+              variable: testVariableId('consented'),
               label: { en: 'Do you consent?' },
               type: 'boolean',
               component: 'Toggle',

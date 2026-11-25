@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { parseIssues } from '../../../__tests__/schemaIssues.ts';
+import {
+  testId,
+  testVariableId,
+  withTestCodebookIds,
+} from '../../../__tests__/testIds.ts';
 import { localized } from '../../../utils/test-utils.ts';
 import { assetSchema } from '../assets/index.ts';
 import { CodebookSchema } from '../codebook/codebook.ts';
@@ -22,7 +27,7 @@ import { sociogramStage } from '../stages/sociogram.ts';
 
 describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
   const baseStage = {
-    id: 'soc1',
+    id: testId('soc1'),
     label: localized('Sociogram'),
     type: 'Sociogram' as const,
     subject: { entity: 'node' as const, type: 'person' },
@@ -34,7 +39,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Connect'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
@@ -49,7 +54,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Highlight'),
           layout: { layoutVariable: 'pos' },
           highlight: { allowHighlighting: true, variable: 'isClose' },
@@ -64,7 +69,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Both'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
@@ -86,7 +91,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Create only'),
           layout: { layoutVariable: 'pos' },
           edges: { create: 'friend' },
@@ -102,7 +107,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Highlight'),
           layout: { layoutVariable: 'pos' },
           highlight: { allowHighlighting: true },
@@ -123,7 +128,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Edges'),
           layout: { layoutVariable: 'pos' },
           edges: {},
@@ -144,7 +149,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       ...baseStage,
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Edges'),
           layout: { layoutVariable: 'pos' },
           edges: { display: [] },
@@ -162,14 +167,14 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
 
   it('rejects a background with an empty-string image', () => {
     const result = sociogramStage.safeParse({
-      id: 'soc1',
+      id: testId('soc1'),
       label: localized('Sociogram'),
       type: 'Sociogram' as const,
       subject: { entity: 'node' as const, type: 'person' },
       background: { image: '' },
       prompts: [
         {
-          id: 'p1',
+          id: testId('p1'),
           text: localized('Position'),
           layout: { layoutVariable: 'pos' },
         },
@@ -183,12 +188,14 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
 
 describe('Geospatial targetFeatureProperty (#674)', () => {
   const baseStage = {
-    id: 'geo1',
+    id: testId('geo1'),
     label: localized('Geospatial'),
     type: 'Geospatial' as const,
     outsideAreasLabel: localized('Outside Selectable Areas'),
     subject: { entity: 'node' as const, type: 'person' },
-    prompts: [{ id: 'p1', text: localized('Pick a place'), variable: 'home' }],
+    prompts: [
+      { id: testId('p1'), text: localized('Pick a place'), variable: 'home' },
+    ],
   };
 
   const baseMapOptions = {
@@ -243,7 +250,7 @@ describe('apikey asset value (#674)', () => {
 
 describe('Information content', () => {
   const baseStage = {
-    id: 'info1',
+    id: testId('info1'),
     label: localized('Information'),
     type: 'Information' as const,
   };
@@ -301,7 +308,7 @@ describe('Information content', () => {
 
 describe('Anonymisation explanationText non-empty', () => {
   const baseStage = {
-    id: 'anon1',
+    id: testId('anon1'),
     label: localized('Anonymisation'),
     type: 'Anonymisation' as const,
     explanationText: localized(
@@ -345,7 +352,7 @@ describe('Anonymisation explanationText non-empty', () => {
 
 describe('Narrative preset label non-empty', () => {
   const baseStage = {
-    id: 'narr1',
+    id: testId('narr1'),
     label: localized('Narrative'),
     type: 'Narrative' as const,
     subject: { entity: 'node' as const, type: 'person' },
@@ -356,7 +363,11 @@ describe('Narrative preset label non-empty', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
       presets: [
-        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+        {
+          id: testId('preset1'),
+          label: localized('Overview'),
+          layoutVariable: 'pos',
+        },
       ],
     });
     expect(result.success).toBe(true);
@@ -365,7 +376,9 @@ describe('Narrative preset label non-empty', () => {
   it('rejects a preset with an empty label', () => {
     const result = narrativeStage.safeParse({
       ...baseStage,
-      presets: [{ id: 'preset1', label: localized(''), layoutVariable: 'pos' }],
+      presets: [
+        { id: testId('preset1'), label: localized(''), layoutVariable: 'pos' },
+      ],
     });
     expect(parseIssues(result)).toEqual([
       { path: 'presets.0.label.en', code: 'too_small' },
@@ -377,7 +390,11 @@ describe('Narrative preset label non-empty', () => {
       ...baseStage,
       background: { image: 'background-image' },
       presets: [
-        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+        {
+          id: testId('preset1'),
+          label: localized('Overview'),
+          layoutVariable: 'pos',
+        },
       ],
     });
     expect(result.success).toBe(true);
@@ -388,7 +405,11 @@ describe('Narrative preset label non-empty', () => {
       ...baseStage,
       background: { image: 'background-image', concentricCircles: 4 },
       presets: [
-        { id: 'preset1', label: localized('Overview'), layoutVariable: 'pos' },
+        {
+          id: testId('preset1'),
+          label: localized('Overview'),
+          layoutVariable: 'pos',
+        },
       ],
     });
     expect(parseIssues(result)).toEqual([
@@ -404,7 +425,7 @@ describe('Narrative preset label non-empty', () => {
 
 describe('Side panel title and dataSource non-empty', () => {
   const basePanel = {
-    id: 'panel1',
+    id: testId('panel1'),
     dataSource: 'existing' as const,
     title: localized('Previous alters'),
   };
@@ -445,7 +466,7 @@ describe('Side panel title and dataSource non-empty', () => {
 
 describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
   const baseStage = {
-    id: 'ngr1',
+    id: testId('ngr1'),
     label: localized('Roster'),
     type: 'NameGeneratorRoster' as const,
     allAddedNotice: localized('There is nothing left to add from this list.'),
@@ -453,7 +474,7 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
     subject: { entity: 'node' as const, type: 'person' },
     dataSource: 'roster-asset',
     panelTitle: localized('Available to add'),
-    prompts: [{ id: 'p1', text: localized('Pick someone') }],
+    prompts: [{ id: testId('p1'), text: localized('Pick someone') }],
   };
 
   it('accepts a non-empty dataSource', () => {
@@ -489,9 +510,14 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
   });
 });
 
+// A codebook written with readable keys, with `testTypeId` and `testVariableId`
+// ids: one variable key on two entities becomes one id on both.
+const parseCodebook = (codebook: Record<string, unknown>) =>
+  CodebookSchema.safeParse(withTestCodebookIds({ codebook }).codebook);
+
 describe('Codebook cross-entity record-key collision (#663)', () => {
   it('accepts the same record key reused within compatible definitions across entities only when distinct keys', () => {
-    const result = CodebookSchema.safeParse({
+    const result = parseCodebook({
       node: {
         person: {
           name: 'Person',
@@ -518,7 +544,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
   });
 
   it('rejects a variable record key reused across a node and an edge type', () => {
-    const result = CodebookSchema.safeParse({
+    const result = parseCodebook({
       node: {
         person: {
           name: 'Person',
@@ -551,7 +577,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
   });
 
   it('rejects a variable record key reused across two node types', () => {
-    const result = CodebookSchema.safeParse({
+    const result = parseCodebook({
       node: {
         person: {
           name: 'Person',
@@ -575,13 +601,13 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
       {
         path: '',
         code: 'custom',
-        message: 'Attribute record key "shared" is reused across entity types',
+        message: `Attribute record key "${testVariableId('shared')}" is reused across entity types`,
       },
     ]);
   });
 
   it('rejects a variable record key reused across a node type and ego', () => {
-    const result = CodebookSchema.safeParse({
+    const result = parseCodebook({
       node: {
         person: {
           name: 'Person',
@@ -605,7 +631,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
       {
         path: '',
         code: 'custom',
-        message: 'Attribute record key "shared" is reused across entity types',
+        message: `Attribute record key "${testVariableId('shared')}" is reused across entity types`,
       },
     ]);
   });
@@ -614,7 +640,7 @@ describe('Codebook cross-entity record-key collision (#663)', () => {
 describe('Empty-rules filter (#669)', () => {
   const rule = {
     type: 'node' as const,
-    id: 'r1',
+    id: testId('r1'),
     options: {
       type: 'person',
       attribute: 'age',
@@ -631,7 +657,7 @@ describe('Empty-rules filter (#669)', () => {
   it('accepts a multiple-rule filter with two rules', () => {
     const result = FilterSchema.safeParse({
       join: 'AND',
-      rules: [rule, { ...rule, id: 'r2' }],
+      rules: [rule, { ...rule, id: testId('r2') }],
     });
     expect(result.success).toBe(true);
   });

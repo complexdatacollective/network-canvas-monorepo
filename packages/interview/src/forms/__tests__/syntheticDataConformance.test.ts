@@ -22,8 +22,20 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import { testId, testTypeId, testVariableId } from '../../__tests__/testIds';
 import { buildDatePickerBoundProps } from '../buildDatePickerBoundProps';
 import { buildFieldValidationProps } from '../buildFieldValidationProps';
+
+const PERSON = testTypeId('person');
+const TOKEN = testTypeId('token');
+const FRIEND = testTypeId('friend');
+const BINNED = testTypeId('binned');
+const ROSTER_PERSON = testTypeId('rosterPerson');
+const ROSTER_PINNED = testTypeId('rosterPinned');
+const NARROW = testTypeId('narrow');
+const ROSTER_YEAR = testVariableId('rosterYear');
+const ROSTER_DAY = testVariableId('rosterDay');
+const PINNED_AGE = testVariableId('pinnedAge');
 
 /**
  * Pinned so generation and validation resolve RelativeDatePicker windows
@@ -36,7 +48,18 @@ const today = todayYmd();
  * The schema's own constructor for the branded string a variable-reference rule
  * carries. Aliased because the fixtures below use it on every such rule.
  */
-const ref = asEntityAttributeReference;
+const ref = (label: string) =>
+  asEntityAttributeReference(testVariableId(label));
+
+/** A fixture's variables, keyed by the test id of each readable key. */
+function keyedVariables(variables: Variables): Variables {
+  return Object.fromEntries(
+    Object.entries(variables).map(([label, variable]) => [
+      testVariableId(label),
+      variable,
+    ]),
+  );
+}
 
 /**
  * The interview seeds its form store from entity attributes with
@@ -295,24 +318,72 @@ function formFields(variables: Variables): { variable: string }[] {
 }
 
 const FOUR_OPTIONS: VariableOptions = [
-  { label: { en: 'Work' }, value: 'work' },
-  { label: { en: 'Home' }, value: 'home' },
-  { label: { en: 'School' }, value: 'school' },
-  { label: { en: 'Sport' }, value: 'sport' },
+  {
+    id: testId('syntheticDataConformance option 1'),
+    label: { en: 'Work' },
+    value: 'work',
+  },
+  {
+    id: testId('syntheticDataConformance option 2'),
+    label: { en: 'Home' },
+    value: 'home',
+  },
+  {
+    id: testId('syntheticDataConformance option 3'),
+    label: { en: 'School' },
+    value: 'school',
+  },
+  {
+    id: testId('syntheticDataConformance option 4'),
+    label: { en: 'Sport' },
+    value: 'sport',
+  },
 ];
 
 const THREE_OPTIONS: VariableOptions = [
-  { label: { en: 'Low' }, value: 1 },
-  { label: { en: 'Mid' }, value: 2 },
-  { label: { en: 'High' }, value: 3 },
+  {
+    id: testId('syntheticDataConformance option 5'),
+    label: { en: 'Low' },
+    value: 1,
+  },
+  {
+    id: testId('syntheticDataConformance option 6'),
+    label: { en: 'Mid' },
+    value: 2,
+  },
+  {
+    id: testId('syntheticDataConformance option 7'),
+    label: { en: 'High' },
+    value: 3,
+  },
 ];
 
 const FIVE_OPTIONS: VariableOptions = [
-  { label: { en: 'Never' }, value: 1 },
-  { label: { en: 'Rarely' }, value: 2 },
-  { label: { en: 'Sometimes' }, value: 3 },
-  { label: { en: 'Often' }, value: 4 },
-  { label: { en: 'Always' }, value: 5 },
+  {
+    id: testId('syntheticDataConformance option 8'),
+    label: { en: 'Never' },
+    value: 1,
+  },
+  {
+    id: testId('syntheticDataConformance option 9'),
+    label: { en: 'Rarely' },
+    value: 2,
+  },
+  {
+    id: testId('syntheticDataConformance option 10'),
+    label: { en: 'Sometimes' },
+    value: 3,
+  },
+  {
+    id: testId('syntheticDataConformance option 11'),
+    label: { en: 'Often' },
+    value: 4,
+  },
+  {
+    id: testId('syntheticDataConformance option 12'),
+    label: { en: 'Always' },
+    value: 5,
+  },
 ];
 
 const MONTH_PARAMETERS = {
@@ -327,7 +398,7 @@ const MONTH_PARAMETERS = {
  * `protocol-validation/src/schemas/9/variables/variable.ts`. Ego cannot declare
  * `unique`, which the node fixtures below cover instead.
  */
-const egoVariables: Variables = {
+const egoVariables: Variables = keyedVariables({
   egoName: {
     name: 'Name',
     type: 'text',
@@ -653,13 +724,13 @@ const egoVariables: Variables = {
     options: FOUR_OPTIONS,
     validation: { required: true, differentFrom: ref('egoContexts') },
   },
-};
+});
 
 /**
  * `unique` for every type that accepts it and can hold six distinct values,
  * alongside the rest of the rule set on a node subject.
  */
-const personVariables: Variables = {
+const personVariables: Variables = keyedVariables({
   personName: {
     name: 'Person name',
     type: 'text',
@@ -772,14 +843,14 @@ const personVariables: Variables = {
     name: 'Person place',
     type: 'location',
   },
-};
+});
 
 /**
  * `unique` on the types whose value space is too small for six entities:
  * boolean holds two values and this ordinal four, so the stage that creates
  * them is capped at two nodes.
  */
-const tokenVariables: Variables = {
+const tokenVariables: Variables = keyedVariables({
   tokenFlag: {
     name: 'Token flag',
     type: 'boolean',
@@ -813,9 +884,9 @@ const tokenVariables: Variables = {
     options: FOUR_OPTIONS,
     validation: { required: true, differentFrom: ref('tokenRank') },
   },
-};
+});
 
-const friendVariables: Variables = {
+const friendVariables: Variables = keyedVariables({
   edgeLabel: {
     name: 'Edge label',
     type: 'text',
@@ -873,18 +944,18 @@ const friendVariables: Variables = {
     options: THREE_OPTIONS,
     validation: { required: true, minSelected: 1, maxSelected: 2 },
   },
-};
+});
 
 const codebook: Codebook = {
   ego: { variables: egoVariables },
   node: {
-    person: {
+    [PERSON]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: personVariables,
     },
-    token: {
+    [TOKEN]: {
       name: 'Token',
       color: 'node-color-seq-2',
       shape: { default: 'square' },
@@ -892,7 +963,7 @@ const codebook: Codebook = {
     },
   },
   edge: {
-    friend: {
+    [FRIEND]: {
       name: 'Friend',
       color: 'edge-color-seq-1',
       variables: friendVariables,
@@ -925,7 +996,7 @@ const stages = [
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: { en: 'People' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     prompts: [{ id: 'p1', text: { en: 'Name people' } }],
     form: {
       title: { en: 'About this person' },
@@ -943,7 +1014,7 @@ const stages = [
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: { en: 'Tokens' },
-    subject: { entity: 'node', type: 'token' },
+    subject: { entity: 'node', type: TOKEN },
     prompts: [{ id: 'p2', text: { en: 'Name tokens' } }],
     form: {
       title: { en: 'About this token' },
@@ -955,7 +1026,7 @@ const stages = [
     id: 'stage-sociogram',
     type: 'Sociogram',
     label: { en: 'Connections' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', type: PERSON },
     // Two edge-creating prompts over the same six people: each prompt draws
     // its own per-pair probability and rolls every pair against it, so a
     // second pass is a second, independent chance for a pair the first pass
@@ -966,14 +1037,14 @@ const stages = [
       {
         id: 'p3',
         text: { en: 'Connect people' },
-        layout: { layoutVariable: 'personLayout' },
-        edges: { create: 'friend' },
+        layout: { layoutVariable: testVariableId('personLayout') },
+        edges: { create: FRIEND },
       },
       {
         id: 'p3b',
         text: { en: 'Connect people again' },
-        layout: { layoutVariable: 'personLayout' },
-        edges: { create: 'friend' },
+        layout: { layoutVariable: testVariableId('personLayout') },
+        edges: { create: FRIEND },
       },
     ],
   },
@@ -981,7 +1052,7 @@ const stages = [
     id: 'stage-connections',
     type: 'AlterEdgeForm',
     label: { en: 'About connections' },
-    subject: { entity: 'edge', type: 'friend' },
+    subject: { entity: 'edge', type: FRIEND },
     form: { fields: formFields(friendVariables) },
   },
 ] as unknown as Stage[];
@@ -1014,9 +1085,9 @@ describe('synthetic data conformance', () => {
     };
 
     check(egoVariables, scope.ego, 'ego');
-    check(personVariables, scope.node.get('person'), 'person');
-    check(tokenVariables, scope.node.get('token'), 'token');
-    check(friendVariables, scope.edge.get('friend'), 'friend');
+    check(personVariables, scope.node.get(PERSON), 'person');
+    check(tokenVariables, scope.node.get(TOKEN), 'token');
+    check(friendVariables, scope.edge.get(FRIEND), 'friend');
 
     expect(unchecked).toEqual([]);
 
@@ -1040,12 +1111,10 @@ describe('synthetic data conformance', () => {
       config: { today },
     });
 
-    expect(network.nodes.filter((node) => node.type === 'person')).toHaveLength(
+    expect(network.nodes.filter((node) => node.type === PERSON)).toHaveLength(
       6,
     );
-    expect(network.nodes.filter((node) => node.type === 'token')).toHaveLength(
-      2,
-    );
+    expect(network.nodes.filter((node) => node.type === TOKEN)).toHaveLength(2);
     // >= 2, not just > 0: a single edge leaves `unique` on an edge variable
     // with no peer to collide with, so it would pass trivially rather than
     // being exercised (weakness 1 in the review). The Sociogram stage above
@@ -1096,7 +1165,7 @@ describe('synthetic data conformance', () => {
  * variable out of a bin prompt is a protocol-authoring decision. The test below
  * therefore measures the hazard rather than asserting it away.
  */
-const hazardVariables: Variables = {
+const hazardVariables: Variables = keyedVariables({
   binBand: {
     name: 'Bin band',
     type: 'ordinal',
@@ -1118,11 +1187,11 @@ const hazardVariables: Variables = {
     options: FOUR_OPTIONS,
     validation: { required: true, minSelected: 2, maxSelected: 3 },
   },
-};
+});
 
 const hazardCodebook: Codebook = {
   node: {
-    binned: {
+    [BINNED]: {
       name: 'Binned',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
@@ -1141,7 +1210,7 @@ const hazardFormStage = {
     en: 'You have completed this task. Click the next arrow to continue.',
   },
   label: { en: 'Binned people' },
-  subject: { entity: 'node', type: 'binned' },
+  subject: { entity: 'node', type: BINNED },
   prompts: [{ id: 'p1', text: { en: 'Name people' } }],
   form: {
     title: { en: 'About this person' },
@@ -1158,15 +1227,23 @@ const hazardFormAndBinStages = [
     id: 'stage-ordinal-bin',
     type: 'OrdinalBin',
     label: { en: 'Ordinal bin' },
-    subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p2', text: { en: 'Sort' }, variable: 'binRank' }],
+    subject: { entity: 'node', type: BINNED },
+    prompts: [
+      { id: 'p2', text: { en: 'Sort' }, variable: testVariableId('binRank') },
+    ],
   },
   {
     id: 'stage-categorical-bin',
     type: 'CategoricalBin',
     label: { en: 'Categorical bin' },
-    subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p3', text: { en: 'Sort' }, variable: 'binContexts' }],
+    subject: { entity: 'node', type: BINNED },
+    prompts: [
+      {
+        id: 'p3',
+        text: { en: 'Sort' },
+        variable: testVariableId('binContexts'),
+      },
+    ],
   },
 ] as unknown as Stage[];
 
@@ -1249,11 +1326,10 @@ describe('a variable used by both a form and a binning stage', () => {
 
     for (const node of network.nodes) {
       const attributes = node[entityAttributesProperty];
-      expect(ordinalValues).toContain(attributes.binRank);
-      expect(Array.isArray(attributes.binContexts)).toBe(true);
-      for (const value of Array.isArray(attributes.binContexts)
-        ? attributes.binContexts
-        : []) {
+      expect(ordinalValues).toContain(attributes[testVariableId('binRank')]);
+      const contexts = attributes[testVariableId('binContexts')];
+      expect(Array.isArray(contexts)).toBe(true);
+      for (const value of Array.isArray(contexts) ? contexts : []) {
         expect(categoricalValues).toContain(value);
       }
     }
@@ -1275,7 +1351,7 @@ describe('a variable used by both a form and a binning stage', () => {
  * counterpart. A run that cannot find one is generation's failure, not the
  * fixture's.
  */
-const crossResolutionVariables: Variables = {
+const crossResolutionVariables: Variables = keyedVariables({
   xrMonth: {
     name: 'Start month',
     type: 'datetime',
@@ -1393,7 +1469,7 @@ const crossResolutionVariables: Variables = {
     parameters: { type: 'full', min: '2010-01-01', max: '2010-12-01' },
     validation: { greaterThanVariable: ref('xrTightMonth') },
   },
-};
+});
 
 const crossResolutionCodebook: Codebook = {
   ego: { variables: crossResolutionVariables },
@@ -1445,9 +1521,9 @@ async function crossResolutionFailures(seed: number): Promise<string[]> {
       ...messages.map(
         (message) =>
           `seed ${seed}: ${variableId}=${shown(attributes[variableId])} ` +
-          `(against xrMonth=${shown(attributes.xrMonth)}, ` +
-          `xrDay=${shown(attributes.xrDay)}, ` +
-          `xrYear=${shown(attributes.xrYear)}): ${message}`,
+          `(against xrMonth=${shown(attributes[testVariableId('xrMonth')])}, ` +
+          `xrDay=${shown(attributes[testVariableId('xrDay')])}, ` +
+          `xrYear=${shown(attributes[testVariableId('xrYear')])}): ${message}`,
       ),
     );
   }
@@ -1498,10 +1574,10 @@ describe('date comparators across picker resolutions', () => {
       });
       const attributes = network.ego[entityAttributesProperty];
 
-      for (const [variableId, shape] of Object.entries(shapes)) {
-        const value = attributes[variableId];
+      for (const [label, shape] of Object.entries(shapes)) {
+        const value = attributes[testVariableId(label)];
         if (typeof value !== 'string' || !shape.test(value)) {
-          wrong.push(`seed ${seed}: ${variableId}=${shown(value)}`);
+          wrong.push(`seed ${seed}: ${label}=${shown(value)}`);
         }
       }
     }
@@ -1533,7 +1609,7 @@ describe('date comparators across picker resolutions', () => {
  * later month that year would satisfy the same truncating validator without
  * ever being an option the control rendered.
  */
-const coarseBoundVariables: Variables = {
+const coarseBoundVariables: Variables = keyedVariables({
   coarseFullDate: {
     name: 'Coarse full date',
     type: 'datetime',
@@ -1548,7 +1624,7 @@ const coarseBoundVariables: Variables = {
     parameters: { type: 'month', min: '2020', max: '2021' },
     validation: { required: true },
   },
-};
+});
 
 const coarseBoundCodebook: Codebook = {
   ego: { variables: coarseBoundVariables },
@@ -1602,7 +1678,7 @@ describe('a DatePicker bound coarser than its own picker resolution', () => {
       });
       const attributes = network.ego[entityAttributesProperty];
 
-      const fullDate = attributes.coarseFullDate;
+      const fullDate = attributes[testVariableId('coarseFullDate')];
       if (
         typeof fullDate !== 'string' ||
         !/^\d{4}-\d{2}-\d{2}$/.test(fullDate) ||
@@ -1612,7 +1688,7 @@ describe('a DatePicker bound coarser than its own picker resolution', () => {
         wrong.push(`seed ${seed}: coarseFullDate=${shown(fullDate)}`);
       }
 
-      const monthDate = attributes.coarseMonthDate;
+      const monthDate = attributes[testVariableId('coarseMonthDate')];
       if (
         typeof monthDate !== 'string' ||
         !/^\d{4}-\d{2}$/.test(monthDate) ||
@@ -1641,7 +1717,7 @@ describe('a DatePicker bound coarser than its own picker resolution', () => {
  * counterpart's period and three clear it, so a run can fill the stage only by
  * passing the first three over.
  */
-const rosterDateVariables: Variables = {
+const rosterDateVariables: Variables = keyedVariables({
   rosterYear: {
     name: 'Started',
     type: 'datetime',
@@ -1655,11 +1731,11 @@ const rosterDateVariables: Variables = {
     parameters: { type: 'full', min: '2000-01-01', max: '2030-12-31' },
     validation: { greaterThanVariable: ref('rosterYear') },
   },
-};
+});
 
 const rosterDateCodebook: Codebook = {
   node: {
-    rosterPerson: {
+    [ROSTER_PERSON]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
@@ -1682,7 +1758,7 @@ const rosterDateStages = [
     },
     panelTitle: { en: 'Available to add' },
     label: { en: 'People' },
-    subject: { entity: 'node', type: 'rosterPerson' },
+    subject: { entity: 'node', type: ROSTER_PERSON },
     prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
       title: { en: 'About this person' },
@@ -1695,15 +1771,15 @@ const rosterDateStages = [
 /** The rows the stage draws from, rebuilt per seed so no run mutates another's. */
 function rosterDateRows(): NcNode[] {
   return [
-    { rosterYear: '2020', rosterDay: '2020-01-01' },
-    { rosterYear: '2020', rosterDay: '2020-01-02' },
-    { rosterYear: '2021', rosterDay: '2021-01-01' },
-    { rosterYear: '2021', rosterDay: '2021-06-30' },
-    { rosterYear: '2022', rosterDay: '2022-01-01' },
-    { rosterYear: '2022', rosterDay: '2022-12-31' },
+    { [ROSTER_YEAR]: '2020', [ROSTER_DAY]: '2020-01-01' },
+    { [ROSTER_YEAR]: '2020', [ROSTER_DAY]: '2020-01-02' },
+    { [ROSTER_YEAR]: '2021', [ROSTER_DAY]: '2021-01-01' },
+    { [ROSTER_YEAR]: '2021', [ROSTER_DAY]: '2021-06-30' },
+    { [ROSTER_YEAR]: '2022', [ROSTER_DAY]: '2022-01-01' },
+    { [ROSTER_YEAR]: '2022', [ROSTER_DAY]: '2022-12-31' },
   ].map((attributes, index) => ({
     [entityPrimaryKeyProperty]: `roster-${index}`,
-    type: 'rosterPerson',
+    type: ROSTER_PERSON,
     [entityAttributesProperty]: { ...attributes },
   }));
 }
@@ -1723,7 +1799,7 @@ function rosterDateRows(): NcNode[] {
  * Two of the four rows below leave the draw somewhere to go and two do not, so
  * a run can fill the stage only by passing the second pair over.
  */
-const rosterPinVariables: Variables = {
+const rosterPinVariables: Variables = keyedVariables({
   pinnedAge: {
     name: 'Pinned age',
     type: 'number',
@@ -1741,11 +1817,11 @@ const rosterPinVariables: Variables = {
       greaterThanVariable: ref('pinnedAge'),
     },
   },
-};
+});
 
 const rosterPinCodebook: Codebook = {
   node: {
-    rosterPinned: {
+    [ROSTER_PINNED]: {
       name: 'Person',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
@@ -1768,7 +1844,7 @@ const rosterPinStages = [
     },
     panelTitle: { en: 'Available to add' },
     label: { en: 'People' },
-    subject: { entity: 'node', type: 'rosterPinned' },
+    subject: { entity: 'node', type: ROSTER_PINNED },
     prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
       title: { en: 'About this person' },
@@ -1781,13 +1857,13 @@ const rosterPinStages = [
 /** The rows the stage draws from, rebuilt per seed so no run mutates another's. */
 function rosterPinRows(): NcNode[] {
   return [
-    { pinnedAge: 1 },
-    { pinnedAge: 0 },
-    { pinnedAge: 1 },
-    { pinnedAge: 0 },
+    { [PINNED_AGE]: 1 },
+    { [PINNED_AGE]: 0 },
+    { [PINNED_AGE]: 1 },
+    { [PINNED_AGE]: 0 },
   ].map((attributes, index) => ({
     [entityPrimaryKeyProperty]: `roster-pin-${index}`,
-    type: 'rosterPinned',
+    type: ROSTER_PINNED,
     [entityAttributesProperty]: { ...attributes },
   }));
 }
@@ -1834,7 +1910,9 @@ describe('a roster pinning one end of a comparator', () => {
       });
 
       const drawn = network.nodes
-        .map((node) => shown(node[entityAttributesProperty].pinnedAge))
+        .map((node) =>
+          shown(node[entityAttributesProperty][testVariableId('pinnedAge')]),
+        )
         .toSorted()
         .join(', ');
 
@@ -1858,7 +1936,7 @@ describe('a roster pinning one end of a comparator', () => {
  * that admitted a value outside the bounds would put invalid data in front of a
  * participant — which is what this file's validator stack is here to catch.
  */
-const narrowVariables: Variables = {
+const narrowVariables: Variables = keyedVariables({
   narrowPair: {
     name: 'Narrow pair',
     type: 'number',
@@ -1887,11 +1965,11 @@ const narrowVariables: Variables = {
       differentFrom: ref('narrowGrid'),
     },
   },
-};
+});
 
 const narrowCodebook: Codebook = {
   node: {
-    narrow: {
+    [NARROW]: {
       name: 'Narrow',
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
@@ -1911,7 +1989,7 @@ const narrowStages = [
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: { en: 'Narrow people' },
-    subject: { entity: 'node', type: 'narrow' },
+    subject: { entity: 'node', type: NARROW },
     prompts: [{ id: 'p1', text: { en: 'Name people' } }],
     form: {
       title: { en: 'About this person' },
@@ -1938,7 +2016,7 @@ describe('a number range too narrow to hold a whole value', () => {
       }
 
       const pairs = network.nodes.map(
-        (node) => node[entityAttributesProperty].narrowPair,
+        (node) => node[entityAttributesProperty][testVariableId('narrowPair')],
       );
       if (new Set(pairs).size !== pairs.length) {
         failures.push(`seed ${seed}: repeated ${JSON.stringify(pairs)}`);
@@ -1998,7 +2076,9 @@ describe('a roster fixing both ends of a cross-resolution comparator', () => {
       });
 
       const drawn = network.nodes
-        .map((node) => shown(node[entityAttributesProperty].rosterDay))
+        .map((node) =>
+          shown(node[entityAttributesProperty][testVariableId('rosterDay')]),
+        )
         .toSorted()
         .join(', ');
       const expected = ['"2020-01-02"', '"2021-06-30"', '"2022-12-31"'].join(

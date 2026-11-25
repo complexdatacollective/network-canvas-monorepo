@@ -4,19 +4,27 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
+import {
+  testTypeId,
+  testVariableId,
+} from '@codaco/protocol-builder/testing/testId';
+
 import VariableRoleConflictsAlert from '../VariableRoleConflictsAlert';
 
 // `category` is written by both a form field (validated) and a bin prompt
 // (unvalidated) on the same node type — the conflict shape
 // `findVariableRoleConflicts` flags. Mirrors the fixture stages in
 // `packages/protocol-validation/src/utils/__tests__/findVariableRoleConflicts.test.ts`.
+const PERSON = testTypeId('person');
+const CATEGORY = testVariableId('category');
+
 const codebook = {
   node: {
-    person: {
+    [PERSON]: {
       name: 'Person',
       color: 'node-color-seq-1',
       variables: {
-        category: {
+        [CATEGORY]: {
           name: 'Category',
           type: 'categorical',
           options: [
@@ -33,9 +41,9 @@ const alterFormStage = {
   id: 'af1',
   type: 'AlterForm',
   label: { en: 'Alter form' },
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', type: PERSON },
   form: {
-    fields: [{ id: 'field-1', variable: 'category', prompt: { en: 'Answer' } }],
+    fields: [{ id: 'field-1', variable: CATEGORY, prompt: { en: 'Answer' } }],
   },
 };
 
@@ -43,8 +51,8 @@ const categoricalBinStage = {
   id: 'cb1',
   type: 'CategoricalBin',
   label: { en: 'Sort into bins' },
-  subject: { entity: 'node', type: 'person' },
-  prompts: [{ id: 'p1', text: { en: 'Sort' }, variable: 'category' }],
+  subject: { entity: 'node', type: PERSON },
+  prompts: [{ id: 'p1', text: { en: 'Sort' }, variable: CATEGORY }],
 };
 
 const localization = { defaultLocale: 'en', locales: ['en'] };
@@ -103,8 +111,8 @@ describe('<VariableRoleConflictsAlert />', () => {
     const twoPromptBinStage = {
       ...categoricalBinStage,
       prompts: [
-        { id: 'p1', text: { en: 'Sort' }, variable: 'category' },
-        { id: 'p2', text: { en: 'Sort again' }, variable: 'category' },
+        { id: 'p1', text: { en: 'Sort' }, variable: CATEGORY },
+        { id: 'p2', text: { en: 'Sort again' }, variable: CATEGORY },
       ],
     };
     const store = createTestStore({

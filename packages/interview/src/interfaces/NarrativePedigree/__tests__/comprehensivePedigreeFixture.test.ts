@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import {
+  CurrentProtocolSchema,
+  type InheritancePattern,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -54,16 +57,18 @@ describe('comprehensive pedigree — deterministic synthetic data', () => {
       source?.type === 'FamilyPedigree'
         ? source.nodeConfiguration.egoAttribute
         : '';
-    const attributeOf = (disease: string) =>
+    // Each condition in the fixture has its own inheritance pattern.
+    const attributeOf = (pattern: InheritancePattern) =>
       (narrative?.type === 'NarrativePedigree'
-        ? narrative.diseases.find((candidate) => candidate.id === disease)
-            ?.attribute
+        ? narrative.diseases.find(
+            (candidate) => candidate.inheritancePattern === pattern,
+          )?.attribute
         : undefined) ?? '';
-    const HD_VAR = attributeOf('huntingtons');
-    const CF_VAR = attributeOf('cysticFibrosis');
-    const HAEM_VAR = attributeOf('haemophilia');
-    const XLH_VAR = attributeOf('hypophosphataemia');
-    const YHL_VAR = attributeOf('yLinkedHearingLoss');
+    const HD_VAR = attributeOf('autosomalDominant');
+    const CF_VAR = attributeOf('autosomalRecessive');
+    const HAEM_VAR = attributeOf('xLinkedRecessive');
+    const XLH_VAR = attributeOf('xLinkedDominant');
+    const YHL_VAR = attributeOf('yLinked');
     const MITO_VAR = attributeOf('mitochondrial');
 
     const idsWith = (variable: string) =>

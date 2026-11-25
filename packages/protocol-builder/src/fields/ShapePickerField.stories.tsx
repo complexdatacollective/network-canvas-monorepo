@@ -5,6 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import { fixtureStageId } from '../testing/protocolFixture.ts';
 import ShapePickerField from './ShapePickerField.tsx';
 
 /**
@@ -49,7 +50,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'sociogram-1',
+    stageId: fixtureStageId('sociogram-1'),
     sectionTitle: 'Node appearance',
     children: <ShapePicker />,
   },

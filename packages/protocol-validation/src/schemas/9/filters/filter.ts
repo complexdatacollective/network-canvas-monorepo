@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
+import { protocolObjectId } from '../protocol-object-id.ts';
 
 // Operators valid when checking entity type existence (no attribute specified)
 export const TypeLevelOperators = z.enum(['EXISTS', 'NOT_EXISTS']);
@@ -163,14 +164,14 @@ const attributeLevelOptionsSchema = z.strictObject({
 // Type-level filter rule (no attribute - EXISTS/NOT_EXISTS only)
 const typeLevelFilterRuleSchema = z.strictObject({
   type: z.enum(['node', 'ego', 'edge']),
-  id: z.string(),
+  id: protocolObjectId('rule'),
   options: typeLevelOptionsSchema,
 });
 
 // Attribute-level filter rule (attribute specified - all operators valid at schema level)
 const attributeLevelFilterRuleSchema = z.strictObject({
   type: z.enum(['node', 'ego', 'edge']),
-  id: z.string(),
+  id: protocolObjectId('rule'),
   options: attributeLevelOptionsSchema,
 });
 

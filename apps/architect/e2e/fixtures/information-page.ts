@@ -1,4 +1,7 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  createProtocolObjectId,
+  type CurrentProtocol,
+} from '@codaco/protocol-validation';
 
 import { Timeline } from '../pageobjects/timeline.js';
 import { test as base, gotoProtocol } from './architect-test.js';
@@ -61,7 +64,7 @@ export function informationProtocol(
     assetManifest: moreFiles ? { ...PHOTO_ASSET, ...MORE_ASSETS } : PHOTO_ASSET,
     stages: [
       {
-        id: 'info-1',
+        id: createProtocolObjectId(),
         type: 'Information',
         label: { en: INFORMATION_STAGE_NAME },
         content: { en: content },
