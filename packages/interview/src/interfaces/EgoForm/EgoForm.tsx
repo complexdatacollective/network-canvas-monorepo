@@ -1,5 +1,4 @@
 'use client';
-import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   useCallback,
@@ -13,6 +12,7 @@ import {
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
+import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { shouldShowFieldError } from '@codaco/fresco-ui/form/hooks/useField';
@@ -28,7 +28,7 @@ import type {
   FlattenedErrors,
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
-import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -50,6 +50,7 @@ import { updateEgo } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { BeforeNextFunction, StageProps } from '../../types';
 import { interfaceMessages } from '../messages';
+import ScrollDownIcon from './ScrollDownIcon';
 
 type EgoFormProps = StageProps<'EgoForm'>;
 
@@ -61,12 +62,6 @@ const EgoFormInner = (props: EgoFormProps) => {
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const track = useTrack();
-
-  const [nudgeVisible, setNudgeVisible] = useState(false);
-  const [interactionCount, setInteractionCount] = useState(0);
-  const noteInteraction = useCallback(() => {
-    setInteractionCount((count) => count + 1);
-  }, []);
 
   const { isValid: isFormValid } = useFormMeta();
   // A live comparison against the values the fields registered with, not the
@@ -89,15 +84,34 @@ const EgoFormInner = (props: EgoFormProps) => {
   const { hasScrolledToBottom, sentinelRef } =
     useScrolledToBottom(scrollAreaRef);
 
-  // Show nudge after 15s of inactivity. Reset on field changes and on any
-  // deliberate interaction with the form.
-  // Once the user has scrolled to the bottom, permanently hide the nudge.
+  // Show the nudge after 15s of inactivity. A field change, or any press,
+  // key or scroll inside the form, hides it and restarts the wait. Once the
+  // participant has reached the bottom, the nudge never shows again.
+  const [nudgeVisible, setNudgeVisible] = useState(false);
+  // Mirrors `nudgeVisible` for the event handlers. A scroll fires on every
+  // frame, so the wait is restarted without touching React state unless the
+  // nudge is actually showing.
+  const nudgeVisibleRef = useRef(false);
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const restartNudgeTimer = useCallback(() => {
+    clearTimeout(nudgeTimerRef.current);
+    if (nudgeVisibleRef.current) {
+      nudgeVisibleRef.current = false;
+      setNudgeVisible(false);
+    }
+    if (hasScrolledToBottom) return;
+    nudgeTimerRef.current = setTimeout(() => {
+      nudgeVisibleRef.current = true;
+      setNudgeVisible(true);
+    }, 15000);
+  }, [hasScrolledToBottom]);
+
   useEffect(() => {
-    setNudgeVisible(false);
-    if (hasScrolledToBottom) return undefined;
-    const timer = setTimeout(() => setNudgeVisible(true), 15000);
-    return () => clearTimeout(timer);
-  }, [fields, hasScrolledToBottom, interactionCount]);
+    restartNudgeTimer();
+    return () => clearTimeout(nudgeTimerRef.current);
+  }, [fields, restartNudgeTimer]);
 
   const { updateReady: setIsReadyForNext } = useReadyForNextStage();
   const egoAttributes = useStageSelector(getEgoAttributes);
@@ -253,24 +267,22 @@ const EgoFormInner = (props: EgoFormProps) => {
   }, []);
 
   return (
-    // The guidance callout sits BELOW the scroll region rather than floating
-    // over it. As an overlay it necessarily covered whatever happened to be at
-    // the bottom of the viewport — a question, an option, an error — at every
-    // scroll position; reserving space at the end of the content would only
-    // have cleared the very bottom. Taking its own row shortens the scroller
-    // instead, so there is no position at any viewport size where a question
-    // can pass underneath it.
-    <div className="flex size-full min-h-0 flex-col">
+    // The guidance callout floats over the bottom of the scroll region rather
+    // than taking a row of its own. A row of its own shortened the scroller
+    // whenever the callout appeared, which moved the scrollbar and the bottom
+    // fade with it. Floating, it covers whatever is at the bottom of the
+    // viewport, so it gives way as soon as the participant acts: any press, key
+    // or scroll inside the form hides it, and the 15s timer re-arms from there.
+    <div className="relative flex size-full min-h-0 flex-col">
       <ScrollArea
         className="m-0 min-h-0 w-full flex-1"
         ref={scrollAreaRef}
-        // Any deliberate interaction with the form means the participant does
-        // not need the nudge right now. Capture on the scroll region only —
-        // the callout is a sibling, so its own button is never dismissed out
-        // from under the press that activates it. The 15s timer re-arms from
-        // here, so it can come back after genuine inactivity.
-        onPointerDownCapture={noteInteraction}
-        onKeyDownCapture={noteInteraction}
+        // Capture on the scroll region only — the callout is a sibling, so its
+        // own button is never dismissed out from under the press that
+        // activates it.
+        onPointerDownCapture={restartNudgeTimer}
+        onKeyDownCapture={restartNudgeTimer}
+        onScroll={restartNudgeTimer}
       >
         <div className="interface mx-auto max-w-[80ch]">
           <Surface spacing="lg" shadow="lg">
@@ -299,59 +311,28 @@ const EgoFormInner = (props: EgoFormProps) => {
       </ScrollArea>
       <AnimatePresence>
         {showScrollNudge && (
-          <MotionSurface
-            noContainer
-            floating
-            spacing="xs"
-            shadow="xs"
-            as="output"
+          <motion.output
             aria-live="polite"
             // oxlint-disable-next-line tailwindcss/no-unknown-classes -- semantic marker matching e2e scenario ids
-            className="scroll-nudge mx-auto mt-2 mb-4 flex shrink-0"
-            initial={{ y: '100%' }}
+            className="scroll-nudge absolute inset-x-0 bottom-4 mx-auto flex w-fit"
+            initial={{ y: '100%', opacity: 0 }}
             animate={{
               y: 0,
+              opacity: 1,
               transition: { type: 'spring', stiffness: 200, damping: 15 },
             }}
-            exit={{ y: '200%' }}
+            exit={{ y: '100%', opacity: 0 }}
           >
-            <button
-              type="button"
+            <IconButton
+              variant="default-inverted"
+              color="secondary"
               onClick={scrollToBottom}
-              className="flex items-center gap-2"
-            >
-              <motion.div
-                aria-hidden="true"
-                animate={{
-                  y: [0, 7, 0, 7, 0],
-                }}
-                transition={{
-                  duration: 2,
-                  ease: 'easeInOut',
-                  repeat: Number.POSITIVE_INFINITY,
-                }}
-              >
-                <ChevronDown size="24" />
-              </motion.div>
-              <span className="sr-only" lang="en">
-                {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English */}
-                {'Scroll to see more questions'}
-              </span>
-              <motion.div
-                aria-hidden="true"
-                animate={{
-                  y: [0, 7, 0, 7, 0],
-                }}
-                transition={{
-                  duration: 2,
-                  ease: 'easeInOut',
-                  repeat: Number.POSITIVE_INFINITY,
-                }}
-              >
-                <ChevronDown size="24" />
-              </motion.div>
-            </button>
-          </MotionSurface>
+              icon={<ScrollDownIcon />}
+              // Screen-reader text stays English.
+              aria-label="Scroll to see more questions"
+              lang="en"
+            />
+          </motion.output>
         )}
       </AnimatePresence>
     </div>

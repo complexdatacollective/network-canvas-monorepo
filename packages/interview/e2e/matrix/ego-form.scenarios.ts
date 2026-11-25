@@ -1584,7 +1584,8 @@ export const egoFormScenarios: InterfaceScenarios = {
       id: 'scroll-nudge-inactivity',
       covers: [
         'scroll-nudge-15s-inactivity',
-        'scroll-nudge-never-obscures-content',
+        'scroll-nudge-floats-without-resizing-form',
+        'scroll-nudge-gives-way-on-scroll',
       ],
       slow: true,
       build: () => {
@@ -1661,44 +1662,64 @@ export const egoFormScenarios: InterfaceScenarios = {
         ).toBeVisible();
 
         // The nudge is a button whose accessible name comes from its heading
-        // text (the chevrons are aria-hidden).
+        // text (the icon is aria-hidden).
         const nudge = page.getByRole('button', {
           name: 'Scroll to see more questions',
         });
         await expect(nudge).toBeHidden();
 
-        await page.clock.fastForward('00:15'); // 15s — EgoForm.tsx:83
-        await expect(nudge).toBeVisible();
-
-        // Issue #1385: the callout used to float over the bottom of the scroll
-        // region and covered whatever happened to be there. It now takes its
-        // own row below the scroller, so nothing can be underneath it — at the
-        // top of the form or part-way down it.
-        const overlappedText = async () => {
-          const box = await nudge.boundingBox();
-          if (!box) throw new Error('Scroll guidance has no box to measure');
-          const candidates = await page
-            .locator('main label, main [data-testid$="-field-error"]')
-            .all();
-          const hits: string[] = [];
-          for (const candidate of candidates) {
-            if (!(await candidate.isVisible())) continue;
-            const rect = await candidate.boundingBox();
-            if (!rect) continue;
-            const overlaps =
-              rect.x < box.x + box.width &&
-              rect.x + rect.width > box.x &&
-              rect.y < box.y + box.height &&
-              rect.y + rect.height > box.y;
-            if (overlaps) hits.push((await candidate.textContent()) ?? '');
-          }
-          return hits;
+        // The callout floats over the scroll region. It must not take space
+        // from it: a scroller that shrinks when the callout appears moves its
+        // scrollbar and its bottom fade.
+        const heading = page.getByRole('heading', {
+          level: 1,
+          name: 'About You',
+        });
+        const scroller = page.locator('.scroll-area-viewport', {
+          has: heading,
+        });
+        const scrollerHeight = async () => {
+          const box = await scroller.boundingBox();
+          if (!box) throw new Error('Scroll region has no box to measure');
+          return box.height;
         };
+        const heightWithoutNudge = await scrollerHeight();
 
-        expect(await overlappedText()).toEqual([]);
-        await page.mouse.wheel(0, 400);
-        expect(await overlappedText()).toEqual([]);
-        await page.mouse.wheel(0, -400);
+        await page.clock.fastForward('00:15'); // 15s — EgoForm.tsx
+        await expect(nudge).toBeVisible();
+        expect(await scrollerHeight()).toBe(heightWithoutNudge);
+
+        // Floating, it covers the bottom of the viewport, so it gives way as
+        // soon as the participant scrolls, and returns after another 15s of
+        // inactivity while there is still more to see.
+        // `mouse.wheel` returns before the scroll it starts has finished, and
+        // its scroll events arrive on real frames, not on the fake clock. Wait
+        // until the position stops changing, so that every scroll event has
+        // landed before the clock moves on.
+        const scrolled = async (deltaY: number) => {
+          await page.mouse.wheel(0, deltaY);
+          let last: number | undefined;
+          await expect
+            .poll(async () => {
+              const top = await scroller.evaluate((el) => el.scrollTop);
+              const settled = top === last;
+              last = top;
+              return settled;
+            })
+            .toBe(true);
+        };
+        await heading.hover();
+        await scrolled(200);
+        await expect(nudge).toBeHidden();
+
+        // A scroll while it is hidden restarts the wait too, so it does not
+        // appear 15s after the first scroll if the participant kept scrolling.
+        await page.clock.fastForward('00:10');
+        await scrolled(-100);
+        await page.clock.fastForward('00:10');
+        await expect(nudge).toBeHidden();
+        await page.clock.fastForward('00:05');
+        await expect(nudge).toBeVisible();
 
         // Clicking scrolls to the bottom; the sentinel intersects and
         // hasScrolledToBottom latches permanently (useScrolledToBottom.ts:21-48),
