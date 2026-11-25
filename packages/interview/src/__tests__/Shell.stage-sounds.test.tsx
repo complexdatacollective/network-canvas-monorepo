@@ -147,6 +147,30 @@ const nameGenerator = {
   prompts: [{ id: testId('ng-p1'), text: { en: 'Who do you know?' } }],
 };
 
+// A name generator whose panel offers the people already in the network who
+// were named for another question.
+const networkPanelNameGenerator = {
+  ...nameGenerator,
+  id: testId('network-name-generator'),
+  panels: [
+    {
+      id: testId('network-panel'),
+      title: { en: 'People you named before' },
+      dataSource: 'existing',
+    },
+  ],
+  prompts: [{ id: testId('nng-p1'), text: { en: 'Who do you see often?' } }],
+};
+
+// A person in the network, named for a question on an earlier stage.
+const namedBefore = (id: string, name: string) =>
+  person(
+    id,
+    name,
+    {},
+    { promptIDs: [testId('earlier-p1')], stageId: testId('earlier') },
+  );
+
 const named = (id: string, name: string) =>
   person(
     id,
@@ -202,6 +226,18 @@ const protectedCategoricalBin = {
       otherOptionLabel: { en: 'Some other way' },
     },
   ],
+};
+
+// The bins in select mode, where a person is placed by choosing a bin.
+const selectOrdinalBin = {
+  ...ordinalBin,
+  id: testId('select-ordinal'),
+  behaviours: { interactionMode: 'select' },
+};
+const selectCategoricalBin = {
+  ...categoricalBin,
+  id: testId('select-categorical'),
+  behaviours: { interactionMode: 'select' },
 };
 
 function payloadWith(
@@ -651,7 +687,7 @@ describe('the sound of dragging a person on a name generator', () => {
     await waitFor(() => expect(stageNodes()).toHaveLength(1));
   });
 
-  it('plays only the list’s sound when a person is added from the panel, and only the panel’s sound when they are taken back', async () => {
+  it('plays only the sound of adding a person when one from a roster panel is dropped on the list, and only the panel’s sound when they are taken back', async () => {
     const { heard } = await renderInterview(
       [nameGenerator],
       [named('a', 'Alex')],
@@ -661,11 +697,11 @@ describe('the sound of dragging a person on a name generator', () => {
       await screen.findByTestId('node-panel'),
     );
 
-    // Adding a person from the panel adds them to the network, which on its
-    // own sounds like a person created.
+    // Adding a person from the roster adds a new node to the network, which
+    // makes no second sound of its own.
     expect(await keyboardDrag(heard, dana, 'Added Nodes')).toEqual({
       pickedUp: ['pick-up'],
-      dropped: ['toggle-on'],
+      dropped: ['create-node'],
     });
     await waitFor(() => expect(stageNodes()).toHaveLength(2));
 
@@ -677,6 +713,35 @@ describe('the sound of dragging a person on a name generator', () => {
       dropped: ['toggle-off'],
     });
     await waitFor(() => expect(stageNodes()).toHaveLength(1));
+  });
+
+  it('plays only the list’s sound when a person already in the network is dropped on it from a panel, and only the panel’s sound when they are taken back', async () => {
+    const { heard } = await renderInterview(
+      [networkPanelNameGenerator],
+      [namedBefore('b', 'Blake')],
+    );
+    const blake = await personNamed(
+      'Blake',
+      await screen.findByTestId('node-panel'),
+    );
+
+    // Adding them to this question adds no node: it is heard as the list's
+    // sound, and the change it makes, which on its own sounds like a person
+    // selected, makes no second sound.
+    expect(await keyboardDrag(heard, blake, 'Added Nodes')).toEqual({
+      pickedUp: ['pick-up'],
+      dropped: ['toggle-on'],
+    });
+    await waitFor(() => expect(stageNodes()).toHaveLength(1));
+
+    const added = await personNamed('Blake', screen.getByTestId('node-list'));
+    expect(await keyboardDrag(heard, added, 'People you named before')).toEqual(
+      {
+        pickedUp: ['pick-up'],
+        dropped: ['toggle-off'],
+      },
+    );
+    await waitFor(() => expect(stageNodes()).toHaveLength(0));
   });
 
   it('plays nothing as a drag ends that is cancelled or dropped where nothing takes the person, and nothing for a press that does not drag', async () => {
@@ -787,7 +852,7 @@ describe('the sound of a drop that needs the passphrase', () => {
     await waitFor(() => expect(otherQuestion()).toBeNull(), {
       timeout: 10_000,
     });
-    expect(await heard()).toEqual(['drop-node']);
+    expect(await heard()).toEqual(['toggle-on']);
   });
 });
 
@@ -805,7 +870,7 @@ describe('the sound of dragging a person into a bin', () => {
 
     expect(
       await keyboardDrag(heard, await personNamed('Alex'), 'Category: Work'),
-    ).toEqual({ pickedUp: ['pick-up'], dropped: ['drop-node'] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: ['toggle-on'] });
 
     expect(
       await keyboardDrag(
@@ -822,7 +887,7 @@ describe('the sound of dragging a person into a bin', () => {
       fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(await heard()).toEqual(['drop-node']);
+    expect(await heard()).toEqual(['toggle-on']);
 
     expect(
       await keyboardDrag(
@@ -842,6 +907,49 @@ describe('the sound of dragging a person into a bin', () => {
   });
 });
 
+describe('the sound of placing a person in a bin by choosing it', () => {
+  it('plays the drop sound once for a person placed in an ordinal bin', async () => {
+    const { heard } = await renderInterview([selectOrdinalBin]);
+    const often = await screen.findByRole('button', {
+      name: 'Place Alex in Often',
+    });
+    await heard();
+    await act(async () => {
+      fireEvent.click(often);
+    });
+    expect(await heard()).toEqual(['toggle-on']);
+  });
+
+  it('plays the drop sound once for a person placed in a categorical bin, and for one placed in "other" only once the answer is saved', async () => {
+    const { heard } = await renderInterview([selectCategoricalBin]);
+    const work = await screen.findByRole('button', {
+      name: 'Place Alex in Work',
+    });
+    await heard();
+    await act(async () => {
+      fireEvent.click(work);
+    });
+    expect(await heard()).toEqual(['toggle-on']);
+
+    const other = await screen.findByRole('button', {
+      name: 'Place Blake in Some other way',
+    });
+    await act(async () => {
+      fireEvent.click(other);
+    });
+    const dialog = await screen.findByRole('dialog');
+    expect(await heard()).toEqual([]);
+    fireEvent.change(within(dialog).getByRole('textbox'), {
+      target: { value: 'Neighbours' },
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await heard()).toEqual(['toggle-on']);
+  });
+});
+
 describe('the sound of dragging a person on the sociogram', () => {
   it('plays the pick-up and drop sounds for a person placed from the drawer or moved on the canvas, the drawer’s sound for one put back, and nothing for a keyboard nudge', async () => {
     const { heard } = await renderInterview(
@@ -857,12 +965,12 @@ describe('the sound of dragging a person on the sociogram', () => {
 
     expect(
       await keyboardDrag(heard, await personNamed('Blake'), 'Placement area'),
-    ).toEqual({ pickedUp: ['pick-up'], dropped: ['toggle-on'] });
+    ).toEqual({ pickedUp: ['pick-up'], dropped: ['drop-node'] });
 
     const alex = await personNamed('Alex', canvasArea);
     expect(await pointerDrag(heard, alex, canvasArea)).toEqual({
       pickedUp: ['pick-up'],
-      dropped: ['toggle-on'],
+      dropped: ['drop-node'],
     });
 
     await act(async () => {

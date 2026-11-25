@@ -26,6 +26,7 @@ const InteractionSoundsContext = createContext<InteractionSounds>(SILENT);
 
 const DROP_SOUNDS = [
   'discard',
+  'create-node',
   'drop-node',
   'toggle-on',
   'toggle-off',
@@ -33,17 +34,28 @@ const DROP_SOUNDS = [
 
 /**
  * The sound of a drop, which the drop target declares as its `dropFeedback`
- * by what a drop on it does: `discard` for deleting the person (the bin),
- * `drop-node` for placing them in a category (a categorical bin), `toggle-on`
- * for adding them to the question (a name generator's main list) or placing
- * them in an ordinal bin or on a canvas (the sociogram's, or another
- * interface's), which is also the sound of the sociogram highlighting a
- * person, and `toggle-off` for taking them off the question (back to a side
- * panel or the roster, or to the sociogram's drawer). It plays only once the target's drop handler says it
- * took the drop (see `DropOutcome`): when the change is stored, or, for the
- * "other" bin, when its question is answered. A drop the handler refuses (a
- * write that fails, a passphrase that is needed first, a question that is
- * cancelled) is silent.
+ * by what a drop on it does:
+ *
+ * - `discard` for deleting the person (the bin);
+ * - `create-node` for adding a new person to the network (a person from a
+ *   roster or other external data dropped on the prompt's list, from a name
+ *   generator's panel or from the roster), the sound of adding a person;
+ * - `toggle-on` for adding a person already in the network to the prompt (a
+ *   name generator's list, from a panel of people named elsewhere) or
+ *   placing them in a bin (categorical or ordinal), which is also the sound
+ *   of the sociogram highlighting a person;
+ * - `drop-node` for placing them on a node canvas (the sociogram's, or
+ *   another interface's) or moving them on it;
+ * - `toggle-off` for taking them off the prompt (back to a side panel or the
+ *   roster, or to the sociogram's drawer).
+ *
+ * A prompt's list chooses between `create-node` and `toggle-on` for each
+ * drop, from the person dropped (see `promptListDropSound`). The sound plays
+ * only once the target's drop handler says it took the drop (see
+ * `DropOutcome`): when the change is stored, or, for the "other" bin, when
+ * its question is answered. A drop the handler refuses (a write that fails,
+ * a passphrase that is needed first, a question that is cancelled) is
+ * silent.
  */
 export type DropSound = (typeof DROP_SOUNDS)[number];
 

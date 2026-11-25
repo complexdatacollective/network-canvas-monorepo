@@ -19,8 +19,9 @@ type DragFeedback = {
    */
   onDragStart?: () => void;
   /**
-   * Called each time an item is dropped on a target that accepts it, with the
-   * target's `dropFeedback` (undefined when it declares none) and `drop`,
+   * Called each time an item is dropped on a target that accepts it, with
+   * what the target's `dropFeedback` says this drop means (undefined when it
+   * declares none; see `DropFeedback`) and `drop`,
    * which carries out the drop by calling the target's own drop handler and
    * returns what the handler returned: whether it took the drop (see
    * `DropOutcome`). The listener must call `drop` once, before it returns. A

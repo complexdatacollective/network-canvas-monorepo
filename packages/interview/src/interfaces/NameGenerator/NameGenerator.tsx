@@ -1,6 +1,5 @@
 'use client';
 
-import { has } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -46,6 +45,7 @@ import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { writesEncryptedValue } from '../Anonymisation/utils';
+import { isNetworkNode, promptListDropSound } from '../promptListDrop';
 import NodeForm from './components/NodeForm';
 import NodePanels from './components/NodePanels';
 import QuickNodeForm from './components/QuickNodeForm';
@@ -202,7 +202,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
     if (!node) return false;
 
     // Test if we are updating an existing network node, or adding it to the network
-    if (has(node, 'promptIDs')) {
+    if (isNetworkNode(node)) {
       return writeSucceeded(
         await addNodeToPrompt(
           node[entityPrimaryKeyProperty],
@@ -307,7 +307,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               accepts={['NEW_NODE']}
               itemType="EXISTING_NODE"
               onDrop={handleDropNode}
-              dropSound="toggle-on"
+              dropSound={promptListDropSound}
               onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"
@@ -323,7 +323,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
               accepts={['NEW_NODE']}
               itemType="EXISTING_NODE"
               onDrop={handleDropNode}
-              dropSound="toggle-on"
+              dropSound={promptListDropSound}
               onItemClick={onNodeTapped}
               animationKey={promptIndex}
               className="flex flex-1 rounded"

@@ -1,6 +1,6 @@
 import type React from 'react';
 
-import type { DropOutcome } from '../../dnd/types';
+import type { DropFeedback, DropOutcome } from '../../dnd/types';
 
 /**
  * Unique identifier for items in a collection.
@@ -155,9 +155,9 @@ export type DragAndDropOptions<_T = unknown> = {
   onDrop?: (e: DropEvent) => DropOutcome;
   /**
    * What a drop on the collection container means, for an enclosing
-   * `DragFeedbackListener` (see the drop target's `dropFeedback`).
+   * `DragFeedbackListener` (see `DropFeedback`).
    */
-  dropFeedback?: string;
+  dropFeedback?: DropFeedback;
   /** Types accepted for collection-level drop (defaults to types from getItems) */
   acceptTypes?: string[];
   /** Custom filter for fine-grained acceptance based on drag item metadata */

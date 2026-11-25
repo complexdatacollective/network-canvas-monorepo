@@ -235,7 +235,7 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
     id: getCatBinDropTargetId(stageId, promptId, index),
     accepts: ['NODE'],
     announcedName: `Category: ${spokenLabel}`,
-    dropFeedback: 'drop-node' satisfies DropSound,
+    dropFeedback: 'toggle-on' satisfies DropSound,
     onDrop: handleDrop,
     disabled: !!select,
   });

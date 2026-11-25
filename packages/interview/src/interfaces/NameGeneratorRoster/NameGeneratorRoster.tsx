@@ -79,6 +79,7 @@ import { useInterviewToast } from '../../toast/useInterviewToast';
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
+import { promptListDropSound } from '../promptListDrop';
 import { buildRosterSortConfig } from './buildRosterSortConfig';
 import DataCard from './DataCard';
 import DropOverlay from './DropOverlay';
@@ -571,7 +572,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           itemType="ADDED_NODES"
           accepts={['SOURCE_NODES']}
           onDrop={handleAddNode}
-          dropSound="toggle-on"
+          dropSound={promptListDropSound}
           items={nodesForPrompt}
           announcedName="Added Nodes"
         />

@@ -377,7 +377,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     // its question is answered); a placement by selection is heard here. The
     // answer behind it is an ordinary update, which makes no sound of its own.
     const recordCommittedDrop = () => {
-      if (selectMode) playSound('drop-node');
+      if (selectMode) playSound('toggle-on');
       if (previousIndex === -1) {
         track('node_binned', {
           node_id: nodeId,

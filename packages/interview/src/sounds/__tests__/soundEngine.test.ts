@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { DropSound } from '../InteractionSounds';
 import {
   BURST_WINDOW_MS,
   createSoundEngine,
@@ -20,6 +21,16 @@ import {
 } from './fakeAudioContext';
 
 type LoadSound = (url: string) => Promise<ArrayBuffer>;
+
+// Every sound a drop target can declare: a record, so that a new drop sound
+// is a type error here until it is listed.
+const EVERY_DROP_SOUND = Object.keys({
+  'discard': true,
+  'create-node': true,
+  'drop-node': true,
+  'toggle-on': true,
+  'toggle-off': true,
+} satisfies Record<DropSound, true>) as DropSound[];
 
 /** The name of every file in the sound folder. */
 const ASSET_FILE_NAMES = readdirSync(
@@ -351,29 +362,32 @@ describe('sound engine drags', () => {
     ]);
   });
 
-  it('plays a canvas or ordinal bin drop just after the pick-up, and only the drop when both are asked for in one task', async () => {
-    const harness = tracked(setup());
-    await ready(harness);
-    harness.engine.play('pick-up', { standalone: true });
-    await settle();
-    harness.advance(1);
-    harness.engine.drop('toggle-on', () => undefined);
-    await settle();
-    expect(harness.context().played.map(soundOf)).toEqual([
-      'pick-up',
-      'toggle-on',
-    ]);
+  it.each(EVERY_DROP_SOUND)(
+    'plays the %s drop just after the pick-up, and only the drop when both are asked for in one task',
+    async (dropSound) => {
+      const harness = tracked(setup());
+      await ready(harness);
+      harness.engine.play('pick-up', { standalone: true });
+      await settle();
+      harness.advance(1);
+      harness.engine.drop(dropSound, () => undefined);
+      await settle();
+      expect(harness.context().played.map(soundOf)).toEqual([
+        'pick-up',
+        dropSound,
+      ]);
 
-    harness.advance(1000);
-    harness.engine.play('pick-up', { standalone: true });
-    harness.engine.drop('toggle-on', () => undefined);
-    await settle();
-    expect(harness.context().played.map(soundOf)).toEqual([
-      'pick-up',
-      'toggle-on',
-      'toggle-on',
-    ]);
-  });
+      harness.advance(1000);
+      harness.engine.play('pick-up', { standalone: true });
+      harness.engine.drop(dropSound, () => undefined);
+      await settle();
+      expect(harness.context().played.map(soundOf)).toEqual([
+        'pick-up',
+        dropSound,
+        dropSound,
+      ]);
+    },
+  );
 
   it('plays a drop just after the pick-up, and a drop sound within the burst window of an earlier, more important sound', async () => {
     const harness = tracked(setup());

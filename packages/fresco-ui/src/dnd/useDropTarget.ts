@@ -16,6 +16,7 @@ import type {
   DragItem,
   DragMetadata,
   DropCallback,
+  DropFeedback,
   UseDropTargetReturn,
 } from './types';
 import { getElementBounds, rafThrottle } from './utils';
@@ -29,10 +30,10 @@ type DropTargetOptions = {
   announcedName: string; // Human-readable name for screen reader announcements
   onDrop?: DropCallback;
   /**
-   * What a drop here means, for an enclosing `DragFeedbackListener`: a name
-   * its owner gives meaning to, passed to the listener with each drop.
+   * What a drop here means, for an enclosing `DragFeedbackListener`, passed
+   * to the listener with each drop: see `DropFeedback`.
    */
-  dropFeedback?: string;
+  dropFeedback?: DropFeedback;
   onDragEnter?: (metadata?: DragMetadata) => void;
   onDragLeave?: (metadata?: DragMetadata) => void;
   disabled?: boolean;
@@ -350,8 +351,12 @@ export function useDropTarget(
             // Call user's onDrop callback, through the feedback listener,
             // which carries it out as part of the drop it reports and is
             // told whether it took the drop.
-            reportDrop(dropFeedbackRef.current, () =>
-              onDrop?.(draggedItem.metadata),
+            const feedback = dropFeedbackRef.current;
+            reportDrop(
+              typeof feedback === 'function'
+                ? feedback(draggedItem.metadata)
+                : feedback,
+              () => onDrop?.(draggedItem.metadata),
             );
           }
         }

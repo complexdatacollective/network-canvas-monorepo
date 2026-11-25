@@ -44,6 +44,16 @@ export type DropOutcome =
 
 export type DropCallback = (metadata?: DragMetadata) => DropOutcome;
 
+/**
+ * What a drop on a target means, for an enclosing `DragFeedbackListener`: a
+ * name its owner gives meaning to, or a function that names it for each drop
+ * from the dropped item's metadata, for a target whose drops mean different
+ * things for different items. Undefined declares none.
+ */
+export type DropFeedback =
+  | string
+  | ((metadata: DragMetadata | undefined) => string | undefined);
+
 export type DropTargetState = DropTarget & {
   canDrop: boolean;
   isOver: boolean;

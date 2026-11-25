@@ -41,10 +41,12 @@ type NodeListProps = Omit<CollectionProps<NcNode>, InternalCollectionProps> & {
   acceptsFilter?: (metadata: DragMetadata | undefined) => boolean;
   onDrop?: DropCallback;
   /**
-   * The sound of a drop on the list, by what `onDrop` does with the person:
-   * see `DropSound`.
+   * The sound of a drop on the list, by what `onDrop` does with the person
+   * (see `DropSound`), or a function that chooses it for each drop from the
+   * dropped person's drag metadata, for a list whose drops do different
+   * things for different people.
    */
-  dropSound?: DropSound;
+  dropSound?: DropSound | ((metadata: DragMetadata | undefined) => DropSound);
   onItemClick?: (node: NcNode) => void;
   /**
    * False turns off drag and drop for the list entirely: its people cannot be
