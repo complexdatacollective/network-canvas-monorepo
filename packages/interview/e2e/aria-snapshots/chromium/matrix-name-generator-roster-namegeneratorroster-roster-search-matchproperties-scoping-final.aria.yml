@@ -3,6 +3,7 @@
     - heading "Please add anyone you recognise." [level=2]
   - button "Available to add":
     - heading "Available to add" [level=3]
+  - status
   - searchbox "Filter": Drew
   - text: 0 results
   - button "Clear search"
@@ -10,8 +11,9 @@
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
+    - status: You can continue to the next step.
   - region "Interview notifications"

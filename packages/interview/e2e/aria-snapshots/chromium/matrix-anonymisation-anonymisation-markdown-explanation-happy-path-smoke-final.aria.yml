@@ -2,9 +2,9 @@
   - heading "Thank you" [level=1]
   - paragraph: After the anonymisation stage.
   - navigation:
-    - button "Settings"
-    - button "Previous Step"
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step"
     - button "Next Step"
     - status
   - region "Interview notifications"

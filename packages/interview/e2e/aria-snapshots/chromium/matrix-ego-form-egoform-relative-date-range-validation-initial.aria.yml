@@ -3,9 +3,9 @@
   - text: When did you last visit?
   - textbox "When did you last visit?"
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
     - status: You can continue to the next step.
   - region "Interview notifications"

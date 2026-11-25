@@ -16,9 +16,9 @@
   - listbox "Added Nodes":
     - option "Amy Adams"
   - navigation:
-    - button "Settings"
-    - button "Previous Step"
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step"
     - button "Next Step"
     - status: You can continue to the next step.
   - region "Interview notifications"

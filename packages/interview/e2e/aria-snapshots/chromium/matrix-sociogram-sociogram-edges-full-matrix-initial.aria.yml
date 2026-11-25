@@ -11,9 +11,9 @@
   - status:
     - heading "Connect friends." [level=4]
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
     - status
   - region "Interview notifications"

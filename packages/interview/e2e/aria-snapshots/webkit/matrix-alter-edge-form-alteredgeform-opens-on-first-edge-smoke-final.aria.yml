@@ -4,9 +4,9 @@
   - text: Describe this relationship.
   - textbox "Describe this relationship."
   - navigation:
-    - button "Settings"
-    - button "Previous Step" [disabled]
+    - button "Text size"
     - progressbar "Progress indicator": x
+    - button "Previous Step" [disabled]
     - button "Next Step"
     - status: You can continue to the next step.
   - region "Interview notifications"
