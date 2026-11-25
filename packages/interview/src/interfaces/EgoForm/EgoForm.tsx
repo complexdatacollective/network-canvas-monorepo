@@ -63,12 +63,6 @@ const EgoFormInner = (props: EgoFormProps) => {
   const { openDialog } = useDialog();
   const track = useTrack();
 
-  const [nudgeVisible, setNudgeVisible] = useState(false);
-  const [interactionCount, setInteractionCount] = useState(0);
-  const noteInteraction = useCallback(() => {
-    setInteractionCount((count) => count + 1);
-  }, []);
-
   const { isValid: isFormValid } = useFormMeta();
   // A live comparison against the values the fields registered with, not the
   // store's sticky `isDirty`. The sticky flag never returns to false once
@@ -90,15 +84,34 @@ const EgoFormInner = (props: EgoFormProps) => {
   const { hasScrolledToBottom, sentinelRef } =
     useScrolledToBottom(scrollAreaRef);
 
-  // Show nudge after 15s of inactivity. Reset on field changes and on any
-  // deliberate interaction with the form.
-  // Once the user has scrolled to the bottom, permanently hide the nudge.
+  // Show the nudge after 15s of inactivity. A field change, or any press,
+  // key or scroll inside the form, hides it and restarts the wait. Once the
+  // participant has reached the bottom, the nudge never shows again.
+  const [nudgeVisible, setNudgeVisible] = useState(false);
+  // Mirrors `nudgeVisible` for the event handlers. A scroll fires on every
+  // frame, so the wait is restarted without touching React state unless the
+  // nudge is actually showing.
+  const nudgeVisibleRef = useRef(false);
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const restartNudgeTimer = useCallback(() => {
+    clearTimeout(nudgeTimerRef.current);
+    if (nudgeVisibleRef.current) {
+      nudgeVisibleRef.current = false;
+      setNudgeVisible(false);
+    }
+    if (hasScrolledToBottom) return;
+    nudgeTimerRef.current = setTimeout(() => {
+      nudgeVisibleRef.current = true;
+      setNudgeVisible(true);
+    }, 15000);
+  }, [hasScrolledToBottom]);
+
   useEffect(() => {
-    setNudgeVisible(false);
-    if (hasScrolledToBottom) return undefined;
-    const timer = setTimeout(() => setNudgeVisible(true), 15000);
-    return () => clearTimeout(timer);
-  }, [fields, hasScrolledToBottom, interactionCount]);
+    restartNudgeTimer();
+    return () => clearTimeout(nudgeTimerRef.current);
+  }, [fields, restartNudgeTimer]);
 
   const { updateReady: setIsReadyForNext } = useReadyForNextStage();
   const egoAttributes = useStageSelector(getEgoAttributes);
@@ -266,11 +279,10 @@ const EgoFormInner = (props: EgoFormProps) => {
         ref={scrollAreaRef}
         // Capture on the scroll region only — the callout is a sibling, so its
         // own button is never dismissed out from under the press that
-        // activates it. Scrolling counts only while the callout is showing, so
-        // an ordinary scroll does not re-render the form on every frame.
-        onPointerDownCapture={noteInteraction}
-        onKeyDownCapture={noteInteraction}
-        onScroll={showScrollNudge ? noteInteraction : undefined}
+        // activates it.
+        onPointerDownCapture={restartNudgeTimer}
+        onKeyDownCapture={restartNudgeTimer}
+        onScroll={restartNudgeTimer}
       >
         <div className="interface mx-auto max-w-[80ch]">
           <Surface spacing="lg" shadow="lg">

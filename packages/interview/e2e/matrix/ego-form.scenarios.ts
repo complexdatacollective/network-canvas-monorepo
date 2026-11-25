@@ -1690,10 +1690,33 @@ export const egoFormScenarios: InterfaceScenarios = {
         // Floating, it covers the bottom of the viewport, so it gives way as
         // soon as the participant scrolls, and returns after another 15s of
         // inactivity while there is still more to see.
+        // `mouse.wheel` returns before the scroll it starts has finished, and
+        // its scroll events arrive on real frames, not on the fake clock. Wait
+        // until the position stops changing, so that every scroll event has
+        // landed before the clock moves on.
+        const scrolled = async (deltaY: number) => {
+          await page.mouse.wheel(0, deltaY);
+          let last: number | undefined;
+          await expect
+            .poll(async () => {
+              const top = await scroller.evaluate((el) => el.scrollTop);
+              const settled = top === last;
+              last = top;
+              return settled;
+            })
+            .toBe(true);
+        };
         await heading.hover();
-        await page.mouse.wheel(0, 200);
+        await scrolled(200);
         await expect(nudge).toBeHidden();
-        await page.clock.fastForward('00:15');
+
+        // A scroll while it is hidden restarts the wait too, so it does not
+        // appear 15s after the first scroll if the participant kept scrolling.
+        await page.clock.fastForward('00:10');
+        await scrolled(-100);
+        await page.clock.fastForward('00:10');
+        await expect(nudge).toBeHidden();
+        await page.clock.fastForward('00:05');
         await expect(nudge).toBeVisible();
 
         // Clicking scrolls to the bottom; the sentinel intersects and

@@ -1,3 +1,5 @@
+'use client';
+
 import { motion, type Transition } from 'motion/react';
 
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
