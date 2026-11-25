@@ -305,6 +305,8 @@
   "interviewer.settingsDialog.offlineStorage": "التخزين للاستخدام دون اتصال بالإنترنت",
   "interviewer.settingsDialog.persisted": "دائم",
   "interviewer.settingsDialog.pixels": "بكسل",
+  "interviewer.settingsDialog.playSoundsDuringInterviews": "تشغيل الأصوات في أثناء المقابلات",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "تُشغَّل أصوات قصيرة عندما يعدّل المشاركون شبكتهم، أو ينتقلون بين المراحل، أو يحاولون إرسال نموذج فيه أخطاء، وعند انتهاء المقابلة.",
   "interviewer.settingsDialog.privacy": "الخصوصية",
   "interviewer.settingsDialog.protocol": "البروتوكول",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "يُعيد إظهار بطاقة البروتوكول التوضيحي، الذي يُثبَّت بنقرة واحدة، بجانب بطاقة «استيراد».",

@@ -2,7 +2,7 @@
 title: Utiliser Fresco
 date: 7th October 2026
 navOrder: 2
-translatedFrom: f66b75601024fe7f4aa3885f2e4e1432e69f70d4
+translatedFrom: 8b6db704deffe35f395062271aad5f71ccd2e35e
 ---
 
 Ce guide vous présente pas à pas le flux de travail de base pour mener votre étude avec Fresco.
@@ -265,6 +265,19 @@ Pour désactiver cette fonctionnalité :
 Ce paramètre est distinct de [Limiter les entretiens](#limit-interviews). Limiter les entretiens empêche une personne participante de commencer un _nouvel_ entretien une fois qu’elle en a terminé un, tandis que figer les entretiens terminés empêche l’enregistrement des modifications apportées à un entretien qu’elle a _déjà_ terminé. Selon les besoins de votre étude, vous pouvez activer l’un des deux, les deux ou aucun.
 
 </TipBox>
+
+### Émettre des sons pendant les entretiens {#play-sounds-during-interviews}
+
+Fresco peut émettre de courts sons pendant un entretien. Si cette option est activée, un son est émis lorsqu’une personne participante modifie son réseau (ajoute, supprime, relie ou met en évidence des nœuds, ou classe des nœuds dans des catégories), appuie sur les boutons fléchés pour avancer ou reculer dans l’entretien, ou tente d’envoyer un formulaire qui contient des erreurs, ainsi qu’à la fin de l’entretien. Pendant qu’une personne participante relie deux nœuds sur un sociogramme, un son se répète jusqu’à ce qu’elle choisisse le second nœud.
+
+Cette option est désactivée par défaut. Le fichier audio (environ 1,8 Mo) n’est téléchargé dans le navigateur de la personne participante que lorsque cette option est activée.
+
+Les sons sont émis au volume réglé sur l’appareil de la personne participante : si le son est coupé sur son appareil, elle n’entend rien. Les navigateurs n’autorisent une page à émettre du son qu’après une première interaction avec celle-ci : aucun son n’est donc émis avant que la personne participante touche l’écran, clique ou appuie sur une touche pour la première fois.
+
+Pour activer les sons :
+
+1. Rendez-vous sur la page des paramètres du tableau de bord.
+2. Activez l’interrupteur **Émettre des sons pendant les entretiens**.
 
 ### Désactiver l’avertissement pour les petits écrans {#disable-small-screen-warning}
 

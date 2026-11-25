@@ -18,6 +18,7 @@ import { useCurrentStep } from '../../../contexts/CurrentStepContext';
 import { writeFailureMessage } from '../../../forms/writeSubmissionResult';
 import useMediaQuery from '../../../hooks/useMediaQuery';
 import useSortedNodeList from '../../../hooks/useSortedNodeList';
+import { useInteractionSound } from '../../../sounds/InteractionSounds';
 import { getCodebook } from '../../../store/modules/protocol';
 import { updateNode } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
@@ -106,6 +107,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const { prompt } = usePrompts<OrdinalBinPrompt>();
   const isPortrait = useMediaQuery('(orientation: portrait)');
   const track = useTrack();
+  const { play: playSound } = useInteractionSound();
   const codebook = useSelector(getCodebook);
   const headerRef = useRef<HTMLDivElement & HTMLButtonElement>(null);
   // The label's text, not its markdown source: a screen reader should not read
@@ -161,6 +163,9 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
       return 'refused';
     }
 
+    // Heard once, whether dragged or selected. The answer behind it is an
+    // ordinary update, which makes no sound of its own.
+    playSound('drop-node');
     if (previousIndex === -1) {
       track('node_binned', {
         node_id: nodeId,

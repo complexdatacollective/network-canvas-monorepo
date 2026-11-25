@@ -193,6 +193,19 @@ const messages = defineMessages({
     description:
       'Explanatory paragraph in Settings, Interview section, about the Allow stage navigation toggle: what happens when it is off and why a researcher might turn it on.',
   },
+  playSoundsDuringInterviews: {
+    id: 'interviewer.settingsDialog.playSoundsDuringInterviews',
+    defaultMessage: 'Play sounds during interviews',
+    description:
+      'Toggle label in Settings, Interview section; controls whether the device plays short sounds while a participant completes an interview. Off by default.',
+  },
+  playsShortSoundsWhenParticipantsChangeTheir: {
+    id: 'interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir',
+    defaultMessage:
+      'Plays short sounds when participants change their network, move between stages or try to submit a form that has errors, and when the interview ends.',
+    description:
+      'Hint under the Play sounds during interviews toggle; lists the moments in an interview when a sound plays. Changing their network means adding, removing, connecting or highlighting the people or other entries in the participant\'s network, or sorting them into categories. Moving between stages means pressing the Back or Next button. A form has errors when a required answer is missing or an answer is not valid. Fresco shows the same sentence after "If this option is enabled,"; keep the two translations the same.',
+  },
   exportGraphML: {
     id: 'interviewer.settingsDialog.exportGraphML',
     defaultMessage: 'Export GraphML',
@@ -1086,6 +1099,21 @@ export function SettingsDialog({
                     messages.whenOffParticipantsCanOnlyMoveForwards,
                   )}
                 </Paragraph>
+                <UnconnectedField
+                  name="interactionSounds"
+                  label={intl.formatMessage(
+                    messages.playSoundsDuringInterviews,
+                  )}
+                  hint={intl.formatMessage(
+                    messages.playsShortSoundsWhenParticipantsChangeTheir,
+                  )}
+                  inline
+                  component={ToggleField}
+                  value={settings.interactionSounds}
+                  onChange={(next: boolean | undefined) =>
+                    void persist({ interactionSounds: next === true })
+                  }
+                />
               </>
             ) : null}
           </TabsPanel>

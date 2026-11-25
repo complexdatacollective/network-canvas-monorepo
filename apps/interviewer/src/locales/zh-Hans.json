@@ -305,6 +305,8 @@
   "interviewer.settingsDialog.offlineStorage": "离线存储",
   "interviewer.settingsDialog.persisted": "已持久化",
   "interviewer.settingsDialog.pixels": "像素",
+  "interviewer.settingsDialog.playSoundsDuringInterviews": "访谈期间播放音效",
+  "interviewer.settingsDialog.playsShortSoundsWhenParticipantsChangeTheir": "当参与者更改其网络中的内容、在阶段之间切换或尝试提交有错误的表单时，以及访谈结束时，会播放简短的音效。",
   "interviewer.settingsDialog.privacy": "隐私",
   "interviewer.settingsDialog.protocol": "协议",
   "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": "在“导入”卡片旁重新显示一键安装示例协议的卡片。",

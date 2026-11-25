@@ -30,6 +30,7 @@ import {
   getNetworkNodesForType,
   getPromptSortOrder,
 } from '../../selectors/session';
+import { useLoopingInteractionSound } from '../../sounds/InteractionSounds';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import {
   toggleEdge,
@@ -155,6 +156,14 @@ const Sociogram = (stageProps: SociogramProps) => {
   }, [simulation.isRunning, canvasNodes.length, edges.length, track]);
 
   const selectedNodeId = useCanvasStore(store, (state) => state.selectedNodeId);
+
+  // While a node waits to be connected to the next one tapped, a sound loops.
+  // It stops with the selection, and with this prompt when the next one does
+  // not connect nodes.
+  useLoopingInteractionSound(
+    'node-linking-mode',
+    createEdge !== null && selectedNodeId !== null,
+  );
 
   // Handle node selection (for edge creation and highlighting).
   // Reads selectedNodeId directly from the store to avoid closure staleness —

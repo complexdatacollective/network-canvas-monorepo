@@ -191,6 +191,7 @@ type CapturedShellProps = {
     meta: { progress: number; totalSteps: number },
   ) => void;
   reviewMode: boolean;
+  interactionSounds?: boolean;
   flags?: { isDevelopment?: boolean };
 };
 
@@ -768,6 +769,21 @@ describe('InterviewRoute development tools', () => {
       await screen.findByTestId('shell-mounted');
 
       expect(lastShellProps().flags).toEqual({ isDevelopment: DEV });
+    },
+  );
+
+  it.each([true, false])(
+    "passes the device's interaction sounds setting (%s) to the Shell",
+    async (interactionSounds) => {
+      getSettingsMock.mockResolvedValue({
+        requireUnlockOnEnter: false,
+        interactionSounds,
+      });
+
+      render(<InterviewRoute sessionId="s1" />);
+      await screen.findByTestId('shell-mounted');
+
+      expect(lastShellProps().interactionSounds).toBe(interactionSounds);
     },
   );
 });

@@ -63,6 +63,7 @@ import {
   getNodeTypeDefinition,
   resolveNodeShape,
 } from '../../selectors/session';
+import { useInteractionSound } from '../../sounds/InteractionSounds';
 import { getCodebook } from '../../store/modules/protocol';
 import { updateNode } from '../../store/modules/session';
 import { type RootState, useAppDispatch } from '../../store/store';
@@ -223,6 +224,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const selectMode = stage.behaviours?.interactionMode === 'select';
   const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
   const track = useTrack();
+  const { play: playSound } = useInteractionSound();
   const codebook = useSelector(getCodebook);
   const previousExpandedRef = useRef<number | null>(null);
 
@@ -369,7 +371,11 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
         (binNode) => binNode[entityPrimaryKeyProperty] === nodeId,
       ),
     );
+    // Every placement the session stored, by drag or by selection, sounds
+    // once. The answer behind it is an ordinary update, which makes no sound
+    // of its own.
     const recordCommittedDrop = () => {
+      playSound('drop-node');
       if (previousIndex === -1) {
         track('node_binned', {
           node_id: nodeId,

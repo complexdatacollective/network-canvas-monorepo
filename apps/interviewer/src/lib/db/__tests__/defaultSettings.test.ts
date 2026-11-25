@@ -10,3 +10,9 @@ describe('DEFAULT_SETTINGS security gates', () => {
     expect('requireUnlockOnResume' in DEFAULT_SETTINGS).toBe(false);
   });
 });
+
+describe('DEFAULT_SETTINGS interview options', () => {
+  it('leaves interaction sounds off', () => {
+    expect(DEFAULT_SETTINGS.interactionSounds).toBe(false);
+  });
+});

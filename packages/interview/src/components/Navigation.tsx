@@ -40,6 +40,7 @@ import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 import { navigationMessages as messages } from '../i18n/navigationMessages';
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
+import { useInteractionSound } from '../sounds/InteractionSounds';
 import { useSyncFlush } from '../store/SyncFlushContext';
 import PassphrasePrompter from './PassphrasePrompter';
 import ReadyToContinueAnnouncer from './ReadyToContinueAnnouncer';
@@ -117,6 +118,11 @@ const barControlVariants = cva({
 // Button already caps its width at the wrapper's; this caps its height too.
 const barIconButtonClassName = 'max-h-full';
 
+/**
+ * The back and forward buttons. Each plays its press sound as it is pressed
+ * (the pointer going down, or the key that activates it), as a physical
+ * button sounds as it is pressed rather than once it is released.
+ */
 const NavigationButton = ({
   disabled,
   className,
@@ -127,6 +133,7 @@ const NavigationButton = ({
   buttonRef?: Ref<HTMLButtonElement>;
   wrapperClassName?: string;
 }) => {
+  const { play } = useInteractionSound();
   return (
     <motion.div variants={variants} className={wrapperClassName}>
       <IconButton
@@ -135,6 +142,18 @@ const NavigationButton = ({
         variant="text"
         className={cx('[&>.lucide]:h-[2em]', barIconButtonClassName, className)}
         disabled={disabled}
+        onPointerDown={(event) => {
+          if (!disabled && event.button === 0) play('tap-button');
+        }}
+        onKeyDown={(event) => {
+          if (
+            !disabled &&
+            !event.repeat &&
+            (event.key === 'Enter' || event.key === ' ')
+          ) {
+            play('tap-button');
+          }
+        }}
         {...props}
         size="xl"
       />

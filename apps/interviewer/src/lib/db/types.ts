@@ -193,6 +193,10 @@ export type StoredSettings = {
   // identifier — only the per-device installation id (see installationId.ts).
   analyticsEnabled: boolean;
   allowStageNavigation: boolean;
+  // Short sounds during interviews (see the Shell's `interactionSounds`).
+  // Off by default; a row written before this field existed reads as off
+  // because `getSettings` merges it over `DEFAULT_SETTINGS`.
+  interactionSounds: boolean;
 };
 
 export type ProtocolWithCounts = StoredProtocol & {
@@ -214,4 +218,5 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   sampleProtocolDismissed: false,
   analyticsEnabled: true,
   allowStageNavigation: true,
+  interactionSounds: false,
 };

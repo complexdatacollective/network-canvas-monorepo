@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Post-build assertion: a production PWA build must emit the SW + manifest +
 // icons, every critical chunk (the interview engine, the entry), every
-// lazily loaded locale chunk, and every responsive stage-preview image must be
-// precached. A missing critical asset breaks either the offline boot, an
-// offline language switch, or the first offline opening of the menu.
+// lazily loaded locale chunk, every responsive stage-preview image and the
+// interview's sound sprite must be precached. A missing critical asset breaks
+// either the offline boot, an offline language switch, the first offline
+// opening of the menu, or sounds first turned on offline.
 // Chunks loaded on demand (each UI language, the bundled sample protocol, the
 // synthetic data generator and its faker dependency) must stay out of the
 // initial load. The Development protocol, offered only in `vite dev`, must not
@@ -230,6 +231,24 @@ const missingMarks = headerMarks
 if (missingMarks.length > 0) {
   fail(
     `the header mark is not precached, so it breaks on the first offline launch: ${missingMarks.join(', ')}`,
+  );
+}
+
+// The interview's sound sprite is fetched only once the Interaction sounds
+// setting is on, which may first happen while the device is offline. Only the
+// precache can supply it then: nothing fetched it while the device was online.
+const soundSprites = assetFiles
+  .filter((f) => f.endsWith('.wav'))
+  .map((f) => `assets/${f}`);
+if (soundSprites.length === 0) {
+  fail('no .wav interaction sound sprite emitted to dist/assets');
+}
+const missingSoundSprites = soundSprites.filter(
+  (url) => !manifestUrls.has(url),
+);
+if (missingSoundSprites.length > 0) {
+  fail(
+    `sound sprite(s) excluded from precache, so interaction sounds turned on offline stay silent: ${missingSoundSprites.join(', ')}`,
   );
 }
 
@@ -590,6 +609,7 @@ if (
 if (
   !/\/assets\//.test(assetHandoffRouteSource) ||
   !/js\|css/.test(assetHandoffRouteSource) ||
+  !/wav/.test(assetHandoffRouteSource) ||
   !/4x3/.test(assetHandoffRouteSource) ||
   !/webp/.test(assetHandoffRouteSource) ||
   !/caches\.match|Reflect\.get\(globalThis,"caches"\)/.test(
@@ -598,7 +618,7 @@ if (
   !/fetch\(/.test(assetHandoffRouteSource)
 ) {
   fail(
-    'old-bundle JS/CSS and stage-preview WebPs cannot fall back to retained precaches',
+    'old-bundle JS/CSS, sound sprites and stage-preview WebPs cannot fall back to retained precaches',
   );
 }
 if (/index\.html/.test(assetHandoffRouteSource)) {
@@ -606,5 +626,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) and ${fontAssets.length} font face(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s), ${stagePreviewAssets.length} stage-preview asset(s), ${fontAssets.length} font face(s) and ${soundSprites.length} sound sprite(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );

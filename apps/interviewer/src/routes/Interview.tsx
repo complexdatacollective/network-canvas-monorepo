@@ -297,6 +297,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     interviewRouteMatches && interviewRouteParams.sessionId === sessionId;
   const [currentStep, setCurrentStep] = useState(0);
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
+  const [interactionSounds, setInteractionSounds] = useState(false);
   // Every write from this route is the session's whole state — network, stage
   // metadata and resume position. The step change carries no
   // network of its own, so it writes the state most recently handed to
@@ -586,6 +587,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         currentStep: initialStep,
       });
       setAllowStageNavigation(settings.allowStageNavigation);
+      setInteractionSounds(settings.interactionSounds);
       setLoadState({
         kind: 'ready',
         sessionId,
@@ -823,6 +825,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         }
         onExit={() => void handleExit()}
         allowStageNavigation={allowStageNavigation}
+        interactionSounds={interactionSounds}
         allowUserScaling
         initialTextScale={initialTextScale}
         onTextScaleChange={handleTextScaleChange}

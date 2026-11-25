@@ -178,6 +178,8 @@ const StoryInterviewShell = (props: {
   /** Changes the payload once it is parsed, for what SuperJSON cannot carry
    * (such as an attribute key `__proto__`, which it refuses). */
   preparePayload?: (payload: InterviewPayload) => InterviewPayload;
+  /** Plays the interview's interaction sounds. */
+  interactionSounds?: boolean;
 }) => {
   const { preparePayload } = props;
   const directionMode = useStorybookDirectionMode();
@@ -240,6 +242,7 @@ const StoryInterviewShell = (props: {
       onExit={props.onExit}
       reviewMode={props.reviewMode}
       completedActions={props.completedActions}
+      interactionSounds={props.interactionSounds}
     />
   );
 };

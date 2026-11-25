@@ -10,7 +10,9 @@ import { useDispatch } from 'react-redux';
 
 import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
 import type { InterviewPayload, SyncHandler } from '../contract/types';
+import type { OneShotSoundName } from '../sounds/soundEngine';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
+import { createInteractionSoundListenerMiddleware } from './middleware/interactionSoundListener';
 import { createInterviewLogger } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
 import { createWritesInFlightMiddleware } from './middleware/writesInFlight';
@@ -30,6 +32,11 @@ type StoreOptions = {
   isDevelopment?: boolean;
   extraMiddleware?: Middleware[];
   tracker?: Tracker;
+  /**
+   * Plays an interaction sound for a change to the network. Called whether or
+   * not sounds are on: the player decides, at the moment of each change.
+   */
+  playInteractionSound?: (name: OneShotSoundName) => void;
 };
 
 export const store = (
@@ -59,6 +66,13 @@ export const store = (
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
+  const soundMiddleware = options.playInteractionSound
+    ? [
+        createInteractionSoundListenerMiddleware({
+          play: options.playInteractionSound,
+        }).middleware,
+      ]
+    : [];
   // The protocol, and so which variables are encrypted, never changes during
   // an interview.
   const redaction = createEncryptedValueRedaction(protocolPayload.codebook);
@@ -78,6 +92,7 @@ export const store = (
           writesInFlightMiddleware,
           syncMiddleware,
           analyticsMiddleware,
+          ...soundMiddleware,
           ...(options.extraMiddleware ?? []),
         ),
       // Anyone with the extension could otherwise read an interview's state

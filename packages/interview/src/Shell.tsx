@@ -72,6 +72,8 @@ import {
 import { getInterviewId, getPromptIndex } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { getInterviewProgress } from './selectors/utils';
+import { InteractionSoundsProvider } from './sounds/InteractionSounds';
+import { createSoundEngine } from './sounds/soundEngine';
 import {
   getInterfaceText,
   getProtocolLocalization,
@@ -671,6 +673,19 @@ type ShellProps = {
    */
   onTextScaleChange?: (scale: number) => void;
   /**
+   * Play short sounds when the participant changes the network (adding,
+   * removing or connecting nodes, selecting them, placing them in bins),
+   * while a node is waiting to be connected to another, when they press the
+   * Back or Next button, when a form cannot be submitted, and when the
+   * interview reaches its end. Off by default. The sound file (one WAV
+   * file, about 1.8 MB) is downloaded the first time this is turned on, and
+   * never while it is off; turning it off stops any sound that is playing.
+   * A browser lets a page play sound only once the participant has
+   * interacted with it, so no sound plays before their first tap, click or
+   * key press. Can be changed at any time.
+   */
+  interactionSounds?: boolean;
+  /**
    * Allow this unavailable stage to render on the initial visit only. The
    * override is cleared as soon as stage navigation occurs. Architect preview
    * uses this to show the stage being edited without removing its skip logic.
@@ -704,6 +719,7 @@ const Shell = ({
   allowUserScaling,
   initialTextScale,
   onTextScaleChange,
+  interactionSounds = false,
   initialStageOverrideIndex,
 }: ShellProps) => {
   // The store factory receives a stable forwarder rather than onSync itself
@@ -748,14 +764,25 @@ const Shell = ({
   const trackerHolder = trackerForwarder.tracker;
   const onTrackerChange = trackerForwarder.setCurrent;
 
+  // One sound engine for the life of the Shell. The store, created once per
+  // payload, is handed its play function, and the engine decides at each
+  // change whether sounds are on, so turning them on or off never recreates
+  // the store.
+  const [soundEngine] = useState(() => createSoundEngine());
+  useEffect(() => {
+    soundEngine.setEnabled(interactionSounds);
+  }, [soundEngine, interactionSounds]);
+  useEffect(() => () => soundEngine.dispose(), [soundEngine]);
+
   const reduxStore = useMemo(
     () =>
       store(payload, {
         onSync: stableOnSync,
         isDevelopment: flags?.isDevelopment,
         tracker: trackerHolder,
+        playInteractionSound: soundEngine.play,
       }),
-    [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
+    [payload, stableOnSync, flags?.isDevelopment, trackerHolder, soundEngine],
   );
 
   // A host that batches writes (see createDebouncedSyncHandler) may be holding
@@ -928,61 +955,63 @@ const Shell = ({
       onTrackerChange={onTrackerChange}
     >
       <Provider store={reduxStore}>
-        <InterviewLocalization
-          requestedLocales={requestedLocales}
-          statedLocale={statedLocale}
-          onLocalePreferenceChange={onLocalePreferenceChange}
-          localeOptions={payload.session.localeOptions}
-        >
-          <SyncFlushProvider flush={reduxStore.flushSync}>
-            <WritesInFlightProvider
-              writesSettled={reduxStore.writesSettled}
-              trackWrite={reduxStore.trackWrite}
-            >
-              <ContractProvider
-                onFinish={onFinish}
-                onRequestAsset={onRequestAsset}
-                flags={flags}
-                finishConfirmationDescription={finishConfirmationDescription}
+        <InteractionSoundsProvider engine={soundEngine}>
+          <InterviewLocalization
+            requestedLocales={requestedLocales}
+            statedLocale={statedLocale}
+            onLocalePreferenceChange={onLocalePreferenceChange}
+            localeOptions={payload.session.localeOptions}
+          >
+            <SyncFlushProvider flush={reduxStore.flushSync}>
+              <WritesInFlightProvider
+                writesSettled={reduxStore.writesSettled}
+                trackWrite={reduxStore.trackWrite}
               >
-                <InterviewQueryClientProvider
-                  protocolKey={`${payload.protocol.id}\n${payload.protocol.hash}\n${payload.protocol.importedAt}`}
+                <ContractProvider
+                  onFinish={onFinish}
+                  onRequestAsset={onRequestAsset}
+                  flags={flags}
+                  finishConfirmationDescription={finishConfirmationDescription}
                 >
-                  <InterviewCompletionProvider
-                    // A new payload is a new interview.
-                    key={payload.session.id}
-                    initialCompletion={initialCompletion}
-                    completedActions={completedActions}
+                  <InterviewQueryClientProvider
+                    protocolKey={`${payload.protocol.id}\n${payload.protocol.hash}\n${payload.protocol.importedAt}`}
                   >
-                    <CurrentStepProvider
-                      currentStep={reviewEntry.currentStep}
-                      onStepChange={onStepChange}
+                    <InterviewCompletionProvider
+                      // A new payload is a new interview.
+                      key={payload.session.id}
+                      initialCompletion={initialCompletion}
+                      completedActions={completedActions}
                     >
-                      <Interview
-                        onExit={onExit}
-                        hideNavigation={hideNavigation}
-                        navigationOrientation={navigationOrientation}
-                        navigationClassnames={navigationClassnames}
-                        allowStageNavigation={
-                          allowStageNavigation &&
-                          (currentStep === undefined ||
-                            onStepChange !== undefined)
-                        }
-                        allowUserScaling={allowUserScaling}
-                        initialTextScale={initialTextScale}
-                        onTextScaleChange={onTextScaleChange}
-                        initialStageOverrideIndex={
-                          reviewEntry.initialStageOverrideIndex
-                        }
-                        reviewMode={reviewMode}
-                      />
-                    </CurrentStepProvider>
-                  </InterviewCompletionProvider>
-                </InterviewQueryClientProvider>
-              </ContractProvider>
-            </WritesInFlightProvider>
-          </SyncFlushProvider>
-        </InterviewLocalization>
+                      <CurrentStepProvider
+                        currentStep={reviewEntry.currentStep}
+                        onStepChange={onStepChange}
+                      >
+                        <Interview
+                          onExit={onExit}
+                          hideNavigation={hideNavigation}
+                          navigationOrientation={navigationOrientation}
+                          navigationClassnames={navigationClassnames}
+                          allowStageNavigation={
+                            allowStageNavigation &&
+                            (currentStep === undefined ||
+                              onStepChange !== undefined)
+                          }
+                          allowUserScaling={allowUserScaling}
+                          initialTextScale={initialTextScale}
+                          onTextScaleChange={onTextScaleChange}
+                          initialStageOverrideIndex={
+                            reviewEntry.initialStageOverrideIndex
+                          }
+                          reviewMode={reviewMode}
+                        />
+                      </CurrentStepProvider>
+                    </InterviewCompletionProvider>
+                  </InterviewQueryClientProvider>
+                </ContractProvider>
+              </WritesInFlightProvider>
+            </SyncFlushProvider>
+          </InterviewLocalization>
+        </InteractionSoundsProvider>
       </Provider>
     </AnalyticsProvider>
   );

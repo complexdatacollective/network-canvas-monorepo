@@ -29,6 +29,7 @@ type Props = {
   requestedLocales: readonly string[];
   installationId: string;
   disableAnalytics: boolean;
+  interactionSounds: boolean;
   view: InterviewView;
 };
 
@@ -48,6 +49,7 @@ export default function InterviewClient({
   requestedLocales,
   installationId,
   disableAnalytics,
+  interactionSounds,
   view,
 }: Props) {
   const [currentStep, setCurrentStep] = useQueryState(
@@ -155,6 +157,7 @@ export default function InterviewClient({
       analytics={analytics}
       posthogClient={posthog}
       disableAnalytics={disableAnalytics}
+      interactionSounds={interactionSounds}
       openFinishedAsActive={view === 'editable-finished'}
       allowUserScaling
     />

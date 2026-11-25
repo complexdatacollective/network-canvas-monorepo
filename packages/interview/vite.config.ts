@@ -72,10 +72,17 @@ const interfaceImagesNoInlinePlugin = (): Plugin => ({
   enforce: 'pre',
   transform(code, id) {
     const p = id.replace(/\\/g, '/');
-    if (!p.startsWith(`${interfaceImagesRoot}/`)) return null;
+    // The interaction-sound sprite (`src/sounds/`, ~1.8 MB) is emitted the
+    // same way, so the interview fetches it only when sounds are turned on.
+    const extension = p.startsWith(`${interfaceImagesRoot}/`)
+      ? 'webp'
+      : p.startsWith(`${pkgRoot}/src/sounds/`)
+        ? 'wav'
+        : null;
+    if (!extension) return null;
     if (!code.includes('import.meta.url')) return null;
     const tagged = code.replace(
-      /(new URL\((['"])[^'"]+?\.webp)\2/g,
+      new RegExp(`(new URL\\(\\s*(['"])[^'"]+?\\.${extension})\\2`, 'g'),
       '$1?no-inline$2',
     );
     return tagged === code ? null : { code: tagged, map: null };

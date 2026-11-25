@@ -29,6 +29,8 @@ import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import { createSoundSpy } from '../../../sounds/__tests__/soundSpy';
+import { InteractionSoundsProvider } from '../../../sounds/InteractionSounds';
 import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -214,7 +216,11 @@ function CaptureDndStore({
   return null;
 }
 
-function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
+function renderStage(
+  mode: Mode,
+  nodes: NcNode[] = defaultNodes(),
+  sounds = createSoundSpy(),
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -222,7 +228,9 @@ function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
       protocol: buildProtocol(mode),
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({ serializableCheck: false }),
+      getDefaultMiddleware({ serializableCheck: false }).concat(
+        sounds.middleware,
+      ),
   });
 
   let dndStore: StoreApi<DndStore> | null = null;
@@ -235,18 +243,20 @@ function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
             <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
               <DialogProvider>
                 <DndStoreProvider>
-                  <CaptureDndStore
-                    onStore={(s) => {
-                      dndStore = s;
-                    }}
-                  />
-                  <CategoricalBin
-                    stage={buildStage(mode)}
-                    getNavigationHelpers={() => ({
-                      moveForward: () => {},
-                      moveBackward: () => {},
-                    })}
-                  />
+                  <InteractionSoundsProvider engine={sounds.engine}>
+                    <CaptureDndStore
+                      onStore={(s) => {
+                        dndStore = s;
+                      }}
+                    />
+                    <CategoricalBin
+                      stage={buildStage(mode)}
+                      getNavigationHelpers={() => ({
+                        moveForward: () => {},
+                        moveBackward: () => {},
+                      })}
+                    />
+                  </InteractionSoundsProvider>
                 </DndStoreProvider>
               </DialogProvider>
             </CurrentStepProvider>
@@ -283,6 +293,22 @@ const announcement = (name: string) =>
   screen.findAllByText(`Choose where ${name} belongs.`);
 
 describe('CategoricalBin in select mode (#1652)', () => {
+  it('plays the drop sound once when a person is placed, and nothing else', async () => {
+    const sounds = createSoundSpy();
+    const { attributesOf } = renderStage('select', undefined, sounds);
+
+    await announcement('Ann');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Place Ann in Family' }),
+    );
+    await waitFor(() =>
+      expect(attributesOf('a')?.[CATEGORY_VARIABLE]).toEqual([1]),
+    );
+    await announcement('Ben');
+
+    expect(sounds.play.mock.calls).toEqual([['drop-node']]);
+  });
+
   it('places the focal person in the tapped bin and moves on to the next', async () => {
     const { attributesOf } = renderStage('select');
 

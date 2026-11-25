@@ -189,6 +189,11 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
             // run its first offline interview in that script in a system
             // font.
             '**/*.woff2',
+            // The interview's sound sprite (Shell `interactionSounds`). The
+            // interview fetches it only once the setting is on, which can be
+            // first turned on while the device is offline, so it must already
+            // be in the precache rather than in a runtime cache filled on use.
+            '**/*.wav',
           ],
           // Nothing of this app is left out. The Sample protocol's chunk
           // (bundledSampleProtocol.ts) is lazy but must stay precached so the
@@ -297,14 +302,15 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
             {
               // skipWaiting activation advances every already-controlled tab,
               // including an interview that deliberately did not request the
-              // update. If its old bundle later requests an old lazy chunk or
-              // responsive stage preview, the new worker can read that exact
-              // content-hashed URL from the retained precache. Stable HTML and
-              // image URLs such as index.html and PWA icons stay excluded.
+              // update. If its old bundle later requests an old lazy chunk,
+              // responsive stage preview or sound sprite, the new worker can
+              // read that exact content-hashed URL from the retained precache.
+              // Stable HTML and image URLs such as index.html and PWA icons
+              // stay excluded.
               urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin &&
                 url.pathname.startsWith('/assets/') &&
-                (/\.(?:js|css)$/i.test(url.pathname) ||
+                (/\.(?:js|css|wav)$/i.test(url.pathname) ||
                   /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
               handler: matchRetainedPwaAsset,
             },
