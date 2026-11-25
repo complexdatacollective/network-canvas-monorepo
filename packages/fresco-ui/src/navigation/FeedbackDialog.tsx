@@ -211,7 +211,7 @@ type Draft = {
 };
 
 const EMPTY_DRAFT: Draft = {
-  audience: 'team',
+  audience: 'forum',
   section: 'feedback',
   title: '',
   document: EMPTY_DOCUMENT,
@@ -358,9 +358,9 @@ function ForumLink({ href, children }: { href: string; children: ReactNode }) {
 }
 
 /**
- * A button that opens a dialog for feedback about the app. It goes privately
- * to the team, with an optional email for a reply, unless the person switches
- * it to the community forum, where it opens as a new topic for them to post.
+ * A button that opens a dialog for feedback about the app. It opens on the
+ * community forum as a new topic for the person to post, unless they switch it
+ * to go privately to the team, with an optional email for a reply.
  * Hosts own where a private response goes and the button's look; the copy is
  * shared.
  */

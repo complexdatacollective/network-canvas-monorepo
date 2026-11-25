@@ -7,15 +7,15 @@ const documentation = `
 The feedback control shared by Architect, Interviewer and Fresco: a button
 that opens a dialog where the person chooses who should see their feedback.
 
-- **Our team** (the default) sends it privately through \`onSubmit\`, with an
-  optional email for a reply. Sending replaces the form with a line of thanks.
-- **Community forum** asks for a forum section and a title, and opens the
-  forum's new-topic composer in a new tab with the post filled in, for the
-  person to post under their own account. Nothing goes through \`onSubmit\`.
+- **Community forum** (the default) asks for a forum section and a title, and
+  opens the forum's new-topic composer in a new tab with the post filled in,
+  for the person to post under their own account. Nothing goes through
+  \`onSubmit\`.
+- **Our team** sends it privately through \`onSubmit\`, with an optional email
+  for a reply. Sending replaces the form with a line of thanks.
 
 The text box takes lists and bold or italic text, sent as markdown. The next
-opening after a send, or after the forum was opened, starts with an empty
-form. Hosts own where a private response goes; the copy is shared and
+opening after a send starts with an empty form. Hosts own where a private response goes; the copy is shared and
 translated once.
 
 \`\`\`tsx
@@ -101,6 +101,12 @@ export const SendsFeedback: Story = {
     await step('Open the dialog', async () => {
       await userEvent.click(canvas.getByRole('button', { name: 'Feedback' }));
       await expect(args.onShown).toHaveBeenCalledOnce();
+    });
+
+    await step('Switch to sending it privately', async () => {
+      await userEvent.click(
+        await screen.findByRole('button', { name: /Our team/ }),
+      );
     });
 
     const box = await screen.findByRole('textbox', { name: 'Your feedback' });

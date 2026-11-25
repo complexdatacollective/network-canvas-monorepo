@@ -12,11 +12,22 @@ function setup() {
   return withSafeTypingIntoRichText(userEvent.setup());
 }
 
-async function openForm(user: ReturnType<typeof setup>) {
+/** Opens the dialog, which starts on the community forum. */
+async function openDialog(user: ReturnType<typeof setup>) {
   await user.click(screen.getByRole('button', { name: 'Feedback' }));
   await screen.findByRole('dialog', { name: TITLE });
+  return screen.findByRole('textbox', { name: /^Your (post|feedback)$/ });
+}
+
+/** Opens the dialog and switches it to sending privately to the team. */
+async function openForm(user: ReturnType<typeof setup>) {
+  await openDialog(user);
+  await user.click(screen.getByRole('button', { name: /Our team/ }));
   return screen.findByRole('textbox', { name: 'Your feedback' });
 }
+
+const forumOption = () =>
+  screen.getByRole('button', { name: /Community forum/ });
 
 const sendButton = () =>
   screen.getByRole('button', { name: 'Send to our team' });
@@ -29,7 +40,7 @@ describe('FeedbackDialog', () => {
     render(<FeedbackDialog onSubmit={vi.fn()} onShown={onShown} />);
 
     expect(onShown).not.toHaveBeenCalled();
-    const box = await openForm(user);
+    const box = await openDialog(user);
 
     await waitFor(() => expect(box).toHaveFocus());
     expect(onShown).toHaveBeenCalledOnce();
@@ -39,7 +50,7 @@ describe('FeedbackDialog', () => {
     const user = setup();
     render(<FeedbackDialog onSubmit={vi.fn()} />);
 
-    await openForm(user);
+    await openDialog(user);
     expect(
       screen.getByRole('dialog', { name: TITLE }),
     ).toHaveAccessibleDescription(/^Post on the community forum/);
@@ -49,15 +60,7 @@ describe('FeedbackDialog', () => {
     expect(
       screen.getByRole('link', { name: 'community forum' }),
     ).toHaveAttribute('target', '_blank');
-    expect(screen.getByRole('button', { name: /Our team/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(
-      screen.queryByRole('radio', { name: 'Help & Support' }),
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /Community forum/ }));
+    expect(forumOption()).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getAllByRole('radio')).toHaveLength(3);
     expect(
       screen.getByRole('radio', { name: 'Feedback & Feature Requests' }),
@@ -75,6 +78,12 @@ describe('FeedbackDialog', () => {
       screen.getByRole('textbox', { name: 'Your feedback' }),
     ).toBeVisible();
     expect(screen.getByRole('textbox', { name: /^Email/ })).toBeVisible();
+    expect(
+      screen.queryByRole('radio', { name: 'Help & Support' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(forumOption());
+    expect(screen.getByRole('textbox', { name: 'Your post' })).toBeVisible();
   });
 
   it('hands the feedback to the forum instead, in the section chosen', async () => {
@@ -82,8 +91,7 @@ describe('FeedbackDialog', () => {
     const onSubmit = vi.fn();
     render(<FeedbackDialog onSubmit={onSubmit} />);
 
-    const box = await openForm(user);
-    await user.click(screen.getByRole('button', { name: /Community forum/ }));
+    const box = await openDialog(user);
 
     expect(
       screen.queryByRole('textbox', { name: /^Email/ }),
@@ -269,7 +277,12 @@ describe('FeedbackDialog', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
-    expect(await openForm(user)).toHaveTextContent('');
+    await openDialog(user);
+    expect(forumOption()).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: /Our team/ }));
+    expect(
+      await screen.findByRole('textbox', { name: 'Your feedback' }),
+    ).toHaveTextContent('');
     expect(emailBox()).toHaveValue('');
     expect(onShown).toHaveBeenCalledTimes(2);
   });
