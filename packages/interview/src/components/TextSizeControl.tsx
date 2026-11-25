@@ -16,7 +16,7 @@ import {
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import SegmentedSwitcher from '@codaco/fresco-ui/SegmentedSwitcher';
 
-import { useContentLocale } from '../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../localization/useContentFormat';
 
 type TextSizeControlProps = {
   /** The sizes to offer, as multipliers of the interview's own text size. */
@@ -46,14 +46,15 @@ export default function TextSizeControl({
 
   // Each size is named as a percentage, written as the interview's language
   // writes one ("110 %" in French).
-  const contentLocale = useContentLocale();
-  const options = useMemo(() => {
-    const percent = new Intl.NumberFormat(contentLocale, { style: 'percent' });
-    return scales.map((scale) => ({
-      value: String(scale),
-      label: percent.format(scale),
-    }));
-  }, [contentLocale, scales]);
+  const { formatPercent } = useContentFormat();
+  const options = useMemo(
+    () =>
+      scales.map((scale) => ({
+        value: String(scale),
+        label: formatPercent(scale),
+      })),
+    [formatPercent, scales],
+  );
 
   return (
     <Popover.Root>
