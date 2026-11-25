@@ -28,8 +28,12 @@ const MIDDLE_STAGES = [
   },
 ] as const;
 
-function buildRawPayload(stageCount: number): string {
+function buildRawPayload(
+  stageCount: number,
+  localization?: { defaultLocale: string; locales: string[] },
+): string {
   const si = new SyntheticInterview();
+  if (localization) si.setLocalization(localization);
 
   si.addInformationStage({
     title: 'Welcome',
@@ -296,6 +300,93 @@ export const ReviewMode: Story = {
       scoped.getByText(/changes made during this review will not be saved/i),
     ).toBeInTheDocument();
     await userEvent.click(scoped.getByRole('button', { name: /cancel/i }));
+  },
+};
+
+const SEVERAL_LANGUAGES = {
+  defaultLocale: 'en',
+  locales: ['en', 'es', 'fr', 'ar'],
+};
+let severalLanguagesPayload: string | undefined;
+const getSeveralLanguagesPayload = () =>
+  (severalLanguagesPayload ??= buildRawPayload(5, SEVERAL_LANGUAGES));
+
+// A choice is kept in the tab, so one story's would carry into the next.
+const forgetInterviewLanguage = () => {
+  for (const key of Object.keys(window.sessionStorage)) {
+    if (key.startsWith('network-canvas:interview-locale-preference:')) {
+      window.sessionStorage.removeItem(key);
+    }
+  }
+};
+
+const chooseInterviewLanguage = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  const trigger = await canvas.findByRole(
+    'combobox',
+    { name: /^Interview language: English$/ },
+    { timeout: 10_000 },
+  );
+  await userEvent.click(trigger);
+  const popup = await within(canvasElement.ownerDocument.body).findByRole(
+    'dialog',
+    { name: 'Interview language' },
+  );
+  // The languages alone, each named in itself: an interview has no automatic
+  // entry.
+  await expect(
+    within(popup)
+      .getAllByRole('option')
+      .map((option) => option.textContent),
+  ).toEqual(['English', 'español', 'français', 'العربية']);
+  await userEvent.click(within(popup).getByRole('option', { name: 'español' }));
+  await waitFor(() =>
+    expect(
+      canvasElement.querySelector('main[data-theme-interview]'),
+    ).toHaveAttribute('lang', 'es'),
+  );
+};
+
+/**
+ * With more than one language in the protocol, a globe in the bar changes the
+ * interview language from any screen, as a Language Chooser stage does. It is
+ * not shown on a Language Chooser stage, nor for a protocol in one language.
+ */
+export const InterviewLanguage: Story = {
+  name: 'Interview language (vertical rail)',
+  beforeEach: forgetInterviewLanguage,
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getSeveralLanguagesPayload()}
+        navigationOrientation="vertical"
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await chooseInterviewLanguage(canvasElement);
+  },
+};
+
+export const HorizontalInterviewLanguage: Story = {
+  name: 'Interview language (horizontal bar)',
+  beforeEach: forgetInterviewLanguage,
+  render: () => (
+    <div className="flex h-dvh w-full">
+      <StoryInterviewShell
+        rawPayload={getSeveralLanguagesPayload()}
+        navigationOrientation="horizontal"
+        onExit={() => {
+          console.log('Exited the interview.');
+        }}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await chooseInterviewLanguage(canvasElement);
   },
 };
 

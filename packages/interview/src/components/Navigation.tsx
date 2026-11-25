@@ -27,6 +27,7 @@ import { Button, IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 import {
   Popover,
   PopoverContent,
@@ -38,6 +39,7 @@ import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { navigationMessages as messages } from '../i18n/navigationMessages';
+import { useProtocolLocale } from '../localization/ProtocolLocalizationProvider';
 import type { UnavailableStage } from '../selectors/skip-logic';
 import type { NavigationOrientation } from '../Shell';
 import { useSyncFlush } from '../store/SyncFlushContext';
@@ -142,6 +144,50 @@ const NavigationButton = ({
   );
 };
 
+/**
+ * Lets the participant change the interview language from any screen, with
+ * the same choice a Language Chooser stage offers. Shown only when the
+ * protocol declares more than one language.
+ */
+const LanguageSwitcherControl = ({
+  orientation,
+  isRtl,
+}: {
+  orientation: NavigationOrientation;
+  isRtl: boolean;
+}) => {
+  const { locale, options, setLocale } = useProtocolLocale();
+  if (options.length < 2) return null;
+
+  return (
+    <motion.div
+      variants={variants}
+      className={cx(
+        barControlVariants({ orientation }),
+        orientation === 'horizontal' && 'order-1',
+      )}
+    >
+      <LocaleSwitcher
+        options={options}
+        value={locale}
+        onChange={(next) => {
+          if (next !== null) setLocale(next);
+        }}
+        // oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- screen-reader text stays English
+        label="Interview language"
+        display="icon"
+        variant="text"
+        color="dynamic"
+        size="xl"
+        className={cx('[&>.lucide]:h-[1.5em]!', barIconButtonClassName)}
+        // A rail's popover opens away from the screen edge the rail is on.
+        side={orientation === 'vertical' ? (isRtl ? 'left' : 'right') : 'top'}
+        align="start"
+      />
+    </motion.div>
+  );
+};
+
 const navigationVariants = cva({
   base: 'flex max-h-none shrink-0 grow-0 items-center justify-between overflow-visible rounded-none shadow-none',
   variants: {
@@ -200,6 +246,11 @@ type NavigationProps = {
   reviewMode?: boolean;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
+  /**
+   * Offer the interview's languages from the bar, when the protocol declares
+   * more than one. Needs a `ProtocolLocalizationProvider` around it.
+   */
+  showLanguageSwitcher?: boolean;
   textScale?: number;
   onTextScaleChange?: (scale: number) => void;
   className?: string;
@@ -224,6 +275,7 @@ const Navigation = ({
   reviewMode,
   allowStageNavigation,
   allowUserScaling,
+  showLanguageSwitcher = false,
   textScale = 1,
   onTextScaleChange,
   className,
@@ -552,6 +604,9 @@ const Navigation = ({
               </PopoverContent>
             </Popover>
           </motion.div>
+        )}
+        {showLanguageSwitcher && (
+          <LanguageSwitcherControl orientation={orientation} isRtl={isRtl} />
         )}
         <NavigationButton
           wrapperClassName={cx(

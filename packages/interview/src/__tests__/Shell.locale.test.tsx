@@ -499,11 +499,15 @@ describe('Shell interview languages', () => {
     );
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Settings' }));
+    const settings = await screen.findByRole('dialog', {
+      name: 'Interview settings',
+    });
     expect(
-      await screen.findByRole('button', { name: 'Exit interview' }),
+      within(settings).getByRole('button', { name: 'Exit interview' }),
     ).toBeVisible();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    expect(screen.queryByText(/language/i)).not.toBeInTheDocument();
+    // The language is changed from its own control in the navigation.
+    expect(within(settings).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(within(settings).queryByText(/language/i)).not.toBeInTheDocument();
   });
 
   it('updates an already-open confirmation while retaining its action and cancel behavior', async () => {

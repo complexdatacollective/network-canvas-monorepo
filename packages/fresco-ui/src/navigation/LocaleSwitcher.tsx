@@ -14,6 +14,7 @@ import {
   type KeyboardEvent,
   type ReactElement,
   useEffect,
+  useId,
   useRef,
   useState,
 } from 'react';
@@ -94,6 +95,8 @@ export type LocaleSwitcherSaveState = 'idle' | 'saving' | 'saved' | 'failed';
 
 export type LocaleSwitcherDisplay = 'responsive' | 'label' | 'icon';
 
+export type LocaleSwitcherSide = 'top' | 'bottom' | 'left' | 'right';
+
 // In `responsive` display the language name is dropped while the nearest
 // `@container` ancestor is narrower than 36em (the threshold
 // `TeamAndStudySwitcher` collapses at), leaving a round icon button. The
@@ -120,11 +123,24 @@ type LocaleItem = {
 export type LocaleSwitcherProps = {
   /** The locales to offer, in display order. */
   options: readonly AppLocale[];
-  /** The stored preference; `null` is the automatic entry. */
+  /**
+   * The stored preference; `null` is the automatic entry. Without
+   * `automaticLocale` there is no automatic entry, so it is one of `options`.
+   */
   value: string | null;
-  /** The tag the automatic entry resolves to right now. */
-  automaticLocale: string;
+  /**
+   * The tag the automatic entry resolves to right now. Omit it to offer no
+   * automatic entry, for a host where a language is always chosen, such as an
+   * interview, which offers only the languages its protocol declares.
+   */
+  automaticLocale?: string;
   onChange: (value: string | null) => void;
+  /**
+   * What the language is the language of, in English, for screen readers: the
+   * trigger is named "{label}: Español" and the list "{label}". Defaults to
+   * the application's interface language.
+   */
+  label?: string;
   /**
    * Where the host's persistence stands. `saving` shows a spinner, `saved` a
    * check mark that goes away after a moment, `failed` a retry button that
@@ -159,7 +175,12 @@ export type LocaleSwitcherProps = {
    * language name and chevron unless `display` is `icon`, are its children.
    */
   renderTrigger?: ReactElement;
-  side?: 'top' | 'bottom';
+  /**
+   * Where the popover opens. `left` and `right` are for a switcher in a side
+   * rail; they are physical sides, as the popover's arrow is placed by them,
+   * so a host chooses one for its reading direction.
+   */
+  side?: LocaleSwitcherSide;
   align?: 'start' | 'center' | 'end';
   /** Open on first render; for documentation, hosts never need it. */
   defaultOpen?: boolean;
@@ -176,6 +197,7 @@ export default function LocaleSwitcher({
   value,
   automaticLocale,
   onChange,
+  label,
   saveState = 'idle',
   persistence = 'device',
   display = 'responsive',
@@ -191,6 +213,7 @@ export default function LocaleSwitcher({
 }: LocaleSwitcherProps) {
   const intl = useAppIntl();
   const listRef = useRef<HTMLDivElement>(null);
+  const labelId = useId();
   const portalContainer = usePortalContainer();
   const [query, setQuery] = useState('');
 
@@ -268,11 +291,17 @@ export default function LocaleSwitcher({
   const autonymOf = (tag: string) =>
     options.find((entry) => entry.locale === tag)?.label ?? tag;
 
-  const automaticAutonym = intl.formatMessage(automaticLocaleMessage, {
-    language: autonymOf(automaticLocale),
-  });
   const items: LocaleItem[] = [
-    { value: null, autonym: automaticAutonym },
+    ...(automaticLocale === undefined
+      ? []
+      : [
+          {
+            value: null,
+            autonym: intl.formatMessage(automaticLocaleMessage, {
+              language: autonymOf(automaticLocale),
+            }),
+          },
+        ]),
     ...options.map((entry) => ({ value: entry.locale, autonym: entry.label })),
   ];
 
@@ -280,8 +309,16 @@ export default function LocaleSwitcher({
 
   const triggerLocale = selected.value ?? automaticLocale;
   const triggerLabel =
-    selected.value === null ? autonymOf(automaticLocale) : selected.autonym;
-  const triggerName = `Interface language: ${selected.autonym}`;
+    selected.value === null && automaticLocale !== undefined
+      ? autonymOf(automaticLocale)
+      : selected.autonym;
+  const triggerName = `${label ?? 'Interface language'}: ${selected.autonym}`;
+  // A label names the popup and its list through a hidden element, so that
+  // the English name is marked as English inside a page in another language.
+  const popupName =
+    label === undefined
+      ? { 'aria-label': intl.formatMessage(messages.heading) }
+      : { 'aria-labelledby': labelId };
   const Chevron = side === 'top' ? ChevronUp : ChevronDown;
   const responsive = display === 'responsive';
   const globe = <Globe aria-hidden />;
@@ -376,7 +413,7 @@ export default function LocaleSwitcher({
           className="z-3000"
         >
           <Combobox.Popup
-            aria-label={intl.formatMessage(messages.heading)}
+            {...popupName}
             initialFocus={searchable ? undefined : listRef}
             render={
               <BaseUISharedPopoverContainer
@@ -392,6 +429,11 @@ export default function LocaleSwitcher({
               />
             }
           >
+            {label !== undefined && (
+              <span id={labelId} hidden lang="en">
+                {label}
+              </span>
+            )}
             {searchable && (
               <div className="px-4 pt-3 pb-2">
                 <Combobox.Input
@@ -430,7 +472,7 @@ export default function LocaleSwitcher({
             <Combobox.List
               ref={listRef}
               className="max-h-96 overflow-hidden has-data-empty:hidden"
-              aria-label={intl.formatMessage(messages.heading)}
+              {...popupName}
               render={
                 <ScrollArea
                   viewportClassName={cx(

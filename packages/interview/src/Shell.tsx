@@ -454,6 +454,8 @@ function ActiveInterview({
                 onExit={onExit}
                 reviewMode={reviewMode}
                 allowUserScaling={allowUserScaling}
+                // The Language Chooser offers the same choice on screen.
+                showLanguageSwitcher={stage?.type !== 'LanguageChooser'}
                 textScale={textScale}
                 onTextScaleChange={onTextScaleChange}
               />

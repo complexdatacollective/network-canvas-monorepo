@@ -49,7 +49,12 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 - **\`automaticLocale\`** — the tag automatic resolves to right now, named on
   the automatic entry ("Automatic (English)"). The pill then shows that
   language's own name alone ("English"); its accessible name still says it is
-  automatic.
+  automatic. Omit it to offer no automatic entry, for a host where a language
+  is always chosen (the interview's navigation); \`value\` is then one of
+  \`options\`.
+- **\`label\`** — what the language is the language of, in English, for
+  screen readers: the trigger is named "{label}: Español" and the popover
+  "{label}". Defaults to "Interface language".
 - **\`display\`** — what the pill shows beside the globe. \`label\` always
   names the current language, \`icon\` never does (an \`IconButton\`), and
   \`responsive\` (the default) names it only while the nearest \`@container\`
@@ -64,7 +69,8 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
   the footer reports the outcome the next time it opens, for as long as that
   outcome stands.
 - **\`side\`** / **\`align\`** — where the popover opens; the Interviewer
-  status bar uses \`side="top"\`. An arrow points back at the pill.
+  status bar uses \`side="top"\`, and the interview's side rail
+  \`side="right"\` (\`"left"\` in a right-to-left interview). An arrow points back at the pill.
 - **\`variant\`** / **\`color\`** / **\`size\`** — the pill's \`Button\`
   look, so it matches the controls beside it. Defaults to a \`text\` button
   in \`color="dynamic"\`, which takes the colour of the bar it sits on.
@@ -98,7 +104,10 @@ const meta = {
     },
     size: { control: 'radio', options: ['sm', 'md', 'lg'] },
     persistence: { control: 'radio', options: ['device', 'account'] },
-    side: { control: 'radio', options: ['top', 'bottom'] },
+    side: {
+      control: 'radio',
+      options: ['top', 'bottom', 'left', 'right'],
+    },
     align: { control: 'radio', options: ['start', 'center', 'end'] },
   },
   args: {
@@ -151,6 +160,38 @@ const choose = async (popup: HTMLElement, name: string | RegExp) => {
 };
 
 export const Default: Story = {};
+
+/**
+ * Without `automaticLocale` there is no automatic entry: the list is the
+ * languages alone, as in an interview, where a language is always chosen.
+ * `label` names what the language is the language of.
+ */
+export const WithoutAutomaticEntry: Story = {
+  args: {
+    value: 'es',
+    automaticLocale: undefined,
+    label: 'Interview language',
+    display: 'icon',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('combobox', { name: 'Interview language: Español' }),
+    );
+    const popup = await screen.findByRole('dialog', {
+      name: 'Interview language',
+    });
+    await expect(
+      within(popup)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(fewLocales.map((locale) => locale.label));
+    await choose(popup, 'English');
+    await expect(
+      canvas.getByRole('combobox', { name: 'Interview language: English' }),
+    ).toBeVisible();
+  },
+};
 
 /**
  * `searchable` puts a search box above the list. It filters by autonym, and
