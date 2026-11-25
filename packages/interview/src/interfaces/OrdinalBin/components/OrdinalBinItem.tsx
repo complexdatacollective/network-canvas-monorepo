@@ -163,9 +163,11 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
       return 'refused';
     }
 
-    // Heard once, whether dragged or selected. The answer behind it is an
-    // ordinary update, which makes no sound of its own.
-    playSound('drop-node');
+    // Heard once, whether dragged or selected: a drag through the bin's drop
+    // sound, once the drop resolves that the placement was saved, and a
+    // selection here. The answer behind it is an ordinary update, which makes
+    // no sound of its own.
+    if (select) playSound('drop-node');
     if (previousIndex === -1) {
       track('node_binned', {
         node_id: nodeId,
@@ -185,9 +187,11 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     return 'placed';
   };
 
-  const handleDrop = (metadata?: Record<string, unknown>) => {
+  // Resolves whether the person was placed, so a refused write is not heard.
+  const handleDrop = async (metadata?: Record<string, unknown>) => {
+    if (!metadata) return false;
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dropped node, set by the Node drag source (fresco-ui types it as a record)
-    if (metadata) void place(metadata as NcNode);
+    return (await place(metadata as NcNode)) === 'placed';
   };
 
   const handleSelect = async () => {
@@ -311,7 +315,11 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
               onItemClick: select.onChoose,
               selectedItemId: select.focalNode?.[entityPrimaryKeyProperty],
             }
-          : { onDrop: handleDrop, accepts: ['NODE'] })}
+          : {
+              onDrop: handleDrop,
+              dropSound: 'drop-node' as const,
+              accepts: ['NODE'],
+            })}
       />
     </motion.div>
   );

@@ -281,6 +281,113 @@ describe('sound engine timing', () => {
   });
 });
 
+describe('sound engine drags', () => {
+  it('plays the pick-up within the burst window of an earlier, more important sound', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.play('create-node');
+    await settle();
+    harness.advance(BURST_WINDOW_MS - 1);
+    harness.engine.play('tap-button', { standalone: true });
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual([
+      'create-node',
+      'tap-button',
+    ]);
+  });
+
+  it('plays a drop just after the pick-up, and a drop sound within the burst window of an earlier, more important sound', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    harness.engine.play('tap-button', { standalone: true });
+    await settle();
+    harness.advance(1);
+    harness.engine.drop('toggle-off', () => undefined);
+    await settle();
+    harness.advance(1);
+    // A drop that leaves the network as it was, right after a removal.
+    harness.engine.play('discard');
+    await settle();
+    harness.advance(1);
+    harness.engine.drop('drop-node', () => undefined);
+    await settle();
+    expect(harness.context().played.map(soundOf)).toEqual([
+      'tap-button',
+      'toggle-off',
+      'discard',
+      'drop-node',
+    ]);
+  });
+
+  it('carries out a drop whose target declares no sound, or while sound is off, without a sound', async () => {
+    const harness = tracked(setup());
+    const perform = vi.fn(() => {
+      expect(harness.engine.isHandlingDrop()).toBe(true);
+    });
+    harness.engine.drop('drop-node', perform);
+    expect(perform).toHaveBeenCalledTimes(1);
+    await ready(harness);
+    harness.engine.drop(null, perform);
+    await settle();
+    expect(perform).toHaveBeenCalledTimes(2);
+    expect(harness.context().played).toEqual([]);
+  });
+
+  it('plays the drop sound only for a drop the target takes', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    // An answer resolves, then the sound it lets play is gathered for a task.
+    const settleAnswer = async () => {
+      await settle();
+      await settle();
+    };
+    harness.engine.drop('discard', () => false);
+    await settleAnswer();
+    expect(harness.context().played).toEqual([]);
+
+    let answer: (taken: boolean) => void = () => undefined;
+    harness.engine.drop(
+      'drop-node',
+      () =>
+        new Promise<boolean>((resolve) => {
+          answer = resolve;
+        }),
+    );
+    await settleAnswer();
+    // Not before the change is made.
+    expect(harness.context().played).toEqual([]);
+    answer(false);
+    await settleAnswer();
+    expect(harness.context().played).toEqual([]);
+
+    harness.engine.drop(
+      'toggle-on',
+      () =>
+        new Promise<boolean>((resolve) => {
+          answer = resolve;
+        }),
+    );
+    await settleAnswer();
+    expect(harness.context().played).toEqual([]);
+    harness.advance(1);
+    answer(true);
+    await settleAnswer();
+    expect(harness.context().played.map(soundOf)).toEqual(['toggle-on']);
+  });
+
+  it('is handling a drop only while the drop is carried out, even when it throws', async () => {
+    const harness = tracked(setup());
+    await ready(harness);
+    expect(harness.engine.isHandlingDrop()).toBe(false);
+    expect(() =>
+      harness.engine.drop('discard', () => {
+        throw new Error('refused');
+      }),
+    ).toThrow('refused');
+    expect(harness.engine.isHandlingDrop()).toBe(false);
+  });
+});
+
 describe('sound engine pitch', () => {
   it('varies a frequent sound within the pitch range', async () => {
     const harness = tracked(setup());

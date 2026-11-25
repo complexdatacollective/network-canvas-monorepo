@@ -405,7 +405,8 @@ describe('OrdinalBin in select mode (#1652)', () => {
     const selectedNodes = selected.store.getState().session.network?.nodes;
     selected.view.unmount();
 
-    const dragged = renderStage('drag');
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, undefined, sounds);
     startDragOf(dragged.getDndStore, person('a', 'Ann'));
     await waitFor(() =>
       expect(
@@ -424,6 +425,30 @@ describe('OrdinalBin in select mode (#1652)', () => {
     expect(dragged.store.getState().session.network?.nodes).toEqual(
       selectedNodes,
     );
+    // The drop is heard as it lands, through the bin's drop sound, and the
+    // placement it saves adds no second sound.
+    expect(sounds.play.mock.calls).toEqual([['drop-node']]);
+  });
+
+  it('makes no sound for a drop whose placement is refused', async () => {
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, undefined, sounds);
+    // Someone the session does not have cannot be given an answer.
+    startDragOf(dragged.getDndStore, person('z', 'Zed'));
+    await waitFor(() =>
+      expect(
+        dragged.getDndStore().getState().getDropTargetState(binListZone(1))
+          ?.canDrop,
+      ).toBe(true),
+    );
+    await act(async () => {
+      dragged.getDndStore().getState().setActiveDropTarget(binListZone(1));
+      dragged.getDndStore().getState().endDrag();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(dragged.attributesOf('z')).toBeUndefined();
+    expect(sounds.play).not.toHaveBeenCalled();
   });
 
   it.each([

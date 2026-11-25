@@ -5,10 +5,12 @@ import { type RefObject, useCallback, useRef, useState } from 'react';
 import type { StoreApi } from 'zustand';
 
 import type { DndStore } from '@codaco/fresco-ui/dnd/dnd';
-import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
+import { useDragFeedback } from '@codaco/fresco-ui/dnd/DragFeedbackListener';
+import type { DragMetadata, DropOutcome } from '@codaco/fresco-ui/dnd/types';
 import { findSourceZone } from '@codaco/fresco-ui/dnd/utils';
 import type { ActivationSource, NodeDragEndInfo } from '@codaco/fresco-ui/Node';
 
+import type { DropSound } from '../sounds/InteractionSounds';
 import type { CanvasStoreApi } from './useCanvasStore';
 
 const NUDGE_AMOUNT = 0.02;
@@ -16,13 +18,14 @@ const NUDGE_AMOUNT = 0.02;
 /**
  * Called when the participant has moved a node to a new position: at the end
  * of a pointer drag (`source: 'pointer'`), or after each arrow-key nudge
- * (`source: 'keyboard'`).
+ * (`source: 'keyboard'`). Says, as a drop handler does, whether the move was
+ * taken (stored), so that a drop on the canvas is heard only then.
  */
 export type CanvasNodeDragEnd = (
   nodeId: string,
   position: { x: number; y: number },
   details: { source: ActivationSource },
-) => void;
+) => DropOutcome;
 
 type UseCanvasDragOptions = {
   nodeId: string;
@@ -57,6 +60,11 @@ type UseCanvasDragOptions = {
  * normalized canvas space, driving a simulation, and offering the node to DnD
  * drop targets — plus the keyboard equivalents (arrow-key nudging,
  * Delete/Backspace to remove).
+ *
+ * A drag is reported to the enclosing `DragFeedbackListener` as any other
+ * drag is: picked up when it starts, and dropped on the canvas (as a
+ * placement) when it is released there. A drag released on a drop target is
+ * that target's drop; a cancelled one, and a keyboard nudge, are no drop.
  */
 export function useCanvasDrag({
   nodeId,
@@ -71,6 +79,7 @@ export function useCanvasDrag({
 }: UseCanvasDragOptions) {
   const rafRef = useRef<number | null>(null);
   const dndStartedRef = useRef(false);
+  const dragFeedback = useDragFeedback();
   // Reactive so consumers can restyle the node while it is dragged (e.g. lift
   // it above overlapping drop targets).
   const [isDragging, setIsDragging] = useState(false);
@@ -91,6 +100,7 @@ export function useCanvasDrag({
   const handleDragStart = useCallback(
     (event: PointerEvent) => {
       setIsDragging(true);
+      dragFeedback.onDragStart();
 
       const targetElement =
         event.target instanceof HTMLElement ? event.target : null;
@@ -115,7 +125,7 @@ export function useCanvasDrag({
         );
       }
     },
-    [dndItem, dndStore, nodeId],
+    [dndItem, dndStore, nodeId, dragFeedback],
   );
 
   const handleDragMove = useCallback(
@@ -145,10 +155,11 @@ export function useCanvasDrag({
       }
 
       let droppedOnDndTarget = false;
+      const { cancelled } = info;
       if (dndStartedRef.current && dndStore) {
         const dndState = dndStore.getState();
         // A cancelled pointer must not commit a drop.
-        if (info.cancelled) {
+        if (cancelled) {
           dndState.setActiveDropTarget(null);
         } else {
           droppedOnDndTarget = dndState.activeDropTargetId !== null;
@@ -164,13 +175,17 @@ export function useCanvasDrag({
         // When a drop target claimed the node, its onDrop owns the outcome —
         // persisting the canvas position here would race with it.
         if (!droppedOnDndTarget) {
-          onDragEnd?.(nodeId, pos, { source: 'pointer' });
+          const settle = () => onDragEnd?.(nodeId, pos, { source: 'pointer' });
+          // Released on the canvas, the node is dropped there. A cancelled
+          // drag stays where it was last moved to, but nobody dropped it.
+          if (cancelled) void settle();
+          else dragFeedback.onDrop('drop-node' satisfies DropSound, settle);
         }
       }
 
       setIsDragging(false);
     },
-    [dndStore, nodeId, onDragEnd, simulation, store],
+    [dndStore, nodeId, onDragEnd, simulation, store, dragFeedback],
   );
 
   const onKeyDown = useCallback(
@@ -212,7 +227,7 @@ export function useCanvasDrag({
       // (mirrors the pointer-drag path, which releases before onDragEnd).
       simulation?.moveNode(nodeId, newPos);
       simulation?.releaseNode(nodeId);
-      onDragEnd?.(nodeId, newPos, { source: 'keyboard' });
+      void onDragEnd?.(nodeId, newPos, { source: 'keyboard' });
     },
     [disabled, nodeId, store, simulation, onDragEnd, onRemove],
   );

@@ -372,10 +372,12 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
       ),
     );
     // Every placement the session stored, by drag or by selection, sounds
-    // once. The answer behind it is an ordinary update, which makes no sound
-    // of its own.
+    // once. A drag is heard through the bin's drop sound, which plays once
+    // this resolves that the placement was saved (for the "other" bin, once
+    // its question is answered); a placement by selection is heard here. The
+    // answer behind it is an ordinary update, which makes no sound of its own.
     const recordCommittedDrop = () => {
-      playSound('drop-node');
+      if (selectMode) playSound('drop-node');
       if (previousIndex === -1) {
         track('node_binned', {
           node_id: nodeId,

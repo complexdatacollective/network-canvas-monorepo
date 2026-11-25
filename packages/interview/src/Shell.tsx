@@ -674,12 +674,14 @@ type ShellProps = {
   onTextScaleChange?: (scale: number) => void;
   /**
    * Play short sounds when the participant changes the network (adding,
-   * removing or connecting nodes, selecting them, placing them in bins or on
-   * the sociogram), while a node is waiting to be connected to another, when
-   * they choose or clear an answer option, when Back, Next or the list of
-   * screens moves the interview (not when the move is refused), when a form
-   * cannot be submitted, and when the interview reaches its end. One action
-   * makes one sound. Off by default. The sound files (ten MP3 files, about
+   * removing or connecting nodes, selecting them, placing them in bins), when
+   * they pick a node up to drag it and when they drop it (the sound of a drop
+   * depends on where it lands: deleting a node in the bin sounds different
+   * from placing it; a drop that nothing accepts is silent), while a node is
+   * waiting to be connected to another, when they choose or clear an answer
+   * option, when Back, Next or the list of screens moves the interview (not
+   * when the move is refused), when a form cannot be submitted, and when the
+   * interview reaches its end. One action makes one sound. Off by default. The sound files (ten MP3 files, about
    * 160 KB in total) are downloaded the first time this is turned on, and
    * never while it is off; turning it off stops any sound that is playing.
    * A browser lets a page play sound only once the participant has
@@ -767,9 +769,9 @@ const Shell = ({
   const onTrackerChange = trackerForwarder.setCurrent;
 
   // One sound engine for the life of the Shell. The store, created once per
-  // payload, is handed its play function, and the engine decides at each
-  // change whether sounds are on, so turning them on or off never recreates
-  // the store.
+  // payload, is handed the engine, and the engine decides at each change
+  // whether sounds are on, so turning them on or off never recreates the
+  // store.
   const [soundEngine] = useState(() => createSoundEngine());
   useEffect(() => {
     soundEngine.setEnabled(interactionSounds);
@@ -782,7 +784,7 @@ const Shell = ({
         onSync: stableOnSync,
         isDevelopment: flags?.isDevelopment,
         tracker: trackerHolder,
-        playInteractionSound: soundEngine.play,
+        interactionSounds: soundEngine,
       }),
     [payload, stableOnSync, flags?.isDevelopment, trackerHolder, soundEngine],
   );

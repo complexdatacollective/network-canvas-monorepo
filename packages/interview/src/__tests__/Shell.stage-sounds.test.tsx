@@ -1,14 +1,23 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getLocaleMetadata } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  getLocaleMetadata,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
-import type { CanvasNodeDragEnd } from '../canvas/useCanvasDrag';
 import type { InterviewPayload } from '../contract/types';
 import Shell from '../Shell';
 import {
@@ -28,36 +37,27 @@ import { testId, testTypeId, testVariableId } from './testIds';
 
 vi.mock('../hooks/useMediaQuery', () => ({ default: () => false }));
 
-// The sociogram's canvas needs layout jsdom does not have. Its two ways of
-// putting a node down are handed to the stage, which the test calls as the
-// canvas would.
-const canvas = vi.hoisted(() => ({
-  onNodeDragEnd: undefined as CanvasNodeDragEnd | undefined,
-  onDrop: undefined as
-    | ((nodeId: string, position: { x: number; y: number }) => void)
-    | undefined,
-}));
-vi.mock('../canvas/Canvas', () => ({
-  default: (props: {
-    onNodeDragEnd?: CanvasNodeDragEnd;
-    onDrop?: (nodeId: string, position: { x: number; y: number }) => void;
-  }) => {
-    canvas.onNodeDragEnd = props.onNodeDragEnd;
-    canvas.onDrop = props.onDrop;
-    return <div data-testid="canvas" />;
-  },
-}));
-
 const PERSON = testTypeId('person');
 const KNOWS = testTypeId('knows');
+const NAME = testVariableId('name');
 const NICKNAME = testVariableId('nickname');
 const CLOSENESS = testVariableId('closeness');
 const LAYOUT = testVariableId('layout');
+const RANK = testVariableId('rank');
+const GROUP = testVariableId('group');
+const OTHER_GROUP = testVariableId('other-group');
+const SECRET = testVariableId('secret');
 
-const person = (id: string, name: string, attributes = {}) => ({
+const person = (
+  id: string,
+  name: string,
+  attributes = {},
+  extra: Record<string, unknown> = {},
+) => ({
   [entityPrimaryKeyProperty]: id,
   type: PERSON,
-  [entityAttributesProperty]: { [testVariableId('name')]: name, ...attributes },
+  [entityAttributesProperty]: { [NAME]: name, ...attributes },
+  ...extra,
 });
 
 const information = (name: string) => ({
@@ -125,6 +125,87 @@ const sociogram = {
   ],
 };
 
+const ROSTER_ASSET = 'roster-asset';
+const ROSTER_URL = 'https://assets.test/roster.json';
+// The people a name generator's panel offers, from the protocol's roster.
+const ROSTER = { nodes: [{ attributes: { name: 'Dana' } }] };
+
+// A name generator with a list of the people named for its question, a panel
+// offering people from a roster, and the bin.
+const nameGenerator = {
+  id: testId('name-generator'),
+  type: 'NameGeneratorQuickAdd',
+  label: { en: 'Name people' },
+  subject: { entity: 'node', type: PERSON },
+  quickAdd: asEntityAttributeReference(NAME),
+  addNamePlaceholder: { en: 'Type a name, then press Enter' },
+  panels: [
+    {
+      id: testId('panel'),
+      title: { en: 'People you might know' },
+      dataSource: ROSTER_ASSET,
+    },
+  ],
+  prompts: [{ id: testId('ng-p1'), text: { en: 'Who do you know?' } }],
+};
+
+const named = (id: string, name: string) =>
+  person(
+    id,
+    name,
+    {},
+    { promptIDs: [testId('ng-p1')], stageId: testId('name-generator') },
+  );
+
+const ordinalBin = {
+  id: testId('ordinal'),
+  type: 'OrdinalBin',
+  label: { en: 'Rank people' },
+  subject: { entity: 'node', type: PERSON },
+  prompts: [
+    {
+      id: testId('ord-p1'),
+      text: { en: 'How often do you see them?' },
+      variable: asEntityAttributeReference(RANK),
+      color: 'ord-color-seq-1',
+    },
+  ],
+};
+
+const categoricalBin = {
+  id: testId('categorical'),
+  type: 'CategoricalBin',
+  label: { en: 'Group people' },
+  subject: { entity: 'node', type: PERSON },
+  prompts: [
+    {
+      id: testId('cat-p1'),
+      text: { en: 'How do you know them?' },
+      variable: asEntityAttributeReference(GROUP),
+      otherVariable: asEntityAttributeReference(OTHER_GROUP),
+      otherVariablePrompt: { en: 'How else do you know them?' },
+      otherOptionLabel: { en: 'Some other way' },
+    },
+  ],
+};
+
+// A categorical bin whose "other" answer is stored encrypted, so it can be
+// given only once the interview's passphrase is entered.
+const protectedCategoricalBin = {
+  ...categoricalBin,
+  id: testId('protected-categorical'),
+  prompts: [
+    {
+      id: testId('pcat-p1'),
+      text: { en: 'How do you know them?' },
+      variable: asEntityAttributeReference(GROUP),
+      otherVariable: asEntityAttributeReference(SECRET),
+      otherVariablePrompt: { en: 'How else do you know them?' },
+      otherOptionLabel: { en: 'Some other way' },
+    },
+  ],
+};
+
 function payloadWith(
   stages: unknown[],
   nodes = [person('a', 'Alex'), person('b', 'Blake'), person('c', 'Casey')],
@@ -187,14 +268,57 @@ function payloadWith(
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
-              [testVariableId('name')]: { name: 'name', type: 'text' },
+              [NAME]: { name: 'name', type: 'text' },
               [LAYOUT]: { name: 'layout', type: 'layout' },
+              [RANK]: {
+                name: 'rank',
+                type: 'ordinal',
+                component: 'LikertScale',
+                options: [
+                  {
+                    id: testId('rank-often'),
+                    label: { en: 'Often' },
+                    value: 1,
+                  },
+                  {
+                    id: testId('rank-rarely'),
+                    label: { en: 'Rarely' },
+                    value: 2,
+                  },
+                ],
+              },
+              [GROUP]: {
+                name: 'group',
+                type: 'categorical',
+                component: 'CheckboxGroup',
+                options: [
+                  { id: testId('group-work'), label: { en: 'Work' }, value: 1 },
+                  {
+                    id: testId('group-school'),
+                    label: { en: 'School' },
+                    value: 2,
+                  },
+                ],
+              },
+              [OTHER_GROUP]: {
+                name: 'other group',
+                type: 'text',
+                component: 'Text',
+              },
+              [SECRET]: { name: 'secret', type: 'text', encrypted: true },
             },
           },
         },
         edge: { [KNOWS]: { name: 'Knows', color: 'edge-color-seq-1' } },
       },
-      assets: [],
+      assets: [
+        {
+          assetId: ROSTER_ASSET,
+          name: 'roster',
+          type: 'network',
+          source: 'roster.json',
+        },
+      ],
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stage fixtures written as plain objects; the Shell reads them as the protocol's stages
       stages: stages as InterviewPayload['protocol']['stages'],
     },
@@ -213,11 +337,22 @@ class StubObserver {
   disconnect() {}
 }
 
+// jsdom has no layout, so it cannot say what is under the pointer: a drag
+// test names the element it moves the pointer over. Nor does it have pointer
+// capture.
+let underPointer: Element[] = [];
+const POINTER_CAPTURE = [
+  'setPointerCapture',
+  'hasPointerCapture',
+  'releasePointerCapture',
+] as const;
+
 beforeEach(() => {
   contexts.length = 0;
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string) => {
+      if (url === ROSTER_URL) return Promise.resolve(Response.json(ROSTER));
       const name = /\/([^/]+)\.mp3$/.exec(url)?.[1] ?? '';
       return Promise.resolve(
         isSoundName(name)
@@ -237,11 +372,25 @@ beforeEach(() => {
   );
   vi.stubGlobal('ResizeObserver', StubObserver);
   vi.stubGlobal('IntersectionObserver', StubObserver);
-  document.elementsFromPoint ??= () => [];
+  underPointer = [];
+  Object.defineProperty(document, 'elementsFromPoint', {
+    configurable: true,
+    value: () => underPointer,
+  });
+  for (const method of POINTER_CAPTURE) {
+    Object.defineProperty(Element.prototype, method, {
+      configurable: true,
+      value: () => false,
+    });
+  }
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  Reflect.deleteProperty(document, 'elementsFromPoint');
+  for (const method of POINTER_CAPTURE) {
+    Reflect.deleteProperty(Element.prototype, method);
+  }
 });
 
 /**
@@ -266,7 +415,9 @@ async function renderInterview(
       onSync={() => Promise.resolve()}
       requestedLocales={[]}
       onFinish={() => Promise.resolve()}
-      onRequestAsset={() => Promise.resolve('')}
+      onRequestAsset={(assetId) =>
+        Promise.resolve(assetId === ROSTER_ASSET ? ROSTER_URL : '')
+      }
       analytics={{ installationId: 'test', hostApp: 'test' }}
       disableAnalytics
       flags={{ isE2E: true }}
@@ -394,8 +545,311 @@ describe('the sound of a one-to-many dyad census', () => {
   });
 });
 
-describe('the sound of putting a person down on the sociogram', () => {
-  it('plays the drop sound once for a person dropped after a drag or placed from the drawer, and not for a keyboard nudge', async () => {
+type Heard = () => Promise<(string | undefined)[]>;
+
+const nextFrame = () =>
+  new Promise((resolve) => {
+    requestAnimationFrame(resolve);
+  });
+
+const dropZone = (id: string) => {
+  const zone = document.querySelector(`[data-zone-id="${id}"]`);
+  if (!zone) throw new Error(`No drop target ${id}`);
+  return zone;
+};
+
+/**
+ * Drags `source` with a pointer, past the drag distance, and releases it over
+ * `over` (over nothing when null). The pointer's events go to `source`, as
+ * the pointer capture a drag takes sends them in a browser. Gives what was heard as the drag started,
+ * and what was heard as it ended; each step is its own task, as in a browser.
+ */
+async function pointerDrag(
+  heard: Heard,
+  source: Element,
+  over: Element | null,
+) {
+  const at = (clientX: number) => ({ pointerId: 1, clientX, clientY: 100 });
+  await act(async () => {
+    fireEvent.pointerDown(source, { ...at(100), button: 0 });
+  });
+  await act(async () => {
+    fireEvent.pointerMove(source, at(140));
+    await nextFrame();
+  });
+  const pickedUp = await heard();
+  underPointer = over ? [over] : [];
+  await act(async () => {
+    fireEvent.pointerMove(source, at(150));
+    await nextFrame();
+  });
+  await act(async () => {
+    fireEvent.pointerUp(source, at(150));
+  });
+  const dropped = await heard();
+  return { pickedUp, dropped };
+}
+
+/** What the drag and drop announcements say now. */
+const announced = () =>
+  [...document.querySelectorAll('[role="status"]')]
+    .map((region) => region.textContent ?? '')
+    .join('\n');
+
+/**
+ * Picks `source` up from the keyboard, moves through the drop targets to the
+ * one named `targetName`, and drops it there; with no target, cancels the
+ * drag instead. Gives what was heard as the drag started, and what was heard
+ * as it ended.
+ */
+async function keyboardDrag(
+  heard: Heard,
+  source: HTMLElement,
+  targetName: string | null,
+) {
+  await act(async () => {
+    source.focus();
+    fireEvent.keyDown(source, { key: 'd', ctrlKey: true });
+  });
+  const pickedUp = await heard();
+  if (targetName === null) {
+    await act(async () => {
+      fireEvent.keyDown(source, { key: 'Escape' });
+    });
+  } else {
+    for (let step = 0; !announced().includes(`: ${targetName}`); step += 1) {
+      if (step === 10) throw new Error(`No drop target ${targetName}`);
+      await act(async () => {
+        fireEvent.keyDown(source, { key: 'ArrowDown' });
+      });
+    }
+    await act(async () => {
+      fireEvent.keyDown(source, { key: 'Enter' });
+    });
+  }
+  const dropped = await heard();
+  return { pickedUp, dropped };
+}
+
+// The people a stage shows, by their label: a list's or a drawer's, or the
+// canvas's.
+const personNamed = (name: string, scope: HTMLElement = document.body) =>
+  within(scope).findByLabelText(name, { selector: 'button' });
+
+describe('the sound of dragging a person on a name generator', () => {
+  const stageNodes = () =>
+    screen.getByTestId('node-list').querySelectorAll('[data-collection-item]');
+
+  it('plays the pick-up sound when a drag starts, and only the bin’s sound when the person is dropped in it', async () => {
+    const { heard } = await renderInterview(
+      [nameGenerator],
+      [named('a', 'Alex'), named('b', 'Blake')],
+    );
+    const list = await screen.findByTestId('node-list');
+    const alex = await personNamed('Alex', list);
+    await act(settle);
+    expect(await heard()).toEqual([]);
+
+    expect(await pointerDrag(heard, alex, dropZone('node-bin'))).toEqual({
+      pickedUp: ['tap-button'],
+      dropped: ['discard'],
+    });
+    await waitFor(() => expect(stageNodes()).toHaveLength(1));
+  });
+
+  it('plays only the list’s sound when a person is added from the panel, and only the panel’s sound when they are taken back', async () => {
+    const { heard } = await renderInterview(
+      [nameGenerator],
+      [named('a', 'Alex')],
+    );
+    const dana = await personNamed(
+      'Dana',
+      await screen.findByTestId('node-panel'),
+    );
+
+    // Adding a person from the panel adds them to the network, which on its
+    // own sounds like a person created.
+    expect(await keyboardDrag(heard, dana, 'Added Nodes')).toEqual({
+      pickedUp: ['tap-button'],
+      dropped: ['toggle-on'],
+    });
+    await waitFor(() => expect(stageNodes()).toHaveLength(2));
+
+    // Taking them back removes them from the network, which on its own
+    // sounds like a person deleted.
+    const added = await personNamed('Dana', screen.getByTestId('node-list'));
+    expect(await keyboardDrag(heard, added, 'People you might know')).toEqual({
+      pickedUp: ['tap-button'],
+      dropped: ['toggle-off'],
+    });
+    await waitFor(() => expect(stageNodes()).toHaveLength(1));
+  });
+
+  it('plays nothing as a drag ends that is cancelled or dropped where nothing takes the person, and nothing for a press that does not drag', async () => {
+    const { heard } = await renderInterview(
+      [nameGenerator],
+      [named('a', 'Alex')],
+    );
+    const list = await screen.findByTestId('node-list');
+    await act(settle);
+    await heard();
+
+    expect(
+      await keyboardDrag(heard, await personNamed('Alex', list), null),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+
+    expect(
+      await pointerDrag(heard, await personNamed('Alex', list), null),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    expect(stageNodes()).toHaveLength(1);
+
+    const alex = await personNamed('Alex', list);
+    await act(async () => {
+      fireEvent.pointerDown(alex, { pointerId: 1, button: 0, clientX: 100 });
+    });
+    await act(async () => {
+      fireEvent.pointerUp(document, { pointerId: 1, clientX: 100 });
+      fireEvent.click(alex);
+    });
+    expect(await heard()).toEqual([]);
+  });
+
+  it('keeps the sound of a person added without a drag', async () => {
+    const { heard } = await renderInterview([nameGenerator], []);
+    fireEvent.click(await screen.findByTestId('quick-add-toggle'));
+    const input = await screen.findByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
+    await heard();
+    fireEvent.change(input, { target: { value: 'Emery' } });
+    await act(async () => {
+      fireEvent.submit(input);
+    });
+    await waitFor(() => expect(stageNodes()).toHaveLength(1));
+    expect(await heard()).toEqual(['create-node']);
+  });
+});
+
+describe('the sound of a drop that needs the passphrase', () => {
+  const passphraseDialog = () =>
+    screen.queryByRole('dialog', { name: 'Passphrase' });
+  const otherQuestion = () =>
+    screen.queryByRole('dialog', { name: 'Some other way' });
+
+  it('plays nothing for a drop refused until the passphrase is entered, and the bin’s sound once for one made after', async () => {
+    const { heard } = await renderInterview([protectedCategoricalBin]);
+
+    // Without the passphrase the "other" answer cannot be stored, so the
+    // drop places nobody and asks for it instead.
+    expect(
+      await keyboardDrag(
+        heard,
+        await personNamed('Alex'),
+        'Category: Some other way',
+      ),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    const lock = await screen.findByRole('button', { name: 'Passphrase' });
+    expect(otherQuestion()).toBeNull();
+
+    // Asked for the passphrase, the participant closes the question.
+    fireEvent.click(lock);
+    const dismissed = await screen.findByRole('dialog', { name: 'Passphrase' });
+    fireEvent.keyDown(dismissed, { key: 'Escape' });
+    await waitFor(() => expect(passphraseDialog()).toBeNull());
+    expect(await heard()).toEqual([]);
+
+    // Then chooses one, and drops the person again.
+    fireEvent.click(screen.getByRole('button', { name: 'Passphrase' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Passphrase' });
+    for (const field of within(dialog).getAllByLabelText(/Passphrase/, {
+      selector: 'input',
+    })) {
+      fireEvent.change(field, { target: { value: 'eight888' } });
+    }
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(passphraseDialog()).toBeNull(), {
+      timeout: 10_000,
+    });
+    await heard();
+
+    expect(
+      await keyboardDrag(
+        heard,
+        await personNamed('Alex'),
+        'Category: Some other way',
+      ),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    // The bin's sound waits until the answer is protected and stored, and is
+    // heard once.
+    const question = await screen.findByRole('dialog', {
+      name: 'Some other way',
+    });
+    fireEvent.change(within(question).getByRole('textbox'), {
+      target: { value: 'Neighbours' },
+    });
+    await act(async () => {
+      fireEvent.click(within(question).getByRole('button', { name: 'Save' }));
+    });
+    await waitFor(() => expect(otherQuestion()).toBeNull(), {
+      timeout: 10_000,
+    });
+    expect(await heard()).toEqual(['drop-node']);
+  });
+});
+
+describe('the sound of dragging a person into a bin', () => {
+  it('plays the pick-up sound, then the drop sound, for a person dropped in an ordinal bin', async () => {
+    const { heard } = await renderInterview([ordinalBin]);
+    const alex = await personNamed('Alex');
+    expect(
+      await keyboardDrag(heard, alex, "Container for the value 'Often'"),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: ['drop-node'] });
+  });
+
+  it('plays the drop sound for a person dropped in a categorical bin, and for one dropped in "other" only once the answer is saved', async () => {
+    const { heard } = await renderInterview([categoricalBin]);
+
+    expect(
+      await keyboardDrag(heard, await personNamed('Alex'), 'Category: Work'),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: ['drop-node'] });
+
+    expect(
+      await keyboardDrag(
+        heard,
+        await personNamed('Blake'),
+        'Category: Some other way',
+      ),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByRole('textbox'), {
+      target: { value: 'Neighbours' },
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await heard()).toEqual(['drop-node']);
+
+    expect(
+      await keyboardDrag(
+        heard,
+        await personNamed('Casey'),
+        'Category: Some other way',
+      ),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: [] });
+    const cancelled = await screen.findByRole('dialog');
+    await act(async () => {
+      fireEvent.click(
+        within(cancelled).getByRole('button', { name: 'Cancel' }),
+      );
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await heard()).toEqual([]);
+  });
+});
+
+describe('the sound of dragging a person on the sociogram', () => {
+  it('plays the pick-up and drop sounds for a person placed from the drawer or moved on the canvas, the drawer’s sound for one put back, and nothing for a keyboard nudge', async () => {
     const { heard } = await renderInterview(
       [sociogram],
       [
@@ -403,18 +857,34 @@ describe('the sound of putting a person down on the sociogram', () => {
         person('b', 'Blake'),
       ],
     );
-    await screen.findByTestId('canvas');
-    const { onNodeDragEnd, onDrop } = canvas;
-    if (!onNodeDragEnd || !onDrop)
-      throw new Error('The canvas has no drop handlers');
+    const canvasArea = await screen.findByRole('application', {
+      name: 'Placement area',
+    });
 
-    act(() => onNodeDragEnd('a', { x: 0.5, y: 0.5 }, { source: 'pointer' }));
-    expect(await heard()).toEqual(['drop-node']);
+    expect(
+      await keyboardDrag(heard, await personNamed('Blake'), 'Placement area'),
+    ).toEqual({ pickedUp: ['tap-button'], dropped: ['drop-node'] });
 
-    act(() => onDrop('b', { x: 0.7, y: 0.3 }));
-    expect(await heard()).toEqual(['drop-node']);
+    const alex = await personNamed('Alex', canvasArea);
+    expect(await pointerDrag(heard, alex, canvasArea)).toEqual({
+      pickedUp: ['tap-button'],
+      dropped: ['drop-node'],
+    });
 
-    act(() => onNodeDragEnd('a', { x: 0.52, y: 0.5 }, { source: 'keyboard' }));
+    await act(async () => {
+      alex.focus();
+      fireEvent.keyDown(alex, { key: 'ArrowRight' });
+    });
     expect(await heard()).toEqual([]);
+
+    expect(await pointerDrag(heard, alex, dropZone('node-drawer'))).toEqual({
+      pickedUp: ['tap-button'],
+      dropped: ['toggle-off'],
+    });
+    await waitFor(() =>
+      expect(
+        within(canvasArea).queryByRole('button', { name: 'Alex' }),
+      ).toBeNull(),
+    );
   });
 });

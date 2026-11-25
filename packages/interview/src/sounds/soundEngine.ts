@@ -1,3 +1,5 @@
+import type { DropOutcome } from '@codaco/fresco-ui/dnd/types';
+
 import {
   INTERACTION_SOUND_FILES,
   type InteractionSoundName,
@@ -23,6 +25,15 @@ export type LoopingSoundName = Exclude<InteractionSoundName, OneShotSoundName>;
  */
 export type StopSound = () => void;
 
+export type PlayOptions = {
+  /**
+   * The sound begins or ends an action of its own (an item picked up or put
+   * down by dragging), so it is never taken for part of an earlier change:
+   * the burst window of a sound played just before does not hold it back.
+   */
+  standalone?: boolean;
+};
+
 export type SoundEngine = {
   /**
    * Turns sound on or off. Turning it on for the first time creates the audio
@@ -31,7 +42,19 @@ export type SoundEngine = {
    */
   setEnabled: (enabled: boolean) => void;
   /** Plays a sound now, or not at all. */
-  play: (name: OneShotSoundName) => void;
+  play: (name: OneShotSoundName, options?: PlayOptions) => void;
+  /**
+   * Carries out a drop: calls `perform`, the drop target's own handling,
+   * which runs whether sound is on or off, and plays `name` (none when it is
+   * null) as the drop's sound, as a standalone sound, once `perform` says it
+   * took the drop: at once when it returns anything but `false`, or when the
+   * promise it returns resolves to anything but `false`. A drop it refuses is
+   * silent. While `perform` runs, `isHandlingDrop` is true, so that what the
+   * drop changes is heard as the drop's sound alone.
+   */
+  drop: (name: OneShotSoundName | null, perform: () => DropOutcome) => void;
+  /** Whether a drop's handling (`drop`'s `perform`) is running now. */
+  isHandlingDrop: () => boolean;
   /**
    * Asks for a looping sound until the returned function is called. The
    * sound plays whenever it can be heard: at once if sound is on, its file is
@@ -147,7 +170,9 @@ export const MIN_INTERVAL_MS: Readonly<Record<OneShotSoundName, number>> = {
 /**
  * Which sound wins when one action asks for several, most important first.
  * Removing a person removes their connections, and only the removal of the
- * person is heard.
+ * person is heard. Every sound a drop can make outranks `tap-button`, the
+ * sound of picking an item up, so a drop that follows a pick-up within the
+ * burst window is still heard.
  */
 const PRIORITY: readonly OneShotSoundName[] = [
   'error',
@@ -165,6 +190,7 @@ const PRIORITY: readonly OneShotSoundName[] = [
  * After a sound plays, a less important one asked for within this many
  * milliseconds is not played: the second is part of the same change (an undo
  * that brings a person back, then their connections, one write at a time).
+ * A standalone sound (see `PlayOptions`) is not held back.
  */
 export const BURST_WINDOW_MS = 150;
 
@@ -223,6 +249,15 @@ type WantedLoop = { name: LoopingSoundName; source: SourceNodeLike | null };
  * hiding the page pauses it with the context, and showing the page again
  * resumes it.
  *
+ * A drag is heard as two separate actions: picking the item up, and
+ * dropping it. Each plays as a standalone sound, which the burst window of an
+ * earlier sound does not hold back, so a drag sounds the same however soon it
+ * follows something else; and every drop sound outranks the pick-up, so a
+ * drop made just after the pick-up is heard too. A drop is carried out
+ * through `drop`, which marks the time its handling runs, so that what it
+ * changes in the network is heard as the drop's sound and nothing else, and
+ * plays that sound only for a drop the target takes.
+ *
  * Each file loads on its own, and a sound plays once its own file is
  * decoded: one request that fails (a dropped connection, say) silences only
  * that sound, and trying again fetches only the files that failed. A failed
@@ -248,7 +283,9 @@ export function createSoundEngine(
 
   const lastPlayed = new Map<OneShotSoundName, number>();
   let lastSound: { name: OneShotSoundName; at: number } | null = null;
-  let pending: OneShotSoundName | null = null;
+  let pending: { name: OneShotSoundName; standalone: boolean } | null = null;
+  // How many drops are being carried out at this moment.
+  let dropDepth = 0;
   // Looping sounds that are wanted, each with its source while it plays.
   const wantedLoops = new Set<WantedLoop>();
   // Sounds that play once and have not yet ended.
@@ -389,9 +426,10 @@ export function createSoundEngine(
   }
 
   const flush = () => {
-    const name = pending;
+    const request = pending;
     pending = null;
-    if (name === null || !ready()) return;
+    if (request === null || !ready()) return;
+    const { name, standalone } = request;
 
     const now = env.now();
     const previous = lastPlayed.get(name);
@@ -399,6 +437,7 @@ export function createSoundEngine(
       return;
     }
     if (
+      !standalone &&
       lastSound &&
       lastSound.name !== name &&
       now - lastSound.at < BURST_WINDOW_MS &&
@@ -422,6 +461,22 @@ export function createSoundEngine(
     oneShots.add(source);
     lastPlayed.set(name, now);
     lastSound = { name, at: now };
+  };
+
+  const play: SoundEngine['play'] = (name, options) => {
+    if (!enabled) return;
+    const standalone = options?.standalone ?? false;
+    // Sounds asked for together are gathered, and the most important plays
+    // once the task that asked for them has finished: one action, several
+    // dispatched in one go, or one choice heard twice, as an option chosen
+    // in a field whose answer also makes a connection (the connection is
+    // stored a few promise callbacks after the choice, in the same task).
+    if (pending === null) {
+      pending = { name, standalone };
+      env.afterTask(flush);
+    } else if (isMoreImportant(name, pending.name)) {
+      pending = { name, standalone };
+    }
   };
 
   return {
@@ -464,20 +519,28 @@ export function createSoundEngine(
       startWantedLoops();
     },
 
-    play: (name) => {
-      if (!enabled) return;
-      // Sounds asked for together are gathered, and the most important plays
-      // once the task that asked for them has finished: one action, several
-      // dispatched in one go, or one choice heard twice, as an option chosen
-      // in a field whose answer also makes a connection (the connection is
-      // stored a few promise callbacks after the choice, in the same task).
-      if (pending === null) {
-        pending = name;
-        env.afterTask(flush);
-      } else if (isMoreImportant(name, pending)) {
-        pending = name;
+    play,
+
+    drop: (name, perform) => {
+      dropDepth += 1;
+      let outcome: DropOutcome;
+      try {
+        outcome = perform();
+      } finally {
+        dropDepth -= 1;
       }
+      if (name === null) return;
+      const heard = (taken: boolean | void) => {
+        if (taken !== false) play(name, { standalone: true });
+      };
+      // A drop that is taken once a write is stored (or a question answered)
+      // is heard then. A handler that fails is not heard, and its failure is
+      // left to surface as it would without sound.
+      if (outcome instanceof Promise) void outcome.then(heard);
+      else heard(outcome);
     },
+
+    isHandlingDrop: () => dropDepth > 0,
 
     startLoop: (name) => {
       const loop: WantedLoop = { name, source: null };

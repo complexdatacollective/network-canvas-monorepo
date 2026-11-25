@@ -63,6 +63,7 @@ const knows = (id: string, from: string, to: string) =>
 function buildStore(
   network: { nodes?: NcNode[]; edges?: NcEdge[] } = {},
   playSound?: (name: OneShotSoundName) => void,
+  isHandlingDrop?: () => boolean,
 ) {
   const play = vi.fn<(name: OneShotSoundName) => void>(playSound);
   const store = configureStore({
@@ -104,7 +105,8 @@ function buildStore(
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }).concat(
-        createInteractionSoundListenerMiddleware({ play }).middleware,
+        createInteractionSoundListenerMiddleware({ play, isHandlingDrop })
+          .middleware,
       ),
   });
   return { store, play };
@@ -235,6 +237,71 @@ describe('interaction sound listener', () => {
       restoreNetwork({ nodes: [a, b], edges: [], stageMetadata: undefined }),
     );
     expect(sounds(play)).toEqual(['toggle-off']);
+  });
+});
+
+describe('interaction sounds for changes a drop makes', () => {
+  // Carries a drop out as the engine does, marking the time its handling runs.
+  function dropper() {
+    let handling = false;
+    return {
+      isHandlingDrop: () => handling,
+      drop: (perform: () => void) => {
+        handling = true;
+        try {
+          perform();
+        } finally {
+          handling = false;
+        }
+      },
+    };
+  }
+
+  it('plays nothing for a person removed by a drop, and the discard sound for one removed otherwise', () => {
+    const { drop, isHandlingDrop } = dropper();
+    const { store, play } = buildStore(
+      { nodes: [person('a'), person('b')] },
+      undefined,
+      isHandlingDrop,
+    );
+    drop(() => store.dispatch(deleteNode('a')));
+    expect(sounds(play)).toEqual([]);
+    store.dispatch(deleteNode('b'));
+    expect(sounds(play)).toEqual(['discard']);
+  });
+
+  it('plays nothing for a change a drop started that is stored after the drop', async () => {
+    const { drop, isHandlingDrop } = dropper();
+    const { store, play } = buildStore(
+      { nodes: [person('a')] },
+      undefined,
+      isHandlingDrop,
+    );
+    const writes: Promise<unknown>[] = [];
+    drop(() => {
+      writes.push(
+        store.dispatch(
+          addNode({ type: PERSON, attributeData: {}, currentStep: 1 }),
+        ),
+        store.dispatch(
+          addNodeToPrompt({
+            nodeId: 'a',
+            promptAttributes: {},
+            currentStep: 1,
+          }),
+        ),
+      );
+    });
+    expect(isHandlingDrop()).toBe(false);
+    await Promise.all(writes);
+    expect(sounds(play)).toEqual([]);
+
+    // The same changes made without a drop are heard.
+    await store.dispatch(
+      addNode({ type: PERSON, attributeData: {}, currentStep: 1 }),
+    );
+    await store.dispatch(removeNodeFromPrompt({ nodeId: 'a', currentStep: 1 }));
+    expect(sounds(play)).toEqual(['create-node', 'toggle-off']);
   });
 });
 

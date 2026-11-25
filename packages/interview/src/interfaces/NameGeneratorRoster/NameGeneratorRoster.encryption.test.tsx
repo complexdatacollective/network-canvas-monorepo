@@ -163,18 +163,21 @@ async function renderRoster(
   // waiting for the add to finish.
   const startDroppingAlice = (alice: UseItemElement) => {
     act(() => {
-      dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
+      void dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
     });
   };
 
+  // Gives whether the list took the drop, which is what decides whether the
+  // list's drop sound plays.
   const dropAlice = async () => {
     const [alice] = roster.items;
     if (!alice) throw new Error('The roster lists Alice');
     expect(dropOnAddedList).toBeInstanceOf(Function);
+    let taken: Awaited<ReturnType<DropCallback>> = undefined;
     await act(async () => {
-      dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
-      await Promise.resolve();
+      taken = await dropOnAddedList?.({ ...alice, itemType: 'SOURCE_NODES' });
     });
+    return taken;
   };
 
   return { store, draggable, dropAlice, startDroppingAlice };
@@ -189,7 +192,7 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     expect(draggable()).toEqual([]);
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
-    await dropAlice();
+    expect(await dropAlice()).toBe(false);
 
     expect(store.getState().session.network.nodes).toEqual([]);
     expect(toast).not.toHaveBeenCalled();
@@ -232,7 +235,7 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     expect(draggable()).toEqual([]);
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
 
-    await dropAlice();
+    expect(await dropAlice()).toBe(false);
 
     expect(store.getState().session.network.nodes).toEqual([]);
     // A write the session refused would be reported with a toast; the roster
@@ -252,7 +255,7 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
 
     expect(draggable()).toHaveLength(1);
 
-    await dropAlice();
+    expect(await dropAlice()).toBe(true);
 
     await waitFor(() =>
       expect(store.getState().session.network.nodes).toHaveLength(1),

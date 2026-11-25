@@ -12,6 +12,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import DrawerNode from '../interfaces/Sociogram/DrawerNode';
+import type { DropSound } from '../sounds/InteractionSounds';
 
 type NodeDrawerProps = {
   nodes: NcNode[];
@@ -30,6 +31,8 @@ type NodeDrawerProps = {
     accepts: string[];
     announcedName: string;
     onDrop: DropCallback;
+    /** The sound of a drop on the drawer, by what it does. */
+    dropSound: DropSound;
   };
   /**
    * False makes the drawer a queue the participant reads but does not drag
@@ -89,6 +92,7 @@ export default function NodeDrawer({
     accepts: dropTarget?.accepts ?? [],
     announcedName: dropTarget?.announcedName ?? 'Drawer',
     onDrop: dropTarget?.onDrop,
+    dropFeedback: dropTarget?.dropSound,
     disabled: !dropTarget,
     focusBehaviorOnDrop: 'none',
   });

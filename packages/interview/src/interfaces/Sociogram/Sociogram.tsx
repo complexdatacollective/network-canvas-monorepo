@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DragMetadata } from '@codaco/fresco-ui/dnd/types';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
-import Node, { type ActivationSource } from '@codaco/fresco-ui/Node';
+import Node from '@codaco/fresco-ui/Node';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -18,6 +18,7 @@ import { createCanvasStore, useCanvasStore } from '../../canvas/useCanvasStore';
 import NodeDrawer from '../../components/NodeDrawer';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { writeSucceeded } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useSortedNodeList from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -30,10 +31,7 @@ import {
   getNetworkNodesForType,
   getPromptSortOrder,
 } from '../../selectors/session';
-import {
-  useInteractionSound,
-  useLoopingInteractionSound,
-} from '../../sounds/InteractionSounds';
+import { useLoopingInteractionSound } from '../../sounds/InteractionSounds';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import {
   toggleEdge,
@@ -225,26 +223,20 @@ const Sociogram = (stageProps: SociogramProps) => {
     ],
   );
 
-  // A node the participant puts down on the canvas is heard as it lands:
-  // dropped at the end of a drag, or placed from the drawer. A keyboard nudge
-  // moves it a small step rather than dropping it, and the layout's own moves
-  // are not the participant's, so neither is heard. The position itself is an
-  // ordinary update, which makes no sound of its own, and a drag never also
-  // selects the node, so a drop is heard once.
-  const { play: playSound } = useInteractionSound();
+  // Picking a node up and putting it down on the canvas, or in the drawer, are
+  // heard through the drag and drop layer (see InteractionSoundsProvider),
+  // once each handler below resolves that its position was stored: a
+  // keyboard nudge moves the node a small step without a drag, and the
+  // layout's own moves are not the participant's, so neither is heard. The
+  // position itself is an ordinary update, which makes no sound of its own.
 
   // Handle drag end: sync single position to Redux
   const handleNodeDragEnd = useCallback(
-    (
-      nodeId: string,
-      position: { x: number; y: number },
-      details: { source: ActivationSource },
-    ) => {
-      if (details.source === 'pointer') playSound('drop-node');
+    (nodeId: string, position: { x: number; y: number }) => {
       if (layoutMode === 'MANUAL') {
         track('node_repositioned', { node_id: nodeId });
       }
-      void dispatch(
+      return dispatch(
         updateNode({
           nodeId,
           attributePatch: {
@@ -255,20 +247,19 @@ const Sociogram = (stageProps: SociogramProps) => {
           },
           currentStep,
         }),
-      );
+      ).then(writeSucceeded);
     },
-    [dispatch, layoutVariable, currentStep, layoutMode, track, playSound],
+    [dispatch, layoutVariable, currentStep, layoutMode, track],
   );
 
   // Handle drop from drawer to canvas (first placement of an unplaced node)
   const handleDrop = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
-      playSound('drop-node');
       if (layoutMode === 'MANUAL') {
         track('node_initial_positioned', { node_id: nodeId });
       }
       store.getState().setPosition(nodeId, position);
-      void dispatch(
+      return dispatch(
         updateNode({
           nodeId,
           attributePatch: {
@@ -279,17 +270,9 @@ const Sociogram = (stageProps: SociogramProps) => {
           },
           currentStep,
         }),
-      );
+      ).then(writeSucceeded);
     },
-    [
-      store,
-      dispatch,
-      layoutVariable,
-      currentStep,
-      layoutMode,
-      track,
-      playSound,
-    ],
+    [store, dispatch, layoutVariable, currentStep, layoutMode, track],
   );
 
   // Reads each label as its node shows it when the node is unplaced: the
@@ -306,16 +289,17 @@ const Sociogram = (stageProps: SociogramProps) => {
       const name = node ? labelNode(node) : null;
 
       track('node_unplaced', { node_id: nodeId });
-      void dispatch(
+      const stored = dispatch(
         updateNode({
           nodeId,
           attributePatch: unplaceNodeAttributePatch(layoutVariable),
           currentStep,
         }),
-      );
+      ).then(writeSucceeded);
       announce(
         name ? `${name} returned to the drawer.` : 'Returned to the drawer.',
       );
+      return stored;
     },
     [
       allNodes,
@@ -332,9 +316,11 @@ const Sociogram = (stageProps: SociogramProps) => {
     () => ({
       accepts: [PLACED_NODE_ITEM_TYPE],
       announcedName: 'Drawer',
+      // Back in the drawer, the person is no longer placed.
+      dropSound: 'toggle-off' as const,
       onDrop: (metadata?: DragMetadata) => {
         const nodeId = metadata?.nodeId;
-        if (typeof nodeId === 'string') handleUnplaceNode(nodeId);
+        return typeof nodeId === 'string' && handleUnplaceNode(nodeId);
       },
     }),
     [handleUnplaceNode],

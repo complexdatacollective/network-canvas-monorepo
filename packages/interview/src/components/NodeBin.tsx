@@ -6,6 +6,8 @@ import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { NcNode } from '@codaco/shared-consts';
 
+import type { DropSound } from '../sounds/InteractionSounds';
+
 type NodeBinProps = {
   accepts: (node: NcNode) => boolean;
   dropHandler: (node: NcNode, metadata?: DragMetadata) => void;
@@ -123,12 +125,15 @@ const NodeBin = ({ accepts, dropHandler }: NodeBinProps) => {
     id: 'node-bin',
     accepts: ['EXISTING_NODE', 'FAMILY_TREE_NODE'],
     announcedName: 'Delete bin',
+    // A person the stage does not let go in the bin is not taken at all: the
+    // bin stays hidden while they are dragged, and a drop on it is no drop.
+    acceptsFilter: (metadata) =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged node, set by the Node drag source (fresco-ui types it as a record)
+      metadata !== undefined && accepts(metadata as NcNode),
+    dropFeedback: 'discard' satisfies DropSound,
     onDrop: (metadata) => {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drag metadata is the dragged node, set by the Node drag source (fresco-ui types it as a record)
-      const node = metadata as NcNode;
-      if (accepts(node)) {
-        dropHandler(node, metadata);
-      }
+      dropHandler(metadata as NcNode, metadata);
     },
   });
 

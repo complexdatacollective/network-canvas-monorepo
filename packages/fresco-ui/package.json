@@ -111,6 +111,7 @@
     "./dialogs/useDialogSession": "./src/dialogs/useDialogSession.ts",
     "./dialogs/useWizard": "./src/dialogs/useWizard.tsx",
     "./dnd/DndStoreProvider": "./src/dnd/DndStoreProvider.tsx",
+    "./dnd/DragFeedbackListener": "./src/dnd/DragFeedbackListener.tsx",
     "./dnd/dnd": "./src/dnd/dnd.ts",
     "./dnd/types": "./src/dnd/types.ts",
     "./dnd/useAccessibilityAnnouncements": "./src/dnd/useAccessibilityAnnouncements.ts",
@@ -608,6 +609,10 @@
       "./dnd/DndStoreProvider": {
         "types": "./dist/dnd/DndStoreProvider.d.ts",
         "default": "./dist/dnd/DndStoreProvider.js"
+      },
+      "./dnd/DragFeedbackListener": {
+        "types": "./dist/dnd/DragFeedbackListener.d.ts",
+        "default": "./dist/dnd/DragFeedbackListener.js"
       },
       "./dnd/dnd": {
         "types": "./dist/dnd/dnd.d.ts",

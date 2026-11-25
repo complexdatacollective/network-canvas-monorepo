@@ -10,7 +10,7 @@ import { useDispatch } from 'react-redux';
 
 import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
 import type { InterviewPayload, SyncHandler } from '../contract/types';
-import type { OneShotSoundName } from '../sounds/soundEngine';
+import type { SoundEngine } from '../sounds/soundEngine';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
 import { createInteractionSoundListenerMiddleware } from './middleware/interactionSoundListener';
 import { createInterviewLogger } from './middleware/logger';
@@ -33,10 +33,12 @@ type StoreOptions = {
   extraMiddleware?: Middleware[];
   tracker?: Tracker;
   /**
-   * Plays an interaction sound for a change to the network. Called whether or
-   * not sounds are on: the player decides, at the moment of each change.
+   * Plays an interaction sound for a change to the network, and says whether
+   * a drop is being carried out, whose own sound is the only one heard for
+   * what it changes. Called whether or not sounds are on: the player decides,
+   * at the moment of each change.
    */
-  playInteractionSound?: (name: OneShotSoundName) => void;
+  interactionSounds?: Pick<SoundEngine, 'play' | 'isHandlingDrop'>;
 };
 
 export const store = (
@@ -66,11 +68,10 @@ export const store = (
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
-  const soundMiddleware = options.playInteractionSound
+  const soundMiddleware = options.interactionSounds
     ? [
-        createInteractionSoundListenerMiddleware({
-          play: options.playInteractionSound,
-        }).middleware,
+        createInteractionSoundListenerMiddleware(options.interactionSounds)
+          .middleware,
       ]
     : [];
   // The protocol, and so which variables are encrypted, never changes during

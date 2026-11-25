@@ -359,7 +359,8 @@ describe('CategoricalBin in select mode (#1652)', () => {
     const selectedNetwork = selected.store.getState().session.network;
     selected.view.unmount();
 
-    const dragged = renderStage('drag');
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, sounds);
     const dropTargetId = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, 0);
     startDragOf(dragged.getDndStore, person('a', 'Ann'));
     await waitFor(() =>
@@ -379,6 +380,32 @@ describe('CategoricalBin in select mode (#1652)', () => {
     expect(dragged.store.getState().session.network?.nodes).toEqual(
       selectedNetwork?.nodes,
     );
+    // The drop is heard as it lands, through the bin's drop sound, and the
+    // placement it saves adds no second sound.
+    expect(sounds.play.mock.calls).toEqual([['drop-node']]);
+  });
+
+  it('makes no sound for a drop whose placement is refused', async () => {
+    const sounds = createSoundSpy();
+    const dragged = renderStage('drag', undefined, sounds);
+    const dropTargetId = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, 0);
+    // Someone the session does not have cannot be given an answer.
+    const stranger = person('z', 'Zed');
+    startDragOf(dragged.getDndStore, stranger);
+    await waitFor(() =>
+      expect(
+        dragged.getDndStore().getState().getDropTargetState(dropTargetId)
+          ?.canDrop,
+      ).toBe(true),
+    );
+    await act(async () => {
+      dragged.getDndStore().getState().setActiveDropTarget(dropTargetId);
+      dragged.getDndStore().getState().endDrag();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(dragged.attributesOf('z')).toBeUndefined();
+    expect(sounds.play).not.toHaveBeenCalled();
   });
 
   it.each([
