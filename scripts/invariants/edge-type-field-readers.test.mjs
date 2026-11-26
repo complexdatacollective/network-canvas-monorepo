@@ -12,11 +12,14 @@ import { parse } from 'yaml';
  * `packages/protocol-validation/src/utils/edgeTypeRules.ts`, so the meaning of
  * an absent setting is decided in one place. This guard parses every
  * workspace's source and fails for any file outside the allow-list that reads
- * `directed` or `endpointRules`: as a property (`.directed`, `?.directed`,
- * `['directed']`), by destructuring (`const { directed } = ...`, a destructured
- * parameter, a destructuring assignment), or by testing for the key (`in`,
- * `Object.hasOwn`, `hasOwnProperty`, `Reflect.has`). Declaring the fields in a
- * type or writing them in an object literal is not a read.
+ * `directed` or `endpointRules`: as a property (`.directed`, `?.directed`), by
+ * destructuring (declarations, parameters, and assignments at any depth,
+ * including a `for...of` head), or by naming the field in a string. A string
+ * is judged by the field name, not by the call around it, so `['directed']`,
+ * `in`, `Object.hasOwn`, `Reflect.get`, lodash `get` with a key, an array path
+ * or a dotted path, and a constant that later indexes an object are all reads.
+ * Declaring the fields in a type, writing them as the keys of an object
+ * literal or class, and a sentence that mentions them are not reads.
  *
  * The allow-list names the helpers, the codebook check that validates the
  * fields, the stage support table (which reads its own entries, named after
@@ -65,16 +68,10 @@ const SKIPPED_DIRECTORIES = new Set([
 ]);
 
 const FIELDS = new Set(['directed', 'endpointRules']);
-const KEY_TESTS = new Set(['hasOwn', 'hasOwnProperty', 'has']);
 
 const isTestFile = (name) => /\.(test|spec)\.tsx?$/.test(name);
 const isSourceFile = (name) =>
   /\.tsx?$/.test(name) && !name.endsWith('.d.ts') && !isTestFile(name);
-
-const isFieldLiteral = (node) =>
-  node !== undefined &&
-  (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
-  FIELDS.has(node.text);
 
 const propertyNameText = (name) =>
   name !== undefined &&
@@ -84,39 +81,108 @@ const propertyNameText = (name) =>
     ? name.text
     : undefined;
 
-const calleeName = (callee) => {
-  if (ts.isPropertyAccessExpression(callee)) {
-    // `Object.prototype.hasOwnProperty.call(x, 'directed')`
-    if (callee.name.text === 'call') return calleeName(callee.expression);
-    return callee.name.text;
+// Whether a dot-separated path names a field: `'directed'`, `'edge.x.directed'`.
+const pathNamesField = (text) =>
+  text.split('.').some((segment) => FIELDS.has(segment));
+
+/**
+ * Whether an object or array literal is the target of an assignment, so its
+ * properties are read rather than written: the left of `=`, the head of a
+ * `for...of` or `for...in`, or nested inside such a target.
+ */
+const isAssignmentTarget = (node) => {
+  const { parent } = node;
+  if (parent === undefined) return false;
+  if (ts.isParenthesizedExpression(parent)) return isAssignmentTarget(parent);
+  if (
+    ts.isBinaryExpression(parent) &&
+    parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
+  ) {
+    return parent.left === node || isAssignmentTarget(parent);
   }
-  return ts.isIdentifier(callee) ? callee.text : undefined;
+  if (
+    (ts.isForOfStatement(parent) || ts.isForInStatement(parent)) &&
+    parent.initializer === node
+  ) {
+    return true;
+  }
+  if (ts.isPropertyAssignment(parent) && parent.initializer === node) {
+    return isAssignmentTarget(parent.parent);
+  }
+  if (
+    ts.isArrayLiteralExpression(parent) ||
+    ts.isSpreadElement(parent) ||
+    ts.isSpreadAssignment(parent)
+  ) {
+    return isAssignmentTarget(parent);
+  }
+  return false;
+};
+
+const isInTypePosition = (node) => {
+  for (let at = node.parent; at !== undefined; at = at.parent) {
+    if (ts.isTypeNode(at) || ts.isInterfaceDeclaration(at)) return true;
+  }
+  return false;
+};
+
+/**
+ * Whether a string naming a field is a name the code writes rather than reads:
+ * a module specifier, or the key of an object literal or class member that is
+ * not a destructuring target.
+ */
+const isWrittenName = (node) => {
+  const { parent } = node;
+  if (ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) {
+    return parent.moduleSpecifier === node;
+  }
+  const keyOwner = ts.isComputedPropertyName(parent) ? parent.parent : parent;
+  if (
+    (ts.isPropertyAssignment(keyOwner) ||
+      ts.isMethodDeclaration(keyOwner) ||
+      ts.isPropertyDeclaration(keyOwner) ||
+      ts.isGetAccessorDeclaration(keyOwner) ||
+      ts.isSetAccessorDeclaration(keyOwner)) &&
+    keyOwner.name === (keyOwner === parent ? node : parent)
+  ) {
+    return !(
+      ts.isObjectLiteralExpression(keyOwner.parent) &&
+      isAssignmentTarget(keyOwner.parent)
+    );
+  }
+  return false;
+};
+
+/**
+ * A field named in a string, wherever the string is used: an element access,
+ * a key test, an accessor such as `Reflect.get` or lodash `get`, a path, a
+ * computed destructuring key, or a constant that later indexes an object.
+ */
+const namesFieldInString = (node) => {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return pathNamesField(node.text);
+  }
+  if (ts.isTemplateExpression(node)) {
+    return [
+      node.head,
+      ...node.templateSpans.map(({ literal }) => literal),
+    ].some(({ text }) => pathNamesField(text));
+  }
+  return false;
 };
 
 const readsField = (node) => {
   if (ts.isPropertyAccessExpression(node)) return FIELDS.has(node.name.text);
-  if (ts.isElementAccessExpression(node))
-    return isFieldLiteral(node.argumentExpression);
   if (ts.isBindingElement(node) && ts.isObjectBindingPattern(node.parent)) {
     return FIELDS.has(propertyNameText(node.propertyName ?? node.name));
   }
-  if (
-    ts.isBinaryExpression(node) &&
-    node.operatorToken.kind === ts.SyntaxKind.InKeyword
-  ) {
-    return isFieldLiteral(node.left);
-  }
-  if (
-    ts.isBinaryExpression(node) &&
-    node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-    ts.isObjectLiteralExpression(node.left)
-  ) {
-    return node.left.properties.some((property) =>
+  if (ts.isObjectLiteralExpression(node) && isAssignmentTarget(node)) {
+    return node.properties.some((property) =>
       FIELDS.has(propertyNameText(property.name)),
     );
   }
-  if (ts.isCallExpression(node) && KEY_TESTS.has(calleeName(node.expression))) {
-    return node.arguments.some(isFieldLiteral);
+  if (namesFieldInString(node)) {
+    return !isInTypePosition(node) && !isWrittenName(node);
   }
   return false;
 };
@@ -198,6 +264,23 @@ describe('edge type field readers', () => {
     "const d = definition.hasOwnProperty('directed');",
     "const d = Object.prototype.hasOwnProperty.call(definition, 'directed');",
     "const d = Reflect.has(definition, 'endpointRules');",
+    "const d = Reflect.get(definition, 'directed');",
+    "const d = get(definition, 'directed', false);",
+    "const d = get(definition, 'endpointRules', []);",
+    "const d = get(codebook, ['edge', type, 'directed']);",
+    "const d = get(codebook, 'edge.knows.endpointRules');",
+    'const d = get(codebook, `edge.${type}.directed`);',
+    "const { ['directed']: d } = definition;",
+    'let d; ({ a: { directed: d } } = wrapper);',
+    'let d; [{ directed: d }] = list;',
+    'let d; [{ directed: d } = {}] = list;',
+    'let endpointRules; for ({ endpointRules } of definitions) {}',
+    "let d; ({ ['endpointRules']: d } = definition);",
+    "const d = Object.keys(definition).includes('directed');",
+    "const KEY = 'directed'; const d = definition[KEY];",
+    "const d = pick(definition, ['directed', 'endpointRules']);",
+    "const d = Object.entries(definition).find(([k]) => k === 'directed');",
+    "const f = (key: string) => { switch (key) { case 'endpointRules': return 1; } };",
   ])('flags the read %j', (source) => {
     expect(readsEdgeTypeField(source)).toBe(true);
   });
@@ -209,6 +292,14 @@ describe('edge type field readers', () => {
     '// definition.directed is read through the helpers',
     'const directed = isDirectedEdgeType(codebook, type);',
     'type R = EdgeDefinition["endpointRules"];',
+    "interface EdgeDefinition { 'directed'?: true }",
+    "type Key = 'directed' | 'endpointRules';",
+    "const definition = { 'directed': true, ['endpointRules']: [] };",
+    "class Edge { 'directed' = true; }",
+    "import directed from 'directed';",
+    'const message = `Edge type "${name}" is directed, which this stage cannot use.`;',
+    "const message = 'The edge type is directed.';",
+    'let d; d = { directed: true };',
   ])('does not flag %j', (source) => {
     expect(readsEdgeTypeField(source)).toBe(false);
   });
