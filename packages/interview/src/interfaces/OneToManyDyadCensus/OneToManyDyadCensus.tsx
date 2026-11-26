@@ -2,14 +2,16 @@
 
 import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
-import type { SortRule } from '@codaco/protocol-validation';
+import { isDirectedEdgeType, type SortRule } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcNode,
 } from '@codaco/shared-consts';
+import { findEdge } from '@codaco/shared-consts/edge-identity';
 
 import { useTrack } from '../../analytics/useTrack';
 import { ConnectedMotionNode } from '../../components/ConnectedNode';
@@ -27,7 +29,8 @@ import {
   getNetworkEdges,
   getNetworkNodesForType,
 } from '../../selectors/session';
-import { edgeExists, toggleEdge } from '../../store/modules/session';
+import { getCodebook } from '../../store/modules/protocol';
+import { toggleEdge } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
 import { useNodeLabel } from '../Anonymisation/useNodeLabel';
@@ -69,6 +72,8 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 
   const nodes = useStageSelector(getNetworkNodesForType);
   const edges = useStageSelector(getNetworkEdges);
+  const codebook = useSelector(getCodebook);
+  const directed = isDirectedEdgeType(codebook, createEdge);
 
   // The focal people are stepped through by position, so each prompt keeps the
   // order it began with even when the list re-sorts, such as once the
@@ -194,12 +199,17 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   const renderItem = useCallback(
     (node: NcNode, itemProps: ItemProps) => {
       if (!source) return null;
-      const selected = !!edgeExists(
-        edges,
-        node[entityPrimaryKeyProperty],
-        source[entityPrimaryKeyProperty],
-        createEdge,
-      );
+      // The edge a click toggles: from the focal node to the listed one.
+      const selected =
+        findEdge(
+          edges,
+          {
+            from: source[entityPrimaryKeyProperty],
+            to: node[entityPrimaryKeyProperty],
+            type: createEdge,
+          },
+          directed,
+        ) !== undefined;
       return (
         <ConnectedMotionNode
           {...itemProps}
@@ -212,7 +222,7 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
         />
       );
     },
-    [edges, source, createEdge, handleNodeClick],
+    [edges, source, createEdge, directed, handleNodeClick],
   );
 
   // The prompt asks about the focal node, so it can name it. It keeps naming

@@ -1,6 +1,7 @@
 import { invariant } from 'es-toolkit';
 import { v4 as uuid } from 'uuid';
 
+import { isDirectedEdgeType } from '@codaco/protocol-validation';
 import {
   type VariableValue,
   entityAttributesProperty,
@@ -10,8 +11,10 @@ import {
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
+import { findEdge } from '@codaco/shared-consts/edge-identity';
 
 import type { AttributePatch } from '../../store/entityAttributePatch';
+import { getCodebook } from '../../store/modules/protocol';
 import {
   addEdge,
   addNode,
@@ -323,11 +326,13 @@ export function useComposerActions({
     edgeType: string,
   ): Promise<void> {
     await undoStore.getState().record(async () => {
-      const existing = readEdges().find(
-        (e) =>
-          e.type === edgeType &&
-          ((e.from === from && e.to === to) ||
-            (e.from === to && e.to === from)),
+      const directed = dispatch((_, getState) =>
+        isDirectedEdgeType(getCodebook(getState()), edgeType),
+      );
+      const existing = findEdge(
+        readEdges(),
+        { from, to, type: edgeType },
+        directed,
       );
       return existing ? removeEdge(existing) : connect(from, to, edgeType);
     });

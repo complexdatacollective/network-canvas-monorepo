@@ -17,16 +17,18 @@ import RichSelectGroupField, {
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import type {
-  LocalizedString,
-  VariableOptions,
-  VariableOptionValue,
+import {
+  isDirectedEdgeType,
+  type LocalizedString,
+  type VariableOptions,
+  type VariableOptionValue,
 } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
+import { findEdge } from '@codaco/shared-consts/edge-identity';
 
 import { useTrack } from '../../analytics/useTrack';
 import Pair from '../../components/Pair';
@@ -51,7 +53,6 @@ import { getCodebook } from '../../store/modules/protocol';
 import {
   addEdge,
   deleteEdge,
-  edgeExists,
   updateEdge,
   updateStageMetadata,
 } from '../../store/modules/session';
@@ -216,7 +217,13 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 
   // Compute edge state directly from Redux
   const existingEdgeId =
-    (pair && edgeExists(edges, pair[0], pair[1], createEdge)) ?? false;
+    (pair &&
+      findEdge(
+        edges,
+        { from: pair[0], to: pair[1], type: createEdge },
+        isDirectedEdgeType(codebook, createEdge),
+      )?.[entityPrimaryKeyProperty]) ??
+    false;
 
   const edgeVariableValue: string | number | undefined = (() => {
     if (!edgeVariable || !existingEdgeId) return undefined;

@@ -15,6 +15,7 @@ import {
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
+import type { SyncHandler } from '../../../contract/types';
 import * as session from '../../../store/modules/session';
 import StoryInterviewShell from '../../../storybook-support/StoryInterviewShell';
 import { nameFingerprint } from '../model';
@@ -410,6 +411,32 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
     await openAndCloseMother(userEvent.setup());
     expect(additions).toHaveBeenCalledTimes(1);
     expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
+  });
+
+  // Edge identity ignores the order of an undirected type's ends, but the
+  // family reads a parent edge's order: the parent is always `from`.
+  it('parent edges keep parent as from after the identity change', async () => {
+    const synced = vi.fn<SyncHandler>(async () => undefined);
+    render(<StoryInterviewShell rawPayload={interview()} onSync={synced} />, {
+      wrapper: WithoutMotion,
+    });
+    await waitFor(() =>
+      expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3),
+    );
+    await waitFor(() =>
+      expect(synced.mock.lastCall?.[1].network.edges).toHaveLength(2),
+    );
+    const network = synced.mock.lastCall?.[1].network;
+    const standIn = network?.nodes.find(
+      (node) => node._uid !== 'ego' && node._uid !== 'mum',
+    );
+    expect(standIn).toBeDefined();
+    expect(network?.edges.map(({ from, to }) => ({ from, to }))).toEqual(
+      expect.arrayContaining([
+        { from: 'mum', to: 'ego' },
+        { from: standIn?._uid, to: 'ego' },
+      ]),
+    );
   });
 
   /** The participant, their biological mother Julie, and a stand-in the

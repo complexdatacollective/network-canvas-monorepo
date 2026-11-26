@@ -1,9 +1,9 @@
 import { createAction, createReducer, createSelector } from '@reduxjs/toolkit';
 import { invariant } from 'es-toolkit';
-import { find, get } from 'es-toolkit/compat';
+import { find } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
-import type { Codebook } from '@codaco/protocol-validation';
+import { type Codebook, isDirectedEdgeType } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
   entityAttributesProperty,
@@ -16,6 +16,7 @@ import {
   type StageMetadata,
   type VariableValue,
 } from '@codaco/shared-consts';
+import { toggleEdge as planEdgeToggle } from '@codaco/shared-consts/edge-identity';
 
 import {
   type DecryptionScope,
@@ -43,45 +44,14 @@ import {
   validateAttributePatch,
 } from '../entityAttributePatch';
 import type { RootState } from '../store';
+import { getCodebook } from './protocol';
 
 // reducer helpers:
-function flipEdge(edge: Partial<NcEdge>) {
-  return { from: edge.to, to: edge.from, type: edge.type };
-}
-
 function withLastUpdated<T>(state: T) {
   return {
     ...state,
     lastUpdated: new Date().toISOString(),
   };
-}
-
-/**
- * Check if an edge exists in the network
- * @param {Array} edges - Array of edges
- * @param {string} from - UID of the source node
- * @param {string} to - UID of the target node
- * @param {string} type - Type of edge
- * @returns {string|boolean} - Returns the UID of the edge if it exists, otherwise false
- * @example
- * const edgeExists = edgeExists(edges, 'a', 'b', 'friend');
- *
- */
-export function edgeExists(
-  edges: NcEdge[],
-  from: NcEdge['from'],
-  to: NcEdge['to'],
-  type: NcEdge['type'],
-): NcEdge[EntityPrimaryKey] | false {
-  const forwardsEdge = find(edges, { from, to, type });
-  const reverseEdge = find(edges, flipEdge({ from, to, type }));
-
-  if (forwardsEdge ?? reverseEdge) {
-    const foundEdge = (forwardsEdge ?? reverseEdge)!;
-    return get(foundEdge, entityPrimaryKeyProperty) ?? false;
-  }
-
-  return false;
 }
 
 type StageMetadataEntry = StageMetadata[string];
@@ -279,6 +249,7 @@ type AddEdgeArgs = {
  */
 function prepareEdge(props: AddEdgeArgs, state: RootState) {
   const { from, to, type, attributeData, currentStep } = props;
+  invariant(from !== to, 'An edge cannot connect a node to itself');
   const sessionMeta = getSessionMeta(state, currentStep);
 
   const getCodebookVariablesForEdgeType =
@@ -525,15 +496,19 @@ export const toggleEdge = createAppAsyncThunk(
     const { from, to, type, attributeData, currentStep } = props;
     const state = getState();
 
-    const existingEdge = edgeExists(
+    const plan = planEdgeToggle(
       state.session.network.edges,
-      from,
-      to,
-      type,
+      { from, to, type },
+      isDirectedEdgeType(getCodebook(state), type),
     );
 
-    if (existingEdge) {
-      return dispatch(deleteEdge(existingEdge));
+    invariant(
+      plan.action !== 'refuse',
+      'An edge cannot connect a node to itself',
+    );
+
+    if (plan.action === 'remove') {
+      return dispatch(deleteEdge(plan.edge[entityPrimaryKeyProperty]));
     }
 
     return dispatch(addEdge({ from, to, type, attributeData, currentStep }));

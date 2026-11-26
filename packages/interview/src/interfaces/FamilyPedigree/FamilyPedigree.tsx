@@ -635,6 +635,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             }
           : edge;
       });
+    // An ordered compare, not `findEdge`: a parent edge always runs from the
+    // parent, so the order says who is whose parent.
     const draftEdges: NcEdge[] = plan.links
       .filter(
         (link) =>

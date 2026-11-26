@@ -24,8 +24,10 @@ import sessionReducer, {
   addEdge,
   addNode,
   addNodeToPrompt,
+  deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  toggleEdge,
   toggleNodeAttributes,
   updateEdge,
   updateEgo,
@@ -443,9 +445,10 @@ function createTestStoreWithEgo(options: {
 function createTestStoreWithEdge(options: {
   edgeVariables?: Record<string, { name: string }>;
   edges?: NcEdge[];
+  directed?: true;
 }) {
   const edgeTypeId = EDGE_TYPE;
-  const { edgeVariables = {}, edges = [] } = options;
+  const { edgeVariables = {}, edges = [], directed } = options;
 
   const network = createInitialNetwork();
   // Add two nodes so we can create edges between them
@@ -501,6 +504,7 @@ function createTestStoreWithEdge(options: {
           [typeId]: {
             name: 'friendship',
             variables,
+            ...(directed && { directed }),
           },
         },
         node: {},
@@ -874,6 +878,92 @@ describe('addEdge', () => {
         [EDGE_VAR_1]: 5,
       });
     });
+  });
+});
+
+describe('addEdge self-loops', () => {
+  it('addEdge refuses a self-loop', async () => {
+    const store = createTestStoreWithEdge({});
+    const result = await store.dispatch(
+      addEdge({
+        type: EDGE_TYPE,
+        from: 'node-1',
+        to: 'node-1',
+        currentStep: 0,
+      }),
+    );
+    expect(result.type).toBe('NETWORK/ADD_EDGE/rejected');
+  });
+});
+
+describe('toggleEdge', () => {
+  const existing: NcEdge = {
+    _uid: 'edge-1',
+    type: EDGE_TYPE,
+    from: 'node-1',
+    to: 'node-2',
+    [entityAttributesProperty]: {},
+  };
+
+  it('toggleEdge removes the reverse edge of an undirected type', async () => {
+    const store = createTestStoreWithEdge({ edges: [existing] });
+    const result = await store.dispatch(
+      toggleEdge({
+        type: EDGE_TYPE,
+        from: 'node-2',
+        to: 'node-1',
+        currentStep: 0,
+      }),
+    );
+    expect(result.payload).toEqual(deleteEdge('edge-1'));
+  });
+
+  it('toggleEdge adds the reverse edge of a directed type', async () => {
+    const store = createTestStoreWithEdge({
+      edges: [existing],
+      directed: true,
+    });
+    const result = await store.dispatch(
+      toggleEdge({
+        type: EDGE_TYPE,
+        from: 'node-2',
+        to: 'node-1',
+        currentStep: 0,
+      }),
+    );
+    expect(result.payload).toMatchObject({
+      type: 'NETWORK/ADD_EDGE/fulfilled',
+      payload: { from: 'node-2', to: 'node-1', type: EDGE_TYPE },
+    });
+  });
+
+  it('toggleEdge removes the same-order edge of a directed type', async () => {
+    const store = createTestStoreWithEdge({
+      edges: [existing],
+      directed: true,
+    });
+    const result = await store.dispatch(
+      toggleEdge({
+        type: EDGE_TYPE,
+        from: 'node-1',
+        to: 'node-2',
+        currentStep: 0,
+      }),
+    );
+    expect(result.payload).toEqual(deleteEdge('edge-1'));
+  });
+
+  it('toggleEdge refuses a self-loop', async () => {
+    const store = createTestStoreWithEdge({});
+    const result = await store.dispatch(
+      toggleEdge({
+        type: EDGE_TYPE,
+        from: 'node-1',
+        to: 'node-1',
+        currentStep: 0,
+      }),
+    );
+    expect(result.type).toBe('NETWORK/TOGGLE_EDGE/rejected');
   });
 });
 

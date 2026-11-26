@@ -9,11 +9,13 @@ import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
+import { isDirectedEdgeType } from '@codaco/protocol-validation';
 import {
   type DyadCensusMetadataItem,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
+import { findEdge } from '@codaco/shared-consts/edge-identity';
 
 import { useTrack } from '../../analytics/useTrack';
 import Pair from '../../components/Pair';
@@ -32,10 +34,10 @@ import {
   getNetworkNodesForType,
   getStageMetadata,
 } from '../../selectors/session';
+import { getCodebook } from '../../store/modules/protocol';
 import {
   addEdge,
   deleteEdge,
-  edgeExists,
   updateStageMetadata,
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
@@ -82,6 +84,7 @@ export default function DyadCensus(props: DyadCensusProps) {
   const nodes = useStageSelector(getNetworkNodesForType);
   const edges = useStageSelector(getNetworkEdges);
   const edgeColor = useSelector(getEdgeColorForType(createEdge));
+  const codebook = useSelector(getCodebook);
   const stageMetadata = useStageSelector(getStageMetadata);
   const pairs = useStageSelector(getNodePairs);
   const hasPairs = pairs.length > 0;
@@ -96,7 +99,13 @@ export default function DyadCensus(props: DyadCensusProps) {
   // graph (keyed by {from,to,type}), so a sibling prompt sharing this
   // createEdge type may have already created it.
   const existingEdgeId =
-    (pair && edgeExists(edges, pair[0], pair[1], createEdge)) ?? false;
+    (pair &&
+      findEdge(
+        edges,
+        { from: pair[0], to: pair[1], type: createEdge },
+        isDirectedEdgeType(codebook, createEdge),
+      )?.[entityPrimaryKeyProperty]) ??
+    false;
   const metadataResponse = pair
     ? getStageMetadataResponse(stageMetadata, promptIndex, pair)
     : { exists: false, value: undefined };
