@@ -12,11 +12,13 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const FORMAT_EXTENSIONS = new Set([
@@ -1269,3 +1271,210 @@ export const NO_VERIFY_EXPLANATION =
   'replaces manual lint runs in this repository. Commit without it and fix ' +
   'whatever lint-staged reports. If bypassing the hook is genuinely required, ' +
   'prefix the command with AGENT_GATES=1.';
+
+// English text that people read, which the `writing-user-facing-text` skill
+// governs: release notes, changelogs, READMEs and release guides; the English
+// pages of the documentation and the website (`*.en.mdx`, `*.en-US.md`,
+// `*.en-GB.md`); the hand-written message catalogs of those two apps; and the
+// reviewed British English overrides of app-i18n catalogs. The English app-i18n
+// catalogs (`src/locales/**/en.json`) are generated from each descriptor's
+// `defaultMessage`, so that copy is caught where it is written (see
+// `interfaceCopyFiles`). Other locales belong to `verifying-translations`.
+const READER_FACING_NAMES = new Set([
+  'README.md',
+  'CHANGELOG.md',
+  'RELEASING.md',
+]);
+
+export function isReaderFacingText(rel) {
+  const posix = rel.split(path.sep).join('/');
+  const name = path.posix.basename(posix);
+  if (READER_FACING_NAMES.has(name)) return true;
+  if (/^\.changeset\/[^/]+\.md$/.test(posix)) return true;
+  if (/\.en(-[A-Z]{2})?\.mdx?$/.test(name)) return true;
+  if (/^apps\/[^/]+\/messages\/en(-[A-Z]{2})?\.json$/.test(posix)) return true;
+  return /(^|\/)src\/locales\/(.+\/)?en-GB\.json$/.test(posix);
+}
+
+// Code files to which an edit adds interface copy: a `defaultMessage` in the
+// text that the edit adds. This is read from the tool input, so a shell
+// command that writes a code file is not covered.
+const INTERFACE_COPY = /\bdefaultMessage\b/;
+
+export function interfaceCopyFiles(input, root) {
+  const toolInput = input.tool_input ?? input.toolInput ?? input.input ?? {};
+  if (!toolInput || typeof toolInput !== 'object') return [];
+  const found = new Set();
+  const consider = (file, text) => {
+    if (typeof file !== 'string' || !file.trim()) return;
+    if (typeof text !== 'string' || !INTERFACE_COPY.test(text)) return;
+    const absolute = path.resolve(root, file.trim());
+    if (isLintable(absolute)) found.add(absolute);
+  };
+  const file = toolInput.file_path ?? toolInput.filePath;
+  consider(file, toolInput.new_string);
+  consider(file, toolInput.content);
+  if (Array.isArray(toolInput.edits)) {
+    for (const edit of toolInput.edits) consider(file, edit?.new_string);
+  }
+  for (const key of ['patch', 'input', 'command']) {
+    const value = toolInput[key];
+    if (typeof value !== 'string' || !value.includes('*** Begin Patch')) {
+      continue;
+    }
+    let current = null;
+    for (const line of value.split('\n')) {
+      const trimmed = line.trim();
+      const header = /^\*\*\* (?:Update File|Add File|Move to): (.+)$/.exec(
+        trimmed,
+      );
+      if (header) current = header[1].trim();
+      else if (/^\*\*\* (?:Delete File|End Patch)/.test(trimmed))
+        current = null;
+      else if (current && line.startsWith('+')) consider(current, line);
+    }
+  }
+  return [...found];
+}
+
+const WORDING_SKILL = '.agents/skills/writing-user-facing-text/SKILL.md';
+
+// The "Checking a sentence" section of the skill in the tree that the hook
+// inspects, so the hook never carries a second copy of the rules. Null when
+// the skill or the section is missing.
+function sentenceChecklist(root) {
+  let text;
+  try {
+    text = readFileSync(path.join(root, WORDING_SKILL), 'utf8');
+  } catch {
+    return null;
+  }
+  const lines = text.split('\n');
+  const start = lines.findIndex((line) =>
+    /^## Checking a sentence\s*$/.test(line),
+  );
+  if (start === -1) return null;
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => line.startsWith('## '));
+  const body = (end === -1 ? rest : rest.slice(0, end)).join('\n').trim();
+  return body || null;
+}
+
+// True the first time that it is called for a session: an empty marker file in
+// the temporary directory records that the session has had the full
+// checklist. Without a session id the hook cannot tell, so every call counts
+// as the first.
+function firstWordingReminder(sessionId, tmpDir = os.tmpdir()) {
+  if (typeof sessionId !== 'string' || !sessionId) return true;
+  const dir = path.join(tmpDir, 'network-canvas-agent-hooks');
+  const digest = createHash('sha256').update(sessionId).digest('hex');
+  const marker = path.join(dir, `wording-${digest.slice(0, 24)}`);
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(marker, '', { flag: 'wx' });
+    return true;
+  } catch {
+    // Already recorded, or the directory cannot be written: the one-line
+    // form costs least either way.
+    return false;
+  }
+}
+
+// The reminder after an edit to English text that people read: the full
+// checklist once per session, then one line. Never throws; an error yields ''.
+export function wordingReminder(root, relFiles, { sessionId, tmpDir } = {}) {
+  if (relFiles.length === 0) return '';
+  try {
+    const shown =
+      relFiles.length > 4
+        ? `${relFiles.slice(0, 4).join(', ')} and ${relFiles.length - 4} more`
+        : relFiles.join(', ');
+    const opening = `You edited English text that people read: ${shown}.`;
+    const skill = `the writing-user-facing-text skill (${WORDING_SKILL})`;
+    const checklist = firstWordingReminder(sessionId, tmpDir)
+      ? sentenceChecklist(root)
+      : null;
+    if (!checklist) {
+      return `${opening} Before you finish, check every sentence that you wrote or changed against ${skill}.`;
+    }
+    return `${opening} Before you finish, apply this checklist from ${skill}:\n\n${checklist}`;
+  } catch {
+    return '';
+  }
+}
+
+// The main checkout of a linked worktree, or null when `root` is the main
+// checkout itself or the repository has no ordinary main checkout (a bare
+// common directory).
+export function mainCheckout(root) {
+  const common = git(
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    root,
+  );
+  if (!common || path.basename(common) !== '.git') return null;
+  const main = path.dirname(common);
+  try {
+    return realpathSync(main) === realpathSync(root) ? null : main;
+  } catch {
+    return null;
+  }
+}
+
+// Skills in this worktree whose SKILL.md is missing from the main checkout's
+// `.claude/skills`, or has different text there. Claude Code lists project
+// skills from the main checkout, so a worktree session cannot invoke these
+// skills as this tree has them.
+export function skillDrift(root, main) {
+  const missing = [];
+  const changed = [];
+  let names = [];
+  try {
+    names = readdirSync(path.join(root, '.agents', 'skills')).toSorted();
+  } catch {
+    return { missing, changed };
+  }
+  for (const name of names) {
+    let own;
+    try {
+      own = readFileSync(
+        path.join(root, '.agents', 'skills', name, 'SKILL.md'),
+        'utf8',
+      );
+    } catch {
+      continue;
+    }
+    let listed;
+    try {
+      listed = readFileSync(
+        path.join(main, '.claude', 'skills', name, 'SKILL.md'),
+        'utf8',
+      );
+    } catch {
+      missing.push(name);
+      continue;
+    }
+    if (listed !== own) changed.push(name);
+  }
+  return { missing, changed };
+}
+
+export function staleSkillsMessage(main, { missing, changed }) {
+  if (missing.length === 0 && changed.length === 0) return '';
+  const lines = [
+    `This session lists project skills from the main checkout at ${main}, not from this worktree, and some of them differ from the skills in this worktree:`,
+  ];
+  if (missing.length > 0) {
+    lines.push(
+      `- Missing from the main checkout, so this session cannot invoke them: ${missing.join(', ')}.`,
+    );
+  }
+  if (changed.length > 0) {
+    lines.push(
+      `- Different in the main checkout, so invoking them gives the main checkout's text: ${changed.join(', ')}.`,
+    );
+  }
+  lines.push(
+    'Wherever CLAUDE.md says to invoke one of these skills, read .agents/skills/<name>/SKILL.md in this worktree directly and follow it. Updating the main checkout to origin/main fixes this for later sessions.',
+  );
+  return lines.join('\n');
+}
