@@ -10,6 +10,7 @@ import { useStageValue } from '../../../form/stageFormHooks.ts';
 import {
   fixtureStageId,
   fixtureTypeId,
+  loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { testId, testTypeId } from '../../../testing/testId.ts';
@@ -1041,5 +1042,47 @@ describe('choosing a type for a stage that has never had one', () => {
 
     expect(await screen.findByText(FIRST_CHOICE_TITLE)).toBeInTheDocument();
     expect(pickedTypeBehindTheQuestion()).toBeUndefined();
+  });
+
+  /**
+   * A draft saved before it was checked can hold its subject in any shape.
+   * The picker shows the one type a node subject lists, and no type for any
+   * subject it cannot read as exactly one, rather than failing to render.
+   */
+  describe('a draft subject in any shape', () => {
+    const NAME_GENERATOR_STAGE = loadFixtureStage('name-generator-1');
+    const renderWithSubject = (subject: unknown) =>
+      renderStageEditor({
+        stage: {
+          id: NAME_GENERATOR_STAGE.id,
+          type: NAME_GENERATOR_STAGE.type,
+          fields: { ...NAME_GENERATOR_STAGE.fields, subject },
+        },
+        sections: <SubjectSection entity="node" />,
+      });
+    const checkedTypes = () =>
+      screen
+        .getAllByRole('radio')
+        .flatMap((radio) =>
+          radio instanceof HTMLInputElement && radio.checked
+            ? [radio.value]
+            : [],
+        );
+
+    it('checks the one type a node subject lists', () => {
+      renderWithSubject({ entity: 'node', types: [FAMILY_MEMBER] });
+      expect(checkedTypes()).toEqual([FAMILY_MEMBER]);
+    });
+
+    it.each([
+      ['two types', { entity: 'node', types: [PERSON, FAMILY_MEMBER] }],
+      ['an empty list', { entity: 'node', types: [] }],
+      ['a list holding a number', { entity: 'node', types: [1] }],
+      ['the schema 8 shape', { entity: 'node', type: PERSON }],
+      ['an edge subject', { entity: 'edge', type: PERSON }],
+    ])('checks no type for a node subject with %s', (_, subject) => {
+      renderWithSubject(subject);
+      expect(checkedTypes()).toEqual([]);
+    });
   });
 });

@@ -27,13 +27,15 @@ export function draftSubjectNodeTypes(
   return ids.length === types.length ? ids : undefined;
 }
 
+const NO_NODE_TYPES: readonly string[] = [];
+
 /**
  * The node types this stage is currently configured against, read from the
- * live draft. `undefined` means none chosen yet.
+ * live draft. Empty while none is chosen.
  */
-function useStageNodeTypes(): readonly string[] | undefined {
+function useStageNodeTypes(): readonly string[] {
   const value = useStageValue('subject');
-  return useMemo(() => draftSubjectNodeTypes(value), [value]);
+  return useMemo(() => draftSubjectNodeTypes(value) ?? NO_NODE_TYPES, [value]);
 }
 
 /**
@@ -42,7 +44,7 @@ function useStageNodeTypes(): readonly string[] | undefined {
  */
 function useSingleStageNodeType(): string | undefined {
   const types = useStageNodeTypes();
-  return types?.length === 1 ? types[0] : undefined;
+  return types.length === 1 ? types[0] : undefined;
 }
 
 /**

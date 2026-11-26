@@ -379,8 +379,9 @@ for something else or reopens a decision that has been made:
   its section hands it, as `MessageDescriptor`s on `SectionCapability`, plus
   `commonMessages.cancel`.
 - **`subjectSelect`** — the subject bridge in `fields/EntityTypePickerField.tsx`
-  holds no copy of its own: it turns the schema's `{entity, type}` subject into
-  the bare type ids the picker speaks, and every word around it — the label,
+  contains no copy of its own: it turns the schema's subject (`{entity, types}`
+  for a node subject, `{entity, type}` for an edge subject) into the bare type
+  ids that the picker uses, and every word around it — the label,
   the hint, the empty state — belongs to the section that mounts it
   (`subjectSection`) or to the picker itself (`entitySelect`). The name stays
   reserved rather than being reused for something else.

@@ -913,13 +913,17 @@ export function entitySubject(
 }
 
 /**
- * The one type a subject names, for a picker that offers one. A node subject
- * listing several types names none.
+ * The one type a subject names, for a picker of `entityType` that offers one.
+ * A node subject listing several types names none, and neither does a
+ * subject of the other entity.
  */
 function pickedSubjectType(
+  entityType: EntitySubject['entity'],
   subject: EntitySubject | undefined,
 ): string | undefined {
-  if (subject?.entity === 'edge') return subject.type;
+  if (entityType === 'edge') {
+    return subject?.entity === 'edge' ? subject.type : undefined;
+  }
   // The value is the stage draft's, which a draft saved before it was
   // checked can hold in any shape.
   const types = draftSubjectNodeTypes(subject);
@@ -957,7 +961,7 @@ export function EntitySubjectPickerField({
     <EntityTypePickerField
       {...props}
       entityType={entityType}
-      value={pickedSubjectType(value)}
+      value={pickedSubjectType(entityType, value)}
       onChange={(nextType) => onChange?.(entitySubject(entityType, nextType))}
     />
   );
