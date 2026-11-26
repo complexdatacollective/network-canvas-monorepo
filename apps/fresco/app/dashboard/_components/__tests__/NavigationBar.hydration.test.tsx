@@ -1,3 +1,4 @@
+import { Toast } from '@base-ui/react/toast';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -47,7 +48,11 @@ const serverMarkupFor = (preference: boolean | null) => {
   mockUsePrefersReducedMotion.mockReturnValue(preference);
   return renderToString(
     <AppI18nProvider locale="en" locales={frescoLocales}>
-      <NavigationBar />
+      {/* The bar's Feedback control thanks the person in a toast, so it
+          needs the provider that Fresco renders at its root. */}
+      <Toast.Provider>
+        <NavigationBar />
+      </Toast.Provider>
     </AppI18nProvider>,
   );
 };

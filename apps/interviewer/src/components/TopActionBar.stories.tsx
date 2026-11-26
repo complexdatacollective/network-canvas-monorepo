@@ -3,7 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TopActionBarView } from './TopActionBar';
 
 // The header's right-hand action cluster: view switcher, language, optional
-// lock button (only when a security mode is enrolled), and settings. The default
+// feedback, optional lock button (only when a security mode is enrolled), and
+// settings. The default
 // export (TopActionBar) reads the enrolled mode from useAuth; TopActionBarView
 // is the pure presentation (ViewSwitcher itself reads the active route).
 
@@ -22,6 +23,7 @@ const meta: Meta<StoryArgs> = {
   },
   render: ({ showLock }) => (
     <TopActionBarView
+      feedback={{ onSubmit: () => {} }}
       showLock={showLock}
       onLock={() => {}}
       onOpenSettings={() => {}}

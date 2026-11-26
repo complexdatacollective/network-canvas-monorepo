@@ -9,6 +9,7 @@ import {
   buildAppSuperProperties,
   POSTHOG_API_KEY,
   POSTHOG_HOST,
+  sendAnonymousPostHogEvent,
 } from '@codaco/shared-consts';
 
 import { appVersion } from './utils/appVersion';
@@ -82,9 +83,39 @@ export function initializeAnalytics({
   );
 }
 
-initializeAnalytics({
+/**
+ * How the Feedback control sends a response someone wrote: straight to the
+ * relay, as an anonymous event. It does not go through posthog-js, whose
+ * events carry this installation's ID and the client's own persistent
+ * identity, so responses cannot be linked to each other or to the
+ * installation's usage, or an email given in one to the rest. It rejects
+ * unless the relay accepts the event. Where analytics are off it sends
+ * nothing.
+ */
+export function feedbackSender({
+  disabled,
+  isDevelopment,
+}: AnalyticsEnvironment) {
+  if (isDevelopment || disabled) {
+    return async () => {};
+  }
+
+  return sendAnonymousPostHogEvent(
+    buildAppSuperProperties({
+      appKey: APP_KEY,
+      appName: APP_NAME,
+      version: appVersion,
+    }),
+  );
+}
+
+const environment: AnalyticsEnvironment = {
   disabled: import.meta.env.VITE_DISABLE_ANALYTICS === 'true',
   isDevelopment: import.meta.env.DEV,
-});
+};
+
+initializeAnalytics(environment);
+
+export const sendFeedbackEvent = feedbackSender(environment);
 
 export { posthog };

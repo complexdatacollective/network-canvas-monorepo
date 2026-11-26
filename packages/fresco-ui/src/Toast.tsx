@@ -139,7 +139,11 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
         toastVariants({ variant }),
       )}
     >
-      <Toast.Content className="flex gap-3 overflow-hidden transition-opacity duration-250 data-behind:pointer-events-none data-behind:opacity-0 data-expanded:pointer-events-auto data-expanded:opacity-100">
+      {/* The Close control is a column of its own beside the text, so a long
+          title wraps before it rather than running underneath it. No
+          `overflow-hidden` here: it would clip the control where it reaches
+          into the toast's padding, and the toast itself already clips. */}
+      <Toast.Content className="flex gap-3 transition-opacity duration-250 data-behind:pointer-events-none data-behind:opacity-0 data-expanded:pointer-events-auto data-expanded:opacity-100">
         {toast.data?.icon ? (
           <span className="mt-[0.1em] shrink-0">{toast.data.icon}</span>
         ) : (
@@ -150,12 +154,17 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
             />
           )
         )}
-        <div className="flex-1">
+        {/* The text (title and description) is one block in both branches,
+            and its `not-last:mb-4` is the only space between it and an action
+            button below it. Nothing else adds space at the bottom, so the
+            toast's own padding is the same below the text or the button as
+            above the title. */}
+        <div className="min-w-0 flex-1">
           {toast.data?.onClick ? (
             <button
               type="button"
               onClick={toast.data.onClick}
-              className="block w-full cursor-pointer text-start"
+              className="block w-full cursor-pointer text-start not-last:mb-4"
             >
               <Toast.Title render={<Heading level="h4" />} />
               {/* A native <button> may not contain interactive/tabbable
@@ -169,37 +178,36 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
               />
             </button>
           ) : (
-            <>
+            <div className="not-last:mb-4">
               <Toast.Title render={<Heading level="h4" />} />
               {/* h-auto: ScrollArea's h-full would fill the toast once its
                   measured height is applied, pushing an action button below
-                  it out of view. */}
+                  it out of view. py-0: the title's own bottom margin already
+                  separates it from the description, as in an Alert, and the
+                  viewport's padding would double that gap above the
+                  description and add to the toast's padding below it. */}
               <Toast.Description
-                className={cx(
-                  DESCRIPTION_MAX_HEIGHT,
-                  'h-auto overflow-hidden not-last:mb-4',
-                )}
+                className={cx(DESCRIPTION_MAX_HEIGHT, 'h-auto overflow-hidden')}
                 render={
-                  <ScrollArea viewportClassName="font-body text-pretty pe-2" />
+                  <ScrollArea viewportClassName="font-body text-pretty pe-2 py-0" />
                 }
               />
-            </>
+            </div>
           )}
           {toast.data?.onCancel && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={toast.data.onCancel}
-              className="mt-3 mb-1"
-            >
+            <Button type="button" size="sm" onClick={toast.data.onCancel}>
               {toast.data.cancelLabel ??
                 intl.formatMessage(commonMessages.cancel)}
             </Button>
           )}
         </div>
+        {/* Pulled into the toast's padding (`px-6 py-4` from
+            `spacing: 'sm'`) so that it sits `--spacing(2)` from the toast's
+            top and end edges. The matching negative bottom margin stops it
+            from making a toast with a one-line title any taller. */}
         <Toast.Close
           render={<CloseButton size="sm" />}
-          className="absolute inset-e-2 top-2"
+          className="-me-4 -mt-2 -mb-2 self-start"
           aria-label={intl.formatMessage(commonMessages.close)}
           nativeButton
         />

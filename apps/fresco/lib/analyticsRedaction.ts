@@ -62,6 +62,17 @@ export function redactParticipantLinks(value: string): string {
 }
 
 /**
+ * Replaces participant identifiers in text a person wrote, such as feedback,
+ * and drops the query string of each participant link in it, keeping the
+ * words around them. A link ends at the next whitespace: applied to the whole
+ * text, `redactParticipantLinks` would drop everything after the first `?` or
+ * `#` in it.
+ */
+export function redactParticipantLinksInText(text: string): string {
+  return text.replace(/\S+/g, (word) => redactParticipantLinks(word));
+}
+
+/**
  * How deep to walk an event's properties. Autocapture nests the clicked
  * element's attributes — `attr__href` among them — a few levels down.
  */

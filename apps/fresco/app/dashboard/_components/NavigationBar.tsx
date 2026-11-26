@@ -14,6 +14,7 @@ import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import FrescoFeedback from '~/components/FrescoFeedback';
 import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
 
 import { MobileNavDrawer } from './MobileNavDrawer';
@@ -207,6 +208,26 @@ export function NavigationBar() {
                   className={cx(
                     navItemClassName,
                     'hover:text-sea-green data-popup-open:text-sea-green flex cursor-pointer items-center',
+                  )}
+                />
+              }
+            />
+          </motion.div>
+
+          <motion.div
+            variants={itemVariants}
+            className="tablet-landscape:flex hidden"
+          >
+            <FrescoFeedback
+              display="icon"
+              renderTrigger={
+                // Named by the dialog, which gives it an aria-label.
+                // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+                <button
+                  type="button"
+                  className={cx(
+                    navItemClassName,
+                    'hover:text-sea-green flex cursor-pointer items-center',
                   )}
                 />
               }

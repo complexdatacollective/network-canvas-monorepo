@@ -125,49 +125,67 @@ const Toggle = forwardRef<HTMLButtonElement, ToggleProps>((props, ref) => {
   });
 
   return (
-    <Switch.Root
-      checked={checked}
-      onCheckedChange={onCheckedChange}
-      disabled={disabled}
-      readOnly={readOnly}
-      aria-invalid={isInvalid || undefined}
-      nativeButton
-      render={
-        <button
-          {...buttonProps}
-          ref={ref}
-          type="button"
-          disabled={disabled}
-          className={toggleContainerVariants({
-            size,
-            checked,
-            state,
-            className,
-          })}
-          style={{
-            ...style,
-            justifyContent: checked ? 'flex-end' : 'flex-start',
-          }}
-        />
-      }
-    >
-      <LayoutGroup inherit={false}>
-        <Switch.Thumb
-          render={
-            <motion.span
-              className={toggleThumbVariants({ state })}
-              layout
-              layoutDependency={checked}
-              transition={{
-                type: 'spring',
-                stiffness: 500,
-                damping: 30,
-              }}
-            />
-          }
-        />
-      </LayoutGroup>
-    </Switch.Root>
+    // The thumb slides with a layout animation. Two things keep that animation
+    // to the thumb's own movement across the track:
+    //
+    // - its own `LayoutGroup`: a group re-measures every member whenever any
+    //   member updates, and a `LayoutGroup` wraps the content of every Dialog
+    //   opened without a `layoutId`, so toggling one switch used to replay the
+    //   thumb animation of every other switch whose row had moved;
+    // - its parent is a `layoutRoot`: Motion measures a layout animation in
+    //   page coordinates unless a parent is projecting, so a switch that moved
+    //   in the same render it was toggled in (its row re-centred in a dialog
+    //   that changed height) had its thumb slide in from where the track used
+    //   to be. Measured relative to a `layoutRoot` that fills the track, the
+    //   thumb only moves within it; the root itself never animates.
+    <LayoutGroup inherit={false}>
+      <Switch.Root
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        disabled={disabled}
+        readOnly={readOnly}
+        aria-invalid={isInvalid || undefined}
+        nativeButton
+        render={
+          <button
+            {...buttonProps}
+            ref={ref}
+            type="button"
+            disabled={disabled}
+            className={toggleContainerVariants({
+              size,
+              checked,
+              state,
+              className,
+            })}
+            style={style}
+          />
+        }
+      >
+        <motion.span
+          layout
+          layoutRoot
+          layoutDependency={checked}
+          className="pointer-events-none flex size-full"
+          style={{ justifyContent: checked ? 'flex-end' : 'flex-start' }}
+        >
+          <Switch.Thumb
+            render={
+              <motion.span
+                className={toggleThumbVariants({ state })}
+                layout
+                layoutDependency={checked}
+                transition={{
+                  type: 'spring',
+                  stiffness: 500,
+                  damping: 30,
+                }}
+              />
+            }
+          />
+        </motion.span>
+      </Switch.Root>
+    </LayoutGroup>
   );
 });
 

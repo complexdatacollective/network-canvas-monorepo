@@ -4,8 +4,14 @@ import { motion } from 'motion/react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import FeedbackDialog, {
+  type FeedbackDialogProps,
+} from '@codaco/fresco-ui/navigation/FeedbackDialog';
+import { appFeedbackSurvey } from '@codaco/shared-consts';
 import { ViewSwitcher } from '~/components/ViewSwitcher';
 import InterviewerLocaleSwitcher from '~/i18n/InterviewerLocaleSwitcher';
+import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+import { sendFeedbackEvent } from '~/lib/analytics/sendFeedbackEvent';
 import { useAuth } from '~/lib/auth/AuthContext';
 
 const messages = defineMessages({
@@ -33,15 +39,17 @@ const variants = {
   exit: { opacity: 0, y: -6, transition: { duration: 0.55 } },
 };
 
-// Pure presentation: the view switcher plus the language, lock (when a
-// security mode is enrolled) and settings glass-pill buttons. The language
+// Pure presentation: the view switcher plus the language, feedback, lock
+// (when a security mode is enrolled) and settings glass-pill buttons. The language
 // control lives here rather than in the status row so it stays reachable from
 // the data view, which has no status row.
 export function TopActionBarView({
+  feedback,
   showLock,
   onLock,
   onOpenSettings,
 }: {
+  feedback: Pick<FeedbackDialogProps, 'onSubmit' | 'onShown' | 'maxLength'>;
   showLock: boolean;
   onLock: () => void;
   onOpenSettings: () => void;
@@ -57,6 +65,21 @@ export function TopActionBarView({
         className="inline-flex"
       >
         <InterviewerLocaleSwitcher />
+      </motion.span>
+      <motion.span
+        variants={variants}
+        whileHover={{ y: -2 }}
+        whileTap={{ scale: 0.94 }}
+        className="inline-flex"
+      >
+        <FeedbackDialog
+          {...feedback}
+          display="icon"
+          variant="glass"
+          color="default"
+          size={TOP_BAR_SIZE}
+          className="border-outline"
+        />
       </motion.span>
       {showLock && (
         <motion.span
@@ -101,10 +124,14 @@ type TopActionBarProps = {
 
 export function TopActionBar({ onOpenSettings }: TopActionBarProps) {
   const { mode, lock } = useAuth();
+  const { track } = useAnalytics();
   const showLock = mode !== undefined && mode !== 'none';
 
   return (
     <TopActionBarView
+      // Opening the form is usage, which `track` reports only with analytics
+      // on. What the user writes and sends always goes out, anonymously.
+      feedback={appFeedbackSurvey(track, sendFeedbackEvent)}
       showLock={showLock}
       onLock={() => {
         void lock();

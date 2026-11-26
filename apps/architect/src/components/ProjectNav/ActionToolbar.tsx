@@ -20,6 +20,7 @@ import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
 import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import { ACTION_TOOLBAR_REACH_VARIABLE } from '~/utils/actionToolbarReach';
 import { cx } from '~/utils/cva';
+import { FLOATING_FEEDBACK_CLEARANCE } from '~/utils/floatingFeedbackWidth';
 
 export type ActionToolbarProps = {
   'children': ReactNode;
@@ -176,7 +177,10 @@ const ActionToolbar = ({
       transition={toolbarTransition}
       className="phone-landscape:px-6 pointer-events-none fixed inset-x-0 bottom-5 z-20 px-4 print:hidden"
     >
-      <div className="mx-auto flex max-w-7xl min-w-0 items-end justify-between gap-2">
+      <div
+        className="mx-auto flex max-w-7xl min-w-0 items-end justify-between gap-2"
+        style={{ paddingInlineStart: FLOATING_FEEDBACK_CLEARANCE }}
+      >
         <AnimatePresence>
           {hasLeadingActions ? (
             <motion.div
