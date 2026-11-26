@@ -89,14 +89,23 @@ const describeIssues = (
     return `${stage} ${rest.map(String).join('.')}: ${message}`;
   });
 
-// The runtime (non-type) module specifiers a source file imports.
-const runtimeImports = (relativePath: string) =>
-  [
-    ...readFileSync(
-      fileURLToPath(new URL(relativePath, import.meta.url)),
-      'utf8',
-    ).matchAll(/^import\s+(?!type\b)[^;]*?from\s+'([^']+)';/gm),
-  ].map((match) => match[1]);
+// The runtime (non-type) module specifiers a source file loads: imports,
+// side-effect imports and re-exports. A dynamic import is reported as
+// `import()`, since its specifier need not be a literal.
+const runtimeImports = (relativePath: string) => {
+  const source = readFileSync(
+    fileURLToPath(new URL(relativePath, import.meta.url)),
+    'utf8',
+  );
+  return [
+    ...[
+      ...source.matchAll(
+        /^(?:import|export)\s+(?!type\b)(?:[^;'"]*?from\s+)?['"]([^'"]+)['"];?/gm,
+      ),
+    ].map((match) => match[1]),
+    ...(/\bimport\s*\(/.test(source) ? ['import()'] : []),
+  ];
+};
 
 // Whether a schema tags an edge type reference outside the places where an
 // edge type's direction and endpoint rules do not matter (mirrors the
