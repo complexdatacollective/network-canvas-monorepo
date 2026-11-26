@@ -20,10 +20,16 @@ export const findEdge = <E extends EdgeEndpoints>(
   edges: readonly E[],
   endpoints: EdgeEndpoints,
   directed: boolean,
-): E | undefined => {
-  const key = edgeIdentityKey(endpoints, directed);
-  return edges.find((edge) => edgeIdentityKey(edge, directed) === key);
-};
+): E | undefined =>
+  // Compares fields rather than keys: callers run this once per node pair.
+  edges.find(
+    (edge) =>
+      edge.type === endpoints.type &&
+      ((edge.from === endpoints.from && edge.to === endpoints.to) ||
+        (!directed &&
+          edge.from === endpoints.to &&
+          edge.to === endpoints.from)),
+  );
 
 export const toggleEdge = <E extends EdgeEndpoints>(
   edges: readonly E[],

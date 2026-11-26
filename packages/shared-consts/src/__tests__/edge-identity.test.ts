@@ -28,9 +28,25 @@ describe('edgeIdentityKey', () => {
     );
   });
 
-  it('does not confuse ids that contain the separator', () => {
-    expect(edgeIdentityKey(edge('e', 'a|b', 'c'), true)).not.toBe(
-      edgeIdentityKey(edge('e', 'a', 'b|c'), true),
+  it.each(['|', ',', ':', '"', ' ', '\\'])(
+    'does not confuse ids or types that contain %j',
+    (separator) => {
+      for (const directed of [true, false]) {
+        expect(
+          edgeIdentityKey(edge('e', `a${separator}b`, 'c'), directed),
+        ).not.toBe(edgeIdentityKey(edge('e', 'a', `b${separator}c`), directed));
+        expect(
+          edgeIdentityKey(edge('e', 'b', 'c', `t${separator}a`), directed),
+        ).not.toBe(
+          edgeIdentityKey(edge('e', `a${separator}b`, 'c', 't'), directed),
+        );
+      }
+    },
+  );
+
+  it('does not confuse an empty id with a shifted one', () => {
+    expect(edgeIdentityKey(edge('e', '', 'ab'), true)).not.toBe(
+      edgeIdentityKey(edge('e', 'a', 'b'), true),
     );
   });
 });

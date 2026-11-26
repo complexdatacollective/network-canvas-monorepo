@@ -25,9 +25,9 @@ export default defineConfig({
     rollupOptions: {
       external: [
         /^@codaco\/app-i18n(?:\/|$)/,
-        '@codaco/network-query',
-        '@codaco/protocol-validation',
-        '@codaco/shared-consts',
+        /^@codaco\/network-query(?:\/|$)/,
+        /^@codaco\/protocol-validation(?:\/|$)/,
+        /^@codaco\/shared-consts(?:\/|$)/,
         '@faker-js/faker',
         'es-toolkit',
         'uuid',
