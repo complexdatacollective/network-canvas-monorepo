@@ -18,7 +18,8 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./edge-identity": "./src/edge-identity.ts"
   },
   "publishConfig": {
     "main": "./dist/index.cjs",
@@ -29,6 +30,11 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
+      },
+      "./edge-identity": {
+        "types": "./dist/edge-identity.d.ts",
+        "import": "./dist/edge-identity.js",
+        "require": "./dist/edge-identity.cjs"
       }
     },
     "access": "public"
