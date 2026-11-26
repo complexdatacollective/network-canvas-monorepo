@@ -1,11 +1,9 @@
 # Schema 9: directed edges, multiplex stages and stage-owned layouts
 
-Status: draft for approval, 2026-11-24.
+Status: approved 2026-11-26.
 
-This design replaces `docs/superpowers/plans/2026-11-19-schema-9-foundation.md`
-and its two support files, which planned a flat attribute registry. That plan
-is withdrawn. Its reader inventory and survey notes remain useful as maps of
-the code and nothing more.
+This design replaces an earlier plan for a flat attribute registry, which was
+withdrawn before any of it was built and is not in the repository.
 
 ## Intent
 
