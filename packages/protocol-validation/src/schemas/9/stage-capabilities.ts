@@ -42,17 +42,17 @@ const isEdgeStageType = (type: string): type is EdgeStageType =>
   Object.hasOwn(STAGE_EDGE_TYPE_SUPPORT, type);
 
 /**
- * Filter rules, skip logic, panel filters and conditions name an edge type
- * without drawing or creating its edges, so their direction and endpoint
- * rules do not matter to the stage.
+ * The rules of filters, skip logic, panel filters and conditions name an edge
+ * type without drawing or creating its edges, so its direction and endpoint
+ * rules do not matter to the stage. A condition names an edge type only in a
+ * rule's options.
  */
 const isOrientationBlindPath = (path: readonly (string | number)[]) =>
   path.some(
     (segment, index) =>
-      segment === 'conditions' ||
-      (segment === 'rules' &&
-        typeof path[index + 1] === 'number' &&
-        path[index + 2] === 'options'),
+      segment === 'rules' &&
+      typeof path[index + 1] === 'number' &&
+      path[index + 2] === 'options',
   );
 
 export const stageEdgeTypeSupportIssues = (

@@ -110,10 +110,9 @@ const tagsDrawnEdgeType = (
   seen.add(schema);
   const blind = path.some(
     (segment, index) =>
-      segment === 'conditions' ||
-      (segment === 'rules' &&
-        path[index + 1] === '*' &&
-        path[index + 2] === 'options'),
+      segment === 'rules' &&
+      path[index + 1] === '*' &&
+      path[index + 2] === 'options',
   );
   if (getEntityTypeReferenceDescriptor(schema)?.entity === 'edge' && !blind)
     return true;
@@ -325,6 +324,55 @@ describe('stage edge type support', () => {
         hit(dyadCensus),
       ]).map(({ path }) => path[1]),
     ).toEqual([dyadCensus, dyadCensus]);
+  });
+
+  it.each([
+    [['rules', 0, 'someField'], 2],
+    [['rules', 'options', 'type'], 2],
+    [['rules', 'byName', 'options', 'type'], 2],
+    [['conditions', 'c1', 'someField'], 2],
+    [['conditions', 'c1', 'rules', 0, 'options', 'type'], 0],
+  ])(
+    'judges a hit at %j only when it is not in the options of a rule',
+    async (rest, count) => {
+      const result = await ProtocolSchemaV9.safeParseAsync(
+        withTestIds(withAdviceEdgeType(baseProtocol())),
+      );
+      if (!result.success) throw result.error;
+      const protocol = result.data;
+      const dyadCensus = protocol.stages.findIndex(
+        (stage) => stage.type === 'DyadCensus',
+      );
+      expect(
+        stageEdgeTypeSupportIssues(protocol, [
+          {
+            path: ['stages', dyadCensus, ...rest],
+            typeId: testTypeId('advice'),
+            entity: 'edge',
+          },
+        ]),
+      ).toHaveLength(count);
+    },
+  );
+
+  it('does not judge a node type hit that shares an edge type id', async () => {
+    const result = await ProtocolSchemaV9.safeParseAsync(
+      withTestIds(withAdviceEdgeType(baseProtocol())),
+    );
+    if (!result.success) throw result.error;
+    const protocol = result.data;
+    const dyadCensus = protocol.stages.findIndex(
+      (stage) => stage.type === 'DyadCensus',
+    );
+    expect(
+      stageEdgeTypeSupportIssues(protocol, [
+        {
+          path: ['stages', dyadCensus, 'subject', 'type'],
+          typeId: testTypeId('advice'),
+          entity: 'node',
+        },
+      ]),
+    ).toEqual([]);
   });
 
   it.each([
