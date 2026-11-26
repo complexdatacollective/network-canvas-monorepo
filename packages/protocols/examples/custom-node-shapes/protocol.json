@@ -629,7 +629,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "4a31d1a4-c474-5343-8d68-43ac59eff8a3"
+        "types": ["4a31d1a4-c474-5343-8d68-43ac59eff8a3"]
       },
       "form": {
         "title": {
@@ -669,7 +669,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "4a31d1a4-c474-5343-8d68-43ac59eff8a3"
+        "types": ["4a31d1a4-c474-5343-8d68-43ac59eff8a3"]
       },
       "background": {
         "concentricCircles": 3,
@@ -709,7 +709,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "a1403c8c-070e-5a3f-b201-dd1283371c86"
+        "types": ["a1403c8c-070e-5a3f-b201-dd1283371c86"]
       },
       "form": {
         "title": {
@@ -749,7 +749,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "a1403c8c-070e-5a3f-b201-dd1283371c86"
+        "types": ["a1403c8c-070e-5a3f-b201-dd1283371c86"]
       },
       "background": {
         "concentricCircles": 3,

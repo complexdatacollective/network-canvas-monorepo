@@ -71,7 +71,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "6460163b-455b-5686-a58b-b4724aeb75d0"
+        "types": ["6460163b-455b-5686-a58b-b4724aeb75d0"]
       },
       "dataSource": "roster_data",
       "panelTitle": {

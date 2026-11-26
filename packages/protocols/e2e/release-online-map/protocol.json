@@ -67,7 +67,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "0474d37d-b048-53f9-b873-6fe06e02058d"
+        "types": ["0474d37d-b048-53f9-b873-6fe06e02058d"]
       },
       "quickAdd": "3892995f-46d2-599f-b622-45c3261f1759",
       "behaviours": {
@@ -97,7 +97,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "0474d37d-b048-53f9-b873-6fe06e02058d"
+        "types": ["0474d37d-b048-53f9-b873-6fe06e02058d"]
       },
       "mapOptions": {
         "tokenAssetId": "mapbox_token",

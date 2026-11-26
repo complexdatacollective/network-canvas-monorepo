@@ -855,7 +855,7 @@
       "interviewScript": "Build the pedigree with the participant rather than handing them the device. Published CEGRM sessions are co-constructed, and recent studies pre-populate the pedigree before the session and review it with the participant instead of drawing it from scratch — do that if your study design allows, since it substantially reduces burden.\n\nLiving status, birth year, whether the person has had the condition, and whether they have had genetic testing for it are all asked while each person is added. Take the condition and testing questions slowly. Illness, testing and bereavement will often prompt a story; let it run, and capture it using your approved study procedure.",
       "subject": {
         "entity": "node",
-        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
+        "types": ["3b8699d5-cc06-599c-b1d4-3fc09da1398b"]
       },
       "prompt": {
         "en": "Let's map out your family. Who is in it?"
@@ -965,7 +965,7 @@
       "interviewScript": "The same person can belong in several of these questions. Add them once, then pick them from the panel of people already named rather than typing the name again.\n\nThe published instrument treats this step as widening the map to the participant's whole social universe, so do not rush it — friends and co-members of groups are where the spiritual and emotional domains usually turn out to live.\n\nEveryone added here is recorded as a non-kin member of the network (`non_kin`). That is how the next screens tell them apart from the family on the pedigree, so a relative who was missed in the pedigree should be added to the pedigree, not here.",
       "subject": {
         "entity": "node",
-        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
+        "types": ["3b8699d5-cc06-599c-b1d4-3fc09da1398b"]
       },
       "quickAdd": "d22b2968-c4e6-516f-8b0d-9089e9bd058d",
       "panels": [
@@ -1068,7 +1068,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
+        "types": ["3b8699d5-cc06-599c-b1d4-3fc09da1398b"]
       },
       "prompts": [
         {
@@ -1121,7 +1121,7 @@
       "interviewScript": "Closeness is a Network Canvas addition rather than a CEGRM symbol. It locates the support exchanges within the participant's perceived relationship structure and makes it possible to distinguish emotionally close ties from ties that perform a particular support function.",
       "subject": {
         "entity": "node",
-        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
+        "types": ["3b8699d5-cc06-599c-b1d4-3fc09da1398b"]
       },
       "prompts": [
         {
@@ -1157,7 +1157,7 @@
       "interviewScript": "Contact frequency is a Network Canvas addition rather than a CEGRM symbol. Ask about contact by any channel during the past 12 months. People recorded as deceased are excluded because a current-frequency category would be inapplicable; people whose living status is unknown remain available.",
       "subject": {
         "entity": "node",
-        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
+        "types": ["3b8699d5-cc06-599c-b1d4-3fc09da1398b"]
       },
       "prompts": [
         {
@@ -1204,7 +1204,7 @@
       "interviewScript": "These four questions are the coloured dots of the original paper instrument: information, practical help, feelings, and spiritual connection. Each is asked about every person on the map, family and non-family alike.\n\nAll the people are placed automatically so the participant reads the map rather than arranging it. Answer the first question about who knows whom before the four exchange questions — the connections make the later views legible.",
       "subject": {
         "entity": "node",
-        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
+        "types": ["3b8699d5-cc06-599c-b1d4-3fc09da1398b"]
       },
       "background": {
         "concentricCircles": 0
@@ -1316,7 +1316,7 @@
       "interviewScript": "These three questions are the coloured stars of the paper instrument — the gatherer, disseminator and blocker roles described by Koehly and colleagues. They are configured for everyone who is not marked `non_kin`, which is the family from the pedigree, because the published roles describe communication within families at hereditary risk. Widen the filter only when non-family information brokerage is part of the research question.\n\nThis stage keeps the positions established on the preceding all-contact Sociogram. Do not enable automatic layout here: recomputing only the filtered family subset would make the relatives' coordinates incompatible with the non-family contacts when the completed map combines them again.\n\nThe third question names someone as a barrier to family communication, so frame it gently and without judgement: people usually have reasons, and those reasons are often the most useful thing the participant tells you.",
       "subject": {
         "entity": "node",
-        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
+        "types": ["3b8699d5-cc06-599c-b1d4-3fc09da1398b"]
       },
       "background": {
         "concentricCircles": 0
@@ -1415,7 +1415,7 @@
       "interviewScript": "This is the payoff of the whole session, and the point at which the CEGRM stops being a questionnaire and becomes an elicitation device. Operate it yourself and use it to prompt the participant.\n\nBegin with everyone and their connections. Then use Forms of support to move through information, practical help, feelings and spiritual connection, followed by Family health communication for the gatherer, disseminator and blocker roles. Ask what the participant notices. Where do the colours cluster? Where are they absent? Absence is as informative as presence — a person with no one in the feelings overlay, or a family where practical help comes entirely from outside it, is the finding.\n\nMove between overlays at the participant's pace and let them ask to go back. The positions are kept fixed so comparisons remain meaningful. Nothing drawn on this screen is saved, so capture the conversation using your approved study procedure.",
       "subject": {
         "entity": "node",
-        "type": "3b8699d5-cc06-599c-b1d4-3fc09da1398b"
+        "types": ["3b8699d5-cc06-599c-b1d4-3fc09da1398b"]
       },
       "background": {
         "concentricCircles": 3,

@@ -162,7 +162,7 @@
       "type": "NameGenerator",
       "subject": {
         "entity": "node",
-        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
+        "types": ["0c277a33-2b8f-5150-809e-c90a5ae1b63e"]
       },
       "form": {
         "fields": [
@@ -230,7 +230,7 @@
       "type": "AlterForm",
       "subject": {
         "entity": "node",
-        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
+        "types": ["0c277a33-2b8f-5150-809e-c90a5ae1b63e"]
       },
       "form": {
         "fields": [
@@ -265,7 +265,7 @@
       "type": "OrdinalBin",
       "subject": {
         "entity": "node",
-        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
+        "types": ["0c277a33-2b8f-5150-809e-c90a5ae1b63e"]
       },
       "prompts": [
         {
@@ -286,7 +286,7 @@
       "type": "Sociogram",
       "subject": {
         "entity": "node",
-        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
+        "types": ["0c277a33-2b8f-5150-809e-c90a5ae1b63e"]
       },
       "background": {
         "concentricCircles": 3,
@@ -398,7 +398,7 @@
       "type": "Narrative",
       "subject": {
         "entity": "node",
-        "type": "0c277a33-2b8f-5150-809e-c90a5ae1b63e"
+        "types": ["0c277a33-2b8f-5150-809e-c90a5ae1b63e"]
       },
       "background": {
         "concentricCircles": 3,

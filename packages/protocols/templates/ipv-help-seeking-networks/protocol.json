@@ -631,7 +631,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
+        "types": ["c6e764fa-119f-5a78-bf0e-60f24de9f3c6"]
       },
       "panels": [
         {
@@ -720,7 +720,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "50b335d5-6cb8-5482-912c-95dbaa53fa6b"
+        "types": ["50b335d5-6cb8-5482-912c-95dbaa53fa6b"]
       },
       "prompts": [
         {
@@ -772,7 +772,7 @@
       "type": "AlterForm",
       "subject": {
         "entity": "node",
-        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
+        "types": ["c6e764fa-119f-5a78-bf0e-60f24de9f3c6"]
       },
       "form": {
         "fields": [
@@ -836,7 +836,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "50b335d5-6cb8-5482-912c-95dbaa53fa6b"
+        "types": ["50b335d5-6cb8-5482-912c-95dbaa53fa6b"]
       },
       "form": {
         "fields": [
@@ -858,7 +858,7 @@
       "type": "OrdinalBin",
       "subject": {
         "entity": "node",
-        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
+        "types": ["c6e764fa-119f-5a78-bf0e-60f24de9f3c6"]
       },
       "prompts": [
         {
@@ -880,7 +880,7 @@
       "type": "CategoricalBin",
       "subject": {
         "entity": "node",
-        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
+        "types": ["c6e764fa-119f-5a78-bf0e-60f24de9f3c6"]
       },
       "filter": {
         "join": "AND",
@@ -923,7 +923,7 @@
       "type": "Sociogram",
       "subject": {
         "entity": "node",
-        "type": "c6e764fa-119f-5a78-bf0e-60f24de9f3c6"
+        "types": ["c6e764fa-119f-5a78-bf0e-60f24de9f3c6"]
       },
       "background": {
         "concentricCircles": 3,

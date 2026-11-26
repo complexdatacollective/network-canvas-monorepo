@@ -477,7 +477,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "7c6af45e-c013-5fc8-882f-59fa434c4800"
+        "types": ["7c6af45e-c013-5fc8-882f-59fa434c4800"]
       },
       "quickAdd": "215b0acf-25b4-5048-95cb-ac62a49c23ec",
       "behaviours": {
@@ -507,7 +507,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "7c6af45e-c013-5fc8-882f-59fa434c4800"
+        "types": ["7c6af45e-c013-5fc8-882f-59fa434c4800"]
       },
       "background": {
         "concentricCircles": 4,
@@ -551,7 +551,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "7c6af45e-c013-5fc8-882f-59fa434c4800"
+        "types": ["7c6af45e-c013-5fc8-882f-59fa434c4800"]
       },
       "prompts": [
         {
@@ -573,7 +573,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "7c6af45e-c013-5fc8-882f-59fa434c4800"
+        "types": ["7c6af45e-c013-5fc8-882f-59fa434c4800"]
       },
       "behaviours": {
         "requireCompletePlacement": true
@@ -602,7 +602,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "7c6af45e-c013-5fc8-882f-59fa434c4800"
+        "types": ["7c6af45e-c013-5fc8-882f-59fa434c4800"]
       },
       "filter": {
         "rules": [
@@ -640,7 +640,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "7c6af45e-c013-5fc8-882f-59fa434c4800"
+        "types": ["7c6af45e-c013-5fc8-882f-59fa434c4800"]
       },
       "behaviours": {
         "interactionMode": "select"
@@ -960,7 +960,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "0122d363-ac28-541e-8362-04c33d8e1c63"
+        "types": ["0122d363-ac28-541e-8362-04c33d8e1c63"]
       },
       "prompt": {
         "en-US": "Who is in your family?",

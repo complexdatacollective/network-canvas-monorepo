@@ -786,7 +786,7 @@
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "prompts": [
         {
@@ -816,7 +816,7 @@
       "quickAdd": "c7053a78-bcd5-44bb-bfca-36c8aefa793f",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "panels": [
         {
@@ -889,7 +889,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "14a93cae-06c6-4d40-9c19-66c9ac434d34"
+        "types": ["14a93cae-06c6-4d40-9c19-66c9ac434d34"]
       },
       "prompts": [
         {
@@ -918,7 +918,7 @@
       "type": "NameGeneratorRoster",
       "subject": {
         "entity": "node",
-        "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
+        "types": ["83c596f7-2244-425c-b2ed-4186dbf4c815"]
       },
       "dataSource": "86b7feeb-b71a-4c15-8eb4-25a75491d512",
       "cardOptions": {
@@ -981,7 +981,7 @@
       "type": "NameGeneratorRoster",
       "subject": {
         "entity": "node",
-        "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
+        "types": ["a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"]
       },
       "dataSource": "d94b5dae-4ed5-42bf-9d1c-b6585fbe078d",
       "cardOptions": {
@@ -1033,7 +1033,7 @@
       "type": "AlterForm",
       "subject": {
         "entity": "node",
-        "type": "a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"
+        "types": ["a634a5e3-cce6-46a3-ae18-4c0cf5dbbb32"]
       },
       "form": {
         "fields": [
@@ -1072,7 +1072,7 @@
       "type": "Sociogram",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "background": {
         "concentricCircles": 3,
@@ -1101,7 +1101,7 @@
       "type": "Sociogram",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "background": {
         "image": "ed673344-caac-4702-b029-7fa4b842af75"
@@ -1139,7 +1139,7 @@
       "type": "Sociogram",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "background": {
         "concentricCircles": 3,
@@ -1228,7 +1228,7 @@
       "type": "DyadCensus",
       "subject": {
         "entity": "node",
-        "type": "83c596f7-2244-425c-b2ed-4186dbf4c815"
+        "types": ["83c596f7-2244-425c-b2ed-4186dbf4c815"]
       },
       "prompts": [
         {
@@ -1283,7 +1283,7 @@
       "type": "Sociogram",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "background": {
         "concentricCircles": 3,
@@ -1338,7 +1338,7 @@
       "type": "OrdinalBin",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "prompts": [
         {
@@ -1359,7 +1359,7 @@
       "type": "CategoricalBin",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "prompts": [
         {
@@ -1422,7 +1422,7 @@
       "type": "CategoricalBin",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "filter": {
         "rules": [
@@ -1473,7 +1473,7 @@
       "type": "Narrative",
       "subject": {
         "entity": "node",
-        "type": "3d5c30be-e733-490e-868d-fcc0dc3d5a4d"
+        "types": ["3d5c30be-e733-490e-868d-fcc0dc3d5a4d"]
       },
       "presets": [
         {

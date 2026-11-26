@@ -154,7 +154,7 @@
       "type": "NameGeneratorQuickAdd",
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "quickAdd": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
       "prompts": [
@@ -179,7 +179,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "prompts": [
         {
@@ -284,7 +284,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "panels": [
         {
@@ -410,7 +410,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "panels": [
         {
@@ -442,7 +442,7 @@
       "quickAdd": "1a9a393a-10c8-50e6-87ca-4b602fcebcff",
       "subject": {
         "entity": "node",
-        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
+        "types": ["9d747cc7-dda5-5ac9-957d-52d3cbba197f"]
       },
       "panels": [
         {
@@ -503,7 +503,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "prompts": [
         {
@@ -545,7 +545,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "prompts": [
         {
@@ -585,7 +585,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "filter": {
         "join": "AND",
@@ -651,7 +651,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
+        "types": ["9d747cc7-dda5-5ac9-957d-52d3cbba197f"]
       },
       "prompts": [
         {
@@ -674,7 +674,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
+        "types": ["9d747cc7-dda5-5ac9-957d-52d3cbba197f"]
       },
       "behaviours": {
         "minNodes": 1,
@@ -700,7 +700,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "dataSource": "previousInterview-json",
       "cardOptions": {
@@ -856,7 +856,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "bdf1e3c5-8e25-5b1a-a185-1494b149a039"
+        "types": ["bdf1e3c5-8e25-5b1a-a185-1494b149a039"]
       },
       "prompts": [
         {
@@ -877,7 +877,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "background": {
         "concentricCircles": 4,
@@ -996,7 +996,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
+        "types": ["9d747cc7-dda5-5ac9-957d-52d3cbba197f"]
       },
       "background": {
         "image": "quadrant-1",
@@ -1031,7 +1031,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "dataSource": "previousInterview-json",
       "cardOptions": {
@@ -1098,7 +1098,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
+        "types": ["9d747cc7-dda5-5ac9-957d-52d3cbba197f"]
       },
       "dataSource": "HIVServices",
       "cardOptions": {
@@ -1155,7 +1155,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "prompts": [
         {
@@ -1272,7 +1272,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "form": {
         "fields": [
@@ -1441,7 +1441,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "presets": [
         {
@@ -1606,7 +1606,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "02f0c3a5-008e-58e9-91ce-0cd152fbe22a"
+        "types": ["02f0c3a5-008e-58e9-91ce-0cd152fbe22a"]
       },
       "quickAdd": "5479cb9e-8bb3-5b3a-93e5-8b42993bbb99",
       "layoutVariable": "792400ec-4fd2-535d-bf18-65cb440ec801",
@@ -1623,7 +1623,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "9d747cc7-dda5-5ac9-957d-52d3cbba197f"
+        "types": ["9d747cc7-dda5-5ac9-957d-52d3cbba197f"]
       },
       "mapOptions": {
         "tokenAssetId": "mapbox_token",
@@ -1732,7 +1732,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "26ee7973-6f8c-5f79-a732-fce25931e0f2"
+        "types": ["26ee7973-6f8c-5f79-a732-fce25931e0f2"]
       },
       "prompt": {
         "en": "Who is in your family?",

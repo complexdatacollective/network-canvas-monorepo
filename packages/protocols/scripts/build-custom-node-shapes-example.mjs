@@ -126,7 +126,7 @@ function nameGenerator({ name, type, label, prompt }) {
     id: objectId(name),
     type: 'NameGenerator',
     label: en(label),
-    subject: { entity: 'node', type },
+    subject: { entity: 'node', types: [type] },
     form: {
       title: en('Add to my world'),
       fields: [
@@ -151,7 +151,7 @@ function sociogram({ name, type, edge, label }) {
     id: objectId(name),
     type: 'Sociogram',
     label: en(label),
-    subject: { entity: 'node', type },
+    subject: { entity: 'node', types: [type] },
     background: { concentricCircles: 3, skewedTowardCenter: true },
     prompts: [
       {

@@ -568,7 +568,7 @@
       "interviewScript": "Each prompt asks about a different shared activity. The same person can take part in several of these activities; when they do, add them once and then select them from the panel of people already mentioned for the other prompts, rather than typing their name again.",
       "subject": {
         "entity": "node",
-        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
+        "types": ["d2196845-950a-5f79-a394-618fcb5028bf"]
       },
       "form": {
         "title": {
@@ -638,7 +638,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
+        "types": ["d2196845-950a-5f79-a394-618fcb5028bf"]
       },
       "form": {
         "fields": [
@@ -698,7 +698,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
+        "types": ["d2196845-950a-5f79-a394-618fcb5028bf"]
       },
       "prompts": [
         {
@@ -722,7 +722,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "d2196845-950a-5f79-a394-618fcb5028bf"
+        "types": ["d2196845-950a-5f79-a394-618fcb5028bf"]
       },
       "behaviours": {
         "automaticLayout": true,

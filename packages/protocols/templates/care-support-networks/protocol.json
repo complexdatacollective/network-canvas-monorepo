@@ -844,7 +844,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
+        "types": ["55ab482e-6ed4-5905-bc48-37acdcc7871c"]
       },
       "form": {
         "title": {
@@ -898,7 +898,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
+        "types": ["55ab482e-6ed4-5905-bc48-37acdcc7871c"]
       },
       "prompts": [
         {
@@ -928,7 +928,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
+        "types": ["55ab482e-6ed4-5905-bc48-37acdcc7871c"]
       },
       "form": {
         "fields": [
@@ -974,7 +974,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
+        "types": ["55ab482e-6ed4-5905-bc48-37acdcc7871c"]
       },
       "prompts": [
         {
@@ -998,7 +998,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "55ab482e-6ed4-5905-bc48-37acdcc7871c"
+        "types": ["55ab482e-6ed4-5905-bc48-37acdcc7871c"]
       },
       "behaviours": {
         "automaticLayout": true,

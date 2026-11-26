@@ -863,7 +863,7 @@
       "interviewScript": "This generator elicits supportive ties. Encourage the participant to think broadly — these can be people they confide in, turn to for advice, or rely on for practical help. The same person may also be named later as a source of stress; that is expected.",
       "subject": {
         "entity": "node",
-        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
+        "types": ["aac8cd80-ac51-5968-98a0-2dc480492dd5"]
       },
       "form": {
         "title": {
@@ -942,7 +942,7 @@
       "interviewScript": "This generator elicits difficult or draining ties (negative and ambivalent relationships). Reassure the participant that almost everyone has people like this, and that naming someone here does not mean the relationship is all bad. If a person they already named as supportive is also a source of stress, they can add them again here — this captures ambivalent ties.",
       "subject": {
         "entity": "node",
-        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
+        "types": ["aac8cd80-ac51-5968-98a0-2dc480492dd5"]
       },
       "form": {
         "title": {
@@ -1008,7 +1008,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
+        "types": ["aac8cd80-ac51-5968-98a0-2dc480492dd5"]
       },
       "form": {
         "fields": [
@@ -1050,7 +1050,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
+        "types": ["aac8cd80-ac51-5968-98a0-2dc480492dd5"]
       },
       "prompts": [
         {
@@ -1079,7 +1079,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
+        "types": ["aac8cd80-ac51-5968-98a0-2dc480492dd5"]
       },
       "prompts": [
         {
@@ -1100,7 +1100,7 @@
       "interviewScript": "This is a reflective, manual-positioning stage (no automatic layout): invite the participant to arrange the people meaningfully — for example supportive people on one side, difficult or draining people on the other, and those they feel closest to nearer the centre of the rings — then draw lines between people who know one another. The arrangement they build becomes the network map they talk through on the final review screen, so the positions are meaningful here rather than incidental.",
       "subject": {
         "entity": "node",
-        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
+        "types": ["aac8cd80-ac51-5968-98a0-2dc480492dd5"]
       },
       "background": {
         "concentricCircles": 3,
@@ -1133,7 +1133,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "aac8cd80-ac51-5968-98a0-2dc480492dd5"
+        "types": ["aac8cd80-ac51-5968-98a0-2dc480492dd5"]
       },
       "behaviours": {
         "automaticLayout": true,

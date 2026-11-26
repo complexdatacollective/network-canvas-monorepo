@@ -120,7 +120,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "6c139b87-6a3c-5590-819d-1fe9355f6863"
+        "types": ["6c139b87-6a3c-5590-819d-1fe9355f6863"]
       },
       "quickAdd": "8247c57c-644d-5638-af6a-36765e0925a8",
       "behaviours": {
@@ -147,7 +147,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "6c139b87-6a3c-5590-819d-1fe9355f6863"
+        "types": ["6c139b87-6a3c-5590-819d-1fe9355f6863"]
       },
       "background": {
         "concentricCircles": 4,

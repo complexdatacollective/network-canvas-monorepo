@@ -1065,7 +1065,7 @@
       "interviewScript": "Use the standard General Social Survey 'important matters' confidant generator. Allow the respondent to name as many or as few people as they wish; do not prompt for a target number.",
       "subject": {
         "entity": "node",
-        "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
+        "types": ["8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"]
       },
       "form": {
         "title": {
@@ -1101,7 +1101,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
+        "types": ["8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"]
       },
       "prompts": [
         {
@@ -1132,7 +1132,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
+        "types": ["8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"]
       },
       "form": {
         "fields": [
@@ -1206,7 +1206,7 @@
       "interviewScript": "For each person in turn, the respondent taps everyone else that person knows. This systematically elicits the complete set of alter-alter ties — more reliably than a free-draw sociogram, which tends to under-capture them — giving the density and fragmentation measures that isolation analysis depends on. It is also lower-burden than an all-pairs dyad census.",
       "subject": {
         "entity": "node",
-        "type": "8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"
+        "types": ["8f8d4096-145c-57ee-ab8a-c95aaf2d3b44"]
       },
       "behaviours": {
         "removeAfterConsideration": true

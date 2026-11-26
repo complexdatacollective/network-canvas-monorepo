@@ -472,7 +472,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
+        "types": ["6f6d2842-f372-5fdb-969e-45df0c5a8143"]
       },
       "form": {
         "title": {
@@ -520,7 +520,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
+        "types": ["6f6d2842-f372-5fdb-969e-45df0c5a8143"]
       },
       "form": {
         "title": {
@@ -569,7 +569,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
+        "types": ["6f6d2842-f372-5fdb-969e-45df0c5a8143"]
       },
       "form": {
         "fields": [
@@ -649,7 +649,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "6f6d2842-f372-5fdb-969e-45df0c5a8143"
+        "types": ["6f6d2842-f372-5fdb-969e-45df0c5a8143"]
       },
       "background": {
         "concentricCircles": 4

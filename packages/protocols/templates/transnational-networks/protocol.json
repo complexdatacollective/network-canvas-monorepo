@@ -835,7 +835,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "c3006c14-1177-50d2-937f-157d0fda53de"
+        "types": ["c3006c14-1177-50d2-937f-157d0fda53de"]
       },
       "form": {
         "title": {
@@ -904,7 +904,7 @@
       ],
       "subject": {
         "entity": "node",
-        "type": "c3006c14-1177-50d2-937f-157d0fda53de"
+        "types": ["c3006c14-1177-50d2-937f-157d0fda53de"]
       },
       "form": {
         "title": {
@@ -971,7 +971,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "c3006c14-1177-50d2-937f-157d0fda53de"
+        "types": ["c3006c14-1177-50d2-937f-157d0fda53de"]
       },
       "form": {
         "fields": [
@@ -1029,7 +1029,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "c3006c14-1177-50d2-937f-157d0fda53de"
+        "types": ["c3006c14-1177-50d2-937f-157d0fda53de"]
       },
       "prompts": [
         {
@@ -1060,7 +1060,7 @@
       "interviewScript": "This map stage ships ready to run: it uses Network Canvas's shared Mapbox testing token and a bundled world-countries GeoJSON whose features expose a `name` property. The testing token is rate-limited and for evaluation only — before you field this study, replace it in Architect with your OWN Mapbox access token (see the warning on the protocol timeline). You can also swap the bundled boundaries for your own GeoJSON if you need finer detail.",
       "subject": {
         "entity": "node",
-        "type": "c3006c14-1177-50d2-937f-157d0fda53de"
+        "types": ["c3006c14-1177-50d2-937f-157d0fda53de"]
       },
       "mapOptions": {
         "tokenAssetId": "mapbox-testing-token",
@@ -1095,7 +1095,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "c3006c14-1177-50d2-937f-157d0fda53de"
+        "types": ["c3006c14-1177-50d2-937f-157d0fda53de"]
       },
       "prompts": [
         {
@@ -1128,7 +1128,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "c3006c14-1177-50d2-937f-157d0fda53de"
+        "types": ["c3006c14-1177-50d2-937f-157d0fda53de"]
       },
       "background": {
         "concentricCircles": 4
@@ -1179,7 +1179,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "c3006c14-1177-50d2-937f-157d0fda53de"
+        "types": ["c3006c14-1177-50d2-937f-157d0fda53de"]
       },
       "behaviours": {
         "automaticLayout": true,

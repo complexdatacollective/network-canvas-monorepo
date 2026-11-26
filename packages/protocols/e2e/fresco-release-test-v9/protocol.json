@@ -450,7 +450,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
+        "types": ["f37ad799-bba7-537b-ada5-60eac0036ea1"]
       },
       "prompts": [
         {
@@ -476,7 +476,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
+        "types": ["f37ad799-bba7-537b-ada5-60eac0036ea1"]
       },
       "form": {
         "fields": [
@@ -500,7 +500,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
+        "types": ["f37ad799-bba7-537b-ada5-60eac0036ea1"]
       },
       "prompts": [
         {
@@ -544,7 +544,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "f37ad799-bba7-537b-ada5-60eac0036ea1"
+        "types": ["f37ad799-bba7-537b-ada5-60eac0036ea1"]
       },
       "prompts": [
         {
@@ -567,7 +567,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "4b00deb4-c117-56d8-b086-8e6fe6c802c1"
+        "types": ["4b00deb4-c117-56d8-b086-8e6fe6c802c1"]
       },
       "prompt": {
         "en": "Add the members of your family.",
