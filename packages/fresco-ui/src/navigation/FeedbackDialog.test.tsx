@@ -13,7 +13,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { withSafeTypingIntoRichText } from '../testing/withSafeTypingIntoRichText';
 import { Toaster } from '../Toast';
 import { FORUM_TOPIC_URL_MAX_LENGTH, forumTopicUrl } from './communityForum';
-import FeedbackDialog, { type FeedbackResponse } from './FeedbackDialog';
+import FeedbackDialog, {
+  FeedbackFormScope,
+  type FeedbackResponse,
+} from './FeedbackDialog';
 
 const TITLE = 'Share feedback';
 const THANKS = 'Thanks for your feedback. It has been sent to our team.';
@@ -27,13 +30,18 @@ const EMAIL_HINT =
   'If you would like us to contact you about your feedback, please provide your email address. Anonymous feedback is also welcome.';
 
 /** Renders inside a toast provider, as every host does. */
-function render(ui: ReactElement) {
+function renderOnPage(ui: ReactElement) {
   return renderUnwrapped(
     <Toast.Provider>
       {ui}
       <Toaster />
     </Toast.Provider>,
   );
+}
+
+/** Renders with a form of its own, so tests do not share a draft. */
+function render(ui: ReactElement) {
+  return renderOnPage(<FeedbackFormScope>{ui}</FeedbackFormScope>);
 }
 
 /** The thanks, shown as a notification once the dialog has closed. */
@@ -360,6 +368,48 @@ describe('FeedbackDialog', () => {
     );
 
     expect(await openForm(user)).toHaveTextContent('Half a thought');
+  });
+
+  // A host may render a control in a drawer that unmounts when it closes, and
+  // another for a different screen width. The draft is the page's, so none of
+  // them takes it away, and every one opens it.
+  it('keeps one draft for the page, across controls and after one unmounts', async () => {
+    const user = setup();
+    const onSubmit = vi.fn();
+    const view = renderOnPage(
+      <FeedbackDialog
+        onSubmit={onSubmit}
+        // oxlint-disable-next-line jsx-a11y/control-has-associated-label
+        renderTrigger={<button type="button" data-testid="in-drawer" />}
+      />,
+    );
+
+    await user.type(await openForm(user), 'Half a thought');
+    await user.type(emailBox(), 'someone@example.org');
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    view.unmount();
+
+    renderOnPage(<FeedbackDialog onSubmit={onSubmit} />);
+    await openDialog(user);
+    expect(
+      screen.getByRole('textbox', { name: 'Your feedback' }),
+    ).toHaveTextContent('Half a thought');
+    expect(emailBox()).toHaveValue('someone@example.org');
+
+    // Sending empties the page's form, for the next test as for the person.
+    await user.click(sendButton());
+    await expectThanksAfterClosing();
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith({
+      feedback: 'Half a thought',
+      email: 'someone@example.org',
+    });
+    await openForm(user);
+    expect(
+      screen.getByRole('textbox', { name: 'Your feedback' }),
+    ).toHaveTextContent('');
   });
 
   it('starts again with an empty form the next time it opens', async () => {

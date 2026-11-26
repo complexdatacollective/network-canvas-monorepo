@@ -121,4 +121,20 @@ describe('FrescoFeedback', () => {
     expect(init?.body).toEqual(expect.any(String));
     expect(init?.body).not.toContain('clx0abc123def456ghi789jkl');
   });
+
+  it('keeps the rest of the feedback after a redacted participant link', async () => {
+    await sendFeedback(
+      'Why? It broke at https://study.example.com/interview/clx0abc123def456ghi789jkl?mode=x. The important error is a timeout.',
+    );
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    if (typeof init?.body !== 'string') throw new Error('Expected a JSON body');
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the body this test's own code path serialised
+    const body = JSON.parse(init.body) as {
+      properties: Record<string, unknown>;
+    };
+    expect(body.properties[ANSWER]).toBe(
+      'Why? It broke at https://study.example.com/interview/[redacted] The important error is a timeout.',
+    );
+  });
 });

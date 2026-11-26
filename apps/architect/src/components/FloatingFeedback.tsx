@@ -2,12 +2,15 @@ import { useSyncExternalStore } from 'react';
 
 import FeedbackDialog from '@codaco/fresco-ui/navigation/FeedbackDialog';
 import { appFeedbackSurvey } from '@codaco/shared-consts';
-import { posthog } from '~/analytics';
+import { posthog, sendFeedbackEvent } from '~/analytics';
 import { usePublishedBlockHeight } from '~/hooks/usePublishedBlockHeight';
 import { FLOATING_FEEDBACK_WIDTH_VARIABLE } from '~/utils/floatingFeedbackWidth';
 
-const survey = appFeedbackSurvey((event, properties) =>
-  posthog.capture(event, properties),
+// Opening the form is usage, reported like the rest of Architect's. What
+// someone writes and sends goes out anonymously, apart from that usage.
+const survey = appFeedbackSurvey(
+  (event, properties) => posthog.capture(event, properties),
+  sendFeedbackEvent,
 );
 
 const ownWidth = (element: HTMLElement): number =>

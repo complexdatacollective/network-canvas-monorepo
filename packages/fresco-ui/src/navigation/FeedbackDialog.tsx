@@ -10,15 +10,19 @@ import {
 } from 'lucide-react';
 import {
   cloneElement,
+  createContext,
   type ReactElement,
   type ReactNode,
   type SyntheticEvent,
+  useContext,
   useId,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import type { ZodMiniType } from 'zod/mini';
+import { useStore } from 'zustand';
+import { createStore } from 'zustand/vanilla';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -188,6 +192,50 @@ const EMPTY_DRAFT: Draft = {
 
 type Status = 'idle' | 'sending' | 'failed';
 
+type FeedbackForm = {
+  draft: Draft;
+  /** Counts the times the form has started again; it keys the editor. */
+  generation: number;
+  emailChecked: boolean;
+  status: Status;
+  /**
+   * Set once a send succeeds. The form is emptied after the dialog has
+   * finished closing, so it does not turn empty while it is still on screen.
+   */
+  sent: boolean;
+};
+
+const EMPTY_FORM: FeedbackForm = {
+  draft: EMPTY_DRAFT,
+  generation: 0,
+  emailChecked: false,
+  status: 'idle',
+  sent: false,
+};
+
+const createFeedbackForm = () => createStore<FeedbackForm>(() => EMPTY_FORM);
+
+/**
+ * The page's one feedback form. It outlives every Feedback control, so all of
+ * them on a page share one draft, and a control that unmounts, in a drawer
+ * that closes or a bar that changes with the screen's width, takes nothing
+ * with it.
+ */
+const FeedbackFormContext = createContext(createFeedbackForm());
+
+/**
+ * Gives the Feedback controls inside it a form of their own, apart from the
+ * page's, so that tests and stories do not share a draft.
+ */
+export function FeedbackFormScope({ children }: { children: ReactNode }) {
+  const [form] = useState(createFeedbackForm);
+  return (
+    <FeedbackFormContext.Provider value={form}>
+      {children}
+    </FeedbackFormContext.Provider>
+  );
+}
+
 /** The first message a shared validation rule gives for `value`, if any. */
 function firstIssue(schema: ZodMiniType, value: unknown) {
   const result = schema.safeParse(value);
@@ -331,7 +379,7 @@ function ForumLink({ href, children }: { href: string; children: ReactNode }) {
  * the person to post, unless they switch it to go privately to the team, with
  * an optional email for a reply.
  * Hosts own where a private response goes and the button's look; the copy is
- * shared.
+ * shared. Every Feedback control on a page opens the same draft.
  */
 export default function FeedbackDialog({
   onSubmit,
@@ -350,17 +398,17 @@ export default function FeedbackDialog({
   const formRef = useRef<HTMLFormElement>(null);
   const { add: addToast } = useToast();
   const [open, setOpen] = useState(defaultOpen);
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
-  // The editor keeps its own content once mounted; a new key empties it.
-  const [editorKey, setEditorKey] = useState(0);
-  const [emailChecked, setEmailChecked] = useState(false);
-  const [status, setStatus] = useState<Status>('idle');
-  // Set once a send succeeds. The form is emptied after the dialog has
-  // finished closing, so it does not turn empty while it is still on screen.
-  const sentRef = useRef(false);
+  const form = useContext(FeedbackFormContext);
+  // The editor keeps its own content once mounted; a new generation's key
+  // empties it.
+  const { draft, generation, emailChecked, status } = useStore(form);
 
   const update = (patch: Partial<Draft>) =>
-    setDraft((current) => ({ ...current, ...patch }));
+    form.setState(({ draft: current }) => ({
+      draft: { ...current, ...patch },
+    }));
+  const setEmailChecked = () => form.setState({ emailChecked: true });
+  const setStatus = (next: Status) => form.setState({ status: next });
 
   const emailRule = useMemo(
     () => validations.email(undefined, undefined, intl)(),
@@ -398,12 +446,11 @@ export default function FeedbackDialog({
   // failed send are all kept, and so is a draft handed to the forum, which may
   // need opening again after the forum asks the person to sign in.
   const resetIfSent = () => {
-    if (!sentRef.current) return;
-    sentRef.current = false;
-    setDraft(EMPTY_DRAFT);
-    setEditorKey((key) => key + 1);
-    setEmailChecked(false);
-    setStatus('idle');
+    if (!form.getState().sent) return;
+    form.setState(({ generation: last }) => ({
+      ...EMPTY_FORM,
+      generation: last + 1,
+    }));
   };
 
   const openDialog = () => {
@@ -416,7 +463,7 @@ export default function FeedbackDialog({
 
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
-    setEmailChecked(true);
+    setEmailChecked();
     if (toForum || !hasFeedback || sending || lengthError || emailError) return;
     setStatus('sending');
     try {
@@ -424,7 +471,7 @@ export default function FeedbackDialog({
         address === '' ? { feedback } : { feedback, email: address },
       );
       // The form keeps its sending state until the dialog has closed.
-      sentRef.current = true;
+      form.setState({ sent: true });
       setOpen(false);
       addToast({
         title: intl.formatMessage(messages.thanks),
@@ -529,7 +576,7 @@ export default function FeedbackDialog({
             />
           )}
           <UnconnectedField
-            key={editorKey}
+            key={generation}
             name="feedback"
             label={intl.formatMessage(
               toForum ? messages.postLabel : messages.feedbackLabel,
@@ -562,7 +609,7 @@ export default function FeedbackDialog({
               autoComplete="email"
               value={draft.email}
               onChange={(email) => update({ email: email ?? '' })}
-              onBlur={() => setEmailChecked(true)}
+              onBlur={setEmailChecked}
               readOnly={sending}
               errors={emailError && emailChecked ? [emailError] : undefined}
               showErrors={Boolean(emailError && emailChecked)}

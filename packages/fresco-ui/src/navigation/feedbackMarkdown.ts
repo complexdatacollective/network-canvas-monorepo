@@ -1,7 +1,5 @@
 import type { JSONContent } from '@tiptap/react';
 
-const INDENT = '  ';
-
 function inline(nodes: readonly JSONContent[] | undefined): string {
   return (nodes ?? [])
     .map((node) => {
@@ -19,28 +17,37 @@ function inline(nodes: readonly JSONContent[] | undefined): string {
     .join('');
 }
 
-function list(node: JSONContent, depth: number): string {
+const isList = (node: JSONContent) =>
+  node.type === 'bulletList' || node.type === 'orderedList';
+
+function list(node: JSONContent, indent: string): string {
   const ordered = node.type === 'orderedList';
   const start =
     ordered && typeof node.attrs?.start === 'number' ? node.attrs.start : 1;
   return (node.content ?? [])
     .map((item, index) => {
       const marker = ordered ? `${start + index}.` : '-';
-      const pad = INDENT.repeat(depth);
-      const [first, ...rest] = (item.content ?? []).map((child) =>
-        block(child, depth + 1),
-      );
-      const head = `${pad}${marker} ${(first ?? '').replaceAll('\n', `\n${pad}${INDENT}`)}`;
-      return [head, ...rest].join('\n');
+      // A line belongs to the item only when it is indented past the item's
+      // marker, which is wider for a number than for a bullet.
+      const inner = indent + ' '.repeat(marker.length + 1);
+      const [first, ...rest] = item.content ?? [];
+      const head = `${indent}${marker} ${first ? block(first, inner).slice(inner.length) : ''}`;
+      return [
+        head,
+        ...rest.map((child) =>
+          // A second paragraph in the item needs a blank line before it, or
+          // it runs on into the one above.
+          isList(child) ? block(child, inner) : `\n${block(child, inner)}`,
+        ),
+      ].join('\n');
     })
     .join('\n');
 }
 
-function block(node: JSONContent, depth: number): string {
-  if (node.type === 'bulletList' || node.type === 'orderedList') {
-    return list(node, depth);
-  }
-  return inline(node.content);
+/** A block of the document, every line of it indented by `indent`. */
+function block(node: JSONContent, indent: string): string {
+  if (isList(node)) return list(node, indent);
+  return `${indent}${inline(node.content).replaceAll('\n', `\n${indent}`)}`;
 }
 
 /**
@@ -50,7 +57,7 @@ function block(node: JSONContent, depth: number): string {
  */
 export function feedbackMarkdown(document: JSONContent | undefined): string {
   return (document?.content ?? [])
-    .map((node) => block(node, 0))
+    .map((node) => block(node, ''))
     .join('\n\n')
     .trim();
 }

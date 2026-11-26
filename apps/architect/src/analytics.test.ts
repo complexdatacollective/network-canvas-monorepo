@@ -21,7 +21,7 @@ vi.mock('posthog-js/dist/module.no-external', () => {
   return { default: posthog, posthog };
 });
 
-import { initializeAnalytics } from './analytics';
+import { feedbackSender, initializeAnalytics } from './analytics';
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -96,5 +96,77 @@ describe('initializeAnalytics', () => {
     expect(init).not.toHaveBeenCalled();
     expect(register).not.toHaveBeenCalled();
     expect(identify).not.toHaveBeenCalled();
+  });
+});
+
+describe('feedbackSender', () => {
+  const fetchMock = vi.fn<typeof fetch>(() =>
+    Promise.resolve(new Response(null, { status: 200 })),
+  );
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // posthog-js stamps every event with the installation ID and its own
+  // persistent distinct id, so a response sent through it could be linked to
+  // the installation's usage and to every other response, and an email given
+  // in one to all of them.
+  it('posts a response to the relay with nothing that identifies the installation', async () => {
+    vi.stubGlobal('fetch', fetchMock);
+    localStorage.setItem(
+      'network-canvas-architect-installation-id',
+      'installation-id',
+    );
+    const send = feedbackSender({ disabled: false, isDevelopment: false });
+
+    await send('survey sent', { answer: 'Let me duplicate a stage.' });
+    await send('survey sent', { answer: 'And a prompt.' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const bodies = fetchMock.mock.calls.map(([url, request]) => {
+      expect(url).toBe(`${POSTHOG_HOST}/i/v0/e/`);
+      if (typeof request?.body !== 'string') {
+        throw new Error('Expected a JSON body');
+      }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the body this test's own code path serialised
+      return JSON.parse(request.body) as {
+        distinct_id: string;
+        properties: Record<string, unknown>;
+      };
+    });
+    for (const body of bodies) {
+      expect(body.properties).toMatchObject({
+        app: 'ArchitectWeb',
+        $process_person_profile: false,
+        $geoip_disable: true,
+      });
+      expect(body.properties).not.toHaveProperty('installation_id');
+      expect(JSON.stringify(body)).not.toContain('installation-id');
+    }
+    expect(bodies[0]?.distinct_id).not.toBe(bodies[1]?.distinct_id);
+  });
+
+  it('rejects when the relay does not accept the response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>(() =>
+        Promise.resolve(new Response(null, { status: 503 })),
+      ),
+    );
+    const send = feedbackSender({ disabled: false, isDevelopment: false });
+
+    await expect(send('survey sent', {})).rejects.toThrow();
+  });
+
+  it.each([
+    { disabled: false, isDevelopment: true },
+    { disabled: true, isDevelopment: false },
+  ])('sends nothing where analytics are off (%o)', async (environment) => {
+    vi.stubGlobal('fetch', fetchMock);
+
+    await feedbackSender(environment)('survey sent', {});
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

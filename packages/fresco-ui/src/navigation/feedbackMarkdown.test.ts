@@ -70,4 +70,52 @@ describe('feedbackMarkdown', () => {
       }),
     ).toBe('Ideas:\n\n- Dark theme\n- Export\n  3. CSV\n  4. GraphML');
   });
+
+  // A nested list belongs to its item only when indented past the item's
+  // marker, so two spaces are not enough under "1. ", or four under "10. ".
+  it('indents a nested list past the marker of the item it is in', () => {
+    expect(
+      feedbackMarkdown({
+        type: 'doc',
+        content: [
+          {
+            type: 'orderedList',
+            attrs: { start: 9 },
+            content: [
+              item(paragraph(text('Export')), {
+                type: 'bulletList',
+                content: [
+                  item(
+                    paragraph(
+                      text('CSV'),
+                      { type: 'hardBreak' },
+                      text('with headers'),
+                    ),
+                  ),
+                ],
+              }),
+              item(paragraph(text('Import')), {
+                type: 'bulletList',
+                content: [item(paragraph(text('GraphML')))],
+              }),
+            ],
+          },
+        ],
+      }),
+    ).toBe('9. Export\n   - CSV\n     with headers\n10. Import\n    - GraphML');
+  });
+
+  it('keeps a second paragraph inside its list item', () => {
+    expect(
+      feedbackMarkdown({
+        type: 'doc',
+        content: [
+          {
+            type: 'orderedList',
+            content: [item(paragraph(text('One')), paragraph(text('More')))],
+          },
+        ],
+      }),
+    ).toBe('1. One\n\n   More');
+  });
 });

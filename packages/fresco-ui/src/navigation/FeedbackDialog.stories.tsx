@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, screen, userEvent, waitFor } from 'storybook/test';
 
 import { withToastProvider } from '../storybook-support/withToastProvider';
-import FeedbackDialog from './FeedbackDialog';
+import FeedbackDialog, { FeedbackFormScope } from './FeedbackDialog';
 
 const documentation = `
 The feedback control shared by Architect, Interviewer and Fresco: a button
@@ -53,7 +53,16 @@ const meta = {
   title: 'Navigation/FeedbackDialog',
   component: FeedbackDialog,
   tags: ['autodocs'],
-  decorators: [withToastProvider],
+  decorators: [
+    withToastProvider,
+    // Each story has its own form, rather than the one every Feedback control
+    // on a page shares.
+    (Story) => (
+      <FeedbackFormScope>
+        <Story />
+      </FeedbackFormScope>
+    ),
+  ],
   parameters: {
     layout: 'centered',
     docs: { description: { component: documentation } },
