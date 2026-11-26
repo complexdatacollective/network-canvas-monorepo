@@ -319,7 +319,7 @@ describe.skipIf(!storeDb)('the sections_hold_no_asset_keys trigger', () => {
       await insertSection('a-stage', {
         id: 'nameGenerator1',
         type: 'NameGenerator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         form: { title: { en: 'Add person' }, fields: [] },
       }),
     ).toMatchObject({ state: NOT_REFUSED });

@@ -243,7 +243,7 @@ export function baseProtocol(): CurrentProtocol {
           id: BASE_PROTOCOL_IDS.nameGenerator,
           type: 'NameGenerator',
           label: { en: 'Generate Names' },
-          subject: { entity: 'node', type: BASE_CODEBOOK_IDS.person },
+          subject: { entity: 'node', types: [BASE_CODEBOOK_IDS.person] },
           form: {
             title: { en: 'Add person' },
             fields: [
@@ -265,7 +265,7 @@ export function baseProtocol(): CurrentProtocol {
           id: BASE_PROTOCOL_IDS.sociogram,
           type: 'Sociogram',
           label: { en: 'Sociogram' },
-          subject: { entity: 'node', type: BASE_CODEBOOK_IDS.person },
+          subject: { entity: 'node', types: [BASE_CODEBOOK_IDS.person] },
           background: { concentricCircles: 4 },
           prompts: [
             {

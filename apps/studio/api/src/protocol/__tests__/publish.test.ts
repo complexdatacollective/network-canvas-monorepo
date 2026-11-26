@@ -111,8 +111,9 @@ describe.skipIf(!storeDb)('publishDraft', () => {
 
   it('returns invalid (writing nothing) when the assembled document fails validation', async () => {
     const protocol = baseProtocol();
-    (protocol.stages[0] as { subject: { type: string } }).subject.type =
-      'ghost';
+    const [stage] = protocol.stages;
+    if (stage?.type !== 'NameGenerator') throw new Error('No name generator');
+    stage.subject.types = ['ghost'];
     const { protocolId, draftId } = await run(
       createProtocol(TEST_TEAM_ID, cipher, { protocol }),
     );

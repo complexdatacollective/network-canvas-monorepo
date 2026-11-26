@@ -153,14 +153,14 @@ describe('golden hashes', () => {
         "codebook:edge:1d966f2b-32fc-51de-8d8d-334de4009e6c": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
         "codebook:node:62c26eae-2583-582b-9355-1a478554b68c": "3d71952a42cd3a858e8bcb56a81fe8e394502eddc45a765add99e133598ad8af",
         "settings": "62eb33d43a79ad953fb8d44150ef3d9388bcecb0ec4ba390695b52cdaf43f3ae",
-        "stage:3c07e726-388f-4af2-99ce-bbe2aa1b31eb": "5818e8726f9c896a11a5a781d9e79490bf5d27aa07bb34fb34f22ede254fbc88",
-        "stage:7f96f8ac-4f56-4f34-9195-dae7858b93f7": "b549964db19173f76c1720556b9d76e08c8a8d186768ac92667b03b05f4d4004",
+        "stage:3c07e726-388f-4af2-99ce-bbe2aa1b31eb": "d955c844e8a4c6f6f8a6730b07d6a3d307fab053f20f2d68b554d51d10ec53f8",
+        "stage:7f96f8ac-4f56-4f34-9195-dae7858b93f7": "16366cffd5936f9a2d1059f2dff27daf289bfd5ce64f766d21eb6780e71b37cc",
         "stage:8f480b11-39d0-4912-ade7-1d5040bf1f71": "954ea2a1e6a8b5428c4178f2b616631a0bdd4551b60174670fadc1ee29f55657",
         "stageOrder": "4c49e64f198d60f8f899dc13a92ef3c31f737dd35a89760449b611a107c4b814",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"9e1b79bde5e64b64d9b9e1be1125fe80063cf41f9c323ab5c42422bd2387e9bc"`,
+      `"eb1e6043a496c699cfb54163b62ab8d833752c33d372505d8cbbc4eaf568ef9e"`,
     );
   });
 });
