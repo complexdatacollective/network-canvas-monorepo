@@ -154,12 +154,17 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
             />
           )
         )}
+        {/* The text (title and description) is one block in both branches,
+            and its `not-last:mb-4` is the only space between it and an action
+            button below it. Nothing else adds space at the bottom, so the
+            toast's own padding is the same below the text or the button as
+            above the title. */}
         <div className="min-w-0 flex-1">
           {toast.data?.onClick ? (
             <button
               type="button"
               onClick={toast.data.onClick}
-              className="block w-full cursor-pointer text-start"
+              className="block w-full cursor-pointer text-start not-last:mb-4"
             >
               <Toast.Title render={<Heading level="h4" />} />
               {/* A native <button> may not contain interactive/tabbable
@@ -173,31 +178,24 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
               />
             </button>
           ) : (
-            <>
+            <div className="not-last:mb-4">
               <Toast.Title render={<Heading level="h4" />} />
               {/* h-auto: ScrollArea's h-full would fill the toast once its
                   measured height is applied, pushing an action button below
-                  it out of view. pt-0: the title's own bottom margin already
+                  it out of view. py-0: the title's own bottom margin already
                   separates it from the description, as in an Alert, and the
-                  viewport's top padding would double that gap. */}
+                  viewport's padding would double that gap above the
+                  description and add to the toast's padding below it. */}
               <Toast.Description
-                className={cx(
-                  DESCRIPTION_MAX_HEIGHT,
-                  'h-auto overflow-hidden not-last:mb-4',
-                )}
+                className={cx(DESCRIPTION_MAX_HEIGHT, 'h-auto overflow-hidden')}
                 render={
-                  <ScrollArea viewportClassName="font-body text-pretty pe-2 pt-0" />
+                  <ScrollArea viewportClassName="font-body text-pretty pe-2 py-0" />
                 }
               />
-            </>
+            </div>
           )}
           {toast.data?.onCancel && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={toast.data.onCancel}
-              className="mt-3 mb-1"
-            >
+            <Button type="button" size="sm" onClick={toast.data.onCancel}>
               {toast.data.cancelLabel ??
                 intl.formatMessage(commonMessages.cancel)}
             </Button>
