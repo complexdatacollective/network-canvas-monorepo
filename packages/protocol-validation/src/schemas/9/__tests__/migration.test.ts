@@ -2117,22 +2117,22 @@ describe('Migrating edge types from schema 8 to 9', () => {
   // Schema 8 never wrote these keys, but its edge types accepted any key,
   // so a hand-edited file could carry them.
   const schema8WithDirectedKnows = (...stages: Schema8Stage[]) => {
-    const document = schema8WithStages(...stages);
-    const { knows } = document.codebook.edge;
-    return {
-      ...document,
+    const base = createBaseProtocol();
+    const document = asSchema8Protocol({
+      ...base,
       codebook: {
-        ...document.codebook,
+        ...base.codebook,
         edge: {
-          ...document.codebook.edge,
+          ...base.codebook.edge,
           knows: {
-            ...knows,
+            ...base.codebook.edge.knows,
             directed: true,
             endpointRules: [{ sourceType: 'person', targetType: 'person' }],
           },
         },
       },
-    };
+    });
+    return { ...document, stages: [...document.stages, ...stages] };
   };
 
   it('leaves an edge type undirected with no rules when the schema 8 file carries those keys', () => {
