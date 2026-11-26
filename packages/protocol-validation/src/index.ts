@@ -497,6 +497,9 @@ export {
   freshenProtocolFragmentIds,
 } from './utils/freshenProtocolFragmentIds.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';
+// Whether an edge type is directed and which node types it may connect, read
+// only through these (see `utils/edgeTypeRules.ts`).
+export { isDirectedEdgeType } from './utils/edgeTypeRules.ts';
 export {
   findRosterCharacterProblems,
   type RosterCharacterProblem,

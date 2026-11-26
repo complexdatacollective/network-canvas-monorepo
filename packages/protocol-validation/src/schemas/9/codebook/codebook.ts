@@ -68,6 +68,41 @@ export const CodebookSchema = z
       collectKeys(entity.variables),
     );
     collectKeys(codebook.ego?.variables);
+
+    const nodeTypeName = (type: string) =>
+      Object.hasOwn(codebook.node ?? {}, type)
+        ? (codebook.node?.[type]?.name ?? type)
+        : type;
+    for (const [edgeType, definition] of Object.entries(codebook.edge ?? {})) {
+      const seenRules = new Set<string>();
+      definition.endpointRules?.forEach((rule, ruleIndex) => {
+        for (const end of ['sourceType', 'targetType'] as const) {
+          if (!Object.hasOwn(codebook.node ?? {}, rule[end])) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `Edge type "${definition.name}" has a connection rule naming node type "${rule[end]}", which does not exist.`,
+              path: ['edge', edgeType, 'endpointRules', ruleIndex, end],
+            });
+          }
+        }
+        const pair = [rule.sourceType, rule.targetType];
+        const key = JSON.stringify(
+          definition.directed ? pair : pair.toSorted(),
+        );
+        if (seenRules.has(key)) {
+          const source = nodeTypeName(rule.sourceType);
+          const target = nodeTypeName(rule.targetType);
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: definition.directed
+              ? `Edge type "${definition.name}" allows connections from "${source}" to "${target}" more than once.`
+              : `Edge type "${definition.name}" allows connections between "${source}" and "${target}" more than once.`,
+            path: ['edge', edgeType, 'endpointRules', ruleIndex],
+          });
+        }
+        seenRules.add(key);
+      });
+    }
   });
 
 export type Codebook = z.infer<typeof CodebookSchema>;

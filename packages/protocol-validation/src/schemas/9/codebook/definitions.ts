@@ -10,6 +10,7 @@ import {
   type NodeColorReference,
 } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
+import { entityTypeReference } from '../entity-type-reference.ts';
 import { NodeLabelSchema } from '../node-label.ts';
 import {
   EdgeVariablesSchema,
@@ -170,10 +171,27 @@ export type NodeDefinition = z.infer<typeof NodeDefinitionSchema>;
 
 export type EdgeColor = EdgeColorReference;
 
+/**
+ * A pair of node types an edge type may connect: source then target for a
+ * directed type, an unordered pair for an undirected one. The same type on
+ * both ends allows two different nodes of that type.
+ */
+const EndpointRuleSchema = z.strictObject({
+  sourceType: entityTypeReference({ entity: 'node' }),
+  targetType: entityTypeReference({ entity: 'node' }),
+});
+
+export { EndpointRuleSchema };
+export type EndpointRule = z.infer<typeof EndpointRuleSchema>;
+
 const EdgeDefinitionSchema = z.strictObject({
   name: CodebookNameSchema,
   color: EdgeColorReferenceSchema.optional(),
   variables: EdgeVariablesSchema.optional(),
+  // Stored only when true: an undirected type carries no `directed` key.
+  directed: z.literal(true).optional(),
+  // Absent means any two nodes may connect.
+  endpointRules: z.array(EndpointRuleSchema).min(1).optional(),
 });
 
 export { EdgeDefinitionSchema };

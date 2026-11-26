@@ -187,4 +187,31 @@ describe('hashProtocol', () => {
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
   });
+
+  describe('edge type settings', () => {
+    const withEdgeType = (edgeType: Record<string, unknown>) => ({
+      ...localizedProtocol(),
+      codebook: {
+        node: { person: {}, org: {} },
+        edge: { advice: { name: 'Advice', ...edgeType } },
+      },
+    });
+
+    it('hash changes when an edge type becomes directed', () => {
+      expect(hashProtocol(withEdgeType({ directed: true }))).not.toBe(
+        hashProtocol(withEdgeType({})),
+      );
+    });
+
+    it('hash changes when endpoint rules change', () => {
+      const rules = (sourceType: string, targetType: string) =>
+        withEdgeType({ endpointRules: [{ sourceType, targetType }] });
+      expect(hashProtocol(rules('person', 'org'))).not.toBe(
+        hashProtocol(withEdgeType({})),
+      );
+      expect(hashProtocol(rules('person', 'org'))).not.toBe(
+        hashProtocol(rules('org', 'person')),
+      );
+    });
+  });
 });

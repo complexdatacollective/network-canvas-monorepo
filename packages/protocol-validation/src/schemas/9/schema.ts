@@ -5,7 +5,10 @@ import {
   isCanonicalLocale,
   isUndeterminedLocale,
 } from '../../localization/localeTag.ts';
-import { collectEntityAttributeReferencesFromSchema } from '../../utils/collectEntityAttributeReferences.ts';
+import {
+  collectEntityAttributeReferencesFromSchema,
+  collectEntityTypeReferencesFromSchema,
+} from '../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStringsFromSchema } from '../../utils/collectLocalizedStrings.ts';
 import {
   findExclusiveVariableConflicts,
@@ -61,6 +64,7 @@ import {
 } from './interface-owned-options.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolStructureSchema } from './protocol-structure.ts';
+import { stageEdgeTypeSupportIssues } from './stage-capabilities.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
 import type { Prompt, Stage } from './stages/index.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
@@ -745,6 +749,14 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
   );
   for (const issue of validateReferences(protocol.codebook, hits)) {
     ctx.addIssue(issue);
+  }
+
+  // Each stage refuses the edge type settings it cannot yet run.
+  for (const issue of stageEdgeTypeSupportIssues(
+    protocol,
+    collectEntityTypeReferencesFromSchema(ProtocolStructureSchema, protocol),
+  )) {
+    ctx.addIssue({ code: 'custom' as const, ...issue });
   }
 
   // Translations are checked against the declared languages only once that
