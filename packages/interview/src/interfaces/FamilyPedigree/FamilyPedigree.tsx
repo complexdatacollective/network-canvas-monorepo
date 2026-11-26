@@ -188,7 +188,7 @@ import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
-import { pedigreeLinksOf } from './pedigreeLinks';
+import { pedigreeLinksOf, unrecordedLinks } from './pedigreeLinks';
 import {
   completenessWordingFrom,
   PedigreeWordsProvider,
@@ -635,25 +635,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             }
           : edge;
       });
-    // An ordered compare, not `findEdge`: a parent edge always runs from the
-    // parent, so the order says who is whose parent.
-    const draftEdges: NcEdge[] = plan.links
-      .filter(
-        (link) =>
-          !edges.some(
-            (existing) =>
-              existing.type === config.relationshipType &&
-              existing.from === link.source &&
-              existing.to === link.target,
-          ),
-      )
-      .map((link, index) => ({
-        [entityPrimaryKeyProperty]: `draft-${index}`,
-        type: config.relationshipType,
-        from: link.source,
-        to: link.target,
-        [entityAttributesProperty]: linkAttributesFor(config, link),
-      }));
+    const draftEdges: NcEdge[] = unrecordedLinks(
+      plan.links,
+      edges,
+      config.relationshipType,
+    ).map((link, index) => ({
+      [entityPrimaryKeyProperty]: `draft-${index}`,
+      type: config.relationshipType,
+      from: link.source,
+      to: link.target,
+      [entityAttributesProperty]: linkAttributesFor(config, link),
+    }));
     const draftTwinEdges: NcEdge[] = (plan.twins ?? []).map((twin, index) => ({
       [entityPrimaryKeyProperty]: `draft-twin-${index}`,
       type: config.relationshipType,

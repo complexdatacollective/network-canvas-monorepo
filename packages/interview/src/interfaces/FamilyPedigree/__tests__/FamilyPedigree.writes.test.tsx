@@ -88,6 +88,8 @@ type InterviewOptions = {
   mumKind?: 'biological' | 'adoptive';
   /** Whether the stage asks about gender identity. */
   askGenderIdentity?: boolean;
+  /** The participant's node id. */
+  participantId?: string;
 };
 
 function interview({
@@ -95,6 +97,7 @@ function interview({
   twinOnly = false,
   mumKind = 'biological',
   askGenderIdentity = true,
+  participantId = 'ego',
 }: InterviewOptions = {}) {
   const si = new SyntheticInterview(1);
   const people = si.addNodeType({ name: 'Person' });
@@ -103,7 +106,7 @@ function interview({
     prompt: 'Add the members of your family.',
     askGenderIdentity,
   });
-  si.addManualNode(stage.id, stage.personType, 'ego', {
+  si.addManualNode(stage.id, stage.personType, participantId, {
     [stage.ego]: true,
     [stage.sexAssignedAtBirth]: ['female'],
     ...(stage.genderIdentity ? { [stage.genderIdentity]: ['woman'] } : {}),
@@ -113,7 +116,7 @@ function interview({
     [stage.sexAssignedAtBirth]: ['female'],
     ...(stage.genderIdentity ? { [stage.genderIdentity]: ['woman'] } : {}),
   });
-  si.addManualEdge(stage.edgeType, 'mum-ego', 'mum', 'ego', {
+  si.addManualEdge(stage.edgeType, 'mum-ego', 'mum', participantId, {
     [stage.kind]: [mumKind],
     [stage.gestationalCarrier]: true,
   });
@@ -127,7 +130,7 @@ function interview({
       [stage.kind]: ['biological'],
       [stage.gestationalCarrier]: true,
     });
-    si.addManualEdge(stage.edgeType, 'ego-sam', 'ego', 'sam', {
+    si.addManualEdge(stage.edgeType, 'ego-sam', participantId, 'sam', {
       [stage.kind]: ['fraternalTwin'],
     });
   }
@@ -136,7 +139,7 @@ function interview({
       [stage.ego]: false,
       [stage.sexAssignedAtBirth]: ['male'],
     });
-    si.addManualEdge(stage.edgeType, 'ego-sam', 'ego', 'sam', {
+    si.addManualEdge(stage.edgeType, 'ego-sam', participantId, 'sam', {
       [stage.kind]: ['fraternalTwin'],
     });
   }
@@ -414,12 +417,19 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
   });
 
   // Edge identity ignores the order of an undirected type's ends, but the
-  // family reads a parent edge's order: the parent is always `from`.
+  // family reads a parent edge's order: the parent is always `from`. The
+  // participant's id sorts before any generated id, so a write that sorted
+  // an edge's ends would put the participant first.
   it('parent edges keep parent as from after the identity change', async () => {
+    const participant = '-ego';
     const synced = vi.fn<SyncHandler>(async () => undefined);
-    render(<StoryInterviewShell rawPayload={interview()} onSync={synced} />, {
-      wrapper: WithoutMotion,
-    });
+    render(
+      <StoryInterviewShell
+        rawPayload={interview({ participantId: participant })}
+        onSync={synced}
+      />,
+      { wrapper: WithoutMotion },
+    );
     await waitFor(() =>
       expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3),
     );
@@ -428,15 +438,14 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
     );
     const network = synced.mock.lastCall?.[1].network;
     const standIn = network?.nodes.find(
-      (node) => node._uid !== 'ego' && node._uid !== 'mum',
+      (node) => node._uid !== participant && node._uid !== 'mum',
     );
     expect(standIn).toBeDefined();
-    expect(network?.edges.map(({ from, to }) => ({ from, to }))).toEqual(
-      expect.arrayContaining([
-        { from: 'mum', to: 'ego' },
-        { from: standIn?._uid, to: 'ego' },
-      ]),
-    );
+    expect(
+      network?.edges
+        .filter((edge) => edge._uid !== 'mum-ego')
+        .map(({ from, to }) => ({ from, to })),
+    ).toEqual([{ from: standIn?._uid, to: participant }]);
   });
 
   /** The participant, their biological mother Julie, and a stand-in the

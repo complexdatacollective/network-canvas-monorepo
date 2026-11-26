@@ -23,6 +23,7 @@ import type { AppDispatch } from '../../store';
 import sessionReducer, {
   addEdge,
   addNode,
+  addNodesAndEdges,
   addNodeToPrompt,
   deleteEdge,
   deleteNode,
@@ -881,6 +882,8 @@ describe('addEdge', () => {
   });
 });
 
+const SELF_LOOP_MESSAGE = 'An edge cannot connect a node to itself';
+
 describe('addEdge self-loops', () => {
   it('addEdge refuses a self-loop', async () => {
     const store = createTestStoreWithEdge({});
@@ -893,6 +896,54 @@ describe('addEdge self-loops', () => {
       }),
     );
     expect(result.type).toBe('NETWORK/ADD_EDGE/rejected');
+    expect('error' in result && result.error.message).toContain(
+      SELF_LOOP_MESSAGE,
+    );
+  });
+
+  it('addNodesAndEdges refuses a self-loop', async () => {
+    const store = createTestStoreWithEdge({});
+    const result = await store.dispatch(
+      addNodesAndEdges({
+        nodes: [],
+        edges: [{ type: EDGE_TYPE, from: 'node-1', to: 'node-1' }],
+        currentStep: 0,
+      }),
+    );
+    expect(result.type).toBe('NETWORK/ADD_NODES_AND_EDGES/rejected');
+    expect('error' in result && result.error.message).toContain(
+      SELF_LOOP_MESSAGE,
+    );
+  });
+});
+
+// A canonical sort would put node-1 first; the store keeps the order given.
+describe('edge endpoint order', () => {
+  it('addEdge keeps from and to as given for an undirected type', async () => {
+    const store = createTestStoreWithEdge({});
+    const result = await store.dispatch(
+      addEdge({
+        type: EDGE_TYPE,
+        from: 'node-2',
+        to: 'node-1',
+        currentStep: 0,
+      }),
+    );
+    expect(result.payload).toMatchObject({ from: 'node-2', to: 'node-1' });
+  });
+
+  it('addNodesAndEdges keeps from and to as given for an undirected type', async () => {
+    const store = createTestStoreWithEdge({});
+    const result = await store.dispatch(
+      addNodesAndEdges({
+        nodes: [],
+        edges: [{ type: EDGE_TYPE, from: 'node-2', to: 'node-1' }],
+        currentStep: 0,
+      }),
+    );
+    expect(result.payload).toMatchObject({
+      edges: [{ from: 'node-2', to: 'node-1' }],
+    });
   });
 });
 
