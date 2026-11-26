@@ -742,6 +742,48 @@ describe('the in-memory host', () => {
     expect(subject.store.has(spare)).toBe(false);
   });
 
+  it('refuses deleting a node type an endpoint rule names', async () => {
+    const spare = sectionId({ kind: 'codebookNode', typeId: SPARE });
+    const ruled = sectionId({
+      kind: 'codebookEdge',
+      typeId: testTypeId('ruled'),
+    });
+    const endpointRules = [
+      { sourceType: PERSON_TYPE, targetType: PERSON_TYPE },
+      { sourceType: SPARE, targetType: PERSON_TYPE },
+    ];
+    const subject = createInMemoryHost({
+      sections: {
+        ...sectionsFromProtocol(FIXTURE),
+        [spare]: {
+          name: 'Spare',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {},
+        },
+        [ruled]: { name: 'Ruled', color: 'edge-color-seq-1', endpointRules },
+      },
+    });
+
+    const { refusal, isSuccess } = await attempt(
+      subject.adapter,
+      'RefactorDeleteEntityType',
+      { protocolId: subject.protocolId, entity: 'node', typeId: SPARE },
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(refusal?._tag).toBe('ReferencesRemain');
+    expect(revealed(refusalData(refusal))).toMatchObject({
+      remaining: [
+        { sectionId: ruled, path: ['endpointRules', 1, 'sourceType'] },
+      ],
+    });
+    expect(subject.store.has(spare)).toBe(true);
+    expect(subject.store.read(ruled).document.endpointRules).toEqual(
+      endpointRules,
+    );
+  });
+
   it('hands out a copy of a section document, not the one it stores', async () => {
     const subject = host();
     const read = await subject.adapter.rpcCall('GetSection', {

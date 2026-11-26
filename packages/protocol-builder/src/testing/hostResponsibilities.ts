@@ -57,7 +57,7 @@ const RESPONSIBILITIES: Readonly<Record<string, string>> = {
   RefactorDeleteVariable:
     'Remove a variable from the codebook and every stage that referenced it, as one change, so no stage is left pointing at an attribute the codebook no longer has.',
   RefactorDeleteEntityType:
-    'The same for a whole entity type: the type and every reference to it go together or not at all.',
+    'The same for a whole entity type: the type and every reference to it go together or not at all. An edge type’s endpoint rule is never removed this way: deleting a node type that a rule names is refused until the researcher removes the rule.',
   ResourcesList:
     'Say which files the protocol ships, so a picker can offer them without the editor holding a copy of the manifest.',
   ResourcesStage:

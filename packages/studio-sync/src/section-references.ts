@@ -16,7 +16,11 @@ import {
 import type { SectionDoc } from './apply.ts';
 import { assembleProtocolSections } from './protocol-document.ts';
 import { sectionShapeIssues } from './section-validation.ts';
-import { sectionId, type ProtocolSectionId } from './taxonomy.ts';
+import {
+  parseSectionId,
+  sectionId,
+  type ProtocolSectionId,
+} from './taxonomy.ts';
 
 type DocumentPath = (string | number)[];
 
@@ -245,6 +249,10 @@ function removeOneReference(
   remaining: readonly SectionReference[],
 ): boolean {
   for (const reference of inRemovalOrder(remaining)) {
+    // What an edge type names is its endpoint rules. Dropping one would
+    // quietly change which node types the edge type connects, so deleting a
+    // node type that a rule names is refused until the researcher removes it.
+    if (parseSectionId(reference.sectionId).kind === 'codebookEdge') continue;
     const current = documents[reference.sectionId];
     if (current === undefined) continue;
     const next = withoutReference(current, reference.path);
