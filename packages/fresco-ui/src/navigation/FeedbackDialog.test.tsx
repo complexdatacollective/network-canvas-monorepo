@@ -1,12 +1,21 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { withSafeTypingIntoRichText } from '../testing/withSafeTypingIntoRichText';
+import { FORUM_TOPIC_URL_MAX_LENGTH, forumTopicUrl } from './communityForum';
 import FeedbackDialog, { type FeedbackResponse } from './FeedbackDialog';
 
 const TITLE = 'Share feedback';
 const THANKS = 'Thanks for your feedback. It has been sent to our team.';
+const DESCRIPTION =
+  'This project depends on ideas and feedback from our users. If you have a suggestion for how the software could be improved, please share it with us. Thank you for your time!';
+const AUDIENCE_HINT =
+  'Post on the community forum to report a problem, suggest an idea, or get help from other researchers. If you’d rather not post publicly, you can send your feedback privately to our team instead. The forum opens in a new tab with a draft of your post. Posting it needs a forum account.';
+const TOO_LONG_FOR_FORUM =
+  'Your post is too long to send to the forum. Shorten it, or send it privately to our team instead.';
+const EMAIL_HINT =
+  'If you would like us to contact you about your feedback, please provide your email address. Anonymous feedback is also welcome.';
 
 function setup() {
   return withSafeTypingIntoRichText(userEvent.setup());
@@ -26,8 +35,23 @@ async function openForm(user: ReturnType<typeof setup>) {
   return screen.findByRole('textbox', { name: 'Your feedback' });
 }
 
+const audienceSwitch = () =>
+  screen.getByRole('group', { name: 'Who should see it?' });
 const forumOption = () =>
   screen.getByRole('button', { name: /Community forum/ });
+
+/** Pastes plain text into the rich-text box, faster than typing it. */
+function pasteInto(box: HTMLElement, text: string) {
+  fireEvent.focus(box);
+  fireEvent.paste(box, {
+    clipboardData: {
+      getData: (type: string) => (type === 'text/plain' ? text : ''),
+      types: ['text/plain'],
+      files: [],
+      items: [],
+    } as unknown as DataTransfer,
+  });
+}
 
 const sendButton = () =>
   screen.getByRole('button', { name: 'Send to our team' });
@@ -53,21 +77,16 @@ describe('FeedbackDialog', () => {
     await openDialog(user);
     expect(
       screen.getByRole('dialog', { name: TITLE }),
-    ).toHaveAccessibleDescription(/^Post on the community forum/);
+    ).toHaveAccessibleDescription(DESCRIPTION);
+    expect(forumOption()).toHaveAttribute('aria-pressed', 'true');
+    expect(audienceSwitch()).toHaveAccessibleDescription(AUDIENCE_HINT);
     expect(
       screen.getByRole('link', { name: 'community forum' }),
     ).toHaveAttribute('href', 'https://community.networkcanvas.com/');
     expect(
       screen.getByRole('link', { name: 'community forum' }),
     ).toHaveAttribute('target', '_blank');
-    expect(forumOption()).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
-    expect(
-      screen.getByRole('radio', { name: 'Feedback & Feature Requests' }),
-    ).toBeChecked();
-    expect(
-      screen.getByText('Suggestions for improving the software.'),
-    ).toBeVisible();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Your post' })).toBeVisible();
     expect(
       screen.queryByRole('textbox', { name: /^Email/ }),
@@ -77,16 +96,20 @@ describe('FeedbackDialog', () => {
     expect(
       screen.getByRole('textbox', { name: 'Your feedback' }),
     ).toBeVisible();
-    expect(screen.getByRole('textbox', { name: /^Email/ })).toBeVisible();
     expect(
-      screen.queryByRole('radio', { name: 'Help & Support' }),
+      screen.queryByRole('textbox', { name: 'Post title' }),
     ).not.toBeInTheDocument();
+    // The hint stays the same whichever option is chosen.
+    expect(audienceSwitch()).toHaveAccessibleDescription(AUDIENCE_HINT);
+    expect(emailBox()).toBeVisible();
+    expect(emailBox()).toHaveAccessibleName('Email');
+    expect(emailBox()).toHaveAccessibleDescription(EMAIL_HINT);
 
     await user.click(forumOption());
     expect(screen.getByRole('textbox', { name: 'Your post' })).toBeVisible();
   });
 
-  it('hands the feedback to the forum instead, in the section chosen', async () => {
+  it('hands the feedback to the forum instead, in the feedback section', async () => {
     const user = setup();
     const onSubmit = vi.fn();
     render(<FeedbackDialog onSubmit={onSubmit} />);
@@ -107,7 +130,7 @@ describe('FeedbackDialog', () => {
     await user.type(box, 'It stops & says nothing.');
     const forum = () =>
       screen.getByRole('link', { name: 'Continue on the forum' });
-    let url = new URL(forum().getAttribute('href') ?? '');
+    const url = new URL(forum().getAttribute('href') ?? '');
     expect(url.origin + url.pathname).toBe(
       'https://community.networkcanvas.com/new-topic',
     );
@@ -117,18 +140,6 @@ describe('FeedbackDialog', () => {
     expect(url.searchParams.get('title')).toBe('Export fails');
     expect(url.searchParams.get('body')).toBe('It stops & says nothing.');
     expect(forum()).toHaveAttribute('target', '_blank');
-    expect(screen.getByText(/for Feedback & Feature Requests\./)).toBeVisible();
-
-    await user.click(screen.getByRole('radio', { name: 'Help & Support' }));
-    url = new URL(forum().getAttribute('href') ?? '');
-    expect(url.searchParams.get('category')).toBe('help-support');
-    expect(screen.getByText(/for Help & Support\./)).toBeVisible();
-
-    await user.click(
-      screen.getByRole('radio', { name: 'General Conversation' }),
-    );
-    url = new URL(forum().getAttribute('href') ?? '');
-    expect(url.searchParams.get('category')).toBe('general');
 
     // The form stays as it is, so the draft can be opened again after the
     // forum asks the person to sign in.
@@ -139,6 +150,58 @@ describe('FeedbackDialog', () => {
       screen.getByRole('textbox', { name: 'Your post' }),
     ).toHaveTextContent('It stops & says nothing.');
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('refuses a forum post too long for the forum to open, and says so', async () => {
+    const user = setup();
+    const onSubmit = vi.fn<(response: FeedbackResponse) => void>();
+    render(<FeedbackDialog onSubmit={onSubmit} maxLength={5000} />);
+
+    // Well within maxLength, but every Arabic letter is six characters of
+    // the encoded link.
+    const post = 'مرحبا بكم'.repeat(200);
+    expect(post.length).toBeLessThan(5000);
+    expect(forumTopicUrl({ title: '', body: post }).length).toBeGreaterThan(
+      FORUM_TOPIC_URL_MAX_LENGTH,
+    );
+
+    const box = await openDialog(user);
+    pasteInto(box, post);
+
+    expect(await screen.findByText(TOO_LONG_FOR_FORUM)).toBeVisible();
+    expect(
+      screen.queryByRole('link', { name: 'Continue on the forum' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Continue on the forum' }),
+    ).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /Our team/ }));
+    expect(screen.queryByText(TOO_LONG_FOR_FORUM)).not.toBeInTheDocument();
+    expect(sendButton()).toBeEnabled();
+    await user.click(sendButton());
+
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith({ feedback: post });
+  });
+
+  it('opens a forum post in a non-Latin script that fits the forum link', async () => {
+    const user = setup();
+    render(<FeedbackDialog onSubmit={vi.fn()} maxLength={5000} />);
+
+    const post = 'مرحبا بكم'.repeat(100);
+    expect(forumTopicUrl({ title: '', body: post }).length).toBeLessThan(
+      FORUM_TOPIC_URL_MAX_LENGTH,
+    );
+
+    pasteInto(await openDialog(user), post);
+
+    const forum = await screen.findByRole('link', {
+      name: 'Continue on the forum',
+    });
+    expect(
+      new URL(forum.getAttribute('href') ?? '').searchParams.get('body'),
+    ).toBe(post);
+    expect(screen.queryByText(TOO_LONG_FOR_FORUM)).not.toBeInTheDocument();
   });
 
   it('sends nothing while the feedback is empty', async () => {

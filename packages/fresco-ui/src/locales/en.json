@@ -303,6 +303,10 @@
     "defaultMessage": "Community forum",
     "description": "Option in the feedback dialog: the feedback is posted publicly on the Network Canvas community forum."
   },
+  "frescoUi.feedbackDialog.audienceHint": {
+    "defaultMessage": "Post on the <link>community forum</link> to report a problem, suggest an idea, or get help from other researchers. If you’d rather not post publicly, you can send your feedback privately to our team instead. The forum opens in a new tab with a draft of your post. Posting it needs a forum account.",
+    "description": "Hint under the \"Who should see it?\" switch in the feedback dialog, shown whichever option is chosen. It explains the two choices: posting the feedback publicly on the Network Canvas community forum, a discussion website for researchers who use the software, or sending it privately to the Network Canvas team. The last two sentences say what happens when the user posts on the forum: a new browser tab opens on the forum with their post already filled in, and they need an account on the forum to publish it. The words inside <link> link to the forum, opening it in a new tab."
+  },
   "frescoUi.feedbackDialog.audienceLabel": {
     "defaultMessage": "Who should see it?",
     "description": "Label of the switch in the feedback dialog between sending the feedback privately to the Network Canvas team and posting it publicly on the community forum."
@@ -316,16 +320,16 @@
     "description": "Button in the feedback dialog that opens the community forum in a new tab, with the feedback filled in as a new topic for the user to post."
   },
   "frescoUi.feedbackDialog.description": {
-    "defaultMessage": "Post on the <link>community forum</link> to report a problem, suggest an idea, or get help from other researchers. If you’d rather not post publicly, you can send your feedback privately to our team instead.",
-    "description": "Line under the title of the feedback dialog, explaining its two choices: posting the feedback publicly on the Network Canvas community forum, a discussion website for researchers who use the software, or sending it privately to the Network Canvas team. The words inside <link> link to the forum, opening it in a new tab."
+    "defaultMessage": "This project depends on ideas and feedback from our users. If you have a suggestion for how the software could be improved, please share it with us. Thank you for your time!",
+    "description": "Text under the title of the feedback dialog, inviting the user to suggest how the Network Canvas software could be improved. \"This project\" is Network Canvas; \"our users\" are the researchers who use it."
   },
   "frescoUi.feedbackDialog.emailHint": {
-    "defaultMessage": "Add it if you’d like a reply. Leave it blank to stay anonymous.",
-    "description": "Hint under the optional email field in the feedback dialog. Without an email the team cannot tell who sent the feedback."
+    "defaultMessage": "If you would like us to contact you about your feedback, please provide your email address. Anonymous feedback is also welcome.",
+    "description": "Hint under the email field in the feedback dialog. \"Us\" is the Network Canvas team. The field may be left empty: without an email address the team cannot tell who sent the feedback."
   },
   "frescoUi.feedbackDialog.emailLabel": {
-    "defaultMessage": "Email (optional)",
-    "description": "Label of the field in the feedback dialog where the user may leave an email address so the team can reply."
+    "defaultMessage": "Email",
+    "description": "Label of the field in the feedback dialog, shown when the feedback goes privately to the Network Canvas team, where the user may leave their email address so that the team can contact them. The field may be left empty."
   },
   "frescoUi.feedbackDialog.feedbackLabel": {
     "defaultMessage": "Your feedback",
@@ -334,10 +338,6 @@
   "frescoUi.feedbackDialog.feedbackPlaceholder": {
     "defaultMessage": "Describe the problem, idea or question…",
     "description": "Placeholder text in the empty text box where the user writes their feedback or forum post."
-  },
-  "frescoUi.feedbackDialog.forumNext": {
-    "defaultMessage": "The forum opens in a new tab with a draft of your post for {category}. Posting it needs a forum account.",
-    "description": "Note at the foot of the feedback dialog when the user is posting on the community forum, explaining what happens next. category is the name of a section of the forum, such as \"Help & Support\", and stays in English."
   },
   "frescoUi.feedbackDialog.postLabel": {
     "defaultMessage": "Your post",
@@ -351,21 +351,9 @@
     "defaultMessage": "A short summary",
     "description": "Placeholder text in the empty \"Post title\" field."
   },
-  "frescoUi.feedbackDialog.sectionFeedback": {
-    "defaultMessage": "Suggestions for improving the software.",
-    "description": "What the forum section \"Feedback & Feature Requests\" is for, shown while it is chosen in the feedback dialog."
-  },
-  "frescoUi.feedbackDialog.sectionGeneral": {
-    "defaultMessage": "Talk with other researchers about anything to do with the software.",
-    "description": "What the forum section \"General Conversation\" is for, shown while it is chosen in the feedback dialog."
-  },
-  "frescoUi.feedbackDialog.sectionHelp": {
-    "defaultMessage": "Get help with a problem you’re having, or report a bug to the team.",
-    "description": "What the forum section \"Help & Support\" is for, shown while it is chosen in the feedback dialog."
-  },
-  "frescoUi.feedbackDialog.sectionLabel": {
-    "defaultMessage": "Forum section",
-    "description": "Label of the choice, shown when the user is posting on the community forum, of which section of the forum the post goes in. The options are the sections’ names on the forum, which stay in English."
+  "frescoUi.feedbackDialog.postTooLongForForum": {
+    "defaultMessage": "Your post is too long to send to the forum. Shorten it, or send it privately to our team instead.",
+    "description": "Error under the text box in the feedback dialog, shown when the user is posting on the community forum and the title and post together are too long for the forum to open as a draft in a new tab. Text in some languages, such as Arabic or Chinese, reaches this limit sooner. \"Our team\" is the Network Canvas team; the user can switch the dialog to send the feedback to the team privately, which has no such limit."
   },
   "frescoUi.feedbackDialog.send": {
     "defaultMessage": "Send to our team",

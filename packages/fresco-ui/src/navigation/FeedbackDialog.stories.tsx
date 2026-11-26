@@ -7,10 +7,14 @@ const documentation = `
 The feedback control shared by Architect, Interviewer and Fresco: a button
 that opens a dialog where the person chooses who should see their feedback.
 
-- **Community forum** (the default) asks for a forum section and a title, and
-  opens the forum's new-topic composer in a new tab with the post filled in,
-  for the person to post under their own account. Nothing goes through
-  \`onSubmit\`.
+- **Community forum** (the default) asks for a title, and opens the forum's
+  new-topic composer in a new tab, in the Feedback & Feature Requests section
+  with the post filled in, for the person to post under their own account.
+  Nothing goes through \`onSubmit\`. The forum cannot open a link longer
+  than about 8,000 characters, so a post too long for one shows an error in
+  place of the link. Text in a non-Latin script, such as Arabic or Chinese,
+  reaches that limit sooner, because each of its characters takes six or more
+  characters of the link.
 - **Our team** sends it privately through \`onSubmit\`, with an optional email
   for a reply. Sending replaces the form with a line of thanks.
 

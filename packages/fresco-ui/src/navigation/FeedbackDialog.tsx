@@ -24,12 +24,10 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 
-import { Alert, AlertDescription } from '../Alert';
 import { Button, type ButtonProps, IconButton } from '../Button';
 import Dialog from '../dialogs/Dialog';
 import UnconnectedField from '../form/Field/UnconnectedField';
 import InputField from '../form/fields/InputField';
-import RadioGroupField from '../form/fields/RadioGroup';
 import RichTextEditorField from '../form/fields/RichTextEditor';
 import FormErrors from '../form/FormErrors';
 import { formMessages } from '../form/hooks/useForm';
@@ -40,11 +38,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
 import Paragraph from '../typography/Paragraph';
 import {
   COMMUNITY_FORUM_URL,
-  FORUM_SECTION_IDS,
-  FORUM_SECTIONS,
-  type ForumSection,
+  FORUM_TOPIC_URL_MAX_LENGTH,
   forumTopicUrl,
-  isForumSection,
 } from './communityForum';
 import { feedbackMarkdown } from './feedbackMarkdown';
 
@@ -64,15 +59,22 @@ const messages = defineMessages({
   description: {
     id: 'frescoUi.feedbackDialog.description',
     defaultMessage:
-      'Post on the <link>community forum</link> to report a problem, suggest an idea, or get help from other researchers. If you’d rather not post publicly, you can send your feedback privately to our team instead.',
+      'This project depends on ideas and feedback from our users. If you have a suggestion for how the software could be improved, please share it with us. Thank you for your time!',
     description:
-      'Line under the title of the feedback dialog, explaining its two choices: posting the feedback publicly on the Network Canvas community forum, a discussion website for researchers who use the software, or sending it privately to the Network Canvas team. The words inside <link> link to the forum, opening it in a new tab.',
+      'Text under the title of the feedback dialog, inviting the user to suggest how the Network Canvas software could be improved. "This project" is Network Canvas; "our users" are the researchers who use it.',
   },
   audienceLabel: {
     id: 'frescoUi.feedbackDialog.audienceLabel',
     defaultMessage: 'Who should see it?',
     description:
       'Label of the switch in the feedback dialog between sending the feedback privately to the Network Canvas team and posting it publicly on the community forum.',
+  },
+  audienceHint: {
+    id: 'frescoUi.feedbackDialog.audienceHint',
+    defaultMessage:
+      'Post on the <link>community forum</link> to report a problem, suggest an idea, or get help from other researchers. If you’d rather not post publicly, you can send your feedback privately to our team instead. The forum opens in a new tab with a draft of your post. Posting it needs a forum account.',
+    description:
+      'Hint under the "Who should see it?" switch in the feedback dialog, shown whichever option is chosen. It explains the two choices: posting the feedback publicly on the Network Canvas community forum, a discussion website for researchers who use the software, or sending it privately to the Network Canvas team. The last two sentences say what happens when the user posts on the forum: a new browser tab opens on the forum with their post already filled in, and they need an account on the forum to publish it. The words inside <link> link to the forum, opening it in a new tab.',
   },
   audienceTeam: {
     id: 'frescoUi.feedbackDialog.audienceTeam',
@@ -85,32 +87,6 @@ const messages = defineMessages({
     defaultMessage: 'Community forum',
     description:
       'Option in the feedback dialog: the feedback is posted publicly on the Network Canvas community forum.',
-  },
-  sectionLabel: {
-    id: 'frescoUi.feedbackDialog.sectionLabel',
-    defaultMessage: 'Forum section',
-    description:
-      'Label of the choice, shown when the user is posting on the community forum, of which section of the forum the post goes in. The options are the sections’ names on the forum, which stay in English.',
-  },
-  sectionFeedback: {
-    id: 'frescoUi.feedbackDialog.sectionFeedback',
-    defaultMessage: 'Suggestions for improving the software.',
-    description:
-      'What the forum section "Feedback & Feature Requests" is for, shown while it is chosen in the feedback dialog.',
-  },
-  sectionHelp: {
-    id: 'frescoUi.feedbackDialog.sectionHelp',
-    defaultMessage:
-      'Get help with a problem you’re having, or report a bug to the team.',
-    description:
-      'What the forum section "Help & Support" is for, shown while it is chosen in the feedback dialog.',
-  },
-  sectionGeneral: {
-    id: 'frescoUi.feedbackDialog.sectionGeneral',
-    defaultMessage:
-      'Talk with other researchers about anything to do with the software.',
-    description:
-      'What the forum section "General Conversation" is for, shown while it is chosen in the feedback dialog.',
   },
   postTitleLabel: {
     id: 'frescoUi.feedbackDialog.postTitleLabel',
@@ -143,23 +119,23 @@ const messages = defineMessages({
   },
   emailLabel: {
     id: 'frescoUi.feedbackDialog.emailLabel',
-    defaultMessage: 'Email (optional)',
+    defaultMessage: 'Email',
     description:
-      'Label of the field in the feedback dialog where the user may leave an email address so the team can reply.',
+      'Label of the field in the feedback dialog, shown when the feedback goes privately to the Network Canvas team, where the user may leave their email address so that the team can contact them. The field may be left empty.',
   },
   emailHint: {
     id: 'frescoUi.feedbackDialog.emailHint',
     defaultMessage:
-      'Add it if you’d like a reply. Leave it blank to stay anonymous.',
+      'If you would like us to contact you about your feedback, please provide your email address. Anonymous feedback is also welcome.',
     description:
-      'Hint under the optional email field in the feedback dialog. Without an email the team cannot tell who sent the feedback.',
+      'Hint under the email field in the feedback dialog. "Us" is the Network Canvas team. The field may be left empty: without an email address the team cannot tell who sent the feedback.',
   },
-  forumNext: {
-    id: 'frescoUi.feedbackDialog.forumNext',
+  postTooLongForForum: {
+    id: 'frescoUi.feedbackDialog.postTooLongForForum',
     defaultMessage:
-      'The forum opens in a new tab with a draft of your post for {category}. Posting it needs a forum account.',
+      'Your post is too long to send to the forum. Shorten it, or send it privately to our team instead.',
     description:
-      'Note at the foot of the feedback dialog when the user is posting on the community forum, explaining what happens next. category is the name of a section of the forum, such as "Help & Support", and stays in English.',
+      'Error under the text box in the feedback dialog, shown when the user is posting on the community forum and the title and post together are too long for the forum to open as a draft in a new tab. Text in some languages, such as Arabic or Chinese, reaches this limit sooner. "Our team" is the Network Canvas team; the user can switch the dialog to send the feedback to the team privately, which has no such limit.',
   },
   send: {
     id: 'frescoUi.feedbackDialog.send',
@@ -184,12 +160,6 @@ const messages = defineMessages({
 const TRIGGER_NAME = 'Feedback';
 const EMPTY_DOCUMENT: JSONContent = { type: 'doc', content: [] };
 
-const SECTION_DESCRIPTIONS = {
-  feedback: messages.sectionFeedback,
-  help: messages.sectionHelp,
-  general: messages.sectionGeneral,
-} satisfies Record<ForumSection, (typeof messages)[keyof typeof messages]>;
-
 const communityForumLink = (chunks: ReactNode) => (
   <NativeLink
     href={COMMUNITY_FORUM_URL}
@@ -204,7 +174,6 @@ type Audience = 'team' | 'forum';
 
 type Draft = {
   audience: Audience;
-  section: ForumSection;
   title: string;
   document: JSONContent;
   email: string;
@@ -212,7 +181,6 @@ type Draft = {
 
 const EMPTY_DRAFT: Draft = {
   audience: 'forum',
-  section: 'feedback',
   title: '',
   document: EMPTY_DOCUMENT,
   email: '',
@@ -359,8 +327,9 @@ function ForumLink({ href, children }: { href: string; children: ReactNode }) {
 
 /**
  * A button that opens a dialog for feedback about the app. It opens on the
- * community forum as a new topic for the person to post, unless they switch it
- * to go privately to the team, with an optional email for a reply.
+ * community forum as a new topic in the Feedback & Feature Requests section for
+ * the person to post, unless they switch it to go privately to the team, with
+ * an optional email for a reply.
  * Hosts own where a private response goes and the button's look; the copy is
  * shared.
  */
@@ -413,11 +382,14 @@ export default function FeedbackDialog({
   const sending = status === 'sending';
   const sent = status === 'sent';
   const title = draft.title.trim();
-  const forumUrl = forumTopicUrl({
-    section: draft.section,
-    title,
-    body: feedback,
-  });
+  const forumUrl = forumTopicUrl({ title, body: feedback });
+  // The forum cannot open a link longer than this, which a post in a
+  // non-Latin script reaches well within `maxLength`.
+  const forumError =
+    toForum && forumUrl.length > FORUM_TOPIC_URL_MAX_LENGTH
+      ? intl.formatMessage(messages.postTooLongForForum)
+      : undefined;
+  const feedbackError = lengthError ?? forumError;
 
   const openDialog = () => {
     // A form that was sent starts again, and only on opening, so the thanks
@@ -460,7 +432,7 @@ export default function FeedbackDialog({
       <Button onClick={close}>
         {intl.formatMessage(commonMessages.cancel)}
       </Button>
-      {toForum && hasFeedback && !lengthError ? (
+      {toForum && hasFeedback && !feedbackError ? (
         <ForumLink href={forumUrl}>
           {intl.formatMessage(messages.continueOnForum)}
         </ForumLink>
@@ -501,12 +473,7 @@ export default function FeedbackDialog({
         }
         title={intl.formatMessage(messages.title)}
         description={
-          sent ? undefined : (
-            <AppMessage
-              message={messages.description}
-              values={{ link: communityForumLink }}
-            />
-          )
+          sent ? undefined : intl.formatMessage(messages.description)
         }
         footer={footer}
       >
@@ -531,6 +498,12 @@ export default function FeedbackDialog({
             <UnconnectedField
               name="audience"
               label={intl.formatMessage(messages.audienceLabel)}
+              hint={
+                <AppMessage
+                  message={messages.audienceHint}
+                  values={{ link: communityForumLink }}
+                />
+              }
               component={SegmentedSwitcherField<Audience>}
               size="sm"
               value={draft.audience}
@@ -550,38 +523,14 @@ export default function FeedbackDialog({
               ]}
             />
             {toForum && (
-              <>
-                <UnconnectedField
-                  name="section"
-                  label={intl.formatMessage(messages.sectionLabel)}
-                  hint={intl.formatMessage(SECTION_DESCRIPTIONS[draft.section])}
-                  component={RadioGroupField}
-                  orientation="horizontal"
-                  size="sm"
-                  value={draft.section}
-                  onChange={(section) => {
-                    if (isForumSection(section)) update({ section });
-                  }}
-                  options={FORUM_SECTION_IDS.map((value) => ({
-                    value,
-                    label: {
-                      text: FORUM_SECTIONS[value].name,
-                      lang: 'en',
-                      dir: 'ltr' as const,
-                    },
-                  }))}
-                />
-                <UnconnectedField
-                  name="postTitle"
-                  label={intl.formatMessage(messages.postTitleLabel)}
-                  component={InputField}
-                  placeholder={intl.formatMessage(
-                    messages.postTitlePlaceholder,
-                  )}
-                  value={draft.title}
-                  onChange={(next) => update({ title: next ?? '' })}
-                />
-              </>
+              <UnconnectedField
+                name="postTitle"
+                label={intl.formatMessage(messages.postTitleLabel)}
+                component={InputField}
+                placeholder={intl.formatMessage(messages.postTitlePlaceholder)}
+                value={draft.title}
+                onChange={(next) => update({ title: next ?? '' })}
+              />
             )}
             <UnconnectedField
               key={editorKey}
@@ -604,18 +553,10 @@ export default function FeedbackDialog({
               }}
               readOnly={sending}
               className="[&_.ProseMirror]:min-h-40"
-              errors={lengthError ? [lengthError] : undefined}
-              showErrors={Boolean(lengthError)}
+              errors={feedbackError ? [feedbackError] : undefined}
+              showErrors={Boolean(feedbackError)}
             />
-            {toForum ? (
-              <Alert density="compact" icon={ExternalLink}>
-                <AlertDescription>
-                  {intl.formatMessage(messages.forumNext, {
-                    category: FORUM_SECTIONS[draft.section].name,
-                  })}
-                </AlertDescription>
-              </Alert>
-            ) : (
+            {!toForum && (
               <UnconnectedField
                 name="email"
                 label={intl.formatMessage(messages.emailLabel)}
