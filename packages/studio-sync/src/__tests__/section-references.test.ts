@@ -112,3 +112,76 @@ describe('stage subject references', () => {
     expect(referencesTo(ORG)).toEqual([]);
   });
 });
+
+describe('deleting a node type that a stage is about', () => {
+  const STAGE = crypto.randomUUID();
+  const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE });
+  const VARIABLE = crypto.randomUUID();
+  const documentsWith = (stage: SectionDoc): Record<string, SectionDoc> => ({
+    [sectionId({ kind: 'settings' })]: {},
+    [sectionId({ kind: 'stageOrder' })]: { stages: [STAGE] },
+    [sectionId({ kind: 'codebookNode', typeId: PLACE })]: nodeType('Place'),
+    [STAGE_SECTION]: stage,
+  });
+
+  it('leaves a stage whose only type it is, and reports the stage', () => {
+    const stage: SectionDoc = {
+      id: STAGE,
+      type: 'NameGenerator',
+      label: { en: 'Names' },
+      subject: { entity: 'node', types: [ORG] },
+      form: {
+        title: { en: 'About them' },
+        fields: [
+          {
+            id: crypto.randomUUID(),
+            variable: VARIABLE,
+            prompt: { en: 'Name' },
+          },
+        ],
+      },
+      prompts: [{ id: crypto.randomUUID(), text: { en: 'Who?' } }],
+    };
+    const documents = documentsWith(stage);
+    const before = structuredClone(stage);
+
+    const { rewritten, remaining } = deleteOrg(documents);
+
+    expect(rewritten.size).toBe(0);
+    expect(remaining).toEqual(
+      expect.arrayContaining([
+        { sectionId: STAGE_SECTION, path: ['subject', 'types', 0] },
+        { sectionId: STAGE_SECTION, path: ['form', 'fields', 0, 'variable'] },
+      ]),
+    );
+    expect(documents[STAGE_SECTION]).toEqual(before);
+  });
+
+  // A stage that lists several types resolves its stage-subject references
+  // against none of them, and validation refuses any such reference there
+  // (see multi-type-stage-references.test.ts in protocol-validation), so
+  // dropping the deleted type from the list leaves nothing naming it.
+  it('drops it from a stage that lists other types too', () => {
+    const documents = documentsWith({
+      id: STAGE,
+      type: 'DyadCensus',
+      label: { en: 'Pairs' },
+      subject: { entity: 'node', types: [ORG, PLACE] },
+      prompts: [
+        {
+          id: crypto.randomUUID(),
+          text: { en: 'Do they know each other?' },
+          createEdge: KNOWS,
+        },
+      ],
+    });
+
+    const { rewritten, remaining } = deleteOrg(documents);
+
+    expect(remaining).toEqual([]);
+    expect(rewritten.get(STAGE_SECTION)?.subject).toEqual({
+      entity: 'node',
+      types: [PLACE],
+    });
+  });
+});

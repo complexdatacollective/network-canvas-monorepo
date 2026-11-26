@@ -11,7 +11,6 @@ import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectStageReferences,
-  type ResolvedSubject,
 } from '@codaco/protocol-validation';
 
 import type { SectionDoc } from './apply.ts';
@@ -101,15 +100,6 @@ export function sectionReferenceAt(
   return { sectionId: sectionId({ kind: 'settings' }), path };
 }
 
-// A hit carries the one subject its reference resolves against: a stage
-// subject listing several node types resolves to none, and so does a hit
-// whose subject the walk could not work out.
-function subjectOfHit(
-  subject: ResolvedSubject | undefined,
-): CodebookSubject | undefined {
-  return subject;
-}
-
 function sameSubject(a: CodebookSubject, b: CodebookSubject): boolean {
   if (a.entity !== b.entity) return false;
   return a.entity === 'ego' || b.entity === 'ego' || a.type === b.type;
@@ -129,8 +119,7 @@ export function variableReferences(
   return collectEntityAttributeReferences(protocol)
     .filter((hit) => {
       if (hit.variableId !== variableId) return false;
-      const hitSubject = subjectOfHit(hit.subject);
-      return hitSubject === undefined || sameSubject(hitSubject, subject);
+      return hit.subject === undefined || sameSubject(hit.subject, subject);
     })
     .map((hit) => sectionReferenceAt(hit.path, stageIds));
 }
@@ -152,8 +141,7 @@ export function entityTypeReferences(
     .map((hit) => sectionReferenceAt(hit.path, stageIds));
   const attributes = collectEntityAttributeReferences(protocol)
     .filter((hit) => {
-      const hitSubject = subjectOfHit(hit.subject);
-      return hitSubject !== undefined && sameSubject(hitSubject, subject);
+      return hit.subject !== undefined && sameSubject(hit.subject, subject);
     })
     .map((hit) => sectionReferenceAt(hit.path, stageIds));
   return [...types, ...attributes];
