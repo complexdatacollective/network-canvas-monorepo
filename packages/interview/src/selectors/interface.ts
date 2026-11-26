@@ -4,14 +4,14 @@ import type { Variable } from '@codaco/protocol-validation';
 
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
-import { getSubjectType } from './session';
+import { getSingleStageNodeType } from './session';
 
 export const getNodeVariables: (
   state: RootState,
   currentStep: number,
 ) => Record<string, Variable> = createSelector(
   getCodebook,
-  getSubjectType,
+  getSingleStageNodeType,
   (codebook, nodeType) => {
     const nodeInfo = codebook.node;
 

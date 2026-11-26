@@ -57,7 +57,7 @@ const mockProtocol = {
       label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
-        type: PERSON,
+        types: [PERSON],
       },
       prompts: [
         {

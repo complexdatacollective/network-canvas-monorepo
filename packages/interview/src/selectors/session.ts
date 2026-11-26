@@ -12,11 +12,14 @@ import {
   type EdgeColor,
   FAMILY_PEDIGREE_BUILD_PROMPT_ID,
   type FamilyPedigreeNominationPrompt,
+  getSingleStageNodeType as getSingleStageNodeTypeOf,
+  getStageNodeTypes as getStageNodeTypesOf,
   type LocalizedString,
   type NodeDefinition,
   type NodeShapeReference,
   type Prompt,
-  type StageSubject,
+  type ResolvedSubject,
+  resolveSubjectValue,
   type VariableOption,
   type VariableOptions,
   resolveNodeShapeReference,
@@ -93,38 +96,45 @@ export const getCurrentStage = createSelector(
  * them up asynchronously via `useEffect`). If the new stage is subjectless and
  * this selector threw, those stale subscriptions would crash.
  */
-export const getStageSubject = createSelector(getCurrentStage, (stage) => {
-  invariant(stage, 'getStageSubject: No current stage found');
+export const getStageSubject = createSelector(
+  getCurrentStage,
+  (stage): ResolvedSubject | null => {
+    invariant(stage, 'getStageSubject: No current stage found');
 
-  if (
-    stage.type === 'FinishSession' ||
-    stage.type === 'LanguageChooser' ||
-    stage.type === 'Information' ||
-    stage.type === 'Anonymisation' ||
-    // NarrativePedigree has no stage subject: it reads the captured pedigree
-    // from the shared network filtered to its source FamilyPedigree stage's
-    // node/edge types, so it owns no subject of its own.
-    stage.type === 'NarrativePedigree'
-  ) {
-    return null;
-  }
+    if (
+      stage.type === 'FinishSession' ||
+      stage.type === 'LanguageChooser' ||
+      stage.type === 'Information' ||
+      stage.type === 'Anonymisation' ||
+      // NarrativePedigree has no stage subject: it reads the captured pedigree
+      // from the shared network filtered to its source FamilyPedigree stage's
+      // node/edge types, so it owns no subject of its own.
+      stage.type === 'NarrativePedigree'
+    ) {
+      return null;
+    }
 
-  if (stage.type === 'EgoForm') {
-    return {
-      entity: 'ego' as const,
-    };
-  }
+    if (stage.type === 'EgoForm') {
+      return {
+        entity: 'ego' as const,
+      };
+    }
 
-  return stage.subject;
-});
+    // A node stage resolves to one subject only when it runs one node type.
+    return resolveSubjectValue(stage.subject) ?? null;
+  },
+);
 
-export const getSubjectType = createSelector(getStageSubject, (subject) => {
-  if (!subject || subject.entity === 'ego') {
-    return null;
-  }
+/** The node types the current stage runs; empty for a stage with none. */
+export const getStageNodeTypes = createSelector(getCurrentStage, (stage) =>
+  stage ? getStageNodeTypesOf(stage) : [],
+);
 
-  return subject.type;
-});
+/** The current stage's node type, when it runs exactly one. */
+export const getSingleStageNodeType = createSelector(
+  getCurrentStage,
+  (stage) => (stage ? getSingleStageNodeTypeOf(stage) : undefined),
+);
 
 export const getCurrentStageId = createSelector(
   getCurrentStage,
@@ -378,7 +388,7 @@ export const getNodeColorSelector: (
   currentStep: number,
 ) => NodeColorSequence = createSelector(
   getCodebook,
-  getSubjectType,
+  getSingleStageNodeType,
   (codebook, nodeType): NodeColorSequence => {
     if (!nodeType) {
       return 'node-color-seq-1';
@@ -457,7 +467,7 @@ const getEdgeColor: (state: RootState, currentStep: number) => EdgeColor =
   });
 
 export const getEdgeColorForType = (
-  type: Extract<StageSubject, { entity: 'edge' }>['type'],
+  type: Extract<ResolvedSubject, { entity: 'edge' }>['type'],
 ) =>
   createSelector(getCodebook, (codebook) => {
     if (!type) {
@@ -475,12 +485,12 @@ export const getCategoricalOptions: (
   props: Record<string, string>,
 ) => VariableOptions = createSelector(
   getCodebook,
-  getSubjectType,
+  getSingleStageNodeType,
   (_state: RootState, _currentStep: number, props: Record<string, string>) =>
     props.variableId ?? null,
   (
     codebook,
-    subjectType: string | null,
+    subjectType: string | undefined,
     variableId: string | null,
   ): VariableOptions => {
     if (!subjectType || !variableId) {
@@ -526,13 +536,10 @@ export const getNetworkNodesForType: (
   currentStep: number,
 ) => NcNode[] = createSelector(
   getNetworkNodes,
-  getStageSubject,
-  (nodes, subject) => {
-    if (!subject || !nodes || subject.entity === 'ego') {
-      return [];
-    }
-
-    return nodes.filter((node) => node.type === subject.type);
+  getStageNodeTypes,
+  (nodes, nodeTypes) => {
+    if (!nodes) return [];
+    return nodes.filter((node) => nodeTypes.includes(node.type));
   },
 );
 

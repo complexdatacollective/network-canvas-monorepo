@@ -59,7 +59,7 @@ function scaffoldPedigree(conditions: string[]): PedigreeScaffold {
   const people = synth.addNodeType({ name: 'Person' });
   const fp = synth.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
-    subject: { entity: 'node', type: people.id },
+    subject: { entity: 'node', types: [people.id] },
     framing: 'gamete',
     askGenderIdentity: false,
     prompt: 'Build the family tree.',

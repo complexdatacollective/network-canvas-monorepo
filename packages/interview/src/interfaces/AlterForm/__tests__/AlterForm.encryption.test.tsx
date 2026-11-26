@@ -353,7 +353,7 @@ describe('AlterForm comparing an answer with a protected one', () => {
       id: testId('alter-form'),
       type: 'AlterForm',
       label: { en: 'Alter form' },
-      subject: { entity: 'node', type: NODE_TYPE },
+      subject: { entity: 'node', types: [NODE_TYPE] },
       form: {
         fields: [
           {

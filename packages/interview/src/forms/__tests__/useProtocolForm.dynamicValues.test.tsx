@@ -92,7 +92,7 @@ const stageShowing = (prompt: string) =>
     id: 'stage',
     type: 'NameGenerator',
     label: { en: 'People' },
-    subject: { entity: 'node', type: NODE_TYPE },
+    subject: { entity: 'node', types: [NODE_TYPE] },
     form: {
       fields: [
         {

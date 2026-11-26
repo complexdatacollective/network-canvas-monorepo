@@ -23,6 +23,7 @@ import sessionReducer, {
 import uiReducer from '../../store/modules/ui';
 import {
   getNetworkNodesForPrompt,
+  getNetworkNodesForType,
   getStageMetadata,
   resolveNodeShape,
 } from '../session';
@@ -94,7 +95,7 @@ describe('getNetworkNodesForPrompt', () => {
       id: testId(stage),
       type: 'NameGeneratorQuickAdd' as const,
       label: { en: stage },
-      subject: { entity: 'node' as const, type: PERSON },
+      subject: { entity: 'node' as const, types: [PERSON] },
       quickAdd: asEntityAttributeReference(NAME),
       prompts: [{ id: testId(`${stage}-prompt`), text: { en: stage } }],
     });
@@ -154,6 +155,82 @@ describe('getNetworkNodesForPrompt', () => {
 
     expect(namedOn(0)).toEqual(['alex']);
     expect(namedOn(1)).toEqual(['sam']);
+  });
+});
+
+describe('getNetworkNodesForType', () => {
+  it("returns nodes of the stage's types only", () => {
+    const PET = testTypeId('pet');
+    const protocolState: ProtocolPayload = {
+      id: 'protocol',
+      hash: 'hash',
+      importedAt: '2026-11-26T00:00:00.000Z',
+      assets: [],
+      name: 'Test protocol',
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
+      codebook: {
+        node: {
+          [PERSON]: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+            variables: { [NAME]: { name: 'Name', type: 'text' } },
+          },
+          [PET]: {
+            name: 'Pet',
+            color: 'node-color-seq-2',
+            shape: { default: 'square' },
+            variables: {},
+          },
+        },
+        edge: {},
+        ego: { variables: {} },
+      },
+      stages: [
+        {
+          id: testId('people'),
+          type: 'NameGeneratorQuickAdd',
+          label: { en: 'People' },
+          subject: { entity: 'node', types: [PERSON] },
+          quickAdd: asEntityAttributeReference(NAME),
+          prompts: [{ id: testId('people-prompt'), text: { en: 'People' } }],
+        },
+      ] satisfies CurrentProtocol['stages'],
+    };
+    const nodeOf = (id: string, type: string): NcNode => ({
+      [entityPrimaryKeyProperty]: id,
+      type,
+      [entityAttributesProperty]: {},
+    });
+    const store = configureStore({
+      reducer: rootReducer,
+      preloadedState: {
+        session: {
+          id: 'session',
+          startTime: '2026-11-26T00:00:00.000Z',
+          finishTime: null,
+          exportTime: null,
+          lastUpdated: '2026-11-26T00:00:00.000Z',
+          promptIndex: 0,
+          network: {
+            ...createInitialNetwork(),
+            nodes: [
+              nodeOf('alex', PERSON),
+              nodeOf('rex', PET),
+              nodeOf('sam', PERSON),
+            ],
+          },
+        },
+        protocol: protocolState,
+      },
+    });
+
+    expect(
+      getNetworkNodesForType(store.getState(), 0).map(
+        (node) => node[entityPrimaryKeyProperty],
+      ),
+    ).toEqual(['alex', 'sam']);
   });
 });
 

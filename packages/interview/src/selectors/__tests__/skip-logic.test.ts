@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type StageSubject,
   asEntityAttributeReference,
   type Filter,
   type SkipLogic,
@@ -220,15 +221,17 @@ describe('buildStageAvailabilityMap', () => {
       nodes: NcNetwork['nodes'],
       edges: NcNetwork['edges'] = [],
     ): NcNetwork => ({ ...network, nodes, edges });
+    const personSubject: StageSubject = { entity: 'node', types: [PERSON] };
     const nodeStage = (id: string, type: string) => ({
       id,
       type,
-      subject: { entity: 'node', type: PERSON },
+      subject: personSubject,
     });
+    const friendSubject: StageSubject = { entity: 'edge', type: FRIEND };
     const edgeForm = (id: string) => ({
       id,
       type: 'AlterEdgeForm',
-      subject: { entity: 'edge', type: FRIEND },
+      subject: friendSubject,
     });
     const kinds = (
       stages: Parameters<typeof buildStageAvailabilityMap>[0],
@@ -258,6 +261,18 @@ describe('buildStageAvailabilityMap', () => {
           withEntities([node('a'), node('b')], [edge('e', 'a', 'b')]),
         ),
       ).toEqual(['available', 'available', 'available', 'available']);
+    });
+
+    it('a single-type stage with no nodes of its type is skipped', () => {
+      const PET = testTypeId('pet');
+      const stages = [nodeStage('form', 'AlterForm'), finishStage()];
+
+      expect(
+        kinds(stages, withEntities([node('rex', PET), node('tom', PET)])),
+      ).toEqual(['empty', 'available']);
+      expect(
+        kinds(stages, withEntities([node('rex', PET), node('alex')])),
+      ).toEqual(['available', 'available']);
     });
 
     it('takes a census off the route until there is a pair to ask about', () => {

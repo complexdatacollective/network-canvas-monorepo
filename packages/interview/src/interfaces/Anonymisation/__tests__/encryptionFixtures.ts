@@ -119,7 +119,7 @@ const nameGeneratorStages: Stages = [
     id: testId('stage-1'),
     type: 'NameGenerator',
     label: { en: 'Name generator' },
-    subject: { entity: 'node', type: NODE_TYPE },
+    subject: { entity: 'node', types: [NODE_TYPE] },
     form: {
       title: { en: 'Add a person' },
       fields: [
@@ -145,7 +145,7 @@ export const alterFormStages: Stages = [
     id: testId('alter-form'),
     type: 'AlterForm',
     label: { en: 'Alter form' },
-    subject: { entity: 'node', type: NODE_TYPE },
+    subject: { entity: 'node', types: [NODE_TYPE] },
     form: {
       fields: [
         {

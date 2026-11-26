@@ -53,7 +53,7 @@ function buildStage() {
     id: testId('nc1'),
     type: 'NetworkComposer' as const,
     label: { en: 'Network Composer' },
-    subject: { entity: 'node' as const, type: NODE_TYPE },
+    subject: { entity: 'node' as const, types: [NODE_TYPE] },
     layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
     quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
     background: {

@@ -155,7 +155,7 @@ function buildCoreClickScenario(): ScenarioDefinition {
       const geo = synth.addStage('Geospatial', {
         label: 'Home location capture (internal)',
         interviewScript: 'Ask about primary residence.',
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions(),
       });
@@ -229,7 +229,7 @@ function buildTargetFeaturePropertyScenario(): ScenarioDefinition {
       variableId = locationVar.id;
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: {
           tokenAssetId: TOKEN_ASSET_ID,
@@ -308,7 +308,7 @@ function buildOutsideSelectableAreasScenario(): ScenarioDefinition {
       variableId = locationVar.id;
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions(),
         wording: { outsideAreasLabel: OUTSIDE_AREAS_LABEL },
@@ -383,7 +383,7 @@ function buildNodeSteppingScenario(): ScenarioDefinition {
 
       synth.addInformationStage({ title: 'Before the map' });
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 3 },
         mapOptions: chicagoMapOptions(),
       });
@@ -471,7 +471,7 @@ function buildMultiPromptScenario(): ScenarioDefinition {
       workVarId = workVar.id;
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 2 },
         mapOptions: chicagoMapOptions(),
       });
@@ -550,7 +550,7 @@ function buildSelectionRestoreScenario(): ScenarioDefinition {
       variableId = locationVar.id;
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 2 },
         mapOptions: chicagoMapOptions(),
       });
@@ -641,7 +641,7 @@ function buildSubjectFiltersScenario(): ScenarioDefinition {
       }).id;
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 2 },
         mapOptions: chicagoMapOptions(),
       });
@@ -705,7 +705,7 @@ function buildEmptySubjectScenario(): ScenarioDefinition {
 
       synth.addInformationStage({ title: 'Previous stage' });
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         mapOptions: chicagoMapOptions(),
       });
       geo.addPrompt({
@@ -754,7 +754,7 @@ function buildZoomControlsScenario(): ScenarioDefinition {
       });
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions({ initialZoom: 10 }),
       });
@@ -821,7 +821,7 @@ function buildMapStyleColorTransitScenario(): ScenarioDefinition {
 
       synth.addInformationStage({ title: 'Before the map' });
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions({
           style: 'mapbox://styles/mapbox/dark-v11',
@@ -889,7 +889,7 @@ function buildSearchFlowScenario(): ScenarioDefinition {
       variableId = locationVar.id;
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions({ allowSearch: true }),
       });
@@ -1009,7 +1009,7 @@ function buildSearchNoMatchAndFailureScenario(): ScenarioDefinition {
       });
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions({ allowSearch: true }),
       });
@@ -1078,7 +1078,7 @@ function buildMapErrorOverlayScenario(): ScenarioDefinition {
 
       synth.addInformationStage({ title: 'Before the map' });
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions(),
       });
@@ -1153,7 +1153,7 @@ function buildOfflineIndicatorScenario(): ScenarioDefinition {
       });
 
       const geo = synth.addStage('Geospatial', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
         mapOptions: chicagoMapOptions(),
       });

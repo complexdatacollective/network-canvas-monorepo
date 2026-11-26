@@ -178,7 +178,7 @@ const buildStage = (
   id: STAGE_ID,
   type: 'OrdinalBin',
   label: { en: 'Rate people' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   ...(mode === 'select' && { behaviours: { interactionMode: 'select' } }),
   prompts: [
     {

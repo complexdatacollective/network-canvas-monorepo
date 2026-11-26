@@ -149,7 +149,7 @@ function storeWith(
           id: testId('stage-1'),
           type: 'NameGenerator',
           label: { en: 'Name generator' },
-          subject: { entity: 'node', type: PLACE },
+          subject: { entity: 'node', types: [PLACE] },
           form: {
             title: { en: 'Add a place' },
             fields: [

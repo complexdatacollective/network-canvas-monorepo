@@ -1,3 +1,4 @@
+import { invariant } from 'es-toolkit';
 import { hash } from 'ohash';
 import { v4 as uuid } from 'uuid';
 
@@ -68,8 +69,10 @@ export function pedigreeConfigFromStage(
     'subject' | 'nodeConfiguration' | 'edgeConfiguration' | 'completeness'
   >,
 ): PedigreeConfig {
+  const [personType] = stage.subject.types;
+  invariant(personType, 'A Family Pedigree runs exactly one node type');
   return {
-    personType: stage.subject.type,
+    personType,
     nameAttribute: stage.nodeConfiguration.nameAttribute,
     genderIdentity: stage.nodeConfiguration.genderIdentity,
     sexAssignedAtBirthAttribute:

@@ -481,7 +481,7 @@ function buildEncryptedNamePayload(localization?: {
   });
   const stage = si.addStage('NameGenerator', {
     label: 'People you know',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   stage.addFormField({
     variable: nameVar.id,
@@ -1006,7 +1006,7 @@ function buildReadyScreensPayload(): string {
   ) => {
     const stage = si.addStage('NameGeneratorQuickAdd', {
       label,
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
       quickAdd: nameVar.id,
       ...(behaviours && { behaviours }),
     });

@@ -77,6 +77,7 @@ import { addNode, deleteNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
+import { requireSingleStageNodeType } from '../../utils/stageNodeType';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { interfaceMessages } from '../messages';
 import { promptListDropSound } from '../promptListDrop';
@@ -326,7 +327,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
 
     const result = await dispatch(
       addNode({
-        type: stage.subject.type,
+        type: requireSingleStageNodeType(stage),
         modelData: {
           [entityPrimaryKeyProperty]: id,
         },

@@ -1,6 +1,6 @@
 import type * as z from 'zod/mini';
 
-import type { Codebook, StageSubject } from '@codaco/protocol-validation';
+import type { Codebook, ResolvedSubject } from '@codaco/protocol-validation';
 import type {
   EntityAttributesProperty,
   NcNetwork,
@@ -70,7 +70,7 @@ export type CustomFieldValidation = {
  * such as the current stage subject or codebook, to perform their checks.
  */
 export type ValidationContext = {
-  stageSubject: StageSubject;
+  stageSubject: ResolvedSubject;
   codebook: Codebook;
   network: NcNetwork;
   /**

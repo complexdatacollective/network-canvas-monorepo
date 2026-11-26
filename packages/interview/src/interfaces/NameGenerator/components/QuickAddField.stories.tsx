@@ -52,7 +52,7 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
       label: { en: 'Name Generator' },
       subject: {
         entity: 'node',
-        type: PERSON_TYPE,
+        types: [PERSON_TYPE],
       },
       ...(maxNodes > 0 ? { behaviours: { maxNodes } } : {}),
       prompts: [

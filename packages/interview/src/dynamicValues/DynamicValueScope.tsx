@@ -9,12 +9,13 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
-import type {
-  Codebook,
-  DynamicValueRole,
-  IntrinsicDynamicValue,
-  Stage,
-  Variable,
+import {
+  type Codebook,
+  type DynamicValueRole,
+  type IntrinsicDynamicValue,
+  resolveSubjectValue,
+  type Stage,
+  type Variable,
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
@@ -60,8 +61,9 @@ const subjectVariables = (
   codebook: Codebook | undefined,
   stage: Stage,
 ): Readonly<Record<'node' | 'edge', EntityVariables>> => {
-  const subject = 'subject' in stage ? stage.subject : undefined;
-  if (subject === undefined) {
+  const subject =
+    'subject' in stage ? resolveSubjectValue(stage.subject) : undefined;
+  if (subject === undefined || subject.entity === 'ego') {
     return { node: undefined, edge: undefined };
   }
   const variables =
@@ -112,7 +114,8 @@ export function StageDynamicValues({
     if (stage === undefined) return null;
     const variables = subjectVariables(codebook, stage);
     const intrinsics: Record<IntrinsicDynamicValue, unknown> = { now };
-    const subject = 'subject' in stage ? stage.subject : undefined;
+    const subject =
+      'subject' in stage ? resolveSubjectValue(stage.subject) : undefined;
     return {
       intrinsics,
       attributes: { ego: egoAttributes },

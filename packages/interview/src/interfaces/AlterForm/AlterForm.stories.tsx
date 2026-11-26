@@ -52,7 +52,7 @@ function buildInterview(args: StoryArgs) {
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form',
     initialNodes: { count: args.initialNodeCount },
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
   });
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
@@ -177,7 +177,7 @@ function buildWordedPerPersonInterview() {
 
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Worded per person)',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   // The names the text gives the person's name and whether they are family.
   const nameArg = dynamicValueNameFor({
@@ -291,7 +291,7 @@ function buildValidatedInterview() {
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Validated)',
     initialNodes: { count: 2 },
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
   });
 
   stage.addFormField({
@@ -392,7 +392,7 @@ function buildUnansweredInterview() {
 
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Unanswered)',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   stage.addFormField({ component: 'Text', prompt: 'Nickname' });
   stage.addFormField({ component: 'Number', prompt: 'Age' });
@@ -567,7 +567,7 @@ function buildProtectedInterview({ withBob = false } = {}) {
 
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Protected)',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   stage.addFormField({
     variable: nickname.id,
@@ -743,7 +743,7 @@ function buildComparedWithProtectedInterview() {
 
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Compared with protected)',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   stage.addFormField({
     variable: nickname.id,

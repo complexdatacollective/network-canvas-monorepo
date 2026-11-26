@@ -41,7 +41,7 @@ function buildInterview(args: StoryArgs) {
   const stage = si.addStage('NameGeneratorRoster', {
     label: 'Select People',
     initialNodes: { count: args.initialSelectedCount },
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
     dataSource: 'externalData',
     behaviours: Object.keys(behaviours).length > 0 ? behaviours : undefined,
     cardOptions: {
@@ -208,7 +208,7 @@ function buildUuidMismatchInterview() {
 
   si.addStage('NameGeneratorRoster', {
     label: 'Select People',
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
     dataSource: 'externalData',
   }).addPrompt({
     text: 'Please select the people you know from this list.',

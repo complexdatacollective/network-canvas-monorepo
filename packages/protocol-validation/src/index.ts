@@ -499,6 +499,10 @@ export {
 export { readRosterCsv } from './utils/readRosterCsv.ts';
 export { isDirectedEdgeType } from './utils/edgeTypeRules.ts';
 export {
+  getSingleStageNodeType,
+  getStageNodeTypes,
+} from './schemas/9/stage-capabilities.ts';
+export {
   findRosterCharacterProblems,
   type RosterCharacterProblem,
   type RosterCharacterReport,

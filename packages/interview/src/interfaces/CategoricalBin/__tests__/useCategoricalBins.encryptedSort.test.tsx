@@ -71,7 +71,7 @@ async function unlockedStore(nodes: NcNode[]) {
         id: testId('categorical-bin'),
         type: 'CategoricalBin',
         label: { en: 'Categorise' },
-        subject: { entity: 'node', type: NODE_TYPE },
+        subject: { entity: 'node', types: [NODE_TYPE] },
         prompts: [
           {
             id: testId('prompt-1'),

@@ -19,7 +19,7 @@ const build = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NameGeneratorQuickAdd', {
     label: 'Name Generator',
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
     quickAdd: nameVar.id,
     initialNodes: { count: 4, promptIndex: 0 },
   });

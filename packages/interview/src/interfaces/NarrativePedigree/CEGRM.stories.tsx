@@ -96,7 +96,7 @@ export function buildCegrmInterview(seed: number, recordedOnly = false) {
   // --- Stage 1: family pedigree (seeded HBOC family) --------------------------
   const fpStage = si.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
     framing: 'gamete',
     askGenderIdentity: false,
     prompt: 'Confirm the people in your family.',
@@ -126,7 +126,7 @@ export function buildCegrmInterview(seed: number, recordedOnly = false) {
   // --- Stage 2: add non-blood kin --------------------------------------------
   const ng = si.addStage('NameGeneratorQuickAdd', {
     label: 'People in your life',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
     quickAdd: NAME_VAR,
   });
   ng.addPrompt({
@@ -142,7 +142,7 @@ export function buildCegrmInterview(seed: number, recordedOnly = false) {
   // prompt of its own within this one stage.
   const sociogram = si.addStage('Sociogram', {
     label: 'Your support network',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
     behaviours: { automaticLayout: true },
   });
   // Edge creation first: who knows whom.

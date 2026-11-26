@@ -192,7 +192,7 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
   id: testId('nc1'),
   type: 'NetworkComposer',
   label: { en: 'Network Composer' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
   quickAdd: asEntityAttributeReference(QUICK_ADD_VAR),
   nodeForm: {

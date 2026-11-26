@@ -116,7 +116,7 @@ function arabicInterview() {
     type: 'text',
     component: 'Text',
   });
-  const subject = { entity: 'node' as const, type: person.id };
+  const subject = { entity: 'node' as const, types: [person.id] };
 
   const information = synth.addInformationStage({
     title: 'مرحبا بكم في الدراسة',
@@ -314,7 +314,7 @@ function arabicInterview() {
 
   const relative = synth.addNodeType({ name: 'قريب' });
   const pedigree = synth.addStage('FamilyPedigree', {
-    subject: { entity: 'node', type: relative.id },
+    subject: { entity: 'node', types: [relative.id] },
     framing: 'gamete',
     askGenderIdentity: false,
     prompt: 'ارسم شجرة عائلتك.',

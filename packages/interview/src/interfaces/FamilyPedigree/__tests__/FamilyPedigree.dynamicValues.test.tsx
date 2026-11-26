@@ -141,7 +141,7 @@ async function interview({
   if (locale) si.setLocalization({ defaultLocale: locale, locales: [locale] });
   const relatives = si.addNodeType({ name: TYPE_LABEL });
   const stage = si.addStage('FamilyPedigree', {
-    subject: { entity: 'node', type: relatives.id },
+    subject: { entity: 'node', types: [relatives.id] },
     prompt: 'Add the members of your family.',
     askGenderIdentity: false,
     ...(framing ? { framing } : {}),

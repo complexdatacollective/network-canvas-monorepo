@@ -60,7 +60,7 @@ const stage: StageProps<'CategoricalBin'>['stage'] = {
   id: testId('stage'),
   type: 'CategoricalBin',
   label: { en: 'Categorise people', ar: 'تصنيف الأشخاص' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   prompts: [
     {
       id: testId('prompt'),

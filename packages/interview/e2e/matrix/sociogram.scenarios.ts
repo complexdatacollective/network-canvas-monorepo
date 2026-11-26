@@ -1355,7 +1355,7 @@ function buildSubjectFiltersToNodeType(): ScenarioDefinition {
       });
 
       const stage = synth.addStage('Sociogram', {
-        subject: { entity: 'node', type: personType.id },
+        subject: { entity: 'node', types: [personType.id] },
         initialNodes: { count: 0 },
       });
       const people: [string, string, { x: number; y: number }][] = [

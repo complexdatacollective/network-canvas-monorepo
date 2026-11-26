@@ -75,7 +75,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           const stage = synth.addStage('OrdinalBin', {
             label: 'Rate Closeness',
             interviewScript: 'Read this prompt aloud before starting.',
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
           });
           stage.addPrompt({
             text: 'How close are you to *these* people?',
@@ -156,7 +156,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           });
           closenessVarId = closeness.id;
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
           });
           stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });
           synth.addManualNode(stage.id, person.id, bobUid, {
@@ -248,7 +248,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           });
           closenessVarId = closeness.id;
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
           });
           stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });
           synth.addManualNode(stage.id, person.id, danaUid, {
@@ -323,7 +323,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           });
           availabilityVarId = availability.id;
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
           });
           stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });
           stage.addPrompt({
@@ -413,7 +413,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           closenessVarId = closeness.id;
           availabilityVarId = availability.id;
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
           });
           stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });
           stage.addPrompt({
@@ -490,7 +490,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
             ],
           });
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
           });
           // Prompt 1 omits `color`. resolveOrdinalBinPrompt auto-assigns
           // ORDINAL_COLORS[0] === 'ord-color-seq-1' for the first OrdinalBin
@@ -580,7 +580,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
             ],
           });
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
           });
           // Prompt 1 sorts the unplaced drawer by name descending.
           stage.addPrompt({
@@ -682,7 +682,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
             type: 'boolean',
           });
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
             filter: {
               rules: [
                 {
@@ -779,7 +779,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           });
           closenessVarId = closeness.id;
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
           });
           stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });
           synth.addManualNode(stage.id, person.id, hanaUid, {
@@ -831,7 +831,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           ],
         });
         const stage = synth.addStage('OrdinalBin', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { requireCompletePlacement: true },
         });
         stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });
@@ -895,7 +895,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           });
           closenessVarId = closeness.id;
           const stage = synth.addStage('OrdinalBin', {
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
             behaviours: { interactionMode: 'select' },
           });
           stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });

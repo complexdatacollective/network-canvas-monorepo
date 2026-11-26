@@ -20,7 +20,7 @@ const build = () => {
   const stage = si.addStage('OneToManyDyadCensus', {
     label: 'One-to-Many Dyad Census',
     initialNodes: { count: 8 },
-    subject: { entity: 'node', type: nt.id },
+    subject: { entity: 'node', types: [nt.id] },
     behaviours: { removeAfterConsideration: false },
   });
   stage.addPrompt({

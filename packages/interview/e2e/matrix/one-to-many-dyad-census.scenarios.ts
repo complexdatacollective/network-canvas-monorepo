@@ -18,7 +18,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
     {
       id: 'basic-source-target-edge-creation',
       covers: [
-        'subject.type',
+        'subject.types',
         'prompts[].createEdge',
         'prompts[].text',
         'label',
@@ -41,7 +41,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('OneToManyDyadCensus', {
           label: 'INTERNAL LABEL SHOULD NOT SHOW',
           interviewScript: 'INTERNAL SCRIPT SHOULD NOT SHOW',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { removeAfterConsideration: false },
         });
 
@@ -123,7 +123,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { removeAfterConsideration: false },
         });
         const focal = dynamicValueNameFor({
@@ -176,7 +176,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { removeAfterConsideration: true },
         });
         synth.addManualNode(stage.id, person.id, 'p-carol', {
@@ -217,7 +217,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { removeAfterConsideration: false },
         });
         synth.addManualNode(stage.id, person.id, 'p-carol', {
@@ -256,7 +256,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const advice = synth.addEdgeType({ name: 'Advice' });
         const stage = synth.addStage('OneToManyDyadCensus', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { removeAfterConsideration: false },
         });
         synth.addManualNode(stage.id, person.id, 'p-carol', {
@@ -349,7 +349,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { removeAfterConsideration: false },
         });
         synth.addManualNode(stage.id, person.id, 'p-carol', {
@@ -387,7 +387,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { removeAfterConsideration: false },
         });
         // Deliberately non-alphabetical creation order so binSortOrder is
@@ -427,7 +427,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
         const { nt: person, nameVarId } = addPersonType(synth);
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('OneToManyDyadCensus', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           behaviours: { removeAfterConsideration: false },
         });
         synth.addManualNode(stage.id, person.id, 'p-carol', {

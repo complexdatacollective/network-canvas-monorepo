@@ -381,7 +381,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
             '# Protect your data\n\nThis study encrypts participant names.',
         });
         const generator = synth.addStage('NameGeneratorQuickAdd', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         generator.addPrompt({ text: 'Add a person (this will be encrypted)' });
@@ -440,7 +440,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
             '# Protect your data\n\nThis study encrypts participant names.',
         });
         const generator = synth.addStage('NameGeneratorQuickAdd', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         generator.addPrompt({ text: 'Add a person (this will be encrypted)' });
@@ -547,7 +547,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
             '# Protect your data\n\nThis study encrypts participant names.',
         });
         const generator = synth.addStage('NameGeneratorQuickAdd', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         generator.addPrompt({ text: 'Add a person (this will be encrypted)' });
@@ -649,7 +649,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
           explanationText: '# Protect your data\n\nCreate a passphrase.',
         });
         const generator = synth.addStage('NameGeneratorQuickAdd', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         generator.addPrompt({ text: 'Add a person (this will be encrypted)' });
@@ -789,7 +789,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // Adds only an unprotected answer, so nothing on this stage needs a
         // passphrase except reading the protected one it already holds.
         const earlier = synth.addStage('NameGeneratorQuickAdd', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nicknameVar.id,
         });
         earlier.addPrompt({ text: 'People named before the update' });
@@ -804,7 +804,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
           explanationText: '# Protect your data\n\nCreate a passphrase.',
         });
         const later = synth.addStage('NameGeneratorQuickAdd', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         later.addPrompt({ text: 'Add a person (this will be encrypted)' });

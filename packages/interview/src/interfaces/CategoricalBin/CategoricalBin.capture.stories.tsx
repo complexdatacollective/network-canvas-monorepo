@@ -30,7 +30,7 @@ const build = () => {
   const stage = si.addStage('CategoricalBin', {
     label: 'Categorise People',
     initialNodes: { count: 8 },
-    subject: { entity: 'node', type: nt.id },
+    subject: { entity: 'node', types: [nt.id] },
   });
   stage.addPrompt({
     variable: categoryVar.id,

@@ -1,8 +1,8 @@
-import type { Codebook, StageSubject } from '@codaco/protocol-validation';
+import type { Codebook, ResolvedSubject } from '@codaco/protocol-validation';
 
 export function getVariableDefinition(
   codebook: Codebook,
-  subject: StageSubject,
+  subject: ResolvedSubject,
   attribute: string,
 ) {
   if (subject.entity === 'ego') {

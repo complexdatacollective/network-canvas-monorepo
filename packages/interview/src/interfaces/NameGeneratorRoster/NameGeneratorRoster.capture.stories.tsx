@@ -22,7 +22,7 @@ const build = () => {
   const stage = si.addStage('NameGeneratorRoster', {
     label: 'Select People',
     initialNodes: { count: 4 },
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
     dataSource: 'externalData',
     cardOptions: {
       additionalProperties: [

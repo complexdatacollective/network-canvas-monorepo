@@ -99,7 +99,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Add Roster Contacts Basic Smoke Stage',
           interviewScript: 'Smoke-test interview script marker text',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'jsonRosterBasic',
           cardOptions: {
             additionalProperties: [
@@ -184,7 +184,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         });
         const stageA = synth.addStage('NameGeneratorRoster', {
           label: 'CSV general load',
-          subject: { entity: 'node', type: personTypeA.id },
+          subject: { entity: 'node', types: [personTypeA.id] },
           dataSource: 'csvRosterGeneral',
           searchOptions: { fuzziness: 0.1, matchProperties: ['name'] },
         });
@@ -204,7 +204,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         });
         const stageB = synth.addStage('NameGeneratorRoster', {
           label: 'CSV coercion',
-          subject: { entity: 'node', type: personTypeB.id },
+          subject: { entity: 'node', types: [personTypeB.id] },
           dataSource: 'csvRosterCoercion',
           sortOptions: {
             sortableProperties: [{ label: 'Age', variable: 'age' }],
@@ -353,7 +353,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Broken roster',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'rosterBroken',
         });
         synth.setInterfaceText(
@@ -408,7 +408,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Insertion order',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             dataSource: 'jsonRoster',
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
@@ -417,7 +417,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Name descending',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             dataSource: 'jsonRoster',
             sortOptions: {
               sortOrder: [{ property: 'name', direction: 'desc' }],
@@ -429,7 +429,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Insertion descending',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             dataSource: 'jsonRoster',
             sortOptions: {
               sortOrder: [{ property: '*', direction: 'desc' }],
@@ -510,7 +510,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Sort by closeness hierarchy',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'jsonRoster',
           sortOptions: {
             sortableProperties: [
@@ -584,7 +584,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
           .addStage('NameGeneratorRoster', {
             label: 'Search enabled',
             panelTitle: 'People from your class',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             dataSource: 'jsonRoster',
             searchOptions: {
               fuzziness: 0.4,
@@ -598,7 +598,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Search absent',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             dataSource: 'jsonRoster',
           })
           .addPrompt({ text: 'Please add anyone you recognise.' });
@@ -663,7 +663,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Match location only',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             dataSource: 'jsonRoster',
             searchOptions: { fuzziness: 0.2, matchProperties: ['location'] },
           })
@@ -715,7 +715,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Add everyone',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             dataSource: 'jsonRoster',
             searchOptions: {
               fuzziness: 0.4,
@@ -731,7 +731,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         synth
           .addStage('NameGeneratorRoster', {
             label: 'Empty roster',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             dataSource: 'emptyRoster',
             wording: { allAddedNotice: ALL_ADDED_NOTICE },
           })
@@ -796,7 +796,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Minimum two',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'jsonRoster',
           behaviours: { minNodes: 2 },
         });
@@ -847,7 +847,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Maximum two',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'jsonRoster',
           behaviours: { maxNodes: 2 },
         });
@@ -916,7 +916,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Multi-prompt roster',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'jsonRoster',
         });
         stage.addPrompt({
@@ -1010,7 +1010,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Remove round trip',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'jsonRoster',
         });
         stage.addPrompt({ text: 'Please add anyone you recognise.' });
@@ -1061,7 +1061,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Encrypted names',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'jsonRoster',
         });
         stage.addPrompt({ text: 'Please add anyone you recognise.' });
@@ -1120,7 +1120,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorRoster', {
           label: 'Label fallback',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           dataSource: 'rosterUuidMismatch',
           // The stage's own label for an unnamed row, naming the node type.
           wording: {

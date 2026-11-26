@@ -19,7 +19,7 @@ const build = () => {
   si.addInformationStage({ title: 'Welcome', text: 'Before the main stage.' });
   const stage = si.addStage('NameGenerator', {
     label: 'Name Generator',
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
     initialNodes: { count: 4, promptIndex: 0 },
   });
   // The seeded generator occasionally produces a node whose label falls back

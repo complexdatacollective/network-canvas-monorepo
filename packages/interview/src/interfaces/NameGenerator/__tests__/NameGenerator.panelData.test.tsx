@@ -73,7 +73,7 @@ const stage: StageProps<'NameGenerator'>['stage'] = {
   id: testId('ng1'),
   type: 'NameGenerator',
   label: { en: 'Name Generator' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   form: {
     title: { en: 'Add a person' },
     fields: [

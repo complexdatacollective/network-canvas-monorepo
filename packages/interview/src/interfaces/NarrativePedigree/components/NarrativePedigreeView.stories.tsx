@@ -114,7 +114,7 @@ const sourceStage = {
   id: SOURCE_STAGE_ID,
   type: 'FamilyPedigree' as const,
   label: { en: 'Family Pedigree' },
-  subject: { entity: 'node' as const, type: NODE_TYPE },
+  subject: { entity: 'node' as const, types: [NODE_TYPE] },
   prompt: { en: 'Build your pedigree.' },
   nodeConfiguration: {
     nameAttribute: NAME_VAR,

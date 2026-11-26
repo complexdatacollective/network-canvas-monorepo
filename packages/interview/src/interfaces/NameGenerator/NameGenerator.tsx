@@ -43,6 +43,7 @@ import {
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
+import { requireSingleStageNodeType } from '../../utils/stageNodeType';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { writesEncryptedValue } from '../Anonymisation/utils';
 import { isNetworkNode, promptListDropSound } from '../promptListDrop';
@@ -55,6 +56,7 @@ type NameGeneratorProps = StageProps<'NameGeneratorQuickAdd' | 'NameGenerator'>;
 const NameGenerator = (props: NameGeneratorProps) => {
   const intl = useAppIntl();
   const { stage } = props;
+  const nodeType = requireSingleStageNodeType(stage);
 
   const { behaviours, type, panels } = stage;
   // The stage's own words, and Network Canvas's where the stage holds none.
@@ -162,7 +164,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
     ) =>
       dispatch(
         addNodeAction({
-          type: stage.subject.type,
+          type: nodeType,
           attributeData: attributes,
           // Decided per node rather than by the stage's own fields: a node
           // from a panel's external data can carry encrypted values too.
@@ -172,7 +174,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
           currentStep,
         }),
       ),
-    [dispatch, stage.subject.type, codebookForNodeType, currentStep],
+    [dispatch, nodeType, codebookForNodeType, currentStep],
   );
 
   const addNode = useCallback(

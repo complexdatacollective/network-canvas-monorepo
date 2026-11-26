@@ -177,7 +177,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'hidden-alter-form',
               type: 'AlterForm',
               label: { en: 'Hidden form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form,
               skipLogic: {
                 action: 'SKIP',
@@ -264,7 +264,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form,
             },
             {
@@ -350,7 +350,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form,
             },
             {
@@ -438,7 +438,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form,
             },
             {
@@ -529,7 +529,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form,
             },
             {
@@ -624,7 +624,7 @@ describe('SlidesForm navigation ownership', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form,
             },
             {
@@ -727,7 +727,7 @@ describe('SlidesForm going back from the first slide', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form,
             },
           ],
@@ -886,7 +886,7 @@ describe('SlidesForm moving on from a complete form', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form: closenessForm,
             },
             {

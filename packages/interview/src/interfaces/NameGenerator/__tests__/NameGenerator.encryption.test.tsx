@@ -87,7 +87,7 @@ const quickAddStages: Stages = [
     type: 'NameGeneratorQuickAdd',
     addNamePlaceholder: { en: 'Type a name, then press Enter' },
     label: { en: 'Quick add' },
-    subject: { entity: 'node', type: NODE_TYPE },
+    subject: { entity: 'node', types: [NODE_TYPE] },
     quickAdd: asEntityAttributeReference(NAME_VARIABLE),
     prompts: [{ id: testId('prompt-1'), text: { en: 'Name people' } }],
   },

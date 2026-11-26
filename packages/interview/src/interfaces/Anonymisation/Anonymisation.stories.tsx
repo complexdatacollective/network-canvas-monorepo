@@ -303,7 +303,7 @@ function buildResumedInterview() {
       '# Protect your answers\n\nEnter the passphrase you chose earlier in this interview.',
   });
   const generator = interview.addStage('NameGeneratorQuickAdd', {
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
     quickAdd: name.id,
   });
   generator.addPrompt({ text: 'Who do you spend your free time with?' });

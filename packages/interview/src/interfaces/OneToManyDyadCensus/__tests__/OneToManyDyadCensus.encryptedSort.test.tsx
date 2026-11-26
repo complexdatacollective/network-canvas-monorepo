@@ -97,7 +97,7 @@ const stageWith = (
   id: testId('one-to-many'),
   type: 'OneToManyDyadCensus',
   label: { en: 'One to many' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   behaviours: { removeAfterConsideration },
   prompts: [prompt('first'), prompt('second')],
 });

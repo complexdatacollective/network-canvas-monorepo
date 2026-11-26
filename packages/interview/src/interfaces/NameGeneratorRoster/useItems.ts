@@ -26,6 +26,7 @@ import {
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
 import { getEntityAttributes } from '../../utils/networkEntities';
 import { resolveRosterNodeLabel } from '../../utils/resolveRosterNodeLabel';
+import { requireSingleStageNodeType } from '../../utils/stageNodeType';
 import type { DataCardDetail } from './DataCard';
 import type { NameGeneratorRosterProps } from './helpers';
 
@@ -83,9 +84,14 @@ const useItems = (props: NameGeneratorRosterProps) => {
   const subject = useStageSubjectName();
   const unnamedLabel = useStageWording(props.stage).text('unnamedLabel');
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
+  const nodeType = requireSingleStageNodeType(props.stage);
+  const stageSubject = useMemo(
+    () => ({ entity: 'node' as const, type: nodeType }),
+    [nodeType],
+  );
   const { externalData, status } = useExternalData(
     props.stage.dataSource,
-    props.stage.subject,
+    stageSubject,
   );
   const networkNodes = useStageSelector(getNetworkNodes);
   const cardOptions = useStageSelector(getStageCardOptions);

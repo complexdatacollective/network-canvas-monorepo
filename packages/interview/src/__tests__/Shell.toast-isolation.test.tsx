@@ -161,7 +161,7 @@ function makePayload(id: string): InterviewPayload {
           },
           addNamePlaceholder: { en: 'Type a name, then press Enter' },
           label: { en: `Original_${id}` },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           quickAdd: asEntityAttributeReference(NAME),
           prompts: [
             {

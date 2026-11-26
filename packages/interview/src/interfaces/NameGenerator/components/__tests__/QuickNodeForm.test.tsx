@@ -128,7 +128,7 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
     type: 'NameGeneratorQuickAdd',
     addNamePlaceholder: { en: 'Type a name, then press Enter' },
     label: { en: 'Add people' },
-    subject: { entity: 'node', type: NODE_TYPE },
+    subject: { entity: 'node', types: [NODE_TYPE] },
     quickAdd: asEntityAttributeReference(TARGET_VARIABLE),
     prompts: [
       {

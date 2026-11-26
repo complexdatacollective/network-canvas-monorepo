@@ -104,7 +104,7 @@ const stage: StageProps<'Geospatial'>['stage'] = {
   type: 'Geospatial',
   outsideAreasLabel: { en: 'Outside Selectable Areas' },
   label: { en: 'Where people live' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   mapOptions: {
     tokenAssetId: 'mapbox-token',
     style: 'mapbox://styles/mapbox/standard',

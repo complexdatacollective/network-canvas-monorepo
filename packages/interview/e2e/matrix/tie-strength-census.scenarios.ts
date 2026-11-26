@@ -73,7 +73,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Rate Relationships (menu)',
           interviewScript: 'Internal note: use a warm tone.',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -140,7 +140,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
     },
     {
       id: 'subject-type-scoping',
-      covers: ['subject.type'],
+      covers: ['subject.types'],
       seedNetwork: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -157,7 +157,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const censusStage = synth.addStage('TieStrengthCensus', {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         censusStage.addPrompt({
           text: 'How close are these two people?',
@@ -261,7 +261,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('TieStrengthCensus', {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({
           text: 'Prompt A text',
@@ -362,7 +362,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('TieStrengthCensus', {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -410,7 +410,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('TieStrengthCensus', {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -479,7 +479,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('TieStrengthCensus', {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -568,7 +568,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('TieStrengthCensus', {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({
           text: 'Rate friendship strength',
@@ -726,7 +726,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('TieStrengthCensus', {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -768,7 +768,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Census menu label',
           interviewScript: 'Never rendered in the interview DOM.',
           initialNodes: { count: 3 },
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({
           text: 'How close are these two people?',

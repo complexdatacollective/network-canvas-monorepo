@@ -50,7 +50,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
           .addStage('DyadCensus', {
             label: 'DYAD SENTINEL',
             interviewScript: 'SCRIPT SENTINEL',
-            subject: { entity: 'node', type: nodeType.id },
+            subject: { entity: 'node', types: [nodeType.id] },
             initialNodes: { count: 3 },
           })
           .addPrompt({ text: 'Do they **know** each other?' });
@@ -97,7 +97,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const friend = synth.addEdgeType({ name: 'Friend' });
         synth
           .addStage('DyadCensus', {
-            subject: { entity: 'node', type: nodeType.id },
+            subject: { entity: 'node', types: [nodeType.id] },
             initialNodes: { count: 2 },
           })
           .addPrompt({
@@ -148,7 +148,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         synth.addInformationStage({ title: 'Before the stage' });
         synth
           .addStage('DyadCensus', {
-            subject: { entity: 'node', type: nodeType.id },
+            subject: { entity: 'node', types: [nodeType.id] },
             initialNodes: { count: 3 },
           })
           .addPrompt({
@@ -219,7 +219,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         synth.addInformationStage({ title: 'Before the stage' });
         synth
           .addStage('DyadCensus', {
-            subject: { entity: 'node', type: nodeType.id },
+            subject: { entity: 'node', types: [nodeType.id] },
             initialNodes: { count: 4 },
           })
           .addPrompt({ text: 'Do they know each other?' });
@@ -254,7 +254,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
 
     {
       id: 'subject-type-restriction',
-      covers: ['subject.type'],
+      covers: ['subject.types'],
       // Multiple sequential auto-advances under parallel matrix load; triple
       // the timeout for headroom.
       slow: true,
@@ -266,7 +266,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const place = synth.addNodeType({ name: 'Place' });
         const placeName = place.addVariable({ type: 'text', name: 'name' });
         const stage = synth.addStage('DyadCensus', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         stage.addPrompt({ text: 'Do they know each other?' });
         // Both node types coexist in the shared graph; only Person is the subject.
@@ -338,7 +338,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
           color: 'edge-color-seq-5',
         });
         const stage = synth.addStage('DyadCensus', {
-          subject: { entity: 'node', type: nodeType.id },
+          subject: { entity: 'node', types: [nodeType.id] },
           initialNodes: { count: 3 },
         });
         stage.addPrompt({
@@ -424,7 +424,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const nodeType = synth.addNodeType({ name: 'Person' });
         const knows = synth.addEdgeType({ name: 'Knows' });
         const stage = synth.addStage('DyadCensus', {
-          subject: { entity: 'node', type: nodeType.id },
+          subject: { entity: 'node', types: [nodeType.id] },
           initialNodes: { count: 3 },
         });
         // Both prompts share the same createEdge type.
@@ -486,7 +486,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         synth.addInformationStage({ title: 'Before the stage' });
         synth
           .addStage('DyadCensus', {
-            subject: { entity: 'node', type: nodeType.id },
+            subject: { entity: 'node', types: [nodeType.id] },
             initialNodes: { count: 1 },
           })
           .addPrompt({ text: 'Do they know each other?' });
@@ -522,7 +522,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const nodeType = synth.addNodeType({ name: 'Person' });
         const personName = nodeType.addVariable({ name: 'name', type: 'text' });
         const stage = synth.addStage('DyadCensus', {
-          subject: { entity: 'node', type: nodeType.id },
+          subject: { entity: 'node', types: [nodeType.id] },
         });
         const first = dynamicValueNameFor({
           kind: 'attribute',
@@ -568,7 +568,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const nodeType = synth.addNodeType({ name: 'Person' });
         const personName = nodeType.addVariable({ name: 'name', type: 'text' });
         const stage = synth.addStage('DyadCensus', {
-          subject: { entity: 'node', type: nodeType.id },
+          subject: { entity: 'node', types: [nodeType.id] },
         });
         // One "If" about the second person's answer, one about how many
         // edges the first person has.

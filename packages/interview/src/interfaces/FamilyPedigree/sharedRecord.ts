@@ -1,3 +1,4 @@
+import type { StageSubject } from '@codaco/protocol-validation';
 import {
   isFamilyPedigreeStageMetadata,
   type StageMetadata,
@@ -7,7 +8,7 @@ import {
  * same family as another. */
 type StageSummary = {
   type: string;
-  subject?: { entity?: string; type?: string } | null;
+  subject?: StageSubject | null;
   nodeConfiguration?: {
     nameAttribute?: string;
     sexAssignedAtBirthAttribute?: string;
@@ -28,7 +29,7 @@ type StageSummary = {
  * that decides who could have given which gamete. */
 const familyOf = (stage: StageSummary) =>
   JSON.stringify([
-    stage.subject?.type,
+    stage.subject?.entity === 'node' ? stage.subject.types : undefined,
     stage.edgeConfiguration?.type,
     stage.nodeConfiguration?.egoAttribute,
     stage.edgeConfiguration?.kindAttribute,

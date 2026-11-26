@@ -7,7 +7,7 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import {
   type Codebook,
-  type StageSubject,
+  type ResolvedSubject,
   type Variable,
   VARIABLE_REFERENCE_VALIDATIONS,
 } from '@codaco/protocol-validation';
@@ -99,7 +99,7 @@ function comparesEncryptedValues(
  */
 export function useValidationNetwork(
   { codebook, network }: { codebook: Codebook; network: NcNetwork },
-  subject: StageSubject | null,
+  subject: ResolvedSubject | null,
   variableIds: readonly string[],
   currentEntityId: string | undefined,
 ): {

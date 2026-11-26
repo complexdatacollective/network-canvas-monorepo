@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
+import type { StageSubject } from '@codaco/protocol-validation';
+
 import { testTypeId, testVariableId } from '../../../__tests__/testIds';
 import {
   readSharedFamilyRecord,
@@ -27,9 +29,10 @@ const pedigree = (
   bindings: Partial<typeof BINDINGS> = {},
 ) => {
   const bound = { ...BINDINGS, ...bindings };
+  const subject: StageSubject = { entity: 'node', types: [personType] };
   return {
     type: 'FamilyPedigree',
-    subject: { entity: 'node', type: personType },
+    subject,
     nodeConfiguration: {
       nameAttribute: bound.nameAttribute,
       sexAssignedAtBirthAttribute: bound.sexAssignedAtBirthAttribute,

@@ -109,7 +109,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         synth.addStage('NetworkComposer', {
           label: 'SECRET-LABEL',
           interviewScript: 'SECRET-SCRIPT',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
         });
@@ -184,7 +184,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           name: 'composerLayout',
         });
         synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
         });
@@ -237,7 +237,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         });
         const age = person.addVariable({ type: 'number', name: 'Age' });
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           nodeForm: {
@@ -312,7 +312,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           convexHullVariable: community.id,
@@ -418,7 +418,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           name: 'composerLayout',
         });
         synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
         });
@@ -498,7 +498,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           ],
         });
         synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           convexHullVariable: community.id,
@@ -568,7 +568,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           ],
         });
         synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           convexHullVariable: community.id,
@@ -731,7 +731,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           name: 'composerLayout',
         });
         synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           background: {
@@ -784,7 +784,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           source: backgroundImageAsset.source,
         });
         synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           background: {
@@ -836,7 +836,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           name: 'composerLayout',
         });
         synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           background: { concentricCircles: 0 },
@@ -865,7 +865,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           initialNodes: { count: 4 },
@@ -934,7 +934,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
         });
@@ -1001,7 +1001,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           name: 'Reciprocated',
         });
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
         });
@@ -1177,7 +1177,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         });
 
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           nodeForm: {
@@ -1419,7 +1419,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           validation: { minValue: 10 },
         });
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           nodeForm: {
@@ -1513,7 +1513,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
           convexHullVariable: community.id,
@@ -1612,7 +1612,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         const stage = synth.addStage('NetworkComposer', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: quickAdd.id,
           layoutVariable: layoutVar.id,
         });

@@ -24,7 +24,7 @@ function quickAddInterview() {
     encrypted: true,
   });
   const stage = interview.addStage('NameGeneratorQuickAdd', {
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
     quickAdd: name.id,
   });
   stage.addPrompt({ text: 'Who do you spend your free time with?' });
@@ -98,7 +98,7 @@ function buildSchema8Interview() {
     ],
   });
   const stage = interview.addStage('OrdinalBin', {
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   stage.addPrompt({
     variable: closeness.id,

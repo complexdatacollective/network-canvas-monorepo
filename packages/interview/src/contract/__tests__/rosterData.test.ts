@@ -81,7 +81,7 @@ function rosterStage(id: string, dataSource: string): Stage {
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     unnamedLabel: { en: 'Unnamed {count}' },
     panelTitle: { en: 'Available to add' },
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     dataSource,
     prompts: [{ id: testId(`${id}-p1`), text: { en: 'Pick people' } }],
   };
@@ -97,7 +97,7 @@ function nameGeneratorStage(
     label: { en: 'Name Generator' },
     type: 'NameGenerator',
     form: { title: { en: 'Add people' }, fields: [nameField] },
-    subject: { entity: 'node', type: subjectType },
+    subject: { entity: 'node', types: [subjectType] },
     panels,
     prompts: [{ id: testId(`${id}-p1`), text: { en: 'Add people' } }],
   };
@@ -507,7 +507,7 @@ describe('collectRosterExternalData', () => {
           },
           unnamedLabel: { en: 'Unnamed {count}' },
           panelTitle: { en: 'Available to add' },
-          subject: { entity: 'node', type: PLACE },
+          subject: { entity: 'node', types: [PLACE] },
           dataSource: 'roster',
           prompts: [{ id: testId('p1'), text: { en: 'Pick places' } }],
         },
@@ -636,7 +636,7 @@ describe('collectRosterExternalData', () => {
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
       unnamedLabel: localized('Unnamed {count}'),
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       prompts: [{ id: testId('p1'), text: 'Pick people' }],
     } as unknown as Stage;
 

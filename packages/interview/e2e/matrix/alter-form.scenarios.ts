@@ -67,7 +67,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({ title: 'Previous stage' });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           label: 'Menu-only label',
           interviewScript: 'Ask gently',
         });
@@ -133,7 +133,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         const place = synth.addNodeType({ name: 'Place' });
         const placeName = place.addVariable({ name: 'name', type: 'text' });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: nickname.id,
@@ -225,7 +225,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           validation: { minLength: 5 },
         });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: fullName.id,
@@ -301,7 +301,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           validation: { minValue: 1, maxValue: 120 },
         });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: bio.id,
@@ -370,7 +370,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           validation: { minSelected: 1, maxSelected: 2 },
         });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: interests.id,
@@ -453,7 +453,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           validation: { sameAs: fieldA.id },
         });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: codeName.id,
@@ -579,7 +579,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           validation: { lessThanOrEqualToVariable: END },
         });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         for (const [variable, prompt] of [
           [start.id, 'Start'],
@@ -746,7 +746,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
 
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: text.id,
@@ -919,7 +919,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           validation: { minValue: 0, maxValue: 120 },
         });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: age.id,
@@ -989,7 +989,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         synth.addInformationStage({ title: 'Previous stage' });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: name.id,
@@ -1045,7 +1045,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         synth.addStage('Anonymisation');
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: secret.id,
@@ -1126,7 +1126,7 @@ export const alterFormScenarios: InterfaceScenarios = {
           options,
         });
         const alterForm = synth.addStage('AlterForm', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
         });
         alterForm.addFormField({
           variable: closeness.id,

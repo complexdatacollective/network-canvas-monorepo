@@ -43,7 +43,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           nameVarId = nameVar.id;
           const stage = synth.addStage('NameGeneratorQuickAdd', {
             label: 'Add contacts',
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
             quickAdd: nameVar.id,
           });
           stage.addPrompt({ text: 'Who do you know?' });
@@ -104,7 +104,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
           nameVarId = nameVar.id;
           const stage = synth.addStage('NameGeneratorQuickAdd', {
             label: 'Add contacts',
-            subject: { entity: 'node', type: person.id },
+            subject: { entity: 'node', types: [person.id] },
             quickAdd: nameVar.id,
             // The stage's own placeholder, naming the node type.
             wording: {
@@ -176,7 +176,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Add contacts',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         stage.addPrompt({ text: 'Who do you know?' });
@@ -224,7 +224,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'My QuickAdd',
           interviewScript: 'SECRET-SCRIPT',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         stage.addPrompt({ text: 'Who do you *trust*?' });
@@ -281,7 +281,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Alters',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         stage.addPrompt({
@@ -367,14 +367,14 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         });
         const setup = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Setup',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
           initialNodes: { count: 1, promptIndex: 0 },
         });
         setup.addPrompt({ text: 'Setup prompt' });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Limited',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
           behaviours: { minNodes: 1, maxNodes: 1 },
         });
@@ -440,7 +440,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Import contacts',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         synth.setInterfaceText(
@@ -516,7 +516,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
 
     {
       id: 'subject-type-scoping',
-      covers: ['subject.type'],
+      covers: ['subject.types'],
       currentStep: 1,
       seedNetwork: true,
       build: () => {
@@ -536,7 +536,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
 
         const setup = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Setup places',
-          subject: { entity: 'node', type: place.id },
+          subject: { entity: 'node', types: [place.id] },
           quickAdd: placeName.id,
           initialNodes: { count: 2 }, // not tied to any prompt
         });
@@ -544,7 +544,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'People',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: personName.id,
           behaviours: { minNodes: 1 },
         });
@@ -609,7 +609,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Styled contacts',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         stage.addPrompt({
@@ -667,7 +667,7 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
         });
         const stage = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Confidential contacts',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           quickAdd: nameVar.id,
         });
         stage.addPrompt({ text: 'Add a person (this will be encrypted)' });

@@ -2,7 +2,7 @@ import { includes, toNumber } from 'es-toolkit/compat';
 
 import {
   type Codebook,
-  type StageSubject,
+  type ResolvedSubject,
   type VariableType,
   VariableTypes,
 } from '@codaco/protocol-validation';
@@ -100,7 +100,7 @@ const getAttributeTypes = (
   uniqueAttributeKeys: string[],
   nodeList: NcNode[],
   protocolCodebook: Codebook,
-  stageSubject: StageSubject,
+  stageSubject: ResolvedSubject,
 ): Record<string, ColumnType> => {
   return uniqueAttributeKeys.reduce<Record<string, ColumnType>>(
     (acc, attributeKey) => {
@@ -161,7 +161,7 @@ const getAttributeTypes = (
 
 const getCodebookDefinition = (
   protocolCodebook: Codebook,
-  stageSubject: StageSubject,
+  stageSubject: ResolvedSubject,
 ) => {
   const entityType = stageSubject.entity;
   if (entityType === 'ego') {
@@ -176,7 +176,7 @@ const getCodebookDefinition = (
 const getUniqueAttributeKeys = (
   nodeList: NcNode[],
   protocolCodebook: Codebook,
-  stageSubject: StageSubject,
+  stageSubject: ResolvedSubject,
 ) =>
   nodeList.reduce((attributeKeys: string[], node) => {
     const codebookDefinition = getCodebookDefinition(
@@ -263,7 +263,7 @@ const resolveOptionAnswer = (
 const getNodeListUsingTypes = (
   nodeList: NcNode[],
   protocolCodebook: Codebook,
-  stageSubject: StageSubject,
+  stageSubject: ResolvedSubject,
   derivedAttributeTypes: Record<string, ColumnType>,
 ) =>
   nodeList.map((node) => {
@@ -398,7 +398,7 @@ const getNodeListUsingTypes = (
 const withTypeReplacement = (
   nodeList: NcNode[],
   protocolCodebook: Codebook,
-  stageSubject: StageSubject,
+  stageSubject: ResolvedSubject,
 ) => {
   const uniqueAttributeKeys = getUniqueAttributeKeys(
     nodeList,
@@ -428,7 +428,7 @@ export const getVariableTypeReplacements = (
   sourceFile: string,
   uuidData: NcNode[],
   protocolCodebook: Codebook,
-  stageSubject: StageSubject,
+  stageSubject: ResolvedSubject,
 ) => {
   const fileType = fileExtension(sourceFile) === 'csv' ? 'csv' : 'json';
   if (fileType === 'csv') {
@@ -445,7 +445,7 @@ export const getVariableTypeReplacements = (
 const withOptionValuesResolved = (
   nodeList: NcNode[],
   protocolCodebook: Codebook,
-  stageSubject: StageSubject,
+  stageSubject: ResolvedSubject,
 ) => {
   const codebookDefinition = getCodebookDefinition(
     protocolCodebook,

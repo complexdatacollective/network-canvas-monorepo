@@ -9,6 +9,7 @@ import type {
   FormField,
   LocalizedString,
   ProtocolObjectId,
+  ResolvedSubject,
   Variable,
 } from '@codaco/protocol-validation';
 
@@ -18,18 +19,13 @@ import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import { getNetwork, getStageSubject } from './session';
 
-export type Subject = {
-  entity: 'node' | 'edge' | 'ego';
-  type?: string;
-};
-
 /**
  * Selector that gets codebook variables for a subject passed as a prop.
  * This is used when the subject is known from component props rather than
  * from the current stage in Redux state.
  */
 const getCodebookVariablesForProvidedSubject = createSelector(
-  [getCodebook, (_state, subject: Subject | null) => subject],
+  [getCodebook, (_state, subject: ResolvedSubject | null) => subject],
   (codebook, subject) => {
     if (!subject) {
       return {};
@@ -40,10 +36,6 @@ const getCodebookVariablesForProvidedSubject = createSelector(
     }
 
     const { entity, type } = subject;
-    if (!type) {
-      return {};
-    }
-
     return codebook?.[entity]?.[type]?.variables ?? {};
   },
 );
@@ -260,7 +252,7 @@ export const selectFieldMetadataWithSubject = createSelector(
     getCodebookVariablesForProvidedSubject,
     (
       _state,
-      _subject: Subject | null,
+      _subject: ResolvedSubject | null,
       fields: Array<FormField | ComposerFormField>,
     ) => fields,
   ],

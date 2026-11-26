@@ -77,7 +77,7 @@ function interview() {
   const si = new SyntheticInterview(5);
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
-    subject: { entity: 'node', type: people.id },
+    subject: { entity: 'node', types: [people.id] },
     prompt: 'Add the members of your family.',
   });
   si.addManualNode(stage.id, stage.personType, 'ego', {

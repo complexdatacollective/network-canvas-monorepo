@@ -95,7 +95,7 @@ function scaffold(options: PedigreeOptions = {}) {
   }
   const people = synth.addNodeType({ name: 'Person' });
   const fp = synth.addStage('FamilyPedigree', {
-    subject: { entity: 'node', type: people.id },
+    subject: { entity: 'node', types: [people.id] },
     prompt: PROMPT,
     ...(options.label ? { label: options.label } : {}),
     ...(options.interviewScript

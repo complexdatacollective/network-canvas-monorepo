@@ -102,7 +102,7 @@ function interview({
   const si = new SyntheticInterview(1);
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
-    subject: { entity: 'node', type: people.id },
+    subject: { entity: 'node', types: [people.id] },
     prompt: 'Add the members of your family.',
     askGenderIdentity,
   });
@@ -462,7 +462,7 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
     const si = new SyntheticInterview(3);
     const people = si.addNodeType({ name: 'Person' });
     const stage = si.addStage('FamilyPedigree', {
-      subject: { entity: 'node', type: people.id },
+      subject: { entity: 'node', types: [people.id] },
       prompt: 'Add the members of your family.',
     });
     si.addManualNode(stage.id, stage.personType, 'ego', {
@@ -543,7 +543,7 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
     const si = new SyntheticInterview(4);
     const people = si.addNodeType({ name: 'Person' });
     const stage = si.addStage('FamilyPedigree', {
-      subject: { entity: 'node', type: people.id },
+      subject: { entity: 'node', types: [people.id] },
       prompt: 'Add the members of your family.',
     });
     si.addManualNode(stage.id, stage.personType, 'ego', {
@@ -595,11 +595,11 @@ describe('FamilyPedigree stages that draw the same family', () => {
     const si = new SyntheticInterview(2);
     const people = si.addNodeType({ name: 'Person' });
     const first = si.addStage('FamilyPedigree', {
-      subject: { entity: 'node', type: people.id },
+      subject: { entity: 'node', types: [people.id] },
       prompt: 'Add the members of your family.',
     });
     si.addStage('FamilyPedigree', {
-      subject: { entity: 'node', type: people.id },
+      subject: { entity: 'node', types: [people.id] },
       prompt: 'Look over your family again.',
     });
     si.addManualNode(first.id, first.personType, 'ego', {
@@ -738,7 +738,7 @@ describe('FamilyPedigree a parent re-described as genetic', () => {
     const si = new SyntheticInterview(5);
     const people = si.addNodeType({ name: 'Person' });
     const stage = si.addStage('FamilyPedigree', {
-      subject: { entity: 'node', type: people.id },
+      subject: { entity: 'node', types: [people.id] },
       prompt: 'Add the members of your family.',
       askGenderIdentity: false,
     });

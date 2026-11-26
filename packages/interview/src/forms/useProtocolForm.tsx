@@ -13,7 +13,7 @@ import type {
   ComposerFormField,
   FormField,
   ProtocolObjectId,
-  StageSubject,
+  ResolvedSubject,
 } from '@codaco/protocol-validation';
 
 import {
@@ -27,7 +27,6 @@ import {
 import { useStageSelector } from '../hooks/useStageSelector';
 import {
   getValidationContext,
-  type Subject,
   selectFieldMetadataFromVariables,
   selectFieldMetadataWithSubject,
 } from '../selectors/forms';
@@ -40,18 +39,6 @@ import ProtocolFormField from './ProtocolFormField';
 import { useValidationNetwork } from './useValidationNetwork';
 
 const NO_VARIABLES: readonly string[] = [];
-
-/**
- * Narrow a loosely-typed form Subject into a valid StageSubject for the
- * validation context. Returns null when the subject is absent or a node/edge
- * subject lacks a type (which can't identify a codebook entity).
- */
-function subjectToStageSubject(subject?: Subject): StageSubject | null {
-  if (!subject) return null;
-  if (subject.entity === 'ego') return { entity: 'ego' };
-  if (subject.type === undefined) return null;
-  return { entity: subject.entity, type: subject.type };
-}
 
 /**
  * A form's fields, with the captions the variable-comparison validators name
@@ -180,7 +167,7 @@ export default function useProtocolForm({
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
   initialValues?: Record<string, FieldValue>;
-  subject?: Subject;
+  subject?: ResolvedSubject;
   namespace?: string;
   currentEntityId?: string;
   formValueAliases?: Readonly<Record<string, string>>;
@@ -191,9 +178,6 @@ export default function useProtocolForm({
   isParticipant?: boolean;
 }) {
   const stageValidationContext = useStageSelector(getValidationContext);
-  const baseValidationContext =
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stage without a subject (Information) has a null stageSubject, which ValidationContext does not allow; the form's own subject replaces it below whenever fields name one
-    stageValidationContext as ValidationContext | null;
 
   // Callers routinely pass `subject` as an inline literal, so key on its
   // VALUES rather than its identity. A per-render subject identity would give
@@ -202,17 +186,14 @@ export default function useProtocolForm({
   // subscribed to the form store (e.g. the FamilyPedigree wizard steps), each
   // re-registration re-renders that ancestor, looping infinitely.
   const subjectEntity = subject?.entity;
-  const subjectType = subject?.type;
-  const stableSubject = useMemo<Subject | undefined>(
-    () =>
-      subjectEntity !== undefined
-        ? {
-            entity: subjectEntity,
-            ...(subjectType !== undefined ? { type: subjectType } : {}),
-          }
-        : undefined,
-    [subjectEntity, subjectType],
-  );
+  const subjectType = subject?.entity === 'ego' ? undefined : subject?.type;
+  const stableSubject = useMemo<ResolvedSubject | undefined>(() => {
+    if (subjectEntity === undefined) return undefined;
+    if (subjectEntity === 'ego') return { entity: 'ego' };
+    return subjectType === undefined
+      ? undefined
+      : { entity: subjectEntity, type: subjectType };
+  }, [subjectEntity, subjectType]);
 
   const stageVariables = useStageSelector(getCodebookVariablesForSubjectType);
   const subjectFieldsMetadata = useSelector((state) =>
@@ -229,31 +210,30 @@ export default function useProtocolForm({
 
   const { context: validationNetwork, passphraseNeeded } = useValidationNetwork(
     stageValidationContext,
-    subjectToStageSubject(stableSubject) ?? stageValidationContext.stageSubject,
+    stableSubject ?? stageValidationContext.stageSubject,
     fieldsMetadata.map((field) => field.variable),
     currentEntityId,
   );
 
   const validationContext = useMemo<ValidationContext | null>(() => {
-    if (!baseValidationContext) return null;
-
     // Stages without a top-level subject (e.g. Information) leave
     // stageSubject null, which the context-dependent validators
     // (unique/sameAs/differentFrom/greaterThanVariable) dereference. When the
     // caller supplies a concrete subject for the rendered fields, use it as the
-    // stageSubject so those validators resolve against the right entity type.
-    const resolvedSubject = subjectToStageSubject(stableSubject);
-    const stageSubject = resolvedSubject ?? baseValidationContext.stageSubject;
+    // stageSubject so those validators resolve against the right entity type;
+    // with neither there is nothing to validate against.
+    const stageSubject = stableSubject ?? stageValidationContext.stageSubject;
+    if (!stageSubject) return null;
 
     return {
-      ...baseValidationContext,
+      ...stageValidationContext,
       ...validationNetwork,
       stageSubject,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
       ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
   }, [
-    baseValidationContext,
+    stageValidationContext,
     currentEntityId,
     formValueAliases,
     stableSubject,
@@ -346,10 +326,7 @@ export default function useProtocolForm({
   const inFormScope = (children: ReactNode): ReactNode => {
     const scoped = showsDynamicValues ? (
       <FormDynamicValues
-        formSubject={
-          subjectToStageSubject(stableSubject) ??
-          stageValidationContext.stageSubject
-        }
+        formSubject={stableSubject ?? stageValidationContext.stageSubject}
         stageSubject={stageValidationContext.stageSubject}
         entityId={currentEntityId}
         initialValues={initialValues}

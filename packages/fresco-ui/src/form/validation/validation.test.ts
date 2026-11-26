@@ -2,7 +2,6 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod/mini';
 
-import type { StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcNetwork,
@@ -182,7 +181,7 @@ describe('Validation Utils', () => {
     const comparisonContext = (
       variableLabels?: Record<string, string>,
     ): ValidationContext => ({
-      stageSubject: { entity: 'ego' } as StageSubject,
+      stageSubject: { entity: 'ego' },
       codebook: {
         ego: {
           variables: {

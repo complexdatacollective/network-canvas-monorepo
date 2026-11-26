@@ -73,7 +73,7 @@ const stage = (overrides: Record<string, unknown>) =>
   ({
     id: 'stage-1',
     label: { en: 'Stage' },
-    subject: { entity: 'node' as const, type: testTypeId('person') },
+    subject: { entity: 'node' as const, types: [testTypeId('person')] },
     prompts: [{ id: 'p1', text: { en: 'Prompt' } }],
     ...overrides,
   }) as unknown as StageProps<'NameGenerator'>['stage'];

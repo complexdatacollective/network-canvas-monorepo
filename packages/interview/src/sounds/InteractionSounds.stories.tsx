@@ -48,7 +48,7 @@ function buildInterview() {
 
   const nameGenerator = interview.addStage('NameGeneratorQuickAdd', {
     label: 'Add people',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
     quickAdd: name.id,
     initialNodes: { count: 3, promptIndex: 0 },
   });
@@ -58,7 +58,7 @@ function buildInterview() {
 
   const sociogram = interview.addStage('Sociogram', {
     label: 'Connect people',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   sociogram.addPrompt({
     text: 'Tap a person, then another, to connect or disconnect them. A sound loops while the first waits.',
@@ -74,7 +74,7 @@ function buildInterview() {
 
   const census = interview.addStage('OneToManyDyadCensus', {
     label: 'Choose connections',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
     behaviours: { removeAfterConsideration: false },
   });
   census.addPrompt({
@@ -84,7 +84,7 @@ function buildInterview() {
 
   const categoricalBin = interview.addStage('CategoricalBin', {
     label: 'Sort people',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   categoricalBin.addPrompt({
     variable: category.id,
@@ -96,7 +96,7 @@ function buildInterview() {
 
   const ordinalBin = interview.addStage('OrdinalBin', {
     label: 'Rate people',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   ordinalBin.addPrompt({
     variable: closeness.id,

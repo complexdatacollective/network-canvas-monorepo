@@ -29,7 +29,7 @@ const build = () => {
   const stage = si.addStage('TieStrengthCensus', {
     label: 'Rate Relationships',
     initialNodes: { count: 4 },
-    subject: { entity: 'node', type: nt.id },
+    subject: { entity: 'node', types: [nt.id] },
   });
   stage.addPrompt({
     text: 'How strong is the friendship between these two people?',

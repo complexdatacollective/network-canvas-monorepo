@@ -34,7 +34,7 @@ describe('buildSyntheticPayload', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('NameGeneratorQuickAdd', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     });
     stage.addPrompt();
     const { protocol, session, currentStep } = buildSyntheticPayload(synth, {
@@ -56,7 +56,7 @@ describe('buildSyntheticPayload', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('Sociogram', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
       initialNodes: { count: 3 },
     });
     stage.addPrompt();
@@ -85,7 +85,7 @@ describe('buildSyntheticPayload', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('Sociogram', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
       initialNodes: { count: 3 },
     });
     stage.addPrompt();
@@ -113,7 +113,7 @@ describe('buildSyntheticPayload', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('NameGeneratorRoster', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
       // roster dataSource must reference a network asset in the manifest
       dataSource: 'no-such-asset',
     });
@@ -134,7 +134,7 @@ describe('buildSyntheticPayload', () => {
       });
       const nickname = person.addVariable({ name: 'nickname', type: 'text' });
       const stage = synth.addStage('NameGeneratorQuickAdd', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         quickAdd: name.id,
       });
       stage.addPrompt();

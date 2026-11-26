@@ -82,7 +82,7 @@ const oneToManyCensus = {
   id: testId('one-to-many'),
   type: 'OneToManyDyadCensus',
   label: { en: 'Who knows whom' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   behaviours: { removeAfterConsideration: false },
   prompts: [
     {
@@ -97,7 +97,7 @@ const dyadCensus = {
   id: testId('dyad'),
   type: 'DyadCensus',
   label: { en: 'Pairs' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   prompts: [
     {
       id: testId('dyad-p1'),
@@ -111,7 +111,7 @@ const sociogram = {
   id: testId('sociogram'),
   type: 'Sociogram',
   label: { en: 'Place people' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   background: { concentricCircles: 4 },
   prompts: [
     {
@@ -134,7 +134,7 @@ const nameGenerator = {
   id: testId('name-generator'),
   type: 'NameGeneratorQuickAdd',
   label: { en: 'Name people' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   quickAdd: asEntityAttributeReference(NAME),
   addNamePlaceholder: { en: 'Type a name, then press Enter' },
   panels: [
@@ -183,7 +183,7 @@ const ordinalBin = {
   id: testId('ordinal'),
   type: 'OrdinalBin',
   label: { en: 'Rank people' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   prompts: [
     {
       id: testId('ord-p1'),
@@ -198,7 +198,7 @@ const categoricalBin = {
   id: testId('categorical'),
   type: 'CategoricalBin',
   label: { en: 'Group people' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   prompts: [
     {
       id: testId('cat-p1'),

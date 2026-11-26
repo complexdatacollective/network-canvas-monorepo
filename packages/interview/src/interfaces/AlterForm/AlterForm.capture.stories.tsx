@@ -19,7 +19,7 @@ const build = () => {
   const stage = si.addStage('AlterForm', {
     label: 'About Each Person',
     initialNodes: { count: 3 },
-    subject: { entity: 'node', type: nt.id },
+    subject: { entity: 'node', types: [nt.id] },
   });
   stage.addFormField({ component: 'Text', prompt: 'Nickname' });
   stage.addFormField({ component: 'Number', prompt: 'Age' });

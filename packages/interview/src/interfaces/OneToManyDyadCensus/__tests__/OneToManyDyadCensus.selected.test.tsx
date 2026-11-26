@@ -50,7 +50,7 @@ const stage: StageProps<'OneToManyDyadCensus'>['stage'] = {
   id: testId('otm1'),
   type: 'OneToManyDyadCensus',
   label: { en: 'One to Many' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   behaviours: { removeAfterConsideration: false },
   prompts: [
     { id: testId('p1'), text: { en: 'Prompt one' }, createEdge: EDGE_TYPE },

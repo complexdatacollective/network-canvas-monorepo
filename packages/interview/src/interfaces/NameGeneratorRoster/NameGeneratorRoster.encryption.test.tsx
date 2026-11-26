@@ -112,7 +112,7 @@ const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
   unnamedLabel: { en: 'Unnamed {count}' },
   panelTitle: { en: 'Available to add' },
   label: { en: 'Roster' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   dataSource: 'roster-data',
   prompts: [{ id: testId('prompt-1'), text: { en: 'Who do you know?' } }],
 };

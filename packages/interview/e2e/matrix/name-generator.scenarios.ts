@@ -91,7 +91,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('NameGenerator', {
           label: 'My NG stage',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           interviewScript:
             'Ask the participant to name people they discuss things with.',
           form: { title: 'Add a friend', fields: [] },
@@ -166,7 +166,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           validation: { required: true, unique: true },
         });
         const stage = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
@@ -225,7 +225,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           validation: { minValue: 0, maxValue: 120 },
         });
         const stage = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: contact.id },
+          subject: { entity: 'node', types: [contact.id] },
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
@@ -282,7 +282,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           validation: { required: true, unique: true },
         });
         const stage = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: contact.id },
+          subject: { entity: 'node', types: [contact.id] },
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
@@ -406,7 +406,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         });
 
         const stage = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'About this person', fields: [] },
         });
         stage.addFormField({
@@ -524,7 +524,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           component: 'Text',
         });
         const stage = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
@@ -592,7 +592,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           type: 'boolean',
         });
         const stage = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'Add a person', fields: [] },
         });
         stage.addFormField({
@@ -648,7 +648,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           component: 'Text',
         });
         const stage = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'Add a person', fields: [] },
           behaviours: { minNodes: 2 },
         });
@@ -703,7 +703,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           component: 'Text',
         });
         const stage = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'Add a person', fields: [] },
           behaviours: { maxNodes: 2 },
         });
@@ -760,7 +760,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
         const setup = synth.addStage('NameGeneratorQuickAdd', {
           label: 'Setup',
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           initialNodes: { count: 3, promptIndex: 0 },
         });
         setup.addPrompt({ text: 'Setup prompt' });
@@ -770,7 +770,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         synth.addEdges([[0, 1]], colleague.id);
 
         const ng = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'Add a person', fields: [] },
         });
         ng.addFormField({ component: 'Text', prompt: 'Name' });
@@ -870,7 +870,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         });
 
         const ng = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'Add a person', fields: [] },
         });
         ng.addFormField({
@@ -964,7 +964,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
           component: 'Text',
         });
         const ng = synth.addStage('NameGenerator', {
-          subject: { entity: 'node', type: person.id },
+          subject: { entity: 'node', types: [person.id] },
           form: { title: 'Add a person', fields: [] },
         });
         // The researcher's own words, so the panel proves it shows the

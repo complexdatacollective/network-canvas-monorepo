@@ -180,7 +180,7 @@ function renderPersonForm(
           {
             id: 'pedigree',
             type: 'FamilyPedigree',
-            subject: { entity: 'node', type: config.personType },
+            subject: { entity: 'node', types: [config.personType] },
           },
         ],
       } as never,

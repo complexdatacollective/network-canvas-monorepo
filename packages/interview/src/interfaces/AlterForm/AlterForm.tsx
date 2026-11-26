@@ -19,6 +19,7 @@ import type { AttributePatch } from '../../store/entityAttributePatch';
 import { updateNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { requireSingleStageNodeType } from '../../utils/stageNodeType';
 import SlidesForm from '../SlidesForm/SlidesForm';
 
 const AlterForm = (props: StageProps<'AlterForm'>) => {
@@ -84,7 +85,10 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
       <SlidesForm
         updateItem={handleUpdateItem}
         items={items}
-        subject={stage.subject}
+        subject={{
+          entity: 'node',
+          type: requireSingleStageNodeType(stage),
+        }}
         form={stage.form}
         moveForward={moveForward}
         renderHeader={renderHeader}

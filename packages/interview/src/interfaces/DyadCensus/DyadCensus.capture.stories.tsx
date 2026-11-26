@@ -19,7 +19,7 @@ const build = () => {
   const stage = si.addStage('DyadCensus', {
     label: 'Dyad Census',
     initialNodes: { count: 4 },
-    subject: { entity: 'node', type: nt.id },
+    subject: { entity: 'node', types: [nt.id] },
   });
   stage.addPrompt({
     text: 'Do these two people know each other?',

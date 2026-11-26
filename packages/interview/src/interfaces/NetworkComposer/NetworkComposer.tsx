@@ -1,5 +1,4 @@
 'use client';
-
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { AnimatePresence } from 'motion/react';
@@ -14,7 +13,10 @@ import type { ActivationSource } from '@codaco/fresco-ui/Node';
 import OptionLabel from '@codaco/fresco-ui/OptionLabel';
 import { usePrefersReducedMotion } from '@codaco/fresco-ui/reducedMotion';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import type { ComposerForm } from '@codaco/protocol-validation';
+import type {
+  ComposerForm,
+  ResolvedSubject,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -37,7 +39,6 @@ import { useResolveLocalizedString } from '../../localization/ProtocolLocalizati
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
-  type Subject,
   validationPropsFor,
 } from '../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
@@ -50,6 +51,7 @@ import { getCodebook } from '../../store/modules/protocol';
 import { useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
+import { requireSingleStageNodeType } from '../../utils/stageNodeType';
 import type { PassphraseNoticeStatus } from '../Anonymisation/PassphraseNotice';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
@@ -81,7 +83,7 @@ type DrawerEditor = {
   entityId: string;
   title: string;
   form: ComposerForm | undefined;
-  subject: Subject;
+  subject: Extract<ResolvedSubject, { entity: 'node' | 'edge' }>;
   attributes: NcNode[typeof entityAttributesProperty];
   unavailable?: readonly string[];
   passphraseStatus?: PassphraseNoticeStatus;
@@ -103,6 +105,7 @@ const sameEditor = (a: DrawerEditor, b: DrawerEditor) =>
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const intl = useAppIntl();
   const { stage } = stageProps;
+  const nodeType = requireSingleStageNodeType(stage);
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
   const shouldReduceMotion = usePrefersReducedMotion();
@@ -257,7 +260,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const [undoStore] = useState(() => createUndoStore());
 
   const actions = useComposerActions({
-    subjectType: stage.subject.type,
+    subjectType: nodeType,
     quickAdd: stage.quickAdd,
     layoutVariable: stage.layoutVariable,
     useEncryption: quickAddEncrypted,
@@ -297,7 +300,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   // The categorical variable configured for convex-hull groups, with its
   // options; null when unset, missing from the codebook, or not categorical.
-  const nodeVariables = codebook?.node?.[stage.subject.type]?.variables ?? {};
+  const nodeVariables = codebook?.node?.[nodeType]?.variables ?? {};
   const hullVariableId = stage.convexHullVariable;
   const hullVariable =
     hullVariableId !== undefined ? nodeVariables[hullVariableId] : undefined;
@@ -668,7 +671,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         entityId: selectedNode[entityPrimaryKeyProperty],
         title,
         form: stage.nodeForm,
-        subject: stage.subject,
+        subject: { entity: 'node' as const, type: nodeType },
         attributes,
         unavailable: ready?.unavailable,
         passphraseStatus: selectedNodePassphraseStatus,

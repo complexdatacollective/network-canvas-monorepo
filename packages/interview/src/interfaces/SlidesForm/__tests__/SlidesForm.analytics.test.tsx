@@ -163,7 +163,7 @@ const renderSlidesForm = () => {
             id: 'alter-form',
             type: 'AlterForm',
             label: { en: 'Alter form' },
-            subject: { entity: 'node', type: PERSON_TYPE },
+            subject: { entity: 'node', types: [PERSON_TYPE] },
             form,
           },
         ],
@@ -247,7 +247,7 @@ describe('SlidesForm analytics', () => {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
-              subject: { entity: 'node', type: PERSON_TYPE },
+              subject: { entity: 'node', types: [PERSON_TYPE] },
               form,
             },
             {

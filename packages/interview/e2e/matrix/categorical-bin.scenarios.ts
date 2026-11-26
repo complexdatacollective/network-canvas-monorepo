@@ -123,7 +123,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           const stage = synth.addStage('CategoricalBin', {
             label: 'Categorise People',
             interviewScript: 'Author note, never shown',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 3 },
           });
           stage.addPrompt({ variable: categoryVar.id });
@@ -227,7 +227,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('CategoricalBin', {
           label: 'Categorise People',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           initialNodes: { count: 3 },
         });
         stage.addPrompt({ variable: categoryVar.id });
@@ -309,7 +309,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           const stage = synth.addStage('CategoricalBin', {
             label: 'Sort people',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 2 },
           });
           stage.addPrompt({ variable: varA.id, text: 'Sort **these** people' });
@@ -391,7 +391,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           const stage = synth.addStage('CategoricalBin', {
             label: 'Categorise',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 1 },
           });
           stage.addPrompt({ variable: categoryVar.id });
@@ -469,7 +469,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           const stage = synth.addStage('CategoricalBin', {
             label: 'Categorise',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 3 },
           });
           stage.addPrompt({
@@ -609,7 +609,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           const stage = synth.addStage('CategoricalBin', {
             label: 'Categorise',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 1 },
           });
           stage.addPrompt({
@@ -693,7 +693,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           const stage = synth.addStage('CategoricalBin', {
             label: 'Categorise',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 1 },
           });
           stage.addPrompt({
@@ -770,7 +770,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('CategoricalBin', {
           label: 'Categorise',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           initialNodes: { count: 3 },
         });
         // Two prompts on the SAME variable: prompt 1 sorts the drawer by name
@@ -841,7 +841,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
         const stage = synth.addStage('CategoricalBin', {
           label: 'Categorise',
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           initialNodes: { count: 3 },
         });
         stage.addPrompt({
@@ -900,7 +900,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           const stage = synth.addStage('CategoricalBin', {
             label: 'Categorise',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 3 },
           });
           stage.addPrompt({ variable: categoryVar.id });
@@ -989,7 +989,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           const stage = synth.addStage('CategoricalBin', {
             label: 'Categorise',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 2 },
           });
           // Second prompt so "next" changes the prompt, not the stage.
@@ -1091,7 +1091,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
           const stage = synth.addStage('CategoricalBin', {
             label: 'Categorise',
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 1 },
           });
           stage.addPrompt({ variable: friendVar.id });
@@ -1151,7 +1151,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           ],
         });
         const stage = synth.addStage('CategoricalBin', {
-          subject: { entity: 'node', type: personType.id },
+          subject: { entity: 'node', types: [personType.id] },
           initialNodes: { count: 2 },
           behaviours: { requireCompletePlacement: true },
         });
@@ -1218,7 +1218,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           categoryVarId = categoryVar.id;
 
           const stage = synth.addStage('CategoricalBin', {
-            subject: { entity: 'node', type: personType.id },
+            subject: { entity: 'node', types: [personType.id] },
             initialNodes: { count: 2 },
             behaviours: { interactionMode: 'select' },
           });

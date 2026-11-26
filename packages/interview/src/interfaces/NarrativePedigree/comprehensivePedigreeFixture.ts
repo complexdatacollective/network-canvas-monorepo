@@ -93,7 +93,7 @@ export function addComprehensivePedigree(
 
   const fpStage = si.addStage('FamilyPedigree', {
     label: 'Family Pedigree',
-    subject: { entity: 'node', type: people.id },
+    subject: { entity: 'node', types: [people.id] },
     framing: 'gamete',
     prompt: 'Build your family pedigree.',
     nominationPrompts: [

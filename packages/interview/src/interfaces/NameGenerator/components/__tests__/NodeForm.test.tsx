@@ -78,7 +78,7 @@ const stage: NameGeneratorStage = {
   id: testId('name-generator-stage'),
   type: 'NameGenerator',
   label: { en: 'Add people' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   form,
   prompts: [{ id: testId('prompt-1'), text: { en: 'Who do you know?' } }],
 };

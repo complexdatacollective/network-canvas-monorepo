@@ -101,7 +101,7 @@ function buildInterview(args: StoryArgs): {
     const setup = interview.addStage('NameGeneratorQuickAdd', {
       label: 'Prior contacts',
       initialNodes: { count: args.initialNodeCount, promptIndex: 0 },
-      subject: { entity: 'node', type: nodeType.id },
+      subject: { entity: 'node', types: [nodeType.id] },
       quickAdd: nameVar.id,
     });
     setup.addPrompt({ text: 'People named in earlier interview activity.' });
@@ -118,7 +118,7 @@ function buildInterview(args: StoryArgs): {
   if (args.stageType === 'NameGenerator') {
     const stage = interview.addStage('NameGenerator', {
       label: 'Name Generator',
-      subject: { entity: 'node', type: nodeType.id },
+      subject: { entity: 'node', types: [nodeType.id] },
       behaviours,
     });
 
@@ -139,7 +139,7 @@ function buildInterview(args: StoryArgs): {
   } else {
     const stage = interview.addStage('NameGeneratorQuickAdd', {
       label: 'Name Generator',
-      subject: { entity: 'node', type: nodeType.id },
+      subject: { entity: 'node', types: [nodeType.id] },
       quickAdd: nameVar.id,
       behaviours,
     });
@@ -604,7 +604,7 @@ function buildExternalDataInterview() {
 
   const stage = interview.addStage('NameGeneratorQuickAdd', {
     label: 'Name Generator',
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
     quickAdd: nameVar.id,
   });
 
@@ -742,7 +742,7 @@ function buildComparedWithProtectedInterview() {
 
   const stage = interview.addStage('NameGenerator', {
     label: 'Name Generator (Compared with protected)',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   stage.addFormField({
     variable: nickname.id,

@@ -10,7 +10,7 @@ import {
 } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type {
   DynamicValueRole,
-  StageSubject,
+  ResolvedSubject,
 } from '@codaco/protocol-validation';
 import {
   edgeSourceProperty,
@@ -56,7 +56,7 @@ const nodeWithId = (state: RootState, id: string | undefined) =>
         (node) => node[entityPrimaryKeyProperty] === id,
       );
 
-const ROLES: Readonly<Record<StageSubject['entity'], DynamicValueRole>> = {
+const ROLES: Readonly<Record<ResolvedSubject['entity'], DynamicValueRole>> = {
   ego: 'ego',
   node: 'node',
   edge: 'edge',
@@ -106,9 +106,9 @@ export function FormDynamicValues({
   isParticipant,
   children,
 }: {
-  formSubject: StageSubject | null | undefined;
+  formSubject: ResolvedSubject | null | undefined;
   /** Absent where the form is not on a stage. */
-  stageSubject: StageSubject | null | undefined;
+  stageSubject: ResolvedSubject | null | undefined;
   /** The node or edge the form edits, when it edits a stored one. */
   entityId: string | undefined;
   initialValues: Readonly<Record<string, FieldValue>> | undefined;

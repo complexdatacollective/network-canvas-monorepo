@@ -595,7 +595,7 @@ function createMutationStore() {
       {
         id: 'stage-1',
         type: 'NameGenerator',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         prompts: [{ id: 'prompt-1' }],
       },
     ],
@@ -1163,7 +1163,7 @@ function createTestStoreWithPrompts(options: {
       {
         id: 'stage-1',
         type: 'NameGenerator',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         prompts,
       },
     ],

@@ -17,7 +17,7 @@ import {
   getNetworkEgo,
   getNetworkNodesForOtherPrompts,
   getNetworkNodesForPrompt,
-  getSubjectType,
+  getSingleStageNodeType,
 } from './session';
 import { notInSet } from './utils';
 
@@ -36,7 +36,7 @@ export const getNodeIconName: (
   currentStep: number,
 ) => string = createSelector(
   getCodebook,
-  getSubjectType,
+  getSingleStageNodeType,
   (codebook, nodeType) => {
     const nodeIcon = nodeType
       ? (codebook?.node?.[nodeType]?.icon ?? 'add-a-person')

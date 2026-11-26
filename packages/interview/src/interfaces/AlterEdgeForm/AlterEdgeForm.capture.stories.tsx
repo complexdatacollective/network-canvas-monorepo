@@ -22,7 +22,7 @@ const build = () => {
   si.addStage('NameGenerator', {
     label: 'Name Generator',
     initialNodes: { count: 4 },
-    subject: { entity: 'node', type: nt.id },
+    subject: { entity: 'node', types: [nt.id] },
   });
   si.addEdges(
     [

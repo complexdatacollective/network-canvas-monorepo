@@ -9,7 +9,7 @@ import {
   asEntityAttributeReference,
   type Codebook,
   type Stage,
-  type StageSubject,
+  type ResolvedSubject,
   type Variable,
   type VariableOptions,
   type Variables,
@@ -85,7 +85,7 @@ function toFormValues(
 async function validateAttribute(options: {
   codebook: Codebook;
   network: NcNetwork;
-  subject: StageSubject;
+  subject: ResolvedSubject;
   variableId: string;
   variable: Variable;
   formValues: Record<string, FieldValue>;
@@ -165,9 +165,11 @@ function collectFormScope(stageList: Stage[]): FormScope {
     // NetworkComposer keeps its field lists on the stage rather than under a
     // `form` key: one for the node inspector, one per drawable edge type.
     if (stage.type === 'NetworkComposer') {
+      const [nodeType] = stage.subject.types;
+      if (nodeType === undefined) continue;
       addScopedVariables(
         scope.node,
-        stage.subject.type,
+        nodeType,
         (stage.nodeForm?.fields ?? []).map((field) => field.variable),
       );
       for (const edge of stage.edges ?? []) {
@@ -189,7 +191,9 @@ function collectFormScope(stageList: Stage[]): FormScope {
     }
 
     if (stage.subject.entity === 'node') {
-      addScopedVariables(scope.node, stage.subject.type, variables);
+      for (const nodeType of stage.subject.types) {
+        addScopedVariables(scope.node, nodeType, variables);
+      }
     } else {
       addScopedVariables(scope.edge, stage.subject.type, variables);
     }
@@ -242,7 +246,7 @@ async function collectFailures(
   const failures: string[] = [];
 
   const checkEntity = async (
-    subject: StageSubject,
+    subject: ResolvedSubject,
     variables: Variables,
     scoped: Set<string> | undefined,
     attributes: Record<string, VariableValue>,
@@ -996,7 +1000,7 @@ const stages = [
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: { en: 'People' },
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     prompts: [{ id: 'p1', text: { en: 'Name people' } }],
     form: {
       title: { en: 'About this person' },
@@ -1014,7 +1018,7 @@ const stages = [
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: { en: 'Tokens' },
-    subject: { entity: 'node', type: TOKEN },
+    subject: { entity: 'node', types: [TOKEN] },
     prompts: [{ id: 'p2', text: { en: 'Name tokens' } }],
     form: {
       title: { en: 'About this token' },
@@ -1026,7 +1030,7 @@ const stages = [
     id: 'stage-sociogram',
     type: 'Sociogram',
     label: { en: 'Connections' },
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     // Two edge-creating prompts over the same six people: each prompt draws
     // its own per-pair probability and rolls every pair against it, so a
     // second pass is a second, independent chance for a pair the first pass
@@ -1210,7 +1214,7 @@ const hazardFormStage = {
     en: 'You have completed this task. Click the next arrow to continue.',
   },
   label: { en: 'Binned people' },
-  subject: { entity: 'node', type: BINNED },
+  subject: { entity: 'node', types: [BINNED] },
   prompts: [{ id: 'p1', text: { en: 'Name people' } }],
   form: {
     title: { en: 'About this person' },
@@ -1227,7 +1231,7 @@ const hazardFormAndBinStages = [
     id: 'stage-ordinal-bin',
     type: 'OrdinalBin',
     label: { en: 'Ordinal bin' },
-    subject: { entity: 'node', type: BINNED },
+    subject: { entity: 'node', types: [BINNED] },
     prompts: [
       { id: 'p2', text: { en: 'Sort' }, variable: testVariableId('binRank') },
     ],
@@ -1236,7 +1240,7 @@ const hazardFormAndBinStages = [
     id: 'stage-categorical-bin',
     type: 'CategoricalBin',
     label: { en: 'Categorical bin' },
-    subject: { entity: 'node', type: BINNED },
+    subject: { entity: 'node', types: [BINNED] },
     prompts: [
       {
         id: 'p3',
@@ -1758,7 +1762,7 @@ const rosterDateStages = [
     },
     panelTitle: { en: 'Available to add' },
     label: { en: 'People' },
-    subject: { entity: 'node', type: ROSTER_PERSON },
+    subject: { entity: 'node', types: [ROSTER_PERSON] },
     prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
       title: { en: 'About this person' },
@@ -1844,7 +1848,7 @@ const rosterPinStages = [
     },
     panelTitle: { en: 'Available to add' },
     label: { en: 'People' },
-    subject: { entity: 'node', type: ROSTER_PINNED },
+    subject: { entity: 'node', types: [ROSTER_PINNED] },
     prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
       title: { en: 'About this person' },
@@ -1989,7 +1993,7 @@ const narrowStages = [
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: { en: 'Narrow people' },
-    subject: { entity: 'node', type: NARROW },
+    subject: { entity: 'node', types: [NARROW] },
     prompts: [{ id: 'p1', text: { en: 'Name people' } }],
     form: {
       title: { en: 'About this person' },

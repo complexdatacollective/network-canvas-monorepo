@@ -4,7 +4,7 @@ import { hash } from 'ohash';
 import {
   type Codebook,
   readRosterCsv,
-  type StageSubject,
+  type ResolvedSubject,
 } from '@codaco/protocol-validation';
 import {
   type EntityAttributesProperty,
@@ -142,7 +142,7 @@ export default loadExternalData;
 export const makeVariableUUIDReplacer =
   (
     protocolCodebook: Codebook,
-    subjectType: Extract<StageSubject, { entity: 'node' }>['type'],
+    subjectType: Extract<ResolvedSubject, { entity: 'node' }>['type'],
   ) =>
   (node: ExternalNode, index: number): NcNode => {
     const codebookDefinition = protocolCodebook.node?.[subjectType];

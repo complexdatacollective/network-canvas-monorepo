@@ -49,7 +49,7 @@ function RosterLabels() {
       unnamedLabel: { en: 'Unnamed {count}', es: 'Sin nombre {count}' },
       panelTitle: { en: 'Available to add' },
       label: { en: 'Authored stage' },
-      subject: { entity: 'node', type: PERSON_TYPE },
+      subject: { entity: 'node', types: [PERSON_TYPE] },
       dataSource: 'source',
       prompts: [{ id: testId('prompt'), text: { en: 'Authored prompt' } }],
     },

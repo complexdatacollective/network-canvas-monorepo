@@ -156,7 +156,7 @@ const quickAddStage = (id: string, prompts: string[], minNodes?: number) => ({
   id: testId(id),
   type: 'NameGeneratorQuickAdd' as const,
   label: { en: id },
-  subject: { entity: 'node' as const, type: PERSON },
+  subject: { entity: 'node' as const, types: [PERSON] },
   quickAdd: asEntityAttributeReference(NAME),
   prompts: prompts.map((text) => ({
     id: testId(`${id}-${text}`),

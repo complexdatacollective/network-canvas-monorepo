@@ -1,4 +1,4 @@
-import type { StageSubject } from '@codaco/protocol-validation';
+import type { ResolvedSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -9,7 +9,7 @@ import {
 
 export default function collectNetworkValues(
   network: NcNetwork,
-  subject: Extract<StageSubject, { entity: 'node' | 'edge' }>,
+  subject: Extract<ResolvedSubject, { entity: 'node' | 'edge' }>,
   attribute: string,
   excludeEntityId?: string,
 ) {

@@ -9,6 +9,7 @@ import type {
   Filter,
   SkipLogic,
   SkipLogicDestination,
+  StageSubject,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -25,7 +26,7 @@ type RoutableStage = {
   id: string;
   type?: string;
   skipLogic?: SkipLogic;
-  subject?: { entity: string; type?: string };
+  subject?: StageSubject;
   filter?: Filter;
   behaviours?: object;
   presets?: readonly { layoutVariable?: string; filter?: Filter }[];
@@ -101,7 +102,7 @@ const SUBJECTS_NEEDED: Partial<Record<string, number>> = {
 const narrativeSubjectsShown = (
   stage: RoutableStage,
   network: NcNetwork,
-  subjectType: string | undefined,
+  subjectTypes: readonly string[],
   needed: number,
 ): number => {
   let most = 0;
@@ -111,7 +112,7 @@ const narrativeSubjectsShown = (
     let count = 0;
     for (const node of visible.nodes) {
       if (
-        node.type === subjectType &&
+        subjectTypes.includes(node.type) &&
         Boolean(node[entityAttributesProperty][layoutVariable])
       ) {
         count += 1;
@@ -134,7 +135,11 @@ const narrativeSubjectsShown = (
 const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
   const needed = stage.type ? SUBJECTS_NEEDED[stage.type] : undefined;
   const subject = stage.subject;
-  if (needed === undefined || !subject) return false;
+  if (needed === undefined || !subject || subject.entity === 'ego') {
+    return false;
+  }
+  const subjectTypes =
+    subject.entity === 'node' ? subject.types : [subject.type];
   if (stage.type === 'Narrative') {
     if (
       stage.behaviours &&
@@ -144,7 +149,7 @@ const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
       return false;
     }
     return (
-      narrativeSubjectsShown(stage, network, subject.type, needed) < needed
+      narrativeSubjectsShown(stage, network, subjectTypes, needed) < needed
     );
   }
 
@@ -153,7 +158,7 @@ const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
     subject.entity === 'edge' ? visible.edges : visible.nodes;
   let count = 0;
   for (const entity of entities) {
-    if (entity.type === subject.type) count += 1;
+    if (subjectTypes.includes(entity.type)) count += 1;
     if (count >= needed) return false;
   }
   return true;

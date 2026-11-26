@@ -46,7 +46,7 @@ const stage: StageProps<'TieStrengthCensus'>['stage'] = {
   id: testId('tsc1'),
   type: 'TieStrengthCensus',
   label: { en: 'Tie Strength' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   prompts: [
     {
       id: testId('p1'),

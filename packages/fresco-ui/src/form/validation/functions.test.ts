@@ -7,7 +7,6 @@ import {
   createMessageError,
   formatMessageError,
 } from '@codaco/app-i18n/messages';
-import type { StageSubject } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   type NcNetwork,
@@ -25,7 +24,7 @@ describe('Validation Functions', () => {
   const createMockContext = (
     overrides: Partial<ValidationContext> = {},
   ): ValidationContext => ({
-    stageSubject: { entity: 'node', type: 'person' } as StageSubject,
+    stageSubject: { entity: 'node', type: 'person' },
     codebook: {
       node: {
         person: {
@@ -845,7 +844,7 @@ describe('Validation Functions', () => {
 
     it('should throw error for ego entities', () => {
       const context = createMockContext({
-        stageSubject: { entity: 'ego' } as StageSubject,
+        stageSubject: { entity: 'ego' },
       });
 
       expect(() => {
@@ -1503,7 +1502,7 @@ describe('Validation Functions', () => {
       const validator = validations.sameAs(
         'testAttribute',
         createMockContext({
-          stageSubject: { entity: 'ego' } as StageSubject,
+          stageSubject: { entity: 'ego' },
           network: egoNetwork,
           codebook: {
             ego: {

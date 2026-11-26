@@ -32,7 +32,10 @@ import type {
   FormSubmissionResult,
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
-import type { TitlelessForm } from '@codaco/protocol-validation';
+import type {
+  TitlelessForm,
+  ResolvedSubject,
+} from '@codaco/protocol-validation';
 import {
   entityPrimaryKeyProperty,
   type NcEdge,
@@ -52,7 +55,6 @@ import useProtocolForm from '../../forms/useProtocolForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
-import type { Subject } from '../../selectors/forms';
 import { makeGetCodebookVariablesForNodeType } from '../../selectors/protocol';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import type { BeforeNextFunction, Direction } from '../../types';
@@ -70,7 +72,7 @@ type SlidesFormAnalyticsProps = {
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
   form: TitlelessForm;
   items: T[];
-  subject: Subject;
+  subject: ResolvedSubject;
   /**
    * Saves the slide's answers. A refused save must resolve to a failed result,
    * which keeps the slide and its answers in place with the error shown.
@@ -117,7 +119,7 @@ type SlideHandle = {
 type SlideContentProps = {
   item: NcNode | NcEdge;
   form: TitlelessForm;
-  subject: Subject;
+  subject: ResolvedSubject;
   submitButton: ReactNode;
   onUpdate: SlidesFormProps['updateItem'];
   onReadyChange: (ready: boolean) => void;

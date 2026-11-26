@@ -41,7 +41,7 @@ const twoPromptStage = {
   id: testId('dc1'),
   type: 'DyadCensus',
   label: { en: 'Dyad Census' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   prompts: [
     {
       id: testId('p1'),
@@ -60,7 +60,7 @@ const onePromptStage = {
   id: testId('dc1'),
   type: 'DyadCensus',
   label: { en: 'Dyad Census' },
-  subject: { entity: 'node', type: NODE_TYPE },
+  subject: { entity: 'node', types: [NODE_TYPE] },
   prompts: [
     {
       id: testId('p1'),

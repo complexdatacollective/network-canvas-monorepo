@@ -99,7 +99,7 @@ const stageFor = (kind: Kind) => {
         id: 'stage',
         type: 'AlterForm',
         label: { en: 'Form' },
-        subject: { entity: 'node', type: PERSON_TYPE },
+        subject: { entity: 'node', types: [PERSON_TYPE] },
         form,
       };
     case 'alter edge':

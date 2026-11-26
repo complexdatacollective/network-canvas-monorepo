@@ -167,7 +167,7 @@ export function buildInterview({
   si.addInformationStage({ title: 'Welcome', text: 'Before the pedigree.' });
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
-    subject: { entity: 'node', type: people.id },
+    subject: { entity: 'node', types: [people.id] },
     prompt: PROMPT,
     completeness,
     framing,
@@ -262,7 +262,7 @@ export function buildInterview({
 
   if (followedByNameForm) {
     si.addStage('AlterForm', {
-      subject: { entity: 'node', type: people.id },
+      subject: { entity: 'node', types: [people.id] },
     }).addFormField({
       component: 'Text',
       variable: stage.name,
@@ -271,7 +271,7 @@ export function buildInterview({
   }
   if (followedByPeopleList) {
     si.addStage('OrdinalBin', {
-      subject: { entity: 'node', type: people.id },
+      subject: { entity: 'node', types: [people.id] },
     }).addPrompt({ text: PEOPLE_PROMPT });
   }
   si.addInformationStage({ title: 'Complete', text: 'After the pedigree.' });

@@ -33,7 +33,10 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import { LocalizedText } from '../../localization/LocalizedText';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { useContentFormat } from '../../localization/useContentFormat';
-import { getNetworkNodes, getSubjectType } from '../../selectors/session';
+import {
+  getNetworkNodes,
+  getSingleStageNodeType,
+} from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
 import { compareAsText } from '../../utils/compareCodeUnits';
 
@@ -132,7 +135,7 @@ export default function PresetSwitcher({
     () =>
       createSelector(
         getCodebook,
-        getSubjectType,
+        getSingleStageNodeType,
         getNetworkNodes,
         (codebook, subjectType, nodes) => {
           const edges = (currentPreset?.edges?.display ?? []).map(

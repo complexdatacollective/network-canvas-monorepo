@@ -28,7 +28,10 @@ import FormStoreProvider, {
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import type { ComposerForm } from '@codaco/protocol-validation';
+import type {
+  ComposerForm,
+  ResolvedSubject,
+} from '@codaco/protocol-validation';
 import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
@@ -36,7 +39,6 @@ import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useSavesInOrder from '../../hooks/useSavesInOrder';
-import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
 import PassphraseNotice, {
   type PassphraseNoticeStatus,
@@ -51,7 +53,7 @@ type Attributes = NcNode[typeof entityAttributesProperty];
 export type InspectorProps = {
   entityId: string;
   form: ComposerForm | undefined;
-  subject: Subject;
+  subject: ResolvedSubject;
   attributes: Attributes;
   /**
    * The attributes whose stored value can never be shown, which are left out

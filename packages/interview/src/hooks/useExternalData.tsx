@@ -4,7 +4,7 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
-import type { Panel, StageSubject } from '@codaco/protocol-validation';
+import type { Panel, ResolvedSubject } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
 
 import { useCaptureException } from '../analytics/useTrack';
@@ -34,7 +34,7 @@ const READY: ExternalDataStatus = { state: 'ready' };
 
 const useExternalData = (
   dataSource: Panel['dataSource'],
-  subject: StageSubject | null,
+  subject: ResolvedSubject | null,
 ) => {
   const assetManifest = useSelector(getAssetManifest);
   const codebook = useSelector(getCodebook);

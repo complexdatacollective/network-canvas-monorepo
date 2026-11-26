@@ -218,7 +218,7 @@ function buildStage(otherVariable = OTHER_VARIABLE): CategoricalBinStage {
     id: STAGE_ID,
     type: 'CategoricalBin',
     label: { en: 'Categorise people' },
-    subject: { entity: 'node', type: NODE_TYPE },
+    subject: { entity: 'node', types: [NODE_TYPE] },
     prompts: [
       {
         id: PROMPT_ID,

@@ -1,9 +1,10 @@
 import { filter as customFilter } from '@codaco/network-query';
-import type {
-  Codebook,
-  Filter,
-  Stage,
-  StageSubject,
+import {
+  type Codebook,
+  type Filter,
+  getSingleStageNodeType,
+  type ResolvedSubject,
+  type Stage,
 } from '@codaco/protocol-validation';
 import {
   EntityAttributesSchema,
@@ -17,7 +18,7 @@ import loadExternalData, {
   makeVariableUUIDReplacer,
 } from '../utils/loadExternalData';
 
-type NodeSubject = Extract<StageSubject, { entity: 'node' }>;
+type NodeSubject = Extract<ResolvedSubject, { entity: 'node' }>;
 
 /**
  * A roster/panel asset resolved by the host: a fetchable URL, the filename
@@ -59,7 +60,7 @@ export async function parseExternalNetworkAsset({
   sourceFileName: string;
   url: string;
   codebook: Codebook;
-  subject: Exclude<StageSubject, { entity: 'ego' }>;
+  subject: Exclude<ResolvedSubject, { entity: 'ego' }>;
 }): Promise<NcNode[]> {
   const { nodes } = await loadExternalData(sourceFileName, url);
   const uuidData = nodes.map(makeVariableUUIDReplacer(codebook, subject.type));
@@ -140,12 +141,14 @@ function getRosterStage(stage: Stage): RosterStage | null {
 
   if (sources.length === 0) return null;
 
-  const subject: { entity?: string; type?: string } | undefined = stage.subject;
-  if (subject?.entity !== 'node' || typeof subject.type !== 'string') {
-    return null;
-  }
+  const nodeType = getSingleStageNodeType(stage);
+  if (nodeType === undefined) return null;
 
-  return { stageId: stage.id, subject: stage.subject, sources };
+  return {
+    stageId: stage.id,
+    subject: { entity: 'node', type: nodeType },
+    sources,
+  };
 }
 
 /**

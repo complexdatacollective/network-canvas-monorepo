@@ -90,7 +90,7 @@ function makeWrapper(networkNodes: NcNode[] = nodes) {
             id: 'stage1',
             type: 'CategoricalBin',
             label: { en: 'Categorise' },
-            subject: { entity: 'node', type: NODE_TYPE },
+            subject: { entity: 'node', types: [NODE_TYPE] },
             prompts: [
               {
                 id: 'prompt1',

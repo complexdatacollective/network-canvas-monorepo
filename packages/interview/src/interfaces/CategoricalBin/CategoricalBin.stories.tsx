@@ -175,7 +175,7 @@ function buildInterview(args: StoryArgs) {
   const stage = interview.addStage('CategoricalBin', {
     label: 'Categorise People',
     initialNodes: { count: args.initialNodeCount },
-    subject: { entity: 'node', type: nodeType.id },
+    subject: { entity: 'node', types: [nodeType.id] },
   });
 
   for (let i = 0; i < args.promptCount; i++) {
@@ -524,7 +524,7 @@ function buildOtherComparedWithProtectedInterview() {
 
   const stage = interview.addStage('CategoricalBin', {
     label: 'Categorise People',
-    subject: { entity: 'node', type: person.id },
+    subject: { entity: 'node', types: [person.id] },
   });
   stage.addPrompt({
     variable: category.id,
