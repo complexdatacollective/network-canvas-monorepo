@@ -39,7 +39,7 @@ const person = synth.addNodeType({
 synth.addStage('LanguageChooser');
 
 const friends = synth.addStage('NameGenerator', {
-  subject: { entity: 'node', type: person.id },
+  subject: { entity: 'node', types: [person.id] },
   label: { 'en-US': 'Friends', 'es': 'Amigos' },
 });
 friends.addPrompt({

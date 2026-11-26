@@ -416,6 +416,34 @@ describe('SyntheticInterview', () => {
       const network = si.getNetwork();
       expect(network.nodes).toHaveLength(5);
     });
+
+    it('generates initial nodes from a count for each node type', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      si.addStage('NameGenerator', {
+        subject: { entity: 'node', types: [person.id] },
+        initialNodes: { count: { [person.id]: 3 } },
+      });
+
+      const network = si.getNetwork();
+      expect(network.nodes.map((node) => node.type)).toEqual([
+        person.id,
+        person.id,
+        person.id,
+      ]);
+    });
+
+    it('refuses a count for a node type the stage does not list', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const place = si.addNodeType({ name: 'Place' });
+      expect(() =>
+        si.addStage('NameGenerator', {
+          subject: { entity: 'node', types: [person.id] },
+          initialNodes: { count: { [place.id]: 2 } },
+        }),
+      ).toThrow(`The stage does not list node type "${place.id}"`);
+    });
   });
 
   describe('Sociogram', () => {

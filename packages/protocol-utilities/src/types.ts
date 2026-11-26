@@ -528,7 +528,9 @@ export type EdgeEntry = {
 // --- Input types for builder methods ---
 
 export type InitialNodesSpec = {
-  count: number;
+  // How many nodes to create: one number for a stage that lists one node
+  // type, or a count for each listed type, keyed by its id.
+  count: number | Readonly<Record<string, number>>;
   // Index of the prompt these nodes should be assigned to (0-based) within
   // the owning stage. Resolved at getNetwork() time. Omit for nodes that
   // should sit in the network without belonging to any prompt.

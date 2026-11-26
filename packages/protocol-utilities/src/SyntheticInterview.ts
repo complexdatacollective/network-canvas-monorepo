@@ -113,6 +113,7 @@ import type {
   FormFieldInput,
   GeospatialPromptEntry,
   GetSessionInput,
+  InitialNodesSpec,
   LocalizationInput,
   NameGeneratorPromptEntry,
   NetworkComposerEdgeEntry,
@@ -303,7 +304,7 @@ const DEFAULT_GENDER_IDENTITY_LABELS: Record<
 };
 
 type FamilyPedigreeHandle = StageHandleBase & {
-  /** The person node type id (the stage's `subject.type`). */
+  /** The person node type id (the one type in the stage's `subject.types`). */
   personType: string;
   /** The family edge type id (`edgeConfiguration.type`). */
   edgeType: string;
@@ -380,6 +381,24 @@ function subjectTypeOf(subject: StageSubjectInput | undefined): string {
     throw new Error('This stage builder works with exactly one node type');
   }
   return only;
+}
+
+/**
+ * How many initial nodes of each type a node stage starts with, in the order
+ * its subject lists them. A single number counts nodes of the stage's one
+ * type.
+ */
+function initialNodeCounts(
+  subject: Extract<StageSubjectInput, { entity: 'node' }>,
+  count: InitialNodesSpec['count'],
+): [string, number][] {
+  if (typeof count === 'number') return [[subjectTypeOf(subject), count]];
+  for (const type of Object.keys(count)) {
+    if (!subject.types.includes(type)) {
+      throw new Error(`The stage does not list node type "${type}"`);
+    }
+  }
+  return subject.types.map((type) => [type, count[type] ?? 0]);
 }
 
 // Stage types that have no subject (node/edge)
@@ -1120,21 +1139,25 @@ export class SyntheticInterview {
     }
 
     // Generate initial nodes (only for node-based stages)
-    const initialNodeCount = opts?.initialNodes?.count ?? 0;
     const initialNodePromptIndex = opts?.initialNodes?.promptIndex;
-    if (initialNodeCount > 0 && subject?.entity === 'node') {
-      for (let i = 0; i < initialNodeCount; i++) {
-        this.nodes.push({
-          uid: this.nextId('node'),
-          type: subjectTypeOf(subject),
-          stageId,
-          promptIDs: [],
-          promptIndices:
-            initialNodePromptIndex !== undefined
-              ? [initialNodePromptIndex]
-              : undefined,
-          explicitAttributes: {},
-        });
+    if (opts?.initialNodes !== undefined && subject?.entity === 'node') {
+      for (const [nodeType, count] of initialNodeCounts(
+        subject,
+        opts.initialNodes.count,
+      )) {
+        for (let i = 0; i < count; i++) {
+          this.nodes.push({
+            uid: this.nextId('node'),
+            type: nodeType,
+            stageId,
+            promptIDs: [],
+            promptIndices:
+              initialNodePromptIndex !== undefined
+                ? [initialNodePromptIndex]
+                : undefined,
+            explicitAttributes: {},
+          });
+        }
       }
     }
 
