@@ -21,7 +21,10 @@ import {
   ResourceDescriptorSchema,
   ResourcePreviewSchema,
 } from '@codaco/protocol-builder-core/contract/schemas';
-import { type CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  getSingleStageNodeType,
+} from '@codaco/protocol-validation';
 import { TEAM_GUC } from '@codaco/studio-sync/rls';
 import {
   sectionId as makeSectionId,
@@ -122,12 +125,6 @@ export type VariableReference = {
   stageId: string;
 };
 
-function subjectTypeOf(stage: unknown): string | undefined {
-  const subject: unknown = (stage as { subject?: unknown }).subject;
-  const type = (subject as { type?: unknown } | null | undefined)?.type;
-  return typeof type === 'string' ? type : undefined;
-}
-
 export const plainDescriptor = Schema.encodeSync(ResourceDescriptorSchema);
 export const plainPreview = Schema.encodeSync(ResourcePreviewSchema);
 
@@ -139,7 +136,7 @@ export function formFields(stage: unknown): unknown[] | undefined {
 
 function strippableVariable(protocol: CurrentProtocol): VariableReference {
   for (const stage of protocol.stages) {
-    const type = subjectTypeOf(stage);
+    const type = getSingleStageNodeType(stage);
     const fields = formFields(stage);
     if (type === undefined || fields === undefined || fields.length < 2) {
       continue;
@@ -155,7 +152,7 @@ function strippableVariable(protocol: CurrentProtocol): VariableReference {
 function soleVariablePrompt(protocol: CurrentProtocol): VariableReference {
   for (const stage of protocol.stages) {
     const prompts: unknown = (stage as { prompts?: unknown }).prompts;
-    const type = subjectTypeOf(stage);
+    const type = getSingleStageNodeType(stage);
     if (type === undefined || !Array.isArray(prompts) || prompts.length !== 1) {
       continue;
     }
