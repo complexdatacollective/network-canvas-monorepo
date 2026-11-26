@@ -262,6 +262,60 @@ describe('validateNetworkAgainstEndpointRules', () => {
     ).toEqual([]);
   });
 
+  it('judges endpoint types of an edge whose ends resolve although another node carries no _uid', () => {
+    expect(
+      validateNetworkAgainstEndpointRules(
+        {
+          nodes: [{ type: 'person' }, node('o1', 'org'), node('p1', 'person')],
+          edges: [edge('o1', 'p1', 'advice')],
+        },
+        codebook,
+      ),
+    ).toEqual([
+      {
+        kind: 'endpointTypesNotAllowed',
+        edgeIndex: 0,
+        edgeType: 'advice',
+        sourceType: 'org',
+        targetType: 'person',
+      },
+    ]);
+  });
+
+  it('reports a self-loop that is also a duplicate both as self-loops and as a duplicate', () => {
+    expect(
+      validateNetworkAgainstEndpointRules(
+        {
+          nodes,
+          edges: [edge('p1', 'p1', 'knows'), edge('p1', 'p1', 'knows')],
+        },
+        codebook,
+      ),
+    ).toEqual([
+      { kind: 'selfLoop', edgeIndex: 0, edgeType: 'knows' },
+      { kind: 'selfLoop', edgeIndex: 1, edgeType: 'knows' },
+      {
+        kind: 'duplicate',
+        edgeIndex: 1,
+        edgeType: 'knows',
+        duplicateOfIndex: 0,
+      },
+    ]);
+  });
+
+  it('reports a self-loop on a missing node as both', () => {
+    expect(
+      validateNetworkAgainstEndpointRules(
+        { nodes, edges: [edge('ghost', 'ghost', 'knows')] },
+        codebook,
+      ),
+    ).toEqual([
+      { kind: 'selfLoop', edgeIndex: 0, edgeType: 'knows' },
+      { kind: 'missingEndpoint', edgeIndex: 0, edgeType: 'knows', end: 'from' },
+      { kind: 'missingEndpoint', edgeIndex: 0, edgeType: 'knows', end: 'to' },
+    ]);
+  });
+
   it('reports a missing endpoint only when every node carries _uid', () => {
     expect(
       validateNetworkAgainstEndpointRules(

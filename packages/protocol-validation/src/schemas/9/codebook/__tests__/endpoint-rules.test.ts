@@ -74,6 +74,22 @@ describe('edge type endpoint rules', () => {
     ]);
   });
 
+  it.each([
+    ['sourceType', rule('constructor', PERSON)],
+    ['targetType', rule(PERSON, 'toString')],
+  ] as const)(
+    'rejects a rule naming an inherited key as a node type at its %s',
+    (end, inherited) => {
+      expect(
+        parseIssues(
+          CodebookSchema.safeParse(
+            codebookWithEdge({ endpointRules: [inherited] }),
+          ),
+        ).map(({ path }) => path),
+      ).toEqual([`edge.${ADVICE}.endpointRules.0.${end}`]);
+    },
+  );
+
   it('rejects a rule naming an unknown source node type', () => {
     expect(
       parseIssues(
