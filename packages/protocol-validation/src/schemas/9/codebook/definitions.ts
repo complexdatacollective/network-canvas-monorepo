@@ -181,7 +181,6 @@ const EndpointRuleSchema = z.strictObject({
   targetType: entityTypeReference({ entity: 'node' }),
 });
 
-export { EndpointRuleSchema };
 export type EndpointRule = z.infer<typeof EndpointRuleSchema>;
 
 const EdgeDefinitionSchema = z.strictObject({

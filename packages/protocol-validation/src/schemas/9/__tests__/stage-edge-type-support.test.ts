@@ -1,12 +1,18 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { testTypeId, withTestIds } from '../../../__tests__/testIds.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
+import { getEntityTypeReferenceDescriptor } from '../entity-type-reference.ts';
 import { ProtocolSchemaV9 } from '../schema.ts';
 import {
   STAGE_EDGE_TYPE_SUPPORT,
   stageEdgeTypeSupportIssues,
 } from '../stage-capabilities.ts';
+import { stageSchema } from '../stages/index.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
 type EdgeStageType = keyof typeof STAGE_EDGE_TYPE_SUPPORT;
@@ -68,6 +74,80 @@ const DIRECTED_MESSAGE = /is directed, which this stage cannot use\./;
 const RULES_MESSAGE =
   /limits which node types it connects, which this stage cannot use\./;
 
+// Each issue as `<stage type> <path below the stage>: <message>`, so a list of
+// them reads the same however the fixture orders its stages.
+const describeIssues = (
+  protocol: Protocol,
+  issues: readonly { path: readonly PropertyKey[]; message: string }[],
+) =>
+  issues.map(({ path, message }) => {
+    const [root, index, ...rest] = path;
+    const stage =
+      root === 'stages' && typeof index === 'number'
+        ? protocol.stages[index]?.type
+        : String(root);
+    return `${stage} ${rest.map(String).join('.')}: ${message}`;
+  });
+
+// The runtime (non-type) module specifiers a source file imports.
+const runtimeImports = (relativePath: string) =>
+  [
+    ...readFileSync(
+      fileURLToPath(new URL(relativePath, import.meta.url)),
+      'utf8',
+    ).matchAll(/^import\s+(?!type\b)[^;]*?from\s+'([^']+)';/gm),
+  ].map((match) => match[1]);
+
+// Whether a schema tags an edge type reference outside the places where an
+// edge type's direction and endpoint rules do not matter (mirrors the
+// traversal of the entity type reference extractor).
+const tagsDrawnEdgeType = (
+  schema: z.ZodType,
+  path: readonly string[] = [],
+  seen = new Set<z.ZodType>(),
+): boolean => {
+  if (seen.has(schema)) return false;
+  seen.add(schema);
+  const blind = path.some(
+    (segment, index) =>
+      segment === 'conditions' ||
+      (segment === 'rules' &&
+        path[index + 1] === '*' &&
+        path[index + 2] === 'options'),
+  );
+  if (getEntityTypeReferenceDescriptor(schema)?.entity === 'edge' && !blind)
+    return true;
+  const child = (next: unknown, segment?: string): boolean =>
+    next instanceof z.ZodType &&
+    tagsDrawnEdgeType(
+      next,
+      segment === undefined ? path : [...path, segment],
+      seen,
+    );
+  if (
+    schema instanceof z.ZodOptional ||
+    schema instanceof z.ZodNullable ||
+    schema instanceof z.ZodDefault
+  )
+    return child(schema.unwrap());
+  if (schema instanceof z.ZodPipe) return child(schema.in);
+  if (schema instanceof z.ZodObject)
+    return Object.entries(schema.shape).some(([key, value]) =>
+      child(value, key),
+    );
+  if (schema instanceof z.ZodArray) return child(schema.element, '*');
+  if (schema instanceof z.ZodRecord) return child(schema.valueType, '*');
+  if (schema instanceof z.ZodUnion)
+    return schema.options.some((option) => child(option));
+  return false;
+};
+
+const stageTypeOf = (schema: z.ZodType) => {
+  if (!(schema instanceof z.ZodObject)) return undefined;
+  const type: unknown = schema.shape.type;
+  return type instanceof z.ZodLiteral ? String(type.value) : undefined;
+};
+
 describe('stage edge type support', () => {
   // The module must be a leaf: `common/subjects.ts` imports it while the
   // stage schemas are still being defined, so loading it first must not reach
@@ -78,6 +158,50 @@ describe('stage edge type support', () => {
     const schema = await import('../schema.ts');
     expect(Object.keys(capabilities.STAGE_EDGE_TYPE_SUPPORT)).toHaveLength(8);
     expect(schema.ProtocolSchemaV9).toBeDefined();
+  });
+
+  it('imports at runtime only the edge type rules and edge identity', () => {
+    expect(runtimeImports('../stage-capabilities.ts')).toEqual([
+      '../../utils/edgeTypeRules.ts',
+    ]);
+    expect(runtimeImports('../../../utils/edgeTypeRules.ts')).toEqual([
+      '@codaco/shared-consts/edge-identity',
+    ]);
+  });
+
+  it('lists every stage type whose schema names an edge type it draws or creates', () => {
+    const drawing = stageSchema.options
+      .filter((option) => tagsDrawnEdgeType(option))
+      .map((option) => stageTypeOf(option) ?? 'a stage with no type literal');
+    expect(drawing.toSorted()).toEqual(
+      Object.keys(STAGE_EDGE_TYPE_SUPPORT).toSorted(),
+    );
+  });
+
+  it('reports each directed edge type use once, by name, at its field', async () => {
+    const protocol = withEdgeTypeSettings(baseProtocol(), 'knows', {
+      directed: true,
+    });
+    const message =
+      'Edge type "Knows" is directed, which this stage cannot use.';
+    expect(describeIssues(protocol, await issuesOf(protocol))).toEqual([
+      `Sociogram prompts.0.edges.create: ${message}`,
+      `NetworkComposer edges.0.subject.type: ${message}`,
+      `AlterEdgeForm subject.type: ${message}`,
+      `DyadCensus prompts.0.createEdge: ${message}`,
+      `TieStrengthCensus prompts.0.createEdge: ${message}`,
+      `Narrative presets.0.edges.display.0.type: ${message}`,
+      `OneToManyDyadCensus prompts.0.createEdge: ${message}`,
+    ]);
+  });
+
+  it('reports each endpoint-rule edge type use once, by name, at its field', async () => {
+    const protocol = withEdgeTypeSettings(baseProtocol(), 'family', {
+      endpointRules: [{ sourceType: 'relative', targetType: 'relative' }],
+    });
+    expect(describeIssues(protocol, await issuesOf(protocol))).toEqual([
+      'FamilyPedigree edgeConfiguration.type: Edge type "Family" limits which node types it connects, which this stage cannot use.',
+    ]);
   });
 
   it('names every stage type in the table', () => {

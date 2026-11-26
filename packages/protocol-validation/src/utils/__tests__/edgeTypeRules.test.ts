@@ -143,6 +143,10 @@ describe('edge type rules', () => {
     expect(getEligibleOrderedPairs(codebook, 'follows', one)).toEqual([]);
     expect(getEligibleOrderedPairs(codebook, 'knows', one)).toEqual([]);
     expect(getEligibleOrderedPairs(codebook, 'supervises', one)).toEqual([]);
+    // The same node listed twice is still one node.
+    const twice = [node('a', 'person'), node('a', 'person')];
+    expect(getEligibleOrderedPairs(codebook, 'follows', twice)).toEqual([]);
+    expect(getEligibleOrderedPairs(codebook, 'knows', twice)).toEqual([]);
   });
 });
 
@@ -229,6 +233,16 @@ describe('validateNetworkAgainstEndpointRules', () => {
         {
           nodes: [node('o1', 'venue'), node('p1', 'person')],
           edges: [edge('o1', 'p1', 'advice'), edge('p1', 'o1', 'unknown')],
+        },
+        codebook,
+      ),
+    ).toEqual([]);
+    // A known source with a target whose type is not in the codebook.
+    expect(
+      validateNetworkAgainstEndpointRules(
+        {
+          nodes: [node('p1', 'person'), node('v1', 'venue')],
+          edges: [edge('p1', 'v1', 'advice')],
         },
         codebook,
       ),

@@ -7,7 +7,7 @@ import type { EndpointRule } from '../schemas/9/codebook/definitions.ts';
  * helpers rather than reading `directed` or `endpointRules` itself, so the
  * meaning of an absent setting is decided here once.
  */
-export type EdgeRulesCodebook = {
+type EdgeRulesCodebook = {
   node?: Record<string, unknown>;
   edge?: Record<
     string,
@@ -17,7 +17,7 @@ export type EdgeRulesCodebook = {
 
 type TypedNode = { _uid: string; type: string };
 
-export type EndpointRuleProblem =
+type EndpointRuleProblem =
   | { kind: 'selfLoop'; edgeIndex: number; edgeType: string }
   | {
       kind: 'duplicate';

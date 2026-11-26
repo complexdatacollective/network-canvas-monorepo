@@ -85,7 +85,7 @@ type EdgeDefinition = {
 };
 ```
 
-- `EndpointRuleSchema = z.strictObject({ sourceType: entityTypeReference({ entity: 'node' }), targetType: entityTypeReference({ entity: 'node' }) })`, exported from `definitions.ts` alongside `EdgeDefinitionSchema`.
+- `EndpointRuleSchema = z.strictObject({ sourceType: entityTypeReference({ entity: 'node' }), targetType: entityTypeReference({ entity: 'node' }) })`, in `definitions.ts` beside `EdgeDefinitionSchema`; exported by the first slice that imports it elsewhere.
 - `directed: z.literal(true).optional()`; `endpointRules: z.array(EndpointRuleSchema).min(1).optional()`.
 - Codebook-level checks in `codebook/codebook.ts` `superRefine`: every rule type is a key of `codebook.node`; no rule appears twice, compared as an unordered pair when the edge type is undirected and as an ordered pair when directed. Messages name the edge type and the pair by node type name.
 - Endpoint rule type references are type references: deleting a node type named by a rule is blocked through the existing usage machinery, and `codebookIdRewrite` renames them.

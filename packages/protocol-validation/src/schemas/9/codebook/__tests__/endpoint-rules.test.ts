@@ -61,6 +61,35 @@ describe('edge type endpoint rules', () => {
     ]);
   });
 
+  it('rejects a rule naming an unknown source node type', () => {
+    expect(
+      parseIssues(
+        CodebookSchema.safeParse(
+          codebookWithEdge({ endpointRules: [rule(UNKNOWN, PERSON)] }),
+        ),
+      ),
+    ).toEqual([
+      {
+        path: `edge.${ADVICE}.endpointRules.0.sourceType`,
+        code: 'custom',
+        message: `Edge type "Advice" has a connection rule naming node type "${UNKNOWN}", which does not exist.`,
+      },
+    ]);
+  });
+
+  it('rejects both ends of a rule naming unknown node types', () => {
+    expect(
+      parseIssues(
+        CodebookSchema.safeParse(
+          codebookWithEdge({ endpointRules: [rule(UNKNOWN, UNKNOWN)] }),
+        ),
+      ).map(({ path }) => path),
+    ).toEqual([
+      `edge.${ADVICE}.endpointRules.0.sourceType`,
+      `edge.${ADVICE}.endpointRules.0.targetType`,
+    ]);
+  });
+
   it('rejects {A,B} after {B,A} on an undirected type', () => {
     expect(
       parseIssues(
