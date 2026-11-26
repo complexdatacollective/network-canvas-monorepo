@@ -3,8 +3,8 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import type { LucideIcon } from 'lucide-react';
-import { motion } from 'motion/react';
-import { type ReactElement, type ReactNode, useId } from 'react';
+import { LayoutGroup, motion } from 'motion/react';
+import type { ReactElement, ReactNode } from 'react';
 
 import { usePrefersReducedMotion } from '../reducedMotion';
 import { cva, cx } from '../utils/cva';
@@ -101,79 +101,114 @@ export default function SegmentedSwitcher<T extends string>({
   className,
   disabled,
 }: SegmentedSwitcherProps<T>) {
-  const layoutId = useId();
   const reduced = usePrefersReducedMotion();
+  const activeIndex = options.findIndex((option) => option.value === value);
 
   return (
+    // The highlight is ONE element that stays mounted and moves between grid
+    // cells, never a pill per segment joined by a shared `layoutId`. Motion
+    // measures a shared-element transition in page coordinates and never
+    // relative to a parent, so when the switcher itself moved in the same
+    // render (a dialog that re-centres because the choice changed its
+    // contents), the pill slid in from where the track used to be. A plain
+    // `layout` element whose parent is a `layoutRoot` is measured relative to
+    // that parent instead, so moving the whole switcher no longer moves the
+    // highlight within it. Its own `LayoutGroup` keeps it out of an enclosing
+    // group, which would otherwise re-measure it whenever a neighbour changes
+    // (see `Toggle`).
+    //
     // A plain track rather than a `Surface`: Surface always paints an opaque
     // depth/floating background that would sit over the translucent
     // `control-glass` fill and defeat the blur. The segments colour themselves,
     // so none of Surface's depth/contrast machinery is needed here.
-    <div
-      className={cx(
-        'publish-colors relative inline-flex items-stretch rounded-full p-1',
-        trackVariantClass[variant],
-        trackHeightClass[size],
-        className,
-      )}
-    >
-      <ToggleGroup
-        id={id}
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        aria-describedby={ariaDescribedBy}
-        disabled={disabled}
-        value={[value]}
-        multiple={false}
-        onValueChange={(next) => {
-          const first = next[0];
-          // No-deselect: ignore a change that would leave nothing selected.
-          if (first === undefined) return;
-          const picked = options.find((option) => option.value === first);
-          if (picked) onValueChange(picked.value);
-        }}
-        className="flex items-stretch"
+    <LayoutGroup inherit={false}>
+      <motion.div
+        layout
+        layoutRoot
+        layoutDependency={value}
+        className={cx(
+          'publish-colors relative isolate inline-flex items-stretch rounded-full p-1',
+          trackVariantClass[variant],
+          trackHeightClass[size],
+          className,
+        )}
       >
-        {options.map((option) => {
-          const active = option.value === value;
-          const Icon = option.icon;
-          return (
-            <Toggle
-              key={option.value}
-              value={option.value}
-              disabled={option.disabled}
-              render={option.render}
-              // The render escape hatch may swap in a non-button element (e.g. a
-              // wouter <Link>); tell Base UI so it doesn't assume button semantics.
-              nativeButton={option.render ? false : undefined}
+        <ToggleGroup
+          id={id}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
+          aria-describedby={ariaDescribedBy}
+          disabled={disabled}
+          value={[value]}
+          multiple={false}
+          onValueChange={(next) => {
+            const first = next[0];
+            // No-deselect: ignore a change that would leave nothing selected.
+            if (first === undefined) return;
+            const picked = options.find((option) => option.value === first);
+            if (picked) onValueChange(picked.value);
+          }}
+          // One row of cells, one per option. The highlight shares the active
+          // option's cell, so it always has that segment's size without being
+          // measured. It comes last, so the track's baseline is still the
+          // first segment's text, and its negative `z-index` (kept inside the
+          // `isolate` track) paints it under the segments.
+          className="grid auto-cols-auto grid-rows-1 items-stretch"
+        >
+          {options.map((option, index) => {
+            const active = index === activeIndex;
+            const Icon = option.icon;
+            return (
+              <Toggle
+                key={option.value}
+                value={option.value}
+                disabled={option.disabled}
+                render={option.render}
+                // The render escape hatch may swap in a non-button element (e.g. a
+                // wouter <Link>); tell Base UI so it doesn't assume button semantics.
+                nativeButton={option.render ? false : undefined}
+                style={{ gridRow: 1, gridColumn: index + 1 }}
+                className={cx(
+                  segmentVariants({ size }),
+                  active ? 'text-primary-contrast' : 'text-text/80',
+                )}
+              >
+                {Icon ? (
+                  <Icon
+                    aria-hidden
+                    className={cx('stroke-[3px]', iconSizeClass[size])}
+                  />
+                ) : null}
+                <span>{option.label}</span>
+              </Toggle>
+            );
+          })}
+          {activeIndex === -1 ? null : (
+            <motion.span
+              aria-hidden
+              layout
+              layoutDependency={value}
               className={cx(
-                segmentVariants({ size }),
-                active ? 'text-primary-contrast' : 'text-text/80',
+                'bg-primary -z-1',
+                // Dimmed with its segment, which `disabled:opacity-40` dims.
+                (disabled || options[activeIndex]?.disabled) && 'opacity-40',
               )}
-            >
-              {active ? (
-                <motion.span
-                  layoutId={layoutId}
-                  aria-hidden
-                  className="bg-primary absolute inset-0 rounded-full"
-                  transition={
-                    reduced
-                      ? { duration: 0 }
-                      : { type: 'spring', stiffness: 380, damping: 32 }
-                  }
-                />
-              ) : null}
-              {Icon ? (
-                <Icon
-                  aria-hidden
-                  className={cx('relative stroke-[3px]', iconSizeClass[size])}
-                />
-              ) : null}
-              <span className="relative">{option.label}</span>
-            </Toggle>
-          );
-        })}
-      </ToggleGroup>
-    </div>
+              // A numeric radius, so Motion keeps the ends round while the
+              // highlight stretches between segments of different widths.
+              style={{
+                gridRow: 1,
+                gridColumn: activeIndex + 1,
+                borderRadius: 9999,
+              }}
+              transition={
+                reduced
+                  ? { duration: 0 }
+                  : { type: 'spring', stiffness: 380, damping: 32 }
+              }
+            />
+          )}
+        </ToggleGroup>
+      </motion.div>
+    </LayoutGroup>
   );
 }
