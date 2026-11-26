@@ -32,8 +32,10 @@ describe('a compiled roster stage', () => {
     expect(rosters).not.toHaveLength(0);
 
     for (const stage of rosters) {
+      const [type] = stage.subject.types;
       const variables =
-        protocol.codebook.node?.[stage.subject.type]?.variables ?? {};
+        (type === undefined ? undefined : protocol.codebook.node?.[type])
+          ?.variables ?? {};
       const csv = assets.find((asset) => asset.id === stage.dataSource);
       expect(csv?.mimeType).toBe('text/csv');
       const { columns } = await readRosterCsv(csv?.content ?? '');

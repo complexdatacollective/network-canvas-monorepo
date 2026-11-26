@@ -728,7 +728,10 @@ export const compile = (
   };
   const prompt = (designId: string, i: number, draft: string) =>
     localized(pick(W.prompt.get(`${designId}/p${i + 1}`)?.text, draft));
-  const nodeSubject = (t: string) => ({ entity: 'node', type: nodeKey.get(t) });
+  const nodeSubject = (t: string) => ({
+    entity: 'node',
+    types: [nodeKey.get(t)],
+  });
   const relName = (id: string) =>
     d.relationships.find((r) => r.id === id)!.name;
   // ties created so far, with the node type they were drawn between: a map

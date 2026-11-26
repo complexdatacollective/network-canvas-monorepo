@@ -850,7 +850,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
+        "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
       "prompts": [
         {
@@ -948,7 +948,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
+        "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
       "form": {
         "fields": [
@@ -1017,7 +1017,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
+        "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
       "prompts": [
         {
@@ -1053,7 +1053,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
+        "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
       "prompts": [
         {
@@ -1127,7 +1127,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
+        "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
       "background": {
         "concentricCircles": 4,
@@ -1247,7 +1247,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
+        "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
       "prompts": [
         {
@@ -1426,7 +1426,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "bf5284c0-cbf4-5fae-92ea-30a42a4bce93"
+        "types": ["bf5284c0-cbf4-5fae-92ea-30a42a4bce93"]
       },
       "presets": [
         {

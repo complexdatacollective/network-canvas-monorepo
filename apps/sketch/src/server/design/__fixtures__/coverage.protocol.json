@@ -577,7 +577,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "prompts": [
         {
@@ -664,7 +664,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
+        "types": ["1aa2837e-5f05-55ca-b098-4d22754cbcca"]
       },
       "prompts": [
         {
@@ -717,7 +717,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "prompts": [
         {
@@ -756,7 +756,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "prompts": [
         {
@@ -790,7 +790,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "prompts": [
         {
@@ -853,7 +853,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "prompts": [
         {
@@ -989,7 +989,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
+        "types": ["1aa2837e-5f05-55ca-b098-4d22754cbcca"]
       },
       "prompts": [
         {
@@ -1025,7 +1025,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
+        "types": ["1aa2837e-5f05-55ca-b098-4d22754cbcca"]
       },
       "prompts": [
         {
@@ -1062,7 +1062,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "prompts": [
         {
@@ -1092,7 +1092,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "mapOptions": {
         "tokenAssetId": "mapbox-testing-token",
@@ -1133,7 +1133,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "form": {
         "fields": [
@@ -1237,7 +1237,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
+        "types": ["1aa2837e-5f05-55ca-b098-4d22754cbcca"]
       },
       "background": {
         "concentricCircles": 4,
@@ -1285,7 +1285,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "1aa2837e-5f05-55ca-b098-4d22754cbcca"
+        "types": ["1aa2837e-5f05-55ca-b098-4d22754cbcca"]
       },
       "presets": [
         {
@@ -1334,7 +1334,7 @@
       },
       "subject": {
         "entity": "node",
-        "type": "92934d85-2611-552e-aec2-b8ef7eb81c99"
+        "types": ["92934d85-2611-552e-aec2-b8ef7eb81c99"]
       },
       "background": {
         "concentricCircles": 4,
@@ -1394,7 +1394,7 @@
       "interviewScript": "Ask the participant to add the mentors they have had and talk about each one.",
       "subject": {
         "entity": "node",
-        "type": "16f7d809-2892-561f-b66c-e7d2de3c3775"
+        "types": ["16f7d809-2892-561f-b66c-e7d2de3c3775"]
       },
       "quickAdd": "f8b60e21-e002-5daf-84a0-4d4f4b82f9fc",
       "layoutVariable": "9e9d85e4-5330-54d0-9c39-2075d6376e4c",
