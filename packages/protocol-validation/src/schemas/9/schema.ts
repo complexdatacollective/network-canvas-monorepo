@@ -1506,48 +1506,47 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         }
         // sourceStage is confirmed FamilyPedigree — resolve each disease
         // attribute on its people, the stage's subject node type. These are
-        // typically the boolean attributes its nomination prompts set.
-        const sourceNodeType = getSingleStageNodeType(sourceStage) ?? '';
-        const sourceSubject = {
-          entity: 'node' as const,
-          type: sourceNodeType,
-        };
-        const sourceVariables = getVariablesForSubject(
-          protocol.codebook,
-          sourceSubject,
-        );
+        // typically the boolean attributes its nomination prompts set. A
+        // source that lists no single type is reported at its own subject.
+        const sourceNodeType = getSingleStageNodeType(sourceStage);
+        if (sourceNodeType !== undefined) {
+          const sourceVariables = getVariablesForSubject(protocol.codebook, {
+            entity: 'node',
+            type: sourceNodeType,
+          });
 
-        stage.diseases.forEach((disease, diseaseIndex) => {
-          const sourceVariable = sourceVariables[disease.attribute];
-          if (!sourceVariable) {
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `NarrativePedigree disease attribute "${disease.attribute}" does not exist on source node type "${sourceNodeType}".`,
-              path: [
-                'stages',
-                stageIndex,
-                'diseases',
-                diseaseIndex,
-                'attribute',
-              ],
-            });
-          } else if (sourceVariable.type !== 'boolean') {
-            // The genetics engine's affection predicate is a strict boolean
-            // `=== true`; a non-boolean attribute would silently yield an empty
-            // affected set (a clinically blank pedigree).
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `NarrativePedigree disease attribute "${disease.attribute}" must be a boolean attribute (affected/not affected), but is "${sourceVariable.type}".`,
-              path: [
-                'stages',
-                stageIndex,
-                'diseases',
-                diseaseIndex,
-                'attribute',
-              ],
-            });
-          }
-        });
+          stage.diseases.forEach((disease, diseaseIndex) => {
+            const sourceVariable = sourceVariables[disease.attribute];
+            if (!sourceVariable) {
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `NarrativePedigree disease attribute "${disease.attribute}" does not exist on source node type "${sourceNodeType}".`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'diseases',
+                  diseaseIndex,
+                  'attribute',
+                ],
+              });
+            } else if (sourceVariable.type !== 'boolean') {
+              // The genetics engine's affection predicate is a strict boolean
+              // `=== true`; a non-boolean attribute would silently yield an empty
+              // affected set (a clinically blank pedigree).
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `NarrativePedigree disease attribute "${disease.attribute}" must be a boolean attribute (affected/not affected), but is "${sourceVariable.type}".`,
+                path: [
+                  'stages',
+                  stageIndex,
+                  'diseases',
+                  diseaseIndex,
+                  'attribute',
+                ],
+              });
+            }
+          });
+        }
       }
     }
 

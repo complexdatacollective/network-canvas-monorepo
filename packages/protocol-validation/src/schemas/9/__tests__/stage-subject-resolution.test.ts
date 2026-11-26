@@ -181,6 +181,21 @@ describe('stage subjects resolve during collection', () => {
     ).toEqual([]);
   });
 
+  it('reports no NarrativePedigree disease issue when the source stage lists no single node type', () => {
+    const protocol = protocolWith([
+      familyPedigree({ subject: { entity: 'node', types: [] } }),
+      narrativePedigree('hasConditionX'),
+    ]);
+    const result = ProtocolSchemaV9.safeParse(withFinishStage(protocol));
+    const paths = result.success
+      ? []
+      : result.error.issues.map((issue) => issue.path.join('.'));
+    expect(paths).toContain('stages.0.subject.types');
+    expect(
+      paths.filter((path) => path.startsWith('stages.1.diseases')),
+    ).toEqual([]);
+  });
+
   it('leaves a NarrativePedigree disease unresolved when sourceStageId dangles', () => {
     const protocol = protocolWith([
       familyPedigree(),
