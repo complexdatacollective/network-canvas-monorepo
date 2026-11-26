@@ -159,8 +159,9 @@ describe('getNetworkNodesForPrompt', () => {
 });
 
 describe('getNetworkNodesForType', () => {
-  it("returns nodes of the stage's types only", () => {
-    const PET = testTypeId('pet');
+  const PET = testTypeId('pet');
+  const PLACE = testTypeId('place');
+  const typesOnStage = (types: string[]) => {
     const protocolState: ProtocolPayload = {
       id: 'protocol',
       hash: 'hash',
@@ -183,6 +184,12 @@ describe('getNetworkNodesForType', () => {
             shape: { default: 'square' },
             variables: {},
           },
+          [PLACE]: {
+            name: 'Place',
+            color: 'node-color-seq-3',
+            shape: { default: 'square' },
+            variables: {},
+          },
         },
         edge: {},
         ego: { variables: {} },
@@ -192,7 +199,7 @@ describe('getNetworkNodesForType', () => {
           id: testId('people'),
           type: 'NameGeneratorQuickAdd',
           label: { en: 'People' },
-          subject: { entity: 'node', types: [PERSON] },
+          subject: { entity: 'node', types },
           quickAdd: asEntityAttributeReference(NAME),
           prompts: [{ id: testId('people-prompt'), text: { en: 'People' } }],
         },
@@ -219,6 +226,7 @@ describe('getNetworkNodesForType', () => {
               nodeOf('alex', PERSON),
               nodeOf('rex', PET),
               nodeOf('sam', PERSON),
+              nodeOf('paris', PLACE),
             ],
           },
         },
@@ -226,11 +234,17 @@ describe('getNetworkNodesForType', () => {
       },
     });
 
-    expect(
-      getNetworkNodesForType(store.getState(), 0).map(
-        (node) => node[entityPrimaryKeyProperty],
-      ),
-    ).toEqual(['alex', 'sam']);
+    return getNetworkNodesForType(store.getState(), 0).map(
+      (node) => node[entityPrimaryKeyProperty],
+    );
+  };
+
+  it("returns nodes of the stage's types only", () => {
+    expect(typesOnStage([PERSON])).toEqual(['alex', 'sam']);
+  });
+
+  it('returns nodes of every type a stage lists', () => {
+    expect(typesOnStage([PERSON, PET])).toEqual(['alex', 'rex', 'sam']);
   });
 });
 

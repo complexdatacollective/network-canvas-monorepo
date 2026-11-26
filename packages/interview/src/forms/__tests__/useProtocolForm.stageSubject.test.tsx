@@ -195,6 +195,23 @@ describe('useProtocolForm stageSubject', () => {
     });
   });
 
+  // With neither a subject prop nor a stage subject, no codebook describes
+  // the fields, so none renders and no validator needs a context.
+  it('renders no field on a subjectless stage given no subject', () => {
+    const { result } = renderHook(() => useProtocolForm({ fields }), {
+      wrapper: makeWrapper(),
+    });
+
+    renderedFieldProps.length = 0;
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        {result.current.fieldComponents}
+      </Form>,
+      { wrapper: makeWrapper() },
+    );
+    expect(renderedFieldProps).toEqual([]);
+  });
+
   it('aliases live form values without changing validation references', () => {
     const comparisonFields: FormField[] = [
       {

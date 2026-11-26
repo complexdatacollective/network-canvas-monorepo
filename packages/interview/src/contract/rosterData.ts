@@ -2,8 +2,8 @@ import { filter as customFilter } from '@codaco/network-query';
 import {
   type Codebook,
   type Filter,
-  getSingleStageNodeType,
   type ResolvedSubject,
+  resolveSubjectValue,
   type Stage,
 } from '@codaco/protocol-validation';
 import {
@@ -141,14 +141,11 @@ function getRosterStage(stage: Stage): RosterStage | null {
 
   if (sources.length === 0) return null;
 
-  const nodeType = getSingleStageNodeType(stage);
-  if (nodeType === undefined) return null;
+  const subject =
+    'subject' in stage ? resolveSubjectValue(stage.subject) : undefined;
+  if (subject?.entity !== 'node') return null;
 
-  return {
-    stageId: stage.id,
-    subject: { entity: 'node', type: nodeType },
-    sources,
-  };
+  return { stageId: stage.id, subject, sources };
 }
 
 /**

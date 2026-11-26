@@ -659,6 +659,52 @@ describe('collectRosterExternalData', () => {
     expect(resolveAsset).toHaveBeenCalledWith('roster');
   });
 
+  it.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['a node subject with no types', { entity: 'node' }],
+    [
+      'a node subject whose types is a string',
+      { entity: 'node', types: PERSON },
+    ],
+    ['a node subject listing a number', { entity: 'node', types: [1] }],
+    [
+      'a node subject listing two types',
+      { entity: 'node', types: [PERSON, PERSON] },
+    ],
+  ])(
+    'drops a draft roster stage whose subject is %s, leaving siblings intact',
+    async (_, subject) => {
+      stubFetch({ 'stub://roster': PEOPLE_CSV });
+      const resolveAsset: ResolveRosterAsset = vi.fn((assetId: string) =>
+        Promise.resolve(assetId === 'roster' ? resolved('roster') : null),
+      );
+      const draft = {
+        id: testId('draft-subject'),
+        label: 'Roster',
+        type: 'NameGeneratorRoster',
+        allAddedNotice: localized(
+          'There is nothing left to add from this list.',
+        ),
+        unnamedLabel: localized('Unnamed {count}'),
+        dataSource: 'draft-roster',
+        subject,
+        prompts: [{ id: testId('p1'), text: 'Pick people' }],
+      } as unknown as Stage;
+
+      // A throw would reject this await and fail the test.
+      const result = await collectRosterExternalData({
+        stages: [draft, rosterStage('ok', 'roster')],
+        codebook,
+        resolveAsset,
+      });
+
+      expect(result[testId('ok')]).toHaveLength(3);
+      expect(result[testId('draft-subject')]).toBeUndefined();
+      expect(resolveAsset).not.toHaveBeenCalledWith('draft-roster');
+    },
+  );
+
   it('collapses byte-identical rows from two panels to one entry per content hash', async () => {
     stubFetch({
       'stub://panel-a': PEOPLE_CSV,
