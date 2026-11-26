@@ -29,8 +29,8 @@ nothing that remembers earlier runs, reports or release PRs may key on the
 branch alone: runs are titled `PR #<n> → <base> · <title>` (the workflow's
 `run-name`) and are matched on that title, Pages reports are keyed by pull
 request number, and a generated release branch counts as a release PR only when
-it targets `main`. Chromatic stays `main`-only: its zero-snapshot statuses exist
-to satisfy required contexts that only `main` has.
+it targets `main`. Chromatic runs only for the Version Packages PR into `main`;
+see "Chromatic and TurboSnap" below.
 
 #### Storybook interaction tests
 
@@ -43,7 +43,7 @@ interview; the other five) and the `quality` gate requires it. fresco-ui's
 stories also run in Firefox, but in CI only on generated release PRs
 (`STORYBOOK_FIREFOX`, read by its `vitest.config.ts`). Chromatic does
 not replace this: it has no project for Architect, Fresco or Protocol Builder,
-and TurboSnap only re-captures the stories a pull request changed.
+and it runs only when someone requests a review of a release.
 
 A workspace joins that set by declaring the script and taking a leg in
 `STORYBOOK_SHARDS` (`scripts/ci/test-shards.mjs`). The guard suite fails while
@@ -76,25 +76,63 @@ on a four-core runner.
 
 #### Chromatic and TurboSnap
 
-Chromatic runs from `.github/workflows/chromatic.yml` as three independent
-projects: `@codaco/fresco-ui`, `@codaco/interview`, and
-`@codaco/interviewer`. The workflow uses Turbo's package graph and the Git diff
-to run only affected projects, including downstream consumers (a Fresco UI
-change affects all three; an Interview change also affects Interviewer). Each
-job uses its matching `CHROMATIC_PROJECT_TOKEN_FRESCO_UI`,
-`CHROMATIC_PROJECT_TOKEN_INTERVIEW`, or
+Chromatic reviews the rendering of a release once, after the release has
+settled, rather than on every pull request or every push. It has three
+projects: `@codaco/fresco-ui`, `@codaco/interview`, and `@codaco/interviewer`.
+Each job in `.github/workflows/chromatic.yml` uses its matching
+`CHROMATIC_PROJECT_TOKEN_FRESCO_UI`, `CHROMATIC_PROJECT_TOKEN_INTERVIEW`, or
 `CHROMATIC_PROJECT_TOKEN_INTERVIEWER` repository secret.
 
-`build-storybook` therefore runs in CI for those three as Chromatic's upload
-input, and for `@codaco/protocol-builder` — which has no Chromatic project — as
-its own `quality-support` step. Without that step nothing in CI builds that
-Storybook at all: `turbo run build --filter='./packages/*'` skips a package with
-no `build` script, and `test:storybook` serves stories through Vite's dev server
-rather than producing the static bundle. Nor does `test:storybook` read the
-generated docs entries — a CSF file with `tags: ['autodocs']` and no story
-exports is reported as a skipped file and contributes no test — so a Storybook
-whose docs cannot be built is green there. A workspace that gains a Storybook
-and no Chromatic project needs a step too.
+The review process for a Version Packages PR:
+
+1. When the release is ready, request the review:
+   `gh workflow run chromatic.yml --ref changeset-release/main`. The workflow
+   has no other trigger and refuses every other branch, because builds on
+   other branches spend snapshots and set baselines that no release check
+   reads.
+2. A build whose changes nobody has accepted fails. Accept or deny each change
+   in Chromatic, or fix the code in a pull request to `main`. Then run the
+   workflow again.
+3. When every project passes, `.github/workflows/chromatic-release-check.yml`
+   starts from the completed run. It finds the release PR's CI run by its
+   title prefix (`PR #<number> → main · `), waits for that run to finish,
+   and re-runs its failed jobs. The `version-packages-freshness` step "Refuse
+   a release PR whose visual review has not passed" then finds the successful
+   review for the exact head, and `quality` passes. The step runs in the
+   merge group as well, so the queue checks the head that it merges.
+4. Every push to `main` regenerates the release branch, so request the review
+   again for the head that will merge. Changes accepted on an earlier head of
+   the branch are not reported again, because Chromatic carries accepted
+   baselines from the latest build on a branch across force-pushes.
+
+Until the repository variable `CHROMATIC_RELEASE_REVIEW` is set to
+`required`, a missing review is reported as a warning and does not block the
+merge. Set it once the workflow has been verified against an account that has
+snapshots left.
+
+Baselines need no builds on `main`. The merge queue merges with a merge
+commit, so the release head approved in Chromatic becomes an ancestor of
+`main`, and the next release branch, which is regenerated from `main`, finds
+that build as its ancestor build. Do not change the queue's merge method to
+squash or rebase without revisiting this.
+
+Chromatic exits 0 when the account is over its snapshot limit, and its log
+then says "Billed snapshot limit reached" and "No tests run". The step
+"Confirm Chromatic tested the stories" (`scripts/ci/chromatic-observability.mjs`)
+fails such a build, and a build whose project has UI Tests turned off, so that
+neither can count as a review.
+
+Because Chromatic builds its three Storybooks only during a release review, the
+`quality-support` step "Build the Storybooks" runs `build-storybook` for them
+and for `@codaco/protocol-builder`, which has no Chromatic project, on every
+pull request (cached through Turbo). Without that step nothing in CI would
+build them before a release: `turbo run build --filter='./packages/*'` skips a
+package with no `build` script, and `test:storybook` serves stories through
+Vite's dev server rather than producing the static bundle. Nor does
+`test:storybook` read the generated docs entries — a CSF file with
+`tags: ['autodocs']` and no story exports is reported as a skipped file and
+contributes no test — so a Storybook whose docs cannot be built is green
+there. A workspace that gains a Storybook needs a filter in that step too.
 
 Each project's `build-storybook` script must emit `preview-stats.json` with
 Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
@@ -102,7 +140,19 @@ Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
 `--storybook-base-dir`; these inputs and the workflow's full Git history are
 required for TurboSnap. Keep Interview's `.storybook/static/**` directory in
 its Chromatic externals so static-asset changes invalidate the relevant
-stories.
+stories. Do not add `--exit-zero-on-changes`: the review depends on a build
+with unaccepted changes failing.
+
+TurboSnap compares a build with its ancestor build, which is normally the
+previous release, so it recaptures only the stories that a change since then
+can reach. It recaptures a whole project when anything imported by that
+project's `.storybook/preview` file has changed. The import chain from the
+preview through `tooling/storybook/src/i18n.tsx` reaches all of
+`@codaco/shared-consts`, so most releases recapture every story. Chromatic CLI
+18.15.1 or later is required: earlier versions could not pair the workspace
+manifests with the root `pnpm-lock.yaml`, and they recaptured every story
+whenever any `package.json` changed. The version bumps on the release branch
+itself are not dependency changes.
 
 Chromatic captures every story in an unfocused background tab. There
 `document.hasFocus()` is false and `:focus` / `:focus-visible` never match,

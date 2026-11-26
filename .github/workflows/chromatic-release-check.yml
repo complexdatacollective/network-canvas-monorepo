@@ -1,0 +1,81 @@
+name: Chromatic release check
+
+# Refreshes the Version Packages PR's `quality` check after a Chromatic review
+# succeeds. The release check (the `version-packages-freshness` step "Refuse a
+# release PR whose visual review has not passed" in ci-and-release.yml) reads
+# Chromatic's runs when it executes, so it fails on a head that nobody has
+# reviewed yet, and nothing re-runs it once the review passes.
+#
+# This runs from `workflow_run` rather than as a job inside chromatic.yml: a
+# Chromatic run is not `success` until its last job has finished, so a CI job
+# re-run from inside it would still find no successful review. It also waits
+# for the release PR's CI run to finish, because the release check has no
+# dependencies and can fail long before the slower jobs do; re-running only
+# the failed jobs of a finished run re-runs that check and `quality`.
+
+on:
+  workflow_run:
+    workflows: [Chromatic]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chromatic-release-check-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: Re-run the release PR's failed CI jobs
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'workflow_dispatch'
+      && github.event.workflow_run.head_branch == 'changeset-release/main'
+    runs-on: ubuntu-latest
+    # Long enough to wait for a full release-PR CI run.
+    timeout-minutes: 120
+    permissions:
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Re-run the release PR's failed CI jobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          read -r pr pr_head < <(gh api \
+            "repos/${GITHUB_REPOSITORY}/pulls?state=open&base=main&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/main" \
+            --jq '.[0] | "\(.number // "") \(.head.sha // "")"')
+          if [[ -z "$pr" ]]; then
+            echo "No open Version Packages PR into main; nothing to refresh"
+            exit 0
+          fi
+          if [[ "$pr_head" != "$HEAD_SHA" ]]; then
+            echo "Release PR #$pr has moved on to $pr_head; the review of $HEAD_SHA no longer applies"
+            exit 0
+          fi
+
+          # The same branch can back pull requests into other bases, and
+          # their runs share this head. The top-level `run-name` of
+          # ci-and-release.yml starts a pull request run's title with its
+          # number and base, which identifies the release PR's run.
+          prefix="PR #$pr → main · "
+          run_id=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci-and-release.yml/runs?event=pull_request&head_sha=${HEAD_SHA}&per_page=100" \
+            | jq -r --arg prefix "$prefix" \
+              '[.workflow_runs[] | select(.display_title | startswith($prefix))] | max_by(.created_at) | .id // empty')
+          if [[ -z "$run_id" ]]; then
+            echo "No CI run for release PR #$pr at $HEAD_SHA yet; when it runs, it reads the review itself"
+            exit 0
+          fi
+
+          echo "Waiting for CI run $run_id to finish"
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --interval 60 > /dev/null
+          conclusion=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+          if [[ "$conclusion" != 'failure' ]]; then
+            echo "CI run $run_id concluded '$conclusion'; nothing to re-run"
+            exit 0
+          fi
+          gh run rerun "$run_id" --failed --repo "$GITHUB_REPOSITORY"
+          echo "Re-ran the failed jobs of CI run $run_id for release PR #$pr"
