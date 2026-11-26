@@ -57,7 +57,7 @@ const refusals: RefusalCase[] = [
         validation: { unique: true },
       });
       interview.addStage('Sociogram', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 2 },
       });
       interview.setNodeAttribute(0, code.id, 'Raven');
@@ -129,7 +129,7 @@ const refusals: RefusalCase[] = [
         parameters: { type: 'full', min: '2000-01-01', max: '2010-12-31' },
       });
       interview.addStage('AlterForm', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         form: {
           fields: [
             { variable: born.id, component: 'DatePicker', prompt: 'When?' },
@@ -137,7 +137,7 @@ const refusals: RefusalCase[] = [
         },
       });
       const composer = interview.addStage('NetworkComposer', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         initialNodes: { count: 1 },
       });
       composer.addNodeFormField({

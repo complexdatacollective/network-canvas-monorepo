@@ -113,7 +113,7 @@ function composerStage(options: {
     id: testId(stageId),
     type: 'NetworkComposer',
     label: { 'en-US': 'Compose' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     quickAdd: asEntityAttributeReference('name'),
     layoutVariable: asEntityAttributeReference('layout'),
     background: { concentricCircles: 1 },
@@ -152,7 +152,7 @@ function alterFormStage(
     id: testId('ordinary-form'),
     type: 'AlterForm',
     label: { 'en-US': 'Edit person' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     form: {
       fields: [
         {

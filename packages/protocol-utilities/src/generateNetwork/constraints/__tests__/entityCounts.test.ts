@@ -32,7 +32,7 @@ function nameGenerator(overrides: Record<string, unknown> = {}): Stage {
     id: 'stage-1',
     type: 'NameGenerator',
     label: en('Name generator'),
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'p1', text: en('Name people') }],
     ...overrides,
   } as Stage;
@@ -43,7 +43,7 @@ function nodeAlterForm(nodeType: string, ...variables: string[]): Stage {
     id: 'stage-alter-form',
     type: 'AlterForm',
     label: 'About this person',
-    subject: { entity: 'node', type: nodeType },
+    subject: { entity: 'node', types: [nodeType] },
     form: {
       fields: variables.map((variable) => ({
         variable,
@@ -82,7 +82,7 @@ function networkComposer(overrides: Record<string, unknown> = {}): Stage {
     id: 'stage-composer',
     type: 'NetworkComposer',
     label: 'Compose',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     quickAdd: 'name',
     layoutVariable: 'layout',
     background: { circles: true },
@@ -208,7 +208,7 @@ describe('worstCaseEntityCounts', () => {
         id: 'stage-2',
         type: 'DyadCensus',
         label: 'Census',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
         ],
@@ -283,7 +283,7 @@ describe('worstCaseEntityCounts', () => {
       id: 'stage-census',
       type: 'DyadCensus',
       label: 'Census',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
       ],
@@ -311,7 +311,7 @@ describe('worstCaseEntityCounts', () => {
       id: 'stage-census',
       type: 'DyadCensus',
       label: 'Census',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
         { id: 'p2', text: 'Are they close?', createEdge: 'knows' },
@@ -322,7 +322,7 @@ describe('worstCaseEntityCounts', () => {
       id: 'stage-sociogram',
       type: 'Sociogram',
       label: 'Link them',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         { id: 'p1', text: 'Who knows who?', edges: { create: 'knows' } },
       ],
@@ -347,7 +347,7 @@ describe('worstCaseEntityCounts', () => {
       id: 'stage-people',
       type: 'DyadCensus',
       label: 'People',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
       ],
@@ -357,7 +357,7 @@ describe('worstCaseEntityCounts', () => {
       id: 'stage-places',
       type: 'DyadCensus',
       label: 'Places',
-      subject: { entity: 'node', type: 'place' },
+      subject: { entity: 'node', types: ['place'] },
       prompts: [
         { id: 'p1', text: 'Are these connected?', createEdge: 'knows' },
       ],
@@ -368,7 +368,7 @@ describe('worstCaseEntityCounts', () => {
         nameGenerator({ behaviours: { minNodes: 4, maxNodes: 4 } }),
         nameGenerator({
           id: 'stage-places-ng',
-          subject: { entity: 'node', type: 'place' },
+          subject: { entity: 'node', types: ['place'] },
           behaviours: { minNodes: 3, maxNodes: 3 },
         }),
         people,
@@ -433,7 +433,7 @@ describe('worstCaseEntityCounts', () => {
       id: 'stage-census',
       type: 'DyadCensus',
       label: 'Census',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       filter: {
         rules: [
           {
@@ -485,7 +485,7 @@ function rosterStage(overrides: Record<string, unknown> = {}): Stage {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: 'Roster',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     dataSource: 'roster-asset',
     prompts: [{ id: 'p1', text: 'Pick people' }],
     behaviours: { maxNodes: 3 },
@@ -608,7 +608,7 @@ describe('worstCaseEntityCounts with roster rows', () => {
         id: 'stage-census',
         type: 'DyadCensus',
         label: 'Census',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
         ],
@@ -717,7 +717,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
         id: 'stage-census',
         type: 'DyadCensus',
         label: 'Census',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
         ],
@@ -758,7 +758,7 @@ describe('worstCaseEntityCounts with roster rows carrying values', () => {
         id: 'stage-census',
         type: 'DyadCensus',
         label: 'Census',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
         ],
@@ -891,7 +891,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     id: 'stage-census',
     type: 'DyadCensus',
     label: 'Census',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [
       { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
     ],
@@ -1151,7 +1151,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
           }),
           rosterStage({
             id: 'roster-org',
-            subject: { entity: 'node', type: 'organization' },
+            subject: { entity: 'node', types: ['organization'] },
             behaviours: { minNodes: 3, maxNodes: 3 },
           }),
         ],
@@ -1574,7 +1574,7 @@ describe('generateNetwork with a unique variable on a composer edge type', () =>
       id: 'stage-census',
       type: 'DyadCensus',
       label: 'Census',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
       ],
@@ -1613,7 +1613,7 @@ describe('generateNetwork with a filtered pair-edge stage', () => {
     id: 'stage-census',
     type: 'DyadCensus',
     label: 'Census',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     filter: {
       rules: [
         {
@@ -1736,7 +1736,7 @@ describe('generateNetwork with stage order deciding what a stage can reach', () 
     id: 'stage-census',
     type: 'DyadCensus',
     label: 'Census',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [
       { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
     ],
@@ -1845,7 +1845,7 @@ describe('generateNetwork with a census configured to create no edges', () => {
     id: 'stage-census',
     type: 'DyadCensus',
     label: 'Census',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [
       { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
     ],
@@ -1944,7 +1944,7 @@ describe('generateNetwork with two prompts sharing one edge type', () => {
     id: 'stage-census',
     type: 'DyadCensus',
     label: 'Census',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [
       { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
       { id: 'p2', text: 'Are they close?', createEdge: 'knows' },
@@ -2056,7 +2056,7 @@ describe('worstCaseEntityCounts with roster rows shared across node types', () =
   function orgRoster(overrides: Record<string, unknown> = {}): Stage {
     return rosterStage({
       id: 'roster-org',
-      subject: { entity: 'node', type: 'organization' },
+      subject: { entity: 'node', types: ['organization'] },
       behaviours: { minNodes: 3, maxNodes: 3 },
       ...overrides,
     });

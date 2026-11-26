@@ -61,7 +61,7 @@ function threePeople(): Stage {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: 'Name generator',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'p1', text: 'Name people' }],
     behaviours: { minNodes: 3, maxNodes: 3 },
   } as unknown as Stage;
@@ -72,7 +72,7 @@ function dyadCensus(id: string): Stage {
     id,
     type: 'DyadCensus',
     label: 'Census',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [
       { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
     ],
@@ -84,7 +84,7 @@ function sociogram(id: string): Stage {
     id,
     type: 'Sociogram',
     label: 'Link them',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'p1', text: 'Who knows who?', edges: { create: 'knows' } }],
   } as unknown as Stage;
 }
@@ -168,7 +168,7 @@ describe('edge reuse across stages', () => {
       id: 'stage-composer',
       type: 'NetworkComposer',
       label: 'Compose',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       quickAdd: 'name',
       layoutVariable: 'layout',
       background: { circles: true },

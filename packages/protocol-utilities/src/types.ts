@@ -22,6 +22,11 @@ import type {
   VariableType,
 } from '@codaco/protocol-validation';
 
+/** A stage's subject: the node types it runs, or one edge type. */
+export type StageSubjectInput =
+  | { entity: 'node'; types: string[] }
+  | { entity: 'edge'; type: string };
+
 /**
  * Participant-facing text. A plain string is plain text in the protocol's
  * default locale and is escaped into an ICU literal message on output; a
@@ -342,7 +347,7 @@ export type StageEntry = {
   filter?: FilterInput;
   /** What the stage's text tests to choose its wording, by condition id. */
   conditions?: ConditionsInput;
-  subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
+  subject?: StageSubjectInput;
   form?: FormEntry;
   prompts: PromptEntry[];
   presets: PresetEntry[];
@@ -589,7 +594,7 @@ export type AddStageInput = {
   interviewScript?: string;
   skipLogic?: SkipLogicInput;
   filter?: FilterInput;
-  subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
+  subject?: StageSubjectInput;
   initialNodes?: InitialNodesSpec;
   initialEdges?: [number, number][];
   background?: {

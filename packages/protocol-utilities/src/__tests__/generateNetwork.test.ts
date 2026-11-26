@@ -17,6 +17,10 @@ import {
 } from '@codaco/shared-consts';
 
 import { generateNetwork } from '../generateNetwork.ts';
+import {
+  getSingleStageNodeType,
+  getStageNodeTypes,
+} from '../generateNetwork/subject.ts';
 import { testId } from './testId.ts';
 
 type Codebook = Parameters<typeof generateNetwork>[0]['codebook'];
@@ -75,7 +79,7 @@ function makeNameGeneratorStage(overrides?: Record<string, unknown>): Stage {
     maxNodesNotice: en(
       'You have completed this task. Click the next arrow to continue.',
     ),
-    subject: { entity: 'node', type: 'node-type-1' },
+    subject: { entity: 'node', types: ['node-type-1'] },
     prompts: [{ id: 'prompt-ng', text: en('Add people') }],
     behaviours: { minNodes: 5, maxNodes: 8 },
     ...overrides,
@@ -95,7 +99,7 @@ function makeRosterStage(overrides?: Record<string, unknown>): Stage {
     maxNodesNotice: en(
       'You have completed this task. Click the next arrow to continue.',
     ),
-    subject: { entity: 'node', type: 'node-type-1' },
+    subject: { entity: 'node', types: ['node-type-1'] },
     dataSource: 'roster-asset',
     prompts: [{ id: 'prompt-ngr', text: en('Pick people') }],
     behaviours: { minNodes: 1, maxNodes: 8 },
@@ -145,7 +149,7 @@ function makeDyadCensusStage(overrides?: Record<string, unknown>): Stage {
     id: 'stage-dc',
     label: en('Dyad Census'),
     type: 'DyadCensus',
-    subject: { entity: 'node', type: 'node-type-1' },
+    subject: { entity: 'node', types: ['node-type-1'] },
     prompts: [
       {
         id: 'prompt-dc-1',
@@ -169,7 +173,7 @@ function makeTieStrengthCensusStage(
     id: 'stage-tsc',
     label: en('Tie Strength'),
     type: 'TieStrengthCensus',
-    subject: { entity: 'node', type: 'node-type-1' },
+    subject: { entity: 'node', types: ['node-type-1'] },
     prompts: [
       {
         id: 'prompt-tsc',
@@ -186,7 +190,7 @@ function makeFamilyPedigreeStage(overrides?: Record<string, unknown>): Stage {
     id: 'stage-fp',
     label: en('Family'),
     type: 'FamilyPedigree',
-    subject: { entity: 'node', type: 'node-type-1' },
+    subject: { entity: 'node', types: ['node-type-1'] },
     prompt: en('Tell us about your family'),
     nodeConfiguration: {
       nameAttribute: 'var-name',
@@ -218,7 +222,7 @@ function makeTypedNameGeneratorStage(id: string, nodeType: string): Stage {
   return makeNameGeneratorStage({
     id: testId(id),
     label: id,
-    subject: { entity: 'node', type: nodeType },
+    subject: { entity: 'node', types: [nodeType] },
     prompts: [{ id: testId(`${id}-prompt`), text: id }],
     behaviours: { minNodes: 2, maxNodes: 2 },
   });
@@ -353,7 +357,7 @@ describe('generateNetwork', () => {
       id: 'stage-sociogram',
       type: 'Sociogram',
       label: 'Support network',
-      subject: { entity: 'node', type: 'node-type-1' },
+      subject: { entity: 'node', types: ['node-type-1'] },
       prompts: [
         {
           id: 'prompt-highlight',
@@ -544,7 +548,7 @@ describe('generateNetwork', () => {
           maxNodesNotice: en(
             'You have completed this task. Click the next arrow to continue.',
           ),
-          subject: { entity: 'node', type: 'node-type-1' },
+          subject: { entity: 'node', types: ['node-type-1'] },
           prompts: [{ id: 'prompt-1', text: en('Add people') }],
           behaviours: { minNodes: 2, maxNodes: 5 },
         } as Stage,
@@ -732,7 +736,7 @@ describe('generateNetwork', () => {
         id: 'stage-ob',
         label: en('Ordinal Bin'),
         type: 'OrdinalBin',
-        subject: { entity: 'node', type: 'node-type-1' },
+        subject: { entity: 'node', types: ['node-type-1'] },
         prompts: [
           {
             id: 'prompt-ob',
@@ -748,7 +752,7 @@ describe('generateNetwork', () => {
         id: 'stage-cb',
         label: en('Categorical Bin'),
         type: 'CategoricalBin',
-        subject: { entity: 'node', type: 'node-type-1' },
+        subject: { entity: 'node', types: ['node-type-1'] },
         prompts: [
           {
             id: 'prompt-cb',
@@ -849,7 +853,7 @@ describe('generateNetwork', () => {
           id: 'stage-soc',
           label: en('Sociogram'),
           type: 'Sociogram',
-          subject: { entity: 'node', type: 'node-type-1' },
+          subject: { entity: 'node', types: ['node-type-1'] },
           prompts: [
             {
               id: 'prompt-soc',
@@ -916,7 +920,7 @@ describe('generateNetwork', () => {
           id: 'stage-soc-draft',
           label: 'Sociogram',
           type: 'Sociogram',
-          subject: { entity: 'node', type: 'node-type-1' },
+          subject: { entity: 'node', types: ['node-type-1'] },
           prompts: [{ id: 'prompt-soc', text: 'Place people' }],
         } as unknown as Stage,
       ];
@@ -941,7 +945,7 @@ describe('generateNetwork', () => {
           id: 'stage-ob-draft',
           label: 'Ordinal Bin',
           type: 'OrdinalBin',
-          subject: { entity: 'node', type: 'node-type-1' },
+          subject: { entity: 'node', types: ['node-type-1'] },
           prompts: [{ id: 'prompt-ob', text: 'How close?' }],
         } as unknown as Stage,
       ];
@@ -1324,7 +1328,7 @@ describe('generateNetwork', () => {
           type: stageType,
           // Properties used by various stage types — include all so that
           // whichever branch runs has something to work with.
-          subject: { entity: 'node', type: 'node-type-1' },
+          subject: { entity: 'node', types: ['node-type-1'] },
           prompts: [{ id: 'prompt-1', text: 'Test prompt' }],
         } as unknown as Stage;
 
@@ -1692,5 +1696,32 @@ describe('generateNetwork', () => {
       expect(droppedOut).toBe(true);
       expect(currentStep).toBe(0);
     });
+  });
+});
+
+describe('stage node type accessors', () => {
+  it('getStageNodeTypes skips a draft stage with a malformed types value', () => {
+    const drafts: object[] = [
+      { type: 'NameGenerator' },
+      { type: 'NameGenerator', subject: { entity: 'node' } },
+      { type: 'NameGenerator', subject: { entity: 'node', types: [] } },
+      { type: 'NameGenerator', subject: { entity: 'node', types: 'person' } },
+      { type: 'NameGenerator', subject: { entity: 'node', types: ['a', 3] } },
+      { type: 'NameGenerator', subject: { entity: 'node', type: 'person' } },
+      { type: 'AlterEdgeForm', subject: { entity: 'edge', type: 'knows' } },
+    ];
+    for (const draft of drafts) {
+      expect(getStageNodeTypes(draft), JSON.stringify(draft)).toBeUndefined();
+      expect(getSingleStageNodeType(draft)).toBeUndefined();
+    }
+  });
+
+  it('reads the types a stage lists, and the one type of a single-type stage', () => {
+    const one = { subject: { entity: 'node', types: ['person'] } };
+    const two = { subject: { entity: 'node', types: ['person', 'place'] } };
+    expect(getStageNodeTypes(one)).toEqual(['person']);
+    expect(getSingleStageNodeType(one)).toBe('person');
+    expect(getStageNodeTypes(two)).toEqual(['person', 'place']);
+    expect(getSingleStageNodeType(two)).toBeUndefined();
   });
 });

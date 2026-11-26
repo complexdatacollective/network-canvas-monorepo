@@ -9,6 +9,8 @@
 
 import type { Stage } from '@codaco/protocol-validation';
 
+import { getSingleStageNodeType } from '../subject.ts';
+
 const CROSS_VARIABLE_RULES = [
   'sameAs',
   'differentFrom',
@@ -211,10 +213,7 @@ function nodeVariablesWrittenOnExisting(stage: Stage): Set<string> {
 }
 
 function nodeTypeOf(stage: Stage): string | undefined {
-  if ('subject' in stage && stage.subject?.entity === 'node') {
-    return stage.subject.type;
-  }
-  return undefined;
+  return getSingleStageNodeType(stage);
 }
 
 /** Last stage index writing each variable onto existing nodes, per node type. */

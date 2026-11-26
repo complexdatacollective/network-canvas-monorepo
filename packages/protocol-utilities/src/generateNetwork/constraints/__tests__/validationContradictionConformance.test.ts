@@ -35,7 +35,7 @@ const nameGenerator = {
     en: 'You have completed this task. Click the next arrow to continue.',
   },
   label: 'Name generator',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompts: [{ id: 'prompt-1', text: 'Name people' }],
   behaviours: { minNodes: 1, maxNodes: 1 },
 } as unknown as Stage;

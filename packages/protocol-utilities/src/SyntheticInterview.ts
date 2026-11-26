@@ -127,6 +127,7 @@ import type {
   SkipLogicInput,
   SociogramPromptEntry,
   StageEntry,
+  StageSubjectInput,
   TextInput,
   TieStrengthCensusPromptEntry,
   VariableEntry,
@@ -366,6 +367,20 @@ type StageHandleMap = {
   LanguageChooser: LanguageChooserHandle;
   FinishSession: FinishSessionHandle;
 };
+
+/**
+ * The one type a stage builder works with: an edge subject's type, or the
+ * node type of a subject that lists exactly one.
+ */
+function subjectTypeOf(subject: StageSubjectInput | undefined): string {
+  if (subject === undefined) throw new Error('This stage has no subject');
+  if (subject.entity === 'edge') return subject.type;
+  const [only, ...rest] = subject.types;
+  if (only === undefined || rest.length > 0) {
+    throw new Error('This stage builder works with exactly one node type');
+  }
+  return only;
+}
 
 // Stage types that have no subject (node/edge)
 const SUBJECTLESS_STAGES = new Set<StageType>([
@@ -781,7 +796,7 @@ export class SyntheticInterview {
         } else {
           nodeTypeId = this.addNodeType().id;
         }
-        subject = { entity: 'node', type: nodeTypeId };
+        subject = { entity: 'node', types: [nodeTypeId] };
       }
     }
 
@@ -834,7 +849,7 @@ export class SyntheticInterview {
         type === 'FamilyPedigree')
     ) {
       const fields = opts.form.fields.map((f) =>
-        this.resolveFormField(f, subject.type),
+        this.resolveFormField(f, subjectTypeOf(subject)),
       );
       entry.form = {
         title: opts.form.title ?? 'Add a person',
@@ -869,7 +884,7 @@ export class SyntheticInterview {
       } else {
         // The schema requires a variable ID reference, not a display name —
         // dedupe-resolve to the "name" text variable addNodeType seeds.
-        const ref = this.addVariableToNodeType(subject!.type, {
+        const ref = this.addVariableToNodeType(subjectTypeOf(subject), {
           type: 'text',
           name: 'name',
         });
@@ -918,7 +933,7 @@ export class SyntheticInterview {
       if (subject?.entity !== 'node') {
         throw new Error('FamilyPedigree stages require a node subject');
       }
-      const personType = subject.type;
+      const personType = subjectTypeOf(subject);
       const personVariable = (
         name: string,
         varOpts: Omit<AddVariableInput, 'name'>,
@@ -1063,7 +1078,7 @@ export class SyntheticInterview {
         throw new Error('NetworkComposer stages require a node subject');
       }
 
-      const nodeTypeId = subject.type;
+      const nodeTypeId = subjectTypeOf(subject);
 
       // quickAdd is a text variable populated by the inline add field. Mirror
       // NameGeneratorQuickAdd's default of 'name' (the variable addNodeType
@@ -1111,7 +1126,7 @@ export class SyntheticInterview {
       for (let i = 0; i < initialNodeCount; i++) {
         this.nodes.push({
           uid: this.nextId('node'),
-          type: subject.type,
+          type: subjectTypeOf(subject),
           stageId,
           promptIDs: [],
           promptIndices:
@@ -1242,7 +1257,7 @@ export class SyntheticInterview {
               parameters: opts.parameters,
               validation: opts.validation,
             },
-            entry.subject!.type,
+            subjectTypeOf(entry.subject),
           );
           entry.form ??= { title: 'Add a person', fields: [] };
           entry.form.fields.push(field);
@@ -1357,7 +1372,7 @@ export class SyntheticInterview {
               parameters: opts.parameters,
               validation: opts.validation,
             },
-            entry.subject!.type,
+            subjectTypeOf(entry.subject),
           );
           entry.form ??= { title: 'About this person', fields: [] };
           entry.form.fields.push(field);
@@ -1377,7 +1392,7 @@ export class SyntheticInterview {
               parameters: opts.parameters,
               validation: opts.validation,
             },
-            entry.subject!.type,
+            subjectTypeOf(entry.subject),
           );
           entry.form ??= {
             title: 'Describe this relationship',
@@ -1398,7 +1413,7 @@ export class SyntheticInterview {
         );
         return {
           ...base,
-          personType: entry.subject!.type,
+          personType: subjectTypeOf(entry.subject),
           edgeType: relationship.type,
           name: person.nameAttribute,
           genderIdentity: person.genderIdentity?.attribute,
@@ -1424,7 +1439,7 @@ export class SyntheticInterview {
                 parameters: opts.parameters,
                 validation: opts.validation,
               },
-              entry.subject!.type,
+              subjectTypeOf(entry.subject),
             );
             entry.form ??= { title: 'Add a person', fields: [] };
             entry.form.fields.push(field);
@@ -1467,7 +1482,7 @@ export class SyntheticInterview {
         addNodeFormField: (opts: NetworkComposerFormFieldInput) => {
           const field = this.resolveNetworkComposerFormField(
             opts,
-            entry.subject!.type,
+            subjectTypeOf(entry.subject),
           );
           entry.nodeForm ??= { fields: [] };
           entry.nodeForm.fields.push(field);
@@ -1676,7 +1691,7 @@ export class SyntheticInterview {
     entry: StageEntry,
   ): SociogramPromptEntry {
     const promptId = this.nextObjectId('prompt');
-    const nodeTypeId = entry.subject!.type;
+    const nodeTypeId = subjectTypeOf(entry.subject);
 
     // Resolve layout variable
     let layoutVariable: string | undefined;
@@ -1746,7 +1761,7 @@ export class SyntheticInterview {
     entry: StageEntry,
   ): PresetEntry {
     const presetId = this.nextObjectId('preset');
-    const nodeTypeId = entry.subject!.type;
+    const nodeTypeId = subjectTypeOf(entry.subject);
 
     // Resolve layout variable
     let layoutVariable: string;
@@ -1873,7 +1888,7 @@ export class SyntheticInterview {
     entry: StageEntry,
   ): OrdinalBinPromptEntry {
     const promptId = this.nextObjectId('prompt');
-    const nodeTypeId = entry.subject!.type;
+    const nodeTypeId = subjectTypeOf(entry.subject);
 
     // Resolve variable: use provided or auto-create an ordinal variable
     let variable: string;
@@ -1905,7 +1920,7 @@ export class SyntheticInterview {
     entry: StageEntry,
   ): CategoricalBinPromptEntry {
     const promptId = this.nextObjectId('prompt');
-    const nodeTypeId = entry.subject!.type;
+    const nodeTypeId = subjectTypeOf(entry.subject);
 
     // Resolve variable: use provided or auto-create a categorical variable
     let variable: string;
@@ -1984,7 +1999,7 @@ export class SyntheticInterview {
     entry: StageEntry,
   ): GeospatialPromptEntry {
     const promptId = this.nextObjectId('prompt');
-    const nodeTypeId = entry.subject?.type;
+    const nodeTypeId = entry.subject && subjectTypeOf(entry.subject);
 
     // Resolve the variable to store the location selection
     let variable: string;
@@ -2431,7 +2446,7 @@ export class SyntheticInterview {
 
     for (const stage of this.stages) {
       if (stage.type === 'NetworkComposer') {
-        const nodeType = stage.subject?.type;
+        const nodeType = stage.subject && subjectTypeOf(stage.subject);
         if (nodeType !== undefined) {
           for (const field of stage.nodeForm?.fields ?? []) {
             fields.push({ entity: 'node', type: nodeType, ...field });
@@ -2450,7 +2465,7 @@ export class SyntheticInterview {
         for (const field of stage.form.fields) {
           addOrdinaryField(
             stage.subject.entity,
-            stage.subject.type,
+            subjectTypeOf(stage.subject),
             field.variable,
           );
         }

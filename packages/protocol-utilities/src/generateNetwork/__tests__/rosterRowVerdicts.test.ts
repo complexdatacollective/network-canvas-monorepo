@@ -70,7 +70,7 @@ function rosterStage(count: number): Stage {
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     unnamedLabel: { en: 'Unnamed {count}' },
     label: 'Roster',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'p1', text: 'Pick people' }],
     behaviours: { minNodes: count, maxNodes: count },
   } as unknown as Stage;

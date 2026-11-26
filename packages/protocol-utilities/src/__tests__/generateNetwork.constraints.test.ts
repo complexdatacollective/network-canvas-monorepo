@@ -23,7 +23,7 @@ const nameGeneratorStage = {
     en: 'You have completed this task. Click the next arrow to continue.',
   },
   label: 'Name generator',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompts: [{ id: 'p1', text: 'Name people' }],
   behaviours: { minNodes: 5, maxNodes: 5 },
 } as unknown as Stage;
@@ -246,7 +246,7 @@ describe('generateNetwork constraint conformance', () => {
           id: 'stage-alter',
           type: 'AlterForm',
           label: 'Alter form',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: {
             fields: [{ id: 'field-1', variable: 'high', prompt: 'High' }],
           },
@@ -284,7 +284,7 @@ describe('generateNetwork constraint conformance', () => {
           id: 'stage-alter',
           type: 'AlterForm',
           label: 'Alter form',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: {
             fields: [{ id: 'field-1', variable: 'band', prompt: 'Band' }],
           },
@@ -522,7 +522,7 @@ describe('generateNetwork constraint conformance', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Roster',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'p1', text: 'Pick people' }],
         behaviours: { minNodes: 2, maxNodes: 2 },
       } as unknown as Stage,
@@ -536,7 +536,7 @@ describe('generateNetwork constraint conformance', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Name generator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'p2', text: 'Name more people' }],
         behaviours: { minNodes: 3, maxNodes: 3 },
       } as unknown as Stage,
@@ -610,7 +610,7 @@ describe('generateNetwork constraint conformance', () => {
           id: 'stage-dyad',
           type: 'DyadCensus',
           label: 'Dyad census',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           prompts: [{ id: 'p-dyad', text: 'Know?', createEdge: 'knows' }],
         } as unknown as Stage,
         {
@@ -770,7 +770,7 @@ describe('a unique number in a range that holds no integer', () => {
           id: 'stage-1',
           type: 'NameGenerator',
           label: 'Name generator',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           prompts: [{ id: 'p1', text: 'Name people' }],
           behaviours: { minNodes: nodes, maxNodes: nodes },
         } as unknown as Stage,
@@ -1042,7 +1042,7 @@ describe('a strict date comparison at the end of the calendar', () => {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: 'Name generator',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [
       {
         id: 'p1',
@@ -1365,7 +1365,7 @@ describe('cross-variable rules across a seed sweep', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -1467,7 +1467,7 @@ describe('rules spanning a fixed and a drawn attribute', () => {
       id: 'stage-1',
       type: fabricates ? 'NameGenerator' : 'NameGeneratorRoster',
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -1624,7 +1624,7 @@ describe('a rule between two fixed attributes', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -1725,7 +1725,7 @@ describe('a rule between two fixed attributes', () => {
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -2164,7 +2164,7 @@ describe('a fixed value its own rules reject', () => {
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: 'p1', text: 'Pick people', ...extra }],
       behaviours: { minNodes: count, maxNodes: count },
     } as unknown as Stage;
@@ -2525,7 +2525,7 @@ describe('a fixed value its own rules reject', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -2666,7 +2666,7 @@ describe('a fixed value its own rules reject', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       panels: [{ id: 'panel-1', title: 'Panel', dataSource: 'asset-1' }],
       prompts: [{ id: 'p1', text: 'Name people' }],
       behaviours: { minNodes: 3, maxNodes: 3 },
@@ -2739,7 +2739,7 @@ describe('a fixed value its own rules reject', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -2776,7 +2776,7 @@ describe('a unique value a prompt fixes', () => {
       id,
       type: 'NameGenerator',
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: `${id}-p1`,
@@ -2965,7 +2965,7 @@ describe('a unique value a prompt fixes', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Name generator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'p1', text: 'Name people' }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       } as unknown as Stage,
@@ -3021,7 +3021,7 @@ describe('a unique value a prompt fixes', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Name generator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'p1', text: 'Name people' }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       } as unknown as Stage,
@@ -3065,7 +3065,7 @@ describe('a unique value a prompt fixes', () => {
         id,
         type: 'NameGenerator',
         label: 'Name generator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           {
             id: `${id}-p1`,
@@ -3152,7 +3152,7 @@ describe('a unique value a prompt fixes', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Roster',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'p1', text: 'Pick people' }],
         behaviours: { minNodes: 2, maxNodes: 2 },
       } as unknown as Stage,
@@ -3166,7 +3166,7 @@ describe('a unique value a prompt fixes', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Name generator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'p2', text: 'Name people' }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       } as unknown as Stage,
@@ -3182,7 +3182,7 @@ describe('a unique value a prompt fixes', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Roster',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           {
             id: 'p3',
@@ -3275,7 +3275,7 @@ describe('a unique value a prompt fixes', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Roster',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           {
             id: 'p1',
@@ -3295,7 +3295,7 @@ describe('a unique value a prompt fixes', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Name generator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'p2', text: 'Name someone else' }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       } as unknown as Stage,
@@ -3364,7 +3364,7 @@ describe('a unique value a prompt fixes', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Roster',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -3433,7 +3433,7 @@ describe('a unique value two roster rows share', () => {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: 'Roster',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'p1', text: 'Pick people' }],
     behaviours: { minNodes: 3, maxNodes: 3 },
   } as unknown as Stage;
@@ -3515,7 +3515,7 @@ describe('a prompt the stage node ceiling leaves nothing for', () => {
       id: 'stage-1',
       type: 'NameGenerator',
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         { id: 'p1', text: 'Name people' },
         {
@@ -3633,7 +3633,7 @@ describe('a prompt the stage node ceiling leaves nothing for', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Name generator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           { id: 'p1', text: 'One' },
           { id: 'p2', text: 'Two' },
@@ -3690,7 +3690,7 @@ describe('roster values held against an earlier stage', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Name someone',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: `${id}-p1`, text: 'Name someone' }],
       behaviours: { minNodes: 1, maxNodes: 1 },
     } as unknown as Stage;
@@ -3709,7 +3709,7 @@ describe('roster values held against an earlier stage', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Pick someone',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: `${id}-p1`, text: 'Pick someone' }],
       behaviours: { minNodes: 1, maxNodes: 1 },
     } as unknown as Stage;
@@ -3889,7 +3889,7 @@ describe('a variable a roster row and a prompt both settle', () => {
       id,
       type,
       label: id,
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: `${id}-p1`,
@@ -4062,7 +4062,7 @@ describe('two roster rows a caller gave one primary key', () => {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: 'Roster',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'p1', text: 'Pick people' }],
     behaviours: { minNodes: 2, maxNodes: 2 },
   } as unknown as Stage;

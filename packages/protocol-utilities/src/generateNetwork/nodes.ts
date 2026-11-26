@@ -37,7 +37,7 @@ import {
 import { valueKey } from './constraints/uniqueRegistry.ts';
 import { distinctOptionValues } from './constraints/valueSpace.ts';
 import type { GenerationContext, StageOfType } from './context.ts';
-import { getSubjectType } from './subject.ts';
+import { getSingleStageNodeType } from './subject.ts';
 
 /**
  * Node-subject stages that fabricate nodes: the three name-generator variants
@@ -222,7 +222,7 @@ export function countPromptFixedValues(
   for (const [stageIndex, stage] of stages.entries()) {
     if (!isPromptedNodeStage(stage)) continue;
 
-    const nodeType = getSubjectType(stage.subject, 'node');
+    const nodeType = getSingleStageNodeType(stage);
     if (nodeType === undefined) continue;
 
     const bounds = getNodeCountBounds(stage, config);
@@ -474,7 +474,7 @@ export function countRosterCarriedValues(
     const rows = externalData?.[stage.id];
     if (rows === undefined || rows.length === 0) continue;
 
-    const nodeType = getSubjectType(stage.subject, 'node');
+    const nodeType = getSingleStageNodeType(stage);
     if (nodeType === undefined) continue;
 
     const bounds = getNodeCountBounds(stage, config);
@@ -550,7 +550,7 @@ export function collectPromptFixedAssignments(
       continue;
     }
 
-    const nodeType = getSubjectType(stage.subject, 'node');
+    const nodeType = getSingleStageNodeType(stage);
     if (nodeType === undefined) continue;
 
     const bounds = getNodeCountBounds(stage, config);
@@ -884,7 +884,7 @@ function applyStageRosterHold(
   const rows = ctx.externalData?.[stage.id];
   if (rows === undefined || rows.length === 0) return;
 
-  const nodeType = getSubjectType(stage.subject, 'node');
+  const nodeType = getSingleStageNodeType(stage);
   if (nodeType === undefined) return;
 
   apply(ctx, { entity: 'node', type: nodeType }, rows);
@@ -1001,7 +1001,7 @@ export function createNodesForStage(
   stageNodeCount: number,
   roster: RosterDraw,
 ): NcNode[] {
-  const nodeType = getSubjectType(stage.subject, 'node');
+  const nodeType = getSingleStageNodeType(stage);
   if (nodeType === undefined) return [];
 
   const nodeTypeDef = ctx.codebook.node?.[nodeType];

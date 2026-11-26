@@ -14,7 +14,7 @@ import {
   type NodeCreationStage,
   ruleBrokenByFixedValues,
 } from '../nodes.ts';
-import { getSubjectType } from '../subject.ts';
+import { getSingleStageNodeType } from '../subject.ts';
 import { completionCheckFor } from './generateEntityAttributes.ts';
 import {
   declaresNodeCollection,
@@ -664,7 +664,7 @@ export function worstCaseEntityCounts(
     // stage or an early drop-out leaves fewer nodes than counted here, never
     // more, so the reading stays an upper bound either way.
     if (isNodeCreationStage(stage)) {
-      const nodeType = getSubjectType(stage.subject, 'node');
+      const nodeType = getSingleStageNodeType(stage);
       if (nodeType === undefined) continue;
 
       const tally = tallyFor(node, nodeType);
@@ -749,7 +749,7 @@ export function worstCaseEntityCounts(
     }
 
     if (isPairEdgeStage(stage)) {
-      const nodeType = getSubjectType(stage.subject, 'node');
+      const nodeType = getSingleStageNodeType(stage);
       if (nodeType === undefined) continue;
       // A census whose configured probability cannot rise above zero creates
       // nothing at all, so it puts no pair of its own into the count. It may
@@ -765,7 +765,7 @@ export function worstCaseEntityCounts(
     }
 
     if (stage.type === 'Sociogram') {
-      const nodeType = getSubjectType(stage.subject, 'node');
+      const nodeType = getSingleStageNodeType(stage);
       if (nodeType === undefined) continue;
       if (!createsEdges(config.sociogramEdgeProbability)) continue;
       for (const prompt of stage.prompts) {

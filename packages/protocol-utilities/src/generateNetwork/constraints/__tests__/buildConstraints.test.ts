@@ -975,7 +975,7 @@ describe('a date field whose floor is later than today, through feasibility', ()
         'You have completed this task. Click the next arrow to continue.',
     },
     label: { 'en-US': 'Name generator' },
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     form: { title: { 'en-US': 'About this person' }, fields: [] },
     prompts: [{ id: testId('p1'), text: { 'en-US': 'Name people' } }],
     behaviours: { maxNodes: 4 },

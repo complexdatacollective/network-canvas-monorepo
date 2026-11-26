@@ -3,7 +3,7 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 
 import type { GenerationContext, NetworkDraft } from './context.ts';
 import { getStageFilteredNodes } from './filtering.ts';
-import { getSubjectType } from './subject.ts';
+import { getSingleStageNodeType } from './subject.ts';
 
 /** Keep only string entries, dropping the `undefined` a half-built prompt yields. */
 function onlyStrings(values: (string | undefined)[]): string[] {
@@ -47,12 +47,6 @@ function getInProgressClearableVariables(stage: Stage): string[] {
   return [];
 }
 
-function getNodeSubjectType(stage: Stage): string | undefined {
-  if (!('subject' in stage)) return undefined;
-  const subject: { entity?: string; type?: string } | undefined = stage.subject;
-  return getSubjectType(subject, 'node');
-}
-
 /**
  * Clears the stage's prompt variables on a fraction of its subject nodes
  * (always at least one) so the stage presents as partially complete: some
@@ -66,7 +60,7 @@ export function markStageInProgress(
   const variables = getInProgressClearableVariables(stage);
   if (variables.length === 0) return;
 
-  const nodeType = getNodeSubjectType(stage);
+  const nodeType = getSingleStageNodeType(stage);
   if (nodeType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, nodeType);

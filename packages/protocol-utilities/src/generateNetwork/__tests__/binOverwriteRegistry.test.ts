@@ -68,7 +68,7 @@ function binAndFormProtocol(
     id: 'stage-1',
     type: 'NameGenerator',
     label: 'Name generator',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'p1', text: 'Name people' }],
     behaviours: { minNodes: shape.minPeople, maxNodes: shape.maxPeople },
   };
@@ -76,14 +76,14 @@ function binAndFormProtocol(
     id: 'stage-bin',
     type: binType,
     label: 'Sort into bands',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'p2', text: 'Sort', variable: 'band' }],
   };
   const formStage = (id: string) => ({
     id,
     type: 'AlterForm',
     label: 'About each person',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     form: { fields: [{ id: 'field-1', variable: 'band', prompt: 'Band' }] },
   });
   const form = formStage('stage-form');

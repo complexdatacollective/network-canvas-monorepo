@@ -35,7 +35,7 @@ describe('stage-linear node writes', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'People',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'first-prompt',
@@ -115,7 +115,7 @@ describe('stage-linear node writes', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'People',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: 'people', text: 'Name people' }],
       behaviours: { minNodes: 2, maxNodes: 2 },
       form: {
@@ -132,7 +132,7 @@ describe('stage-linear node writes', () => {
       id: 'stage-highlight',
       type: 'Sociogram',
       label: 'Highlight people',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'highlight',

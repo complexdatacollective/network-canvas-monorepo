@@ -8,6 +8,7 @@ import type {
 import { collectEntityAttributeReferences } from '@codaco/protocol-validation';
 
 import type { VariableEntry } from '../../types.ts';
+import { getSingleStageNodeType } from '../subject.ts';
 import { buildVariableConstraints } from './buildConstraints.ts';
 import type { DateWindow } from './dateWindow.ts';
 import type { ConstraintConflict } from './error.ts';
@@ -117,9 +118,11 @@ function composerFields(stages: Stage[]): ComposerField[] {
   for (const stage of stages) {
     if (stage.type !== 'NetworkComposer') continue;
 
-    const nodeType = stage.subject.type;
-    for (const field of stage.nodeForm?.fields ?? []) {
-      fields.push({ entity: 'node', type: nodeType, ...field });
+    const nodeType = getSingleStageNodeType(stage);
+    if (nodeType !== undefined) {
+      for (const field of stage.nodeForm?.fields ?? []) {
+        fields.push({ entity: 'node', type: nodeType, ...field });
+      }
     }
 
     for (const edge of stage.edges ?? []) {

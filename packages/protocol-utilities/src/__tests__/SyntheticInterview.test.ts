@@ -70,7 +70,8 @@ function subjectVariableType(
   stage: Record<string, unknown>,
   variable: unknown,
 ) {
-  const subjectType = isRecord(stage.subject) ? stage.subject.type : undefined;
+  const types = isRecord(stage.subject) ? stage.subject.types : undefined;
+  const subjectType = Array.isArray(types) ? types[0] : undefined;
   return typeof subjectType === 'string' && typeof variable === 'string'
     ? variableType(nodes, subjectType, variable)
     : undefined;
@@ -519,7 +520,7 @@ describe('SyntheticInterview', () => {
         name: "Friend's {nickname}",
       });
       const stage = si.addStage('Narrative', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
       });
       stage.addPreset({ highlight: [close.id] });
 
@@ -592,7 +593,7 @@ describe('SyntheticInterview', () => {
 
       si.addStage('Sociogram', {
         initialNodes: { count: 3 },
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
       });
 
       const network = si.getNetwork();
@@ -608,7 +609,7 @@ describe('SyntheticInterview', () => {
       const nt = si.addNodeType();
       const stage = si.addStage('Sociogram', {
         initialNodes: { count: 3 },
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
       });
 
       // Add variable after stage and nodes were created
@@ -655,7 +656,7 @@ describe('SyntheticInterview', () => {
       const nickname = nt.addVariable({ type: 'text', name: 'nickname' });
 
       const stage = si.addStage('Narrative', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
       });
       si.addManualNode(stage.id, nt.id, 'person-1', {
         [isEgo.id]: true,
@@ -684,7 +685,7 @@ describe('SyntheticInterview', () => {
       const nt = si.addNodeType();
       const flag = nt.addVariable({ type: 'boolean', name: 'flag' });
       const stage = si.addStage('Narrative', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
       });
 
       si.addManualNode(stage.id, nt.id, 'person-1', {
@@ -701,7 +702,7 @@ describe('SyntheticInterview', () => {
 
       si.addStage('Narrative', {
         initialNodes: { count: 1 },
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
       });
 
       const node = si.getNetwork().nodes[0]!;
@@ -721,7 +722,7 @@ describe('SyntheticInterview', () => {
 
       si.addStage('Narrative', {
         initialNodes: { count: 1 },
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
       });
 
       expect(
@@ -832,7 +833,7 @@ describe('SyntheticInterview', () => {
       const si = new SyntheticInterview();
       const nt = si.addNodeType();
       const stage = si.addStage('NameGenerator', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
       });
       stage.addPrompt({ text: 'Prompt 1' });
       stage.addPrompt({ text: 'Prompt 2' });
@@ -1038,7 +1039,7 @@ describe('SyntheticInterview', () => {
 
       si.addStage('NameGenerator', {
         initialNodes: { count: 3 },
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
       });
       si.addEdges(
         [
@@ -1112,7 +1113,7 @@ describe('SyntheticInterview', () => {
       expect(config.type).toBe('FamilyPedigree');
       expect(config.subject).toEqual({
         entity: 'node',
-        type: stage.personType,
+        types: [stage.personType],
       });
       expect(config.prompt).toEqual({ 'en-US': expect.any(String) });
       expect(config.nodeConfiguration).toEqual({
@@ -1279,7 +1280,7 @@ describe('SyntheticInterview', () => {
       const si = new SyntheticInterview();
       const person = si.addNodeType({ name: 'Relative' });
       const stage = si.addStage('FamilyPedigree', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         prompt: 'Draw your family',
         form: {
           fields: [{ component: 'Text', prompt: 'Occupation' }],
@@ -1396,7 +1397,7 @@ describe('SyntheticInterview', () => {
       const edgeVariable = et.addVariable({ type: 'boolean', name: 'Flag' });
 
       si.addStage('NameGenerator', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         initialNodes: { count: 2 },
       });
       si.addEdges([[0, 1]], et.id);
@@ -1456,7 +1457,7 @@ describe('SyntheticInterview', () => {
 
       expect(stageConfig.type).toBe('NetworkComposer');
 
-      const subject = stageConfig.subject as { entity: string; type: string };
+      const subject = stageConfig.subject as { entity: string };
       expect(subject.entity).toBe('node');
       const nodeVariableType = (variable: unknown) =>
         subjectVariableType(protocol.codebook.node, stageConfig, variable);
@@ -1486,7 +1487,7 @@ describe('SyntheticInterview', () => {
       const friendship = si.addEdgeType({ name: 'Friendship' });
 
       const stage = si.addStage('NetworkComposer', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         quickAdd: quickAddVar.id,
         layoutVariable: layoutVar.id,
         initialNodes: { count: 6 },
@@ -1520,7 +1521,7 @@ describe('SyntheticInterview', () => {
         component: 'Text',
       });
       const stage = si.addStage('NetworkComposer', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
       });
       stage.addNodeFormField({ variable: nickname.id, component: 'Text' });
       stage.addEdgeType({
@@ -1566,7 +1567,7 @@ describe('SyntheticInterview', () => {
       const si = new SyntheticInterview();
       const node = si.addNodeType({ name: 'person' });
       const stage = si.addStage('NetworkComposer', {
-        subject: { entity: 'node', type: node.id },
+        subject: { entity: 'node', types: [node.id] },
       });
       stage.addNodeFormField({ component: 'Number', label: 'Age' });
       const payload = si.getInterviewPayload();
@@ -1591,7 +1592,7 @@ describe('SyntheticInterview', () => {
         component: 'DatePicker',
       });
       const stage = si.addStage('NetworkComposer', {
-        subject: { entity: 'node', type: node.id },
+        subject: { entity: 'node', types: [node.id] },
         initialNodes: { count: 3 },
       });
       stage.addNodeFormField({
@@ -1621,7 +1622,7 @@ describe('SyntheticInterview', () => {
         },
       });
       si.addStage('AlterForm', {
-        subject: { entity: 'node', type: node.id },
+        subject: { entity: 'node', types: [node.id] },
         form: {
           fields: [
             {
@@ -1633,7 +1634,7 @@ describe('SyntheticInterview', () => {
         },
       });
       const composer = si.addStage('NetworkComposer', {
-        subject: { entity: 'node', type: node.id },
+        subject: { entity: 'node', types: [node.id] },
         initialNodes: { count: 1 },
       });
       composer.addNodeFormField({
@@ -1685,7 +1686,7 @@ describe('e2e-matrix builder extensions', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     synth.addStage('NameGenerator', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
       skipLogic: { action: 'SKIP', filter },
       filter,
     });
@@ -1726,7 +1727,7 @@ describe('e2e-matrix builder extensions', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const ng = synth.addStage('NameGenerator', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     });
     ng.addPanel({ title: 'Filtered', dataSource: 'existing', filter });
     const stage = synth.getProtocol().stages[0] as {
@@ -1739,7 +1740,7 @@ describe('e2e-matrix builder extensions', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const af = synth.addStage('AlterForm', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     });
     af.addFormField({
       component: 'Text',
@@ -1758,7 +1759,7 @@ describe('e2e-matrix builder extensions', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     synth.addStage('AlterForm', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
       form: { title: 'Should be dropped', fields: [] },
     });
     const stage = synth.getProtocol().stages[0] as {
@@ -1771,7 +1772,7 @@ describe('e2e-matrix builder extensions', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const soc = synth.addStage('Sociogram', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     });
     soc.addPrompt({
       sortOrder: [{ property: 'name', direction: 'asc' }],
@@ -1808,7 +1809,7 @@ describe('e2e-matrix builder extensions', () => {
     const person = synth.addNodeType({ name: 'Person' });
     const closeTie = person.addVariable({ type: 'boolean', name: 'closeTie' });
     const ng = synth.addStage('NameGenerator', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     });
     ng.addPrompt({
       text: 'Who is close to you?',
@@ -1869,7 +1870,7 @@ describe('e2e-matrix builder extensions', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     synth.addStage('NameGenerator', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
       interviewScript: 'Ask the participant who they trust.',
     });
     const stage = synth.getProtocol().stages[0] as Record<string, unknown>;
@@ -1880,7 +1881,7 @@ describe('e2e-matrix builder extensions', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const nc = synth.addStage('NetworkComposer', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     });
     nc.addNodeFormField({
       component: 'Text',
@@ -1903,7 +1904,7 @@ describe('quickAdd variable reference', () => {
     const synth = new SyntheticInterview();
     const person = synth.addNodeType({ name: 'Person' });
     const stage = synth.addStage('NameGeneratorQuickAdd', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     });
     stage.addPrompt();
     const config = synth.getProtocol().stages[0] as { quickAdd: string };
@@ -2348,7 +2349,7 @@ describe('validation rules on generated nodes', () => {
         validation: { sameAs: flagA.id },
       });
       si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         initialNodes: { count: 8 },
       });
 
@@ -2373,7 +2374,7 @@ describe('validation rules on generated nodes', () => {
         validation: { minValue: 0, maxValue: 100, greaterThanVariable: low.id },
       });
       si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         initialNodes: { count: 8 },
       });
 
@@ -2407,7 +2408,7 @@ describe('validation rules on generated nodes', () => {
         validation: { differentFrom: first.id },
       });
       si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         initialNodes: { count: 8 },
       });
 
@@ -2429,11 +2430,11 @@ describe('validation rules on generated nodes', () => {
       // Two stages, so the registry has to be shared across them rather than
       // reset per stage.
       si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         initialNodes: { count: 12 },
       });
       si.addStage('Narrative', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         initialNodes: { count: 12 },
       });
 
@@ -2467,7 +2468,7 @@ describe('validation rules on generated nodes', () => {
       },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 4 },
     });
     si.setNodeAttribute(0, anchor.id, 12);
@@ -2491,7 +2492,7 @@ describe('validation rules on generated nodes', () => {
       // for the draw — and the fixed node is the *last*, which a registry
       // populated as nodes are reached would not have seen in time.
       si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         initialNodes: { count: 2 },
       });
       si.setNodeAttribute(1, flag.id, true);
@@ -2512,7 +2513,7 @@ describe('validation rules on generated nodes', () => {
       validation: { unique: true },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 2 },
     });
     si.setNodeAttribute(0, codeName.id, 'Raven');
@@ -2536,7 +2537,7 @@ describe('validation rules on generated nodes', () => {
       validation: { unique: true },
     });
     const stage = si.addStage('Narrative', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
     });
     si.addManualNode(stage.id, nt.id, 'person-1', { [codeName.id]: 'Raven' });
     si.addManualNode(stage.id, nt.id, 'person-2', { [codeName.id]: 'Raven' });
@@ -2560,7 +2561,7 @@ describe('validation rules on generated nodes', () => {
       validation: { sameAs: codeName.id },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 2 },
     });
     si.setNodeAttribute(0, codeName.id, 'Raven');
@@ -2585,7 +2586,7 @@ describe('validation rules on generated nodes', () => {
       validation: { sameAs: codeName.id },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 2 },
     });
     // Held equal, so they are issued from one slot: setting both spends a
@@ -2604,7 +2605,7 @@ describe('validation rules on generated nodes', () => {
     const nt = si.addNodeType();
     const label = nt.addVariable({ type: 'text', name: 'label' });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 2 },
     });
     si.setNodeAttribute(0, label.id, 'Raven');
@@ -2630,7 +2631,7 @@ describe('validation rules on generated nodes', () => {
       validation: { unique: true },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 3 },
     });
 
@@ -2652,7 +2653,7 @@ describe('validation rules on generated nodes', () => {
       validation: { minValue: 0, maxValue: 100, sameAs: anchor.id },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 1 },
     });
     // Held to one value and given two: the node can carry either, and both are
@@ -2680,7 +2681,7 @@ describe('validation rules on generated nodes', () => {
       validation: { minValue: 0, maxValue: 100, greaterThanVariable: low.id },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 1 },
     });
     si.setNodeAttribute(0, low.id, 80);
@@ -2710,7 +2711,7 @@ describe('validation rules on generated nodes', () => {
       ],
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 1 },
     });
     si.setNodeAttribute(0, age.id, 5);
@@ -2733,7 +2734,7 @@ describe('validation rules on generated nodes', () => {
       validation: { minLength: 10, maxLength: 5 },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 2 },
     });
 
@@ -2752,7 +2753,7 @@ describe('validation rules on generated nodes', () => {
       validation: { minValue: 50, maxValue: 10 },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 1 },
     });
 
@@ -2768,7 +2769,7 @@ describe('validation rules on generated nodes', () => {
       validation: { required: true, maxSelected: 0 },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 1 },
     });
 
@@ -2791,7 +2792,7 @@ describe('validation rules on generated nodes', () => {
       validation: { minValue: 20, maxValue: 30, sameAs: early.id },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 1 },
     });
 
@@ -2816,7 +2817,7 @@ describe('validation rules on generated nodes', () => {
       validation: { minValue: 18, maxValue: 90, sameAs: anchor.id },
     });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 1 },
     });
     si.setNodeAttribute(0, anchor.id, 5);
@@ -2836,7 +2837,7 @@ describe('validation rules on generated nodes', () => {
       validation: { sameAs: flagA.id },
     });
     const stage = si.addStage('Narrative', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
     });
     si.addManualNode(stage.id, nt.id, 'person-1', { [flagA.id]: true });
 
@@ -2877,7 +2878,7 @@ describe('validation rules on generated nodes', () => {
     });
     nt.addVariable({ type: 'layout', name: 'position' });
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count: 4 },
     });
 
@@ -2960,7 +2961,7 @@ describe('validation rules on generated edges', () => {
   const twoNodes = (si: SyntheticInterview, count = 2) => {
     const nt = si.addNodeType();
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: nt.id },
+      subject: { entity: 'node', types: [nt.id] },
       initialNodes: { count },
     });
   };
@@ -3448,7 +3449,7 @@ describe('validation rules on the generated ego', () => {
       const et = si.addEdgeType();
       et.addVariable({ type: 'text', name: 'note' });
       si.addStage('Sociogram', {
-        subject: { entity: 'node', type: nt.id },
+        subject: { entity: 'node', types: [nt.id] },
         initialNodes: { count: 4 },
       });
       si.addEdges(
@@ -3619,7 +3620,7 @@ describe('localization', () => {
       ],
     });
     const stage = synth.addStage('NameGenerator', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
       label: { 'en-US': 'Friends', 'es': 'Amigos', 'ar': 'أصدقاء' },
     });
     stage.addPrompt({
@@ -3796,7 +3797,7 @@ describe('SyntheticInterview stage wording', () => {
     const nameVariable = person.addVariable({ type: 'text', name: 'fullName' });
     synth
       .addStage('NameGeneratorQuickAdd', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         quickAdd: nameVariable.id,
         wording: { addNamePlaceholder: 'Type a name, then press {Enter}' },
       })
@@ -3899,7 +3900,7 @@ describe('protocol object ids', () => {
 
     for (let index = 0; index < 2; index += 1) {
       const ng = si.addStage('NameGenerator', {
-        subject: { entity: 'node', type: person.id },
+        subject: { entity: 'node', types: [person.id] },
         skipLogic: { action: 'SKIP', filter: sharedFilter },
         filter: sharedFilter,
       });
@@ -3910,10 +3911,10 @@ describe('protocol object ids', () => {
       ng.addFormField({ component: 'Text' });
     }
     si.addStage('Sociogram', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     }).addPrompt({ sortOrder: sort });
     si.addStage('Narrative', {
-      subject: { entity: 'node', type: person.id },
+      subject: { entity: 'node', types: [person.id] },
     }).addPreset({
       highlight: [close.id],
       edges: { display: [friendship.id] },
@@ -3996,7 +3997,7 @@ describe('protocol object ids', () => {
         { label: 'No', value: false },
       ],
     });
-    si.addStage('Narrative', { subject: { entity: 'node', type: nt.id } });
+    si.addStage('Narrative', { subject: { entity: 'node', types: [nt.id] } });
     const nodeType: unknown = si.getProtocol().codebook.node[nt.id];
     const optionsOf = (id: string): Record<string, unknown>[] | undefined => {
       if (!isRecord(nodeType) || !isRecord(nodeType.variables))

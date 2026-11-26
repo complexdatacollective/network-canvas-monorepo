@@ -18,7 +18,7 @@ const nameGenerator = {
     en: 'You have completed this task. Click the next arrow to continue.',
   },
   label: 'People',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompts: [{ id: 'p1', text: 'Name people' }],
   behaviours: { minNodes: 3, maxNodes: 3 },
 } as unknown as Stage;
@@ -27,7 +27,7 @@ const ordinalBin = {
   id: 'stage-bin',
   type: 'OrdinalBin',
   label: 'Sort people',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompts: [{ id: 'p2', text: 'Sort', variable: 'rank' }],
 } as unknown as Stage;
 
@@ -65,7 +65,7 @@ const narrativeDisplayingRank = {
   id: 'stage-narrative',
   type: 'Narrative',
   label: 'Review people',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   presets: [
     {
       id: 'preset-1',
@@ -128,7 +128,7 @@ describe('a unique variable used only by a binning stage', () => {
       id: 'stage-form',
       type: 'AlterForm',
       label: 'About each person',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       form: {
         fields: [{ id: 'field-1', variable: 'rank', prompt: 'Rank' }],
       },
@@ -188,7 +188,7 @@ describe('collectBinOnlyVariables', () => {
       id: 'stage-categorical-bin',
       type: 'CategoricalBin',
       label: 'Sort people again',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: 'p3', text: 'Sort', variable: 'rank' }],
     } as unknown as Stage;
 
@@ -204,7 +204,7 @@ describe('collectBinOnlyVariables', () => {
       id: 'stage-categorical-bin',
       type: 'CategoricalBin',
       label: 'Sort people',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p3',

@@ -22,7 +22,7 @@ import type {
 import { createEdgesForPairs } from './edges.ts';
 import { getStageFilteredEdges, getStageFilteredNodes } from './filtering.ts';
 import { createNodesForStage, type RosterDraw } from './nodes.ts';
-import { getSubjectType } from './subject.ts';
+import { getEdgeSubjectType, getSingleStageNodeType } from './subject.ts';
 
 export function handleNameGenerators(
   ctx: GenerationContext,
@@ -59,7 +59,7 @@ export function handleSociogram(
   draft: NetworkDraft,
   stage: StageOfType<'Sociogram'>,
 ): void {
-  const subjectType = getSubjectType(stage.subject, 'node');
+  const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
@@ -151,7 +151,7 @@ export function handleDyadCensus(
   stage: StageOfType<'DyadCensus' | 'OneToManyDyadCensus'>,
   stageIndex: number,
 ): void {
-  const subjectType = getSubjectType(stage.subject, 'node');
+  const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
@@ -216,7 +216,7 @@ export function handleTieStrengthCensus(
   stage: StageOfType<'TieStrengthCensus'>,
   stageIndex: number,
 ): void {
-  const subjectType = getSubjectType(stage.subject, 'node');
+  const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
@@ -383,7 +383,7 @@ export function handleOrdinalBin(
   draft: NetworkDraft,
   stage: StageOfType<'OrdinalBin'>,
 ): void {
-  const subjectType = getSubjectType(stage.subject, 'node');
+  const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
@@ -418,7 +418,7 @@ export function handleCategoricalBin(
   draft: NetworkDraft,
   stage: StageOfType<'CategoricalBin'>,
 ): void {
-  const subjectType = getSubjectType(stage.subject, 'node');
+  const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
@@ -513,7 +513,7 @@ export function handleAlterForm(
   const form = stage.form;
   if (!form) return;
 
-  const subjectType = getSubjectType(stage.subject, 'node');
+  const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
@@ -545,7 +545,7 @@ export function handleAlterEdgeForm(
   const form = stage.form;
   if (!form) return;
 
-  const subjectType = getSubjectType(stage.subject, 'edge');
+  const subjectType = getEdgeSubjectType(stage);
   if (subjectType === undefined) return;
 
   const subjectEdges = getStageFilteredEdges(ctx, draft, stage, subjectType);
@@ -570,7 +570,7 @@ export function handleGeospatial(
   draft: NetworkDraft,
   stage: StageOfType<'Geospatial'>,
 ): void {
-  const subjectType = getSubjectType(stage.subject, 'node');
+  const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
   const subjectNodes = getStageFilteredNodes(ctx, draft, stage, subjectType);
@@ -595,7 +595,7 @@ export function handleNetworkComposer(
   draft: NetworkDraft,
   stage: StageOfType<'NetworkComposer'>,
 ): void {
-  const subjectType = getSubjectType(stage.subject, 'node');
+  const subjectType = getSingleStageNodeType(stage);
   if (subjectType === undefined) return;
 
   // Network Composer builds the network from scratch: create nodes of the

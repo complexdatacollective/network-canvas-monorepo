@@ -32,7 +32,7 @@ const nameGenerator = {
     en: 'You have completed this task. Click the next arrow to continue.',
   },
   label: 'Name generator',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompts: [{ id: 'p1', text: 'Name people' }],
   behaviours: { maxNodes: 8 },
 } as unknown as Stage;
@@ -1024,7 +1024,7 @@ describe('analyseFeasibility', () => {
     // carries no entity, and is not analysed at all.
     const generator = {
       ...nameGenerator,
-      subject: { entity: 'node', type: key },
+      subject: { entity: 'node', types: [key] },
     } as unknown as Stage;
 
     const conflicts = analyseFeasibility(codebook, [generator], config);
@@ -1061,7 +1061,7 @@ describe('a unique group whose members a roster populates unevenly', () => {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: 'Roster',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     dataSource: 'roster-asset',
     prompts: [{ id: 'p1', text: 'Pick people' }],
     behaviours: { maxNodes: 3 },
@@ -1122,7 +1122,7 @@ describe('values a prompt fixes', () => {
       id,
       type: 'NameGenerator',
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: `${id}-p1`,
@@ -1376,7 +1376,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: 'Roster',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [{ id: 'r-p1', text: 'Pick people' }],
     behaviours: { minNodes: 1, maxNodes: 1 },
   } as unknown as Stage;
@@ -1393,7 +1393,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Panel',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p-p1',
@@ -1511,7 +1511,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
         en: 'You have completed this task. Click the next arrow to continue.',
       },
       label: 'Carrying panel',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: 'c-p1', text: 'Name people' }],
       behaviours: { minNodes: 1, maxNodes: 1 },
     } as unknown as Stage;
@@ -1741,7 +1741,7 @@ describe('a value a prompt fixes and a roster row carries', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Carrying panel',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'c-p1', text: 'Name people' }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       } as unknown as Stage;
@@ -1783,7 +1783,7 @@ describe('a rule between two values one prompt fixes', () => {
       id: 'stage-pin',
       type,
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -1915,7 +1915,7 @@ describe('a value one prompt fixes against its own rules', () => {
       id: 'stage-pin',
       type,
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -2047,7 +2047,7 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
       id: 'stage-pin',
       type,
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: values.map((set, index) => ({
         id: `p${index + 1}`,
         text: 'Name people',
@@ -2188,7 +2188,7 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: 'Name generator',
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           {
             id: 'p1',
@@ -2304,7 +2304,7 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
       id: 'stage-ts',
       type: 'TieStrengthCensus',
       label: 'Tie strength',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       createEdge: 'friend',
       prompts: [
         {
@@ -2436,7 +2436,7 @@ describe('a codebook scope no stage names', () => {
       id: 'stage-af',
       type: 'AlterForm',
       label: 'Alter form',
-      subject: { entity: 'node', type: 'artefact' },
+      subject: { entity: 'node', types: ['artefact'] },
       form: { fields: [{ id: 'field-1', variable: 'code', prompt: 'Code' }] },
     } as unknown as Stage;
   }
@@ -2483,7 +2483,7 @@ describe('a codebook scope no stage names', () => {
         {
           ...nameGenerator,
           id: 'stage-ng-artefact',
-          subject: { entity: 'node', type: 'artefact' },
+          subject: { entity: 'node', types: ['artefact'] },
         } as unknown as Stage,
         artefactForm(),
       ],
@@ -2504,7 +2504,7 @@ describe('a codebook scope no stage names', () => {
       id: 'stage-socio',
       type: 'Sociogram',
       label: 'Place them',
-      subject: { entity: 'node', type: 'artefact' },
+      subject: { entity: 'node', types: ['artefact'] },
       prompts: [{ id: 'p1', text: 'Place them' }],
     } as unknown as Stage;
 
@@ -2621,7 +2621,7 @@ describe('a codebook scope only a content stage names', () => {
       id: 'stage-nr',
       type: 'Narrative',
       label: 'Narrative',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       presets: [
         {
           id: 'preset-1',
@@ -2664,7 +2664,7 @@ describe('a codebook scope only a content stage names', () => {
         id: `stage-${type}`,
         type,
         label: type,
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [{ id: 'p1', text: 'Read this' }],
       } as unknown as Stage;
 
@@ -2743,7 +2743,7 @@ describe('a codebook scope only a content stage names', () => {
       id: 'stage-sg',
       type: 'Sociogram',
       label: 'Sociogram',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: 'p1', text: 'Draw ties', edges: { create: 'kin' } }],
     } as unknown as Stage;
 
@@ -2751,7 +2751,7 @@ describe('a codebook scope only a content stage names', () => {
       id: 'stage-dc',
       type: 'DyadCensus',
       label: 'Dyad census',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         { id: 'p1', text: 'Do these two know each other?', createEdge: 'kin' },
       ],
@@ -2761,7 +2761,7 @@ describe('a codebook scope only a content stage names', () => {
       id: 'stage-nc',
       type: 'NetworkComposer',
       label: 'Composer',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       edges: [{ subject: { entity: 'edge', type: 'kin' } }],
     } as unknown as Stage;
 
@@ -2862,7 +2862,7 @@ describe('a text length beyond what a generated value can hold', () => {
       id: 'stage-dc',
       type: 'DyadCensus',
       label: 'Related?',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: 'p1', text: 'Are they related?', createEdge: 'kin' }],
     } as unknown as Stage;
 
@@ -2971,7 +2971,7 @@ describe('roster rows the rules turn away, at the seam the counts feed', () => {
       en: 'You have completed this task. Click the next arrow to continue.',
     },
     label: 'Roster',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     dataSource: 'roster-asset',
     prompts: [{ id: 'p1', text: 'Pick people' }],
     behaviours: { maxNodes: 3 },
@@ -2981,7 +2981,7 @@ describe('roster rows the rules turn away, at the seam the counts feed', () => {
     id: 'stage-census',
     type: 'DyadCensus',
     label: 'Census',
-    subject: { entity: 'node', type: 'person' },
+    subject: { entity: 'node', types: ['person'] },
     prompts: [
       { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
     ],

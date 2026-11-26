@@ -774,7 +774,7 @@ function stagesFor(shape: CorpusShape): Stage[] {
       id: 'stage-1',
       type: 'NameGenerator',
       label: 'Name generator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [{ id: 'p1', text: 'Name people' }],
       behaviours: { minNodes: shape.nodeCount, maxNodes: shape.nodeCount },
     } as unknown as Stage,
@@ -782,7 +782,7 @@ function stagesFor(shape: CorpusShape): Stage[] {
       id: 'stage-2',
       type: 'DyadCensus',
       label: 'Census',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: Array.from({ length: shape.censusPrompts }, (_prompt, at) => ({
         id: `c${at + 1}`,
         text: 'Do they know each other?',
@@ -796,7 +796,7 @@ function stagesFor(shape: CorpusShape): Stage[] {
       id: 'stage-3',
       type: 'TieStrengthCensus',
       label: 'How close?',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 't1',
