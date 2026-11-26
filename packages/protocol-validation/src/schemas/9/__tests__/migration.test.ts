@@ -2112,3 +2112,48 @@ const deepFreeze = <T>(value: T): T => {
   }
   return value;
 };
+
+describe('Migrating edge types from schema 8 to 9', () => {
+  // Schema 8 never wrote these keys, but its edge types accepted any key,
+  // so a hand-edited file could carry them.
+  const schema8WithDirectedKnows = (...stages: Schema8Stage[]) => {
+    const document = schema8WithStages(...stages);
+    const { knows } = document.codebook.edge;
+    return {
+      ...document,
+      codebook: {
+        ...document.codebook,
+        edge: {
+          ...document.codebook.edge,
+          knows: {
+            ...knows,
+            directed: true,
+            endpointRules: [{ sourceType: 'person', targetType: 'person' }],
+          },
+        },
+      },
+    };
+  };
+
+  it('leaves an edge type undirected with no rules when the schema 8 file carries those keys', () => {
+    const migrated = migrateReadable(schema8WithDirectedKnows(), 9);
+
+    expect(migrated.codebook.edge?.knows).toEqual(
+      migratedBase().codebook.edge?.knows,
+    );
+  });
+
+  it('migrates a stage that draws such an edge type', () => {
+    const document = schema8WithDirectedKnows({
+      id: testId('dyad-census'),
+      type: 'DyadCensus',
+      label: 'Who knows whom',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        { id: 'p1', text: 'Do they know each other?', createEdge: 'knows' },
+      ],
+    });
+
+    expect(() => migrateReadable(document, 9)).not.toThrow();
+  });
+});

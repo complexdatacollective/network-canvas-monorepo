@@ -520,7 +520,7 @@ Files:
 Interfaces produced: C1, C2, C3, `STAGE_EDGE_TYPE_SUPPORT`,
 `stageEdgeTypeSupportIssues`.
 
-Migration: none. Edge types migrate unchanged.
+Migration: the 8-to-9 migration removes `directed` and `endpointRules` from every edge type (`removeEdgeDirection` in `src/schemas/9/migration.ts`). Schema 8 edge types accept any key, so only a hand-edited file carries them; every migrated edge type is undirected with no rules. `migration.test.ts`: `leaves an edge type undirected with no rules when the schema 8 file carries those keys`; `migrates a stage that draws such an edge type`.
 
 Tests:
 
@@ -528,7 +528,7 @@ Tests:
 - `src/schemas/9/codebook/__tests__/endpoint-rules.test.ts`: `rejects an empty endpointRules`; `rejects a rule naming an unknown node type`; `rejects {A,B} after {B,A} on an undirected type`; `accepts {A,B} and {B,A} on a directed type`; `rejects the same ordered rule twice on a directed type`; `rejects directed: false`.
 - `src/schemas/9/__tests__/stage-edge-type-support.test.ts`: for each stage type in the table, `refuses a directed edge type` and `refuses an edge type with endpoint rules`, and `accepts a directed edge type named only in a filter rule`; `accepts a directed edge type named only in a condition's edge-count rule`; `does not judge a stage type outside the table` (a Name Generator with such a condition); `importing stage-capabilities first does not throw` (imports the module before anything else, proving it is a leaf).
 - `packages/shared-consts/src/__tests__/edge-identity.test.ts`: `undirected key is the same both ways`; `directed key differs by order`; `findEdge finds the reverse edge only when undirected`; `toggleEdge refuses a self-loop`; `toggleEdge adds the opposite direction of a directed pair`.
-- `scripts/invariants/edge-type-field-readers.test.mjs` (a root invariant, so the `//#test:invariants` task re-runs it when any workspace changes): derives its scan roots from the workspace globs in `pnpm-workspace.yaml` (`apps/*`, `apps/studio/*`, `packages/*`, `workers/*`) and scans every non-test `.ts`/`.tsx` under each package root (so Fresco's `lib`, `app`, `components`, `actions`, `hooks`, `queries`, Studio's `api/src` and `web/src` and the protocol review Worker are seen), excluding `node_modules`, `dist`, `.next`, generated output, `apps/architect-classic`, `apps/interviewer-classic` and the vendored `apps/fresco/schema-8`; a self-check asserts the scan visited at least one file under each root. It parses each file and looks for property access (`.directed`, `?.directed`, `['directed']`, and the same for `endpointRules`), destructuring of either name (declarations, parameters, assignments) and key tests (`in`, `Object.hasOwn`, `hasOwnProperty`, `Reflect.has`), with a self-test of sample reads that must and must not match. It fails for any file outside an allow-list holding `edgeTypeRules.ts`, `codebook.ts`, `stage-capabilities.ts` (reads its own table) and `SyntheticInterview.ts` (a writer), and for an allow-listed file that no longer reads a field; later slices add only writer files to the list, and `migration.ts` or `definitions.ts` once they read a field.
+- `scripts/invariants/edge-type-field-readers.test.mjs` (a root invariant, so the `//#test:invariants` task re-runs it when any workspace changes): derives its scan roots from the workspace globs in `pnpm-workspace.yaml` (`apps/*`, `apps/studio/*`, `packages/*`, `workers/*`) and scans every non-test `.ts`/`.tsx` under each package root (so Fresco's `lib`, `app`, `components`, `actions`, `hooks`, `queries`, Studio's `api/src` and `web/src` and the protocol review Worker are seen), excluding `node_modules`, `dist`, `.next`, generated output, `apps/architect-classic`, `apps/interviewer-classic` and the vendored `apps/fresco/schema-8`; a self-check asserts the scan visited at least one file under each root. It parses each file and counts as a read any property access (`.directed`, `?.directed`), destructuring of either name (declarations, parameters, and assignments at any depth, including `for...of` heads), and any string or template literal whose dot-separated path has a `directed` or `endpointRules` segment (`['directed']`, `in`, `Object.hasOwn`, `Reflect.get`, lodash `get` paths, `case 'directed':`, a constant later used as a key, a call argument such as `setAttribute('directed', ...)`), unless that string is in a type, a module specifier, or the key of an object literal or class member that is not a destructuring target. A self-test lists sample reads that must and must not match. It fails for any file outside an allow-list holding `edgeTypeRules.ts`, `codebook.ts`, `stage-capabilities.ts` (reads its own table), `migration.ts` (removes the fields from schema 8 edge types) and `SyntheticInterview.ts` (a writer), and for an allow-listed file that no longer reads a field. Later slices add a file to the list only when it reads or writes the codebook fields themselves (writers, `definitions.ts` once it reads a field). A file that uses either word for something other than the codebook field, such as the GraphML attribute name in slice 5, never goes on the whole-file list: that slice adds the narrow exemption it needs (see slice 5).
 - `src/utils/__tests__/hashProtocol.test.ts`: `hash changes when an edge type becomes directed`; `hash changes when endpoint rules change`. `hashProtocol` itself is unchanged.
 - interview `src/store/modules/__tests__/session.test.ts`: `addEdge refuses a self-loop`; `toggleEdge removes the reverse edge of an undirected type`.
 - interview `src/interfaces/OneToManyDyadCensus/__tests__`: `selected state reads the edge from focal to listed node`.
@@ -898,7 +898,16 @@ below pin that.
 
 network-exporters: GraphML `generateDataElements.ts` adds `directed="true"`
 for edges of a directed type and keeps `edgedefault="undirected"`; CSV
-`adjacencyMatrix.ts` sets only `(source, target)` for a directed type. The
+`adjacencyMatrix.ts` sets only `(source, target)` for a directed type.
+The edge type readers guard (`scripts/invariants/edge-type-field-readers.test.mjs`)
+counts the attribute name in `setAttribute('directed', 'true')` as a read.
+Do not put `generateDataElements.ts` on `ALLOWED_FILES`: it is the exporter
+file that decides direction per edge, so it must stay guarded. Instead add to
+the guard a per-file list of permitted string literals (a map from repo path
+to the exact literal texts, here `'directed'`), skipped only for a string
+literal whose whole text is listed for that file, with a self-test, and a
+staleness check that fails when a listed file no longer contains each listed
+literal. Direction itself is still read through `isDirectedEdgeType`. The
 adjacency formatter is not emitted by the pipeline today and stays so.
 
 Tests: network-query `filter.test.js`: `AND node rule judges only its own
@@ -1534,7 +1543,7 @@ Done when: `pnpm --filter @codaco/documentation exec vitest run lib/__tests__/tr
 | `endpointRules` absent, non-empty, types exist, no duplicate pair           | 1                                                                                     |
 | Same-type rule, no self-loops                                               | 1 (helpers), 6, 8, 9 (runtime refusal)                                                |
 | Unordered rules for undirected types                                        | 1                                                                                     |
-| Migration leaves edge types undirected                                      | 1 (no step)                                                                           |
+| Migration leaves edge types undirected                                      | 1 (`removeEdgeDirection` strips both keys)                                            |
 | Shared edge helpers, no package reads the fields                            | 1, guard extended in 11                                                               |
 | Edge identity in shared-consts subpath                                      | 1                                                                                     |
 | Node subjects as `types` lists, capability table                            | 2, raised in 6, 7, 8, 9                                                               |

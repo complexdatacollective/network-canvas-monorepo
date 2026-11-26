@@ -23,9 +23,12 @@ import { parse } from 'yaml';
  *
  * The allow-list names the helpers, the codebook check that validates the
  * fields, the stage support table (which reads its own entries, named after
- * the fields) and the SyntheticInterview writer. Later work adds only the
- * files that write the fields, and the migration once it reads them. Every
- * allow-listed file must still read a field, so a stale entry fails.
+ * the fields), the schema 8 to 9 migration (which removes them) and the
+ * SyntheticInterview writer. Later work adds only files that read or write
+ * the codebook fields themselves. A file that uses either word for something
+ * else, such as a GraphML attribute name, needs a narrower exemption than a
+ * whole-file entry. Every allow-listed file must still read a field, so a
+ * stale entry fails.
  *
  * It lives at the repository root, not in a package, so that a change to any
  * workspace re-runs it: the `//#test:invariants` turbo task lists every
@@ -37,6 +40,8 @@ const ALLOWED_FILES = new Set([
   'packages/protocol-validation/src/utils/edgeTypeRules.ts',
   'packages/protocol-validation/src/schemas/9/codebook/codebook.ts',
   'packages/protocol-validation/src/schemas/9/stage-capabilities.ts',
+  // Removes both fields from every edge type a schema 8 file carries.
+  'packages/protocol-validation/src/schemas/9/migration.ts',
   'packages/protocol-utilities/src/SyntheticInterview.ts',
 ]);
 

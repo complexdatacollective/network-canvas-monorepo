@@ -580,6 +580,17 @@ const nameOrKey = (definition: unknown, key: string) => {
 const edgeTypesOf = (codebook: unknown): Record<string, unknown> =>
   isRecord(codebook) && isRecord(codebook.edge) ? codebook.edge : {};
 
+// Schema 8 edge types accepted any key, so a hand-edited file could carry the
+// two that make a schema 9 edge type directed or limit what it connects.
+// Every edge type the migration gives is undirected with no rules.
+const removeEdgeDirection = (codebook: unknown) => {
+  for (const definition of Object.values(edgeTypesOf(codebook))) {
+    if (!isRecord(definition)) continue;
+    delete definition.directed;
+    delete definition.endpointRules;
+  }
+};
+
 /** The attribute definitions of the entity type a stage subject names. */
 const subjectVariables = (
   codebook: unknown,
@@ -1128,6 +1139,7 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   // Before any stage is added, and before anything reads a stage's name.
   repairStageLabels(migrated);
   if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
+  removeEdgeDirection(migrated.codebook);
   removeContradictoryPassphraseRules(migrated);
   moveAnonymisationTitlesIntoText(migrated, written);
   removeEncryptedAttributeComparisons(migrated);
