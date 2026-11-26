@@ -1,8 +1,8 @@
+import type { ResolvedSubject } from '../schemas/9/common/subjects.ts';
 import type {
   Codebook,
   EntityDefinition,
   FilterRule,
-  StageSubject,
   Variable,
 } from '../schemas/9/schema.ts';
 
@@ -11,7 +11,7 @@ import type {
  */
 export const entityExists = (
   codebook: Codebook,
-  subject: StageSubject,
+  subject: ResolvedSubject,
 ): boolean => {
   if (subject.entity === 'ego') {
     return codebook.ego !== undefined;
@@ -33,7 +33,7 @@ export const entityExists = (
  */
 export const getVariablesForSubject = (
   codebook: Codebook,
-  subject: StageSubject,
+  subject: ResolvedSubject,
 ): Record<string, Variable> => {
   if (subject.entity === 'ego') {
     return codebook.ego?.variables || {};
@@ -55,7 +55,7 @@ export const getVariablesForSubject = (
  */
 export const variableExists = (
   codebook: Codebook,
-  subject: StageSubject,
+  subject: ResolvedSubject,
   variableName: string,
 ): boolean => {
   const variables = getVariablesForSubject(codebook, subject);
@@ -67,7 +67,7 @@ export const variableExists = (
  */
 export const variableHasType = (
   codebook: Codebook,
-  subject: StageSubject,
+  subject: ResolvedSubject,
   variableName: string,
   expectedType: string,
 ): boolean => {
@@ -212,7 +212,7 @@ export const getFilterRuleVariableType = (
  */
 export const createValidationMessage = (
   baseMessage: string,
-  context?: { subject?: StageSubject; variable?: string; entity?: string },
+  context?: { subject?: ResolvedSubject; variable?: string; entity?: string },
 ) => {
   let message = baseMessage;
 

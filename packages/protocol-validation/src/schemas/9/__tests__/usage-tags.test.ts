@@ -29,7 +29,7 @@ describe('attribute-writer usage tags', () => {
           id: 'cb1',
           type: 'CategoricalBin',
           label: localized('Bin'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           prompts: [
             {
               id: 'p1',
@@ -81,7 +81,7 @@ describe('attribute-writer usage tags', () => {
           id: 'nc1',
           type: 'NetworkComposer',
           label: localized('Composer'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           quickAdd: 'name',
           layoutVariable: 'layoutPosition',
           convexHullVariable: 'category',
@@ -108,7 +108,7 @@ describe('attribute-writer usage tags', () => {
           type: 'FamilyPedigree',
           wording: familyPedigreeWordingIn(),
           label: localized('Family'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           prompt: localized('Build your family'),
           nodeConfiguration: {
             nameAttribute: 'name',
@@ -158,7 +158,7 @@ describe('attribute-writer usage tags', () => {
             id: 'sg1',
             type: 'Sociogram',
             label: localized('Map'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             background: { concentricCircles: 4 },
             prompts: [
               {
@@ -189,7 +189,7 @@ describe('attribute-writer usage tags', () => {
           id: 'nar1',
           type: 'Narrative',
           label: localized('Narrative'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           presets: [
             {
               id: 'preset-1',

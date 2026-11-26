@@ -4,7 +4,10 @@ import {
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
 } from '../../localization/dynamicValueMessages.ts';
-import type { StageSubject } from './common/subjects.ts';
+import {
+  resolveSubjectValue,
+  type ResolvedSubject,
+} from './common/subjects.ts';
 import {
   type DynamicValueForm,
   type DynamicValueRole,
@@ -36,20 +39,6 @@ const valueAt = (value: unknown, path: readonly (string | number)[]) =>
     value,
   );
 
-const asSubject = (value: unknown): StageSubject | undefined => {
-  if (!isRecord(value)) return undefined;
-  if (value.entity === 'ego') return { entity: 'ego' };
-  if (
-    (value.entity === 'node' || value.entity === 'edge') &&
-    typeof value.type === 'string'
-  ) {
-    // The walk reads raw protocol data, where the branded type id is the
-    // same string unbranded.
-    return { entity: value.entity, type: value.type } as StageSubject;
-  }
-  return undefined;
-};
-
 /** What of a stage decides which values its text can show. */
 const dynamicValueStageOf = (stage: unknown): DynamicValueStage => ({
   type: isRecord(stage) && typeof stage.type === 'string' ? stage.type : '',
@@ -57,14 +46,14 @@ const dynamicValueStageOf = (stage: unknown): DynamicValueStage => ({
 });
 
 /** The subject a stage's own forms and interface describe. */
-const stageSubjectOf = (stage: unknown): StageSubject | undefined =>
+const stageSubjectOf = (stage: unknown): ResolvedSubject | undefined =>
   isRecord(stage) && stage.type === 'EgoForm'
     ? { entity: 'ego' }
-    : asSubject(isRecord(stage) ? stage.subject : undefined);
+    : resolveSubjectValue(isRecord(stage) ? stage.subject : undefined);
 
 const variablesOf = (
   codebook: unknown,
-  subject: StageSubject | undefined,
+  subject: ResolvedSubject | undefined,
 ): Readonly<Record<string, DynamicValueVariable>> | undefined => {
   if (subject === undefined) return undefined;
   const variables =
@@ -90,10 +79,10 @@ const variablesOf = (
 const formOf = (
   stage: unknown,
   sitePath: readonly (string | number)[],
-  stageSubject: StageSubject | undefined,
+  stageSubject: ResolvedSubject | undefined,
 ): DynamicValueForm | undefined => {
   for (let length = sitePath.length - 1; length > 0; length -= 1) {
-    const own = asSubject(
+    const own = resolveSubjectValue(
       valueAt(stage, [...sitePath.slice(0, length), 'subject']),
     );
     if (own !== undefined) return { entity: own.entity, isStageSubject: false };

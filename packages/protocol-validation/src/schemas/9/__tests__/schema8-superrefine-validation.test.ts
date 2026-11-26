@@ -113,7 +113,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             ...baseValidProtocol.stages[0],
             subject: {
               entity: 'node',
-              type: 'nonexistent',
+              types: ['nonexistent'],
             },
           },
         ],
@@ -426,7 +426,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             ...baseValidProtocol.stages[0],
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             form: {
               title: localized('Add person'),
@@ -531,7 +531,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Ordinal Bin'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -561,7 +561,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Ordinal Bin'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -606,7 +606,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Categorical Bin'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -639,7 +639,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               label: localized('Categorical Bin'),
               subject: {
                 entity: 'node',
-                type: 'person',
+                types: ['person'],
               },
               prompts: [
                 {
@@ -683,7 +683,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Categorical Bin'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -748,7 +748,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           id: 'categoricalBin1',
           type: 'CategoricalBin',
           label: localized('Categorical Bin'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           prompts: [
             {
               id: 'prompt1',
@@ -820,7 +820,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Dyad Census'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -849,7 +849,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Dyad Census'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -892,7 +892,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               id: 'tieStrength1',
               type: 'TieStrengthCensus',
               label: localized('Tie Strength Census'),
-              subject: { entity: 'node', type: 'person' },
+              subject: { entity: 'node', types: ['person'] },
               prompts: [
                 {
                   id: 'prompt1',
@@ -928,7 +928,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Tie Strength Census'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -959,7 +959,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Tie Strength Census'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -1005,7 +1005,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Tie Strength Census'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             prompts: [
               {
@@ -1053,7 +1053,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Sociogram'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             background: {
               concentricCircles: 4,
@@ -1087,7 +1087,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Sociogram'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             background: {
               concentricCircles: 4,
@@ -1140,7 +1140,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           id: 'nameGen1',
           type: 'NameGenerator',
           label: localized('Name Generator'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: {
             title: localized('Add person'),
             fields: [
@@ -1203,7 +1203,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Name Generator'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             form: {
               title: localized('Add person'),
@@ -1245,7 +1245,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Name Generator'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             form: {
               title: localized('Add person'),
@@ -2606,7 +2606,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Complex Stage'),
             subject: {
               entity: 'node',
-              type: 'person',
+              types: ['person'],
             },
             form: {
               title: localized('Add person'),
@@ -2664,7 +2664,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             label: localized('Error Stage'),
             subject: {
               entity: 'node',
-              type: 'nonexistentNodeType', // Error 1: Invalid subject
+              types: ['nonexistentNodeType'], // Error 1: Invalid subject
             },
             form: {
               title: localized('Add person'),
@@ -2755,7 +2755,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           label: localized('Geospatial Stage'),
           subject: {
             entity: 'node',
-            type: 'person',
+            types: ['person'],
           },
           mapOptions: {
             tokenAssetId: 'asset-token-123',
@@ -2998,7 +2998,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
           type: 'FamilyPedigree' as const,
           wording: familyPedigreeWordingIn(),
           label: localized('Family Pedigree'),
-          subject: { entity: 'node' as const, type: 'person' },
+          subject: { entity: 'node' as const, types: ['person'] },
           prompt: localized('Build your family'),
           nodeConfiguration: {
             nameAttribute: 'name',

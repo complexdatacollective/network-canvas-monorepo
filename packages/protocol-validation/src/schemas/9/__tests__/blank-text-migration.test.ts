@@ -582,7 +582,7 @@ describe('the text given to blank schema 8 text', () => {
               isRecord(candidate) && candidate.id === stage.sourceStageId,
           )
         : undefined;
-      const type = getAt(sourceStage, ['subject', 'type']);
+      const type = getAt(sourceStage, ['subject', 'types', 0]);
       expect(typeof attribute).toBe('string');
       expect(getAt(stage, ['diseases', 0, 'label'])).toEqual({
         en: getAt(migrated.migrated, [

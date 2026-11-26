@@ -6,10 +6,7 @@ import {
   type RequiredPlacements,
 } from '../../../localization/messageArguments.ts';
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
-import {
-  TitlelessFormSchema,
-  NodeStageSubjectSchema,
-} from '../common/index.ts';
+import { TitlelessFormSchema, nodeStageSubjectFor } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import {
@@ -799,7 +796,7 @@ export const isCompleteFamilyPedigreeWording = (
 export const familyPedigreeStage = withUniqueObjectIds(
   baseStageSchema.extend({
     type: z.literal('FamilyPedigree'),
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('FamilyPedigree'),
     prompt: localizedString(
       nonBlankText(),
       { format: 'markdown', lines: 'single' },

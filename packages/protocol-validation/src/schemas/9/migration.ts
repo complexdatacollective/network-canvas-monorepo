@@ -591,6 +591,21 @@ const removeEdgeDirection = (codebook: unknown) => {
   }
 };
 
+/**
+ * A schema 9 node stage subject lists its node types. Only a stage's own
+ * subject changes; a subject nested inside a stage keeps its single type.
+ */
+const nodeSubjectsToTypeLists = (protocol: unknown) => {
+  const stages = isRecord(protocol) ? protocol.stages : undefined;
+  if (!Array.isArray(stages)) return;
+  for (const stage of stages) {
+    if (!isRecord(stage) || !isRecord(stage.subject)) continue;
+    const { entity, type } = stage.subject;
+    if (entity !== 'node' || typeof type !== 'string') continue;
+    stage.subject = { entity: 'node', types: [type] };
+  }
+};
+
 /** The attribute definitions of the entity type a stage subject names. */
 const subjectVariables = (
   codebook: unknown,
@@ -1166,6 +1181,8 @@ const migrateDocument = (input: ProtocolDocument<8>) => {
   repairDiseaseLabels(migrated);
   repairOtherBinText(migrated, localization);
   repairTieStrengthDeclineLabels(migrated, localization);
+  // After every step that reads a stage's schema 8 `subject.type`.
+  nodeSubjectsToTypeLists(migrated);
   joinSingleLineText(migrated);
 
   // Every site is found before any is rewritten, so the walk reads the

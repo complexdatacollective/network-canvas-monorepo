@@ -129,7 +129,7 @@ describe('withoutRemovedOptionVersions', () => {
           id: testId('stage/form'),
           type: 'AlterForm',
           label: { en: 'About them' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           form: {
             fields: [
               {

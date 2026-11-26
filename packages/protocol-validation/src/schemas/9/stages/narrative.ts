@@ -4,7 +4,7 @@ import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { canvasBehavioursSchema } from '../common/behaviours.ts';
 import {
   imageOrCirclesBackgroundSchema,
-  NodeStageSubjectSchema,
+  nodeStageSubjectFor,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
@@ -16,7 +16,7 @@ import { baseStageSchema } from './base.ts';
 export const narrativeStage = withUniqueObjectIds(
   baseStageSchema.extend({
     type: z.literal('Narrative'),
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('Narrative'),
     presets: z
       .array(
         z.strictObject({

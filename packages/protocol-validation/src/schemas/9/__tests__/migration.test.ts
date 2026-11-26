@@ -2157,3 +2157,51 @@ describe('Migrating edge types from schema 8 to 9', () => {
     expect(() => migrateReadable(document, 9)).not.toThrow();
   });
 });
+
+describe('Migrating stage subjects from schema 8 to 9', () => {
+  const edgeForm = {
+    id: 'edge-form',
+    type: 'AlterEdgeForm',
+    label: localized('Edge form'),
+    subject: { entity: 'edge', type: 'knows' },
+    form: {
+      fields: [
+        {
+          id: 'field-closeness',
+          variable: 'closeness',
+          prompt: localized('How close?'),
+        },
+      ],
+    },
+  };
+  const schema8Document = () => {
+    const base = createBaseProtocol();
+    return asSchema8Protocol({ ...base, stages: [...base.stages, edgeForm] });
+  };
+
+  it('turns each schema 8 node subject into a one-element types list', () => {
+    const document = schema8Document();
+    expect(JSON.stringify(document.stages)).not.toContain('"types"');
+    const migrated = migrateReadable(document, 9);
+    expect(
+      migrated.stages
+        .filter((stage) => stage.type !== 'FinishSession')
+        .map((stage) => ('subject' in stage ? stage.subject : undefined)),
+    ).toEqual([
+      { entity: 'node', types: ['person'] },
+      { entity: 'node', types: ['person'] },
+      { entity: 'edge', type: 'knows' },
+    ]);
+  });
+
+  it('leaves edge subjects singular', () => {
+    const migrated = migrateReadable(schema8Document(), 9);
+    const edgeStage = migrated.stages.find(
+      (stage) => stage.type === 'AlterEdgeForm',
+    );
+    expect(edgeStage && 'subject' in edgeStage && edgeStage.subject).toEqual({
+      entity: 'edge',
+      type: 'knows',
+    });
+  });
+});

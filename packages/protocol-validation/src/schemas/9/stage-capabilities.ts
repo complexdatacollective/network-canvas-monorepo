@@ -9,6 +9,70 @@ import type { EntityTypeReferenceHit } from '../../utils/schemaReferenceWalk.ts'
 import type { Codebook } from './codebook/codebook.ts';
 import type { Stage, StageType } from './stages/index.ts';
 
+// Spelled out rather than extracted from `StageType`: the stage schemas build
+// their subjects from this table, so deriving it from them would be circular.
+export type NodeSubjectStageType =
+  | 'Sociogram'
+  | 'Narrative'
+  | 'DyadCensus'
+  | 'OneToManyDyadCensus'
+  | 'TieStrengthCensus'
+  | 'NetworkComposer'
+  | 'NameGenerator'
+  | 'NameGeneratorQuickAdd'
+  | 'NameGeneratorRoster'
+  | 'CategoricalBin'
+  | 'OrdinalBin'
+  | 'AlterForm'
+  | 'Geospatial'
+  | 'FamilyPedigree';
+
+export type NodeTypeCapability = 'single' | 'several';
+
+// How many node types each stage type with a node subject accepts. An entry
+// is raised to 'several' as that stage learns to run more than one.
+export const STAGE_NODE_TYPE_CAPABILITY: Record<
+  NodeSubjectStageType,
+  NodeTypeCapability
+> = {
+  Sociogram: 'single',
+  Narrative: 'single',
+  DyadCensus: 'single',
+  OneToManyDyadCensus: 'single',
+  TieStrengthCensus: 'single',
+  NetworkComposer: 'single',
+  NameGenerator: 'single',
+  NameGeneratorQuickAdd: 'single',
+  NameGeneratorRoster: 'single',
+  CategoricalBin: 'single',
+  OrdinalBin: 'single',
+  AlterForm: 'single',
+  Geospatial: 'single',
+  FamilyPedigree: 'single',
+};
+
+const isNodeSubjectStageType = (type: string): type is NodeSubjectStageType =>
+  Object.hasOwn(STAGE_NODE_TYPE_CAPABILITY, type);
+
+export const nodeTypeCapabilityOf = (
+  stageType: string,
+): NodeTypeCapability | undefined =>
+  isNodeSubjectStageType(stageType)
+    ? STAGE_NODE_TYPE_CAPABILITY[stageType]
+    : undefined;
+
+/** The node types a stage is about, in the researcher's order. */
+export const getStageNodeTypes = (stage: Stage): readonly string[] =>
+  'subject' in stage && stage.subject.entity === 'node'
+    ? stage.subject.types
+    : [];
+
+/** The stage's node type when it is about exactly one. */
+export const getSingleStageNodeType = (stage: Stage): string | undefined => {
+  const types = getStageNodeTypes(stage);
+  return types.length === 1 ? types[0] : undefined;
+};
+
 type EdgeStageType = Extract<
   StageType,
   | 'Sociogram'

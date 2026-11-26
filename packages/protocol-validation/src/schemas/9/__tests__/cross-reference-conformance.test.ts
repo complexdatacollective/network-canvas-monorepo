@@ -25,7 +25,7 @@ describe('Cross-reference conformance', () => {
             id: 'narrative1',
             type: 'Narrative',
             label: localized('Narrative'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             background: { image },
             presets: [
               {
@@ -123,7 +123,7 @@ describe('Cross-reference conformance', () => {
             ),
             unnamedLabel: localized('Unnamed {count}'),
             label: localized('Roster'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             dataSource,
             panelTitle: localized('Available to add'),
             prompts: [{ id: 'p1', text: localized('Pick someone') }],
@@ -227,7 +227,7 @@ describe('Cross-reference conformance', () => {
             type: 'Geospatial',
             outsideAreasLabel: localized('Outside Selectable Areas'),
             label: localized('Map'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             mapOptions: {
               tokenAssetId: overrides.tokenAssetId ?? 'tokenAsset',
               style: 'mapbox://styles/mapbox/standard',
@@ -335,7 +335,7 @@ describe('Cross-reference conformance', () => {
             id: 'ob1',
             type: 'OrdinalBin',
             label: localized('Ordinal'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               {
                 id: 'p1',
@@ -360,7 +360,7 @@ describe('Cross-reference conformance', () => {
             id: 'ob1',
             type: 'OrdinalBin',
             label: localized('Ordinal'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               {
                 id: 'p1',
@@ -390,7 +390,7 @@ describe('Cross-reference conformance', () => {
             id: 'cb1',
             type: 'CategoricalBin',
             label: localized('Categorical'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               { id: 'p1', text: localized('group'), variable: 'category' },
             ],
@@ -410,7 +410,7 @@ describe('Cross-reference conformance', () => {
             id: 'cb1',
             type: 'CategoricalBin',
             label: localized('Categorical'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               { id: 'p1', text: localized('group'), variable: 'strength' },
             ],
@@ -467,7 +467,7 @@ describe('Cross-reference conformance', () => {
             id: 'panelStage',
             type: 'NameGenerator',
             label: localized('Panels'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             form: {
               title: localized('Add person'),
               fields: [
@@ -531,7 +531,7 @@ describe('Cross-reference conformance', () => {
             id: 'sociogram1',
             type: 'Sociogram',
             label: localized('Sociogram'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             background: { concentricCircles: 4 },
             filter: {
               join: 'OR' as const,

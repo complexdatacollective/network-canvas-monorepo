@@ -1,4 +1,4 @@
-import type { StageSubject } from '../schemas/9/common/subjects.ts';
+import type { ResolvedSubject } from '../schemas/9/common/subjects.ts';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -26,10 +26,10 @@ export const stageIndexOf = (path: (string | number)[]): number | undefined =>
  * it identically.
  */
 export const toReferenceSubject = (
-  subject: StageSubject | undefined,
+  subject: ResolvedSubject | undefined,
 ): ReferenceSubject | undefined => {
   if (!subject) return undefined;
-  // StageSubject is a union whose ego member carries no `type` — the `in`
+  // ResolvedSubject is a union whose ego member carries no `type` — the `in`
   // check narrows to the node/edge members instead of asserting one shape.
   return 'type' in subject
     ? { entity: subject.entity, type: subject.type }

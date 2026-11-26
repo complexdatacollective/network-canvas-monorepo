@@ -96,7 +96,7 @@ describe('Forms & prompts schema conformance', () => {
           id: 'ng1',
           type: 'NameGenerator',
           label: localized('Generate Names'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: { title: localized('Add person'), fields: [] },
           prompts: [{ id: 'p1', text: localized('Who do you know?') }],
         },
@@ -113,7 +113,7 @@ describe('Forms & prompts schema conformance', () => {
           id: 'af1',
           type: 'AlterForm',
           label: localized('Alter Form'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: { fields: [] },
         },
       ]);
@@ -164,7 +164,7 @@ describe('Forms & prompts schema conformance', () => {
           id: 'ng1',
           type: 'NameGenerator',
           label: localized('Generate Names'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: {
             title: localized('Add person'),
             fields: [
@@ -223,7 +223,7 @@ describe('Forms & prompts schema conformance', () => {
           id: 'af1',
           type: 'AlterForm',
           label: localized('Alter Form'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: {
             title: localized('About this person'),
             fields: [
@@ -377,7 +377,7 @@ describe('Forms & prompts schema conformance', () => {
           id: 'ng1',
           type: 'NameGenerator',
           label: localized('Generate Names'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: {
             title: localized('Add a person'),
             fields: [
@@ -403,7 +403,7 @@ describe('Forms & prompts schema conformance', () => {
       id: 'tsc1',
       type: 'TieStrengthCensus',
       label: localized('Tie Strength'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -437,7 +437,7 @@ describe('Forms & prompts schema conformance', () => {
       id: 'cb1',
       type: 'CategoricalBin',
       label: localized('Categorical Bin'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -623,7 +623,7 @@ describe('Forms & prompts schema conformance', () => {
       id: 'ob1',
       type: 'OrdinalBin',
       label: localized('Ordinal Bin'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -671,7 +671,7 @@ describe('Forms & prompts schema conformance', () => {
       maxNodesNotice: localized(
         'You have completed this task. Click the next arrow to continue.',
       ),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       form: {
         title: localized('Add person'),
         fields: [
@@ -697,7 +697,7 @@ describe('Forms & prompts schema conformance', () => {
       maxNodesNotice: localized(
         'You have completed this task. Click the next arrow to continue.',
       ),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       quickAdd: 'personName',
       prompts: [{ id: 'p1', text: localized('Who do you know?') }],
       behaviours,
@@ -776,7 +776,7 @@ describe('Forms & prompts schema conformance', () => {
       id: 'ng1',
       type: 'NameGenerator',
       label: localized('Generate Names'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       form: {
         title: localized('Add person'),
         fields: [
@@ -810,7 +810,7 @@ describe('Forms & prompts schema conformance', () => {
       id: 'ng1',
       type: 'NameGenerator',
       label: localized('Generate Names'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       form: {
         title: localized('Add person'),
         fields: [
@@ -846,7 +846,7 @@ describe('Forms & prompts schema conformance', () => {
           id: 'af1',
           type: 'AlterForm',
           label: localized('Alter Form'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: {
             fields: [
               {

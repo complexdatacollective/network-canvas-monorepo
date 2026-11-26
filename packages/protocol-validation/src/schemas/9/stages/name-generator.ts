@@ -7,7 +7,7 @@ import {
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import {
   FormSchema,
-  NodeStageSubjectSchema,
+  nodeStageSubjectFor,
   nameGeneratorPromptSchema,
   panelsSchema,
 } from '../common/index.ts';
@@ -75,7 +75,7 @@ export const nameGeneratorStage = withUniqueObjectIds(
   baseStageSchema.extend({
     type: z.literal('NameGenerator'),
     form: FormSchema,
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('NameGenerator'),
     panels: panelsSchema,
     prompts: z.array(nameGeneratorPromptSchema).min(1),
     behaviours: nameGeneratorBehavioursSchema,

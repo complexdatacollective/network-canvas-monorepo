@@ -30,7 +30,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
     id: testId('soc1'),
     label: localized('Sociogram'),
     type: 'Sociogram' as const,
-    subject: { entity: 'node' as const, type: 'person' },
+    subject: { entity: 'node' as const, types: ['person'] },
     background: { concentricCircles: 4 },
   };
 
@@ -170,7 +170,7 @@ describe('Sociogram edges.create + highlight.allowHighlighting (#673)', () => {
       id: testId('soc1'),
       label: localized('Sociogram'),
       type: 'Sociogram' as const,
-      subject: { entity: 'node' as const, type: 'person' },
+      subject: { entity: 'node' as const, types: ['person'] },
       background: { image: '' },
       prompts: [
         {
@@ -192,7 +192,7 @@ describe('Geospatial targetFeatureProperty (#674)', () => {
     label: localized('Geospatial'),
     type: 'Geospatial' as const,
     outsideAreasLabel: localized('Outside Selectable Areas'),
-    subject: { entity: 'node' as const, type: 'person' },
+    subject: { entity: 'node' as const, types: ['person'] },
     prompts: [
       { id: testId('p1'), text: localized('Pick a place'), variable: 'home' },
     ],
@@ -355,7 +355,7 @@ describe('Narrative preset label non-empty', () => {
     id: testId('narr1'),
     label: localized('Narrative'),
     type: 'Narrative' as const,
-    subject: { entity: 'node' as const, type: 'person' },
+    subject: { entity: 'node' as const, types: ['person'] },
     background: { concentricCircles: 4 },
   };
 
@@ -471,7 +471,7 @@ describe('NameGeneratorRoster dataSource and matchProperties non-empty', () => {
     type: 'NameGeneratorRoster' as const,
     allAddedNotice: localized('There is nothing left to add from this list.'),
     unnamedLabel: localized('Unnamed {count}'),
-    subject: { entity: 'node' as const, type: 'person' },
+    subject: { entity: 'node' as const, types: ['person'] },
     dataSource: 'roster-asset',
     panelTitle: localized('Available to add'),
     prompts: [{ id: testId('p1'), text: localized('Pick someone') }],

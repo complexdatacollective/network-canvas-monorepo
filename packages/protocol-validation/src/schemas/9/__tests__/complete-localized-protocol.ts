@@ -279,7 +279,7 @@ const protocolDocument = () => ({
       id: 'nameGenerator',
       type: 'NameGenerator',
       label: localized('Name people'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       form: {
         title: localized('Add a person'),
         fields: [
@@ -312,7 +312,7 @@ const protocolDocument = () => ({
       type: 'NameGeneratorQuickAdd',
       addNamePlaceholder: localized('Type a name, then press Enter'),
       label: localized('Quick add'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       quickAdd: 'name',
       prompts: [{ id: 'p1', text: localized('Who else?') }],
     },
@@ -321,7 +321,7 @@ const protocolDocument = () => ({
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
       label: localized('Roster'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       dataSource: 'roster',
       panelTitle: localized('Available to add'),
       behaviours: { minNodes: 1, maxNodes: 5 },
@@ -347,7 +347,7 @@ const protocolDocument = () => ({
       id: 'sociogram',
       type: 'Sociogram',
       label: localized('Sociogram'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       background: { concentricCircles: 3 },
       behaviours: { automaticLayout: true },
       prompts: [
@@ -362,7 +362,7 @@ const protocolDocument = () => ({
       id: 'composer',
       type: 'NetworkComposer',
       label: localized('Composer'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       quickAdd: 'name',
       layoutVariable: 'layoutPosition',
       background: { concentricCircles: 3 },
@@ -410,7 +410,7 @@ const protocolDocument = () => ({
       id: 'alterForm',
       type: 'AlterForm',
       label: localized('About them'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       form: {
         fields: [
           {
@@ -436,7 +436,7 @@ const protocolDocument = () => ({
       id: 'dyadCensus',
       type: 'DyadCensus',
       label: localized('Pairs'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -449,7 +449,7 @@ const protocolDocument = () => ({
       id: 'tieStrength',
       type: 'TieStrengthCensus',
       label: localized('Tie strength'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -464,7 +464,7 @@ const protocolDocument = () => ({
       id: 'ordinalBin',
       type: 'OrdinalBin',
       label: localized('Ordinal'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       behaviours: { requireCompletePlacement: true },
       unplacedNodesNotice: localized('Place everyone to continue'),
       prompts: [
@@ -480,7 +480,7 @@ const protocolDocument = () => ({
       id: 'categoricalBin',
       type: 'CategoricalBin',
       label: localized('Categorical'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -496,7 +496,7 @@ const protocolDocument = () => ({
       id: 'narrative',
       type: 'Narrative',
       label: localized('Narrative'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       background: { concentricCircles: 3 },
       presets: [
         {
@@ -523,7 +523,7 @@ const protocolDocument = () => ({
       id: 'oneToMany',
       type: 'OneToManyDyadCensus',
       label: localized('One to many'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       behaviours: { removeAfterConsideration: false },
       prompts: [
         { id: 'p1', text: localized('Who knows whom?'), createEdge: 'knows' },
@@ -534,7 +534,7 @@ const protocolDocument = () => ({
       type: 'Geospatial',
       outsideAreasLabel: localized('Outside Selectable Areas'),
       label: localized('Map'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       mapOptions: {
         tokenAssetId: 'token',
         style: 'mapbox://styles/mapbox/standard',
@@ -558,7 +558,7 @@ const protocolDocument = () => ({
       type: 'FamilyPedigree',
       wording: familyPedigreeWordingIn(),
       label: localized('Family'),
-      subject: { entity: 'node', type: 'relative' },
+      subject: { entity: 'node', types: ['relative'] },
       prompt: localized('Build your family'),
       // Participants choose the words, so the protocol holds the framing
       // question's text.

@@ -56,6 +56,17 @@ const composerEdgeLabels = (stage: unknown) => {
   }
 };
 
+// A schema 8 node stage named its one node type as `subject.type`.
+const singularNodeSubject = (stage: unknown) => {
+  if (!isRecord(stage) || !isRecord(stage.subject)) return;
+  const { entity, types } = stage.subject;
+  if (entity !== 'node' || !Array.isArray(types)) return;
+  if (types.length !== 1) {
+    throw new Error('A schema 8 stage has exactly one node type');
+  }
+  stage.subject = { entity: 'node', type: types[0] };
+};
+
 // A schema 8 Anonymisation stage held its heading as a title of its own,
 // apart from the text below it.
 const explanationTitle = (stage: unknown) => {
@@ -105,7 +116,8 @@ const informationItems = (
  * A schema 9 protocol written in English, as schema 8 held it: each localized
  * string is its English text, put through `rewrite` (text with placeholders,
  * which schema 8 never held, stays localized), Narrative highlights and
- * legend edges are ids, Network Composer edges have no label, an Anonymisation
+ * legend edges are ids, Network Composer edges have no label, a node stage
+ * names its one node type as `subject.type`, an Anonymisation
  * explanation's heading is a title of its own, an Information page is a title
  * and a list of items, and the language
  * chooser and language settings, which schema 8 did not have, are gone.
@@ -162,6 +174,7 @@ export const asSchema8Protocol = (
   for (const stage of document.stages) {
     legendIds(stage);
     composerEdgeLabels(stage);
+    singularNodeSubject(stage);
     explanationTitle(stage);
     informationItems(stage, rewrite);
   }

@@ -1,6 +1,6 @@
 import { type z } from 'zod';
 
-import type { StageSubject } from './common/subjects.ts';
+import type { ResolvedSubject } from './common/subjects.ts';
 
 const STAGE_SUBJECT_RESOLUTION = 'stageSubjectResolution' as const;
 
@@ -19,8 +19,7 @@ const STAGE_SUBJECT_RESOLUTION = 'stageSubjectResolution' as const;
  * `subject` field nor a declaration.
  *
  * - `ego` — the stage always operates on the interview's ego (EgoForm).
- * - `stagePath` — a node/edge type named somewhere inside the stage itself
- *   (FamilyPedigree names its alter type at `nodeConfig.type`).
+ * - `stagePath` — a node/edge type named somewhere inside the stage itself.
  * - `stageRef` — a node/edge type named inside ANOTHER stage, whose id this
  *   stage holds at `stageRef` (NarrativePedigree points at the FamilyPedigree
  *   whose people its diseases describe). An unresolvable reference yields no
@@ -28,11 +27,15 @@ const STAGE_SUBJECT_RESOLUTION = 'stageSubjectResolution' as const;
  */
 export type StageSubjectResolution =
   | { from: 'ego' }
-  | { from: 'stagePath'; path: readonly string[]; entity: 'node' | 'edge' }
+  | {
+      from: 'stagePath';
+      path: readonly (string | number)[];
+      entity: 'node' | 'edge';
+    }
   | {
       from: 'stageRef';
       stageRef: string;
-      path: readonly string[];
+      path: readonly (string | number)[];
       entity: 'node' | 'edge';
     };
 
@@ -57,13 +60,23 @@ export const getStageSubjectResolution = (
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** The string at `path` inside `value`, or undefined if any step is missing. */
+/**
+ * The string at `path` inside `value`, or undefined if any step is missing. A
+ * number steps into an array, a string into a record.
+ */
 const stringAt = (
   value: unknown,
-  path: readonly string[],
+  path: readonly (string | number)[],
 ): string | undefined => {
   const found = path.reduce<unknown>(
-    (current, step) => (isRecord(current) ? current[step] : undefined),
+    (current, step) =>
+      typeof step === 'number'
+        ? Array.isArray(current)
+          ? current[step]
+          : undefined
+        : isRecord(current)
+          ? current[step]
+          : undefined,
     value,
   );
   return typeof found === 'string' ? found : undefined;
@@ -72,13 +85,8 @@ const stringAt = (
 const subjectFor = (
   entity: 'node' | 'edge',
   type: string | undefined,
-): StageSubject | undefined =>
-  type === undefined
-    ? undefined
-    : // `StageSubject['type']` is the branded entity-type reference the schema
-      // produces on parse; the walk reads raw protocol data, where it is the
-      // same string unbranded.
-      ({ entity, type } as StageSubject);
+): ResolvedSubject | undefined =>
+  type === undefined ? undefined : { entity, type };
 
 /**
  * Applies a declared resolution to one stage value. `stages` is the protocol's
@@ -88,7 +96,7 @@ export const resolveDeclaredStageSubject = (
   resolution: StageSubjectResolution,
   stage: Record<string, unknown>,
   stages: readonly unknown[],
-): StageSubject | undefined => {
+): ResolvedSubject | undefined => {
   if (resolution.from === 'ego') return { entity: 'ego' };
   if (resolution.from === 'stagePath') {
     return subjectFor(resolution.entity, stringAt(stage, resolution.path));

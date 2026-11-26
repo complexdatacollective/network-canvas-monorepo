@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import {
-  NodeStageSubjectSchema,
+  nodeStageSubjectFor,
   oneToManyDyadCensusPromptSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
@@ -12,7 +12,7 @@ export const oneToManyDyadCensusStage = withUniqueObjectIds(
   baseStageSchema.extend({
     type: z.literal('OneToManyDyadCensus'),
     filter: FilterSchema.optional(),
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('OneToManyDyadCensus'),
     behaviours: z.strictObject({
       removeAfterConsideration: z.boolean(),
     }),

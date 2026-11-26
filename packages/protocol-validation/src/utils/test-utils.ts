@@ -132,7 +132,7 @@ export const createBaseProtocol = () => ({
       label: localized('Generate Names'),
       subject: {
         entity: 'node',
-        type: 'person',
+        types: ['person'],
       },
       form: {
         title: localized('Add person'),
@@ -157,7 +157,7 @@ export const createBaseProtocol = () => ({
       label: localized('Sociogram'),
       subject: {
         entity: 'node',
-        type: 'person',
+        types: ['person'],
       },
       background: {
         concentricCircles: 4,

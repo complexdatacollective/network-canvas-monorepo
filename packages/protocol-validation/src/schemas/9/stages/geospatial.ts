@@ -5,7 +5,7 @@ import { assetReference } from '../asset-reference.ts';
 import { ColorReferenceSchema } from '../color-reference.ts';
 import {
   geospatialPromptSchema,
-  NodeStageSubjectSchema,
+  nodeStageSubjectFor,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
@@ -77,7 +77,7 @@ const geospatialWording = {
 export const geospatialStage = withUniqueObjectIds(
   baseStageSchema.extend({
     type: z.literal('Geospatial'),
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('Geospatial'),
     filter: FilterSchema.optional(),
     mapOptions: mapOptions,
     ...geospatialWording,

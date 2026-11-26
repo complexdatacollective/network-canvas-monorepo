@@ -15,7 +15,7 @@ const protocol = {
     {
       id: 'nc',
       type: 'NetworkComposer',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       edges: [
         {
           id: 'nc-e1',
@@ -27,7 +27,7 @@ const protocol = {
     {
       id: 'soc',
       type: 'Sociogram',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p1',
@@ -40,7 +40,7 @@ const protocol = {
     {
       id: 'dyad',
       type: 'DyadCensus',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompts: [
         {
           id: 'p2',
@@ -52,7 +52,7 @@ const protocol = {
     {
       id: 'nar',
       type: 'Narrative',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       presets: [
         {
           id: 'preset-1',
@@ -89,7 +89,7 @@ const protocol = {
       id: 'ped',
       type: 'FamilyPedigree',
       wording: familyPedigreeWordingIn(),
-      subject: { entity: 'node', type: 'family-member' },
+      subject: { entity: 'node', types: ['family-member'] },
       edgeConfiguration: { type: 'partnership' },
     },
   ],

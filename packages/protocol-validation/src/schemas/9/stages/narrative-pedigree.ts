@@ -145,8 +145,8 @@ export const narrativePedigreeStage = withStageSubjectResolution(
   {
     from: 'stageRef',
     stageRef: 'sourceStageId',
-    // The Family Pedigree's people are its stage subject.
-    path: ['subject', 'type'],
+    // The Family Pedigree's people are its stage subject's one node type.
+    path: ['subject', 'types', 0],
     entity: 'node',
   },
 );

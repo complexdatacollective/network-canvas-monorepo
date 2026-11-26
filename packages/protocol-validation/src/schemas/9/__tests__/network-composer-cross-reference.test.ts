@@ -11,7 +11,7 @@ const baseStage = {
   id: 'nc1',
   label: localized('Build the network'),
   type: 'NetworkComposer',
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
   background: { concentricCircles: 4 },

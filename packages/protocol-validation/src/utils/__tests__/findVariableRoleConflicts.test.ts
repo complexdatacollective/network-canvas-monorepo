@@ -17,7 +17,7 @@ const alterFormStage = (variable: string) => ({
   id: 'af1',
   type: 'AlterForm',
   label: localized('Alter form'),
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   introductionPanel: { title: localized('T'), text: localized('X') },
   form: { fields: [{ id: 'field-1', variable, prompt: localized('Answer') }] },
 });
@@ -26,7 +26,7 @@ const categoricalBinStage = (variable: string) => ({
   id: 'cb1',
   type: 'CategoricalBin',
   label: localized('Bin'),
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompts: [{ id: 'p1', text: localized('Sort'), variable }],
 });
 
@@ -37,7 +37,7 @@ const familyPedigreeStage = (formVariable: string) => ({
   type: 'FamilyPedigree',
   wording: familyPedigreeWordingIn(),
   label: localized('Family Pedigree'),
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompt: localized('Who is related to you?'),
   nodeConfiguration: {
     nameAttribute: 'pedigreeName',

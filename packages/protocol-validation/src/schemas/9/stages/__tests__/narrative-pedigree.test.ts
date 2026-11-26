@@ -23,7 +23,7 @@ const validFamilyPedigreeStage = {
   label: localized('FamilyPedigree'),
   type: 'FamilyPedigree' as const,
   wording: familyPedigreeWordingIn(),
-  subject: { entity: 'node' as const, type: 'person' },
+  subject: { entity: 'node' as const, types: ['person'] },
   prompt: localized('Build your family'),
   nodeConfiguration: {
     nameAttribute: 'personLabel',

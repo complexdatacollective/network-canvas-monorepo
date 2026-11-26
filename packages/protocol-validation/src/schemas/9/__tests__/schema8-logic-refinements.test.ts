@@ -51,7 +51,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             id: 'alterForm1',
             type: 'AlterForm',
             label: localized('Alter Form'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             form: {
               fields: [
                 {
@@ -111,7 +111,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             id: 'alterForm1',
             type: 'AlterForm',
             label: localized('Alter Form'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             form: {
               fields: [
                 {
@@ -151,7 +151,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'NameGeneratorQuickAdd',
             addNamePlaceholder: localized('Type a name, then press Enter'),
             label: localized('Quick Add'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             quickAdd: 'doesNotExist',
             prompts: [{ id: 'p1', text: localized('Add someone') }],
           },
@@ -178,7 +178,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'NameGeneratorQuickAdd',
             addNamePlaceholder: localized('Type a name, then press Enter'),
             label: localized('Quick Add'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             quickAdd: 'age',
             prompts: [{ id: 'p1', text: localized('Add someone') }],
           },
@@ -205,7 +205,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             type: 'NameGeneratorQuickAdd',
             addNamePlaceholder: localized('Type a name, then press Enter'),
             label: localized('Quick Add'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             quickAdd: 'name',
             prompts: [{ id: 'p1', text: localized('Add someone') }],
           },
@@ -227,7 +227,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             id: 'catBin1',
             type: 'CategoricalBin',
             label: localized('Categorise'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               {
                 id: 'p1',
@@ -259,7 +259,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             id: 'catBin1',
             type: 'CategoricalBin',
             label: localized('Categorise'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               {
                 id: 'p1',
@@ -288,7 +288,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             id: 'sociogram1',
             type: 'Sociogram',
             label: localized('Sociogram'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             background: { concentricCircles: 4 },
             prompts: [
               {
@@ -358,7 +358,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             id: 'sociogram1',
             type: 'Sociogram',
             label: localized('Sociogram'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             background: { concentricCircles: 4 },
             prompts: [
               {
@@ -387,7 +387,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             id: 'sociogram1',
             type: 'Sociogram',
             label: localized('Sociogram'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             background: { concentricCircles: 4 },
             prompts: [
               {
@@ -435,7 +435,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
             id: 'sociogram1',
             type: 'Sociogram',
             label: localized('Sociogram'),
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             background: { concentricCircles: 4 },
             prompts: [
               {
@@ -747,7 +747,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       id: 'nameGen1',
       type: 'NameGenerator',
       label: localized('Generate'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       form: {
         title: localized('Add person'),
         fields: [
@@ -788,7 +788,7 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
           type: 'NameGeneratorQuickAdd',
           addNamePlaceholder: localized('Type a name, then press Enter'),
           label: localized('Generate'),
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           quickAdd: 'name',
           prompts: [{ id: 'p1', text: localized('Who?') }],
           panels: [panelReadingAFileWithAnEdgeRule],

@@ -371,31 +371,31 @@ const EVERY_REFERENCE_KIND = [
   'D NameGeneratorRoster stages.#.sortOptions.sortableProperties.#.variable',
   'D NameGeneratorRoster stages.#.sortOptions.sortOrder.#.property',
   'T AlterEdgeForm stages.#.subject.type',
-  'T AlterForm stages.#.subject.type',
-  'T CategoricalBin stages.#.subject.type',
+  'T AlterForm stages.#.subject.types.#',
+  'T CategoricalBin stages.#.subject.types.#',
   'T DyadCensus stages.#.prompts.#.createEdge',
-  'T DyadCensus stages.#.subject.type',
+  'T DyadCensus stages.#.subject.types.#',
   'T FamilyPedigree stages.#.edgeConfiguration.type',
-  'T FamilyPedigree stages.#.subject.type',
-  'T Geospatial stages.#.subject.type',
+  'T FamilyPedigree stages.#.subject.types.#',
+  'T Geospatial stages.#.subject.types.#',
   'T NameGenerator stages.#.conditions.*.rules.#.options.type',
   'T NameGenerator stages.#.panels.#.filter.rules.#.options.type',
   'T NameGenerator stages.#.skipLogic.filter.rules.#.options.type',
-  'T NameGenerator stages.#.subject.type',
-  'T NameGeneratorQuickAdd stages.#.subject.type',
-  'T NameGeneratorRoster stages.#.subject.type',
+  'T NameGenerator stages.#.subject.types.#',
+  'T NameGeneratorQuickAdd stages.#.subject.types.#',
+  'T NameGeneratorRoster stages.#.subject.types.#',
   'T Narrative stages.#.presets.#.edges.display.#.type',
-  'T Narrative stages.#.subject.type',
+  'T Narrative stages.#.subject.types.#',
   'T NetworkComposer stages.#.edges.#.subject.type',
-  'T NetworkComposer stages.#.subject.type',
+  'T NetworkComposer stages.#.subject.types.#',
   'T OneToManyDyadCensus stages.#.prompts.#.createEdge',
-  'T OneToManyDyadCensus stages.#.subject.type',
-  'T OrdinalBin stages.#.subject.type',
+  'T OneToManyDyadCensus stages.#.subject.types.#',
+  'T OrdinalBin stages.#.subject.types.#',
   'T Sociogram stages.#.prompts.#.edges.create',
   'T Sociogram stages.#.prompts.#.edges.display.#',
-  'T Sociogram stages.#.subject.type',
+  'T Sociogram stages.#.subject.types.#',
   'T TieStrengthCensus stages.#.prompts.#.createEdge',
-  'T TieStrengthCensus stages.#.subject.type',
+  'T TieStrengthCensus stages.#.subject.types.#',
 ];
 
 type Reference = {
@@ -614,7 +614,7 @@ describe('renaming codebook ids', () => {
         {
           id: 'people',
           type: 'AlterForm',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: { fields: [{ id: 'f1', variable: 'name' }] },
           skipLogic: {
             action: 'SHOW',
@@ -639,7 +639,7 @@ describe('renaming codebook ids', () => {
         {
           id: 'places',
           type: 'AlterForm',
-          subject: { entity: 'node', type: 'place' },
+          subject: { entity: 'node', types: ['place'] },
           form: { fields: [{ id: 'f2', variable: 'name' }] },
         },
       ],
@@ -679,7 +679,7 @@ describe('renaming codebook ids', () => {
         {
           id: 'form',
           type: 'AlterForm',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           form: { fields: [{ id: 'f1', variable: 'age' }] },
         },
       ],
@@ -699,7 +699,7 @@ describe('renaming codebook ids', () => {
     expect(
       Object.keys(recordAt(types, [testTypeId('person'), 'variables'])),
     ).toEqual([testVariableId('age')]);
-    expect(valueAt(protocol, ['stages', 0, 'subject', 'type'])).toBe(
+    expect(valueAt(protocol, ['stages', 0, 'subject', 'types', 0])).toBe(
       testTypeId('person'),
     );
     expect(
@@ -817,7 +817,9 @@ describe('the schema 8 to 9 migration', () => {
 
     const migrated = migrate(asSchema8Protocol(protocol));
     const migratedRoster = stageOfType(migrated, 'NameGeneratorRoster');
-    const subjectType = String(valueAt(migratedRoster, ['subject', 'type']));
+    const subjectType = String(
+      valueAt(migratedRoster, ['subject', 'types', 0]),
+    );
 
     expect(subjectType).toBe(testTypeId('person'));
     expect(
@@ -870,10 +872,10 @@ describe('the schema 8 to 9 migration', () => {
     expect(after.variables).toHaveLength(before.variables.length);
 
     expect(
-      valueAt(stageOfType(migrated, 'NameGenerator'), ['subject', 'type']),
+      valueAt(stageOfType(migrated, 'NameGenerator'), ['subject', 'types', 0]),
     ).toBe(testTypeId('person'));
     expect(
-      valueAt(stageOfType(migrated, 'FamilyPedigree'), ['subject', 'type']),
+      valueAt(stageOfType(migrated, 'FamilyPedigree'), ['subject', 'types', 0]),
     ).toEqual(
       expect.toSatisfy(
         (id: unknown) =>
@@ -983,10 +985,11 @@ describe('the schema 8 to 9 migration', () => {
     const migrated = migrate(original);
     const personType = valueAt(stageOfType(migrated, 'NameGenerator'), [
       'subject',
-      'type',
+      'types',
+      0,
     ]);
     const migratedPedigree = stageOfType(migrated, 'FamilyPedigree');
-    const relativeType = valueAt(migratedPedigree, ['subject', 'type']);
+    const relativeType = valueAt(migratedPedigree, ['subject', 'types', 0]);
     const nicknameOf = (type: unknown) =>
       Object.entries(
         recordAt(migrated, ['codebook', 'node', String(type), 'variables']),

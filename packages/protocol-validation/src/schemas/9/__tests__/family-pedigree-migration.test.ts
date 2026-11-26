@@ -318,7 +318,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       type: 'FamilyPedigree',
       label: en('Your family'),
       interviewScript: 'Draw the family with the participant.',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       prompt: en('Who is in your family? {braces} it’s fine'),
       nodeConfiguration: {
         nameAttribute: 'name',
@@ -1037,7 +1037,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       {
         type: 'FamilyPedigree',
         label: en('Your family'),
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompt: en('Who is in your family? {braces} it’s fine'),
         nodeConfiguration: {
           nameAttribute: 'name',
@@ -1133,7 +1133,7 @@ describe('v8 to v9 Family Pedigree migration', () => {
       ]);
       expect(stageTypes(migrated).at(-1)).toBe('FinishSession');
       expect(pedigreeOf(migrated)).toMatchObject({
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompt: en("Let's map out your family. Who is in it?"),
         nodeConfiguration: {
           nameAttribute: 'name',

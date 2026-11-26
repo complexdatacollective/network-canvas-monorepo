@@ -28,7 +28,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree',
   wording: familyPedigreeWordingIn(),
-  subject: { entity: 'node', type: 'family_member' },
+  subject: { entity: 'node', types: ['family_member'] },
   prompt: localized('Build your family'),
   nodeConfiguration: {
     nameAttribute: 'fmName',
@@ -164,7 +164,7 @@ describe('stage subjects resolve during collection', () => {
     ).toContain('The attribute "notInCodebook" does not exist in the codebook');
   });
 
-  it('resolves a NarrativePedigree disease against its source pedigree subject', () => {
+  it("NarrativePedigree resolves its source stage's node type", () => {
     const protocol = protocolWith([
       familyPedigree(),
       narrativePedigree('hasConditionX'),

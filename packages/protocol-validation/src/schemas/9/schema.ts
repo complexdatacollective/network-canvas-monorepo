@@ -55,7 +55,11 @@ import {
   type NodeDefinition,
   type NodeShapeReference,
 } from './codebook/index.ts';
-import type { FormField, StageSubject } from './common/index.ts';
+import type { FormField } from './common/index.ts';
+import {
+  resolveSubjectValue,
+  type ResolvedSubject,
+} from './common/subjects.ts';
 import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
 import type { FilterRule } from './filters/index.ts';
 import {
@@ -64,7 +68,10 @@ import {
 } from './interface-owned-options.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { ProtocolStructureSchema } from './protocol-structure.ts';
-import { stageEdgeTypeSupportIssues } from './stage-capabilities.ts';
+import {
+  getSingleStageNodeType,
+  stageEdgeTypeSupportIssues,
+} from './stage-capabilities.ts';
 import { CATEGORICAL_BIN_MAX_BINS } from './stages/categorical-bin.ts';
 import type { Prompt, Stage } from './stages/index.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
@@ -288,7 +295,7 @@ const validateConditions = (
 const validateFormFieldVariable = (
   codebook: Codebook,
   fieldVariable: string,
-  subject: StageSubject,
+  subject: ResolvedSubject,
   path: (string | number)[],
   addIssue: IssueReporter,
 ) => {
@@ -688,7 +695,18 @@ const stageNameFor = (type: string | undefined): string => {
   return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name} stage`;
 };
 
-const subjectKey = (subject: StageSubject): string =>
+/**
+ * The one subject a stage's forms, prompts and checks are about: the
+ * participant, its edge type, or its node type when it has exactly one.
+ */
+const resolvedSubjectOf = (stage: Stage): ResolvedSubject | undefined =>
+  stage.type === 'EgoForm'
+    ? { entity: 'ego' }
+    : 'subject' in stage
+      ? resolveSubjectValue(stage.subject)
+      : undefined;
+
+const subjectKey = (subject: ResolvedSubject): string =>
   subject.entity === 'ego' ? 'ego' : `${subject.entity}:${subject.type}`;
 
 /**
@@ -702,7 +720,7 @@ const collectComposerFieldOverrides = (
   stages: Stage[],
 ): Map<string, Set<string>> => {
   const counts = new Map<string, Set<string>>();
-  const record = (subject: StageSubject, variable: string): void => {
+  const record = (subject: ResolvedSubject, variable: string): void => {
     const key = subjectKey(subject);
     const bucket = counts.get(key) ?? new Set<string>();
     bucket.add(variable);
@@ -710,8 +728,11 @@ const collectComposerFieldOverrides = (
   };
   for (const stage of stages) {
     if (stage.type !== 'NetworkComposer') continue;
-    for (const field of stage.nodeForm?.fields ?? []) {
-      record(stage.subject, field.variable);
+    const nodeSubject = resolvedSubjectOf(stage);
+    if (nodeSubject) {
+      for (const field of stage.nodeForm?.fields ?? []) {
+        record(nodeSubject, field.variable);
+      }
     }
     for (const edge of stage.edges ?? []) {
       for (const field of edge.form?.fields ?? []) {
@@ -729,7 +750,7 @@ const collectComposerFieldOverrides = (
  */
 const unknownRenderingFor = (
   overrides: Map<string, Set<string>>,
-  subject: StageSubject,
+  subject: ResolvedSubject,
   fields: readonly { variable: string }[] | undefined,
 ): ReadonlySet<string> => {
   const bucket = overrides.get(subjectKey(subject));
@@ -844,14 +865,12 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     );
   }
   protocol.stages.forEach((stage, stageIndex) => {
-    const subject = 'subject' in stage ? stage.subject : undefined;
+    const subject = 'subject' in stage ? resolvedSubjectOf(stage) : undefined;
     validateConditions(
       stage.conditions,
       ['stages', stageIndex, 'conditions'],
       protocol.codebook,
-      subject === undefined
-        ? undefined
-        : { entity: subject.entity, type: subject.type },
+      subject === undefined || subject.entity === 'ego' ? undefined : subject,
       { allowEgoRules: true },
       reportIssue,
     );
@@ -880,7 +899,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     // A node/edge reference with no resolvable type names no codebook at
     // all; the reference validator above already reports that.
     if (entity !== 'ego' && type === undefined) continue;
-    const subject: StageSubject =
+    const subject: ResolvedSubject =
       entity === 'ego' ? { entity } : { entity, type: type ?? '' };
     const variable = getVariablesForSubject(protocol.codebook, subject)[
       binding.variableId
@@ -959,7 +978,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       ),
     ];
     if (others.length === 0) continue;
-    const subject: StageSubject =
+    const subject: ResolvedSubject =
       entity === 'ego' ? { entity } : { entity, type: type ?? '' };
     ctx.addIssue({
       code: 'custom' as const,
@@ -1011,6 +1030,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
   protocol.stages.forEach((stage, stageIndex) => {
     if (stage.type !== 'FamilyPedigree') return;
     const { nodeConfiguration } = stage;
+    const personSubject = resolvedSubjectOf(stage) ?? { entity: 'ego' };
     const stagePath = ['stages', stageIndex] as const;
     const bindings: {
       variable: string;
@@ -1055,7 +1075,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     for (const binding of bindings) {
       const earlier = roleOf.get(binding.variable);
       if (earlier !== undefined) {
-        const name = variableNameFor(protocol, stage.subject, binding.variable);
+        const name = variableNameFor(protocol, personSubject, binding.variable);
         ctx.addIssue({
           code: 'custom' as const,
           message:
@@ -1073,7 +1093,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       if (role === undefined) return;
       ctx.addIssue({
         code: 'custom' as const,
-        message: `Attribute "${variableNameFor(protocol, stage.subject, field.variable)}" is the ${role} attribute of this Family Pedigree stage, which the stage records itself, so its additional person fields cannot collect it as well.`,
+        message: `Attribute "${variableNameFor(protocol, personSubject, field.variable)}" is the ${role} attribute of this Family Pedigree stage, which the stage records itself, so its additional person fields cannot collect it as well.`,
         path: [...stagePath, 'form', 'fields', fieldIndex, 'variable'],
       });
     });
@@ -1125,8 +1145,15 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     }
 
     // Check stage subject exists in codebook
-    if ('subject' in stage && stage.subject) {
-      if (!entityExists(protocol.codebook, stage.subject)) {
+    const stageSubject = resolvedSubjectOf(stage);
+    if ('subject' in stage) {
+      const subjects: ResolvedSubject[] =
+        stage.subject.entity === 'node'
+          ? stage.subject.types.map((type) => ({ entity: 'node', type }))
+          : [stage.subject];
+      if (
+        subjects.some((subject) => !entityExists(protocol.codebook, subject))
+      ) {
         ctx.addIssue({
           code: 'custom' as const,
           message: 'Stage subject is not defined in the codebook',
@@ -1165,12 +1192,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     // entity-attribute reference validator above; here we additionally reject
     // variables whose type cannot be rendered as a form field (layout/location).
     if ('form' in stage && stage.form?.fields) {
-      let subject: StageSubject | undefined;
-      if (stage.type === 'EgoForm') {
-        subject = { entity: 'ego' };
-      } else if ('subject' in stage && stage.subject) {
-        subject = stage.subject;
-      }
+      const subject = stageSubject;
 
       stage.form.fields.forEach((field: FormField, fieldIndex: number) => {
         if (subject) {
@@ -1206,10 +1228,10 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     // breaks at interview time. nodeForm and each edge type's form are
     // checked independently: validation references are scoped to a single
     // subject (R2/owningVariable), so they can never share a group.
-    if (stage.type === 'NetworkComposer') {
+    if (stage.type === 'NetworkComposer' && stageSubject) {
       const nodeVariables = getVariablesForSubject(
         protocol.codebook,
-        stage.subject,
+        stageSubject,
       );
       const nodeFormPath = ['stages', stageIndex, 'nodeForm', 'fields'];
       validateComposerFieldComponents(
@@ -1224,7 +1246,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         nodeFormPath,
         unknownRenderingFor(
           composerFieldOverrides,
-          stage.subject,
+          stageSubject,
           stage.nodeForm?.fields,
         ),
         (issue) => ctx.addIssue({ code: 'custom' as const, ...issue }),
@@ -1296,13 +1318,12 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
           'layoutVariable' in prompt.layout &&
           prompt.layout.layoutVariable &&
           typeof prompt.layout.layoutVariable === 'string' &&
-          'subject' in stage &&
-          stage.subject
+          stageSubject
         ) {
           const layoutVariable = prompt.layout.layoutVariable;
           const variable = getVariablesForSubject(
             protocol.codebook,
-            stage.subject,
+            stageSubject,
           )[layoutVariable];
           if (variable && variable.type !== 'layout') {
             ctx.addIssue({
@@ -1327,13 +1348,12 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
           prompt.highlight &&
           'variable' in prompt.highlight &&
           prompt.highlight.variable &&
-          'subject' in stage &&
-          stage.subject
+          stageSubject
         ) {
           const highlightVariable = prompt.highlight.variable;
           const variable = getVariablesForSubject(
             protocol.codebook,
-            stage.subject,
+            stageSubject,
           )[highlightVariable];
           if (variable && variable.type !== 'boolean') {
             ctx.addIssue({
@@ -1359,10 +1379,9 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
       stage.type === 'NameGeneratorQuickAdd' &&
       'quickAdd' in stage &&
       stage.quickAdd &&
-      'subject' in stage &&
-      stage.subject
+      stageSubject
     ) {
-      const variable = getVariablesForSubject(protocol.codebook, stage.subject)[
+      const variable = getVariablesForSubject(protocol.codebook, stageSubject)[
         stage.quickAdd
       ];
       if (variable && variable.type !== 'text') {
@@ -1424,16 +1443,16 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         'dataSourceAssetId',
       );
 
-      if ('subject' in stage && stage.subject) {
+      if (stageSubject) {
         stage.prompts.forEach((prompt, promptIndex) => {
           if (
             'variable' in prompt &&
             prompt.variable &&
-            variableExists(protocol.codebook, stage.subject, prompt.variable)
+            variableExists(protocol.codebook, stageSubject, prompt.variable)
           ) {
             const variable = getVariablesForSubject(
               protocol.codebook,
-              stage.subject,
+              stageSubject,
             )[prompt.variable];
             if (variable && variable.type !== 'location') {
               ctx.addIssue({
@@ -1488,7 +1507,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         // sourceStage is confirmed FamilyPedigree — resolve each disease
         // attribute on its people, the stage's subject node type. These are
         // typically the boolean attributes its nomination prompts set.
-        const sourceNodeType = sourceStage.subject.type;
+        const sourceNodeType = getSingleStageNodeType(sourceStage) ?? '';
         const sourceSubject = {
           entity: 'node' as const,
           type: sourceNodeType,
@@ -1535,8 +1554,7 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
     // 3e.iv. Bin stages: the prompt variable must match the bin type.
     if (
       (stage.type === 'OrdinalBin' || stage.type === 'CategoricalBin') &&
-      'subject' in stage &&
-      stage.subject
+      stageSubject
     ) {
       const expectedType =
         stage.type === 'OrdinalBin' ? 'ordinal' : 'categorical';
@@ -1544,11 +1562,11 @@ const ProtocolSchema = ProtocolStructureSchema.superRefine((protocol, ctx) => {
         if (
           'variable' in prompt &&
           prompt.variable &&
-          variableExists(protocol.codebook, stage.subject, prompt.variable)
+          variableExists(protocol.codebook, stageSubject, prompt.variable)
         ) {
           const variable = getVariablesForSubject(
             protocol.codebook,
-            stage.subject,
+            stageSubject,
           )[prompt.variable];
           if (variable && variable.type !== expectedType) {
             ctx.addIssue({

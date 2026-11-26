@@ -8,7 +8,7 @@ const ordinalStage = {
   id: 'ordinal',
   type: 'OrdinalBin',
   label: localized('Ordinal'),
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompts: [
     {
       id: 'p1',
@@ -23,7 +23,7 @@ const categoricalStage = {
   id: 'categorical',
   type: 'CategoricalBin',
   label: localized('Categorical'),
-  subject: { entity: 'node', type: 'person' },
+  subject: { entity: 'node', types: ['person'] },
   prompts: [
     { id: 'p1', text: localized('Which category?'), variable: 'category' },
   ],

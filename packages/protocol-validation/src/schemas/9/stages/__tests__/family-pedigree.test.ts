@@ -30,7 +30,7 @@ const base = {
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
   wording: familyPedigreeWordingIn(),
-  subject: { entity: 'node' as const, type: 'person' },
+  subject: { entity: 'node' as const, types: ['person'] },
   prompt: localized('Draw your family'),
   nodeConfiguration: {
     nameAttribute: 'name',

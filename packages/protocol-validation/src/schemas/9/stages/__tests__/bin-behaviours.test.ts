@@ -16,7 +16,7 @@ const ordinalBin = {
   id: testId('ordinal'),
   type: 'OrdinalBin' as const,
   label: localized('Ordinal'),
-  subject: { entity: 'node' as const, type: 'person' },
+  subject: { entity: 'node' as const, types: ['person'] },
   prompts: [
     {
       id: testId('ordinal-p1'),
@@ -31,7 +31,7 @@ const categoricalBin = {
   id: testId('categorical'),
   type: 'CategoricalBin' as const,
   label: localized('Categorical'),
-  subject: { entity: 'node' as const, type: 'person' },
+  subject: { entity: 'node' as const, types: ['person'] },
   prompts: [
     {
       id: testId('categorical-p1'),

@@ -41,7 +41,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree',
   wording: familyPedigreeWordingIn(),
-  subject: { entity: 'node', type: 'family_member' },
+  subject: { entity: 'node', types: ['family_member'] },
   prompt: localized('Build your family'),
   nodeConfiguration,
   edgeConfiguration,
@@ -128,7 +128,7 @@ describe('findExclusiveVariableConflicts', () => {
         id: 'sg1',
         label: localized('Map your family'),
         type: 'Sociogram',
-        subject: { entity: 'node', type: 'family_member' },
+        subject: { entity: 'node', types: ['family_member'] },
         background: { concentricCircles: 4 },
         prompts: [
           {
@@ -154,7 +154,7 @@ describe('findExclusiveVariableConflicts', () => {
         id: 'sg1',
         label: localized('Map your family'),
         type: 'Sociogram',
-        subject: { entity: 'node', type: 'family_member' },
+        subject: { entity: 'node', types: ['family_member'] },
         background: { concentricCircles: 4 },
         prompts: [
           {
@@ -299,7 +299,7 @@ describe('findExclusiveVariableConflicts', () => {
         id: 'cb1',
         label: localized('Sort by gender'),
         type: 'CategoricalBin',
-        subject: { entity: 'node', type: 'family_member' },
+        subject: { entity: 'node', types: ['family_member'] },
         prompts: [
           {
             id: 'p1',
@@ -319,7 +319,7 @@ describe('findExclusiveVariableConflicts', () => {
         id: 'cb1',
         label: localized('Sort by sex assigned at birth'),
         type: 'CategoricalBin',
-        subject: { entity: 'node', type: 'family_member' },
+        subject: { entity: 'node', types: ['family_member'] },
         prompts: [
           {
             id: 'p1',
@@ -418,7 +418,7 @@ describe('findStageManagedOptionBindings', () => {
         id: 'ask',
         label: localized('Ask gender'),
         type: 'NameGenerator',
-        subject: { entity: 'node', type: 'family_member' },
+        subject: { entity: 'node', types: ['family_member'] },
         form: {
           fields: [
             {

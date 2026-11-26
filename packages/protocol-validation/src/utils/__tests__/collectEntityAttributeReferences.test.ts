@@ -58,7 +58,7 @@ describe('collectEntityAttributeReferencesFromSchema', () => {
       stages: [
         {
           type: 'OrdinalBin',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           prompts: [{ variable: 'age' }],
         },
       ],
@@ -79,7 +79,7 @@ describe('collectEntityAttributeReferencesFromSchema', () => {
       stages: [
         {
           type: 'TieStrengthCensus',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           prompts: [{ createEdge: 'friend', edgeVariable: 'weight' }],
         },
       ],

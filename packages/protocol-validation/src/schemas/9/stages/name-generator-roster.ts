@@ -7,7 +7,7 @@ import {
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { assetReference } from '../asset-reference.ts';
 import {
-  NodeStageSubjectSchema,
+  nodeStageSubjectFor,
   nameGeneratorPromptSchema,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
@@ -85,7 +85,7 @@ const rosterWording = {
 export const nameGeneratorRosterStage = withUniqueObjectIds(
   baseStageSchema.extend({
     type: z.literal('NameGeneratorRoster'),
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('NameGeneratorRoster'),
     dataSource: assetReference(),
     // The heading above the people the participant can add. The roster IS the
     // panel, so it is named for what it heads rather than as the stage's title.

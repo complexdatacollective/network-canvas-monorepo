@@ -15,13 +15,13 @@ const protocol = {
       type: 'NameGeneratorRoster',
       allAddedNotice: localized('There is nothing left to add from this list.'),
       unnamedLabel: localized('Unnamed {count}'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       dataSource: 'roster-asset',
     },
     {
       id: 'ng',
       type: 'NameGenerator',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       panels: [
         {
           id: 'panel-1',
@@ -35,7 +35,7 @@ const protocol = {
     {
       id: 'soc',
       type: 'Sociogram',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       background: { image: 'background-asset' },
     },
     {
@@ -48,7 +48,7 @@ const protocol = {
         'This can happen if your browser or device does not support the features the map requires (for example, WebGL). Try a different browser or device, or contact the study organizer. You may be able to continue your interview by selecting the next arrow.',
       ),
       outsideAreasLabel: localized('Outside Selectable Areas'),
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       mapOptions: {
         tokenAssetId: 'token-asset',
         style: 'mapbox://styles/mapbox/standard',

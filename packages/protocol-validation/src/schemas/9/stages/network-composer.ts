@@ -5,7 +5,7 @@ import { findDuplicateValue } from '../../../utils/validation-helpers.ts';
 import {
   EdgeStageSubjectSchema,
   imageOrCirclesBackgroundSchema,
-  NodeStageSubjectSchema,
+  nodeStageSubjectFor,
   uniqueFormFieldVariables,
 } from '../common/index.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
@@ -151,7 +151,7 @@ export type ComposerForm = z.infer<typeof ComposerFormSchema>;
 export const networkComposerStage = withUniqueObjectIds(
   baseStageSchema.extend({
     type: z.literal('NetworkComposer'),
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('NetworkComposer'),
     // The text variable populated by the inline quick-add name field when a node
     // is added from the tool palette. The quick-add field now runs the variable's
     // codebook validation (see interview's AddNodeInput), so it is a validated

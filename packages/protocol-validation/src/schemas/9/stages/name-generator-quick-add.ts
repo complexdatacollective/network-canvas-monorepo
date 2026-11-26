@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import {
-  NodeStageSubjectSchema,
+  nodeStageSubjectFor,
   nameGeneratorPromptSchema,
   panelsSchema,
 } from '../common/index.ts';
@@ -22,7 +22,7 @@ export const nameGeneratorQuickAddStage = withUniqueObjectIds(
       subject: 'stageSubject',
       usage: 'validatedAttribute',
     }),
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('NameGeneratorQuickAdd'),
     panels: panelsSchema,
     prompts: z.array(nameGeneratorPromptSchema).min(1),
     behaviours: nameGeneratorBehavioursSchema,

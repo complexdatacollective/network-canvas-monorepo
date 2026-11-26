@@ -4,7 +4,7 @@ import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { canvasBehavioursSchema } from '../common/behaviours.ts';
 import {
   imageOrCirclesBackgroundSchema,
-  NodeStageSubjectSchema,
+  nodeStageSubjectFor,
   sociogramPromptSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
@@ -13,7 +13,7 @@ import { baseStageSchema } from './base.ts';
 export const sociogramStage = withUniqueObjectIds(
   baseStageSchema.extend({
     type: z.literal('Sociogram'),
-    subject: NodeStageSubjectSchema,
+    subject: nodeStageSubjectFor('Sociogram'),
     filter: FilterSchema.optional(),
     background: imageOrCirclesBackgroundSchema,
     behaviours: canvasBehavioursSchema,

@@ -29,7 +29,7 @@ const stageWith = (settings: Record<string, unknown>) => ({
   id: testId('narrative'),
   label: localized('Narrative'),
   type: 'Narrative' as const,
-  subject: { entity: 'node' as const, type: 'person' },
+  subject: { entity: 'node' as const, types: ['person'] },
   background: { concentricCircles: 4 },
   presets: [preset('first'), preset('second')],
   ...settings,

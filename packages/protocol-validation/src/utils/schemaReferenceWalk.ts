@@ -5,7 +5,10 @@ import {
   type AssetReferenceDescriptor,
   getAssetReferenceDescriptor,
 } from '../schemas/9/asset-reference.ts';
-import type { StageSubject } from '../schemas/9/common/index.ts';
+import {
+  resolveSubjectValue,
+  type ResolvedSubject,
+} from '../schemas/9/common/subjects.ts';
 import {
   type DynamicValueRole,
   dynamicValueReferencesIn,
@@ -41,7 +44,7 @@ import type { VariableType } from '../schemas/9/variables/types.ts';
 export type EntityAttributeReferenceHit = {
   path: (string | number)[];
   variableId: string;
-  subject?: StageSubject;
+  subject?: ResolvedSubject;
   requireType?: readonly VariableType[];
   /** See `AttributeExistence`; absent means the attribute must exist. */
   existence?: AttributeExistence;
@@ -103,7 +106,7 @@ export type ReferenceHit =
   | ({ kind: 'objectId' } & ProtocolObjectIdHit);
 
 type WalkContext = {
-  stageSubject?: StageSubject;
+  stageSubject?: ResolvedSubject;
   parent?: Record<string, unknown>;
   // The `type` of the nearest enclosing filter rule, for resolving the rule's
   // options.type entity ('ego' rules reference no codebook type).
@@ -264,16 +267,11 @@ const stageSubjectOf = (
   declared: StageSubjectResolution | undefined,
   value: Record<string, unknown>,
   ctx: WalkContext,
-): StageSubject | undefined => {
+): ResolvedSubject | undefined => {
   if (declared) {
     return resolveDeclaredStageSubject(declared, value, ctx.stages);
   }
-  const subject = value.subject;
-  if (isRecord(subject) && typeof subject.entity === 'string') {
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a stage's own `subject` field is typed StageSubject by its schema; only its `entity` is checked here before it is passed on
-    return subject as StageSubject;
-  }
-  return undefined;
+  return resolveSubjectValue(value.subject);
 };
 
 // A filter rule is { type: 'node' | 'edge' | 'ego', id, options }; its type
@@ -290,7 +288,7 @@ const resolveSubject = (
   resolution: SubjectResolution,
   path: (string | number)[],
   ctx: WalkContext,
-): StageSubject | undefined => {
+): ResolvedSubject | undefined => {
   if (resolution === 'ego') return { entity: 'ego' };
   if (resolution === 'stageSubject') return ctx.stageSubject;
   if (resolution === 'filterRule') return undefined;
@@ -321,8 +319,8 @@ const resolveSubject = (
  */
 const dynamicValueSubject = (
   role: DynamicValueRole,
-  stageSubject: StageSubject | undefined,
-): StageSubject | undefined => {
+  stageSubject: ResolvedSubject | undefined,
+): ResolvedSubject | undefined => {
   if (role === 'ego') return { entity: 'ego' };
   const entity = role === 'edge' ? 'edge' : 'node';
   return stageSubject?.entity === entity ? stageSubject : undefined;
