@@ -123,7 +123,7 @@
           "label": "bazz",
           "subject": {
             "entity": "node",
-            "type": "bar"
+            "types": ["bar"]
           },
           "type": "NameGenerator",
           "prompts": [
@@ -151,7 +151,7 @@
           "type": "NameGenerator",
           "subject": {
             "entity": "node",
-            "type": "bar"
+            "types": ["bar"]
           },
           "prompts": [
             {
@@ -184,7 +184,7 @@
           ],
           "subject": {
             "entity": "node",
-            "type": "foo"
+            "types": ["foo"]
           }
         },
         {
@@ -203,7 +203,7 @@
           ],
           "subject": {
             "entity": "node",
-            "type": "pop"
+            "types": ["pop"]
           }
         },
         {
@@ -212,7 +212,7 @@
           "type": "Sociogram",
           "subject": {
             "entity": "node",
-            "type": "bar"
+            "types": ["bar"]
           },
           "prompts": [
             {

@@ -72,7 +72,7 @@ function rosterStage(overrides?: Record<string, unknown>) {
     type: 'NameGeneratorRoster',
     allAddedNotice: { en: 'There is nothing left to add from this list.' },
     unnamedLabel: { en: 'Unnamed {count}' },
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     dataSource: 'roster',
     prompts: [{ id: 'p1', text: 'Pick people' }],
     ...overrides,
