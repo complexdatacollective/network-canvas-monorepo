@@ -34,8 +34,8 @@ import { formMessages } from '../form/hooks/useForm';
 import { validations } from '../form/validation/functions';
 import { NativeLink } from '../NativeLink';
 import SegmentedSwitcherField from '../SegmentedSwitcher/SegmentedSwitcherField';
+import { useToast } from '../Toast';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip';
-import Paragraph from '../typography/Paragraph';
 import {
   COMMUNITY_FORUM_URL,
   FORUM_TOPIC_URL_MAX_LENGTH,
@@ -153,7 +153,7 @@ const messages = defineMessages({
     id: 'frescoUi.feedbackDialog.thanks',
     defaultMessage: 'Thanks for your feedback. It has been sent to our team.',
     description:
-      'Replaces the feedback form once the feedback has been sent to the Network Canvas team.',
+      'Notification shown once the feedback has been sent to the Network Canvas team. The feedback dialog closes when it appears.',
   },
 });
 
@@ -186,7 +186,7 @@ const EMPTY_DRAFT: Draft = {
   email: '',
 };
 
-type Status = 'idle' | 'sending' | 'failed' | 'sent';
+type Status = 'idle' | 'sending' | 'failed';
 
 /** The first message a shared validation rule gives for `value`, if any. */
 function firstIssue(schema: ZodMiniType, value: unknown) {
@@ -348,12 +348,16 @@ export default function FeedbackDialog({
   const intl = useAppIntl();
   const formId = useId();
   const formRef = useRef<HTMLFormElement>(null);
+  const { add: addToast } = useToast();
   const [open, setOpen] = useState(defaultOpen);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   // The editor keeps its own content once mounted; a new key empties it.
   const [editorKey, setEditorKey] = useState(0);
   const [emailChecked, setEmailChecked] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
+  // Set once a send succeeds. The form is emptied after the dialog has
+  // finished closing, so it does not turn empty while it is still on screen.
+  const sentRef = useRef(false);
 
   const update = (patch: Partial<Draft>) =>
     setDraft((current) => ({ ...current, ...patch }));
@@ -380,7 +384,6 @@ export default function FeedbackDialog({
   const hasFeedback = feedback !== '';
   const toForum = draft.audience === 'forum';
   const sending = status === 'sending';
-  const sent = status === 'sent';
   const title = draft.title.trim();
   const forumUrl = forumTopicUrl({ title, body: feedback });
   // The forum cannot open a link longer than this, which a post in a
@@ -391,18 +394,21 @@ export default function FeedbackDialog({
       : undefined;
   const feedbackError = lengthError ?? forumError;
 
+  // Only a sent form starts again. A draft, a send still under way and a
+  // failed send are all kept, and so is a draft handed to the forum, which may
+  // need opening again after the forum asks the person to sign in.
+  const resetIfSent = () => {
+    if (!sentRef.current) return;
+    sentRef.current = false;
+    setDraft(EMPTY_DRAFT);
+    setEditorKey((key) => key + 1);
+    setEmailChecked(false);
+    setStatus('idle');
+  };
+
   const openDialog = () => {
-    // A form that was sent starts again, and only on opening, so the thanks
-    // does not turn back into the form while the dialog is still closing. A
-    // draft, a send still under way and a failed send are all kept, and so is
-    // a draft handed to the forum, which may need opening again after the
-    // forum asks the person to sign in.
-    if (sent) {
-      setDraft(EMPTY_DRAFT);
-      setEditorKey((key) => key + 1);
-      setEmailChecked(false);
-      setStatus('idle');
-    }
+    // Also here, for a dialog opened again before it finished closing.
+    resetIfSent();
     setOpen(true);
     onShown?.();
   };
@@ -417,17 +423,19 @@ export default function FeedbackDialog({
       await onSubmit(
         address === '' ? { feedback } : { feedback, email: address },
       );
-      setStatus('sent');
+      // The form keeps its sending state until the dialog has closed.
+      sentRef.current = true;
+      setOpen(false);
+      addToast({
+        title: intl.formatMessage(messages.thanks),
+        variant: 'success',
+      });
     } catch {
       setStatus('failed');
     }
   };
 
-  const footer = sent ? (
-    <Button color="primary" onClick={close}>
-      {intl.formatMessage(commonMessages.close)}
-    </Button>
-  ) : (
+  const footer = (
     <>
       <Button onClick={close}>
         {intl.formatMessage(commonMessages.cancel)}
@@ -472,113 +480,100 @@ export default function FeedbackDialog({
           null
         }
         title={intl.formatMessage(messages.title)}
-        description={
-          sent ? undefined : intl.formatMessage(messages.description)
-        }
+        description={intl.formatMessage(messages.description)}
         footer={footer}
+        onExitComplete={resetIfSent}
       >
-        {sent ? (
-          <Paragraph
-            // The thanks replaces the form, so focus moves to it.
-            ref={(done: HTMLElement | null) => done?.focus()}
-            tabIndex={-1}
-            margin="none"
-            className="focus:outline-none"
-          >
-            {intl.formatMessage(messages.thanks)}
-          </Paragraph>
-        ) : (
-          <form
-            ref={formRef}
-            id={formId}
-            noValidate
-            onSubmit={(event) => void handleSubmit(event)}
-            className="flex flex-col"
-          >
+        <form
+          ref={formRef}
+          id={formId}
+          noValidate
+          onSubmit={(event) => void handleSubmit(event)}
+          className="flex flex-col"
+        >
+          <UnconnectedField
+            name="audience"
+            label={intl.formatMessage(messages.audienceLabel)}
+            hint={
+              <AppMessage
+                message={messages.audienceHint}
+                values={{ link: communityForumLink }}
+              />
+            }
+            component={SegmentedSwitcherField<Audience>}
+            size="sm"
+            value={draft.audience}
+            onChange={(audience) => audience && update({ audience })}
+            readOnly={sending}
+            options={[
+              {
+                value: 'forum',
+                label: intl.formatMessage(messages.audienceForum),
+                icon: Users,
+              },
+              {
+                value: 'team',
+                label: intl.formatMessage(messages.audienceTeam),
+                icon: Lock,
+              },
+            ]}
+          />
+          {toForum && (
             <UnconnectedField
-              name="audience"
-              label={intl.formatMessage(messages.audienceLabel)}
-              hint={
-                <AppMessage
-                  message={messages.audienceHint}
-                  values={{ link: communityForumLink }}
-                />
-              }
-              component={SegmentedSwitcherField<Audience>}
-              size="sm"
-              value={draft.audience}
-              onChange={(audience) => audience && update({ audience })}
-              readOnly={sending}
-              options={[
-                {
-                  value: 'forum',
-                  label: intl.formatMessage(messages.audienceForum),
-                  icon: Users,
-                },
-                {
-                  value: 'team',
-                  label: intl.formatMessage(messages.audienceTeam),
-                  icon: Lock,
-                },
-              ]}
+              name="postTitle"
+              label={intl.formatMessage(messages.postTitleLabel)}
+              component={InputField}
+              placeholder={intl.formatMessage(messages.postTitlePlaceholder)}
+              value={draft.title}
+              onChange={(next) => update({ title: next ?? '' })}
             />
-            {toForum && (
-              <UnconnectedField
-                name="postTitle"
-                label={intl.formatMessage(messages.postTitleLabel)}
-                component={InputField}
-                placeholder={intl.formatMessage(messages.postTitlePlaceholder)}
-                value={draft.title}
-                onChange={(next) => update({ title: next ?? '' })}
-              />
+          )}
+          <UnconnectedField
+            key={editorKey}
+            name="feedback"
+            label={intl.formatMessage(
+              toForum ? messages.postLabel : messages.feedbackLabel,
             )}
+            component={RichTextEditorField}
+            value={draft.document}
+            onChange={(document) =>
+              update({ document: document ?? EMPTY_DOCUMENT })
+            }
+            changeMode="input"
+            placeholder={intl.formatMessage(messages.feedbackPlaceholder)}
+            emojiMenu={false}
+            toolbarOptions={{
+              headings: false,
+              links: false,
+              thematicBreak: false,
+            }}
+            readOnly={sending}
+            className="[&_.ProseMirror]:min-h-40"
+            errors={feedbackError ? [feedbackError] : undefined}
+            showErrors={Boolean(feedbackError)}
+          />
+          {!toForum && (
             <UnconnectedField
-              key={editorKey}
-              name="feedback"
-              label={intl.formatMessage(
-                toForum ? messages.postLabel : messages.feedbackLabel,
-              )}
-              component={RichTextEditorField}
-              value={draft.document}
-              onChange={(document) =>
-                update({ document: document ?? EMPTY_DOCUMENT })
-              }
-              changeMode="input"
-              placeholder={intl.formatMessage(messages.feedbackPlaceholder)}
-              emojiMenu={false}
-              toolbarOptions={{
-                headings: false,
-                links: false,
-                thematicBreak: false,
-              }}
+              name="email"
+              label={intl.formatMessage(messages.emailLabel)}
+              hint={intl.formatMessage(messages.emailHint)}
+              component={InputField}
+              type="email"
+              autoComplete="email"
+              value={draft.email}
+              onChange={(email) => update({ email: email ?? '' })}
+              onBlur={() => setEmailChecked(true)}
               readOnly={sending}
-              className="[&_.ProseMirror]:min-h-40"
-              errors={feedbackError ? [feedbackError] : undefined}
-              showErrors={Boolean(feedbackError)}
+              errors={emailError && emailChecked ? [emailError] : undefined}
+              showErrors={Boolean(emailError && emailChecked)}
             />
-            {!toForum && (
-              <UnconnectedField
-                name="email"
-                label={intl.formatMessage(messages.emailLabel)}
-                hint={intl.formatMessage(messages.emailHint)}
-                component={InputField}
-                type="email"
-                autoComplete="email"
-                value={draft.email}
-                onChange={(email) => update({ email: email ?? '' })}
-                onBlur={() => setEmailChecked(true)}
-                readOnly={sending}
-                errors={emailError && emailChecked ? [emailError] : undefined}
-                showErrors={Boolean(emailError && emailChecked)}
-              />
-            )}
-            {status === 'failed' && !toForum && (
-              <FormErrors
-                errors={[intl.formatMessage(formMessages.submitFailed)]}
-              />
-            )}
-          </form>
-        )}
+          )}
+          {status === 'failed' && !toForum && (
+            <FormErrors
+              errors={[intl.formatMessage(formMessages.submitFailed)]}
+            />
+          )}
+        </form>
       </Dialog>
     </>
   );

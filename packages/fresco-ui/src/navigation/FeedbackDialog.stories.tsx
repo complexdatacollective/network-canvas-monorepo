@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, screen, userEvent, waitFor } from 'storybook/test';
 
+import { withToastProvider } from '../storybook-support/withToastProvider';
 import FeedbackDialog from './FeedbackDialog';
 
 const documentation = `
@@ -16,11 +17,14 @@ that opens a dialog where the person chooses who should see their feedback.
   reaches that limit sooner, because each of its characters takes six or more
   characters of the link.
 - **Our team** sends it privately through \`onSubmit\`, with an optional email
-  for a reply. Sending replaces the form with a line of thanks.
+  for a reply. Once it has been sent, the dialog closes and a notification
+  thanks the person.
 
 The text box takes lists and bold or italic text, sent as markdown. The next
-opening after a send starts with an empty form. Hosts own where a private response goes; the copy is shared and
-translated once.
+opening after a send starts with an empty form. The notification needs the
+host's \`Toast.Provider\` and \`Toaster\`, which Architect, Interviewer and
+Fresco render at their roots. Hosts own where a private response goes; the copy
+is shared and translated once.
 
 \`\`\`tsx
 import FeedbackDialog from '@codaco/fresco-ui/navigation/FeedbackDialog';
@@ -49,6 +53,7 @@ const meta = {
   title: 'Navigation/FeedbackDialog',
   component: FeedbackDialog,
   tags: ['autodocs'],
+  decorators: [withToastProvider],
   parameters: {
     layout: 'centered',
     docs: { description: { component: documentation } },
@@ -123,7 +128,7 @@ export const SendsFeedback: Story = {
       await expect(send).toBeEnabled();
     });
 
-    await step('Sending replaces the form with the thanks', async () => {
+    await step('Sending closes the dialog and says thanks', async () => {
       await userEvent.type(
         screen.getByRole('textbox', { name: /^Email/ }),
         'someone@example.org',
@@ -134,12 +139,28 @@ export const SendsFeedback: Story = {
         feedback: 'Add a dark theme.',
         email: 'someone@example.org',
       });
+      await expect(
+        await screen.findByRole('heading', {
+          name: 'Thanks for your feedback. It has been sent to our team.',
+        }),
+      ).toBeVisible();
       await waitFor(() =>
         expect(
-          screen.getByText(
-            'Thanks for your feedback. It has been sent to our team.',
-          ),
-        ).toHaveFocus(),
+          screen.queryByRole('dialog', { name: 'Share feedback' }),
+        ).not.toBeInTheDocument(),
+      );
+    });
+
+    await step('Opening it again starts with an empty form', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: 'Feedback' }));
+      await userEvent.click(
+        await screen.findByRole('button', { name: /Our team/ }),
+      );
+      await expect(
+        await screen.findByRole('textbox', { name: 'Your feedback' }),
+      ).toHaveTextContent('');
+      await expect(screen.getByRole('textbox', { name: /^Email/ })).toHaveValue(
+        '',
       );
     });
   },

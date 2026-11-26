@@ -361,7 +361,7 @@
   },
   "frescoUi.feedbackDialog.thanks": {
     "defaultMessage": "Thanks for your feedback. It has been sent to our team.",
-    "description": "Replaces the feedback form once the feedback has been sent to the Network Canvas team."
+    "description": "Notification shown once the feedback has been sent to the Network Canvas team. The feedback dialog closes when it appears."
   },
   "frescoUi.feedbackDialog.title": {
     "defaultMessage": "Share feedback",

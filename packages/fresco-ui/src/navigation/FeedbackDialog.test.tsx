@@ -1,8 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Toast } from '@base-ui/react/toast';
+import {
+  fireEvent,
+  render as renderUnwrapped,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { withSafeTypingIntoRichText } from '../testing/withSafeTypingIntoRichText';
+import { Toaster } from '../Toast';
 import { FORUM_TOPIC_URL_MAX_LENGTH, forumTopicUrl } from './communityForum';
 import FeedbackDialog, { type FeedbackResponse } from './FeedbackDialog';
 
@@ -16,6 +25,31 @@ const TOO_LONG_FOR_FORUM =
   'Your post is too long to send to the forum. Shorten it, or send it privately to our team instead.';
 const EMAIL_HINT =
   'If you would like us to contact you about your feedback, please provide your email address. Anonymous feedback is also welcome.';
+
+/** Renders inside a toast provider, as every host does. */
+function render(ui: ReactElement) {
+  return renderUnwrapped(
+    <Toast.Provider>
+      {ui}
+      <Toaster />
+    </Toast.Provider>,
+  );
+}
+
+/** The thanks, shown as a notification once the dialog has closed. */
+async function expectThanksAfterClosing() {
+  const notifications = await screen.findByRole('region', {
+    name: 'Notifications',
+  });
+  expect(
+    await within(notifications).findByRole('heading', { name: THANKS }),
+  ).toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: TITLE }),
+    ).not.toBeInTheDocument(),
+  );
+}
 
 function setup() {
   return withSafeTypingIntoRichText(userEvent.setup());
@@ -215,7 +249,7 @@ describe('FeedbackDialog', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('sends the feedback alone, then moves focus to the thanks', async () => {
+  it('sends the feedback alone, then closes and says thanks', async () => {
     const user = setup();
     const onSubmit = vi.fn<(response: FeedbackResponse) => void>();
     render(<FeedbackDialog onSubmit={onSubmit} />);
@@ -226,7 +260,7 @@ describe('FeedbackDialog', () => {
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith({
       feedback: 'Add a dark theme.',
     });
-    expect(await screen.findByText(THANKS)).toHaveFocus();
+    await expectThanksAfterClosing();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
@@ -287,11 +321,13 @@ describe('FeedbackDialog', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'An error occurred while submitting the form.',
     );
+    expect(screen.getByRole('dialog', { name: TITLE })).toBeVisible();
     expect(box).toHaveTextContent('Add a dark theme.');
+    expect(screen.queryByText(THANKS)).not.toBeInTheDocument();
 
     await user.click(sendButton());
 
-    expect(await screen.findByText(THANKS)).toHaveFocus();
+    await expectThanksAfterClosing();
     expect(onSubmit).toHaveBeenCalledTimes(2);
   });
 
@@ -310,7 +346,7 @@ describe('FeedbackDialog', () => {
     expect(onSubmit).toHaveBeenCalledOnce();
 
     finish();
-    expect(await screen.findByText(THANKS)).toBeVisible();
+    await expectThanksAfterClosing();
   });
 
   it('keeps an unsent draft when closed and reopened', async () => {
@@ -334,11 +370,7 @@ describe('FeedbackDialog', () => {
     await user.type(await openForm(user), 'Add a dark theme.');
     await user.type(emailBox(), 'someone@example.org');
     await user.click(sendButton());
-    await screen.findByText(THANKS);
-    await user.keyboard('{Escape}');
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
+    await expectThanksAfterClosing();
 
     await openDialog(user);
     expect(forumOption()).toHaveAttribute('aria-pressed', 'true');
