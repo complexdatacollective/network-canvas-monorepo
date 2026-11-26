@@ -1572,6 +1572,10 @@ test('turbo runs at the one version the root package.json pins', () => {
   const netlifyConfigs = readdirSync(appsDir)
     .map((app) => new URL(`${app}/netlify.toml`, appsDir))
     .filter((url) => existsSync(url));
+  const netlifyIgnore = new URL(
+    'netlify-ignore-deploy-preview.sh',
+    import.meta.url,
+  );
   const sources = [
     ...workflowFiles().map((file) => new URL(file, WORKFLOW_DIR)),
     ...readdirSync(actionDir, { recursive: true })
@@ -1579,6 +1583,7 @@ test('turbo runs at the one version the root package.json pins', () => {
       .map((file) => new URL(file, actionDir)),
     dockerfile,
     ...netlifyConfigs,
+    netlifyIgnore,
   ];
   // Raw text: a comment naming a version can only make this stricter.
   for (const url of sources) {
@@ -1598,23 +1603,51 @@ test('turbo runs at the one version the root package.json pins', () => {
   assert.match(detectCode, readsPin);
   assert.match(detectCode, /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
 
-  // Each ignore command has already changed to the repository root, so
-  // ./package.json is the root manifest.
+  // The shared deploy-preview ignore script has already changed to the
+  // repository root, so ./package.json is the root manifest.
+  const ignoreCode = codeOf(readFileSync(netlifyIgnore, 'utf8'));
+  assert.match(ignoreCode, /cd "\$root"/);
+  assert.match(
+    ignoreCode,
+    /turbo_version="\$\(node -p "require\('\.\/package\.json'\)\.devDependencies\.turbo"\)"/,
+  );
+  assert.match(
+    ignoreCode,
+    /npx --yes "turbo@\$\{turbo_version\}" query affected/,
+  );
+});
+
+test('every Netlify deploy preview is skipped through the shared ignore script', () => {
+  // One script decides every site's preview, so a fix to the decision (such
+  // as measuring from where the pull request left main) reaches all of them.
+  const appsDir = new URL('../../apps/', import.meta.url);
   let ignoreCommands = 0;
-  for (const url of netlifyConfigs) {
+  for (const app of readdirSync(appsDir)) {
+    const url = new URL(`${app}/netlify.toml`, appsDir);
+    if (!existsSync(url)) continue;
     const source = codeOf(readFileSync(url, 'utf8'));
-    if (!source.includes('query affected')) continue;
+    const preview = source
+      .split('[context.deploy-preview]')[1]
+      ?.split(/^\[/m)[0];
+    if (preview === undefined) continue;
+    assert.doesNotMatch(
+      preview,
+      /query affected/,
+      `${url.pathname} decides its deploy preview inline instead of through the shared script`,
+    );
     assert.match(
-      source,
-      /npx --yes \\"turbo@\$\(node -p \\"require\('\.\/package\.json'\)\.devDependencies\.turbo\\"\)\\" query affected/,
-      `${url.pathname} queries turbo without reading the root pin`,
+      preview,
+      new RegExp(
+        String.raw`ignore = ".*bash \\"\$\(git rev-parse --show-toplevel\)/scripts/ci/netlify-ignore-deploy-preview\.sh\\" --config apps/${app.replace('.', String.raw`\.`)}/netlify\.toml `,
+      ),
+      `${url.pathname} does not skip its deploy preview through the shared script with its own config`,
     );
     ignoreCommands += 1;
   }
   // A move of the Netlify configs must not silently empty this loop.
   assert.ok(
-    ignoreCommands >= 5,
-    `expected the five Netlify ignore commands, saw ${ignoreCommands}`,
+    ignoreCommands >= 6,
+    `expected six Netlify ignore commands, saw ${ignoreCommands}`,
   );
 });
 
