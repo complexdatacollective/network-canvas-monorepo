@@ -83,6 +83,35 @@ describe('findEdge', () => {
   });
 });
 
+// Pairs that share exactly one endpoint with the stored a-b edge, in each
+// position and order.
+const sharingOneEndpoint = [
+  { from: 'a', to: 'c', type: 'friend' },
+  { from: 'c', to: 'b', type: 'friend' },
+  { from: 'b', to: 'c', type: 'friend' },
+  { from: 'c', to: 'a', type: 'friend' },
+];
+
+describe.each([false, true])('with directed %s', (directed) => {
+  const edges = [edge('ab', 'a', 'b')];
+
+  it.each(sharingOneEndpoint)(
+    'findEdge does not match a pair sharing one endpoint: $from to $to',
+    (endpoints) => {
+      expect(findEdge(edges, endpoints, directed)).toBeUndefined();
+    },
+  );
+
+  it.each(sharingOneEndpoint)(
+    'toggleEdge adds a pair sharing one endpoint: $from to $to',
+    (endpoints) => {
+      expect(toggleEdge(edges, endpoints, directed)).toEqual({
+        action: 'add',
+      });
+    },
+  );
+});
+
 describe('toggleEdge', () => {
   it('toggleEdge refuses a self-loop', () => {
     expect(

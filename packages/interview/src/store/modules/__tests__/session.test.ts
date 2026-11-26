@@ -452,10 +452,11 @@ function createTestStoreWithEdge(options: {
   const { edgeVariables = {}, edges = [], directed } = options;
 
   const network = createInitialNetwork();
-  // Add two nodes so we can create edges between them
+  // Three nodes, so a pair can share one endpoint with a stored edge.
   network.nodes = [
     { _uid: 'node-1', type: PERSON, [entityAttributesProperty]: {} },
     { _uid: 'node-2', type: PERSON, [entityAttributesProperty]: {} },
+    { _uid: 'node-3', type: PERSON, [entityAttributesProperty]: {} },
   ];
   network.edges = edges;
 
@@ -1003,6 +1004,30 @@ describe('toggleEdge', () => {
     );
     expect(result.payload).toEqual(deleteEdge('edge-1'));
   });
+
+  it.each([
+    ['undirected', undefined],
+    ['directed', true as const],
+  ])(
+    'toggleEdge adds, and does not remove, an edge sharing one endpoint with a stored %s edge',
+    async (_description, directed) => {
+      const store = createTestStoreWithEdge({ edges: [existing], directed });
+      for (const [from, to] of [
+        ['node-1', 'node-3'],
+        ['node-3', 'node-2'],
+        ['node-2', 'node-3'],
+        ['node-3', 'node-1'],
+      ] as const) {
+        const result = await store.dispatch(
+          toggleEdge({ type: EDGE_TYPE, from, to, currentStep: 0 }),
+        );
+        expect(result.payload).toMatchObject({
+          type: 'NETWORK/ADD_EDGE/fulfilled',
+          payload: { from, to, type: EDGE_TYPE },
+        });
+      }
+    },
+  );
 
   it('toggleEdge refuses a self-loop', async () => {
     const store = createTestStoreWithEdge({});
