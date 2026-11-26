@@ -7,10 +7,10 @@ import {
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import {
   FormSchema,
-  nodeStageSubjectFor,
   nameGeneratorPromptSchema,
   panelsSchema,
 } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { localizedMessage, nonBlankText } from '../localized-string.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';
 import { baseStageSchema } from './base.ts';

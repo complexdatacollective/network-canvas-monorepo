@@ -4,9 +4,9 @@ import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { canvasBehavioursSchema } from '../common/behaviours.ts';
 import {
   imageOrCirclesBackgroundSchema,
-  nodeStageSubjectFor,
   sociogramPromptSchema,
 } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { FilterSchema } from '../filters/index.ts';
 import { baseStageSchema } from './base.ts';
 

@@ -34,7 +34,7 @@ const codebook = {
   },
 };
 
-const subject = { entity: 'node', type: 'person' };
+const subject = { entity: 'node', types: ['person'] };
 
 const withStages = (stages: unknown[]) =>
   ({

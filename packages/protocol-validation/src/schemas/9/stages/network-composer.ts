@@ -5,9 +5,9 @@ import { findDuplicateValue } from '../../../utils/validation-helpers.ts';
 import {
   EdgeStageSubjectSchema,
   imageOrCirclesBackgroundSchema,
-  nodeStageSubjectFor,
   uniqueFormFieldVariables,
 } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { protocolObjectId } from '../protocol-object-id.ts';

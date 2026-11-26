@@ -27,7 +27,7 @@ export type NodeSubjectStageType =
   | 'Geospatial'
   | 'FamilyPedigree';
 
-export type NodeTypeCapability = 'single' | 'several';
+type NodeTypeCapability = 'single' | 'several';
 
 // How many node types each stage type with a node subject accepts. An entry
 // is raised to 'several' as that stage learns to run more than one.

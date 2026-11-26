@@ -6,10 +6,8 @@ import {
 } from '../../../localization/messageArguments.ts';
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { assetReference } from '../asset-reference.ts';
-import {
-  nodeStageSubjectFor,
-  nameGeneratorPromptSchema,
-} from '../common/index.ts';
+import { nameGeneratorPromptSchema } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { DataSourceSortOrderSchema } from '../filters/index.ts';
 import {

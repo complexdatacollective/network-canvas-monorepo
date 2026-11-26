@@ -2,10 +2,8 @@ import { z } from 'zod';
 
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { canvasBehavioursSchema } from '../common/behaviours.ts';
-import {
-  imageOrCirclesBackgroundSchema,
-  nodeStageSubjectFor,
-} from '../common/index.ts';
+import { imageOrCirclesBackgroundSchema } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import { FilterSchema } from '../filters/index.ts';

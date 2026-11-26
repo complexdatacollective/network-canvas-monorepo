@@ -1,10 +1,8 @@
 import { z } from 'zod';
 
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
-import {
-  nodeStageSubjectFor,
-  tieStrengthCensusPromptSchema,
-} from '../common/index.ts';
+import { tieStrengthCensusPromptSchema } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { FilterSchema } from '../filters/index.ts';
 import { baseStageSchema } from './base.ts';
 

@@ -3,10 +3,8 @@ import { z } from 'zod';
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
 import { assetReference } from '../asset-reference.ts';
 import { ColorReferenceSchema } from '../color-reference.ts';
-import {
-  geospatialPromptSchema,
-  nodeStageSubjectFor,
-} from '../common/index.ts';
+import { geospatialPromptSchema } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { FilterSchema } from '../filters/index.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';

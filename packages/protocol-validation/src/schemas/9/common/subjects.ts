@@ -61,8 +61,6 @@ export const StageSubjectSchema = z.union([
   EdgeStageSubjectSchema,
 ]);
 
-export type NodeStageSubject = z.infer<typeof NodeStageSubjectSchema>;
-
 export type StageSubject = z.infer<typeof StageSubjectSchema>;
 
 /**

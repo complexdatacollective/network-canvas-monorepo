@@ -503,6 +503,10 @@ export {
   getStageNodeTypes,
 } from './schemas/9/stage-capabilities.ts';
 export {
+  type ResolvedSubject,
+  resolveSubjectValue,
+} from './schemas/9/common/subjects.ts';
+export {
   findRosterCharacterProblems,
   type RosterCharacterProblem,
   type RosterCharacterReport,

@@ -1,11 +1,8 @@
 import { z } from 'zod';
 
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
-import {
-  nodeStageSubjectFor,
-  nameGeneratorPromptSchema,
-  panelsSchema,
-} from '../common/index.ts';
+import { nameGeneratorPromptSchema, panelsSchema } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { localizedMessage, nonBlankText } from '../localized-string.ts';
 import { SUBJECT_ARGUMENTS } from '../stage-wording/subject.ts';

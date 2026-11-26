@@ -6,7 +6,8 @@ import {
   type RequiredPlacements,
 } from '../../../localization/messageArguments.ts';
 import { withUniqueObjectIds } from '../../../utils/protocolObjectIds.ts';
-import { TitlelessFormSchema, nodeStageSubjectFor } from '../common/index.ts';
+import { TitlelessFormSchema } from '../common/index.ts';
+import { nodeStageSubjectFor } from '../common/subjects.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
 import { entityTypeReference } from '../entity-type-reference.ts';
 import {
