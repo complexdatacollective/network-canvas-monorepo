@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { EdgeStageSubjectSchema } from '../common/subjects.ts';
+import type { DynamicValueSite } from '../dynamic-values.ts';
 import {
   entityAttributeReference,
   getEntityAttributeReferenceDescriptor,
@@ -43,10 +44,12 @@ const SINGLE_TYPE_ONLY_FIELDS: Partial<
 
 const DYNAMIC_VALUES_SUFFIX = ' (dynamic values)';
 
-// Sites whose dynamic values can be about the entity the stage is on. Text
+// Sites whose dynamic values cannot be about the entity the stage is on: text
 // about the stage as a whole shows only the participant, and a node label
-// sits on no stage.
-const SUBJECT_DYNAMIC_VALUE_SITES = new Set(['prompt', 'formField']);
+// sits on no stage. Every other site counts, so a new kind of site is checked
+// until it is added here.
+const STAGE_INDEPENDENT_DYNAMIC_VALUE_SITES: ReadonlySet<DynamicValueSite> =
+  new Set<DynamicValueSite>(['stageText', 'nodeLabel']);
 
 const unwrapToObject = (schema: unknown): z.ZodObject | undefined => {
   if (schema instanceof z.ZodObject) return schema;
@@ -97,7 +100,10 @@ const unanchoredStageSubjectReferences = (
         found.add(path.join('.'));
       }
       const site = getLocalizedStringDescriptor(node)?.dynamicValues;
-      if (site !== undefined && SUBJECT_DYNAMIC_VALUE_SITES.has(site)) {
+      if (
+        site !== undefined &&
+        !STAGE_INDEPENDENT_DYNAMIC_VALUE_SITES.has(site)
+      ) {
         found.add(`${path.join('.')}${DYNAMIC_VALUES_SUFFIX}`);
       }
     }
@@ -173,15 +179,78 @@ const issuePathsOf = (protocol: unknown): string[] => {
     : result.error.issues.map((issue) => issue.path.join('.'));
 };
 
-// The listed fields whose protocol validation does not reject at the field.
+type Fields = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is Fields =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const stageAt = (protocol: unknown, index: number): Fields | undefined => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return undefined;
+  const stage: unknown = protocol.stages[index];
+  return isRecord(stage) ? stage : undefined;
+};
+
+const nodeTypesOf = (stage: Fields): unknown[] =>
+  isRecord(stage.subject) &&
+  stage.subject.entity === 'node' &&
+  Array.isArray(stage.subject.types)
+    ? stage.subject.types
+    : [];
+
+// The same protocol with the stage's types cut to the first one.
+const withFirstTypeOnly = (protocol: unknown, index: number): unknown => {
+  const copy = structuredClone(protocol);
+  const stage = stageAt(copy, index);
+  if (stage && isRecord(stage.subject)) {
+    stage.subject.types = nodeTypesOf(stage).slice(0, 1);
+  }
+  return copy;
+};
+
+// The listed field an issue path sits in, with array indexes as `[]`.
+const fieldOfIssuePath = (path: readonly (string | number)[]) =>
+  path.map((segment) => (typeof segment === 'number' ? '[]' : segment));
+
+const fieldPathOf = (field: string) =>
+  field.endsWith(DYNAMIC_VALUES_SUFFIX)
+    ? field.slice(0, -DYNAMIC_VALUES_SUFFIX.length)
+    : field;
+
+// An entry proves its field only when its protocol sets that field on a stage
+// of the listed type that lists two node types, validation reports an issue
+// in that field, and the issue goes away when the stage lists only its first
+// type, so the second type is what validation refuses.
+const provesField = (
+  type: string,
+  { field, rejects, issuePath }: SingleTypeOnlyField,
+  issuePathsFor: (protocol: unknown) => string[],
+): boolean => {
+  const [root, index, ...rest] = issuePath;
+  if (root !== 'stages' || typeof index !== 'number') return false;
+  const restField = fieldOfIssuePath(rest).join('.');
+  const fieldPath = fieldPathOf(field);
+  if (restField !== fieldPath && !restField.startsWith(`${fieldPath}.`)) {
+    return false;
+  }
+  const protocol = rejects();
+  const stage = stageAt(protocol, index);
+  if (stage?.type !== type) return false;
+  if (new Set(nodeTypesOf(stage)).size < 2) return false;
+  const at = issuePath.join('.');
+  return (
+    issuePathsFor(protocol).includes(at) &&
+    !issuePathsFor(withFirstTypeOnly(protocol, index)).includes(at)
+  );
+};
+
+// The listed fields that their entry does not prove validation rejects.
 const unprovenListedFields = (
   listed: Partial<Record<string, readonly SingleTypeOnlyField[]>>,
+  issuePathsFor: (protocol: unknown) => string[] = issuePathsOf,
 ): string[] =>
   Object.entries(listed).flatMap(([type, fields]) =>
-    (fields ?? []).flatMap(({ field, rejects, issuePath }) =>
-      issuePathsOf(rejects()).includes(issuePath.join('.'))
-        ? []
-        : [`${type} ${field}`],
+    (fields ?? []).flatMap((entry) =>
+      provesField(type, entry, issuePathsFor) ? [] : [`${type} ${entry.field}`],
     ),
   );
 
@@ -222,18 +291,158 @@ describe('stage-subject references on stages that run several node types', () =>
     expect(unprovenListedFields(SINGLE_TYPE_ONLY_FIELDS)).toEqual([]);
   });
 
-  it('reports a listed field whose protocol validation accepts', () => {
-    expect(
-      unprovenListedFields({
-        Sociogram: [
+  describe('proof of a listed field', () => {
+    const SOCIOGRAM = 6;
+    const PLACE = 'd2904722-c463-5fe3-8f6d-032114d8ed55';
+    const HIGHLIGHT_PATH = [
+      'stages',
+      SOCIOGRAM,
+      'prompts',
+      1,
+      'highlight',
+      'variable',
+    ] as const;
+    const HIGHLIGHT = 'prompts.[].highlight.variable';
+
+    const sociogramWith = (change: (stage: Fields) => void) => () => {
+      const protocol = loadAllInterfacesFixture();
+      const stage = stageAt(protocol, SOCIOGRAM);
+      if (stage?.type !== 'Sociogram') throw new Error('No Sociogram stage');
+      change(stage);
+      return protocol;
+    };
+
+    const twoTypes = sociogramWith((stage) => {
+      stage.subject = {
+        entity: 'node',
+        types: [...nodeTypesOf(stage), PLACE],
+      };
+    });
+
+    const unknownHighlightVariable = (stage: Fields) => {
+      const prompt: unknown = Array.isArray(stage.prompts)
+        ? stage.prompts[1]
+        : undefined;
+      if (!isRecord(prompt) || !isRecord(prompt.highlight)) {
+        throw new Error('No highlight on the second prompt');
+      }
+      prompt.highlight.variable = 'no-such-variable';
+    };
+
+    // Stands in for a validation rule that refuses the highlight on a stage
+    // listing two types, which no stage has while every one runs one type.
+    const refusesHighlightOnTwoTypes = (protocol: unknown) => {
+      const stage = stageAt(protocol, SOCIOGRAM);
+      return stage && nodeTypesOf(stage).length >= 2
+        ? [HIGHLIGHT_PATH.join('.')]
+        : [];
+    };
+
+    it('accepts an entry whose second type is what validation refuses', () => {
+      expect(
+        unprovenListedFields(
           {
-            field: 'prompts.[].highlight.variable',
-            rejects: loadAllInterfacesFixture,
-            issuePath: ['stages', 0, 'prompts', 0, 'highlight', 'variable'],
+            Sociogram: [
+              {
+                field: HIGHLIGHT,
+                rejects: twoTypes,
+                issuePath: HIGHLIGHT_PATH,
+              },
+            ],
           },
-        ],
-      }),
-    ).toEqual(['Sociogram prompts.[].highlight.variable']);
+          refusesHighlightOnTwoTypes,
+        ),
+      ).toEqual([]);
+    });
+
+    it('reports an entry whose protocol validation accepts', () => {
+      expect(
+        unprovenListedFields({
+          Sociogram: [
+            {
+              field: HIGHLIGHT,
+              rejects: loadAllInterfacesFixture,
+              issuePath: ['stages', 0, 'prompts', 0, 'highlight', 'variable'],
+            },
+          ],
+        }),
+      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+    });
+
+    it('reports an entry whose stage lists one type', () => {
+      const rejects = sociogramWith(unknownHighlightVariable);
+      expect(issuePathsOf(rejects())).toContain(HIGHLIGHT_PATH.join('.'));
+      expect(
+        unprovenListedFields({
+          Sociogram: [{ field: HIGHLIGHT, rejects, issuePath: HIGHLIGHT_PATH }],
+        }),
+      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+    });
+
+    it('reports an entry whose stage is of another type', () => {
+      expect(
+        unprovenListedFields(
+          {
+            Narrative: [
+              {
+                field: HIGHLIGHT,
+                rejects: twoTypes,
+                issuePath: HIGHLIGHT_PATH,
+              },
+            ],
+          },
+          refusesHighlightOnTwoTypes,
+        ),
+      ).toEqual([`Narrative ${HIGHLIGHT}`]);
+    });
+
+    it('reports an entry whose issue path is in another field', () => {
+      expect(
+        unprovenListedFields(
+          {
+            Sociogram: [
+              {
+                field: 'prompts.[].edges.create',
+                rejects: twoTypes,
+                issuePath: HIGHLIGHT_PATH,
+              },
+            ],
+          },
+          refusesHighlightOnTwoTypes,
+        ),
+      ).toEqual(['Sociogram prompts.[].edges.create']);
+    });
+
+    it('reports an entry that validation refuses whatever the stage lists', () => {
+      expect(
+        unprovenListedFields(
+          {
+            Sociogram: [
+              {
+                field: HIGHLIGHT,
+                rejects: twoTypes,
+                issuePath: HIGHLIGHT_PATH,
+              },
+            ],
+          },
+          () => [HIGHLIGHT_PATH.join('.')],
+        ),
+      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+    });
+  });
+
+  it('fails when a form whose fields show dynamic values is raised to several types', () => {
+    const before = STAGE_NODE_TYPE_CAPABILITY.AlterForm;
+    try {
+      STAGE_NODE_TYPE_CAPABILITY.AlterForm = 'several';
+      expect(multiTypeProblems().AlterForm).toEqual(
+        expect.arrayContaining([
+          `form.fields.[].prompt${DYNAMIC_VALUES_SUFFIX}`,
+        ]),
+      );
+    } finally {
+      STAGE_NODE_TYPE_CAPABILITY.AlterForm = before;
+    }
   });
 
   it('fails when a stage with an unlisted stage-subject reference is raised to several types', () => {

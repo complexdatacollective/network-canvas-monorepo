@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolSchemaV9 } from '../schema.ts';
 import {
@@ -53,12 +53,41 @@ const issuesFor = (protocol: Fields) => {
   }));
 };
 
-const withSubjectTypes = (stageIndex: number, types: unknown) => {
+const withSubject = (stageIndex: number, subject: unknown) => {
   const protocol = loadFixture();
   const stage = stagesOf(protocol)[stageIndex];
   if (!stage) throw new Error(`No stage at ${stageIndex}`);
-  stage.subject = { entity: 'node', types };
+  stage.subject = subject;
   return protocol;
+};
+
+const withSubjectTypes = (stageIndex: number, types: unknown) =>
+  withSubject(stageIndex, { entity: 'node', types });
+
+// The protocol schema built with one stage type's capability raised to
+// 'several', as the stage modules read the table when they are first loaded.
+const protocolSchemaRaising = async (stageType: string) => {
+  vi.resetModules();
+  vi.doMock('../stage-capabilities.ts', async (importOriginal) => {
+    const actual =
+      await importOriginal<typeof import('../stage-capabilities.ts')>();
+    return {
+      ...actual,
+      STAGE_NODE_TYPE_CAPABILITY: {
+        ...actual.STAGE_NODE_TYPE_CAPABILITY,
+        [stageType]: 'several',
+      },
+    };
+  });
+  const { ProtocolSchemaV9: schema } = await import('../schema.ts');
+  return (protocol: Fields) => {
+    const result = schema.safeParse(protocol);
+    if (result.success) return [];
+    return result.error.issues.map((issue) => ({
+      path: issue.path.join('.'),
+      message: issue.message,
+    }));
+  };
 };
 
 describe('node stage subjects', () => {
@@ -113,5 +142,67 @@ describe('node stage subjects', () => {
         message: 'Stage subject is not defined in the codebook',
       });
     }
+  });
+
+  it('rejects a schema 8 type key on a node subject', () => {
+    const fixture = loadFixture();
+    const [first, second] = nodeTypeIds(fixture);
+    for (const { index } of nodeSubjectStageIndexes(fixture)) {
+      for (const subject of [
+        { entity: 'node', type: first },
+        { entity: 'node', types: [first], type: second },
+      ]) {
+        expect(
+          issuesFor(withSubject(index, subject)),
+          JSON.stringify(subject),
+        ).toContainEqual(
+          expect.objectContaining({ path: `stages.${index}.subject` }),
+        );
+      }
+    }
+  });
+
+  describe('a stage type raised to several types', () => {
+    afterEach(() => {
+      vi.doUnmock('../stage-capabilities.ts');
+      vi.resetModules();
+    });
+
+    it('accepts several types on that stage type alone', async () => {
+      const fixture = loadFixture();
+      const types = nodeTypeIds(fixture).slice(0, 2);
+      const stages = nodeSubjectStageIndexes(fixture);
+      for (const raised of Object.keys(STAGE_NODE_TYPE_CAPABILITY)) {
+        const issuesWhenRaised = await protocolSchemaRaising(raised);
+        for (const { index, type } of stages) {
+          const issues = issuesWhenRaised(withSubjectTypes(index, types));
+          const capped = expect.objectContaining({
+            path: `stages.${index}.subject.types`,
+          });
+          if (type === raised) {
+            expect(issues, `${type} raised`).not.toContainEqual(capped);
+          } else {
+            expect(issues, `${type} while ${raised} is raised`).toContainEqual(
+              capped,
+            );
+          }
+        }
+      }
+    });
+
+    it('rejects an unknown second type', async () => {
+      const fixture = loadFixture();
+      const [known] = nodeTypeIds(fixture);
+      const { index } = nodeSubjectStageIndexes(fixture).find(
+        ({ type }) => type === 'Sociogram',
+      ) ?? { index: -1 };
+      const issuesWhenRaised = await protocolSchemaRaising('Sociogram');
+      expect(
+        issuesWhenRaised(withSubjectTypes(index, [known, 'no-such-type'])),
+      ).toContainEqual({
+        path: `stages.${index}.subject`,
+        message: 'Stage subject is not defined in the codebook',
+      });
+    });
   });
 });

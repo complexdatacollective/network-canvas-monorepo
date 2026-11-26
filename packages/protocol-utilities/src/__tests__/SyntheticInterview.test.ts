@@ -433,6 +433,51 @@ describe('SyntheticInterview', () => {
       ]);
     });
 
+    it('generates initial nodes for each type a stage lists, in the order it lists them', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const place = si.addNodeType({ name: 'Place' });
+      const subject = { entity: 'node' as const, types: [person.id, place.id] };
+      si.addStage('NameGenerator', {
+        subject,
+        initialNodes: { count: { [place.id]: 2, [person.id]: 1 } },
+      });
+
+      expect(si.getNetwork().nodes.map((node) => node.type)).toEqual([
+        person.id,
+        place.id,
+        place.id,
+      ]);
+    });
+
+    it('generates no initial nodes for a listed type the count leaves out', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const place = si.addNodeType({ name: 'Place' });
+      si.addStage('NameGenerator', {
+        subject: { entity: 'node', types: [person.id, place.id] },
+        initialNodes: { count: { [place.id]: 2 } },
+      });
+
+      expect(si.getNetwork().nodes.map((node) => node.type)).toEqual([
+        place.id,
+        place.id,
+      ]);
+    });
+
+    it('refuses a single count on a stage listing several node types', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const place = si.addNodeType({ name: 'Place' });
+      expect(() => {
+        si.addStage('NameGenerator', {
+          subject: { entity: 'node', types: [person.id, place.id] },
+          initialNodes: { count: 2 },
+        });
+        si.getNetwork();
+      }).toThrow('This stage builder works with exactly one node type');
+    });
+
     it('refuses a count for a node type the stage does not list', () => {
       const si = new SyntheticInterview();
       const person = si.addNodeType({ name: 'Person' });

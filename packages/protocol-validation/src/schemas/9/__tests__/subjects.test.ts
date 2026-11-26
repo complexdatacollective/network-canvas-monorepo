@@ -67,6 +67,10 @@ describe('resolveSubjectValue', () => {
       { entity: 'node', types: PERSON },
     ],
     ['a node subject with neither field', { entity: 'node' }],
+    [
+      'a node subject with both a type and a types list',
+      { entity: 'node', types: [PERSON], type: PLACE },
+    ],
     ['an edge subject with no type', { entity: 'edge' }],
     ['an unknown entity', { entity: 'place', type: PERSON }],
     ['an array', [{ entity: 'ego' }]],

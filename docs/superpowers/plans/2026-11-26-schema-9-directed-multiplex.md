@@ -161,15 +161,19 @@ type through `isDirectedEdgeType`; stored edges never carry `directed`.
 File: `packages/protocol-validation/src/schemas/9/common/subjects.ts`.
 
 ```ts
-type NodeStageSubject = { entity: 'node'; types: string[] };   // what z.array().min(1) infers; the schema enforces non-empty
-type StageSubject = { entity: 'ego' } | NodeStageSubject | { entity: 'edge'; type: string };
+// No alias names the node arm; code that needs it writes the shape inline or
+// uses Extract<StageSubject, { entity: 'node' }>.
+type StageSubject =
+  | { entity: 'ego' }
+  | { entity: 'node'; types: string[] }   // what z.array().min(1) infers; the schema enforces non-empty
+  | { entity: 'edge'; type: string };
 type ResolvedSubject = { entity: 'ego' } | { entity: 'node'; type: string } | { entity: 'edge'; type: string };
 ```
 
 - `nodeStageSubjectFor(stageType: NodeSubjectStageType)` builds the subject schema for one stage type: `types` is a non-empty array with no duplicates (the duplicate check runs before the cap, so a capped stage still reports a repeat), and `.max(1)` when the capability table says `'single'`. Every stage's list is built from one module-level element schema, `const NODE_TYPE_ELEMENT = entityTypeReference({ entity: 'node' })`, shared with `NodeStageSubjectSchema`, so the 14 stage schemas add no tagged instance and slice 2 leaves `EXPECTED_TAGGED_FIELD_COUNT` unchanged. Each of the 14 node stages uses it. The plain `NodeStageSubjectSchema` remains for code that parses a subject without a stage type.
 - `NodeEntitySubjectSchema = z.strictObject({ entity: z.literal('node'), type: entityTypeReference({ entity: 'node' }) })`, same file: the singular node subject, the node arm of `ResolvedSubject`, used by Network Composer node entries (C11). Its tag is one new tagged instance, counted in slice 9.
 - `ResolvedSubject` replaces `StageSubject` everywhere a single resolved subject is meant: `EntityAttributeReferenceHit.subject`, `utils/referenceSubjects.ts`, `utils/validation-helpers.ts`, `dynamic-value-validation.ts`, and fresco-ui form validation (`packages/fresco-ui/src/form/validation/utils/getVariableDefinition.ts`, `utils/collectNetworkValues.ts`, `src/form/store/types.ts` `stageSubject`; the interview already passes one resolved subject per form). It is exported from `index.ts`.
-- `utils/schemaReferenceWalk.ts` `stageSubjectOf`, which runs at every object, is specified in full: an ego subject, a singular node subject (`{ entity: 'node', type }`, as on a Composer node entry) and an edge subject pass through after a guard that checks `entity` and a string `type`; a node subject with a one-element `types` list resolves to `{ entity: 'node', type: t }`; a node subject with several types resolves to `undefined`; anything else is not a subject. The unsafe cast there goes.
+- `utils/schemaReferenceWalk.ts` `stageSubjectOf`, which runs at every object, is specified in full: an ego subject, a singular node subject (`{ entity: 'node', type }`, as on a Composer node entry) and an edge subject pass through after a guard that checks `entity` and a string `type`; a node subject with a one-element `types` list resolves to `{ entity: 'node', type: t }`; a node subject with several types resolves to `undefined`; a node subject carrying both `type` and `types` resolves to `undefined`; anything else is not a subject. The unsafe cast there goes.
 - `stage-subject-resolution.ts` `stringAt` accepts numeric path segments into arrays; NarrativePedigree's declared path becomes `['subject', 'types', 0]`.
 
 File: `packages/protocol-validation/src/schemas/9/stage-capabilities.ts`.
@@ -187,7 +191,9 @@ type NodeSubjectStageType =
   | 'CategoricalBin' | 'OrdinalBin' | 'AlterForm' | 'Geospatial' | 'FamilyPedigree';
 
 const STAGE_NODE_TYPE_CAPABILITY: Record<NodeSubjectStageType, 'single' | 'several'>;
-nodeTypeCapabilityOf(stageType: StageType): 'single' | 'several' | undefined;
+// Takes a string: the guard test passes stage types read from the stage
+// schemas' type literals, which are strings.
+nodeTypeCapabilityOf(stageType: string): 'single' | 'several' | undefined;
 
 type EdgeStageType =
   | 'Sociogram' | 'Narrative' | 'DyadCensus' | 'OneToManyDyadCensus' | 'TieStrengthCensus'
@@ -264,10 +270,16 @@ schema sits inside an object that carries its own single-typed `subject`
 the test naming paths such as `convexHullVariable`,
 `presets[].groupVariable`, census piped-text roles), and for each listed field
 a fixture with two types proves validation rejects it. Each listed entry
-carries that fixture and the issue path validation must report, and the test
-fails an entry whose fixture validates. Besides attribute references, the
-walk reports text whose dynamic values can be about the stage's node (a
-`prompt` or `formField` dynamic-value site) as `<path> (dynamic values)`. With every stage
+carries that fixture and the issue path validation must report. An entry
+proves its field only when the issue path is under `stages`, lies in the listed
+field, and names a stage of the entry's stage type whose subject lists two or
+more distinct node types; validation reports an issue at that path; and the
+same fixture with the stage's list cut to its first type reports none there,
+so the second type is what validation refuses. Self-checks cover each of those
+conditions. Besides attribute references, the walk reports text whose dynamic
+values can be about the stage's node as `<path> (dynamic values)`: every
+dynamic-value site except `stageText` and `nodeLabel`, so a new kind of site is
+checked until it is classified. With every stage
 `'single'` the test is vacuous in slice 2 apart from a self-check that it fails
 when an entry is raised; each later slice makes it real for its stage.
 
@@ -384,7 +396,7 @@ type SociogramHighlightPrompt = SociogramPromptBase & { task: 'highlight'; highl
 type SociogramConnectPrompt = Omit<SociogramPromptBase, 'edges'> & { task: 'connect'; edges: { create: string; display?: string[] } };
 type SociogramPrompt = SociogramLayoutPrompt | SociogramHighlightPrompt | SociogramConnectPrompt;
 
-type SociogramStage = { …base; subject: NodeStageSubject; layout: string; prompts: SociogramPrompt[]; behaviours?: { automaticLayout?: boolean }; background; … };
+type SociogramStage = { …base; subject: Extract<StageSubject, { entity: 'node' }>; layout: string; prompts: SociogramPrompt[]; behaviours?: { automaticLayout?: boolean }; background; … };
 ```
 
 - Highlight attribute rows are built by one helper in `common/prompts.ts`, `highlightAttributeSchema({ writes }: { writes: boolean })`, returning `z.strictObject({ id: protocolObjectId('highlightAttribute'), type: entityTypeReference({ entity: 'node' }), variable })` where `variable` is `entityAttributeReference({ subject: { sibling: 'type', entity: 'node' }, requireType: ['boolean'] })`, plus `usage: 'unvalidatedAttribute'` only when `writes` is true. The Sociogram highlight task uses `writes: true` (the participant sets the variable); the Narrative highlight entry uses `writes: false` (it only displays it, and a display must stay out of the writer set that `findVariableRoleConflicts` and `findExclusiveVariableConflicts` key on). Both are typed `HighlightAttribute`. New object-id kind `'highlightAttribute'`.
@@ -455,7 +467,7 @@ type ComposerNodeEntry = {
   quickAdd: string;                // entityAttributeReference({ subject: 'stageSubject', usage: 'validatedAttribute' })
   form?: ComposerForm;
 };
-type NetworkComposerStage = { …base; subject: NodeStageSubject; nodes: [ComposerNodeEntry, ...ComposerNodeEntry[]];
+type NetworkComposerStage = { …base; subject: Extract<StageSubject, { entity: 'node' }>; nodes: [ComposerNodeEntry, ...ComposerNodeEntry[]];
   layout: string; convexHullVariable?: string; background; behaviours?: { automaticLayout?: boolean }; edges?: ComposerEdgeEntry[] };
 ```
 

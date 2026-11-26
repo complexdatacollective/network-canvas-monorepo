@@ -79,7 +79,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * Reads raw protocol data as one resolved subject. A singular node or edge
  * subject and an ego subject pass through; a node subject listing exactly one
  * type resolves to that type; one listing several resolves to nothing, since
- * no single type answers for the stage. Anything else is not a subject.
+ * no single type answers for the stage. A node subject with both a `type`
+ * and a `types` list, or anything else, is not a subject.
  */
 export const resolveSubjectValue = (
   value: unknown,
@@ -92,9 +93,10 @@ export const resolveSubjectValue = (
       : undefined;
   }
   if (value.entity !== 'node') return undefined;
-  if (typeof value.type === 'string')
-    return { entity: 'node', type: value.type };
-  const { types } = value;
+  const { type, types } = value;
+  // Both forms at once is neither a singular subject nor a stage's list.
+  if (type !== undefined && types !== undefined) return undefined;
+  if (typeof type === 'string') return { entity: 'node', type };
   if (
     Array.isArray(types) &&
     types.length === 1 &&

@@ -275,6 +275,63 @@ describe('buildStageAvailabilityMap', () => {
       ).toEqual(['available', 'available']);
     });
 
+    describe('a stage listing several node types', () => {
+      const PET = testTypeId('pet');
+      const peopleAndPets: StageSubject = {
+        entity: 'node',
+        types: [PERSON, PET],
+      };
+      const severalTypeStage = (id: string, type: string) => ({
+        id,
+        type,
+        subject: peopleAndPets,
+      });
+
+      it('keeps a form whose only nodes are of its second type', () => {
+        const stages = [severalTypeStage('form', 'AlterForm'), finishStage()];
+
+        expect(kinds(stages, withEntities([node('rex', PET)]))).toEqual([
+          'available',
+          'available',
+        ]);
+        expect(
+          kinds(stages, withEntities([node('home', testTypeId('place'))])),
+        ).toEqual(['empty', 'available']);
+      });
+
+      it('counts nodes of every listed type towards a census pair', () => {
+        const stages = [severalTypeStage('dyads', 'DyadCensus'), finishStage()];
+
+        expect(
+          kinds(stages, withEntities([node('alex'), node('rex', PET)])),
+        ).toEqual(['available', 'available']);
+        expect(kinds(stages, withEntities([node('rex', PET)]))).toEqual([
+          'empty',
+          'available',
+        ]);
+      });
+
+      it('shows a Narrative whose only placed node is of its second type', () => {
+        const stages = [
+          {
+            ...severalTypeStage('story', 'Narrative'),
+            presets: [{ layoutVariable: CLOSE }],
+          },
+          finishStage(),
+        ];
+
+        expect(
+          kinds(
+            stages,
+            withEntities([
+              node('alex'),
+              node('rex', PET, { [CLOSE]: { x: 0.5, y: 0.5 } }),
+            ]),
+          ),
+        ).toEqual(['available', 'available']);
+      });
+    });
+
     it('takes a census off the route until there is a pair to ask about', () => {
       const stages = [
         nodeStage('dyads', 'DyadCensus'),
