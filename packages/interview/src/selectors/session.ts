@@ -126,7 +126,7 @@ export const getStageSubject = createSelector(
 );
 
 /** The node types the current stage runs; empty for a stage with none. */
-export const getStageNodeTypes = createSelector(getCurrentStage, (stage) =>
+const getStageNodeTypes = createSelector(getCurrentStage, (stage) =>
   stage ? getStageNodeTypesOf(stage) : [],
 );
 

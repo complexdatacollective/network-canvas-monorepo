@@ -31,7 +31,7 @@ export function draftSubjectNodeTypes(
  * The node types this stage is currently configured against, read from the
  * live draft. `undefined` means none chosen yet.
  */
-export function useStageNodeTypes(): readonly string[] | undefined {
+function useStageNodeTypes(): readonly string[] | undefined {
   const value = useStageValue('subject');
   return useMemo(() => draftSubjectNodeTypes(value), [value]);
 }
@@ -40,7 +40,7 @@ export function useStageNodeTypes(): readonly string[] | undefined {
  * The stage's node type when its draft subject lists exactly one, which every
  * stage does while each stage type runs a single node type.
  */
-export function useSingleStageNodeType(): string | undefined {
+function useSingleStageNodeType(): string | undefined {
   const types = useStageNodeTypes();
   return types?.length === 1 ? types[0] : undefined;
 }

@@ -916,7 +916,7 @@ export function entitySubject(
  * The one type a subject names, for a picker that offers one. A node subject
  * listing several types names none.
  */
-export function pickedSubjectType(
+function pickedSubjectType(
   subject: EntitySubject | undefined,
 ): string | undefined {
   if (subject?.entity === 'edge') return subject.type;
