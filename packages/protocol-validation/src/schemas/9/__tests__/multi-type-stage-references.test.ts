@@ -254,6 +254,24 @@ const unprovenListedFields = (
     ),
   );
 
+// The listed entries on a stage type that does not run several node types, or
+// that name a field which is not an unanchored stage-subject reference of it.
+const misplacedListedFields = (
+  listed: Partial<Record<string, readonly SingleTypeOnlyField[]>>,
+): string[] => {
+  const schemas = stageSchemasByType();
+  return Object.entries(listed).flatMap(([type, fields]) => {
+    const schema = schemas.get(type);
+    const references =
+      schema && nodeTypeCapabilityOf(type) === 'several'
+        ? unanchoredStageSubjectReferences(schema)
+        : [];
+    return (fields ?? []).flatMap(({ field }) =>
+      references.includes(field) ? [] : [`${type} ${field}`],
+    );
+  });
+};
+
 const loadAllInterfacesFixture = (): unknown =>
   JSON.parse(
     readFileSync(
@@ -275,16 +293,41 @@ describe('stage-subject references on stages that run several node types', () =>
   });
 
   it('lists only fields that exist, on stages that run several node types', () => {
-    const schemas = stageSchemasByType();
-    for (const [type, fields] of Object.entries(SINGLE_TYPE_ONLY_FIELDS)) {
-      expect(nodeTypeCapabilityOf(type), type).toBe('several');
-      const schema = schemas.get(type);
-      if (!schema) throw new Error(`No stage type ${type}`);
-      const references = unanchoredStageSubjectReferences(schema);
-      for (const { field } of fields ?? []) {
-        expect(references, `${type} ${field}`).toContain(field);
+    expect(misplacedListedFields(SINGLE_TYPE_ONLY_FIELDS)).toEqual([]);
+  });
+
+  describe('placement of a listed field', () => {
+    const HIGHLIGHT = 'prompts.[].highlight.variable';
+
+    it('reports an entry for a stage type that runs one node type', () => {
+      expect(nodeTypeCapabilityOf('Sociogram')).toBe('single');
+      expect(
+        misplacedListedFields({
+          Sociogram: [{ field: HIGHLIGHT, rejects: () => null, issuePath: [] }],
+        }),
+      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+    });
+
+    it('reports an entry naming a field that is not a stage-subject reference', () => {
+      const before = STAGE_NODE_TYPE_CAPABILITY.Sociogram;
+      try {
+        STAGE_NODE_TYPE_CAPABILITY.Sociogram = 'several';
+        expect(
+          misplacedListedFields({
+            Sociogram: [
+              { field: HIGHLIGHT, rejects: () => null, issuePath: [] },
+              {
+                field: 'prompts.[].no-such-field',
+                rejects: () => null,
+                issuePath: [],
+              },
+            ],
+          }),
+        ).toEqual(['Sociogram prompts.[].no-such-field']);
+      } finally {
+        STAGE_NODE_TYPE_CAPABILITY.Sociogram = before;
       }
-    }
+    });
   });
 
   it('validation rejects each listed field on a stage listing two node types', () => {
@@ -356,16 +399,34 @@ describe('stage-subject references on stages that run several node types', () =>
     });
 
     it('reports an entry whose protocol validation accepts', () => {
+      expect(issuePathsOf(twoTypes())).not.toContain(HIGHLIGHT_PATH.join('.'));
       expect(
         unprovenListedFields({
           Sociogram: [
             {
               field: HIGHLIGHT,
-              rejects: loadAllInterfacesFixture,
-              issuePath: ['stages', 0, 'prompts', 0, 'highlight', 'variable'],
+              rejects: twoTypes,
+              issuePath: HIGHLIGHT_PATH,
             },
           ],
         }),
+      ).toEqual([`Sociogram ${HIGHLIGHT}`]);
+    });
+
+    it('reports an entry whose issue path points at a stage of another type', () => {
+      expect(
+        unprovenListedFields(
+          {
+            Sociogram: [
+              {
+                field: HIGHLIGHT,
+                rejects: loadAllInterfacesFixture,
+                issuePath: ['stages', 0, 'prompts', 0, 'highlight', 'variable'],
+              },
+            ],
+          },
+          () => ['stages.0.prompts.0.highlight.variable'],
+        ),
       ).toEqual([`Sociogram ${HIGHLIGHT}`]);
     });
 
