@@ -15,8 +15,9 @@ import {
 import { testId, testTypeId, testVariableId } from '../../../__tests__/testIds';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
+import type { ProtocolPayload } from '../../../contract/types';
 import protocol from '../../../store/modules/protocol';
-import session from '../../../store/modules/session';
+import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { TestInterviewAssets } from '../../__tests__/TestInterviewAssets';
@@ -45,7 +46,7 @@ const NODE_TYPE = testTypeId('person');
 const EDGE_TYPE = testTypeId('friendship');
 const NAME_VAR = testVariableId('name');
 
-const stage = {
+const stage: StageProps<'OneToManyDyadCensus'>['stage'] = {
   id: testId('otm1'),
   type: 'OneToManyDyadCensus',
   label: { en: 'One to Many' },
@@ -56,7 +57,7 @@ const stage = {
   ],
 };
 
-const codebookWith = (directed: boolean) => ({
+const codebookWith = (directed: boolean): ProtocolPayload['codebook'] => ({
   node: {
     [NODE_TYPE]: {
       name: 'Person',
@@ -76,7 +77,7 @@ const codebookWith = (directed: boolean) => ({
   ego: { variables: {} },
 });
 
-const nodes = ['Alice', 'Bob'].map((name, index) => ({
+const nodes: NcNode[] = ['Alice', 'Bob'].map((name, index) => ({
   [entityPrimaryKeyProperty]: `n${index + 1}`,
   type: NODE_TYPE,
   [entityAttributesProperty]: { [NAME_VAR]: name },
@@ -91,23 +92,36 @@ const edge = (from: string, to: string): NcEdge => ({
 });
 
 function renderInterface(edges: NcEdge[], directed: boolean) {
+  const sessionState: SessionState = {
+    id: 's',
+    startTime: '2024-01-01T00:00:00.000Z',
+    finishTime: null,
+    exportTime: null,
+    lastUpdated: '2024-01-01T00:00:00.000Z',
+    promptIndex: 0,
+    network: {
+      nodes,
+      edges,
+      ego: {
+        [entityPrimaryKeyProperty]: 'ego',
+        [entityAttributesProperty]: {},
+      },
+    },
+  };
+  const protocolPayload: ProtocolPayload = {
+    id: 'p',
+    hash: 'h',
+    importedAt: '2024-01-01T00:00:00.000Z',
+    assets: [],
+    name: 'Test protocol',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    codebook: codebookWith(directed),
+    stages: [stage],
+  };
   const store = configureStore({
     reducer: { session, protocol, ui },
-    preloadedState: {
-      session: {
-        id: 's',
-        promptIndex: 0,
-        network: { nodes, edges, ego: { [entityAttributesProperty]: {} } },
-      } as never,
-      protocol: {
-        id: 'p',
-        hash: 'h',
-        schemaVersion: 9,
-        localization: { defaultLocale: 'en', locales: ['en'] },
-        codebook: codebookWith(directed),
-        stages: [stage],
-      } as never,
-    },
+    preloadedState: { session: sessionState, protocol: protocolPayload },
     middleware: (g) => g({ serializableCheck: false }),
   });
 
@@ -118,7 +132,7 @@ function renderInterface(edges: NcEdge[], directed: boolean) {
           <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
             <StageMetadataContext.Provider value={() => undefined}>
               <OneToManyDyadCensus
-                stage={stage as StageProps<'OneToManyDyadCensus'>['stage']}
+                stage={stage}
                 getNavigationHelpers={() => ({
                   moveForward: vi.fn(),
                   moveBackward: vi.fn(),

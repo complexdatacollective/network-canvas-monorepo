@@ -89,6 +89,21 @@ const codebook = {
   ego: { variables: {} },
 };
 
+const directedCodebook = {
+  ...codebook,
+  edge: { [EDGE_TYPE]: { ...codebook.edge[EDGE_TYPE], directed: true } },
+};
+
+// The pair (n1, n2) joined by an edge drawn the other way, as an earlier
+// Sociogram may have drawn it.
+const reverseEdge: NcEdge = {
+  [entityPrimaryKeyProperty]: 'e-n2-n1',
+  type: EDGE_TYPE,
+  from: 'n2',
+  to: 'n1',
+  [entityAttributesProperty]: {},
+};
+
 const makeNodes = () => [
   {
     [entityPrimaryKeyProperty]: 'n1',
@@ -107,6 +122,7 @@ function renderInterface(
   edges: NcEdge[] = [],
   skipAnimations = false,
   nodes = makeNodes(),
+  stageCodebook: typeof codebook | typeof directedCodebook = codebook,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -125,7 +141,7 @@ function renderInterface(
         hash: 'h',
         schemaVersion: 9,
         localization: { defaultLocale: 'en', locales: ['en'] },
-        codebook,
+        codebook: stageCodebook,
         stages: [stage],
       } as never,
     },
@@ -222,6 +238,36 @@ function renderInterface(
 }
 
 describe('DyadCensus interface', () => {
+  it('pre-selects Yes for an undirected edge stored from the second node to the first', async () => {
+    const { store, waitForFirstPair, yesButton } = renderInterface(
+      onePromptStage,
+      [reverseEdge],
+    );
+    await waitForFirstPair();
+    await waitFor(() =>
+      expect(yesButton().getAttribute('aria-checked')).toBe('true'),
+    );
+
+    fireEvent.click(yesButton());
+    await waitFor(() =>
+      expect(yesButton().getAttribute('aria-checked')).toBe('true'),
+    );
+    expect(store.getState().session.network.edges).toEqual([reverseEdge]);
+  });
+
+  it('does not pre-select for a directed type when only the reverse edge exists', async () => {
+    const { waitForFirstPair, yesButton, noButton } = renderInterface(
+      onePromptStage,
+      [reverseEdge],
+      false,
+      makeNodes(),
+      directedCodebook,
+    );
+    await waitForFirstPair();
+    expect(yesButton().getAttribute('aria-checked')).toBe('false');
+    expect(noButton().getAttribute('aria-checked')).toBe('false');
+  });
+
   it('blocks stepping forwards on an unanswered pair but allows a direct jump', async () => {
     const { waitForFirstPair, runValidation } = renderInterface(onePromptStage);
     await waitForFirstPair();

@@ -65,6 +65,7 @@ const makeCodebook = (
     { label: { en: 'Weak' }, value: 1 },
     { label: { en: 'Strong' }, value: 2 },
   ],
+  directed?: true,
 ) => ({
   node: {
     [NODE_TYPE]: {
@@ -78,6 +79,7 @@ const makeCodebook = (
     [EDGE_TYPE]: {
       name: 'Friendship',
       color: 'edge-color-seq-1',
+      ...(directed ? { directed } : {}),
       variables: {
         [EDGE_VAR]: {
           name: 'strength',
@@ -276,6 +278,47 @@ describe('TieStrengthCensus interface', () => {
 
     // No option should be pre-selected: the edge exists but this prompt's
     // edgeVariable is unset, so the prompt is unanswered.
+    for (const option of screen.getAllByRole('option')) {
+      expect(option.getAttribute('aria-selected')).not.toBe('true');
+    }
+  });
+
+  // The pair (n1, n2) joined by a strong edge drawn the other way, as an
+  // earlier Sociogram may have drawn it.
+  const reverseEdge: NcEdge = {
+    [entityPrimaryKeyProperty]: 'e-n2-n1',
+    type: EDGE_TYPE,
+    from: 'n2',
+    to: 'n1',
+    [entityAttributesProperty]: { [EDGE_VAR]: 2 },
+  };
+
+  it('pre-selects the answer for an undirected edge stored from the second node to the first', async () => {
+    const { store, waitForFirstPair } = renderInterface([reverseEdge]);
+    await waitForFirstPair();
+    expect(
+      screen
+        .getByRole('option', { name: 'Strong' })
+        .getAttribute('aria-selected'),
+    ).toBe('true');
+
+    fireEvent.click(screen.getByRole('option', { name: 'Weak' }));
+    await waitFor(() =>
+      expect(
+        store.getState().session.network.edges[0]?.[entityAttributesProperty]?.[
+          EDGE_VAR
+        ],
+      ).toBe(1),
+    );
+    expect(store.getState().session.network.edges).toHaveLength(1);
+  });
+
+  it('does not pre-select for a directed type when only the reverse edge exists', async () => {
+    const { waitForFirstPair } = renderInterface(
+      [reverseEdge],
+      makeCodebook(undefined, true),
+    );
+    await waitForFirstPair();
     for (const option of screen.getAllByRole('option')) {
       expect(option.getAttribute('aria-selected')).not.toBe('true');
     }

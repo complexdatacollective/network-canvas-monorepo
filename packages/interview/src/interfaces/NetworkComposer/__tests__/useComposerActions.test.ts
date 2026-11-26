@@ -55,9 +55,18 @@ const codebook = {
   ego: { variables: {} },
 };
 
+const directedCodebook = {
+  ...codebook,
+  edge: { [EDGE_TYPE]: { ...codebook.edge[EDGE_TYPE], directed: true } },
+};
+
 const stages = [{ id: 'nc1', type: 'NetworkComposer' }];
 
-function makeStore(initialNodes: NcNode[] = [], initialEdges: NcEdge[] = []) {
+function makeStore(
+  initialNodes: NcNode[] = [],
+  initialEdges: NcEdge[] = [],
+  storeCodebook: typeof codebook | typeof directedCodebook = codebook,
+) {
   return configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -74,7 +83,7 @@ function makeStore(initialNodes: NcNode[] = [], initialEdges: NcEdge[] = []) {
         id: 'p',
         hash: 'h',
         schemaVersion: 9,
-        codebook,
+        codebook: storeCodebook,
         stages,
       } as never,
     },
@@ -768,6 +777,72 @@ describe('useComposerActions', () => {
       false,
     );
     expect(byId('d')![entityAttributesProperty][GROUP_VAR]).toEqual([]);
+  });
+});
+
+describe('useComposerActions toggling an edge asked for the other way round', () => {
+  const people = () => [
+    {
+      [entityPrimaryKeyProperty]: 'a',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: {},
+    },
+    {
+      [entityPrimaryKeyProperty]: 'b',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: {},
+    },
+  ];
+
+  const renderActions = (store: ReturnType<typeof makeStore>) =>
+    renderHook(
+      () =>
+        useComposerActions({
+          subjectType: NODE_TYPE,
+          quickAdd: QUICK_ADD_VAR,
+          layoutVariable: LAYOUT_VAR,
+          useEncryption: false,
+          automaticLayoutDefault: false,
+          currentStep: 0,
+          undoStore: createUndoStore(),
+          dispatch: store.dispatch,
+        }),
+      { wrapper: makeWrapper(store) },
+    ).result;
+
+  it('toggleEdge removes an undirected edge asked for in the opposite order', async () => {
+    const store = makeStore(people());
+    const result = renderActions(store);
+
+    await act(async () => {
+      await result.current.toggleEdge('a', 'b', EDGE_TYPE);
+    });
+    expect(store.getState().session.network.edges).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.toggleEdge('b', 'a', EDGE_TYPE);
+    });
+    expect(store.getState().session.network.edges).toEqual([]);
+  });
+
+  it('toggleEdge adds the opposite direction of a directed type', async () => {
+    const store = makeStore(people(), [], directedCodebook);
+    const result = renderActions(store);
+
+    await act(async () => {
+      await result.current.toggleEdge('a', 'b', EDGE_TYPE);
+    });
+    await act(async () => {
+      await result.current.toggleEdge('b', 'a', EDGE_TYPE);
+    });
+    expect(
+      store
+        .getState()
+        .session.network.edges.map(({ from, to }) => ({ from, to })),
+    ).toEqual([
+      { from: 'a', to: 'b' },
+      { from: 'b', to: 'a' },
+    ]);
   });
 });
 
