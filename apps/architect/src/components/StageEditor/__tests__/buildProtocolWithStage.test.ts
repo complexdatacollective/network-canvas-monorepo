@@ -45,7 +45,7 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
     id: STAGE_ID,
     type: 'NameGenerator',
     label: localized('Name some people'),
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     form: {
       title: localized('Add person'),
       fields: [

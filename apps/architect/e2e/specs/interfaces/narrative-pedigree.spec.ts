@@ -144,7 +144,7 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
         type: 'FamilyPedigree',
         wording: familyPedigreeWordingIn(),
         label: { en: 'Family Pedigree' },
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompt: { en: 'Who is in your family?' },
         nodeConfiguration: {
           nameAttribute: asEntityAttributeReference('name'),

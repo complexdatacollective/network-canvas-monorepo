@@ -40,7 +40,7 @@ const protocol = {
       id: 's1',
       type: 'OrdinalBin',
       label: 'Ordinal bin',
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       prompts: [{ id: 'p1', text: 'Rate it', variable: V1 }],
     },
     {
@@ -49,7 +49,7 @@ const protocol = {
       allAddedNotice: { en: 'There is nothing left to add from this list.' },
       unnamedLabel: { en: 'Unnamed {count}' },
       label: 'Roster',
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       dataSource: 'asset1',
     },
   ],

@@ -77,7 +77,7 @@ const quickAddProtocol = (): CurrentProtocol => {
         id: createProtocolObjectId(),
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Quickly Add Friends' },
-        subject: { entity: 'node', type: PERSON_TYPE_ID },
+        subject: { entity: 'node', types: [PERSON_TYPE_ID] },
         quickAdd: asEntityAttributeReference(NAME_VARIABLE_ID),
         prompts: [
           {

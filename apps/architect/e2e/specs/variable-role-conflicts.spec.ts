@@ -102,7 +102,7 @@ function conflictProtocol(): CurrentProtocol {
             id: createProtocolObjectId(),
             type: 'AlterForm',
             label: { en: 'Person Details' },
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             form: {
               fields: [
                 {
@@ -117,7 +117,7 @@ function conflictProtocol(): CurrentProtocol {
             id: createProtocolObjectId(),
             type: 'AlterForm',
             label: { en: 'Extra Person Form' },
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             form: {
               fields: [
                 {
@@ -132,7 +132,7 @@ function conflictProtocol(): CurrentProtocol {
             id: createProtocolObjectId(),
             type: 'CategoricalBin',
             label: { en: 'Contact Category' },
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               {
                 id: createProtocolObjectId(),
@@ -145,7 +145,7 @@ function conflictProtocol(): CurrentProtocol {
             id: createProtocolObjectId(),
             type: 'CategoricalBin',
             label: { en: 'Extra Category Bin' },
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               {
                 id: createProtocolObjectId(),

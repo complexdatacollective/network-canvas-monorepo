@@ -52,6 +52,7 @@ import {
   type LocalizedString,
   type LocalizedStringFormat,
   type MessageArguments,
+  resolveSubjectValue,
 } from '@codaco/protocol-validation';
 import { lineBreaksAsSpaces } from '@codaco/shared-consts';
 import { LineInParagraph } from '~/components/LineInParagraph';
@@ -1004,20 +1005,16 @@ const useDynamicSite = (
         },
       };
     }
-    const subject: unknown =
-      isRecord(stage) && 'subject' in stage ? stage.subject : undefined;
+    const subject = resolveSubjectValue(
+      isRecord(stage) && 'subject' in stage ? stage.subject : undefined,
+    );
     return {
       context: dynamicValueContextFor({ codebook, stage, sitePath, site }),
       conditions: {
         values:
           isRecord(stage) && isRecord(stage.conditions) ? stage.conditions : {},
         codebook,
-        subject:
-          isRecord(subject) &&
-          (subject.entity === 'node' || subject.entity === 'edge') &&
-          typeof subject.type === 'string'
-            ? { entity: subject.entity, type: subject.type }
-            : undefined,
+        subject: subject?.entity === 'ego' ? undefined : subject,
         allowEgoRules: true,
       },
     };

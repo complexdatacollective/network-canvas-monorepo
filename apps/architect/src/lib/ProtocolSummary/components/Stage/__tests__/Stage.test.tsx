@@ -364,7 +364,7 @@ describe('Protocol Summary form text that shows values', () => {
           stageNumber={5}
           type="AlterForm"
           configuration={{
-            subject: { entity: 'node', type: PERSON },
+            subject: { entity: 'node', types: [PERSON] },
             form: {
               fields: [
                 {

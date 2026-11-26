@@ -102,7 +102,7 @@ describe('assets shown as blocks in the text of an Information stage', () => {
         id: createProtocolObjectId(),
         type: 'DyadCensus',
         label: { en: 'Names' },
-        subject: { entity: 'node', type: testTypeId('person') },
+        subject: { entity: 'node', types: [testTypeId('person')] },
         prompts: [
           {
             id: createProtocolObjectId(),

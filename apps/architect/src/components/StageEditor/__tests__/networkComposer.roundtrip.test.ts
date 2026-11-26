@@ -15,7 +15,7 @@ const stage = {
   id: createProtocolObjectId(),
   label: { en: 'Compose' },
   type: 'NetworkComposer',
-  subject: { entity: 'node', type: testTypeId('person') },
+  subject: { entity: 'node', types: [testTypeId('person')] },
   quickAdd: testVariableId('name'),
   layoutVariable: testVariableId('layoutPosition'),
   background: { concentricCircles: 4 },

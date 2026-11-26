@@ -41,7 +41,7 @@ const alterFormStage = {
   id: 'af1',
   type: 'AlterForm',
   label: { en: 'Alter form' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   form: {
     fields: [{ id: 'field-1', variable: CATEGORY, prompt: { en: 'Answer' } }],
   },
@@ -51,7 +51,7 @@ const categoricalBinStage = {
   id: 'cb1',
   type: 'CategoricalBin',
   label: { en: 'Sort into bins' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   prompts: [{ id: 'p1', text: { en: 'Sort' }, variable: CATEGORY }],
 };
 

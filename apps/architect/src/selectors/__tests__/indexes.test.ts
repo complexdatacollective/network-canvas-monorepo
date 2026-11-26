@@ -202,7 +202,7 @@ describe('indexes selectors', () => {
             id: 's1',
             type: 'OrdinalBin',
             label: 'Bin',
-            subject: { entity: 'node', type: 'person-type-id' },
+            subject: { entity: 'node', types: ['person-type-id'] },
             prompts: [
               {
                 id: 'p1',
@@ -444,7 +444,7 @@ describe('indexes selectors', () => {
             id: 's1',
             type: 'NetworkComposer',
             label: 'Composer',
-            subject: { entity: 'node', type: 'person-type-id' },
+            subject: { entity: 'node', types: ['person-type-id'] },
             edges: [
               {
                 id: 'composer-edge-1',
@@ -496,7 +496,7 @@ describe('indexes selectors', () => {
             en: 'There is nothing left to add from this list.',
           },
           label: 'Roster',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           dataSource: 'asset-under-test',
         },
       ],
@@ -506,7 +506,7 @@ describe('indexes selectors', () => {
           id: 's1',
           type: 'NameGenerator',
           label: 'Generator',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           panels: [
             { id: 'p1', title: 'Roster', dataSource: 'asset-under-test' },
           ],
@@ -518,7 +518,7 @@ describe('indexes selectors', () => {
           id: 's1',
           type: 'Sociogram',
           label: 'Sociogram',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           background: { image: 'asset-under-test' },
         },
       ],
@@ -529,7 +529,7 @@ describe('indexes selectors', () => {
           type: 'Geospatial',
           outsideAreasLabel: { en: 'Outside Selectable Areas' },
           label: 'Map',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           mapOptions: { tokenAssetId: 'asset-under-test' },
         },
       ],
@@ -540,7 +540,7 @@ describe('indexes selectors', () => {
           type: 'Geospatial',
           outsideAreasLabel: { en: 'Outside Selectable Areas' },
           label: 'Map',
-          subject: { entity: 'node', type: 'person' },
+          subject: { entity: 'node', types: ['person'] },
           mapOptions: { dataSourceAssetId: 'asset-under-test' },
         },
       ],
@@ -587,7 +587,7 @@ describe('indexes selectors', () => {
                 id: 's1',
                 type: 'NameGenerator',
                 label: 'Generator',
-                subject: { entity: 'node', type: 'person' },
+                subject: { entity: 'node', types: ['person'] },
                 panels: [
                   { id: 'p1', title: 'Already added', dataSource: 'existing' },
                 ],
@@ -657,7 +657,7 @@ describe('indexes selectors', () => {
             id: 's1',
             type: 'NetworkComposer',
             label: 'Composer',
-            subject: { entity: 'node', type: 'person-type-id' },
+            subject: { entity: 'node', types: ['person-type-id'] },
             edges: [
               {
                 id: 'composer-edge-1',

@@ -83,7 +83,7 @@ describe('getCodebookIndex "Used In" stages', () => {
           id: 'ordinal-bin-stage',
           type: 'OrdinalBin',
           label: 'Bin',
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           prompts: [
             {
               id: 'p1',

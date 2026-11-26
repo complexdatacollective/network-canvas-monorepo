@@ -801,7 +801,7 @@ describe('TranslationTable', () => {
             id: 'census',
             type: 'DyadCensus',
             label: { en: 'Census' },
-            subject: { entity: 'node', type: 'person' },
+            subject: { entity: 'node', types: ['person'] },
             prompts: [
               {
                 id: 'knows',
@@ -838,7 +838,7 @@ describe('TranslationTable', () => {
             id: createProtocolObjectId(),
             type: 'DyadCensus',
             label: { en: 'Census' },
-            subject: { entity: 'node', type: PERSON },
+            subject: { entity: 'node', types: [PERSON] },
             prompts: [
               {
                 id: createProtocolObjectId(),

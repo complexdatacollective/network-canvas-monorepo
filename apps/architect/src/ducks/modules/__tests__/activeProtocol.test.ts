@@ -50,7 +50,7 @@ const mockProtocol2: CurrentProtocol = {
       },
       subject: {
         entity: 'node',
-        type: PERSON,
+        types: [PERSON],
       },
       prompts: [
         {

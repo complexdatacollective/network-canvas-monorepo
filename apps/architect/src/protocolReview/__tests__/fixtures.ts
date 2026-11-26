@@ -94,7 +94,7 @@ export const makeProtocol = (
         id: NAMES_STAGE_ID,
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Names', fr: 'Noms' },
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         quickAdd: asEntityAttributeReference(NAME_VAR),
         prompts: [
           { id: NAMES_PROMPT_ID, text: { en: 'Name people', fr: 'Nommez' } },

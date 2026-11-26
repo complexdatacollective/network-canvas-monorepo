@@ -12,6 +12,7 @@ import {
   type FramingSetting,
   type LocalizedString,
   type Panel,
+  type StageSubject,
   stageDynamicValueContext,
   suppliedStageSettingApplies,
 } from '@codaco/protocol-validation';
@@ -114,6 +115,13 @@ const WORDING_PRINTED_ELSEWHERE: ReadonlySet<string> = new Set([
   'LanguageChooser',
 ]);
 
+/** The types a stage's subject names: a node subject's list, or its edge type. */
+const subjectTypes = (subject: StageSubject): string[] => {
+  if (subject.entity === 'node') return subject.types;
+  if (subject.entity === 'edge') return [subject.type];
+  return [];
+};
+
 /**
  * The settings of a stage the summary prints. Every stage type holds its own
  * subset, so each is optional; the summary prints those the stage holds.
@@ -121,7 +129,7 @@ const WORDING_PRINTED_ELSEWHERE: ReadonlySet<string> = new Set([
  * the path the stage editor's rules give it.
  */
 export type StageConfiguration = {
-  subject?: { type: string; entity: string };
+  subject?: StageSubject;
   filter?: FilterType;
   skipLogic?: Record<string, unknown>;
   introductionPanel?: { title: LocalizedString; text?: LocalizedString };
@@ -321,14 +329,18 @@ const StageContent = ({
                   ? [
                       [
                         intl.formatMessage(summaryMessages.subject),
-                        <EntityBadge
-                          key="subject"
-                          small
-                          iconSize="tiny"
-                          type={subject.type}
-                          entity={subject.entity}
-                          link
-                        />,
+                        <React.Fragment key="subject">
+                          {subjectTypes(subject).map((subjectType) => (
+                            <EntityBadge
+                              key={subjectType}
+                              small
+                              iconSize="tiny"
+                              type={subjectType}
+                              entity={subject.entity}
+                              link
+                            />
+                          ))}
+                        </React.Fragment>,
                       ],
                     ]
                   : []),
@@ -419,7 +431,9 @@ const StageContent = ({
         nodeIsEgoVariable={nodeIsEgoVariable}
       />
       <FamilyPedigree
-        personType={subject?.type ?? null}
+        personType={
+          subject?.entity === 'node' ? (subject.types[0] ?? null) : null
+        }
         prompt={pedigreePrompt}
         nodeConfiguration={nodeConfiguration ?? null}
         edgeConfiguration={edgeConfiguration ?? null}

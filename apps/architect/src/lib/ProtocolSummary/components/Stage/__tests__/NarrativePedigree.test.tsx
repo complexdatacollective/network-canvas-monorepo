@@ -42,7 +42,7 @@ const protocol = {
       type: 'FamilyPedigree',
       wording: familyPedigreeWordingIn(),
       label: { en: 'Your family' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       prompt: { en: 'Draw your family.' },
       nodeConfiguration: {
         nameAttribute: testVariableId('name'),

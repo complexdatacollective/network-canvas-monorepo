@@ -178,7 +178,7 @@ function makeUnsatisfiableProtocol() {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: { en: 'NG' },
-        subject: { entity: 'node', type: 'node-1' },
+        subject: { entity: 'node', types: ['node-1'] },
         prompts: [{ id: 'p1', text: { en: 'Add people' } }],
         behaviours: { minNodes: 1, maxNodes: 1 },
       },
@@ -280,7 +280,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
           en: 'You have completed this task. Click the next arrow to continue.',
         },
         label: { en: 'People' },
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         prompts: [
           { id: createProtocolObjectId(), text: { en: 'Name people' } },
         ],
@@ -300,7 +300,7 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         id: createProtocolObjectId(),
         type: 'Sociogram',
         label: { en: 'Exchanges of support' },
-        subject: { entity: 'node', type: 'person' },
+        subject: { entity: 'node', types: ['person'] },
         background: { concentricCircles: 3 },
         prompts: [
           {
@@ -528,7 +528,7 @@ describe('PreviewHost', () => {
             en: 'You have completed this task. Click the next arrow to continue.',
           },
           label: { en: 'NG' },
-          subject: { entity: 'node', type: 'node-1' },
+          subject: { entity: 'node', types: ['node-1'] },
           prompts: [{ id: 'p1', text: { en: 'Add people' } }],
           behaviours: { minNodes: 4, maxNodes: 8 },
         },
@@ -536,7 +536,7 @@ describe('PreviewHost', () => {
           id: 's2',
           type: 'OrdinalBin',
           label: { en: 'OB' },
-          subject: { entity: 'node', type: 'node-1' },
+          subject: { entity: 'node', types: ['node-1'] },
           prompts: [
             { id: 'p2', text: { en: 'How close?' }, variable: 'var-ord' },
           ],

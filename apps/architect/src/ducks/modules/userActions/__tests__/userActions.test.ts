@@ -160,7 +160,7 @@ const schema8WithBlankPrompt = () => ({
       id: 'stage-1',
       type: 'NameGeneratorQuickAdd',
       label: 'Friends',
-      subject: { entity: 'node', type: 'person' },
+      subject: { entity: 'node', types: ['person'] },
       quickAdd: BLANK_PROMPT_SECRET,
       prompts: [{ id: 'prompt-1', text: '   ' }],
     },

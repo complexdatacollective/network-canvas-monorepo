@@ -51,7 +51,7 @@ const protocol = testProtocol({
       id: createProtocolObjectId(),
       type: 'DyadCensus',
       label: { en: 'Names', fr: 'Noms' },
-      subject: { entity: 'node', type: testTypeId('person') },
+      subject: { entity: 'node', types: [testTypeId('person')] },
       prompts: [
         {
           id: createProtocolObjectId(),

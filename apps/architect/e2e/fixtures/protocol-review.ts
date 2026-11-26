@@ -79,7 +79,7 @@ export const reviewProtocol = (): CurrentProtocol =>
         id: NAMES_STAGE_ID,
         type: 'NameGeneratorQuickAdd',
         label: { en: 'Names', fr: 'Noms' },
-        subject: { entity: 'node', type: PERSON_TYPE_ID },
+        subject: { entity: 'node', types: [PERSON_TYPE_ID] },
         quickAdd: asEntityAttributeReference(NAME_VARIABLE_ID),
         prompts: [
           { id: NAMES_PROMPT_ID, text: { en: 'Name people', fr: 'Nommez' } },

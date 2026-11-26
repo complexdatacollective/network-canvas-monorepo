@@ -248,7 +248,7 @@ const withPedigree = (
         type: 'FamilyPedigree',
         wording: familyPedigreeWordingIn(),
         label: { en: 'Family' },
-        subject: { entity: 'node', type: RELATIVE },
+        subject: { entity: 'node', types: [RELATIVE] },
         nodeConfiguration: { sexAssignedAtBirthAttribute: SEX },
         edgeConfiguration: { type: FAMILY, kindAttribute: REL_TYPE },
       },
@@ -909,7 +909,7 @@ describe('a roster stage’s supplied panel title', () => {
           id: createProtocolObjectId(),
           type: 'NameGeneratorRoster',
           label: { en: 'Services' },
-          subject: { entity: 'node', type: NODE_TYPE },
+          subject: { entity: 'node', types: [NODE_TYPE] },
           dataSource: 'roster',
           ...(panelTitle === undefined ? {} : { panelTitle }),
           prompts: [

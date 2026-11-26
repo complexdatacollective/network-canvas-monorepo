@@ -125,7 +125,7 @@ describe('getIsUsed', () => {
               id: 's1',
               label: 'AlterForm stage',
               type: 'AlterForm',
-              subject: { entity: 'node', type: PERSON },
+              subject: { entity: 'node', types: [PERSON] },
               form: {
                 fields: [
                   { id: 'field-1', variable: variable1, prompt: 'prompt 1' },
@@ -137,7 +137,7 @@ describe('getIsUsed', () => {
               id: 's2',
               label: 'OrdinalBin stage',
               type: 'OrdinalBin',
-              subject: { entity: 'node', type: PERSON },
+              subject: { entity: 'node', types: [PERSON] },
               prompts: [{ id: 'p1', text: 'choose', variable: variable3 }],
             },
           ],
