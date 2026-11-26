@@ -72,19 +72,21 @@ export const stageEdgeTypeSupportIssues = (
     }
     const stage = protocol.stages[stageIndex];
     if (!stage || !isEdgeStageType(stage.type)) continue;
-    const { directed: runsDirected, endpointRules: runsEndpointRules } =
-      STAGE_EDGE_TYPE_SUPPORT[stage.type];
+    const support = STAGE_EDGE_TYPE_SUPPORT[stage.type];
     const edgeTypeName = Object.hasOwn(protocol.codebook.edge ?? {}, hit.typeId)
       ? (protocol.codebook.edge?.[hit.typeId]?.name ?? hit.typeId)
       : hit.typeId;
-    if (!runsDirected && isDirectedEdgeType(protocol.codebook, hit.typeId)) {
+    if (
+      !support.directed &&
+      isDirectedEdgeType(protocol.codebook, hit.typeId)
+    ) {
       issues.push({
         path: hit.path,
         message: `Edge type "${edgeTypeName}" is directed, which this stage cannot use.`,
       });
     }
     if (
-      !runsEndpointRules &&
+      !support.endpointRules &&
       getEndpointRules(protocol.codebook, hit.typeId) !== undefined
     ) {
       issues.push({
