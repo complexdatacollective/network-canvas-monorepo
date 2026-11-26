@@ -67,7 +67,7 @@ const trackVariantClass: Record<'outline' | 'glass', string> = {
 // size and border width instead of leaving a crescent gap at the rounded ends.
 const segmentVariants = cva({
   base: cx(
-    'font-heading relative inline-flex items-center justify-center rounded-full font-extrabold uppercase transition-colors',
+    'font-heading relative z-1 inline-flex items-center justify-center rounded-full font-extrabold uppercase transition-colors',
     'disabled:cursor-not-allowed disabled:opacity-40',
   ),
   variants: {
@@ -151,8 +151,13 @@ export default function SegmentedSwitcher<T extends string>({
           // One row of cells, one per option. The highlight shares the active
           // option's cell, so it always has that segment's size without being
           // measured. It comes last, so the track's baseline is still the
-          // first segment's text, and its negative `z-index` (kept inside the
-          // `isolate` track) paints it under the segments.
+          // first segment's text. The segments' `z-1` (kept inside the
+          // `isolate` track) paints them over it, also while Motion's
+          // transform makes the highlight a stacking context of its own. The
+          // highlight never takes a negative `z-index`: axe places such an
+          // element under the whole page, and then reports the active
+          // segment's light text against the page background as a contrast
+          // failure.
           className="grid auto-cols-auto grid-rows-1 items-stretch"
         >
           {options.map((option, index) => {
@@ -189,7 +194,7 @@ export default function SegmentedSwitcher<T extends string>({
               layout
               layoutDependency={value}
               className={cx(
-                'bg-primary -z-1',
+                'bg-primary',
                 // Dimmed with its segment, which `disabled:opacity-40` dims.
                 (disabled || options[activeIndex]?.disabled) && 'opacity-40',
               )}
