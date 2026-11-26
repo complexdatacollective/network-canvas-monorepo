@@ -65,7 +65,7 @@ node packages/protocol-validation/scripts/cli.js <path-to-your-protocol.json>; e
    ego). **Entity display names** (`node.name`, `edge.name`) must be unique across the whole
    codebook (a node and an edge can't both be named "Person").
 6. **References use record KEYS, not `name`s.** A form field's `variable`, a bin prompt's
-   `variable`, a stage's `subject.type`, etc. must equal the UUID under which the variable or
+   `variable`, each entry of a node stage's `subject.types`, etc. must equal the UUID under which the variable or
    type is registered in the codebook. Columns of a roster data file are the exception: they
    are matched to variables by the variable's `name`, so a roster's card, sort and search
    properties name the file's columns.
@@ -145,7 +145,7 @@ All three are optional, but you must define any type a stage references.
 ```jsonc
 "codebook": {
   "node": {
-    "6f1c2b7e-4d3a-4e8b-9c51-2a7d0e9f8b14": { // key = node-type id (UUID, used as stage subject.type)
+    "6f1c2b7e-4d3a-4e8b-9c51-2a7d0e9f8b14": { // key = node-type id (UUID, used in a stage's subject.types)
       "name": "Person",               // REQUIRED name (spaces allowed here); participants never see it
       "color": "node-color-seq-1",    // REQUIRED: node-color-seq-1 … node-color-seq-8
       "shape": { "default": "circle" }, // REQUIRED: default ∈ circle|square|diamond|custom:<id>
@@ -269,8 +269,10 @@ across prompts — instead of re-typing the name and creating a duplicate node.
 
 Base (all stages): `{ "id", "label", "type", "interviewScript"?, "skipLogic"? }` + the
 type-specific keys below. `label` is a localized string; every `text`, `title`, `prompt` and
-`content` below is one too (§2.1). `subject` (where present) = `{ "entity":"node", "type":"<node key>" }`
-(or `entity:"edge"`). Cross-references that MUST resolve in the codebook: `subject.type`; form
+`content` below is one too (§2.1). `subject` (where present) is `{ "entity":"node", "types":["<node key>"] }`
+on a node stage, which lists exactly one node type on every stage type at present, or
+`{ "entity":"edge", "type":"<edge key>" }` on an AlterEdgeForm stage. Cross-references that MUST
+resolve in the codebook: each entry of `subject.types`, or `subject.type` on an edge stage; form
 field `variable`; bin/geospatial prompt `variable`; `otherVariable`; `createEdge` (→ an edge
 key); TieStrength `edgeVariable` (must be an **ordinal edge** variable); sociogram/narrative
 `layoutVariable`, `groupVariable`, `highlight`, `edges.create/display`.

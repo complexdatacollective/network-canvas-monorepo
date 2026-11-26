@@ -242,7 +242,18 @@ string[] | undefined` and `getSingleStageNodeType(stage): string | undefined`,
 both tolerant of drafts (return `undefined` for a missing, empty or non-array
 `types`). protocol-builder: `useStageNodeTypes(): readonly string[]` and
 `useSingleStageNodeType(): string | undefined` in
-`sections/useStageSubject.ts`, replacing `useStageSubject` for node stages.
+`sections/useStageSubject.ts`, module-private until a section needs them.
+`useStageSubject('node')` stays as the single-type reader for its callers and
+reads through `useSingleStageNodeType`, so it gives `undefined` for a stage
+listing several types. The slice that raises a stage to 'several' converts
+that stage's callers: slice 6 `editors/sociogram/sections/prompts/SociogramPromptFields.tsx`
+and `SociogramPromptsSection.tsx`; slice 7 `editors/narrative/sections/presets/NarrativePresetFields.tsx`
+and `NarrativePresetsSection.tsx`; slice 8 `editors/one-to-many-dyad-census/sections/OneToManyDyadCensusPromptsSection.tsx`
+and any census section that reads the node subject; slice 9
+`editors/network-composer/sections/ComposerNodesSection.tsx`. Shared
+sections that a several-type stage mounts (`sections/form-fields/FormFieldsSection.tsx`,
+`sections/panels/NodePanelsSection.tsx`) are converted by the first slice
+whose several-type stage mounts them.
 
 Guard (slice 2, file
 `packages/protocol-validation/src/schemas/9/__tests__/multi-type-stage-references.test.ts`):
@@ -252,7 +263,11 @@ schema sits inside an object that carries its own single-typed `subject`
 (Composer entries), or is listed in `SINGLE_TYPE_ONLY_FIELDS` (a constant in
 the test naming paths such as `convexHullVariable`,
 `presets[].groupVariable`, census piped-text roles), and for each listed field
-a fixture with two types proves validation rejects it. With every stage
+a fixture with two types proves validation rejects it. Each listed entry
+carries that fixture and the issue path validation must report, and the test
+fails an entry whose fixture validates. Besides attribute references, the
+walk reports text whose dynamic values can be about the stage's node (a
+`prompt` or `formField` dynamic-value site) as `<path> (dynamic values)`. With every stage
 `'single'` the test is vacuous in slice 2 apart from a self-check that it fails
 when an entry is raised; each later slice makes it real for its stage.
 

@@ -39,7 +39,7 @@ From the extracted JSON, build a **stage map** — for each stage (by index), ex
 
 - `type` — stage type (e.g., `NameGeneratorQuickAdd`, `EgoForm`, `Sociogram`)
 - `label` — display label
-- `subject` — `{ entity, type }` pointing to codebook entry (null for Information/Anonymisation)
+- `subject` — the codebook entry the stage is about: `{ entity: 'node', types: [typeId] }` on a node stage (one type on every stage type at present), `{ entity: 'edge', type }` on an edge stage (null for Information/Anonymisation)
 - `introductionPanel` — title and text (if present)
 - `form.fields[]` — array of `{ variable }` referencing codebook variables
 - `prompts[]` — array of prompt objects (with `createEdge`, `variable`, `highlight`, etc.)
@@ -48,7 +48,7 @@ From the extracted JSON, build a **stage map** — for each stage (by index), ex
 
 For each form field, resolve the variable UUID against the codebook:
 
-- Look up `codebook.[entity].[type].variables.[variableId]`
+- Look up `codebook.[entity].[type].variables.[variableId]`, where `[type]` is the one entry of `subject.types` on a node stage and `subject.type` on an edge stage
 - Extract: `name`, `type`, `component`, `validation`, `options`
 
 This gives you the field name (UUID), display name, input component type, validation rules, and available options for each form field.
