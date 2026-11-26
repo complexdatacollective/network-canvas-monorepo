@@ -32,11 +32,13 @@ type Protocol = ReturnType<typeof completeProtocol>;
 // stage type in the table names an edge type.
 const baseProtocol = () => {
   const protocol = completeProtocol();
-  for (const stage of protocol.stages) {
-    if (stage.type === 'Sociogram' && 'prompts' in stage) {
-      for (const prompt of stage.prompts) {
-        if (isRecord(prompt)) prompt.edges = { create: 'knows' };
-      }
+  const stages: unknown[] = protocol.stages;
+  for (const stage of stages) {
+    if (!isRecord(stage) || stage.type !== 'Sociogram') continue;
+    const { prompts } = stage;
+    if (!Array.isArray(prompts)) continue;
+    for (const prompt of prompts) {
+      if (isRecord(prompt)) prompt.edges = { create: 'knows' };
     }
   }
   return protocol;
@@ -47,7 +49,8 @@ const withEdgeTypeSettings = (
   edgeType: string,
   settings: Record<string, unknown>,
 ) => {
-  const definition: unknown = protocol.codebook.edge[edgeType];
+  const edgeTypes: Record<string, unknown> = protocol.codebook.edge;
+  const definition = edgeTypes[edgeType];
   if (!isRecord(definition)) throw new Error(`No edge type ${edgeType}`);
   Object.assign(definition, settings);
   return protocol;
@@ -137,7 +140,9 @@ describe('stage edge type support', () => {
   };
 
   const sociogramOf = (protocol: Protocol) => {
-    const stage = protocol.stages.find(({ type }) => type === 'Sociogram');
+    const stage: unknown = protocol.stages.find(
+      ({ type }) => type === 'Sociogram',
+    );
     if (!isRecord(stage)) throw new Error('No Sociogram');
     return stage;
   };
