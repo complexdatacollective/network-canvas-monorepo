@@ -177,14 +177,16 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
               <Toast.Title render={<Heading level="h4" />} />
               {/* h-auto: ScrollArea's h-full would fill the toast once its
                   measured height is applied, pushing an action button below
-                  it out of view. */}
+                  it out of view. pt-0: the title's own bottom margin already
+                  separates it from the description, as in an Alert, and the
+                  viewport's top padding would double that gap. */}
               <Toast.Description
                 className={cx(
                   DESCRIPTION_MAX_HEIGHT,
                   'h-auto overflow-hidden not-last:mb-4',
                 )}
                 render={
-                  <ScrollArea viewportClassName="font-body text-pretty pe-2" />
+                  <ScrollArea viewportClassName="font-body text-pretty pe-2 pt-0" />
                 }
               />
             </>
