@@ -23,7 +23,7 @@
   ],
   "subject": {
     "entity": "node",
-    "type": "id-5"
+    "types": ["id-5"]
   },
   "type": "Geospatial"
 }

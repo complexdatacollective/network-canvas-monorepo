@@ -14,7 +14,7 @@
   ],
   "subject": {
     "entity": "node",
-    "type": "id-3"
+    "types": ["id-3"]
   },
   "type": "NameGeneratorRoster"
 }

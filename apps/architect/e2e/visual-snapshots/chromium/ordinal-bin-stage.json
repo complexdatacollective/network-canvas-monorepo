@@ -15,7 +15,7 @@
   ],
   "subject": {
     "entity": "node",
-    "type": "id-4"
+    "types": ["id-4"]
   },
   "type": "OrdinalBin"
 }
