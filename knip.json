@@ -65,6 +65,7 @@
         "scripts/agent-hooks/pre-bash.mjs",
         "scripts/agent-hooks/stop-check.mjs",
         "scripts/agent-hooks/pre-push-knip.mjs",
+        "scripts/agent-hooks/session-start.mjs",
         // Local oxlint plugins, loaded by oxlint from the `jsPlugins` of the
         // shared configs in tooling/oxlint, which knip cannot parse.
         "tooling/oxlint/plugins/*.mjs",
