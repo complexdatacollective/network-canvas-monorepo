@@ -27,4 +27,4 @@ status = 301
 force = true
 
 [context.deploy-preview]
-ignore = "cd \"$(git rev-parse --show-toplevel)\" && if test -n \"$CACHED_COMMIT_REF\" && test \"$CACHED_COMMIT_REF\" != \"$COMMIT_REF\" && git diff --quiet \"$CACHED_COMMIT_REF\" \"$COMMIT_REF\" -- package.json pnpm-lock.yaml pnpm-workspace.yaml && npx --yes \"turbo@$(node -p \"require('./package.json').devDependencies.turbo\")\" query affected --packages @codaco/documentation networkcanvas.com --base \"$CACHED_COMMIT_REF\" --head \"$COMMIT_REF\" --exit-code; then true; else false; fi"
+ignore = "bash \"$(git rev-parse --show-toplevel)/scripts/ci/netlify-ignore-deploy-preview.sh\" --config apps/networkcanvas.com/netlify.toml -- @codaco/documentation networkcanvas.com"
