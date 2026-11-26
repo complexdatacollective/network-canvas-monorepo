@@ -7,6 +7,7 @@ import { CodebookSchema } from '../codebook.ts';
 const PERSON = testTypeId('person');
 const ORG = testTypeId('organisation');
 const ADVICE = testTypeId('advice');
+const FRIEND = testTypeId('friend');
 const UNKNOWN = testTypeId('unknown');
 
 const nodeType = (name: string) => ({
@@ -43,6 +44,18 @@ describe('edge type endpoint rules', () => {
         CodebookSchema.safeParse(codebookWithEdge({ endpointRules: [] })),
       ),
     ).toEqual([{ path: `edge.${ADVICE}.endpointRules`, code: 'too_small' }]);
+  });
+
+  it('rejects a rule with an unknown key', () => {
+    const result = CodebookSchema.safeParse(
+      codebookWithEdge({ endpointRules: [{ ...rule(PERSON, ORG), id: 'r1' }] }),
+    );
+    expect(result.success).toBe(false);
+    expect(
+      result.error?.issues.map(({ path, code }) => ({ path, code })),
+    ).toEqual([
+      { path: ['edge', ADVICE, 'endpointRules', 0], code: 'unrecognized_keys' },
+    ]);
   });
 
   it('rejects a rule naming an unknown node type', () => {
@@ -138,6 +151,32 @@ describe('edge type endpoint rules', () => {
           'Edge type "Advice" allows connections from "Person" to "Organisation" more than once.',
       },
     ]);
+  });
+
+  // The directed type carries both orientations, so one of them matches the
+  // undirected type's pair whichever way that pair is ordered.
+  it.each([
+    {
+      name: 'two undirected types',
+      friend: { endpointRules: [rule(PERSON, ORG)] },
+    },
+    {
+      name: 'a directed and an undirected type',
+      friend: {
+        directed: true,
+        endpointRules: [rule(PERSON, ORG), rule(ORG, PERSON)],
+      },
+    },
+  ])('accepts the same rule on $name', ({ friend }) => {
+    expect(
+      CodebookSchema.safeParse({
+        ...codebookWithEdge({ endpointRules: [rule(PERSON, ORG)] }),
+        edge: {
+          [ADVICE]: { name: 'Advice', endpointRules: [rule(PERSON, ORG)] },
+          [FRIEND]: { name: 'Friend', ...friend },
+        },
+      }).success,
+    ).toBe(true);
   });
 
   it('rejects directed: false', () => {

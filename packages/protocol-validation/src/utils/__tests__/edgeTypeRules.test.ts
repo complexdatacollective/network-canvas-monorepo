@@ -38,9 +38,22 @@ describe('edge type rules', () => {
     expect(isDirectedEdgeType({}, 'knows')).toBe(false);
   });
 
-  it('does not read a prototype key as an edge type', () => {
-    expect(isDirectedEdgeType(codebook, 'constructor')).toBe(false);
-    expect(getEndpointRules(codebook, 'constructor')).toBeUndefined();
+  it('does not read an inherited key as an edge type', () => {
+    const inherited: Record<
+      string,
+      {
+        directed?: true;
+        endpointRules?: { sourceType: string; targetType: string }[];
+      }
+    > = Object.create({
+      inherited: {
+        directed: true,
+        endpointRules: [{ sourceType: 'person', targetType: 'person' }],
+      },
+    });
+    const withInherited = { node: codebook.node, edge: inherited };
+    expect(isDirectedEdgeType(withInherited, 'inherited')).toBe(false);
+    expect(getEndpointRules(withInherited, 'inherited')).toBeUndefined();
   });
 
   it('reads direction and rules from the codebook', () => {

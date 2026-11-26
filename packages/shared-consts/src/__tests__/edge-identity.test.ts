@@ -71,6 +71,16 @@ describe('findEdge', () => {
       findEdge(edges, { from: 'a', to: 'b', type: 'advice' }, false),
     ).toBeUndefined();
   });
+
+  it('does not match the reverse edge of another type', () => {
+    expect(
+      findEdge(
+        [edge('ab', 'a', 'b')],
+        { from: 'b', to: 'a', type: 'advice' },
+        false,
+      ),
+    ).toBeUndefined();
+  });
 });
 
 describe('toggleEdge', () => {
@@ -95,6 +105,13 @@ describe('toggleEdge', () => {
     expect(
       toggleEdge(edges, { from: 'b', to: 'a', type: 'friend' }, false),
     ).toEqual({ action: 'remove', edge: edges[0] });
+  });
+
+  it('toggleEdge adds rather than removing the reverse edge of another type', () => {
+    const edges = [edge('ab', 'a', 'b')];
+    expect(
+      toggleEdge(edges, { from: 'b', to: 'a', type: 'advice' }, false),
+    ).toEqual({ action: 'add' });
   });
 
   it('toggleEdge removes the same-order edge of a directed pair', () => {

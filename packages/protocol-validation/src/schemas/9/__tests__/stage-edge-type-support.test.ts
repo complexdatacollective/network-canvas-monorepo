@@ -326,4 +326,49 @@ describe('stage edge type support', () => {
       ]).map(({ path }) => path[1]),
     ).toEqual([dyadCensus, dyadCensus]);
   });
+
+  it.each([
+    {
+      support: { directed: false, endpointRules: false },
+      expected: [DIRECTED_MESSAGE, RULES_MESSAGE],
+    },
+    {
+      support: { directed: true, endpointRules: false },
+      expected: [RULES_MESSAGE],
+    },
+    {
+      support: { directed: false, endpointRules: true },
+      expected: [DIRECTED_MESSAGE],
+    },
+    { support: { directed: true, endpointRules: true }, expected: [] },
+  ])(
+    'judges each setting by its own flag when a stage supports $support',
+    async ({ support, expected }) => {
+      const result = await ProtocolSchemaV9.safeParseAsync(
+        withTestIds(withAdviceEdgeType(baseProtocol())),
+      );
+      if (!result.success) throw result.error;
+      const protocol = result.data;
+      const dyadCensus = protocol.stages.findIndex(
+        (stage) => stage.type === 'DyadCensus',
+      );
+      const saved = STAGE_EDGE_TYPE_SUPPORT.DyadCensus;
+      STAGE_EDGE_TYPE_SUPPORT.DyadCensus = support;
+      try {
+        const messages = stageEdgeTypeSupportIssues(protocol, [
+          {
+            path: ['stages', dyadCensus, 'someField'],
+            typeId: testTypeId('advice'),
+            entity: 'edge',
+          },
+        ]).map(({ message }) => message);
+        expect(messages).toHaveLength(expected.length);
+        expected.forEach((pattern, index) =>
+          expect(messages[index]).toMatch(pattern),
+        );
+      } finally {
+        STAGE_EDGE_TYPE_SUPPORT.DyadCensus = saved;
+      }
+    },
+  );
 });

@@ -1,4 +1,4 @@
-export type EdgeEndpoints = { from: string; to: string; type: string };
+type EdgeEndpoints = { from: string; to: string; type: string };
 
 /**
  * The one place edge identity is decided. For an undirected edge type, A to B
