@@ -15,6 +15,7 @@ import {
 
 const workflow = readWorkflow('chromatic.yml');
 const ciWorkflow = readWorkflow('ci-and-release.yml');
+const refreshWorkflow = readWorkflow('chromatic-release-check.yml');
 const job = (name) => getJob(workflow, name);
 
 const SNAPSHOT_JOBS = [
@@ -143,25 +144,55 @@ test('Chromatic logs and diagnostics are kept for the review', () => {
   }
 });
 
-test("a successful review re-runs the release PR's failed CI jobs", () => {
-  const refresh = job('refresh-release-check');
-  assert.deepEqual(
-    needsOf(refresh).toSorted(),
-    SNAPSHOT_JOBS.map(([jobName]) => jobName).toSorted(),
+test("a successful review re-runs the release PR's failed CI jobs once its CI run has finished", () => {
+  // Not a job inside chromatic.yml: that run is not yet `success` while its
+  // own jobs run, so a CI job re-run from it would find no passing review.
+  assert.equal(
+    Object.values(workflow.jobs).some((body) =>
+      JSON.stringify(raw(body)).includes('gh run rerun'),
+    ),
+    false,
   );
-  assert.equal(refresh.if, undefined, 'runs only when every project passed');
-  assert.deepEqual(refresh.permissions, { actions: 'write' });
+  assert.deepEqual(refreshWorkflow.on, {
+    workflow_run: { workflows: [workflow.name], types: ['completed'] },
+  });
+  assert.equal(refreshWorkflow.permissions.contents, 'read');
+  const refresh = getJob(refreshWorkflow, 'refresh');
+  const condition = refresh.if.replace(/\s+/g, ' ');
+  assert.ok(
+    condition.includes("github.event.workflow_run.conclusion == 'success'"),
+  );
+  assert.ok(
+    condition.includes(
+      "github.event.workflow_run.head_branch == 'changeset-release/main'",
+    ),
+  );
+  assert.deepEqual(refresh.permissions, {
+    'actions': 'write',
+    'pull-requests': 'read',
+  });
+
   const step = getStep(refresh, {
     name: "Re-run the release PR's failed CI jobs",
   });
-  assert.equal(step.env.HEAD_SHA, '${{ github.sha }}');
+  assert.equal(step.env.HEAD_SHA, '${{ github.event.workflow_run.head_sha }}');
+  const { run } = step;
+  // The review must still describe the open release PR's head.
   assert.match(
-    step.run,
-    /actions\/workflows\/ci-and-release\.yml\/runs\?event=pull_request&head_sha=\$\{HEAD_SHA\}/,
+    run,
+    /pulls\?state=open&base=main&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main/,
   );
-  assert.match(step.run, /gh run rerun "\$run_id" --failed/);
-  assert.equal(workflow.permissions.contents, 'read');
-  assert.equal(workflow.permissions.actions, undefined);
+  assert.match(run, /if \[\[ "\$pr_head" != "\$HEAD_SHA" \]\]; then/);
+  // The run is chosen by the release PR's title prefix, never by head alone,
+  // because pull requests into other bases share the head.
+  assert.match(run, /prefix="PR #\$pr → main · "/);
+  assert.match(run, /select\(\.display_title \| startswith\(\$prefix\)\)/);
+  assert.doesNotMatch(run, /per_page=1"/);
+  // It waits for the run to finish, then re-runs only a failed one.
+  const watch = run.indexOf('gh run watch "$run_id"');
+  const rerun = run.indexOf('gh run rerun "$run_id" --failed');
+  assert.ok(watch !== -1 && rerun !== -1 && watch < rerun);
+  assert.match(run, /if \[\[ "\$conclusion" != 'failure' \]\]; then/);
 });
 
 test('the release PR check reads this workflow for its exact head', () => {

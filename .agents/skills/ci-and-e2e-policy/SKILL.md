@@ -93,11 +93,13 @@ The review process for a Version Packages PR:
 2. A build whose changes nobody has accepted fails. Accept or deny each change
    in Chromatic, or fix the code in a pull request to `main`. Then run the
    workflow again.
-3. When every project passes, the workflow re-runs the failed jobs of the
-   release PR's CI run for that head. The `version-packages-freshness` job
-   step "Refuse a release PR whose visual review has not passed" finds the
-   successful run for the exact head, and `quality` passes. The step runs in
-   the merge group as well, so the queue checks the head that it merges.
+3. When every project passes, `.github/workflows/chromatic-release-check.yml`
+   starts from the completed run. It finds the release PR's CI run by its
+   title prefix (`PR #<number> → main · `), waits for that run to finish,
+   and re-runs its failed jobs. The `version-packages-freshness` step "Refuse
+   a release PR whose visual review has not passed" then finds the successful
+   review for the exact head, and `quality` passes. The step runs in the
+   merge group as well, so the queue checks the head that it merges.
 4. Every push to `main` regenerates the release branch, so request the review
    again for the head that will merge. Changes accepted on an earlier head of
    the branch are not reported again, because Chromatic carries accepted

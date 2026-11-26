@@ -11,10 +11,10 @@ name: Chromatic
 #   gh workflow run chromatic.yml --ref changeset-release/main
 #
 # A build with changes nobody has accepted fails. Accept or deny them in
-# Chromatic, then run the workflow again: a commit whose build has been
-# accepted is not captured again. The `version-packages-freshness` job in
-# ci-and-release.yml refuses the release PR until this workflow has succeeded
-# for its exact head.
+# Chromatic, then run the workflow again. The `version-packages-freshness` job
+# in ci-and-release.yml refuses the release PR until this workflow has
+# succeeded for its exact head, and chromatic-release-check.yml re-runs that
+# check once it has.
 #
 # Baselines. The merge queue merges with a merge commit, so the head approved
 # here becomes an ancestor of main, and every later release branch (which
@@ -185,29 +185,3 @@ jobs:
           path: ${{ runner.temp }}/chromatic-interviewer*
           if-no-files-found: ignore
           retention-days: 30
-
-  # The release PR's `quality` check read the review before it existed, so
-  # re-run the failed jobs of its CI run for this head; the review step then
-  # finds this successful run. A CI run still in progress reads it itself.
-  refresh-release-check:
-    name: Refresh the release PR's check
-    needs: [fresco-ui, interview, interviewer]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: write
-    steps:
-      - name: Re-run the release PR's failed CI jobs
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.sha }}
-        run: |
-          run_id=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci-and-release.yml/runs?event=pull_request&head_sha=${HEAD_SHA}&per_page=1" \
-            --jq '.workflow_runs[0] | select(.status == "completed" and .conclusion == "failure") | .id')
-          if [[ -z "$run_id" ]]; then
-            echo "No completed, failed CI run for $HEAD_SHA; nothing to re-run"
-            exit 0
-          fi
-          gh run rerun "$run_id" --failed --repo "$GITHUB_REPOSITORY"
-          echo "Re-ran the failed jobs of CI run $run_id"
