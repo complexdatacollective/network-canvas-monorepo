@@ -334,7 +334,7 @@ export const addEdgeType = (
 
 /**
  * ANOTHER network composer in the protocol, asking about the same node type
- * with controls of its own.
+ * (or the node types given) with controls of its own.
  *
  * A composer field's control lives on the stage, so a second composer is the
  * only way an attribute can be rendered by a control this editor cannot see —
@@ -345,6 +345,7 @@ export const addEdgeType = (
 export const composerInAnotherStage = (
   harness: StageEditorHarness,
   fields: readonly Record<string, unknown>[],
+  nodeTypes?: readonly string[],
 ): void => {
   const composer = harness.protocolSections()[COMPOSER_SECTION];
   const order = harness.protocolSections()[STAGE_ORDER_SECTION];
@@ -359,6 +360,9 @@ export const composerInAnotherStage = (
     label: { 'en-US': 'Second composer' },
     edges: [],
     nodeForm: { fields: [...fields] },
+    ...(nodeTypes
+      ? { subject: { entity: 'node', types: [...nodeTypes] } }
+      : {}),
   };
   act(() => {
     harness.host.store.applyAsCollaborator(

@@ -39,6 +39,7 @@ import {
 } from './composerFixtures.tsx';
 
 const PERSON = fixtureTypeId('node', 'person');
+const FAMILY_MEMBER = fixtureTypeId('node', 'family member');
 const KNOWS = fixtureTypeId('edge', 'knows');
 const FAMILY_EDGE = fixtureTypeId('edge', 'family_edge');
 const personVariable = (name: string) =>
@@ -2879,6 +2880,62 @@ describe('the rules a composer field authors', () => {
     // the reading rather than the reading itself.
     expect(
       within(targets).queryByRole('option', { name: 'isPinned' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('ignores a rendering on another composer of a different node type', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            {
+              id: testId('field-1'),
+              variable: IS_KIN,
+              component: 'Boolean',
+              label: { 'en-US': 'isKin' },
+            },
+          ],
+        },
+      }),
+    );
+    for (const name of ['isKin', 'isClose']) {
+      addPersonVariable(harness, testVariableId(name), {
+        name,
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: { 'en-US': 'Yes' }, value: true }],
+      });
+    }
+    // The other composer asks about family members, so its control for an
+    // attribute id that a person also has decides nothing about people.
+    composerInAnotherStage(
+      harness,
+      [
+        {
+          id: testId('other-field-1'),
+          variable: IS_CLOSE,
+          component: 'Toggle',
+          label: { 'en-US': 'isClose' },
+        },
+      ],
+      [FAMILY_MEMBER],
+    );
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('switch', { name: 'Validation' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('switch', {
+        name: 'Different from another attribute',
+      }),
+    );
+
+    const targets = screen.getByRole('combobox', {
+      name: 'Different from another attribute',
+    });
+    expect(
+      within(targets).queryByRole('option', { name: 'isClose' }),
     ).not.toBeInTheDocument();
   });
 });

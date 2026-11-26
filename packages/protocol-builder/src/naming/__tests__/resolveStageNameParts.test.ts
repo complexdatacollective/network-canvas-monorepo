@@ -9,6 +9,7 @@ import { stageNameLanguageOf } from '../stageNameLanguage.ts';
 
 const PERSON = testTypeId('person');
 const FRIENDSHIP = testTypeId('friendship');
+const PET = testTypeId('pet');
 const GHOST = testTypeId('ghost');
 
 const languageOf = (defaultLocale: string) => {
@@ -24,6 +25,7 @@ const english = languageOf('en');
 
 const nameByType: Record<string, string> = {
   [PERSON]: 'Person',
+  [PET]: 'Pet',
   [FRIENDSHIP]: 'Friendship',
 };
 const resolveEntityName = (_entity: 'node' | 'edge', type: string) =>
@@ -45,6 +47,14 @@ describe('resolveStageSubjectName', () => {
         resolveEntityName,
       ),
     ).toBe('Friendship');
+  });
+  it('returns null for a node subject that lists several known types', () => {
+    expect(
+      resolveStageSubjectName(
+        { entity: 'node', types: [PERSON, PET] },
+        resolveEntityName,
+      ),
+    ).toBeNull();
   });
   it('returns null for ego and for missing/unknown subjects', () => {
     expect(
