@@ -376,7 +376,7 @@ describe('stage edge type support', () => {
     expect(
       stageEdgeTypeSupportIssues(protocol, [
         {
-          path: ['stages', dyadCensus, 'subject', 'type'],
+          path: ['stages', dyadCensus, 'subject', 'types', 0],
           typeId: testTypeId('advice'),
           entity: 'node',
         },
