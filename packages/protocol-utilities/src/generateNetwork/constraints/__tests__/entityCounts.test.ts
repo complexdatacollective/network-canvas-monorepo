@@ -1906,7 +1906,7 @@ describe('generateNetwork with a census configured to create no edges', () => {
 
 /**
  * The interview reuses the pair's edge when two prompts name one edge type —
- * `edgeExists({ from, to, type })` on the shared graph — and the generator now
+ * `findEdge` on the shared graph — and the generator now
  * does the same: `createEdgesForPairs` looks the pair up on `draft.edges`
  * before drawing, so a second prompt over the same people leaves the first
  * prompt's edge alone. These pin that, and the count in `worstCaseEntityCounts`

@@ -299,6 +299,32 @@ describe('SyntheticInterview', () => {
       expect(build(8).person).not.toBe(ids.person);
     });
 
+    it('creates an edge type that is directed and limits the node types it connects', () => {
+      const si = new SyntheticInterview();
+      const person = si.addNodeType({ name: 'Person' });
+      const place = si.addNodeType({ name: 'Place' });
+      const visits = si.addEdgeType({
+        name: 'Visits',
+        directed: true,
+        endpointRules: [{ sourceType: person.id, targetType: place.id }],
+      });
+      const knows = si.addEdgeType({ name: 'Knows' });
+
+      const { codebook } = si.getProtocol();
+      expect(codebook.edge?.[visits.id]).toEqual(
+        expect.objectContaining({
+          directed: true,
+          endpointRules: [{ sourceType: person.id, targetType: place.id }],
+        }),
+      );
+      expect(Object.keys(codebook.edge?.[knows.id] ?? {})).not.toEqual(
+        expect.arrayContaining(['directed']),
+      );
+      expect(Object.keys(codebook.edge?.[knows.id] ?? {})).not.toEqual(
+        expect.arrayContaining(['endpointRules']),
+      );
+    });
+
     it('keeps a variable id the caller gives as a UUID', () => {
       const si = new SyntheticInterview();
       const nt = si.addNodeType();

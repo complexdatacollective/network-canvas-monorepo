@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Stage } from '@codaco/protocol-validation';
-import type { NcEdge } from '@codaco/shared-consts';
+import type { Stage, StructuralCodebook } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcEdge,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { generateNetwork } from '../../generateNetwork.ts';
+import { ValueGenerator } from '../../ValueGenerator.ts';
+import { resolveGenerationConfig } from '../config.ts';
+import { UniqueRegistry } from '../constraints/uniqueRegistry.ts';
+import type { GenerationContext } from '../context.ts';
+import { createEdgesForPairs } from '../edges.ts';
 
 /**
  * The generator draws at most one edge of a type between one pair, because the
  * interview does: every interface that creates an edge for a pair asks
- * `edgeExists({ from, to, type })` first, and that lookup runs over the whole
- * session edge list. Edges carry no stage or prompt provenance, so reuse spans
+ * `findEdge` first, and that lookup runs over the whole session edge list. Edges carry no stage or prompt provenance, so reuse spans
  * stages rather than prompts within one.
  */
 
@@ -80,7 +89,7 @@ function sociogram(id: string): Stage {
   } as unknown as Stage;
 }
 
-/** Unordered `{ from, to, type }` keys, as `edgeExists` matches them. */
+/** Unordered `{ from, to, type }` keys, as `findEdge` matches an undirected type. */
 function pairKeys(edges: NcEdge[]): string[] {
   return edges.map((edge) =>
     [edge.type, ...[edge.from, edge.to].toSorted()].join('|'),
@@ -189,5 +198,60 @@ describe('edge reuse across stages', () => {
 
     expect(new Set(pairKeys(network.edges)).size).toBe(3);
     expect(network.edges).toHaveLength(3);
+  });
+});
+
+describe('edge reuse and edge direction', () => {
+  const contextFor = (
+    codebookForPair: StructuralCodebook,
+  ): GenerationContext => ({
+    codebook: codebookForPair,
+    valueGen: new ValueGenerator(1),
+    config: resolveGenerationConfig({}),
+    usedRosterUids: new Set(),
+    externalData: undefined,
+    respectSkipLogicAndFiltering: false,
+    uniqueRegistry: new UniqueRegistry(),
+    entityConstraints: { ego: new Map(), node: new Map(), edge: new Map() },
+  });
+
+  const person = (uid: string): NcNode => ({
+    [entityPrimaryKeyProperty]: uid,
+    type: 'person',
+    [entityAttributesProperty]: {},
+  });
+
+  // Drawn from b to a, so the walk meets it the other way round.
+  const reversed: NcEdge = {
+    [entityPrimaryKeyProperty]: 'existing',
+    type: 'knows',
+    from: 'b',
+    to: 'a',
+    [entityAttributesProperty]: {},
+  };
+
+  const walk = (directed: boolean) =>
+    createEdgesForPairs(
+      contextFor({
+        edge: { knows: directed ? { directed: true } : {} },
+      }),
+      [person('a'), person('b')],
+      'knows',
+      1,
+      [reversed],
+    );
+
+  it('reuses the reverse edge of an undirected type', () => {
+    const { created, reused } = walk(false);
+    expect(created).toEqual([]);
+    expect(reused).toEqual([{ indices: [0, 1], edge: reversed }]);
+  });
+
+  it('draws its own edge beside the reverse edge of a directed type', () => {
+    const { created, reused } = walk(true);
+    expect(reused).toEqual([]);
+    expect(created.map(({ edge }) => [edge.from, edge.to])).toEqual([
+      ['a', 'b'],
+    ]);
   });
 });

@@ -1,11 +1,13 @@
 import { v4 as uuid } from 'uuid';
 
+import { isDirectedEdgeType } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
+import { findEdge } from '@codaco/shared-consts/edge-identity';
 
 import { generateAttributesForEntity } from './attributes.ts';
 import type { GenerationContext } from './context.ts';
@@ -16,29 +18,6 @@ export function getNodesOfType(nodes: NcNode[], nodeType: string): NcNode[] {
 
 export function getEdgesOfType(edges: NcEdge[], edgeType: string): NcEdge[] {
   return edges.filter((e) => e.type === edgeType);
-}
-
-/**
- * The edge of `edgeType` already joining `a` and `b`, whichever way round it
- * was drawn.
- *
- * Mirrors the interview's own `edgeExists`, which matches `{ from, to, type }`
- * in either direction over the whole session edge list. Edges live on one
- * shared graph and carry no stage or prompt provenance, so this lookup spans
- * the run rather than the stage that created the edge.
- */
-function findEdgeForPair(
-  edges: NcEdge[],
-  a: NcEdge['from'],
-  b: NcEdge['to'],
-  edgeType: string,
-): NcEdge | undefined {
-  return edges.find(
-    (edge) =>
-      edge.type === edgeType &&
-      ((edge.from === a && edge.to === b) ||
-        (edge.from === b && edge.to === a)),
-  );
 }
 
 /** A pair the walk settled, and the edge that joins it. */
@@ -54,8 +33,12 @@ export type PairEdge = {
  *
  * A pair `existingEdges` already joins with an edge of the type is reused
  * rather than drawn again, because that is what the interview does: every
- * interface that creates an edge for a pair looks it up with `edgeExists`
- * first, and adds one only where there is none. Pairs left unconnected are
+ * interface that creates an edge for a pair looks it up with `findEdge` first,
+ * and adds one only where there is none. The lookup reads the type's direction
+ * from the codebook, so an undirected type reuses an edge drawn either way
+ * round and a directed type only one drawn from the first node to the second.
+ * Edges live on one shared graph and carry no stage or prompt provenance, so
+ * the lookup spans the run rather than the stage that created the edge. Pairs left unconnected are
  * returned as `negativeIndices` so census stages can record explicit "no"
  * responses; reused pairs are returned apart from both, since they are neither
  * a new edge nor a negative answer.
@@ -74,6 +57,7 @@ export function createEdgesForPairs(
   const created: PairEdge[] = [];
   const reused: PairEdge[] = [];
   const negativeIndices: [number, number][] = [];
+  const directed = isDirectedEdgeType(ctx.codebook, edgeType);
 
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
@@ -92,7 +76,11 @@ export function createEdgesForPairs(
       // contradicting the graph. The pair is instead treated as the
       // pre-selected "Yes" the runtime shows for an existing edge, and is not
       // rolled at all.
-      const existing = findEdgeForPair(existingEdges, from, to, edgeType);
+      const existing = findEdge(
+        existingEdges,
+        { from, to, type: edgeType },
+        directed,
+      );
       if (existing) {
         reused.push({ indices: [i, j], edge: existing });
         continue;

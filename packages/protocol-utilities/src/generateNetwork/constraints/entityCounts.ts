@@ -622,7 +622,7 @@ export function worstCaseEntityCounts(
   //
   // One pair count per node type rather than per prompt, because
   // `createEdgesForPairs` now looks the pair up on `draft.edges` before drawing
-  // and reuses whatever it finds, exactly as the interview's `edgeExists` does.
+  // and reuses whatever it finds, exactly as the interview's `findEdge` does.
   // Edges carry no stage or prompt provenance, so that lookup spans the whole
   // run: two prompts of one census, two censuses, and a Sociogram elsewhere in
   // the protocol all draw from the same set of pairs and leave at most one edge

@@ -616,10 +616,13 @@ export class SyntheticInterview {
     const colorIndex = this.edgeTypeCounter % EDGE_COLORS.length;
     this.edgeTypeCounter++;
 
+    const { directed, endpointRules } = opts ?? {};
     const entry: EdgeTypeEntry = {
       id,
       name: opts?.name ?? `Edge ${this.edgeTypeCounter}`,
       color: opts?.color ?? EDGE_COLORS[colorIndex]!,
+      ...(directed ? { directed } : {}),
+      ...(endpointRules ? { endpointRules } : {}),
       variables: new Map(),
     };
 
@@ -2803,9 +2806,12 @@ export class SyntheticInterview {
 
     const edge: Record<string, unknown> = {};
     for (const [id, entry] of this.edgeTypes) {
+      const { directed, endpointRules } = entry;
       const edgeEntry: Record<string, unknown> = {
         name: entry.name,
         color: entry.color,
+        ...(directed ? { directed } : {}),
+        ...(endpointRules ? { endpointRules } : {}),
       };
       // Serialize edge type variables if any exist
       if (entry.variables.size > 0) {

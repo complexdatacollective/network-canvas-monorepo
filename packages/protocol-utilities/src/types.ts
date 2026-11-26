@@ -6,6 +6,7 @@ import type {
   ConditionRole,
   EdgeColorReference,
   EdgeCountComparison,
+  EndpointRule,
   FilterOperator,
   FinishMode,
   FinishOutcome,
@@ -159,6 +160,8 @@ export type EdgeTypeEntry = {
   id: string;
   name: string;
   color: EdgeColorReference;
+  directed?: true;
+  endpointRules?: EndpointRule[];
   variables: Map<string, VariableEntry>;
 };
 
@@ -537,6 +540,9 @@ export type AddNodeTypeInput = {
 export type AddEdgeTypeInput = {
   name?: string;
   color?: EdgeColorReference;
+  directed?: true;
+  /** Node type ids, as `addNodeType` returns them. */
+  endpointRules?: EndpointRule[];
 };
 
 export type AddVariableInput = {
