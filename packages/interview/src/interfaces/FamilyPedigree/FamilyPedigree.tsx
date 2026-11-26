@@ -41,7 +41,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   isFamilyPedigreeStageMetadata,
-  type NcEdge,
   type NcNode,
   type VariableValue,
   VariableValueSchema,
@@ -188,7 +187,12 @@ import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
-import { pedigreeLinksOf, unrecordedLinks } from './pedigreeLinks';
+import {
+  edgesDrawnForAddition,
+  linkAttributesFor,
+  pedigreeLinksOf,
+  twinAttributesFor,
+} from './pedigreeLinks';
 import {
   completenessWordingFrom,
   PedigreeWordsProvider,
@@ -254,23 +258,6 @@ const menuItemsOf = (symbol: HTMLElement) => {
       ...menu.querySelectorAll<HTMLElement>('[data-add-menu-item]'),
     ]);
 };
-
-/** The attributes recording a link. Whether a parent carried the
- * pregnancy is left unrecorded while not known, told apart from "No". */
-const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
-  [config.kindAttribute]: [link.kind],
-  ...(link.kind === 'partner'
-    ? { [config.currentPartnerAttribute]: link.isCurrentPartner ?? true }
-    : link.isGestationalCarrier === undefined
-      ? {}
-      : { [config.gestationalCarrierAttribute]: link.isGestationalCarrier }),
-});
-
-/** The attributes recording twins: their zygosity, as the relationship
- * kind. */
-const twinAttributesFor = (config: PedigreeConfig, twin: PlannedTwin) => ({
-  [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[twin.zygosity]],
-});
 
 /** Everything to create to add a relative, under the panel's ids. */
 const planAddition = (
@@ -569,11 +556,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         type: config.personType,
         [entityAttributesProperty]: person.details,
       }));
-    // A stand-in whose place the addition fills gives way, one whose sex
-    // at birth follows from it changes, and identical twins whose genetic
-    // parents it makes differ are not known to be identical, as they will be
-    // once it is recorded.
-    const removedLinks = new Set(plan.removedLinkIds ?? []);
+    // A stand-in whose place the addition fills gives way, and one whose sex
+    // at birth follows from it changes, as they will once it is recorded.
     const removedPeople = new Set(plan.removedPersonIds ?? []);
     const updated = new Map(
       (plan.updatedPeople ?? []).map((person) => [person.id, person]),
@@ -592,71 +576,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }
         return { ...node, [entityAttributesProperty]: attributes };
       });
-    const changedTwins = new Map(
-      (plan.changedTwins ?? []).map((twin) => [twin.linkId, twin.zygosity]),
-    );
-    // The twins a new sibling joins were carried by whoever carried them; a
-    // new parent who carried the anchor replaces whoever was recorded as
-    // having, and a biological parent a new genetic parent takes the place
-    // of is the kind of parent the participant said instead.
-    const recarried = new Map(
-      (plan.carrierUpdates ?? []).map((update) => [update.linkId, update]),
-    );
-    const keptEdges = edges
-      .filter((edge) => !removedLinks.has(edge[entityPrimaryKeyProperty]))
-      .map((edge) => {
-        const linkId = edge[entityPrimaryKeyProperty];
-        const update = recarried.get(linkId);
-        if (update) {
-          const {
-            [config.gestationalCarrierAttribute]: _recorded,
-            ...attributes
-          } = edge[entityAttributesProperty];
-          const carries = update.isGestationalCarrier;
-          return {
-            ...edge,
-            [entityAttributesProperty]: {
-              ...attributes,
-              [config.kindAttribute]: [update.kind],
-              ...(carries === undefined
-                ? {}
-                : { [config.gestationalCarrierAttribute]: carries }),
-            },
-          };
-        }
-        const zygosity = changedTwins.get(linkId);
-        return zygosity
-          ? {
-              ...edge,
-              [entityAttributesProperty]: {
-                ...edge[entityAttributesProperty],
-                [config.kindAttribute]: [TWIN_KIND_BY_ZYGOSITY[zygosity]],
-              },
-            }
-          : edge;
-      });
-    const draftEdges: NcEdge[] = unrecordedLinks(
-      plan.links,
-      edges,
-      config.relationshipType,
-    ).map((link, index) => ({
-      [entityPrimaryKeyProperty]: `draft-${index}`,
-      type: config.relationshipType,
-      from: link.source,
-      to: link.target,
-      [entityAttributesProperty]: linkAttributesFor(config, link),
-    }));
-    const draftTwinEdges: NcEdge[] = (plan.twins ?? []).map((twin, index) => ({
-      [entityPrimaryKeyProperty]: `draft-twin-${index}`,
-      type: config.relationshipType,
-      from: twin.source,
-      to: twin.target,
-      [entityAttributesProperty]: twinAttributesFor(config, twin),
-    }));
     return participantsFamily(
       readFamily(
         [...keptNodes, ...draftNodes],
-        [...keptEdges, ...draftEdges, ...draftTwinEdges],
+        edgesDrawnForAddition(plan, edges, config),
         config,
         generatedLabels,
         decryptedNames,
