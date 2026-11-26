@@ -19,7 +19,7 @@ test('creates a valid DyadCensus stage from scratch', async ({
 
   // DyadCensus's subject is a node type (@codaco/protocol-builder's
   // `subjectPicker({ entity: 'node', filter: true })`). The shared prompts
-  // section refuses to open its list until `subject.type` is set — its own
+  // section refuses to open its list until `subject.types` is set — its own
   // `requiresSubject` default.
   await selectOrCreateNodeType(architectPage, 'person');
 

@@ -71,7 +71,7 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
       run: async ({ page, stage }) => {
         const census = new OneToManyDyadCensusFixture(page);
 
-        // subject.type: only the Person nodes are focal/target candidates; the
+        // subject.types: only the Person nodes are focal/target candidates; the
         // 2 Place nodes never appear as focal or target candidates.
         await expect.poll(() => census.getSourceLabel()).toBe('Carol');
         await expect
