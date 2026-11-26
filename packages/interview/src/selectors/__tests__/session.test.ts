@@ -25,6 +25,7 @@ import {
   getNetworkNodesForPrompt,
   getNetworkNodesForType,
   getStageMetadata,
+  getStageSubject,
   resolveNodeShape,
 } from '../session';
 
@@ -161,7 +162,7 @@ describe('getNetworkNodesForPrompt', () => {
 describe('getNetworkNodesForType', () => {
   const PET = testTypeId('pet');
   const PLACE = testTypeId('place');
-  const typesOnStage = (types: string[]) => {
+  const storeWithStageTypes = (types: string[]) => {
     const protocolState: ProtocolPayload = {
       id: 'protocol',
       hash: 'hash',
@@ -210,7 +211,7 @@ describe('getNetworkNodesForType', () => {
       type,
       [entityAttributesProperty]: {},
     });
-    const store = configureStore({
+    return configureStore({
       reducer: rootReducer,
       preloadedState: {
         session: {
@@ -233,11 +234,11 @@ describe('getNetworkNodesForType', () => {
         protocol: protocolState,
       },
     });
-
-    return getNetworkNodesForType(store.getState(), 0).map(
+  };
+  const typesOnStage = (types: string[]) =>
+    getNetworkNodesForType(storeWithStageTypes(types).getState(), 0).map(
       (node) => node[entityPrimaryKeyProperty],
     );
-  };
 
   it("returns nodes of the stage's types only", () => {
     expect(typesOnStage([PERSON])).toEqual(['alex', 'sam']);
@@ -245,6 +246,18 @@ describe('getNetworkNodesForType', () => {
 
   it('returns nodes of every type a stage lists', () => {
     expect(typesOnStage([PERSON, PET])).toEqual(['alex', 'rex', 'sam']);
+  });
+
+  it('resolves the subject of a stage that lists one node type', () => {
+    expect(
+      getStageSubject(storeWithStageTypes([PERSON]).getState(), 0),
+    ).toEqual({ entity: 'node', type: PERSON });
+  });
+
+  it('resolves no subject for a stage that lists several node types', () => {
+    expect(
+      getStageSubject(storeWithStageTypes([PERSON, PET]).getState(), 0),
+    ).toBeNull();
   });
 });
 

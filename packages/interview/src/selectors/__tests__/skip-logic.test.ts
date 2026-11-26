@@ -397,6 +397,26 @@ describe('buildStageAvailabilityMap', () => {
       ).toEqual(['available', 'available']);
     });
 
+    it('takes a Narrative off the route when the only placed node is of a type it does not list', () => {
+      const stages = [
+        {
+          ...nodeStage('story', 'Narrative'),
+          presets: [{ layoutVariable: CLOSE }],
+        },
+        finishStage(),
+      ];
+
+      expect(
+        kinds(
+          stages,
+          withEntities([
+            node('a'),
+            node('rex', testTypeId('pet'), { [CLOSE]: { x: 0.5, y: 0.5 } }),
+          ]),
+        ),
+      ).toEqual(['empty', 'available']);
+    });
+
     it('takes a Narrative off the route when every preset’s own filter leaves no one placed in its layout', () => {
       const onlyAged = (age: number): Filter => ({
         rules: [
