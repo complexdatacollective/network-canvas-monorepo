@@ -139,7 +139,11 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
         toastVariants({ variant }),
       )}
     >
-      <Toast.Content className="flex gap-3 overflow-hidden transition-opacity duration-250 data-behind:pointer-events-none data-behind:opacity-0 data-expanded:pointer-events-auto data-expanded:opacity-100">
+      {/* The Close control is a column of its own beside the text, so a long
+          title wraps before it rather than running underneath it. No
+          `overflow-hidden` here: it would clip the control where it reaches
+          into the toast's padding, and the toast itself already clips. */}
+      <Toast.Content className="flex gap-3 transition-opacity duration-250 data-behind:pointer-events-none data-behind:opacity-0 data-expanded:pointer-events-auto data-expanded:opacity-100">
         {toast.data?.icon ? (
           <span className="mt-[0.1em] shrink-0">{toast.data.icon}</span>
         ) : (
@@ -150,7 +154,7 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
             />
           )
         )}
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           {toast.data?.onClick ? (
             <button
               type="button"
@@ -197,9 +201,13 @@ function ToastItem({ toast, overflowing }: ToastItemProps) {
             </Button>
           )}
         </div>
+        {/* Pulled into the toast's padding (`px-6 py-4` from
+            `spacing: 'sm'`) so that it sits `--spacing(2)` from the toast's
+            top and end edges. The matching negative bottom margin stops it
+            from making a toast with a one-line title any taller. */}
         <Toast.Close
           render={<CloseButton size="sm" />}
-          className="absolute inset-e-2 top-2"
+          className="-me-4 -mt-2 -mb-2 self-start"
           aria-label={intl.formatMessage(commonMessages.close)}
           nativeButton
         />
