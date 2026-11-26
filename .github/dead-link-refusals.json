@@ -1,5 +1,5 @@
 {
-  "note": "External links that answer 401/403 to CI because they refuse automation, not because they are broken. Verified 2026-09-11, and again for the entries added 2026-11-05 and 2026-11-17: every DOI here resolves (doi.org 302), none returned 404, and each non-DOI page has a recent 200 capture in the Wayback Machine. A refusal from a URL NOT listed here fails the run, so adding an entry is a deliberate, reviewed act. Remove an entry when the publisher stops refusing us.",
+  "note": "External links that answer 401, 403 or 405 to CI because they refuse automation, not because they are broken. Verified 2026-09-11, and again for the entries added 2026-11-05, 2026-11-17 and 2026-11-26: every DOI here resolves (doi.org 302), none returned 404, and each non-DOI page has a recent 200 capture in the Wayback Machine. A refusal from a URL NOT listed here fails the run, so adding an entry is a deliberate, reviewed act. Remove an entry when the publisher stops refusing us.",
   "refusable": [
     {
       "host": "ccsg.isr.umich.edu",
@@ -80,6 +80,11 @@
       "host": "jsatjournal.com",
       "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
       "url": "https://doi.org/10.1016/j.josat.2026.210094"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.pecglo.2026.100049"
     },
     {
       "host": "www.sciencedirect.com",
@@ -215,6 +220,11 @@
       "host": "journals.sagepub.com",
       "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
       "url": "https://doi.org/10.1177/29768357261502225"
+    },
+    {
+      "host": "www.degruyterbrill.com",
+      "reason": "AWS WAF CAPTCHA, answered with 405; an ordinary request gets the 202 challenge announced with x-amzn-waf-action: challenge",
+      "url": "https://doi.org/10.1515/zfsoz-2026-3017"
     },
     {
       "host": "ajph.aphapublications.org",
