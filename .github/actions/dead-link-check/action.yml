@@ -26,7 +26,7 @@ inputs:
     default: '4'
   allow-refused:
     description: >-
-      Path to the JSON list of external URLs known to answer 401/403 because
+      Path to the JSON list of external URLs known to answer 401, 403 or 405 because
       they refuse automation rather than because they are broken. A refusal
       from any URL NOT on that list fails the run — which is why this is a list
       of URLs and not a count: a count lets a link that starts refusing us hide

@@ -159,6 +159,15 @@ test('a WAF refusal is reported unverified, never dead and never live', async ()
   const CHALLENGE_SCRIPT =
     '<script src="/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1"></script>';
   const external = await startServer((request, response) => {
+    if (request.url === '/captcha') {
+      // AWS WAF answers a CAPTCHA with 405, not 403.
+      response.statusCode = 405;
+      response.setHeader('server', 'CloudFront');
+      response.setHeader('x-amzn-waf-action', 'captcha');
+      response.setHeader('content-type', 'text/html; charset=UTF-8');
+      response.end('<title>Human Verification</title>');
+      return;
+    }
     response.statusCode = 403;
     response.setHeader('server', 'cloudflare');
     response.setHeader('content-type', 'text/html; charset=UTF-8');
@@ -177,15 +186,17 @@ test('a WAF refusal is reported unverified, never dead and never live', async ()
       html(
         response,
         `<a href="/to-interstitial">interstitial behind a redirect</a>
-         <a href="/to-block">permanent block behind a redirect</a>`,
+         <a href="/to-block">permanent block behind a redirect</a>
+         <a href="/to-captcha">AWS WAF CAPTCHA behind a redirect</a>`,
       );
       return;
     }
+    const targets = {
+      '/to-captcha': '/captcha',
+      '/to-interstitial': '/interstitial',
+    };
     response.writeHead(302, {
-      location:
-        request.url === '/to-interstitial'
-          ? `${external.origin}/interstitial`
-          : `${external.origin}/blocked`,
+      location: `${external.origin}${targets[request.url] ?? '/blocked'}`,
     });
     response.end();
   });
@@ -198,6 +209,7 @@ test('a WAF refusal is reported unverified, never dead and never live', async ()
       refusable: [
         { url: `${root.origin}/to-interstitial` },
         { url: `${root.origin}/to-block` },
+        { url: `${root.origin}/to-captcha` },
       ],
     }),
   );
@@ -238,30 +250,34 @@ test('a WAF refusal is reported unverified, never dead and never live', async ()
     assert.equal(result.code, 0, result.stderr);
     const report = jsonResult(result);
     assert.equal(report.summary.failed, 0, 'neither is counted dead');
-    assert.equal(report.summary.refused, 2);
-    assert.equal(report.refusals.count, 2);
+    assert.equal(report.summary.refused, 3);
+    assert.equal(report.refusals.count, 3);
     assert.deepEqual(report.failures, []);
 
-    for (const path of ['/to-interstitial', '/to-block']) {
+    for (const [path, status] of [
+      ['/to-interstitial', 403],
+      ['/to-block', 403],
+      ['/to-captcha', 405],
+    ]) {
       const refusal = report.refusals.links.find(({ url }) =>
         url.endsWith(path),
       );
       assert.ok(refusal, `${path} is reported as refused`);
       assert.equal(refusal.ok, false, 'refused is never "verified"');
       assert.equal(refusal.kind, 'refused');
-      assert.equal(refusal.status, 403);
+      assert.equal(refusal.status, status);
       // The redirect must not be reported as the destination reached.
-      assert.match(refusal.finalUrl, /\/(interstitial|blocked)$/);
+      assert.match(refusal.finalUrl, /\/(interstitial|blocked|captcha)$/);
     }
 
     assert.equal(partial.code, 1, 'the unlisted refusal fails the run');
     const partialReport = JSON.parse(partial.stdout);
     assert.equal(partialReport.summary.refused, 1);
-    assert.equal(partialReport.summary.failed, 1);
-    assert.match(
-      partialReport.failures[0].url,
-      /to-block$/,
-      'the unlisted one is the failure',
+    assert.equal(partialReport.summary.failed, 2);
+    assert.deepEqual(
+      partialReport.failures.map(({ url }) => new URL(url).pathname).toSorted(),
+      ['/to-block', '/to-captcha'],
+      'the unlisted ones are the failures, a 405 included',
     );
   } finally {
     await rm(directory, { force: true, recursive: true });
