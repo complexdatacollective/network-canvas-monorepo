@@ -249,7 +249,7 @@ describe('the name generator editor', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       label: { 'en-US': 'Close friends' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       form: {
         title: { 'en-US': 'Add a person' },
         fields: [

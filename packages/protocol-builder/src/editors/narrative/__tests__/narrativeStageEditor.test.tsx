@@ -109,7 +109,7 @@ describe('the narrative stage editor', () => {
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
       label: { 'en-US': 'Story' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       background: { concentricCircles: 4 },
     });
     expect(presetsOf(saved?.stageDocument ?? {})).toHaveLength(1);
@@ -189,7 +189,7 @@ describe('the narrative stage editor', () => {
         type: 'Narrative',
         fields: {
           label: { 'en-US': 'Story' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           behaviours: { automaticLayout: true },
           presets: [
             {

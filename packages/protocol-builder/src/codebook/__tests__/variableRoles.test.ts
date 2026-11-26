@@ -54,6 +54,8 @@ const FORM_STAGE_ID = testId('form-stage');
 const BIN_STAGE_ID = testId('bin-stage');
 const SUBJECT = { entity: 'node', type: PERSON } as const;
 const FAMILY_SUBJECT = { entity: 'node', type: FAMILY_MEMBER } as const;
+const STAGE_SUBJECT = { entity: 'node', types: [PERSON] };
+const FAMILY_STAGE_SUBJECT = { entity: 'node', types: [FAMILY_MEMBER] };
 const FAMILY_STAGE_ID = testId('family-stage');
 const EGO_SLOT = 'familyPedigree.nodeConfiguration.egoAttribute';
 
@@ -92,7 +94,7 @@ const sections = (): Record<string, SectionDoc> => ({
     id: FORM_STAGE_ID,
     type: 'AlterForm',
     label: { en: 'Form' },
-    subject: SUBJECT,
+    subject: STAGE_SUBJECT,
     form: {
       fields: [
         {
@@ -107,7 +109,7 @@ const sections = (): Record<string, SectionDoc> => ({
     id: BIN_STAGE_ID,
     type: 'CategoricalBin',
     label: { en: 'Bin' },
-    subject: SUBJECT,
+    subject: STAGE_SUBJECT,
     prompts: [
       {
         id: testId('prompt-1'),
@@ -130,7 +132,7 @@ const familySections = (): Record<string, SectionDoc> => ({
     type: 'FamilyPedigree',
     wording: familyPedigreeWordingIn(),
     label: { en: 'Family Pedigree' },
-    subject: FAMILY_SUBJECT,
+    subject: FAMILY_STAGE_SUBJECT,
     prompt: { en: 'Build your family' },
     nodeConfiguration: {
       nameAttribute: NAME,
@@ -486,7 +488,7 @@ describe('variable role helpers', () => {
           type: 'FamilyPedigree',
           wording: familyPedigreeWordingIn(),
           label: 'Family Pedigree',
-          subject: FAMILY_SUBJECT,
+          subject: FAMILY_STAGE_SUBJECT,
           prompt: 'Build your family',
           nodeConfiguration: {
             nameAttribute: NAME,

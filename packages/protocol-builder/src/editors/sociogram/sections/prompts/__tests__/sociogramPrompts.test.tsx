@@ -1150,7 +1150,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
         type: 'Sociogram' as const,
         fields: {
           label: { 'en-US': 'Sociogram' },
-          subject: { entity: 'node', type: '' },
+          subject: { entity: 'node', types: [''] },
           prompts: [
             {
               ...SORTED_PROMPT,

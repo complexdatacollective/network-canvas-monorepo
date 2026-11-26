@@ -198,7 +198,7 @@ describe('the questions an ordinal bin asks', () => {
         type: 'OrdinalBin',
         fields: {
           label: { 'en-US': 'Ordinal Bin' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           prompts: [
             {
               id: testId('ordinal-bin-legacy-prompt-1'),
@@ -354,7 +354,7 @@ describe('an ordinal bin prompt whose scale is not an ordinal attribute', () => 
         type: 'OrdinalBin',
         fields: {
           label: { 'en-US': 'Ordinal Bin' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           prompts: [
             {
               id: testId('prompt-a'),

@@ -26,7 +26,7 @@ const en = (text: string) => ({ 'en-US': text });
  */
 const rosterFields: SectionDoc = {
   label: en('People you know'),
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   prompts: [{ id: 'prompt-1', text: en('Pick someone you know') }],
   cardOptions: {
     additionalProperties: [{ label: en('Nickname'), variable: 'nickname' }],

@@ -76,7 +76,7 @@ const VariablePicker = NativeSelectField as ComponentType<
  */
 const STAGE_FIELDS: SectionDoc = {
   label: 'People',
-  subject: SUBJECT,
+  subject: { entity: 'node', types: [PERSON] },
   prompts: [{ id: 'p1', text: 'Who?' }],
   additionalAttributes: [],
 };

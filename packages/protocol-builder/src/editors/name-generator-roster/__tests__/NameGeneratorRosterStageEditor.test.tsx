@@ -71,7 +71,7 @@ describe('creating a roster name generator', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'NameGeneratorRoster',
-      subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
+      subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
       dataSource: 'roster_data',
     });
     // The heading over the people it offers, which the researcher was never

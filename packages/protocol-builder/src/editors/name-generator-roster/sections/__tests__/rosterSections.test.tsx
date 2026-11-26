@@ -24,7 +24,7 @@ const rosterWith = (fields: SectionDoc) => ({
   type: 'NameGeneratorRoster' as const,
   fields: {
     label: { 'en-US': 'Name Generator Roster' },
-    subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
+    subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
     panelTitle: { 'en-US': 'Available to add' },
     allAddedNotice: {
       'en-US': 'There is nothing left to add from this list.',

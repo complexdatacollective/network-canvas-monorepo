@@ -1,4 +1,8 @@
-import type { LocalizedString, Stage } from '@codaco/protocol-validation';
+import {
+  getSingleStageNodeType,
+  type LocalizedString,
+  type Stage,
+} from '@codaco/protocol-validation';
 
 import {
   stageNumber,
@@ -141,8 +145,7 @@ export function sourceStageNodeType(
   const stage = sourceStageOf(context, sourceStageId);
   if (stage === undefined) return undefined;
   // The Family Pedigree's people are its stage subject.
-  const nodeType = stage.subject.type;
-  return typeof nodeType === 'string' ? nodeType : undefined;
+  return getSingleStageNodeType(stage);
 }
 
 /**

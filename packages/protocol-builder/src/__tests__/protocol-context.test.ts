@@ -227,7 +227,7 @@ describe('protocolContextFromSections', () => {
       id: FIRST_STAGE,
       type: 'NameGenerator',
       label: text('First'),
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       form: {
         title: text('Add'),
         fields: [

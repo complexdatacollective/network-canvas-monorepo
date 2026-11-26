@@ -128,7 +128,7 @@ describe('the canvas sections, read in Spanish', () => {
         type: 'Sociogram' as const,
         fields: {
           label: 'Sociogram',
-          subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
+          subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
           background: { concentricCircles: 4 },
           prompts: [
             {

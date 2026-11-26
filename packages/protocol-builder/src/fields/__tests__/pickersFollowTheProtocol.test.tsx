@@ -162,7 +162,7 @@ describe('the entity type picker', () => {
 
     expect(saved?.stageDocument.subject).toEqual({
       entity: 'node',
-      type: FAMILY_MEMBER,
+      types: [FAMILY_MEMBER],
     });
   });
 

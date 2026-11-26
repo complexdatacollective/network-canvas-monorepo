@@ -304,7 +304,7 @@ describe('the family pedigree stage editor', () => {
       type: 'FamilyPedigree',
       // Named for the person type and the interface until the researcher says otherwise.
       label: { 'en-US': expect.any(String) },
-      subject: { entity: 'node', type: FAMILY_MEMBER },
+      subject: { entity: 'node', types: [FAMILY_MEMBER] },
       prompt: { 'en-US': PROMPT_TEXT },
       // None of the words Network Canvas supplies for the stage (the wording
       // group, the name question): the interview shows them, and the stage

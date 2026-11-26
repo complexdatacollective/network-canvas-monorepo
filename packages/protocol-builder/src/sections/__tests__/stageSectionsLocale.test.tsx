@@ -287,7 +287,7 @@ describe('the prompts section, read in Spanish', () => {
         type: 'NameGenerator' as const,
         fields: {
           label: inProtocolLanguage('Name Generator'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           prompts: [],
         },
       },
@@ -362,7 +362,7 @@ describe('a prompt’s sort rules, read in Spanish', () => {
       type: 'Sociogram' as const,
       fields: {
         label: inProtocolLanguage('Sociograma'),
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { automaticLayout: true },
         prompts: [

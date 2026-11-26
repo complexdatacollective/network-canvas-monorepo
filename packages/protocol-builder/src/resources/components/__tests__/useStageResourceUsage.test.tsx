@@ -56,7 +56,7 @@ const rosterFile = () =>
  */
 const panelsNaming = (first: string, second: string): SectionDoc => ({
   label: { 'en-US': 'People' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   panels: [
     { id: 'panel-1', title: { 'en-US': 'One' }, dataSource: first },
     { id: 'panel-2', title: { 'en-US': 'Two' }, dataSource: second },

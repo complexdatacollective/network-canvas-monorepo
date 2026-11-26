@@ -96,7 +96,7 @@ describe('creating a tie-strength census stage', () => {
     expect(request?.stageDocument).toMatchObject({
       type: 'TieStrengthCensus',
       label: { 'en-US': 'Person Tie-Strength Census' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {

@@ -79,7 +79,7 @@ describe('creating a quick-add name generator', () => {
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'NameGeneratorQuickAdd',
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       quickAdd: NAME,
     });
     expect(request?.stageDocument.prompts).toEqual([

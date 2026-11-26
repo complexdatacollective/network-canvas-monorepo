@@ -153,7 +153,7 @@ describe('the questions a one-to-many dyad census asks', () => {
         type: 'OneToManyDyadCensus',
         fields: {
           label: { 'en-US': 'One to Many Dyad Census' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           behaviours: { removeAfterConsideration: true },
           prompts: [
             {

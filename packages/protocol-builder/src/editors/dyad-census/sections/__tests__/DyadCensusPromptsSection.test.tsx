@@ -109,7 +109,7 @@ describe('the questions a dyad census asks about a pair', () => {
         type: 'DyadCensus',
         fields: {
           label: { 'en-US': 'Dyad Census' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           prompts: [
             {
               id: testId('prompt-a'),

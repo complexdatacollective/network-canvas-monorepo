@@ -9,8 +9,8 @@ const KNOWS = testTypeId('knows');
 /**
  * The bridge between the two spellings of a stage's subject.
  *
- * The schema stores it as `{entity, type}` while the picker speaks bare type
- * ids, and the Fresco form store has no format/parse seam of its own — so the
+ * The schema stores a node subject as `{entity, types}` and an edge subject
+ * as `{entity, type}`, while the picker speaks bare type ids, and the Fresco form store has no format/parse seam of its own — so the
  * picker's own module is the one place the two meet. Asked of the function
  * directly rather than through the radio group, because the group can only
  * ever hand over values it drew, which is exactly the set that leaves the
@@ -26,7 +26,7 @@ describe('turning a picked type into a stage subject', () => {
   it('tags a node pick as a node and an edge pick as an edge', () => {
     expect(entitySubject('node', PERSON)).toEqual({
       entity: 'node',
-      type: PERSON,
+      types: [PERSON],
     });
     expect(entitySubject('edge', KNOWS)).toEqual({
       entity: 'edge',
@@ -37,7 +37,7 @@ describe('turning a picked type into a stage subject', () => {
   /**
    * A picker that hands back nothing leaves the stage with NO subject, never
    * with a subject whose type is empty. The schema has one spelling for absent
-   * — the key is not there — and `{entity: 'node', type: ''}` is a configured
+   * — the key is not there — and `{entity: 'node', types: ['']}` is a configured
    * subject pointing at a type that does not exist, which every section
    * reading the subject would believe in: prompts would offer variables of it,
    * a filter would name it, and the save would be refused against a path

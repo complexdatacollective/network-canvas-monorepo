@@ -53,7 +53,7 @@ export const presetsOf = (
 export const narrativeHolding = (preset: Record<string, unknown>) => {
   const fields = {
     label: { 'en-US': 'Narrative' },
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     background: { concentricCircles: 4, skewedTowardCenter: true },
     behaviours: { freeDraw: true, allowRepositioning: true },
     presets: [preset],

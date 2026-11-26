@@ -6,6 +6,7 @@ import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectStageReferences,
+  type ResolvedSubject,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
@@ -65,15 +66,13 @@ function referenceAt(
   return { sectionId: sectionId({ kind: 'settings' }), path };
 }
 
+// A hit carries the one subject its reference resolves against: a stage
+// subject listing several node types resolves to none, and so does a hit
+// whose subject the walk could not work out.
 function subjectOfHit(
-  subject: Readonly<{ entity: string; type?: string }> | undefined,
+  subject: ResolvedSubject | undefined,
 ): CodebookSubject | undefined {
-  if (subject === undefined) return undefined;
-  if (subject.entity === 'ego') return { entity: 'ego' };
-  if (subject.entity !== 'node' && subject.entity !== 'edge') return undefined;
-  return subject.type === undefined
-    ? undefined
-    : { entity: subject.entity, type: subject.type };
+  return subject;
 }
 
 function sameSubject(a: CodebookSubject, b: CodebookSubject): boolean {
@@ -161,8 +160,8 @@ export function stageReferences(
  *
  * A reference inside a list — a prompt, a form field, a filter rule, a sort
  * option — is removed by dropping the entry that holds it. A reference that is
- * a property of the section itself, a stage's `subject.type` or a quick-add
- * attribute, has no such entry: there is nothing to remove that leaves a stage
+ * a property of the section itself, an edge stage's `subject.type` or a
+ * quick-add attribute, has no such entry: there is nothing to remove that leaves a stage
  * the researcher would recognise, so the host says so rather than guessing.
  */
 export function withoutReference(

@@ -712,7 +712,7 @@ describe('the in-memory host', () => {
     expect(refusal?._tag).toBe('ReferencesRemain');
     expect(revealed(refusalData(refusal))).toMatchObject({
       remaining: expect.arrayContaining([
-        { sectionId: QUICK_ADD, path: ['subject', 'type'] },
+        { sectionId: QUICK_ADD, path: ['subject', 'types', 0] },
       ]),
     });
     expect(subject.store.has(PERSON)).toBe(true);

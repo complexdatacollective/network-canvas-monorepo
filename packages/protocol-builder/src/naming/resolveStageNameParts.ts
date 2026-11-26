@@ -1,13 +1,14 @@
-import type {
-  FinishKinds,
-  FinishMode,
-  FinishOutcome,
-  MediaKinds,
-  Panel,
-  PanelSource,
-  StageNameWording,
-  StageSubject,
-  StageType,
+import {
+  type FinishKinds,
+  type FinishMode,
+  type FinishOutcome,
+  type MediaKinds,
+  type Panel,
+  type PanelSource,
+  resolveSubjectValue,
+  type StageNameWording,
+  type StageSubject,
+  type StageType,
 } from '@codaco/protocol-validation';
 
 import type { Qualifier } from './generateStageLabel.ts';
@@ -45,10 +46,11 @@ export function resolveStageSubjectName(
   subject: StageSubject | undefined,
   resolveEntityName: EntityNameResolver,
 ): string | null {
-  if (!subject || subject.entity === 'ego' || !subject.type) {
+  const resolved = resolveSubjectValue(subject);
+  if (!resolved || resolved.entity === 'ego' || !resolved.type) {
     return null;
   }
-  return resolveEntityName(subject.entity, subject.type) || null;
+  return resolveEntityName(resolved.entity, resolved.type) || null;
 }
 
 /**

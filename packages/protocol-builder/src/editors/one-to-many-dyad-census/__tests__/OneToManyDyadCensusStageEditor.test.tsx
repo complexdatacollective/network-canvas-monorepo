@@ -97,7 +97,7 @@ describe('creating a one-to-many dyad census stage', () => {
     expect(request?.stageDocument).toMatchObject({
       type: 'OneToManyDyadCensus',
       label: { 'en-US': 'Person One to Many Dyad Census' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       behaviours: { removeAfterConsideration: false },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([

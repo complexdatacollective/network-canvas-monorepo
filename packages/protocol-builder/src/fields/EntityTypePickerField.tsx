@@ -43,6 +43,7 @@ import {
   type RuleEntityTarget,
   type RuleEntityTypeOption,
 } from '../rules/ruleCodebook.ts';
+import { draftSubjectNodeTypes } from '../sections/useStageSubject.ts';
 import { useEntityTypes, type EntityTypeSummary } from '../state/hooks.ts';
 import { useLatest } from '../state/useLatest.ts';
 
@@ -886,7 +887,7 @@ export default function EntityTypePickerField({
  * An ego subject carries no type, so it has nothing for this control to pick;
  * a stage whose subject is ego says so by having no subject section at all.
  */
-export type EntitySubject = Extract<StageSubject, { type: string }>;
+export type EntitySubject = Exclude<StageSubject, { entity: 'ego' }>;
 
 /**
  * The subject a picked type stands for, or nothing at all.
@@ -897,7 +898,7 @@ export type EntitySubject = Extract<StageSubject, { type: string }>;
  *
  * A picker that hands back nothing leaves the stage with NO subject, never
  * with a subject whose type is empty. The schema has one spelling for absent —
- * the key is not there — and `{entity: 'node', type: ''}` is a configured
+ * the key is not there — and `{entity: 'node', types: ['']}` is a configured
  * subject pointing at a type that does not exist, which every section reading
  * the subject would believe in.
  */
@@ -907,8 +908,22 @@ export function entitySubject(
 ): EntitySubject | undefined {
   if (typeId === undefined || typeId === '') return undefined;
   return entityType === 'node'
-    ? { entity: 'node', type: typeId }
+    ? { entity: 'node', types: [typeId] }
     : { entity: 'edge', type: typeId };
+}
+
+/**
+ * The one type a subject names, for a picker that offers one. A node subject
+ * listing several types names none.
+ */
+export function pickedSubjectType(
+  subject: EntitySubject | undefined,
+): string | undefined {
+  if (subject?.entity === 'edge') return subject.type;
+  // The value is the stage draft's, which a draft saved before it was
+  // checked can hold in any shape.
+  const types = draftSubjectNodeTypes(subject);
+  return types?.length === 1 ? types[0] : undefined;
 }
 
 export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
@@ -926,7 +941,8 @@ export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
 /**
  * A stage's `subject`, picked from the protocol's own codebook.
  *
- * The schema stores the subject as `{entity, type}` while the picker speaks
+ * The schema stores a node subject as `{entity, types}` and an edge subject
+ * as `{entity, type}`, while the picker speaks
  * bare type ids, and the Fresco form store has no `format`/`parse` seam of its
  * own — so this is where the two are bridged, once, rather than in every
  * section that owns a subject.
@@ -941,7 +957,7 @@ export function EntitySubjectPickerField({
     <EntityTypePickerField
       {...props}
       entityType={entityType}
-      value={value?.type}
+      value={pickedSubjectType(value)}
       onChange={(nextType) => onChange?.(entitySubject(entityType, nextType))}
     />
   );

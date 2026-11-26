@@ -157,7 +157,7 @@ describe('the network composer stage editor', () => {
     const saved = await harness.submit();
     expect(saved?.stageDocument).toMatchObject({
       label: { 'en-US': 'Build' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       quickAdd: personVariable('composerName'),
       layoutVariable: personVariable('layout'),
       background: { concentricCircles: 4 },

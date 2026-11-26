@@ -155,7 +155,7 @@ describe('what a quick-add name generator records', () => {
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: { 'en-US': 'Quick add' },
-          subject: { entity: 'node', type: FAMILY_MEMBER },
+          subject: { entity: 'node', types: [FAMILY_MEMBER] },
           quickAdd: FM_NAME,
           prompts: [
             {
@@ -189,7 +189,7 @@ describe('what a quick-add name generator records', () => {
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: { 'en-US': 'Quick add' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           prompts: [
             {
               id: 'prompt-1',
@@ -302,7 +302,7 @@ describe('what a quick-add name generator records', () => {
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: { 'en-US': 'Quick add' },
-          subject: { entity: 'node', type: FAMILY_MEMBER },
+          subject: { entity: 'node', types: [FAMILY_MEMBER] },
           quickAdd: FM_NAME,
           prompts: [
             { id: 'prompt-1', text: { 'en-US': 'Add your relatives' } },
@@ -526,7 +526,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: { 'en-US': 'Quick add' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           quickAdd: RELATIONSHIP_TO_EGO,
           prompts: [
             {

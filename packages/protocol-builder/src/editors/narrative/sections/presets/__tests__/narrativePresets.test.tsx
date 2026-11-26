@@ -320,7 +320,7 @@ describe('an attribute another interface owns', () => {
       type: 'Narrative' as const,
       fields: {
         label: { 'en-US': 'Family narrative' },
-        subject: { entity: 'node', type: FAMILY_MEMBER },
+        subject: { entity: 'node', types: [FAMILY_MEMBER] },
         background: { concentricCircles: 4, skewedTowardCenter: true },
         behaviours: { freeDraw: true, allowRepositioning: true },
         presets: [],

@@ -70,7 +70,7 @@ const openStage = (fields: Record<string, unknown>) => ({
 const binningPeople = (prompt: Record<string, unknown>) =>
   openStage({
     label: { 'en-US': 'Categorical Bin' },
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     prompts: [prompt],
   });
 
@@ -568,7 +568,7 @@ describe('a categorical bin with more bins than fit on one screen', () => {
     const harness = renderStageEditor(
       openStage({
         label: { 'en-US': 'Categorical Bin' },
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         prompts: [
           {
             id: testId('prompt-a'),
@@ -690,7 +690,7 @@ describe('a prompt whose attribute’s values an interface owns', () => {
       openStage({
         label: { 'en-US': 'Categorical Bin' },
         // The type the pedigree describes, which is where the claim is made.
-        subject: { entity: 'node', type: FAMILY_MEMBER },
+        subject: { entity: 'node', types: [FAMILY_MEMBER] },
         prompts: [
           {
             id: testId('prompt-a'),
@@ -737,7 +737,7 @@ describe('a prompt whose attribute’s options a stage manages', () => {
     const harness = renderStageEditor(
       openStage({
         label: 'Categorical Bin',
-        subject: { entity: 'node', type: FAMILY_MEMBER },
+        subject: { entity: 'node', types: [FAMILY_MEMBER] },
         prompts: [
           {
             id: testId('prompt-a'),

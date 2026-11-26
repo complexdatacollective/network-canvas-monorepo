@@ -63,7 +63,7 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
         type: 'Sociogram' as const,
         fields: {
           label: en('Sociogram'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           background: { concentricCircles: 4 },
           behaviours: { automaticLayout: true, freeDraw: true },
           prompts: [

@@ -6,6 +6,7 @@ import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { newEntityDraft } from '../../../codebook/components/CodebookEntityEditorDialog.tsx';
+import { useStageValue } from '../../../form/stageFormHooks.ts';
 import {
   fixtureStageId,
   fixtureTypeId,
@@ -113,6 +114,16 @@ const pickedTypeBehindTheQuestion = (): string | undefined => {
   return undefined;
 };
 
+/** Shows the subject the stage is holding, as the stage would save it. */
+function StageSubjectProbe() {
+  const subject = useStageValue('subject');
+  return (
+    <output aria-label="Stage subject">
+      {JSON.stringify(subject ?? null)}
+    </output>
+  );
+}
+
 describe('the section that says what a stage is about', () => {
   it('offers the protocol’s own node types, and nothing else', () => {
     renderStageEditor({
@@ -179,6 +190,42 @@ describe('the section that says what a stage is about', () => {
       { title: 'Edge setup', state: 'Finished' },
       { title: 'Filter network', state: 'Switched off' },
     ]);
+  });
+
+  /**
+   * The picker offers one type, and the stage stores its node types as a
+   * list: a pick reaches the stage as a list holding that one type.
+   */
+  it('writes a one-element types list', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: fixtureStageId('name-generator-1'),
+        type: 'NameGenerator' as const,
+        fields: {
+          label: en('Name Generator'),
+          subject: { entity: 'node', types: [PERSON] },
+        },
+      },
+      sections: (
+        <>
+          <SubjectSection entity="node" />
+          <StageSubjectProbe />
+        </>
+      ),
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        JSON.parse(
+          screen.getByRole('status', { name: 'Stage subject' }).textContent ??
+            'null',
+        ),
+      ).toEqual({ entity: 'node', types: [FAMILY_MEMBER] }),
+    );
   });
 
   it('saves the stage it opened, unchanged', async () => {
@@ -792,7 +839,7 @@ describe('changing a subject the stage is configured for', () => {
         type: 'NameGenerator' as const,
         fields: {
           label: en('Name Generator'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
         },
       },
       sections: nodeSubjectAndPrompts,

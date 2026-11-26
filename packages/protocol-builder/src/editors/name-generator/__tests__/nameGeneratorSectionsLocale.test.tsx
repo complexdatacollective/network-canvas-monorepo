@@ -45,7 +45,7 @@ const nameGeneratorWith = (panels: SectionDoc[]) => ({
   type: 'NameGenerator' as const,
   fields: {
     label: { 'en-US': 'Name Generator' },
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     form: {
       title: { 'en-US': 'Add a person' },
       fields: [
@@ -89,7 +89,7 @@ describe('the name-generator sections, read in Spanish', () => {
         type: 'NameGenerator',
         fields: {
           label: { 'en-US': 'Name Generator' },
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           prompts: [
             {
               id: 'prompt-1',

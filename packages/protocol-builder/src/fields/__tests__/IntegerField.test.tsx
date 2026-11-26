@@ -31,7 +31,7 @@ const unlimitedStage = {
     type: 'NameGenerator' as const,
     fields: {
       label: en('Name Generator'),
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       form: {
         title: en('Add a person'),
         fields: [

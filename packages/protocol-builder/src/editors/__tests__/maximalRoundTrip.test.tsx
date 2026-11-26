@@ -235,7 +235,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       skipLogic,
       conditions: EVERY_STAGE.conditions,
       filter: nodeFilter('stage'),
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       form: {
         fields: [
           {
@@ -282,7 +282,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Guidance.',
       skipLogic,
       conditions: EVERY_STAGE.conditions,
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       form: {
         title: { 'en-US': 'Add a person' },
         fields: [

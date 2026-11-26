@@ -1077,7 +1077,7 @@ function itemPicker(index: number, label: string) {
 
 const ASSET_ITEMS: SectionDoc = {
   label: en('People'),
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   panels: [
     { id: 'panel-1', title: en('One'), dataSource: '' },
     { id: 'panel-2', title: en('Two'), dataSource: '' },

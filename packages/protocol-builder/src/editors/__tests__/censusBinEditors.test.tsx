@@ -54,7 +54,7 @@ const KNOWS = fixtureTypeId('edge', 'knows');
 const personVariable = (name: string) =>
   fixtureVariableId({ entity: 'node', typeName: 'person' }, name);
 
-const SUBJECT = { entity: 'node', type: PERSON };
+const SUBJECT = { entity: 'node', types: [PERSON] };
 const BUCKET_SORT_ORDER = [
   {
     id: testId('bucket-sort-rule-1'),

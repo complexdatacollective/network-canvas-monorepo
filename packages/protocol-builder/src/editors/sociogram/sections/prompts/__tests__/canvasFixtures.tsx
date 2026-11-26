@@ -45,7 +45,7 @@ export const sociogramHolding = (prompt: Record<string, unknown>) => ({
     type: 'Sociogram' as const,
     fields: {
       label: { 'en-US': 'Sociogram' },
-      subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
+      subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
       prompts: [prompt],

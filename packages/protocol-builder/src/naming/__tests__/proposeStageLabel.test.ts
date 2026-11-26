@@ -95,7 +95,7 @@ describe('proposeStageLabel', () => {
         {
           id: testId('stage-1'),
           type: 'NameGenerator',
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
         },
         contextWith(),
       ),
@@ -250,7 +250,7 @@ describe('the language a proposal is in', () => {
         {
           id: testId('stage-1'),
           type: 'NameGenerator',
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
         },
         contextWith({}, inLanguage('es', ['es', 'en'])),
       ),
@@ -359,7 +359,7 @@ describe('the language a proposal is in', () => {
       {
         id: testId('stage-1'),
         type: 'NameGenerator',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
       },
       context,
     );

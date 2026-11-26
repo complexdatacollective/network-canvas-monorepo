@@ -1,6 +1,10 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
-import type { CurrentProtocol, StageType } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  resolveSubjectValue,
+  type StageType,
+} from '@codaco/protocol-validation';
 
 import { variableValuesMessages } from '../codebook/codebookMessages.ts';
 import { booleanAnswerFieldMessages } from '../codebook/components/VariableBooleanAnswerFields.tsx';
@@ -203,15 +207,10 @@ const numbered =
   ({ intl, at }) =>
     intl.formatMessage(descriptor, { position: positionOf(at.at(-1)) });
 
-const subjectFrom = (value: unknown): Subject | undefined => {
-  if (!isRecord(value)) return undefined;
-  const { entity, type } = value;
-  if (entity === 'ego') return { entity };
-  if ((entity === 'node' || entity === 'edge') && typeof type === 'string') {
-    return { entity, type };
-  }
-  return undefined;
-};
+// A stage's subject, a Composer node entry's or an edge entry's: each
+// resolves to one type, or to nothing when it lists several.
+const subjectFrom = (value: unknown): Subject | undefined =>
+  resolveSubjectValue(value);
 
 const attributeName = (
   codebook: Codebook,

@@ -125,7 +125,7 @@ const quickAddHolding = (fields: SectionDoc) => ({
     type: 'NameGeneratorQuickAdd' as const,
     fields: {
       label: { 'en-US': 'Name Generator Quick Add' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       ...fields,
     },
   },

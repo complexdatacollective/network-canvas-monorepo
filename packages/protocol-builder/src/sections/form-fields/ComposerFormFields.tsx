@@ -184,7 +184,7 @@ const composerRenderedElsewhere = (
     }
     if (
       subject.entity === 'node' &&
-      stage.subject.type === subject.type &&
+      stage.subject.types.includes(subject.type) &&
       stage.nodeForm !== undefined
     ) {
       for (const field of stage.nodeForm.fields ?? []) {

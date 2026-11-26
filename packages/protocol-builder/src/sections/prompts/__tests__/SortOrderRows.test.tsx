@@ -257,7 +257,7 @@ const seededWith = (
     type: 'Sociogram' as const,
     fields: {
       label: en('Sociogram'),
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
       prompts: [

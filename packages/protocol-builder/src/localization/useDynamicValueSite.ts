@@ -15,6 +15,7 @@ import {
   type DynamicValueSiteContext,
   dynamicValueContextFor,
   dynamicValueRolesAt,
+  resolveSubjectValue,
   stageDynamicValueContext,
 } from '@codaco/protocol-validation';
 
@@ -57,13 +58,14 @@ export type DynamicValueConditions = Readonly<{
 
 const subjectOf = (
   value: unknown,
-): DynamicValueConditions['subject'] | undefined =>
-  isRecord(value) &&
-  (value.entity === 'node' || value.entity === 'edge') &&
-  typeof value.type === 'string' &&
-  value.type !== ''
-    ? { entity: value.entity, type: value.type }
+): DynamicValueConditions['subject'] | undefined => {
+  const subject = resolveSubjectValue(value);
+  return subject !== undefined &&
+    subject.entity !== 'ego' &&
+    subject.type !== ''
+    ? subject
     : undefined;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

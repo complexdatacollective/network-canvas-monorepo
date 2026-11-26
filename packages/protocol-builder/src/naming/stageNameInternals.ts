@@ -26,6 +26,7 @@ import {
   withTranslation,
 } from '../localization/localizedText.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
+import { draftSubjectNodeTypes } from '../sections/useStageSubject.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import {
   proposeStageLabel,
@@ -328,7 +329,11 @@ function readSubject(value: unknown): StageSubject | undefined {
   }
   const { entity } = value;
   if (entity === 'ego') return { entity: 'ego' };
-  if (entity !== 'node' && entity !== 'edge') return undefined;
+  if (entity === 'node') {
+    const types = draftSubjectNodeTypes(value);
+    return types === undefined ? undefined : { entity, types: [...types] };
+  }
+  if (entity !== 'edge') return undefined;
   if (!('type' in value) || typeof value.type !== 'string') return undefined;
   return { entity, type: value.type };
 }

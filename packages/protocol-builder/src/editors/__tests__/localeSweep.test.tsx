@@ -54,7 +54,7 @@ const personVariable = (name: string) =>
 
 const PANELLED_NAME_GENERATOR: SectionDoc = {
   label: 'Name Generator',
-  subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
+  subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
   form: {
     title: 'Add a person',
     fields: [

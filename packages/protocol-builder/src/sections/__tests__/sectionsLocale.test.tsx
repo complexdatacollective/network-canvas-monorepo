@@ -986,7 +986,7 @@ describe('a form a Spanish researcher cannot save', () => {
         type: 'AlterForm',
         fields: {
           label: en('Formulario de alter'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           form: {
             fields: [
               {
@@ -1031,7 +1031,7 @@ describe('a form a Spanish researcher cannot save', () => {
         type: 'AlterForm',
         fields: {
           label: en('Formulario de alter'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           // A field that names an attribute and asks nothing, which the row
           // dialog cannot produce and an import can.
           form: { fields: [{ variable: RELATIONSHIP_TO_EGO }] },

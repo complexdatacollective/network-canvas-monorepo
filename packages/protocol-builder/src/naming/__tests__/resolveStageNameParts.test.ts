@@ -33,7 +33,7 @@ describe('resolveStageSubjectName', () => {
   it('resolves a node subject', () => {
     expect(
       resolveStageSubjectName(
-        { entity: 'node', type: PERSON },
+        { entity: 'node', types: [PERSON] },
         resolveEntityName,
       ),
     ).toBe('Person');
@@ -53,7 +53,7 @@ describe('resolveStageSubjectName', () => {
     expect(resolveStageSubjectName(undefined, resolveEntityName)).toBeNull();
     expect(
       resolveStageSubjectName(
-        { entity: 'node', type: GHOST },
+        { entity: 'node', types: [GHOST] },
         resolveEntityName,
       ),
     ).toBeNull();

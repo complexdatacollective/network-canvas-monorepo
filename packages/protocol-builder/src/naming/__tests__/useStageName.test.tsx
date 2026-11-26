@@ -301,7 +301,7 @@ describe('useStageName', () => {
 
     await waitFor(() => expect(input).toHaveValue('Form Name Generator'));
 
-    setValue('subject', { entity: 'node', type: PERSON });
+    setValue('subject', { entity: 'node', types: [PERSON] });
     await waitFor(() =>
       expect(input).toHaveValue('Person Form Name Generator'),
     );
@@ -450,7 +450,7 @@ describe('useStageName', () => {
 
   it('re-proposes when the codebook changes underneath the editor', async () => {
     const { input, renameNodeType, setValue } = renderEditor();
-    setValue('subject', { entity: 'node', type: PERSON });
+    setValue('subject', { entity: 'node', types: [PERSON] });
     await waitFor(() =>
       expect(input).toHaveValue('Person Form Name Generator'),
     );
@@ -473,7 +473,7 @@ describe('useStageName', () => {
     // Two different reasons the proposal would be recomputed: the draft
     // changing, and the codebook changing under the editor. Neither is licence
     // to replace what the researcher typed.
-    setValue('subject', { entity: 'node', type: PERSON });
+    setValue('subject', { entity: 'node', types: [PERSON] });
     renameNodeType(PERSON, personNode('Participant'));
 
     await settle();
@@ -500,7 +500,7 @@ describe('useStageName', () => {
       existing: true,
     });
 
-    setValue('subject', { entity: 'node', type: PERSON });
+    setValue('subject', { entity: 'node', types: [PERSON] });
     await settle();
     expect(input).toHaveValue('Hand named');
   });
@@ -514,7 +514,7 @@ describe('useStageName', () => {
   it('names an existing stage when a host accepts the proposal', async () => {
     const { name, liveDraft } = renderEditor({
       type: 'Sociogram',
-      fields: { subject: { entity: 'node', type: PERSON } },
+      fields: { subject: { entity: 'node', types: [PERSON] } },
       existing: true,
       headless: true,
     });
@@ -621,7 +621,7 @@ describe('a name written in more than one language', () => {
       type: 'Sociogram',
       fields: {
         label: { es: 'Sociograma' },
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
       },
       existing: true,
       headless: true,
@@ -678,7 +678,7 @@ describe('a name in the protocol’s default language', () => {
     );
     expect(input.closest('[lang]')).toHaveAttribute('lang', 'es');
 
-    setValue('subject', { entity: 'node', type: PERSON });
+    setValue('subject', { entity: 'node', types: [PERSON] });
     await waitFor(() =>
       expect(input).toHaveValue(
         'Generador de nombres (con formularios): Person',
@@ -815,7 +815,7 @@ describe('a name in the protocol’s default language', () => {
       await settle();
       fireEvent.change(input, { target: { value: 'Marafiki' } });
 
-      setValue('subject', { entity: 'node', type: PERSON });
+      setValue('subject', { entity: 'node', types: [PERSON] });
       await settle();
 
       expect(input).toHaveValue('Marafiki');
@@ -949,7 +949,7 @@ describe('a proposed name nobody has touched', () => {
   it('never stands on a stage the interview already contains', async () => {
     const { name, liveDraft, standing } = renderEditor({
       type: 'Sociogram',
-      fields: { subject: { entity: 'node', type: PERSON } },
+      fields: { subject: { entity: 'node', types: [PERSON] } },
       existing: true,
       headless: true,
     });
@@ -991,7 +991,7 @@ describe('useStageName parity with Architect', () => {
     {
       name: 'a name generator with a node subject',
       type: 'NameGenerator',
-      fields: { subject: { entity: 'node', type: PERSON } },
+      fields: { subject: { entity: 'node', types: [PERSON] } },
       expected: 'Person Form Name Generator',
     },
     {

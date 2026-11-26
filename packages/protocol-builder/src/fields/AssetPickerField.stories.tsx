@@ -108,7 +108,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'Sociogram',
       fields: {
         label: 'Sociogram',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         prompts: [
           { id: testId('prompt-1'), text: 'Place the people you know' },
         ],
@@ -131,7 +131,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'NameGenerator',
       fields: {
         label: 'People',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         panels: [panel(0, holding ?? ''), panel(1, holding ?? '')],
       },
     },
@@ -150,7 +150,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'Sociogram',
       fields: {
         label: 'Sociogram',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         prompts: [
           { id: testId('prompt-1'), text: 'Place the people you know' },
         ],
@@ -174,7 +174,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'Sociogram',
       fields: {
         label: 'Sociogram',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         prompts: [
           { id: testId('prompt-1'), text: 'Place the people you know' },
         ],
@@ -198,7 +198,7 @@ const STAGE_SCENARIOS: Readonly<
       type: 'NameGeneratorRoster',
       fields: {
         label: 'People you know',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         prompts: [
           { id: testId('prompt-1'), text: 'Choose the people you know' },
         ],

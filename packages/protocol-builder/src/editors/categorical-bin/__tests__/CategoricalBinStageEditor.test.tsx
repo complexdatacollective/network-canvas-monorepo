@@ -94,7 +94,7 @@ describe('creating a categorical bin stage', () => {
     expect(request?.stageDocument).toMatchObject({
       type: 'CategoricalBin',
       label: { 'en-US': 'Person Categorical Bin' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {

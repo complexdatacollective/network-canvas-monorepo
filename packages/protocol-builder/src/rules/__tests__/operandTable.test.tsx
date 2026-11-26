@@ -134,7 +134,7 @@ const STAGE_ID = createProtocolObjectId();
 
 const stageFields: SectionDoc = {
   label: { en: 'Details' },
-  subject: { entity: 'node', type: PERSON },
+  subject: { entity: 'node', types: [PERSON] },
   form: {
     fields: [
       {

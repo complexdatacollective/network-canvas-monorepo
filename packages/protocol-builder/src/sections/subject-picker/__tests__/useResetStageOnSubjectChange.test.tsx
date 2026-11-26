@@ -121,7 +121,7 @@ const censusHoldingNonDefault = {
   type: 'OneToManyDyadCensus' as const,
   fields: {
     label: en('One to Many Dyad Census'),
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     behaviours: { removeAfterConsideration: false },
     prompts: [
       {
@@ -185,7 +185,7 @@ const censusWithAFilter = {
   type: 'DyadCensus' as const,
   fields: {
     label: en('Dyad Census'),
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     filter: A_PERSON_FILTER,
     prompts: [
       {
@@ -223,7 +223,7 @@ describe('resetting a key the researcher has never looked at', () => {
     const written = await harness.submit();
 
     expect(written?.stageDocument).toMatchObject({
-      subject: { entity: 'node', type: FAMILY_MEMBER },
+      subject: { entity: 'node', types: [FAMILY_MEMBER] },
     });
     expect(written?.stageDocument).not.toHaveProperty('filter');
   });
@@ -327,7 +327,7 @@ describe('resetting a key the form is holding parked', () => {
     const written = await harness.submit();
 
     expect(written?.stageDocument).toMatchObject({
-      subject: { entity: 'node', type: FAMILY_MEMBER },
+      subject: { entity: 'node', types: [FAMILY_MEMBER] },
     });
     expect(written?.stageDocument).not.toHaveProperty('filter');
   });

@@ -296,10 +296,14 @@ export default function PromptsSection({
 }: PromptsSectionProps) {
   const intl = useAppIntl();
   const subject = useStageValue('subject');
+  // A subject counts once its type field exists, even before it names a type:
+  // the sociogram's sort rules have to answer for that state.
   const hasSubject =
     typeof subject === 'object' &&
     subject !== null &&
-    typeof Reflect.get(subject, 'type') === 'string';
+    (Reflect.get(subject, 'entity') === 'node'
+      ? Array.isArray(Reflect.get(subject, 'types'))
+      : typeof Reflect.get(subject, 'type') === 'string');
   const waiting = requiresSubject && !hasSubject;
 
   const rowList = useMemo<RowListConfig>(

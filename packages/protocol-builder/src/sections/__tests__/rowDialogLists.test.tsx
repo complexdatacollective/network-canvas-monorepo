@@ -163,7 +163,7 @@ const nameGeneratorWith = (
     type: 'NameGenerator',
     fields: {
       label: en('Name Generator'),
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       form: {
         title: en('Add a person'),
         fields: [
@@ -236,7 +236,7 @@ const lists: readonly ListCase[] = [
         type: 'AlterForm',
         fields: {
           label: en('Alter form'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           form: { fields: rows },
         },
       },

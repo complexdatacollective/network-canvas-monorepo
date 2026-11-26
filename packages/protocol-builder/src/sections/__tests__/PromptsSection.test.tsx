@@ -162,7 +162,7 @@ describe('the prompt list a stage owns', () => {
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           form: {
             title: en('Add a person'),
             fields: [
@@ -653,7 +653,7 @@ describe('what a family says about its own prompt', () => {
         type: 'NameGenerator',
         fields: {
           label: en('Name Generator'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           form: {
             title: en('Add a person'),
             fields: [

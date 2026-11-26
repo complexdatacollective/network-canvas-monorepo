@@ -9,7 +9,7 @@ const geospatialStage: SectionDoc = {
   id: 'stage-1',
   type: 'Geospatial',
   label: 'Where do you meet?',
-  subject: { entity: 'node', type: testTypeId('person') },
+  subject: { entity: 'node', types: [testTypeId('person')] },
   mapOptions: {
     tokenAssetId: 'map-token',
     style: 'mapbox://styles/mapbox/standard',

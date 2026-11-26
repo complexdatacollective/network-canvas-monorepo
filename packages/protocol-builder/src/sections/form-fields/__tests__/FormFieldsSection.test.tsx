@@ -528,7 +528,7 @@ describe('the fields a form collects', () => {
         type: 'AlterForm',
         fields: {
           label: en('Alter form'),
-          subject: { entity: 'node', type: PERSON },
+          subject: { entity: 'node', types: [PERSON] },
           form: {
             fields: [
               {
@@ -1173,7 +1173,7 @@ const STAMPING_NAME_GENERATOR = {
   type: 'NameGenerator' as const,
   fields: {
     label: en('Name generator'),
-    subject: { entity: 'node', type: PERSON },
+    subject: { entity: 'node', types: [PERSON] },
     form: {
       title: en('Add a person'),
       fields: [

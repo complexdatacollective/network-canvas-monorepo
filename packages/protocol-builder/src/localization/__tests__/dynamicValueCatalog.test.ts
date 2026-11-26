@@ -201,7 +201,7 @@ describe('dynamicValueChoices', () => {
       },
       stage: {
         type: 'OrdinalBin',
-        subject: { entity: 'node', type: PERSON },
+        subject: { entity: 'node', types: [PERSON] },
         behaviours: { interactionMode: 'select' },
       },
       sitePath: ['prompts', 0, 'text'],

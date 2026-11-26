@@ -99,7 +99,7 @@ export const composerHolding = (fields: SectionDoc) => ({
     type: 'NetworkComposer' as const,
     fields: {
       label: { 'en-US': 'Network Composer' },
-      subject: { entity: 'node', type: PERSON },
+      subject: { entity: 'node', types: [PERSON] },
       quickAdd: personVariable('composerName'),
       layoutVariable: personVariable('layout'),
       background: { concentricCircles: 4 },

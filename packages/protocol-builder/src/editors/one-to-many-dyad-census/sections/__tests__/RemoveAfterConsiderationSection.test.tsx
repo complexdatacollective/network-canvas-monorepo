@@ -55,7 +55,7 @@ describe('what becomes of a person already considered', () => {
         type: 'OneToManyDyadCensus',
         fields: {
           label: { 'en-US': 'One to Many Dyad Census' },
-          subject: { entity: 'node', type: fixtureTypeId('node', 'person') },
+          subject: { entity: 'node', types: [fixtureTypeId('node', 'person')] },
           prompts: [
             {
               id: 'prompt-a',
