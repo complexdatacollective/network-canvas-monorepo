@@ -15,6 +15,16 @@ deploys authenticate with `NETLIFY_AUTH_TOKEN`, target the site in
 `NETLIFY_SITE_ID_WEBSITE`, and run only when the Website release PR changes the
 site's stable version on `main`.
 
+The `website-preview-checks` CI job waits for the website preview and checks
+every link on it with the dead-link checker. It runs on the Website and
+Documentation release pull requests. It also runs on any pull request into
+`main` that changes `content/publications.csv`, so that a broken link to a
+publication is found on the pull request that adds it. Some publishers refuse
+requests from automated browsers even though the page exists, and the checker
+reports these refusals as failures. Open the link in an ordinary browser to
+confirm that the page exists. Then add the URL, with its host and the reason
+for the refusal, to `.github/dead-link-refusals.json` on the same pull request.
+
 ## The protocol gallery subdomain
 
 `protocolgallery.networkcanvas.com` is a Netlify **domain alias** of this site,

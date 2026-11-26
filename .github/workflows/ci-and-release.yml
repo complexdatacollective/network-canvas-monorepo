@@ -120,6 +120,7 @@ jobs:
       docs: ${{ steps.flags.outputs.docs }}
       website: ${{ steps.flags.outputs.website }}
       studio: ${{ steps.flags.outputs.studio }}
+      publications: ${{ steps.flags.outputs.publications }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -280,6 +281,28 @@ jobs:
             echo "Studio stack inputs changed in ${gate_base:-(no base)}..$CURR."
           fi
 
+          # The website's list of publications, for website-preview-checks.
+          # Each entry links to a publisher's page, and only the website's
+          # dead-link crawl checks those links, so a pull request that changes
+          # the list crawls the website preview. Otherwise a link that the
+          # checker cannot open is found only on the next Documentation or
+          # Website release PR. The flag is judged on the whole pull request,
+          # not push to push, so that every push re-runs the crawl: the usual
+          # fix for a failure is a push that adds the link to
+          # .github/dead-link-refusals.json, which changes no package, and
+          # carry-forward-statuses would otherwise republish the failure.
+          # Such a pull request also needs `website` to be true, which keeps
+          # carry-forward-statuses from republishing an earlier verdict over
+          # the job that runs on this commit.
+          publications=false
+          if [[ -z "$gate_base" ]] \
+            || ! git diff --quiet "$gate_base" "$CURR" -- \
+              apps/networkcanvas.com/content/publications.csv; then
+            publications=true
+            website=true
+            echo "The website's publications changed in ${gate_base:-(no base)}..$CURR."
+          fi
+
           # Either public site can contain inbound links to routes owned by the
           # other. Crawl both paired previews whenever either site changes so a
           # removed route cannot escape the link check on the unchanged peer.
@@ -291,6 +314,7 @@ jobs:
           echo "docs=$docs" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
           echo "studio=$studio" >> "$GITHUB_OUTPUT"
+          echo "publications=$publications" >> "$GITHUB_OUTPUT"
 
   # Decides per suite whether E2E must run for this ref. Feature PRs select the
   # suites whose subject package or workspace dependency closure changed.
@@ -2292,8 +2316,11 @@ jobs:
   docs-preview-checks:
     needs: detect
     # Documentation and Website are separately gated products. Crawl both
-    # paired previews only when one of their generated release PRs is being
-    # validated; ordinary feature PRs must not run the dead-link checker.
+    # paired previews when one of their generated release PRs is being
+    # validated. Other pull requests do not run the documentation crawl.
+    # website-preview-checks also runs for a pull request that changes the
+    # website's list of publications; that list adds or removes no route on
+    # either site, so this crawl does not run for it (see that job).
     if: >-
       github.event_name == 'pull_request'
       && github.base_ref == 'main'
@@ -2411,14 +2438,23 @@ jobs:
 
   website-preview-checks:
     needs: detect
-    # Keep this condition paired with docs-preview-checks: either public-site
-    # release validates both sites because they link to each other's routes.
+    # Keep the release branches in this condition paired with
+    # docs-preview-checks: either public-site release validates both sites
+    # because they link to each other's routes.
+    #
+    # This job alone also runs for a pull request that changes the website's
+    # list of publications (the detect job's `publications` flag), so that a
+    # publication whose link fails the checker is found on the pull request
+    # that adds it. The list changes only the website's links to publishers'
+    # pages. It adds or removes no route on either site, so no link between
+    # the two sites can break and the documentation crawl is not needed.
     if: >-
       github.event_name == 'pull_request'
       && github.base_ref == 'main'
       && needs.detect.outputs.website == 'true'
       && (github.head_ref == 'changeset-release/documentation'
-      || github.head_ref == 'changeset-release/website')
+      || github.head_ref == 'changeset-release/website'
+      || needs.detect.outputs.publications == 'true')
     runs-on: ubuntu-latest
     # Budgets two sequential 15-minute Netlify status polls (website, then
     # documentation) plus the reachability probes and the crawl itself. Every
