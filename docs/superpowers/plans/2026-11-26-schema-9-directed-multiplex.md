@@ -81,7 +81,7 @@ type EdgeDefinition = {
   color?: EdgeColor;
   variables?: EdgeVariables;
   directed?: true;
-  endpointRules?: [EndpointRule, ...EndpointRule[]];
+  endpointRules?: EndpointRule[]; // at least one, enforced by `.min(1)`
 };
 ```
 
