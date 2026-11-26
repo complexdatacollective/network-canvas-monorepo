@@ -74,3 +74,41 @@ describe('reference sweep', () => {
     },
   );
 });
+
+describe('stage subject references', () => {
+  const PEOPLE = crypto.randomUUID();
+  const PLACES = crypto.randomUUID();
+  const nameGenerator = (types: string[]): SectionDoc => ({
+    type: 'NameGenerator',
+    label: { en: 'Names' },
+    subject: { entity: 'node', types },
+    form: { fields: [] },
+    prompts: [{ id: crypto.randomUUID(), text: { en: 'Who?' } }],
+  });
+  const documents: Record<string, SectionDoc> = {
+    [sectionId({ kind: 'settings' })]: {},
+    [sectionId({ kind: 'stageOrder' })]: { stages: [PEOPLE, PLACES] },
+    [sectionId({ kind: 'codebookNode', typeId: PERSON })]: nodeType('Person'),
+    [sectionId({ kind: 'codebookNode', typeId: PLACE })]: nodeType('Place'),
+    [sectionId({ kind: 'stage', stageId: PEOPLE })]: nameGenerator([PERSON]),
+    [sectionId({ kind: 'stage', stageId: PLACES })]: nameGenerator([PLACE]),
+  };
+  const referencesTo = (typeId: string) =>
+    entityTypeReferences(assembledProtocol(documents), 'node', typeId);
+
+  it("a node type in a stage's types list is a reference to that type only", () => {
+    expect(referencesTo(PERSON)).toEqual([
+      {
+        sectionId: sectionId({ kind: 'stage', stageId: PEOPLE }),
+        path: ['subject', 'types', 0],
+      },
+    ]);
+    expect(referencesTo(PLACE)).toEqual([
+      {
+        sectionId: sectionId({ kind: 'stage', stageId: PLACES }),
+        path: ['subject', 'types', 0],
+      },
+    ]);
+    expect(referencesTo(ORG)).toEqual([]);
+  });
+});
