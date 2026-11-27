@@ -205,19 +205,26 @@ export const rewriteCodebookIds = (
     }
     if (!isAttributeHit(hit) || hit.dataSourceColumn) continue;
     // A node rule may name a layout, which keeps the id of the layout
-    // variable it was in schema 8 (positions are stored under it).
+    // variable it was in schema 8 (positions are stored under it). A variable
+    // of the rule's own node type under the same key is what the rule names.
+    const ruleOwner =
+      hit.subject === undefined ? filterRuleOwner(root, hit.path) : undefined;
     if (
-      hit.subject === undefined &&
+      ruleOwner?.entity === 'node' &&
       isRecord(layouts) &&
       Object.hasOwn(layouts, hit.variableId) &&
-      filterRuleOwner(root, hit.path)?.entity === 'node'
+      !records.some(
+        ({ owner, variables }) =>
+          ownerKey(owner) === ownerKey(ruleOwner) &&
+          Object.hasOwn(variables, hit.variableId),
+      )
     ) {
       const renamed = layoutRenames?.get(hit.variableId);
       if (renamed !== undefined)
         writes.push({ path: hit.path, value: renamed });
       continue;
     }
-    const owner = hit.subject ?? filterRuleOwner(root, hit.path);
+    const owner = hit.subject ?? ruleOwner;
     const renamed =
       owner === undefined
         ? uniqueVariableRename(hit.variableId)

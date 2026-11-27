@@ -2505,6 +2505,209 @@ describe('Migrating layouts from schema 8 to 9', () => {
     expect(rule?.options).toMatchObject({ attribute: egoIds[0] });
   });
 
+  it('gives each split Sociogram a copy of the settings with ids of its own', () => {
+    const document = schema8({
+      node: {
+        person: nodeType('Person', {
+          near: layoutVariable('near'),
+          far: layoutVariable('far'),
+        }),
+      },
+      stages: [
+        nameGenerator('names'),
+        sociogram('map', ['near', 'far'], 'person', {
+          filter: { join: 'AND', rules: [layoutNodeRule('name')] },
+          skipLogic: {
+            action: 'SHOW',
+            filter: { join: 'AND', rules: [layoutNodeRule('name')] },
+          },
+        }),
+      ],
+    });
+
+    // Each copy validates, so no protocol object id is shared between them.
+    const [first, second] = sociogramsOf(migrateReadable(document, 9));
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    for (const key of ['background', 'filter', 'skipLogic'] as const) {
+      expect(first?.[key]).toBeDefined();
+      expect(withoutIds(first?.[key])).toEqual(withoutIds(second?.[key]));
+    }
+    expect(first?.filter?.rules[0]?.id).not.toBe(second?.filter?.rules[0]?.id);
+  });
+
+  it('keeps a leading prompt that names no layout in the first run', () => {
+    const migrated = migrateReadable(
+      schema8({
+        node: {
+          person: nodeType('Person', {
+            near: layoutVariable('near'),
+            far: layoutVariable('far'),
+          }),
+        },
+        stages: [
+          nameGenerator('names'),
+          sociogram('map', [undefined, 'near', 'far']),
+        ],
+      }),
+      9,
+    );
+
+    expect(
+      sociogramsOf(migrated).map((stage) => ({
+        layout: stage.layout,
+        prompts: stage.prompts.map(({ text }) => text),
+      })),
+    ).toEqual([
+      {
+        layout: 'near',
+        prompts: [localized('Prompt 0'), localized('Prompt 1')],
+      },
+      { layout: 'far', prompts: [localized('Prompt 2')] },
+    ]);
+  });
+
+  it('removes rules naming an ego or edge layout variable from panel and preset filters, and a filter they empty', () => {
+    const edgeRule = {
+      id: testId('edge layout rule'),
+      type: 'edge',
+      options: { type: 'knows', attribute: 'edgeSpot', operator: 'EXISTS' },
+    };
+    const panel = (id: string, rules: unknown[]) => ({
+      id: testId(id),
+      title: 'People already named',
+      dataSource: 'existing',
+      filter: { join: 'OR', rules },
+    });
+    const migrated = migrateReadable(
+      schema8({
+        node: { person: nodeType('Person', { spot: layoutVariable('spot') }) },
+        edge: {
+          knows: {
+            name: 'Knows',
+            color: 'edge-color-seq-1',
+            variables: { edgeSpot: layoutVariable('edgeSpot') },
+          },
+        },
+        ego: { egoSpot: layoutVariable('egoSpot') },
+        stages: [
+          nameGenerator('names', 'person', {
+            panels: [
+              panel('emptied panel', [edgeRule]),
+              panel('kept panel', [edgeRule, layoutNodeRule('name')]),
+            ],
+          }),
+          sociogram('map', ['spot']),
+          {
+            id: testId('story'),
+            type: 'Narrative',
+            label: 'Story',
+            subject: { entity: 'node', type: 'person' },
+            background: { concentricCircles: 3 },
+            presets: [
+              {
+                id: testId('preset'),
+                label: 'All',
+                layoutVariable: 'spot',
+                filter: { join: 'AND', rules: [egoRule('egoSpot')] },
+              },
+            ],
+          },
+        ],
+      }),
+      9,
+    );
+
+    const [names] = migrated.stages;
+    const panels = names?.type === 'NameGenerator' ? names.panels : undefined;
+    expect(panels?.[0]).not.toHaveProperty('filter');
+    expect(withoutIds(panels?.[1]?.filter)).toEqual({
+      join: 'OR',
+      rules: [withoutIds(layoutNodeRule('name'))],
+    });
+    const narrative = migrated.stages.find(({ type }) => type === 'Narrative');
+    const presets =
+      narrative?.type === 'Narrative' ? narrative.presets : undefined;
+    expect(presets).toHaveLength(1);
+    expect(presets?.[0]).not.toHaveProperty('filter');
+  });
+
+  // The rule names the variable of its own node type, not the layout another
+  // node type declared under the same key.
+  it("a node rule naming its own type's variable follows it when another type's layout variable has the same key", () => {
+    for (const [operator, value] of [
+      ['EXISTS', undefined],
+      ['CONTAINS', 'x'],
+    ] as const) {
+      const shared = testVariableId('spot');
+      const person = testTypeId('person');
+      const place = testTypeId('place');
+      const migrated = migrateProtocol(
+        schema8({
+          node: {
+            [person]: nodeType('Person', { [shared]: layoutVariable('spot') }),
+            [place]: nodeType('Place', { [shared]: textVariable('nickname') }),
+          },
+          stages: [
+            nameGenerator('places', place, {
+              form: {
+                title: 'Add',
+                fields: [
+                  {
+                    id: testId('places name field'),
+                    variable: 'name',
+                    prompt: 'Name',
+                  },
+                  {
+                    id: testId('places nickname field'),
+                    variable: shared,
+                    prompt: 'Nickname',
+                  },
+                ],
+              },
+              skipLogic: {
+                action: 'SKIP',
+                filter: {
+                  join: 'AND',
+                  rules: [
+                    {
+                      id: testId('place rule'),
+                      type: 'node',
+                      options: {
+                        type: place,
+                        attribute: shared,
+                        operator,
+                        ...(value === undefined ? {} : { value }),
+                      },
+                    },
+                  ],
+                },
+              },
+            }),
+            sociogram('map', [shared], person),
+          ],
+        }),
+        9,
+      );
+
+      expect(Object.keys(migrated.codebook.layouts ?? {})).toEqual([shared]);
+      const nickname = Object.entries(
+        Object.values(migrated.codebook.node ?? {}).find(
+          ({ name }) => name === 'Place',
+        )?.variables ?? {},
+      ).find(([, variable]) => variable.name === 'nickname')?.[0];
+      expect(nickname).toBeDefined();
+      expect(nickname).not.toBe(shared);
+      const [stage] = migrated.stages;
+      const fields =
+        stage?.type === 'NameGenerator' ? stage.form?.fields : undefined;
+      expect(fields?.map(({ variable }) => variable)).toContain(nickname);
+      expect(stage?.skipLogic?.filter.rules[0]?.options).toMatchObject({
+        attribute: nickname,
+      });
+    }
+  });
+
   it('a rule naming a layout variable stays valid when only a Narrative preset used it', () => {
     const migrated = migrateReadable(
       schema8({
