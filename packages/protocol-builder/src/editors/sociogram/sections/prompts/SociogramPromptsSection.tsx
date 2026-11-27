@@ -5,12 +5,14 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import {
   createProtocolObjectId,
   isFirstStageUsingLayout,
+  type Stage,
 } from '@codaco/protocol-validation';
 
 import {
   buildVariableRoleMap,
   hasValidatedUse,
 } from '../../../../codebook/variableRoles.ts';
+import { stagePlacement } from '../../../../fields/stageDestination.ts';
 import {
   crossClassPickIssue,
   validatedElsewhereMessage,
@@ -58,6 +60,22 @@ const expandPrompt = (row: RowValues): RowValues => {
 };
 
 /**
+ * The stage order with the stage being edited as it stands: an existing stage
+ * replaced in place, and a stage being created inserted where the host is
+ * about to put it.
+ */
+const withDraftInPlace = (
+  stages: readonly Stage[],
+  draft: Stage,
+  position: number | undefined,
+): Stage[] => {
+  const { index, isNew } = stagePlacement(stages, draft.id, position);
+  return isNew
+    ? [...stages.slice(0, index), draft, ...stages.slice(index)]
+    : stages.map((stage, at) => (at === index ? draft : stage));
+};
+
+/**
  * The tasks this sociogram sets, in order.
  *
  * The list, its ordering, its dialog and its rule that a stage must ask
@@ -68,7 +86,7 @@ const expandPrompt = (row: RowValues): RowValues => {
  */
 export default function SociogramPromptsSection() {
   const intl = useAppIntl();
-  const { savedFields, identity } = useStageEditorForm();
+  const { savedFields, identity, creation } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
   const subjectType = subject?.entity === 'node' ? subject.type : undefined;
@@ -189,16 +207,11 @@ export default function SociogramPromptsSection() {
     isFirstStageUsingLayout(
       {
         codebook: protocolContext.codebook,
-        stages: [
-          ...protocolContext.orderedStages.map((stage) =>
-            stage.id === draft.id ? draft : stage,
-          ),
-          ...(protocolContext.orderedStages.some(
-            (stage) => stage.id === draft.id,
-          )
-            ? []
-            : [draft]),
-        ],
+        stages: withDraftInPlace(
+          protocolContext.orderedStages,
+          draft,
+          creation?.position,
+        ),
       },
       draft.id,
       draft.layout,

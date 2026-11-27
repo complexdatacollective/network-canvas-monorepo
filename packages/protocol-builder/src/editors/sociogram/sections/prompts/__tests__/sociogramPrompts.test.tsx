@@ -10,6 +10,7 @@ import {
 } from '../../../../../testing/attributePicker.ts';
 import { enIntl, readMessage } from '../../../../../testing/i18n.ts';
 import {
+  fixtureLayoutId,
   fixtureTypeId,
   fixtureVariableId,
   loadFixtureStage,
@@ -292,6 +293,40 @@ describe('the warning about a first prompt that places no nodes', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(4));
     expect(screen.queryByText(WARNING_TITLE)).not.toBeInTheDocument();
+  });
+
+  it('no first-use alert when an earlier stage places nodes in the layout', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(CONNECT_PROMPT, {
+        layout: fixtureLayoutId('layout'),
+        behaviours: {},
+      }),
+    );
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(4));
+    expect(
+      screen.getByText('Link the people who know each other'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(WARNING_TITLE)).not.toBeInTheDocument();
+  });
+
+  it('judges a new stage at the position it is being created at', async () => {
+    renderStageEditor({
+      create: {
+        type: 'Sociogram',
+        position: 0,
+        fields: {
+          subject: { entity: 'node', types: [PERSON] },
+          background: { concentricCircles: 4 },
+          behaviours: {},
+          layout: fixtureLayoutId('layout'),
+          prompts: [CONNECT_PROMPT],
+        },
+      },
+      sections: sociogramSections,
+    });
+
+    expect(await screen.findByText(WARNING_TITLE)).toBeInTheDocument();
   });
 
   it('warns as soon as the first prompt is changed to a connect task', async () => {
