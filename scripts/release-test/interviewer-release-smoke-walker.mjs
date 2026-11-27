@@ -709,6 +709,9 @@ try {
   await expect(
     page.getByRole('status').locator('[data-active]').nth(1),
   ).toHaveAttribute('data-active', 'true');
+  await expect(
+    page.getByText('Link people who know each other.'),
+  ).toBeVisible();
   await page.getByRole('button', { name: /^Alex/ }).click();
   await page.getByRole('button', { name: /^Blair/ }).click();
   await expect(page.locator('line[data-edge-id]')).toHaveCount(1);
