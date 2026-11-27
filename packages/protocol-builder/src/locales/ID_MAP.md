@@ -141,6 +141,8 @@ after the fact is marked in place.
 | `networkCanvas`              | `sections/background/`, `sections/canvas/`, `sections/canvas-behaviours/`, `sections/form-fields/composerFormFieldMessages.ts`, `editors/sociogram/sections/prompts/`, `editors/narrative/sections/presets/`, `editors/network-composer/sections/composerMessages.ts`                 | family F  |
 | `localizedTextNames`         | `localization/localizedTextNames.ts`, `localization/interfaceTextNames.ts`                                                                                                                                                                                                            | languages |
 | `stageWording`               | `sections/supplied-wording/`                                                                                                                                                                                                                                                          | languages |
+| `layoutPicker`               | `fields/LayoutPickerField.tsx`, `fields/variableNameRules.ts` (`layoutMessages`)                                                                                                                                                                                                      | layouts   |
+| `sociogram`                  | `editors/sociogram/sections/SociogramLayoutSection.tsx`                                                                                                                                                                                                                               | layouts   |
 
 Family E added one the reserved list did not hold, on the same terms:
 
