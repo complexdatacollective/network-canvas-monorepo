@@ -1157,11 +1157,18 @@ describe('a codebook change a field needs, refused', () => {
     );
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
+    // Said on the answers, by the inline rule: a create the codebook refuses
+    // is filed on the attribute picker instead.
+    const refusal =
+      'Option “ing_x” of “seat” would be exported to a column called “seat_ing_x”, but the export already has a column called “seat_ing_x” for the positions in the layout “seat_ing”. Change the option value or the attribute name.';
     expect(
-      await screen.findByText(
-        'Option “ing_x” of “seat” would be exported to a column called “seat_ing_x”, but the export already has a column called “seat_ing_x” for the positions in the layout “seat_ing”. Change the option value or the attribute name.',
+      await within(attributeField('Choice values', dialog.element)).findByText(
+        refusal,
       ),
     ).toBeInTheDocument();
+    expect(
+      within(attributePicker(dialog)).queryByText(refusal),
+    ).not.toBeInTheDocument();
     expect(savedAttribute(harness, 'seat')).toBeUndefined();
   });
 
